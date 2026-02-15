@@ -16,11 +16,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "bullmq": "^5.68.0",
+    "bullmq": "^5.69.2",
     "exceljs": "^4.4.0",
-    "nodemailer": "^6.10.1",
-    "pdfkit": "^0.15.2",
-    "uuid": "^9.0.0",
+    "nodemailer": "^8.0.1",
+    "pdfkit": "^0.17.2",
+    "uuid": "^13.0.0",
     "@bossnyumba/domain-models": "workspace:*"
   },
   "devDependencies": {
