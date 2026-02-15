@@ -32,9 +32,9 @@
   },
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
-    "drizzle-orm": "^0.29.3",
+    "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.3",
-    "bcrypt": "^5.1.1"
+    "bcrypt": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -21,15 +21,15 @@
   },
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
-    "@aws-sdk/client-textract": "^3.500.0",
-    "@google-cloud/vision": "^4.0.0",
+    "@aws-sdk/client-textract": "^3.990.0",
+    "@google-cloud/vision": "^5.3.4",
     "crypto-js": "^4.2.0",
-    "date-fns": "^3.0.0",
-    "pdfkit": "^0.14.0",
-    "sharp": "^0.33.0",
-    "uuid": "^9.0.0",
+    "date-fns": "^4.1.0",
+    "pdfkit": "^0.17.2",
+    "sharp": "^0.34.5",
+    "uuid": "^13.0.0",
     "winston": "^3.11.0",
-    "zod": "^3.22.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.0",

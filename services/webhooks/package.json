@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "uuid": "^9.0.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",
