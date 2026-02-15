@@ -175,7 +175,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.workspace }}
           path: ${{ matrix.workspace }}/*/coverage
@@ -231,7 +231,7 @@ jobs:
         run: pnpm exec turbo run build --cache-dir=.turbo
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-artifacts
           path: |
@@ -290,7 +290,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: playwright-report

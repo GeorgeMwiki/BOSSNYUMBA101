@@ -53,7 +53,7 @@ jobs:
         run: pnpm exec turbo run build --filter=./apps/${{ matrix.app }}
 
       - name: Upload ${{ matrix.app }} artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.app }}
           path: |
