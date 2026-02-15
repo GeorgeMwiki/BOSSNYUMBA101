@@ -130,7 +130,7 @@ jobs:
           git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD >> CHANGELOG_RELEASE.md || true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.checks.outputs.version }}
           name: Release v${{ needs.checks.outputs.version }}
