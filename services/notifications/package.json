@@ -1,0 +1,40 @@
+{
+  "name": "@bossnyumba/notifications-service",
+  "version": "1.0.0",
+  "description": "Multi-channel notifications (SMS, Email, Push, WhatsApp) for BOSSNYUMBA",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.0.0",
+    "africastalking": "^0.7.8",
+    "@sendgrid/mail": "^8.1.0",
+    "axios": "^1.6.7",
+    "bullmq": "^5.68.0",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "form-data": "^4.0.0",
+    "ioredis": "^5.9.0",
+    "nodemailer": "^6.9.9",
+    "twilio": "^4.23.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/nodemailer": "^6.4.14",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

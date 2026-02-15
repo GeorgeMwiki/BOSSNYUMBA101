@@ -1,0 +1,87 @@
+# =============================================================================
+# BOSSNYUMBA Backend Services - Multi-stage Dockerfile
+# =============================================================================
+# Build with: docker build -f docker/Dockerfile.service --build-arg SERVICE_NAME=payments .
+# Supports: payments, notifications, reports, domain-services
+# =============================================================================
+
+ARG SERVICE_NAME=payments
+
+# =============================================================================
+# Stage 1: Dependencies
+# =============================================================================
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+WORKDIR /app
+
+# Copy workspace config files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.base.json tsconfig.json ./
+COPY .npmrc ./
+
+# Copy packages (shared dependencies)
+COPY packages ./packages
+
+# Copy the specific service
+ARG SERVICE_NAME
+COPY services/${SERVICE_NAME} ./services/${SERVICE_NAME}
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# =============================================================================
+# Stage 2: Builder
+# =============================================================================
+FROM node:20-alpine AS builder
+ARG SERVICE_NAME
+
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./
+COPY --from=deps /app/pnpm-lock.yaml ./
+COPY --from=deps /app/pnpm-workspace.yaml ./
+COPY tsconfig.base.json tsconfig.json ./
+COPY packages ./packages
+COPY services/${SERVICE_NAME} ./services/${SERVICE_NAME}
+
+# Build the service
+RUN pnpm --filter=@bossnyumba/${SERVICE_NAME} build
+
+# =============================================================================
+# Stage 3: Production Runner
+# =============================================================================
+FROM node:20-alpine AS runner
+ARG SERVICE_NAME
+
+RUN apk add --no-cache dumb-init wget curl
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 service
+
+WORKDIR /app
+
+# Copy built artifacts and dependencies
+COPY --from=builder --chown=service:nodejs /app/services/${SERVICE_NAME}/dist ./dist
+COPY --from=builder --chown=service:nodejs /app/services/${SERVICE_NAME}/package.json ./
+COPY --from=builder --chown=service:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=service:nodejs /app/packages ./packages
+
+USER service
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV SERVICE_NAME=${SERVICE_NAME}
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"]

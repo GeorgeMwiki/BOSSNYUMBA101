@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bossnyumba
+
+resources:
+  - ../../base
+  - ../../api-gateway
+  - ../../apps
+  - ../../databases
+  - ../../monitoring
+
+commonLabels:
+  environment: staging
+
+images:
+  - name: bossnyumba/api-gateway
+    newTag: staging
+  - name: bossnyumba/estate-manager-app
+    newTag: staging
+  - name: bossnyumba/customer-app
+    newTag: staging
+  - name: bossnyumba/owner-portal
+    newTag: staging
+  - name: bossnyumba/admin-portal
+    newTag: staging
+
+patches:
+  - path: configmap-patch.yaml
+    target:
+      kind: ConfigMap
+      name: bossnyumba-config
+  - path: ingress-patch.yaml
+    target:
+      kind: Ingress
+      name: api-gateway-ingress
+
+replicas:
+  - name: api-gateway
+    count: 2
+  - name: estate-manager
+    count: 1
+  - name: customer-app
+    count: 1
+  - name: owner-portal
+    count: 1
+  - name: admin-portal
+    count: 1

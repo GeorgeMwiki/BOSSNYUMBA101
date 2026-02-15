@@ -1,0 +1,90 @@
+# =============================================================================
+# BOSSNYUMBA Reports Service - Kubernetes Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reports
+  namespace: bossnyumba
+  labels:
+    app: reports
+    app.kubernetes.io/name: reports
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reports
+  template:
+    metadata:
+      labels:
+        app: reports
+    spec:
+      serviceAccountName: bossnyumba-service
+      containers:
+        - name: reports
+          image: bossnyumba/reports:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: bossnyumba-config
+                  key: NODE_ENV
+            - name: PORT
+              value: "3000"
+            - name: SERVICE_NAME
+              value: "reports"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-secrets
+                  key: REDIS_URL
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-storage-secrets
+                  key: AWS_S3_BUCKET
+                  optional: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reports-service
+  namespace: bossnyumba
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app: reports

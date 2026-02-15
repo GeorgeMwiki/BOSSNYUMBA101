@@ -1,0 +1,133 @@
+# =============================================================================
+# BOSSNYUMBA - Local Development Docker Compose
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bossnyumba-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bossnyumba
+      POSTGRES_PASSWORD: bossnyumba_dev
+      POSTGRES_DB: bossnyumba
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bossnyumba -d bossnyumba"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bossnyumba-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: bossnyumba-api-gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  estate-manager:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        APP_NAME: estate-manager-app
+        APP_PATH: apps/estate-manager-app
+      target: nextjs
+    container_name: bossnyumba-estate-manager
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    depends_on:
+      - api-gateway
+
+  customer-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        APP_NAME: customer-app
+        APP_PATH: apps/customer-app
+      target: nextjs
+    container_name: bossnyumba-customer-app
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    depends_on:
+      - api-gateway
+
+  owner-portal:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        APP_NAME: owner-portal
+        APP_PATH: apps/owner-portal
+      target: vite
+    container_name: bossnyumba-owner-portal
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api-gateway
+
+  admin-portal:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        APP_NAME: admin-portal
+        APP_PATH: apps/admin-portal
+      target: vite
+    container_name: bossnyumba-admin-portal
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: bossnyumba-network

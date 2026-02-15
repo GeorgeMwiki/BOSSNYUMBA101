@@ -1,0 +1,3530 @@
+// BOSSNYUMBA - AI-Native Property Management Platform
+// Prisma Schema - Complete Data Model from PRD Section 9
+// All entities include tenantId for multi-tenant row-level security isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS - Status Fields, Categories, Severity Levels
+// ============================================================================
+
+// Tenant & Organization Enums
+enum TenantStatus {
+  active
+  suspended
+  pending
+  trial
+  cancelled
+}
+
+enum SubscriptionTier {
+  starter
+  professional
+  enterprise
+  custom
+}
+
+// User Enums
+enum UserStatus {
+  pending_activation
+  active
+  suspended
+  deactivated
+  locked
+}
+
+enum UserType {
+  owner
+  manager
+  customer
+  internal_admin
+  service_account
+}
+
+enum MfaMethod {
+  totp
+  sms
+  email
+  webauthn
+  backup_codes
+}
+
+enum SessionStatus {
+  active
+  expired
+  revoked
+}
+
+// Property Enums
+enum PropertyType {
+  apartment_complex
+  single_family
+  multi_family
+  townhouse
+  commercial
+  mixed_use
+  estate
+  other
+}
+
+enum PropertyStatus {
+  draft
+  active
+  inactive
+  under_maintenance
+  sold
+  archived
+}
+
+enum UnitType {
+  studio
+  one_bedroom
+  two_bedroom
+  three_bedroom
+  four_plus_bedroom
+  penthouse
+  duplex
+  loft
+  commercial_retail
+  commercial_office
+  warehouse
+  parking
+  storage
+  other
+}
+
+enum UnitStatus {
+  vacant
+  occupied
+  reserved
+  under_maintenance
+  not_available
+}
+
+// Customer Enums
+enum CustomerStatus {
+  prospect
+  applicant
+  approved
+  active
+  former
+  blacklisted
+}
+
+enum KycStatus {
+  pending
+  in_review
+  verified
+  rejected
+  expired
+}
+
+enum IdDocumentType {
+  national_id
+  passport
+  driving_license
+  military_id
+  voter_id
+  work_permit
+  other
+}
+
+// Lease Enums
+enum LeaseStatus {
+  draft
+  pending_approval
+  approved
+  active
+  expiring_soon
+  expired
+  terminated
+  renewed
+  cancelled
+}
+
+enum LeaseType {
+  fixed_term
+  month_to_month
+  short_term
+  corporate
+  student
+  subsidized
+}
+
+enum RentFrequency {
+  weekly
+  bi_weekly
+  monthly
+  quarterly
+  semi_annually
+  annually
+}
+
+enum TerminationReason {
+  end_of_term
+  mutual_agreement
+  tenant_request
+  landlord_request
+  non_payment
+  lease_violation
+  property_sale
+  property_damage
+  eviction
+  other
+}
+
+// Occupancy Enums
+enum OccupancyStatus {
+  pending_move_in
+  active
+  notice_given
+  pending_move_out
+  moved_out
+  evicted
+  abandoned
+}
+
+enum OnboardingState {
+  a0_pre_move_in
+  a1_welcome_setup
+  a2_utilities
+  a3_orientation
+  a4_condition_report
+  a5_community_context
+  a6_complete
+}
+
+// Invoice & Payment Enums
+enum InvoiceStatus {
+  draft
+  pending
+  sent
+  viewed
+  partially_paid
+  paid
+  overdue
+  cancelled
+  void
+  written_off
+}
+
+enum InvoiceType {
+  rent
+  deposit
+  utilities
+  maintenance
+  late_fee
+  service_charge
+  penalty
+  other
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+  refunded
+  partially_refunded
+}
+
+enum PaymentMethod {
+  mpesa
+  bank_transfer
+  card
+  cash
+  cheque
+  other
+}
+
+enum TransactionType {
+  charge
+  payment
+  credit
+  adjustment
+  refund
+  write_off
+  deposit_hold
+  deposit_release
+}
+
+enum ReceiptStatus {
+  draft
+  issued
+  voided
+  superseded
+}
+
+enum PaymentPlanStatus {
+  proposed
+  pending_approval
+  approved
+  active
+  completed
+  defaulted
+  cancelled
+}
+
+enum ArrearsStatus {
+  active
+  payment_plan
+  legal_action
+  settled
+  written_off
+  disputed
+}
+
+enum LedgerAccountType {
+  asset
+  liability
+  equity
+  revenue
+  expense
+}
+
+// Maintenance Enums
+enum WorkOrderPriority {
+  low
+  medium
+  high
+  urgent
+  emergency
+}
+
+enum WorkOrderStatus {
+  submitted
+  triaged
+  assigned
+  scheduled
+  in_progress
+  pending_parts
+  completed
+  verified
+  reopened
+  cancelled
+}
+
+enum WorkOrderCategory {
+  plumbing
+  electrical
+  hvac
+  appliance
+  structural
+  pest_control
+  landscaping
+  cleaning
+  security
+  other
+}
+
+enum WorkOrderSource {
+  customer_request
+  inspection
+  preventive
+  emergency
+  manager_created
+}
+
+enum MaintenanceRequestStatus {
+  submitted
+  acknowledged
+  pending_info
+  approved
+  rejected
+  converted_to_wo
+  cancelled
+}
+
+enum DispatchStatus {
+  pending
+  notified
+  accepted
+  declined
+  en_route
+  arrived
+  completed
+  no_show
+  rescheduled
+}
+
+enum VendorStatus {
+  active
+  inactive
+  probation
+  suspended
+  blacklisted
+}
+
+enum AssetStatus {
+  active
+  inactive
+  under_maintenance
+  retired
+  disposed
+}
+
+enum AssetCondition {
+  excellent
+  good
+  fair
+  poor
+  critical
+}
+
+// Intelligence Enums
+enum RiskLevel {
+  very_low
+  low
+  medium
+  high
+  very_high
+  critical
+}
+
+enum RiskType {
+  payment
+  churn
+  dispute
+  maintenance
+  compliance
+}
+
+enum ActionType {
+  send_reminder
+  offer_payment_plan
+  schedule_call
+  send_renewal_offer
+  service_recovery
+  proactive_maintenance
+  loyalty_reward
+  escalate_to_manager
+  legal_notice
+  community_engagement
+  feedback_request
+  check_in
+}
+
+enum ActionStatus {
+  recommended
+  approved
+  scheduled
+  in_progress
+  completed
+  skipped
+  expired
+  failed
+}
+
+enum ChannelPreference {
+  whatsapp
+  sms
+  email
+  app_push
+  voice_call
+  in_person
+}
+
+enum SegmentType {
+  payment_behavior
+  communication_preference
+  lifecycle_stage
+  risk_profile
+  value_tier
+  engagement_level
+  maintenance_pattern
+  custom
+}
+
+enum SegmentStatus {
+  active
+  inactive
+  archived
+}
+
+// Case & Legal Enums
+enum CaseType {
+  arrears
+  deposit_dispute
+  damage_claim
+  lease_violation
+  noise_complaint
+  maintenance_dispute
+  eviction
+  harassment
+  safety_concern
+  billing_dispute
+  other
+}
+
+enum CaseSeverity {
+  low
+  medium
+  high
+  critical
+  urgent
+}
+
+enum CaseStatus {
+  open
+  investigating
+  pending_response
+  pending_evidence
+  mediation
+  escalated
+  resolved
+  closed
+  withdrawn
+}
+
+enum TimelineEventType {
+  case_created
+  status_changed
+  evidence_added
+  note_added
+  notice_sent
+  response_received
+  escalated
+  assigned
+  resolution_proposed
+  resolution_accepted
+  resolution_rejected
+  closed
+}
+
+enum ResolutionType {
+  payment_plan
+  partial_payment
+  full_payment
+  deposit_deduction
+  mutual_agreement
+  mediation_outcome
+  court_order
+  eviction
+  lease_termination
+  warning_issued
+  no_action
+  withdrawn
+  other
+}
+
+enum EvidenceType {
+  document
+  photo
+  video
+  audio
+  communication_log
+  payment_record
+  inspection_report
+  witness_statement
+  legal_document
+  other
+}
+
+enum NoticeType {
+  payment_reminder
+  payment_demand
+  late_fee_notice
+  lease_violation
+  noise_warning
+  inspection_notice
+  entry_notice
+  renewal_offer
+  non_renewal
+  termination
+  eviction_warning
+  eviction_notice
+  deposit_deduction
+  move_out_instructions
+  legal_demand
+  court_summons
+  other
+}
+
+enum NoticeStatus {
+  draft
+  pending_approval
+  approved
+  scheduled
+  sent
+  delivered
+  acknowledged
+  expired
+  cancelled
+  voided
+}
+
+enum DeliveryMethod {
+  email
+  sms
+  whatsapp
+  in_app
+  physical_mail
+  hand_delivery
+  courier
+  posted_on_door
+}
+
+// Document Enums
+enum DocumentType {
+  national_id
+  passport
+  driving_license
+  work_permit
+  residence_permit
+  utility_bill
+  bank_statement
+  employment_letter
+  lease_agreement
+  move_in_report
+  move_out_report
+  maintenance_photo
+  receipt
+  notice
+  other
+}
+
+enum DocumentStatus {
+  pending_upload
+  uploaded
+  processing
+  ocr_complete
+  validated
+  rejected
+  expired
+  archived
+}
+
+enum DocumentSource {
+  whatsapp
+  app_upload
+  email
+  scan
+  api
+  manual
+}
+
+enum VerificationStatus {
+  pending
+  in_review
+  verified
+  partially_verified
+  rejected
+  expired
+  manual_override
+}
+
+enum BadgeType {
+  identity_verified
+  address_verified
+  income_verified
+  employer_verified
+  references_verified
+  kyc_complete
+  premium_tenant
+}
+
+enum FraudRiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+// Audit Enums
+enum AuditEventType {
+  user_created
+  user_updated
+  user_deleted
+  user_login
+  user_logout
+  user_password_changed
+  tenant_created
+  tenant_updated
+  tenant_suspended
+  role_assigned
+  role_revoked
+  permission_granted
+  permission_revoked
+  data_accessed
+  data_modified
+  data_exported
+  payment_received
+  payment_failed
+  invoice_created
+  invoice_sent
+  work_order_created
+  work_order_completed
+  case_opened
+  case_resolved
+  notice_sent
+  document_uploaded
+  document_verified
+}
+
+// ============================================================================
+// CORE TENANT DOMAIN
+// ============================================================================
+
+/// Multi-tenant SaaS customer organization (property management company)
+model Tenant {
+  id                String         @id @default(cuid())
+  name              String
+  slug              String         @unique
+  status            TenantStatus   @default(pending)
+  subscriptionTier  SubscriptionTier @default(starter)
+  
+  // Contact info
+  primaryEmail      String
+  primaryPhone      String?
+  
+  // Address
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String         @default("KE")
+  
+  // Settings (JSON)
+  settings          Json           @default("{}")
+  billingSettings   Json           @default("{}")
+  
+  // Usage limits
+  maxUsers          Int            @default(5)
+  maxProperties     Int            @default(10)
+  maxUnits          Int            @default(100)
+  currentUsers      Int            @default(0)
+  currentProperties Int            @default(0)
+  currentUnits      Int            @default(0)
+  
+  // Trial
+  trialEndsAt       DateTime?
+  
+  // Audit
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  lastActivityAt    DateTime?
+  createdBy         String?
+  updatedBy         String?
+  deletedAt         DateTime?
+  deletedBy         String?
+
+  // Relations
+  organizations     Organization[]
+  users             User[]
+  roles             Role[]
+  sessions          Session[]
+  properties        Property[]
+  units             Unit[]
+  blocks            Block[]
+  assets            Asset[]
+  customers         Customer[]
+  leases            Lease[]
+  occupancies       Occupancy[]
+  invoices          Invoice[]
+  paymentIntents    PaymentIntent[]
+  transactions      Transaction[]
+  ledgerEntries     LedgerEntry[]
+  receipts          Receipt[]
+  paymentPlanAgreements PaymentPlanAgreement[]
+  maintenanceRequests MaintenanceRequest[]
+  workOrders        WorkOrder[]
+  dispatchEvents    DispatchEvent[]
+  completionProofs  CompletionProof[]
+  dualSignOffs      DualSignOff[]
+  vendors           Vendor[]
+  vendorScorecards  VendorScorecard[]
+  vendorAssignments VendorAssignment[]
+  tenantPreferenceProfiles TenantPreferenceProfile[]
+  frictionFingerprints FrictionFingerprint[]
+  tenantSegments    TenantSegment[]
+  riskScores        RiskScore[]
+  nextBestActions   NextBestAction[]
+  interventionLogs  InterventionLog[]
+  cases             Case[]
+  timelineEvents    TimelineEvent[]
+  evidenceAttachments EvidenceAttachment[]
+  notices           Notice[]
+  noticeServiceReceipts NoticeServiceReceipt[]
+  documents         Document[]
+  documentUploads   DocumentUpload[]
+  verificationBadges VerificationBadge[]
+  fraudRiskScores   FraudRiskScore[]
+  auditLogs         AuditLog[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("tenants")
+}
+
+/// Hierarchical organization structure within a tenant
+model Organization {
+  id          String    @id @default(cuid())
+  tenantId    String
+  parentId    String?
+  code        String
+  name        String
+  description String?
+  level       Int       @default(0)
+  path        String    // Materialized path for hierarchy queries
+  isActive    Boolean   @default(true)
+  
+  // Audit
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  deletedAt   DateTime?
+  deletedBy   String?
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent      Organization? @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children    Organization[] @relation("OrgHierarchy")
+  users       User[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([path])
+  @@map("organizations")
+}
+
+/// Platform user with authentication and authorization
+model User {
+  id                    String      @id @default(cuid())
+  tenantId              String
+  organizationId        String?
+  
+  // Identity
+  email                 String
+  emailNormalized       String
+  emailVerified         Boolean     @default(false)
+  emailVerifiedAt       DateTime?
+  phone                 String?
+  passwordHash          String?
+  
+  // Profile
+  firstName             String
+  lastName              String
+  displayName           String?
+  avatarUrl             String?
+  
+  // Type and status
+  userType              UserType    @default(customer)
+  status                UserStatus  @default(pending_activation)
+  isOwner               Boolean     @default(false)
+  
+  // Security
+  mfaEnabled            Boolean     @default(false)
+  mfaSecret             String?
+  mfaMethods            MfaMethod[] @default([])
+  failedLoginAttempts   Int         @default(0)
+  lockedUntil           DateTime?
+  passwordChangedAt     DateTime?
+  mustChangePassword    Boolean     @default(false)
+  
+  // Invitation
+  invitationToken       String?     @unique
+  invitationExpiresAt   DateTime?
+  invitedBy             String?
+  
+  // Activity
+  lastLoginAt           DateTime?
+  lastActivityAt        DateTime?
+  lastLoginIp           String?
+  
+  // Preferences (JSON)
+  preferences           Json        @default("{}")
+  timezone              String      @default("Africa/Nairobi")
+  locale                String      @default("en")
+  
+  // Audit
+  activatedAt           DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  deletedAt             DateTime?
+  deletedBy             String?
+
+  // Relations
+  tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization          Organization? @relation(fields: [organizationId], references: [id])
+  userRoles             UserRole[]
+  sessions              Session[]
+  ownedProperties       Property[]  @relation("PropertyOwner")
+  managedProperties     Property[]  @relation("PropertyManager")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("users")
+}
+
+/// Role with permissions for RBAC
+model Role {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  displayName  String
+  description  String?
+  permissions  Json      @default("[]") // Array of permission strings
+  isSystem     Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  priority     Int       @default(0)
+  
+  // Audit
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+  deletedBy    String?
+
+  // Relations
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles    UserRole[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isSystem])
+  @@map("roles")
+}
+
+/// Junction table for user-role assignments
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String
+  roleId     String
+  tenantId   String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  expiresAt  DateTime?
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([tenantId])
+  @@map("user_roles")
+}
+
+/// User session for authentication tracking
+model Session {
+  id              String        @id @default(cuid())
+  tenantId        String
+  userId          String
+  
+  status          SessionStatus @default(active)
+  ipAddress       String
+  userAgent       String?
+  deviceInfo      Json          @default("{}")
+  
+  mfaVerified     Boolean       @default(false)
+  
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime
+  lastActivityAt  DateTime      @default(now())
+  revokedAt       DateTime?
+  revokedReason   String?
+  revokedBy       String?
+
+  // Relations
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ============================================================================
+// PROPERTY DOMAIN
+// ============================================================================
+
+/// Physical real estate asset (building, compound, or standalone)
+model Property {
+  id              String         @id @default(cuid())
+  tenantId        String
+  ownerId         String
+  managerId       String?
+  
+  // Identity
+  propertyCode    String
+  name            String
+  propertyType    PropertyType
+  status          PropertyStatus @default(draft)
+  description     String?
+  
+  // Address
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String?
+  postalCode      String?
+  country         String         @default("KE")
+  latitude        Decimal?       @db.Decimal(10, 8)
+  longitude       Decimal?       @db.Decimal(11, 8)
+  
+  // Capacity
+  totalUnits      Int            @default(0)
+  occupiedUnits   Int            @default(0)
+  vacantUnits     Int            @default(0)
+  
+  // Financials
+  defaultCurrency String         @default("KES")
+  
+  // Features (JSON arrays)
+  amenities       Json           @default("[]")
+  features        Json           @default("{}")
+  images          Json           @default("[]")
+  documents       Json           @default("[]")
+  
+  // Management
+  managementNotes String?
+  yearBuilt       Int?
+  acquiredAt      DateTime?
+  
+  // Audit
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  deletedBy       String?
+
+  // Relations
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner           User           @relation("PropertyOwner", fields: [ownerId], references: [id])
+  manager         User?          @relation("PropertyManager", fields: [managerId], references: [id])
+  units           Unit[]
+  blocks          Block[]
+  assets          Asset[]
+  workOrders      WorkOrder[]
+  cases           Case[]
+  notices         Notice[]
+
+  @@unique([tenantId, propertyCode])
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([propertyType])
+  @@index([city])
+  @@map("properties")
+}
+
+/// Logical grouping of units within a property (e.g., "Block A")
+model Block {
+  id          String   @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  
+  blockCode   String
+  name        String
+  description String?
+  floor       Int?
+  
+  // Capacity
+  totalUnits  Int      @default(0)
+  
+  // Audit
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  deletedAt   DateTime?
+  deletedBy   String?
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  units       Unit[]
+
+  @@unique([propertyId, blockCode])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@map("blocks")
+}
+
+/// Individual rentable space within a property
+model Unit {
+  id                String     @id @default(cuid())
+  tenantId          String
+  propertyId        String
+  blockId           String?
+  
+  // Identity
+  unitCode          String
+  name              String
+  unitType          UnitType
+  status            UnitStatus @default(vacant)
+  description       String?
+  
+  // Location
+  floor             Int?
+  building          String?
+  wing              String?
+  
+  // Size
+  squareMeters      Decimal?   @db.Decimal(10, 2)
+  bedrooms          Int        @default(0)
+  bathrooms         Decimal?   @db.Decimal(3, 1)
+  
+  // Pricing (minor units - cents)
+  baseRentAmount    Int
+  baseRentCurrency  String     @default("KES")
+  depositAmount     Int?
+  
+  // Features (JSON)
+  amenities         Json       @default("[]")
+  features          Json       @default("{}")
+  furnishing        String     @default("unfurnished")
+  utilitiesIncluded Json       @default("[]")
+  images            Json       @default("[]")
+  floorPlan         String?
+  
+  // Current occupancy
+  currentLeaseId    String?
+  currentCustomerId String?
+  
+  // Inspection
+  lastInspectionDate DateTime?
+  nextInspectionDue  DateTime?
+  inspectionNotes   String?
+  
+  // Availability
+  availableFrom     DateTime?
+  minimumLeaseTerm  Int?       // Months
+  maximumLeaseTerm  Int?       // Months
+  
+  // Audit
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  deletedAt         DateTime?
+  deletedBy         String?
+
+  // Relations
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property          Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  block             Block?     @relation(fields: [blockId], references: [id])
+  assets            Asset[]
+  leases            Lease[]
+  occupancies       Occupancy[]
+  invoices          Invoice[]
+  workOrders        WorkOrder[]
+  cases             Case[]
+  notices           Notice[]
+
+  @@unique([propertyId, unitCode])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([blockId])
+  @@index([status])
+  @@index([unitType])
+  @@index([currentLeaseId])
+  @@map("units")
+}
+
+/// Physical asset/equipment within a unit or property (Digital Twin)
+model Asset {
+  id                    String         @id @default(cuid())
+  tenantId              String
+  propertyId            String
+  unitId                String?
+  
+  // Identity
+  assetCode             String
+  name                  String
+  description           String?
+  
+  // Classification
+  category              String
+  subcategory           String?
+  
+  // Status
+  status                AssetStatus    @default(active)
+  condition             AssetCondition @default(good)
+  
+  // Location
+  location              String?
+  room                  String?
+  
+  // Specifications
+  manufacturer          String?
+  model                 String?
+  serialNumber          String?
+  specifications        Json           @default("{}")
+  
+  // Purchase info
+  purchaseDate          DateTime?
+  purchasePrice         Int?           // Minor units
+  purchaseCurrency      String         @default("KES")
+  supplier              String?
+  warrantyExpiresAt     DateTime?
+  
+  // Lifecycle
+  expectedLifespanYears Int?
+  installationDate      DateTime?
+  lastMaintenanceDate   DateTime?
+  nextMaintenanceDue    DateTime?
+  
+  // Maintenance
+  maintenanceSchedule   Json           @default("{}")
+  maintenanceHistory    Json           @default("[]")
+  
+  // Value tracking
+  currentValue          Int?
+  depreciationMethod    String?
+  
+  // Media
+  photos                Json           @default("[]")
+  qrCode                String?
+  barcode               String?
+  
+  // Disposal
+  disposedAt            DateTime?
+  disposedBy            String?
+  disposalMethod        String?
+  disposalValue         Int?
+  
+  notes                 String?
+  
+  // Audit
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  deletedAt             DateTime?
+  deletedBy             String?
+
+  // Relations
+  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property              Property       @relation(fields: [propertyId], references: [id])
+  unit                  Unit?          @relation(fields: [unitId], references: [id])
+
+  @@unique([tenantId, assetCode])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([category])
+  @@index([status])
+  @@index([condition])
+  @@index([nextMaintenanceDue])
+  @@map("assets")
+}
+
+// ============================================================================
+// CUSTOMER & LEASE DOMAIN
+// ============================================================================
+
+/// End-user who rents or occupies a unit (Tenant/Resident/Occupant)
+model Customer {
+  id                       String         @id @default(cuid())
+  tenantId                 String
+  
+  // Identity
+  customerCode             String
+  email                    String
+  phone                    String
+  alternatePhone           String?
+  
+  // Profile
+  firstName                String
+  lastName                 String
+  middleName               String?
+  dateOfBirth              DateTime?
+  nationality              String?
+  occupation               String?
+  employer                 String?
+  employerAddress          String?
+  monthlyIncome            Int?           // Minor units
+  incomeCurrency           String         @default("KES")
+  
+  // Status
+  status                   CustomerStatus @default(prospect)
+  
+  // KYC
+  kycStatus                KycStatus      @default(pending)
+  kycVerifiedAt            DateTime?
+  kycVerifiedBy            String?
+  kycExpiresAt             DateTime?
+  kycNotes                 String?
+  
+  // ID Document
+  idDocumentType           IdDocumentType?
+  idDocumentNumber         String?
+  idDocumentExpiresAt      DateTime?
+  idDocumentFrontUrl       String?
+  idDocumentBackUrl        String?
+  
+  // Current Address
+  currentAddressLine1      String?
+  currentAddressLine2      String?
+  currentCity              String?
+  currentState             String?
+  currentPostalCode        String?
+  currentCountry           String?
+  
+  // Emergency Contact
+  emergencyContactName     String?
+  emergencyContactRelationship String?
+  emergencyContactPhone    String?
+  emergencyContactEmail    String?
+  
+  // References (JSON array)
+  references               Json           @default("[]")
+  
+  // Blacklist
+  blacklistedAt            DateTime?
+  blacklistedReason        String?
+  blacklistedBy            String?
+  
+  // Communication preferences
+  preferredContactMethod   String         @default("email")
+  marketingOptIn           Boolean        @default(false)
+  smsNotifications         Boolean        @default(true)
+  emailNotifications       Boolean        @default(true)
+  
+  // Portal
+  portalAccessEnabled      Boolean        @default(true)
+  portalLastLogin          DateTime?
+  
+  avatarUrl                String?
+  notes                    String?
+  
+  // Audit
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  createdBy                String?
+  updatedBy                String?
+  deletedAt                DateTime?
+  deletedBy                String?
+
+  // Relations
+  tenant                   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leases                   Lease[]
+  occupancies              Occupancy[]
+  invoices                 Invoice[]
+  paymentIntents           PaymentIntent[]
+  transactions             Transaction[]
+  receipts                 Receipt[]
+  paymentPlanAgreements    PaymentPlanAgreement[]
+  workOrders               WorkOrder[]
+  cases                    Case[]
+  notices                  Notice[]
+  documentUploads          DocumentUpload[]
+  verificationBadges       VerificationBadge[]
+  preferenceProfile        TenantPreferenceProfile?
+  frictionFingerprint      FrictionFingerprint?
+  segmentMemberships       CustomerSegmentMembership[]
+  riskScores               RiskScore[]
+  nextBestActions          NextBestAction[]
+  interventionLogs         InterventionLog[]
+
+  @@unique([tenantId, customerCode])
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([status])
+  @@index([kycStatus])
+  @@index([firstName, lastName])
+  @@map("customers")
+}
+
+/// Legal agreement between owner and customer for unit occupancy
+model Lease {
+  id                String        @id @default(cuid())
+  tenantId          String
+  unitId            String
+  customerId        String
+  
+  // Identity
+  leaseNumber       String
+  
+  // Type and status
+  leaseType         LeaseType
+  status            LeaseStatus   @default(draft)
+  
+  // Dates
+  startDate         DateTime
+  endDate           DateTime
+  signedDate        DateTime?
+  
+  // Rent
+  rentAmount        Int           // Minor units
+  rentCurrency      String        @default("KES")
+  rentFrequency     RentFrequency @default(monthly)
+  paymentDueDay     Int           @default(1)
+  
+  // Deposit
+  depositAmount     Int?
+  depositPaid       Boolean       @default(false)
+  depositPaidAt     DateTime?
+  
+  // Terms (JSON)
+  terms             Json          @default("{}")
+  specialConditions Json          @default("[]")
+  
+  // Late fees
+  lateFeeType       String?       // 'percentage' or 'flat'
+  lateFeeValue      Int?
+  gracePeriodDays   Int           @default(0)
+  
+  // Documents
+  documentUrl       String?
+  signedDocumentUrl String?
+  
+  // Signatures
+  customerSignedAt  DateTime?
+  ownerSignedAt     DateTime?
+  witnessName       String?
+  witnessSignedAt   DateTime?
+  
+  // Renewal
+  autoRenew         Boolean       @default(false)
+  renewalNoticeDays Int           @default(30)
+  previousLeaseId   String?
+  
+  // Termination
+  terminatedAt      DateTime?
+  terminatedBy      String?
+  terminationReason TerminationReason?
+  terminationNotes  String?
+  
+  notes             String?
+  
+  // Audit
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  deletedAt         DateTime?
+  deletedBy         String?
+
+  // Relations
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unit              Unit          @relation(fields: [unitId], references: [id])
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  previousLease     Lease?        @relation("LeaseRenewal", fields: [previousLeaseId], references: [id])
+  renewedLeases     Lease[]       @relation("LeaseRenewal")
+  occupancies       Occupancy[]
+  invoices          Invoice[]
+  transactions      Transaction[]
+  riskScores        RiskScore[]
+  nextBestActions   NextBestAction[]
+  cases             Case[]
+  notices           Notice[]
+
+  @@unique([tenantId, leaseNumber])
+  @@index([tenantId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("leases")
+}
+
+/// Active tenure of a customer in a unit (linked to lease)
+model Occupancy {
+  id                   String           @id @default(cuid())
+  tenantId             String
+  leaseId              String
+  unitId               String
+  customerId           String
+  
+  // Status
+  status               OccupancyStatus  @default(pending_move_in)
+  onboardingState      OnboardingState  @default(a0_pre_move_in)
+  
+  // Dates
+  moveInDate           DateTime
+  moveOutDate          DateTime?
+  expectedMoveOutDate  DateTime?
+  noticeGivenDate      DateTime?
+  
+  // Move-in
+  moveInCompletedAt    DateTime?
+  moveInInspectionId   String?
+  moveInMeterReadings  Json             @default("{}")
+  keysHandedOver       Boolean          @default(false)
+  keysHandoverDate     DateTime?
+  
+  // Move-out
+  moveOutCompletedAt   DateTime?
+  moveOutInspectionId  String?
+  moveOutMeterReadings Json             @default("{}")
+  keysReturned         Boolean          @default(false)
+  keysReturnDate       DateTime?
+  
+  // Onboarding tracking (JSON)
+  onboardingChecklist  Json             @default("{}")
+  procedureCompletions Json             @default("[]")
+  
+  // Additional occupants (JSON array)
+  additionalOccupants  Json             @default("[]")
+  
+  notes                String?
+  
+  // Audit
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  createdBy            String?
+  updatedBy            String?
+  deletedAt            DateTime?
+  deletedBy            String?
+
+  // Relations
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lease                Lease            @relation(fields: [leaseId], references: [id])
+  unit                 Unit             @relation(fields: [unitId], references: [id])
+  customer             Customer         @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([leaseId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([status])
+  @@index([onboardingState])
+  @@index([moveInDate])
+  @@map("occupancies")
+}
+
+// ============================================================================
+// FINANCIAL DOMAIN
+// ============================================================================
+
+/// Billing document for rent or services owed
+model Invoice {
+  id               String        @id @default(cuid())
+  tenantId         String
+  customerId       String
+  leaseId          String?
+  unitId           String?
+  
+  // Identity
+  invoiceNumber    String
+  
+  // Type and status
+  invoiceType      InvoiceType   @default(rent)
+  status           InvoiceStatus @default(draft)
+  
+  // Dates
+  issueDate        DateTime
+  dueDate          DateTime
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  
+  // Amounts (minor units)
+  subtotalAmount   Int           @default(0)
+  taxAmount        Int           @default(0)
+  discountAmount   Int           @default(0)
+  totalAmount      Int
+  paidAmount       Int           @default(0)
+  balanceAmount    Int
+  currency         String        @default("KES")
+  
+  // Tax
+  taxRate          Decimal?      @db.Decimal(5, 2)
+  taxType          String?
+  
+  // Line items (JSON array)
+  lineItems        Json          @default("[]")
+  
+  // Description
+  description      String?
+  notes            String?
+  customerNotes    String?
+  
+  // Communication
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  remindersSent    Int           @default(0)
+  lastReminderAt   DateTime?
+  
+  // Payment tracking
+  firstPaymentAt   DateTime?
+  paidInFullAt     DateTime?
+  
+  // Cancellation
+  cancelledAt      DateTime?
+  cancelledBy      String?
+  cancellationReason String?
+  
+  // Document
+  pdfUrl           String?
+  
+  // Audit
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  deletedAt        DateTime?
+  deletedBy        String?
+
+  // Relations
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  lease            Lease?        @relation(fields: [leaseId], references: [id])
+  unit             Unit?         @relation(fields: [unitId], references: [id])
+  paymentIntents   PaymentIntent[]
+  transactions     Transaction[]
+  receipts         Receipt[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([invoiceType])
+  @@map("invoices")
+}
+
+/// Record of expected payment before settlement
+model PaymentIntent {
+  id                    String        @id @default(cuid())
+  tenantId              String
+  customerId            String
+  invoiceId             String?
+  leaseId               String?
+  
+  // Identity
+  paymentIntentNumber   String
+  externalReference     String?
+  
+  // Status and method
+  status                PaymentStatus @default(pending)
+  paymentMethod         PaymentMethod
+  
+  // Amount (minor units)
+  amount                Int
+  currency              String        @default("KES")
+  feeAmount             Int           @default(0)
+  netAmount             Int?
+  refundedAmount        Int           @default(0)
+  
+  // Payer details
+  payerName             String?
+  payerPhone            String?
+  payerEmail            String?
+  payerAccount          String?
+  
+  // Provider info
+  provider              String?
+  providerTransactionId String?
+  providerResponse      Json          @default("{}")
+  
+  // For manual payments
+  receivedBy            String?
+  
+  // Description
+  description           String?
+  statementDescriptor   String?
+  
+  // Dates
+  initiatedAt           DateTime?
+  completedAt           DateTime?
+  failedAt              DateTime?
+  failureReason         String?
+  
+  // Reconciliation
+  reconciledAt          DateTime?
+  reconciledBy          String?
+  reconciliationConfidence Decimal?   @db.Decimal(5, 4)
+  
+  // Idempotency
+  idempotencyKey        String?
+  
+  // Receipt
+  receiptUrl            String?
+  
+  // Metadata
+  metadata              Json          @default("{}")
+  
+  // Audit
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  createdBy             String?
+  updatedBy             String?
+
+  // Relations
+  tenant                Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer              Customer      @relation(fields: [customerId], references: [id])
+  invoice               Invoice?      @relation(fields: [invoiceId], references: [id])
+  transactions          Transaction[]
+  receipts              Receipt[]
+
+  @@unique([tenantId, paymentIntentNumber])
+  @@unique([provider, providerTransactionId])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([completedAt])
+  @@map("payment_intents")
+}
+
+/// Raw payment transaction from gateway/bank
+model Transaction {
+  id                String          @id @default(cuid())
+  tenantId          String
+  customerId        String
+  leaseId           String?
+  invoiceId         String?
+  paymentIntentId   String?
+  
+  // Identity
+  transactionNumber String
+  journalId         String?
+  
+  // Type
+  transactionType   TransactionType
+  
+  // Amount (positive = charge, negative = credit/payment)
+  amount            Int
+  currency          String          @default("KES")
+  
+  // Balance
+  balanceBefore     Int
+  balanceAfter      Int
+  
+  // Dates
+  effectiveDate     DateTime
+  postedAt          DateTime        @default(now())
+  
+  // Description
+  description       String
+  reference         String?
+  
+  // Sequence
+  sequenceNumber    Int
+  
+  // Metadata
+  metadata          Json            @default("{}")
+  
+  // Audit (immutable)
+  createdAt         DateTime        @default(now())
+  createdBy         String?
+
+  // Relations
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer          Customer        @relation(fields: [customerId], references: [id])
+  lease             Lease?          @relation(fields: [leaseId], references: [id])
+  invoice           Invoice?        @relation(fields: [invoiceId], references: [id])
+  paymentIntent     PaymentIntent?  @relation(fields: [paymentIntentId], references: [id])
+
+  @@unique([tenantId, transactionNumber])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([invoiceId])
+  @@index([paymentIntentId])
+  @@index([journalId])
+  @@index([transactionType])
+  @@index([effectiveDate])
+  @@index([customerId, sequenceNumber])
+  @@map("transactions")
+}
+
+/// Immutable double-entry bookkeeping record
+model LedgerEntry {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  
+  // Journal reference
+  journalId           String
+  journalLineNumber   Int
+  
+  // Account
+  accountCode         String
+  accountName         String
+  accountType         LedgerAccountType
+  
+  // Amount (double-entry)
+  debitAmount         Int               @default(0)
+  creditAmount        Int               @default(0)
+  currency            String            @default("KES")
+  
+  // Entity references
+  propertyId          String?
+  unitId              String?
+  customerId          String?
+  
+  // Source document
+  sourceType          String
+  sourceId            String
+  
+  // Description
+  description         String
+  memo                String?
+  
+  // Dates
+  transactionDate     DateTime
+  postingDate         DateTime
+  
+  // Period
+  fiscalYear          Int
+  fiscalPeriod        Int
+  
+  // Status
+  isPosted            Boolean           @default(true)
+  isReversed          Boolean           @default(false)
+  reversalEntryId     String?
+  
+  // Audit (immutable)
+  postedAt            DateTime          @default(now())
+  postedBy            String?
+  createdAt           DateTime          @default(now())
+
+  // Relations
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([journalId])
+  @@index([accountCode])
+  @@index([accountType])
+  @@index([propertyId])
+  @@index([customerId])
+  @@index([sourceType, sourceId])
+  @@index([transactionDate])
+  @@index([fiscalYear, fiscalPeriod])
+  @@map("ledger_entries")
+}
+
+/// Payment receipt issued to customer
+model Receipt {
+  id              String        @id @default(cuid())
+  tenantId        String
+  customerId      String
+  paymentIntentId String
+  invoiceId       String?
+  
+  // Identity
+  receiptNumber   String
+  
+  // Status
+  status          ReceiptStatus @default(issued)
+  
+  // Amount
+  amount          Int
+  currency        String        @default("KES")
+  
+  // Details
+  description     String?
+  paymentMethod   String
+  
+  // Dates
+  issuedAt        DateTime
+  issuedBy        String?
+  
+  // Void
+  voidedAt        DateTime?
+  voidedBy        String?
+  voidReason      String?
+  
+  // Document
+  pdfUrl          String?
+  
+  // Delivery
+  deliveredAt     DateTime?
+  deliveryChannel String?
+  
+  // Audit
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+
+  // Relations
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  paymentIntent   PaymentIntent @relation(fields: [paymentIntentId], references: [id])
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([paymentIntentId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([issuedAt])
+  @@map("receipts")
+}
+
+/// Agreement for structured payment plan
+model PaymentPlanAgreement {
+  id                     String            @id @default(cuid())
+  tenantId               String
+  customerId             String
+  leaseId                String?
+  
+  // Identity
+  planNumber             String
+  
+  // Status
+  status                 PaymentPlanStatus @default(proposed)
+  
+  // Amounts (minor units)
+  totalAmount            Int
+  paidAmount             Int               @default(0)
+  remainingAmount        Int
+  currency               String            @default("KES")
+  
+  // Terms
+  numberOfInstallments   Int
+  installmentAmount      Int
+  frequency              String            @default("monthly")
+  
+  // Schedule
+  startDate              DateTime
+  endDate                DateTime
+  installmentSchedule    Json              @default("[]")
+  
+  // Related invoices (JSON array)
+  relatedInvoices        Json              @default("[]")
+  
+  // Interest/fees
+  interestRate           Decimal?          @db.Decimal(5, 2)
+  adminFee               Int               @default(0)
+  
+  // Approval
+  approvedAt             DateTime?
+  approvedBy             String?
+  approvalNotes          String?
+  
+  // Default tracking
+  missedPayments         Int               @default(0)
+  maxMissedPayments      Int               @default(2)
+  defaultedAt            DateTime?
+  
+  // Agreement
+  agreementUrl           String?
+  customerSignedAt       DateTime?
+  
+  // Completion
+  completedAt            DateTime?
+  
+  notes                  String?
+  
+  // Audit
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  createdBy              String?
+  updatedBy              String?
+
+  // Relations
+  tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer               Customer          @relation(fields: [customerId], references: [id])
+
+  @@unique([tenantId, planNumber])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([status])
+  @@index([startDate])
+  @@map("payment_plan_agreements")
+}
+
+// ============================================================================
+// MAINTENANCE & OPERATIONS DOMAIN
+// ============================================================================
+
+/// Pre-work order maintenance request from customer
+model MaintenanceRequest {
+  id                    String                    @id @default(cuid())
+  tenantId              String
+  propertyId            String
+  unitId                String?
+  customerId            String?
+  
+  // Identity
+  requestNumber         String
+  
+  // Status
+  status                MaintenanceRequestStatus  @default(submitted)
+  
+  // Request details
+  title                 String
+  description           String?
+  category              WorkOrderCategory
+  
+  // AI triage
+  aiTriagedAt           DateTime?
+  aiSuggestedPriority   WorkOrderPriority?
+  aiSuggestedCategory   WorkOrderCategory?
+  aiConfidenceScore     Decimal?                  @db.Decimal(5, 4)
+  aiNotes               String?
+  
+  // Final priority
+  priority              WorkOrderPriority?
+  
+  // Source
+  source                WorkOrderSource           @default(customer_request)
+  sourceChannel         String?
+  
+  // Location
+  location              String?
+  
+  // Attachments (JSON)
+  attachments           Json                      @default("[]")
+  voiceNoteUrl          String?
+  voiceTranscript       String?
+  
+  // Acknowledgment
+  acknowledgedAt        DateTime?
+  acknowledgedBy        String?
+  
+  // Approval
+  approvedAt            DateTime?
+  approvedBy            String?
+  approvalNotes         String?
+  
+  // Rejection
+  rejectedAt            DateTime?
+  rejectedBy            String?
+  rejectionReason       String?
+  
+  // Conversion
+  workOrderId           String?
+  convertedAt           DateTime?
+  
+  // Customer communication
+  customerNotifiedAt    DateTime?
+  
+  // Audit
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  createdBy             String?
+  updatedBy             String?
+
+  // Relations
+  tenant                Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder             WorkOrder?                @relation(fields: [workOrderId], references: [id])
+
+  @@unique([tenantId, requestNumber])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+  @@map("maintenance_requests")
+}
+
+/// Formal work order for maintenance or service
+model WorkOrder {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  propertyId          String
+  unitId              String?
+  customerId          String?
+  vendorId            String?
+  
+  // Identity
+  workOrderNumber     String
+  
+  // Classification
+  priority            WorkOrderPriority @default(medium)
+  status              WorkOrderStatus   @default(submitted)
+  category            WorkOrderCategory
+  source              WorkOrderSource   @default(customer_request)
+  
+  // Details
+  title               String
+  description         String?
+  location            String?
+  attachments         Json              @default("[]")
+  
+  // SLA tracking
+  responseDueAt       DateTime?
+  resolutionDueAt     DateTime?
+  responseBreached    Boolean           @default(false)
+  resolutionBreached  Boolean           @default(false)
+  pausedAt            DateTime?
+  pausedMinutes       Int               @default(0)
+  
+  // Scheduling
+  scheduledAt         DateTime?
+  scheduledStartAt    DateTime?
+  scheduledEndAt      DateTime?
+  assignedAt          DateTime?
+  assignedBy          String?
+  
+  // Cost (minor units)
+  estimatedCost       Int?
+  actualCost          Int?
+  currency            String            @default("KES")
+  
+  // Completion
+  completedAt         DateTime?
+  completedBy         String?
+  verifiedAt          DateTime?
+  verifiedBy          String?
+  completionNotes     String?
+  
+  // Rating
+  rating              Int?
+  feedback            String?
+  
+  // Timeline (JSON audit trail)
+  timeline            Json              @default("[]")
+  
+  // Audit
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  deletedBy           String?
+
+  // Relations
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property            Property          @relation(fields: [propertyId], references: [id])
+  unit                Unit?             @relation(fields: [unitId], references: [id])
+  customer            Customer?         @relation(fields: [customerId], references: [id])
+  vendor              Vendor?           @relation(fields: [vendorId], references: [id])
+  maintenanceRequests MaintenanceRequest[]
+  dispatchEvents      DispatchEvent[]
+  completionProofs    CompletionProof[]
+  dualSignOffs        DualSignOff[]
+
+  @@unique([tenantId, workOrderNumber])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([source])
+  @@index([scheduledAt])
+  @@index([responseDueAt])
+  @@index([resolutionDueAt])
+  @@index([createdAt])
+  @@map("work_orders")
+}
+
+/// Vendor dispatch/scheduling event for work order
+model DispatchEvent {
+  id                    String         @id @default(cuid())
+  tenantId              String
+  workOrderId           String
+  vendorId              String
+  
+  // Status
+  status                DispatchStatus @default(pending)
+  
+  // Scheduling
+  scheduledDate         DateTime?
+  scheduledStartTime    String?
+  scheduledEndTime      String?
+  
+  // Notification
+  notifiedAt            DateTime?
+  notificationChannel   String?
+  
+  // Response
+  respondedAt           DateTime?
+  responseType          String?
+  declineReason         String?
+  
+  // Tracking
+  enRouteAt             DateTime?
+  arrivedAt             DateTime?
+  completedAt           DateTime?
+  
+  // Location (JSON)
+  lastKnownLocation     Json           @default("{}")
+  
+  // Rescheduling
+  rescheduledAt         DateTime?
+  rescheduledBy         String?
+  rescheduleReason      String?
+  originalScheduledDate DateTime?
+  
+  // Notes
+  dispatchNotes         String?
+  technicianNotes       String?
+  
+  // Audit
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  createdBy             String?
+  updatedBy             String?
+
+  // Relations
+  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder             WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  vendor                Vendor         @relation(fields: [vendorId], references: [id])
+
+  @@index([tenantId])
+  @@index([workOrderId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@map("dispatch_events")
+}
+
+/// Evidence of work completion (photos, materials, costs)
+model CompletionProof {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  workOrderId         String
+  
+  // Evidence (JSON arrays)
+  beforePhotos        Json      @default("[]")
+  afterPhotos         Json      @default("[]")
+  videos              Json      @default("[]")
+  
+  // Work summary
+  workSummary         String?
+  partsUsed           Json      @default("[]")
+  laborHours          Decimal?  @db.Decimal(5, 2)
+  
+  // Materials
+  materialsUsed       Json      @default("[]")
+  defectsReturned     Json      @default("[]")
+  
+  // Costs (minor units)
+  laborCost           Int?
+  materialsCost       Int?
+  totalCost           Int?
+  currency            String    @default("KES")
+  
+  // Technician
+  technicianId        String?
+  technicianName      String?
+  technicianSignature String?
+  technicianSignedAt  DateTime?
+  
+  // Location verification (JSON)
+  completionLocation  Json      @default("{}")
+  
+  // Audit
+  submittedAt         DateTime
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder           WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  dualSignOff         DualSignOff?
+
+  @@unique([workOrderId])
+  @@index([tenantId])
+  @@index([submittedAt])
+  @@map("completion_proofs")
+}
+
+/// Dual sign-off from tenant and technician
+model DualSignOff {
+  id                   String          @id @default(cuid())
+  tenantId             String
+  workOrderId          String
+  completionProofId    String?
+  
+  // Technician sign-off
+  technicianSignedAt   DateTime?
+  technicianName       String?
+  technicianSignature  String?
+  technicianComments   String?
+  
+  // Customer sign-off
+  customerSignedAt     DateTime?
+  customerName         String?
+  customerSignature    String?
+  customerComments     String?
+  customerSatisfied    Boolean?
+  
+  // Customer refusal
+  customerRefused      Boolean         @default(false)
+  refusalReason        String?
+  
+  // Verification
+  isComplete           Boolean         @default(false)
+  completedAt          DateTime?
+  
+  // Follow-up
+  followUpRequired     Boolean         @default(false)
+  followUpNotes        String?
+  
+  // Audit
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relations
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrder            WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  completionProof      CompletionProof? @relation(fields: [completionProofId], references: [id])
+
+  @@unique([workOrderId])
+  @@index([tenantId])
+  @@index([isComplete])
+  @@map("dual_sign_offs")
+}
+
+/// Third-party service provider (plumber, electrician, cleaner)
+model Vendor {
+  id                  String       @id @default(cuid())
+  tenantId            String
+  
+  // Identity
+  vendorCode          String
+  companyName         String
+  status              VendorStatus @default(active)
+  
+  // Capabilities (JSON)
+  specializations     Json         @default("[]")
+  serviceAreas        Json         @default("[]")
+  contacts            Json         @default("[]")
+  rateCards           Json         @default("[]")
+  performanceMetrics  Json         @default("{}")
+  
+  // Flags
+  isPreferred         Boolean      @default(false)
+  emergencyAvailable  Boolean      @default(false)
+  
+  // Compliance
+  licenseNumber       String?
+  insuranceExpiryDate DateTime?
+  
+  notes               String?
+  
+  // Audit
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  deletedBy           String?
+
+  // Relations
+  tenant              Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workOrders          WorkOrder[]
+  dispatchEvents      DispatchEvent[]
+  scorecards          VendorScorecard[]
+  assignments         VendorAssignment[]
+
+  @@unique([tenantId, vendorCode])
+  @@index([tenantId])
+  @@index([status])
+  @@index([isPreferred])
+  @@index([emergencyAvailable])
+  @@map("vendors")
+}
+
+/// Periodic vendor performance scorecard
+model VendorScorecard {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  vendorId             String
+  
+  // Period
+  periodStart          DateTime
+  periodEnd            DateTime
+  
+  // Metrics
+  totalJobs            Int       @default(0)
+  completedJobs        Int       @default(0)
+  cancelledJobs        Int       @default(0)
+  
+  // Quality
+  avgRating            Decimal?  @db.Decimal(3, 2)
+  ratingCount          Int       @default(0)
+  firstTimeFixRate     Decimal?  @db.Decimal(5, 2)
+  
+  // Timeliness
+  onTimeArrivalRate    Decimal?  @db.Decimal(5, 2)
+  avgResponseTimeMinutes Int?
+  slaComplianceRate    Decimal?  @db.Decimal(5, 2)
+  
+  // Cost
+  avgJobCost           Int?
+  costVariance         Decimal?  @db.Decimal(5, 2)
+  
+  // Communication
+  communicationScore   Decimal?  @db.Decimal(3, 2)
+  
+  // Complaints
+  complaintCount       Int       @default(0)
+  resolvedComplaints   Int       @default(0)
+  
+  // Overall
+  overallScore         Decimal?  @db.Decimal(5, 2)
+  trend                String?
+  
+  // Recommendations (JSON)
+  recommendations      Json      @default("[]")
+  
+  isLatest             Boolean   @default(true)
+  
+  // Audit
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vendor               Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([vendorId])
+  @@index([periodStart, periodEnd])
+  @@index([vendorId, isLatest])
+  @@index([overallScore])
+  @@map("vendor_scorecards")
+}
+
+/// Vendor assignment to property/category
+model VendorAssignment {
+  id                 String            @id @default(cuid())
+  tenantId           String
+  vendorId           String
+  propertyId         String?
+  
+  // Assignment type
+  assignmentType     String
+  category           WorkOrderCategory?
+  
+  // Status
+  isActive           Boolean           @default(true)
+  priority           Int               @default(0)
+  isPreferred        Boolean           @default(false)
+  
+  // Coverage (JSON)
+  coverageArea       Json              @default("[]")
+  
+  // Rate (minor units)
+  agreedRate         Int?
+  rateType           String?
+  rateCurrency       String            @default("KES")
+  
+  // Availability (JSON)
+  availableDays      Json              @default("[]")
+  availableHours     Json              @default("{}")
+  emergencyAvailable Boolean           @default(false)
+  
+  // Contract
+  contractStart      DateTime?
+  contractEnd        DateTime?
+  
+  // Performance
+  jobsCompleted      Int               @default(0)
+  avgRating          Decimal?          @db.Decimal(3, 2)
+  
+  notes              String?
+  
+  // Audit
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  createdBy          String?
+  updatedBy          String?
+
+  // Relations
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vendor             Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([vendorId])
+  @@index([propertyId])
+  @@index([category])
+  @@index([isActive])
+  @@index([isPreferred])
+  @@map("vendor_assignments")
+}
+
+// ============================================================================
+// INTELLIGENCE DOMAIN (AI Personalization)
+// ============================================================================
+
+/// Customer preferences and communication settings
+model TenantPreferenceProfile {
+  id                      String            @id @default(cuid())
+  tenantId                String
+  customerId              String            @unique
+  
+  // Communication preferences
+  preferredChannel        ChannelPreference @default(whatsapp)
+  secondaryChannel        ChannelPreference?
+  preferredLanguage       String            @default("en")
+  
+  // Timing
+  preferredContactTime    String?
+  quietHoursStart         String?
+  quietHoursEnd           String?
+  timezone                String            @default("Africa/Nairobi")
+  
+  // Notifications
+  paymentReminders        Boolean           @default(true)
+  maintenanceUpdates      Boolean           @default(true)
+  communityNews           Boolean           @default(true)
+  marketingMessages       Boolean           @default(false)
+  emergencyAlerts         Boolean           @default(true)
+  
+  // Frequency
+  reminderFrequency       String            @default("standard")
+  messageFormat           String            @default("standard")
+  receiptFormat           String            @default("digital")
+  
+  // Accessibility (JSON)
+  accessibilityNeeds      Json              @default("[]")
+  largeText               Boolean           @default(false)
+  voiceAssistance         Boolean           @default(false)
+  
+  // Household
+  householdSize           Int?
+  hasChildren             Boolean?
+  hasPets                 Boolean?
+  householdDetails        Json              @default("{}")
+  
+  // Lifestyle
+  workSchedule            String?
+  parkingNeeds            Json              @default("{}")
+  amenityPreferences      Json              @default("[]")
+  
+  // Consent
+  dataProcessingConsent   Boolean           @default(false)
+  dataProcessingConsentAt DateTime?
+  testimonialConsent      Boolean           @default(false)
+  testimonialConsentAt    DateTime?
+  
+  version                 Int               @default(1)
+  
+  // Audit
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  createdBy               String?
+  updatedBy               String?
+
+  // Relations
+  tenant                  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer                Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([preferredChannel])
+  @@map("tenant_preference_profiles")
+}
+
+/// Customer-specific sensitivity profile (noise, repairs, etc.)
+model FrictionFingerprint {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  customerId              String    @unique
+  
+  // Sensitivity scores (0-100)
+  noiseSensitivity        Int       @default(50)
+  maintenanceSensitivity  Int       @default(50)
+  communicationSensitivity Int      @default(50)
+  priceSensitivity        Int       @default(50)
+  cleanlinessExpectation  Int       @default(50)
+  privacyPreference       Int       @default(50)
+  
+  // Response patterns
+  avgResponseTime         Int?
+  preferredResponseWindow String?
+  
+  // Sentiment
+  baselineSentiment       Decimal?  @db.Decimal(5, 4)
+  currentSentiment        Decimal?  @db.Decimal(5, 4)
+  sentimentTrend          String?
+  
+  // Issue patterns (JSON)
+  commonIssues            Json      @default("[]")
+  triggerPatterns         Json      @default("[]")
+  
+  // Communication style
+  communicationStyle      String?
+  formalityLevel          String?
+  detailPreference        String?
+  
+  // History (JSON)
+  pastFrictions           Json      @default("[]")
+  resolvedFrictions       Json      @default("[]")
+  
+  // Confidence
+  confidenceScore         Decimal?  @db.Decimal(5, 4)
+  dataPoints              Int       @default(0)
+  
+  // Last update
+  lastSignalAt            DateTime?
+  lastSignalSource        String?
+  
+  // Audit
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  // Relations
+  tenant                  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer                Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([currentSentiment])
+  @@map("friction_fingerprints")
+}
+
+/// Dynamic customer segmentation definition
+model TenantSegment {
+  id                   String        @id @default(cuid())
+  tenantId             String
+  
+  // Identity
+  name                 String
+  code                 String
+  description          String?
+  
+  // Type
+  segmentType          SegmentType
+  status               SegmentStatus @default(active)
+  
+  // Criteria (JSON)
+  criteria             Json          @default("{}")
+  criteriaVersion      Int           @default(1)
+  
+  // Display
+  color                String?
+  icon                 String?
+  displayOrder         Int           @default(0)
+  
+  // Membership rules
+  isAutomatic          Boolean       @default(true)
+  refreshIntervalHours Int           @default(24)
+  lastRefreshedAt      DateTime?
+  
+  // Statistics
+  memberCount          Int           @default(0)
+  lastMemberCountAt    DateTime?
+  
+  // Actions/policies (JSON)
+  defaultActions       Json          @default("[]")
+  policyOverrides      Json          @default("{}")
+  
+  // Analytics
+  avgPaymentScore      Decimal?      @db.Decimal(5, 2)
+  avgChurnRisk         Decimal?      @db.Decimal(5, 2)
+  avgLifetimeValue     Int?
+  
+  // Audit
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  createdBy            String?
+  updatedBy            String?
+  deletedAt            DateTime?
+  deletedBy            String?
+
+  // Relations
+  tenant               Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships          CustomerSegmentMembership[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([segmentType])
+  @@index([status])
+  @@index([memberCount])
+  @@map("tenant_segments")
+}
+
+/// Customer membership in segments
+model CustomerSegmentMembership {
+  id                String        @id @default(cuid())
+  tenantId          String
+  customerId        String
+  segmentId         String
+  
+  // Membership details
+  score             Decimal?      @db.Decimal(5, 2)
+  confidence        Decimal?      @db.Decimal(5, 4)
+  isPrimary         Boolean       @default(false)
+  
+  // Entry/exit
+  enteredAt         DateTime      @default(now())
+  exitedAt          DateTime?
+  entryReason       String?
+  entrySource       String?
+  exitReason        String?
+  previousSegmentId String?
+  
+  // Audit
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  segment           TenantSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([segmentId])
+  @@index([customerId, segmentId, exitedAt])
+  @@index([customerId, isPrimary])
+  @@index([enteredAt])
+  @@map("customer_segment_memberships")
+}
+
+/// Quantified risk score (payment, churn, dispute)
+model RiskScore {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  customerId             String
+  leaseId                String?
+  
+  // Risk type
+  riskType               RiskType
+  
+  // Score (0-100)
+  score                  Decimal   @db.Decimal(5, 2)
+  previousScore          Decimal?  @db.Decimal(5, 2)
+  scoreChange            Decimal?  @db.Decimal(5, 2)
+  
+  // Level
+  riskLevel              RiskLevel
+  previousLevel          RiskLevel?
+  
+  // Factors (JSON)
+  factors                Json      @default("[]")
+  primaryFactor          String?
+  
+  // Model info
+  modelVersion           String
+  modelConfidence        Decimal?  @db.Decimal(5, 4)
+  
+  // Predictions
+  predictedOutcome       String?
+  probabilityOfOutcome   Decimal?  @db.Decimal(5, 4)
+  expectedTimeToOutcome  Int?
+  
+  // Thresholds
+  alertThreshold         Decimal?  @db.Decimal(5, 2)
+  isAboveThreshold       Boolean   @default(false)
+  
+  // Alert status
+  alertTriggeredAt       DateTime?
+  alertAcknowledgedAt    DateTime?
+  alertAcknowledgedBy    String?
+  
+  // Validity
+  validFrom              DateTime
+  validUntil             DateTime?
+  isLatest               Boolean   @default(true)
+  
+  // Audit
+  calculatedAt           DateTime  @default(now())
+  createdAt              DateTime  @default(now())
+
+  // Relations
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer               Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lease                  Lease?    @relation(fields: [leaseId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([riskType])
+  @@index([riskLevel])
+  @@index([score])
+  @@index([customerId, riskType, isLatest])
+  @@index([calculatedAt])
+  @@map("risk_scores")
+}
+
+/// AI-recommended intervention for customer
+model NextBestAction {
+  id                  String            @id @default(cuid())
+  tenantId            String
+  customerId          String
+  leaseId             String?
+  
+  // Action
+  actionType          ActionType
+  status              ActionStatus      @default(recommended)
+  priority            Int               @default(5)
+  
+  // Details
+  title               String
+  description         String?
+  rationale           String?
+  
+  // Impact prediction (JSON)
+  expectedImpact      Json              @default("{}")
+  impactScore         Decimal?          @db.Decimal(5, 2)
+  confidenceScore     Decimal?          @db.Decimal(5, 4)
+  
+  // Execution
+  suggestedChannel    ChannelPreference?
+  suggestedTiming     DateTime?
+  suggestedMessage    String?
+  messageTemplateId   String?
+  
+  // Parameters (JSON)
+  actionParams        Json              @default("{}")
+  
+  // Policy (JSON)
+  policyConstraints   Json              @default("[]")
+  requiresApproval    Boolean           @default(false)
+  approvalThreshold   Int?
+  
+  // Trigger
+  triggerReason       String
+  triggerRiskScoreId  String?
+  
+  // Expiry
+  expiresAt           DateTime?
+  
+  // Execution
+  scheduledAt         DateTime?
+  executedAt          DateTime?
+  executedBy          String?
+  executionMethod     String?
+  
+  // Approval
+  approvedAt          DateTime?
+  approvedBy          String?
+  rejectedAt          DateTime?
+  rejectedBy          String?
+  rejectionReason     String?
+  
+  // Outcome (JSON)
+  outcome             Json              @default("{}")
+  outcomeRecordedAt   DateTime?
+  wasSuccessful       Boolean?
+  
+  // Fairness audit (JSON)
+  fairnessFactors     Json              @default("{}")
+  
+  modelVersion        String?
+  
+  // Audit
+  recommendedAt       DateTime          @default(now())
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relations
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer            Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lease               Lease?            @relation(fields: [leaseId], references: [id])
+  interventionLogs    InterventionLog[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([actionType])
+  @@index([status])
+  @@index([priority])
+  @@index([recommendedAt])
+  @@index([expiresAt])
+  @@map("next_best_actions")
+}
+
+/// Log of executed interventions and outcomes
+model InterventionLog {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  customerId            String
+  nextBestActionId      String?
+  
+  // Intervention details
+  interventionType      String
+  channel               ChannelPreference?
+  
+  // Content
+  messageContent        String?
+  offerDetails          Json              @default("{}")
+  
+  // Execution
+  executedAt            DateTime
+  executedBy            String?
+  executionMethod       String?
+  
+  // Response
+  responseReceivedAt    DateTime?
+  responseType          String?
+  responseContent       String?
+  
+  // Outcome measurement (JSON)
+  preInterventionState  Json              @default("{}")
+  postInterventionState Json              @default("{}")
+  measuredAt            DateTime?
+  
+  // Success metrics (JSON)
+  wasSuccessful         Boolean?
+  successMetrics        Json              @default("{}")
+  
+  // Cost (minor units)
+  cost                  Int?
+  costCurrency          String            @default("KES")
+  
+  // Audit
+  createdAt             DateTime          @default(now())
+
+  // Relations
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer              Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  nextBestAction        NextBestAction?   @relation(fields: [nextBestActionId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([nextBestActionId])
+  @@index([interventionType])
+  @@index([executedAt])
+  @@map("intervention_logs")
+}
+
+// ============================================================================
+// LEGAL & DISPUTE DOMAIN
+// ============================================================================
+
+/// Dispute or issue requiring structured resolution
+model Case {
+  id                       String       @id @default(cuid())
+  tenantId                 String
+  propertyId               String?
+  unitId                   String?
+  customerId               String?
+  leaseId                  String?
+  
+  // Identity
+  caseNumber               String
+  
+  // Classification
+  caseType                 CaseType
+  severity                 CaseSeverity @default(medium)
+  status                   CaseStatus   @default(open)
+  
+  // Details
+  title                    String
+  description              String?
+  
+  // Financial (minor units)
+  amountInDispute          Int?
+  currency                 String       @default("KES")
+  
+  // SLA
+  responseDueAt            DateTime?
+  resolutionDueAt          DateTime?
+  slaBreached              Boolean      @default(false)
+  
+  // Assignment
+  assignedTo               String?
+  assignedAt               DateTime?
+  assignedBy               String?
+  
+  // Escalation
+  escalatedAt              DateTime?
+  escalatedTo              String?
+  escalationReason         String?
+  escalationLevel          Int          @default(0)
+  
+  // Related case
+  parentCaseId             String?
+  
+  // Tags (JSON)
+  tags                     Json         @default("[]")
+  
+  // Resolution
+  resolvedAt               DateTime?
+  resolvedBy               String?
+  
+  // Closure
+  closedAt                 DateTime?
+  closedBy                 String?
+  closureReason            String?
+  
+  // Customer satisfaction
+  customerSatisfactionRating Int?
+  customerFeedback         String?
+  
+  // Audit
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+  createdBy                String?
+  updatedBy                String?
+  deletedAt                DateTime?
+  deletedBy                String?
+
+  // Relations
+  tenant                   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property                 Property?    @relation(fields: [propertyId], references: [id])
+  unit                     Unit?        @relation(fields: [unitId], references: [id])
+  customer                 Customer?    @relation(fields: [customerId], references: [id])
+  lease                    Lease?       @relation(fields: [leaseId], references: [id])
+  parentCase               Case?        @relation("CaseHierarchy", fields: [parentCaseId], references: [id])
+  childCases               Case[]       @relation("CaseHierarchy")
+  timelineEvents           TimelineEvent[]
+  evidenceAttachments      EvidenceAttachment[]
+  notices                  Notice[]
+
+  @@unique([tenantId, caseNumber])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([caseType])
+  @@index([severity])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([resolutionDueAt])
+  @@map("cases")
+}
+
+/// Event in case timeline (immutable audit trail)
+model TimelineEvent {
+  id                String            @id @default(cuid())
+  tenantId          String
+  caseId            String
+  
+  // Event
+  eventType         TimelineEventType
+  title             String
+  description       String?
+  
+  // State change (JSON)
+  previousValue     Json?
+  newValue          Json?
+  
+  // Actor
+  actorId           String?
+  actorName         String?
+  actorType         String            @default("user")
+  
+  // Visibility
+  isInternal        Boolean           @default(false)
+  isCustomerVisible Boolean           @default(true)
+  
+  // Attachments (JSON)
+  attachments       Json              @default("[]")
+  
+  // Timestamp (immutable)
+  occurredAt        DateTime          @default(now())
+
+  // Relations
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case              Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([caseId])
+  @@index([eventType])
+  @@index([caseId, occurredAt])
+  @@map("timeline_events")
+}
+
+/// Evidence attached to a case
+model EvidenceAttachment {
+  id               String       @id @default(cuid())
+  tenantId         String
+  caseId           String
+  
+  // Evidence info
+  evidenceType     EvidenceType
+  title            String
+  description      String?
+  
+  // File info
+  fileUrl          String
+  fileName         String
+  fileSize         Int
+  mimeType         String
+  
+  // Source
+  documentUploadId String?
+  
+  // Integrity
+  checksum         String?
+  
+  // Metadata (JSON)
+  capturedAt       DateTime?
+  capturedBy       String?
+  location         Json         @default("{}")
+  metadata         Json         @default("{}")
+  
+  // Verification
+  verified         Boolean      @default(false)
+  verifiedAt       DateTime?
+  verifiedBy       String?
+  
+  // Audit
+  createdAt        DateTime     @default(now())
+  createdBy        String?
+  deletedAt        DateTime?
+  deletedBy        String?
+
+  // Relations
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case             Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([caseId])
+  @@index([evidenceType])
+  @@map("evidence_attachments")
+}
+
+/// Formal communication with legal/compliance implications
+model Notice {
+  id                  String         @id @default(cuid())
+  tenantId            String
+  propertyId          String?
+  unitId              String?
+  customerId          String?
+  leaseId             String?
+  caseId              String?
+  
+  // Identity
+  noticeNumber        String
+  
+  // Type and status
+  noticeType          NoticeType
+  status              NoticeStatus   @default(draft)
+  
+  // Content
+  subject             String
+  content             String
+  templateId          String?
+  templateVersion     Int?
+  variables           Json           @default("{}")
+  
+  // Amounts (minor units)
+  amountDue           Int?
+  currency            String         @default("KES")
+  
+  // Dates
+  effectiveDate       DateTime?
+  expiryDate          DateTime?
+  responseDeadline    DateTime?
+  noticePeriodDays    Int?
+  
+  // Legal compliance (JSON)
+  jurisdictionCode    String?
+  legalCitations      Json           @default("[]")
+  
+  // Approval workflow
+  requiresApproval    Boolean        @default(false)
+  approvalLevel       String?
+  approvedAt          DateTime?
+  approvedBy          String?
+  approvalNotes       String?
+  
+  // Rejection
+  rejectedAt          DateTime?
+  rejectedBy          String?
+  rejectionReason     String?
+  
+  // Scheduling
+  scheduledSendAt     DateTime?
+  
+  // Sending
+  sentAt              DateTime?
+  sentBy              String?
+  sentVia             DeliveryMethod?
+  
+  // Document
+  documentUrl         String?
+  documentHash        String?
+  
+  // Attachments (JSON)
+  attachments         Json           @default("[]")
+  
+  // Acknowledgment
+  acknowledgedAt      DateTime?
+  acknowledgmentMethod String?
+  
+  // Voiding
+  voidedAt            DateTime?
+  voidedBy            String?
+  voidReason          String?
+  
+  // Follow-up
+  followUpRequired    Boolean        @default(false)
+  followUpDueAt       DateTime?
+  
+  // Metadata (JSON)
+  metadata            Json           @default("{}")
+  
+  // Audit
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  deletedBy           String?
+
+  // Relations
+  tenant              Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property            Property?      @relation(fields: [propertyId], references: [id])
+  unit                Unit?          @relation(fields: [unitId], references: [id])
+  customer            Customer?      @relation(fields: [customerId], references: [id])
+  lease               Lease?         @relation(fields: [leaseId], references: [id])
+  case                Case?          @relation(fields: [caseId], references: [id])
+  serviceReceipts     NoticeServiceReceipt[]
+
+  @@unique([tenantId, noticeNumber])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([customerId])
+  @@index([leaseId])
+  @@index([caseId])
+  @@index([noticeType])
+  @@index([status])
+  @@index([effectiveDate])
+  @@index([scheduledSendAt])
+  @@map("notices")
+}
+
+/// Proof of notice delivery
+model NoticeServiceReceipt {
+  id                      String         @id @default(cuid())
+  tenantId                String
+  noticeId                String
+  
+  // Attempt
+  attemptNumber           Int            @default(1)
+  deliveryMethod          DeliveryMethod
+  
+  // Recipient
+  recipientName           String?
+  recipientAddress        String?
+  recipientPhone          String?
+  recipientEmail          String?
+  
+  // Status
+  wasDelivered            Boolean
+  deliveredAt             DateTime?
+  
+  // Physical delivery
+  deliveredToName         String?
+  deliveredToRelationship String?
+  signatureUrl            String?
+  photoProofUrls          Json           @default("[]")
+  
+  // Electronic delivery (JSON)
+  providerMessageId       String?
+  providerResponse        Json           @default("{}")
+  readAt                  DateTime?
+  
+  // Posted delivery
+  postedLocation          String?
+  witnessName             String?
+  witnessPhone            String?
+  
+  // Tracking
+  trackingNumber          String?
+  carrierName             String?
+  
+  // Failure
+  failedAt                DateTime?
+  failureReason           String?
+  failureCode             String?
+  
+  // GPS coordinates
+  deliveryLatitude        Decimal?       @db.Decimal(10, 8)
+  deliveryLongitude       Decimal?       @db.Decimal(11, 8)
+  
+  deliveryNotes           String?
+  
+  // Verification
+  verifiedAt              DateTime?
+  verifiedBy              String?
+  
+  // Audit
+  attemptedAt             DateTime
+  createdAt               DateTime       @default(now())
+  createdBy               String?
+
+  // Relations
+  tenant                  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notice                  Notice         @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([noticeId])
+  @@index([deliveryMethod])
+  @@index([wasDelivered])
+  @@index([attemptedAt])
+  @@map("notice_service_receipts")
+}
+
+// ============================================================================
+// DOCUMENT INTELLIGENCE DOMAIN
+// ============================================================================
+
+/// Document metadata and filing
+model Document {
+  id              String         @id @default(cuid())
+  tenantId        String
+  
+  // Identity
+  documentCode    String
+  name            String
+  documentType    DocumentType
+  description     String?
+  
+  // File info
+  fileUrl         String
+  fileName        String
+  fileSize        Int
+  mimeType        String
+  thumbnailUrl    String?
+  
+  // Entity reference
+  entityType      String?
+  entityId        String?
+  
+  // Status
+  status          DocumentStatus @default(uploaded)
+  
+  // Tags (JSON)
+  tags            Json           @default("[]")
+  
+  // Version
+  version         Int            @default(1)
+  previousVersionId String?
+  
+  // Access
+  accessLevel     String         @default("private")
+  
+  // Expiry
+  expiresAt       DateTime?
+  
+  // Audit
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  deletedBy       String?
+
+  // Relations
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, documentCode])
+  @@index([tenantId])
+  @@index([documentType])
+  @@index([status])
+  @@index([entityType, entityId])
+  @@index([expiresAt])
+  @@map("documents")
+}
+
+/// Document upload with OCR and verification
+model DocumentUpload {
+  id                    String         @id @default(cuid())
+  tenantId              String
+  customerId            String?
+  
+  // Type and status
+  documentType          DocumentType
+  status                DocumentStatus @default(uploaded)
+  source                DocumentSource @default(app_upload)
+  
+  // File info
+  fileName              String
+  fileSize              Int
+  mimeType              String
+  fileUrl               String
+  thumbnailUrl          String?
+  
+  // Quality
+  qualityScore          Decimal?       @db.Decimal(5, 2)
+  qualityIssues         Json           @default("[]")
+  qualityAssessedAt     DateTime?
+  
+  // Entity reference
+  entityType            String?
+  entityId              String?
+  
+  // Metadata (JSON)
+  metadata              Json           @default("{}")
+  tags                  Json           @default("[]")
+  
+  // OCR
+  ocrExtractionId       String?
+  ocrExtractedFields    Json           @default("{}")
+  ocrConfidence         Decimal?       @db.Decimal(5, 4)
+  ocrProcessedAt        DateTime?
+  
+  // Verification
+  verifiedAt            DateTime?
+  verifiedBy            String?
+  
+  // Rejection
+  rejectedAt            DateTime?
+  rejectedBy            String?
+  rejectionReason       String?
+  
+  // Expiry
+  expiresAt             DateTime?
+  expiryReminderSent    Boolean        @default(false)
+  expiryReminderSentAt  DateTime?
+  
+  // Version
+  version               Int            @default(1)
+  previousVersionId     String?
+  accessLevel           String         @default("private")
+  
+  // Audit
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  deletedAt             DateTime?
+  deletedBy             String?
+
+  // Relations
+  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer              Customer?      @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([documentType])
+  @@index([status])
+  @@index([entityType, entityId])
+  @@index([expiresAt])
+  @@map("document_uploads")
+}
+
+/// Verification badge awarded upon document validation
+model VerificationBadge {
+  id                 String             @id @default(cuid())
+  tenantId           String
+  customerId         String
+  identityProfileId  String?
+  
+  // Badge type
+  badgeType          BadgeType
+  isActive           Boolean            @default(true)
+  
+  // Award
+  awardedAt          DateTime
+  awardedBy          String?
+  expiresAt          DateTime?
+  
+  // Revocation
+  revokedAt          DateTime?
+  revokedBy          String?
+  revocationReason   String?
+  
+  // Evidence (JSON)
+  evidenceDocuments  Json               @default("[]")
+  verificationMethod String?
+  metadata           Json               @default("{}")
+  
+  // Audit
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([badgeType])
+  @@index([isActive])
+  @@map("verification_badges")
+}
+
+/// Document fraud risk assessment
+model FraudRiskScore {
+  id               String         @id @default(cuid())
+  tenantId         String
+  documentUploadId String?
+  customerId       String?
+  
+  // Score
+  riskLevel        FraudRiskLevel @default(low)
+  score            Decimal        @db.Decimal(5, 4)
+  
+  // Indicators (JSON)
+  indicators       Json           @default("[]")
+  primaryIndicator String?
+  
+  // Model info
+  modelVersion     String
+  modelConfidence  Decimal?       @db.Decimal(5, 4)
+  
+  // Decision
+  decision         String?
+  decisionReason   String?
+  reviewRequired   Boolean        @default(false)
+  
+  // Review
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  reviewNotes      String?
+  
+  // Audit
+  calculatedAt     DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  // Relations
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([documentUploadId])
+  @@index([customerId])
+  @@index([riskLevel])
+  @@index([calculatedAt])
+  @@map("fraud_risk_scores")
+}
+
+// ============================================================================
+// AUDIT DOMAIN
+// ============================================================================
+
+/// Immutable audit log for all system actions
+model AuditLog {
+  id              String         @id @default(cuid())
+  tenantId        String
+  
+  // Event info
+  eventType       AuditEventType
+  action          String
+  description     String?
+  
+  // Actor
+  actorId         String?
+  actorEmail      String?
+  actorName       String?
+  actorType       String         @default("user")
+  
+  // Target
+  targetType      String?
+  targetId        String?
+  
+  // Context
+  ipAddress       String?
+  userAgent       String?
+  sessionId       String?
+  
+  // Data (JSON)
+  previousValue   Json?
+  newValue        Json?
+  metadata        Json           @default("{}")
+  
+  // Timestamp (immutable)
+  occurredAt      DateTime       @default(now())
+
+  // Relations
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([occurredAt])
+  @@map("audit_logs")
+}

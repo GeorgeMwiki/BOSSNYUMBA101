@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bossnyumba
+  labels:
+    app.kubernetes.io/name: bossnyumba
+    app.kubernetes.io/part-of: bossnyumba-platform

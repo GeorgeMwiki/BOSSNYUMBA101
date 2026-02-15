@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Playwright
+e2e-report/
+test-results/
+playwright-report/
+.blob/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Turbo
+.turbo/
+
+# Cache
+.cache/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+!backend.hcl.example
+backend.hcl
+crash.log
+override.tf
+override.tf.json
+*.override.tf
+*.override.tf.json
+

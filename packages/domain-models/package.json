@@ -1,0 +1,60 @@
+{
+  "name": "@bossnyumba/domain-models",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core domain models and types for BOSSNYUMBA platform",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./tenant": {
+      "import": "./dist/tenant/index.mjs",
+      "require": "./dist/tenant/index.js",
+      "types": "./dist/tenant/index.d.ts"
+    },
+    "./property": {
+      "import": "./dist/property/index.mjs",
+      "require": "./dist/property/index.js",
+      "types": "./dist/property/index.d.ts"
+    },
+    "./lease": {
+      "import": "./dist/lease/index.mjs",
+      "require": "./dist/lease/index.js",
+      "types": "./dist/lease/index.d.ts"
+    },
+    "./payment": {
+      "import": "./dist/payment/index.mjs",
+      "require": "./dist/payment/index.js",
+      "types": "./dist/payment/index.d.ts"
+    },
+    "./maintenance": {
+      "import": "./dist/maintenance/index.mjs",
+      "require": "./dist/maintenance/index.js",
+      "types": "./dist/maintenance/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.3.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.22.0"
+  }
+}

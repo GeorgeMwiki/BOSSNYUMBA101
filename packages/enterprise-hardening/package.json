@@ -1,0 +1,48 @@
+{
+  "name": "@bossnyumba/enterprise-hardening",
+  "version": "0.1.0",
+  "description": "Enterprise hardening: compliance, resilience, performance, and scale for BOSSNYUMBA SaaS platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "enterprise",
+    "compliance",
+    "soc2",
+    "gdpr",
+    "resilience",
+    "circuit-breaker",
+    "rate-limiting",
+    "data-retention",
+    "disaster-recovery",
+    "finops"
+  ],
+  "author": "BOSSNYUMBA",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@bossnyumba/domain-models": "workspace:*",
+    "@bossnyumba/observability": "workspace:*",
+    "ioredis": "^5.3.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,102 @@
+# =============================================================================
+# BOSSNYUMBA Notifications Service - Kubernetes Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications
+  namespace: bossnyumba
+  labels:
+    app: notifications
+    app.kubernetes.io/name: notifications
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notifications
+  template:
+    metadata:
+      labels:
+        app: notifications
+    spec:
+      serviceAccountName: bossnyumba-service
+      containers:
+        - name: notifications
+          image: bossnyumba/notifications:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: bossnyumba-config
+                  key: NODE_ENV
+            - name: PORT
+              value: "3000"
+            - name: SERVICE_NAME
+              value: "notifications"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-secrets
+                  key: REDIS_URL
+            - name: AFRICAS_TALKING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-notifications-secrets
+                  key: AFRICAS_TALKING_API_KEY
+                  optional: true
+            - name: SENDGRID_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-notifications-secrets
+                  key: SENDGRID_API_KEY
+                  optional: true
+            - name: FIREBASE_PROJECT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bossnyumba-notifications-secrets
+                  key: FIREBASE_PROJECT_ID
+                  optional: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications-service
+  namespace: bossnyumba
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app: notifications
