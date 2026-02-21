@@ -9,7 +9,8 @@
         docker-build docker-up docker-down docker-logs docker-clean \
         tf-init tf-plan tf-apply tf-destroy \
         k8s-apply k8s-delete k8s-status \
-        deploy-staging deploy-production
+        deploy-staging deploy-production \
+        graph-init graph-sync graph-browser docker-shell-neo4j
 
 # Default target
 .DEFAULT_GOAL := help
@@ -207,6 +208,22 @@ db-reset: ## Reset database (DANGER!)
 
 db-studio: ## Open Drizzle Studio
 	pnpm --filter @bossnyumba/database studio
+
+# -----------------------------------------------------------------------------
+# Graph Database (Neo4j / CPG)
+# -----------------------------------------------------------------------------
+graph-init: ## Initialize Neo4j graph (constraints + indexes)
+	pnpm --filter @bossnyumba/graph-sync graph:init
+
+graph-sync: ## Run incremental graph sync from PostgreSQL
+	pnpm --filter @bossnyumba/graph-sync graph:sync
+
+graph-browser: ## Open Neo4j Browser UI
+	@echo "Opening Neo4j Browser at http://localhost:7474"
+	@open http://localhost:7474 2>/dev/null || xdg-open http://localhost:7474 2>/dev/null || echo "Open http://localhost:7474 in your browser"
+
+docker-shell-neo4j: ## Connect to Neo4j via cypher-shell
+	docker compose exec neo4j cypher-shell -u neo4j -p bossnyumba_graph_dev
 
 # -----------------------------------------------------------------------------
 # Utilities

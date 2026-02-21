@@ -17,6 +17,7 @@ import {
   AIRequestContext,
   AIResult,
   RiskLevel,
+  type CopilotOutputBase,
 } from './types/core.types.js';
 import {
   MaintenanceTriageInput,
@@ -80,6 +81,16 @@ import {
 import { HumanReview } from './types/core.types.js';
 
 /**
+ * Graph Intelligence configuration
+ */
+export interface GraphIntelligenceConfig {
+  /** Whether graph intelligence is enabled */
+  enabled: boolean;
+  /** Graph Agent Toolkit instance (injected from @bossnyumba/graph-sync) */
+  toolkit?: unknown;
+}
+
+/**
  * AI Copilot configuration
  */
 export interface AICopilotConfig {
@@ -91,6 +102,8 @@ export interface AICopilotConfig {
   reviewPolicy?: Partial<ReviewPolicyConfig>;
   /** Register default prompts on init */
   registerDefaultPrompts?: boolean;
+  /** Graph intelligence configuration */
+  graphIntelligence?: GraphIntelligenceConfig;
 }
 
 /**
@@ -103,6 +116,7 @@ export interface CopilotHealthStatus {
     aiProvider: 'healthy' | 'unhealthy';
     reviewService: 'healthy' | 'unhealthy';
     predictionEngine: 'healthy' | 'unhealthy';
+    graphIntelligence: 'healthy' | 'unhealthy' | 'not_configured';
   };
   lastChecked: string;
 }
@@ -119,6 +133,9 @@ export class AICopilot {
   
   // Domain copilots
   private maintenanceTriageCopilot: MaintenanceTriageCopilot;
+  
+  // Graph intelligence
+  private graphToolkit: unknown | null = null;
   
   // Event listeners
   private copilotListeners: CopilotEventListener[] = [];
@@ -155,6 +172,11 @@ export class AICopilot {
     // Register default prompts if requested
     if (config.registerDefaultPrompts !== false) {
       this.registerDefaultPrompts();
+    }
+    
+    // Initialize graph intelligence if configured
+    if (config.graphIntelligence?.enabled && config.graphIntelligence.toolkit) {
+      this.graphToolkit = config.graphIntelligence.toolkit;
     }
     
     // Wire up governance listeners
@@ -368,6 +390,128 @@ export class AICopilot {
   }
 
   // ===================================
+  // GRAPH INTELLIGENCE METHODS
+  // ===================================
+
+  /**
+   * Execute a graph intelligence tool.
+   * The AI agent calls this to query the Canonical Property Graph (CPG).
+   *
+   * Available tools:
+   *  - get_case_timeline: Complete chronological case history
+   *  - get_tenant_risk_drivers: Why a tenant is at risk
+   *  - get_vendor_scorecard: Vendor performance metrics
+   *  - get_unit_health: Unit health composite score
+   *  - get_parcel_compliance: Expiring documents/obligations
+   *  - get_property_rollup: Property-level KPIs
+   *  - generate_evidence_pack: Court-ready evidence bundle
+   *  - get_portfolio_overview: Portfolio-wide summary
+   *  - get_graph_stats: Graph health/completeness
+   */
+  async executeGraphTool(
+    toolName: string,
+    params: Record<string, unknown>,
+    tenant: AITenantContext,
+    actor: AIActor
+  ): Promise<AIResult<{
+    data: unknown;
+    evidenceSummary: string;
+    executionTimeMs: number;
+  }, { code: string; message: string; retryable: boolean }>> {
+    if (!this.graphToolkit) {
+      return {
+        success: false,
+        error: {
+          code: 'GRAPH_NOT_CONFIGURED',
+          message: 'Graph intelligence is not configured. Set graphIntelligence.enabled = true and provide a toolkit.',
+          retryable: false,
+        },
+      };
+    }
+
+    try {
+      const toolkit = this.graphToolkit as {
+        executeTool: (
+          toolName: string,
+          params: Record<string, unknown>,
+          auth: { tenantId: string; userId: string; role: string; propertyAccess: string[] }
+        ) => Promise<{ success: boolean; data: unknown; evidenceSummary: string; executionTimeMs: number; error?: string }>;
+      };
+
+      const result = await toolkit.executeTool(toolName, params, {
+        tenantId: tenant.tenantId,
+        userId: actor.id,
+        role: actor.roles?.[0] ?? 'user',
+        propertyAccess: ['*'],
+      });
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: {
+            code: 'GRAPH_QUERY_FAILED',
+            message: result.error ?? 'Graph query failed',
+            retryable: true,
+          },
+        };
+      }
+
+      // Log to governance
+      await this.governanceService.logCopilotInvocation(
+        { domain: CopilotDomain.GRAPH_INTELLIGENCE, toolName, params } as unknown as CopilotOutputBase,
+        tenant,
+        actor,
+        'success'
+      ).catch(() => {});
+
+      return {
+        success: true,
+        data: {
+          data: result.data,
+          evidenceSummary: result.evidenceSummary,
+          executionTimeMs: result.executionTimeMs,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: {
+          code: 'GRAPH_INTERNAL_ERROR',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: true,
+        },
+      };
+    }
+  }
+
+  /**
+   * Get available graph intelligence tool definitions.
+   * Used by the LLM to know which tools it can call.
+   */
+  getGraphToolDefinitions(): Array<{
+    type: 'function';
+    function: { name: string; description: string; parameters: Record<string, unknown> };
+  }> {
+    if (!this.graphToolkit) return [];
+
+    const toolkit = this.graphToolkit as {
+      getOpenAITools: () => Array<{
+        type: 'function';
+        function: { name: string; description: string; parameters: Record<string, unknown> };
+      }>;
+    };
+
+    return toolkit.getOpenAITools();
+  }
+
+  /**
+   * Check if graph intelligence is available
+   */
+  get graphIntelligenceEnabled(): boolean {
+    return this.graphToolkit !== null;
+  }
+
+  // ===================================
   // HEALTH & DIAGNOSTICS
   // ===================================
 
@@ -383,6 +527,7 @@ export class AICopilot {
       aiProvider: providerHealthy ? 'healthy' as const : 'unhealthy' as const,
       reviewService: 'healthy' as const,
       predictionEngine: 'healthy' as const,
+      graphIntelligence: this.graphToolkit ? 'healthy' as const : 'not_configured' as const,
     };
 
     const unhealthyCount = Object.values(components).filter(s => s === 'unhealthy').length;

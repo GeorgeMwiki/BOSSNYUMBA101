@@ -48,6 +48,7 @@ export const CopilotDomain = {
   RISK_ALERTING: 'RISK_ALERTING',
   LEASE_ANALYSIS: 'LEASE_ANALYSIS',
   TENANT_SCREENING: 'TENANT_SCREENING',
+  GRAPH_INTELLIGENCE: 'GRAPH_INTELLIGENCE',
 } as const;
 
 export type CopilotDomain = typeof CopilotDomain[keyof typeof CopilotDomain];
@@ -246,6 +247,7 @@ export const CopilotDomainSchema = z.enum([
   'RISK_ALERTING',
   'LEASE_ANALYSIS',
   'TENANT_SCREENING',
+  'GRAPH_INTELLIGENCE',
 ]);
 
 export const RiskLevelSchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
