@@ -175,7 +175,26 @@ export default function PermissionMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={() => {
+              const csvRows = ['Role,Module,Permission,Granted'];
+              roles.forEach((role) => {
+                modules.forEach((mod) => {
+                  mod.permissions.forEach((perm) => {
+                    csvRows.push(`${role.name},${mod.name},${perm.name},${role.permissions.includes(perm.id)}`);
+                  });
+                });
+              });
+              const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'permission-matrix.csv';
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             <Download className="h-4 w-4" />
             Export
           </button>

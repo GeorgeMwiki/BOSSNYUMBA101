@@ -48,25 +48,6 @@ export const sessionStatusEnum = pgEnum('session_status', [
   'revoked',
 ]);
 
-export const auditEventTypeEnum = pgEnum('audit_event_type', [
-  'user.created',
-  'user.updated',
-  'user.deleted',
-  'user.login',
-  'user.logout',
-  'user.password_changed',
-  'tenant.created',
-  'tenant.updated',
-  'tenant.suspended',
-  'role.assigned',
-  'role.revoked',
-  'permission.granted',
-  'permission.revoked',
-  'data.accessed',
-  'data.modified',
-  'data.exported',
-]);
-
 // ============================================================================
 // Tenants Table
 // ============================================================================
@@ -310,53 +291,6 @@ export const sessions = pgTable(
     userIdx: index('sessions_user_idx').on(table.userId),
     statusIdx: index('sessions_status_idx').on(table.status),
     expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
-  })
-);
-
-// ============================================================================
-// Audit Events Table (append-only)
-// ============================================================================
-
-export const auditEvents = pgTable(
-  'audit_events',
-  {
-    id: text('id').primaryKey(),
-    tenantId: text('tenant_id').notNull(),
-    
-    // Event info
-    eventType: auditEventTypeEnum('event_type').notNull(),
-    action: text('action').notNull(),
-    description: text('description'),
-    
-    // Actor
-    actorId: text('actor_id'),
-    actorEmail: text('actor_email'),
-    actorName: text('actor_name'),
-    actorType: text('actor_type').notNull().default('user'),
-    
-    // Target
-    targetType: text('target_type'),
-    targetId: text('target_id'),
-    
-    // Context
-    ipAddress: text('ip_address'),
-    userAgent: text('user_agent'),
-    sessionId: text('session_id'),
-    
-    // Data
-    previousValue: jsonb('previous_value'),
-    newValue: jsonb('new_value'),
-    metadata: jsonb('metadata').default({}),
-    
-    // Timestamp (immutable)
-    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    tenantIdx: index('audit_events_tenant_idx').on(table.tenantId),
-    eventTypeIdx: index('audit_events_event_type_idx').on(table.eventType),
-    actorIdx: index('audit_events_actor_idx').on(table.actorId),
-    targetIdx: index('audit_events_target_idx').on(table.targetType, table.targetId),
-    occurredAtIdx: index('audit_events_occurred_at_idx').on(table.occurredAt),
   })
 );
 

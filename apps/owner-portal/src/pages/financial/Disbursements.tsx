@@ -227,7 +227,6 @@ export function DisbursementsPage() {
     }
     await new Promise((r) => setTimeout(r, 1200));
     setDownloading(null);
-    alert(`Statement for ${disbursement.reference} downloaded`);
   };
 
   const getStatusIcon = (status: string) => {

@@ -243,16 +243,12 @@ export default function CollectionsPage() {
 
   const sendReminder = () => {
     if (!selectedRecord || !selectedTemplate) return;
-    // In real app, this would send the reminder
-    console.log('Sending reminder to', selectedRecord.tenant.name);
     setShowReminderModal(false);
     setSelectedTemplate(null);
   };
 
   const createPaymentPlan = () => {
     if (!selectedRecord || !planAmount || !planInstallments) return;
-    // In real app, this would create the payment plan
-    console.log('Creating payment plan for', selectedRecord.tenant.name);
     setShowPaymentPlanModal(false);
     setPlanAmount('');
     setPlanInstallments('3');

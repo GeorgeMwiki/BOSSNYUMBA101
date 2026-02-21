@@ -17,6 +17,7 @@ export function VoiceRecorder({ onRecordingComplete, maxDuration = 120 }: VoiceR
   const [isPlaying, setIsPlaying] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
+  const [micError, setMicError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -31,6 +32,7 @@ export function VoiceRecorder({ onRecordingComplete, maxDuration = 120 }: VoiceR
   }, [audioUrl]);
 
   const startRecording = async () => {
+    setMicError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -66,9 +68,8 @@ export function VoiceRecorder({ onRecordingComplete, maxDuration = 120 }: VoiceR
           return prev + 1;
         });
       }, 1000);
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      alert('Unable to access microphone. Please check permissions.');
+    } catch {
+      setMicError('Unable to access microphone. Please check permissions.');
     }
   };
 
@@ -273,8 +274,15 @@ export function VoiceRecorder({ onRecordingComplete, maxDuration = 120 }: VoiceR
         )}
       </div>
 
+      {/* Microphone Error */}
+      {micError && (
+        <div className="p-3 bg-danger-50 text-danger-700 rounded-xl text-sm">
+          {micError}
+        </div>
+      )}
+
       {/* Tips */}
-      {!isRecording && (
+      {!isRecording && !micError && (
         <div className="text-left p-4 bg-gray-50 rounded-xl text-sm text-gray-600">
           <p className="font-medium mb-2">Tips for a good recording:</p>
           <ul className="space-y-1 text-xs">

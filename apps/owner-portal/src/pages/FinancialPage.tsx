@@ -252,7 +252,6 @@ export function FinancialPage() {
     } catch {
       // Simulate download
       await new Promise(resolve => setTimeout(resolve, 1500));
-      alert(`Financial report exported as ${format.toUpperCase()}`);
     }
     setExporting(false);
   };

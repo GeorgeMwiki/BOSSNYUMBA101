@@ -263,8 +263,6 @@ export function TenantManagementPage() {
   };
 
   const handleSavePolicy = () => {
-    // In real app, this would call API
-    console.log('Saving policy config:', policyConfig);
     setShowPolicyModal(false);
     setPolicyConfig(null);
   };

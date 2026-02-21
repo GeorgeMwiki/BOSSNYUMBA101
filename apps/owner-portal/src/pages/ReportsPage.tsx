@@ -84,9 +84,9 @@ export function ReportsPage() {
   }, []);
 
   const handleExport = async (type: string) => {
-    const response = await api.get(`/reports/export/${type}`);
-    if (response.success) {
-      alert(`Export initiated. Download link will be available shortly.`);
+    const response = await api.get<{ downloadUrl?: string }>(`/reports/export/${type}`);
+    if (response.success && response.data?.downloadUrl) {
+      window.open(response.data.downloadUrl, '_blank');
     }
   };
 

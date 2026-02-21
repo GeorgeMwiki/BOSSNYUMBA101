@@ -19,6 +19,7 @@ import { tenants } from './tenant.schema.js';
 import { properties, units } from './property.schema.js';
 import { customers } from './customer.schema.js';
 import { leases } from './lease.schema.js';
+import { paymentPlanStatusEnum } from './payment-plan.schema.js';
 
 // ============================================================================
 // Enums
@@ -395,15 +396,7 @@ export const receiptStatusEnum = pgEnum('receipt_status', [
   'superseded',
 ]);
 
-export const paymentPlanStatusEnum = pgEnum('payment_plan_status', [
-  'proposed',
-  'pending_approval',
-  'approved',
-  'active',
-  'completed',
-  'defaulted',
-  'cancelled',
-]);
+// paymentPlanStatusEnum imported from payment-plan.schema.ts
 
 export const arrearsStatusEnum = pgEnum('arrears_status', [
   'active',
@@ -422,13 +415,6 @@ export const ownerStatementStatusEnum = pgEnum('owner_statement_status', [
   'acknowledged',
 ]);
 
-export const ledgerAccountTypeEnum = pgEnum('ledger_account_type', [
-  'asset',
-  'liability',
-  'equity',
-  'revenue',
-  'expense',
-]);
 
 // ============================================================================
 // Receipts Table
@@ -733,75 +719,6 @@ export const ownerStatements = pgTable(
   })
 );
 
-// ============================================================================
-// Ledger Entries Table (Double-Entry Bookkeeping)
-// ============================================================================
-
-export const ledgerEntries = pgTable(
-  'ledger_entries',
-  {
-    id: text('id').primaryKey(),
-    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    
-    // Journal reference
-    journalId: text('journal_id').notNull(),
-    journalLineNumber: integer('journal_line_number').notNull(),
-    
-    // Account
-    accountCode: text('account_code').notNull(),
-    accountName: text('account_name').notNull(),
-    accountType: ledgerAccountTypeEnum('account_type').notNull(),
-    
-    // Amount (debit positive, credit negative OR use separate columns)
-    debitAmount: integer('debit_amount').notNull().default(0),
-    creditAmount: integer('credit_amount').notNull().default(0),
-    currency: text('currency').notNull().default('KES'),
-    
-    // Entity references
-    propertyId: text('property_id').references(() => properties.id),
-    unitId: text('unit_id').references(() => units.id),
-    customerId: text('customer_id').references(() => customers.id),
-    
-    // Source document
-    sourceType: text('source_type').notNull(),
-    sourceId: text('source_id').notNull(),
-    
-    // Description
-    description: text('description').notNull(),
-    memo: text('memo'),
-    
-    // Dates
-    transactionDate: timestamp('transaction_date', { withTimezone: true }).notNull(),
-    postingDate: timestamp('posting_date', { withTimezone: true }).notNull(),
-    
-    // Period
-    fiscalYear: integer('fiscal_year').notNull(),
-    fiscalPeriod: integer('fiscal_period').notNull(),
-    
-    // Status
-    isPosted: boolean('is_posted').notNull().default(true),
-    isReversed: boolean('is_reversed').notNull().default(false),
-    reversalEntryId: text('reversal_entry_id'),
-    
-    // Audit
-    postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
-    postedBy: text('posted_by'),
-    
-    // Timestamps (immutable after posting)
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    tenantIdx: index('ledger_entries_tenant_idx').on(table.tenantId),
-    journalIdx: index('ledger_entries_journal_idx').on(table.journalId),
-    accountCodeIdx: index('ledger_entries_account_code_idx').on(table.accountCode),
-    accountTypeIdx: index('ledger_entries_account_type_idx').on(table.accountType),
-    propertyIdx: index('ledger_entries_property_idx').on(table.propertyId),
-    customerIdx: index('ledger_entries_customer_idx').on(table.customerId),
-    sourceIdx: index('ledger_entries_source_idx').on(table.sourceType, table.sourceId),
-    transactionDateIdx: index('ledger_entries_transaction_date_idx').on(table.transactionDate),
-    fiscalPeriodIdx: index('ledger_entries_fiscal_period_idx').on(table.fiscalYear, table.fiscalPeriod),
-  })
-);
 
 // ============================================================================
 // Additional Relations
@@ -875,22 +792,4 @@ export const ownerStatementsRelations = relations(ownerStatements, ({ one }) => 
   }),
 }));
 
-export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
-  tenant: one(tenants, {
-    fields: [ledgerEntries.tenantId],
-    references: [tenants.id],
-  }),
-  property: one(properties, {
-    fields: [ledgerEntries.propertyId],
-    references: [properties.id],
-  }),
-  unit: one(units, {
-    fields: [ledgerEntries.unitId],
-    references: [units.id],
-  }),
-  customer: one(customers, {
-    fields: [ledgerEntries.customerId],
-    references: [customers.id],
-  }),
-}));
 

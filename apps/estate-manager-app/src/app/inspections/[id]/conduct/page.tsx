@@ -300,8 +300,6 @@ export default function ConductInspectionPage() {
       signature,
       completedAt: new Date().toISOString(),
     };
-    console.log('Inspection data:', inspectionData);
-
     router.push(`/inspections/${params.id}?completed=true`);
   };
 

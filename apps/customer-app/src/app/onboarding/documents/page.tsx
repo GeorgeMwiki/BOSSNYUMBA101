@@ -224,7 +224,13 @@ export default function OnboardingDocumentsPage() {
     const missingDocs = requiredDocs.filter((d) => d.status !== 'uploaded');
 
     if (missingDocs.length > 0) {
-      alert('Please upload all required documents');
+      setDocuments((prev) =>
+        prev.map((d) =>
+          missingDocs.some((m) => m.id === d.id)
+            ? { ...d, error: 'This document is required' }
+            : d
+        )
+      );
       return;
     }
 

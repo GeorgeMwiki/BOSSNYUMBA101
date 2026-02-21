@@ -33,6 +33,8 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
+import { maintenanceRouter } from './routes/maintenance.hono';
+import { slaRouter } from './routes/sla';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
@@ -86,6 +88,8 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
+api.route('/maintenance', maintenanceRouter);
+api.route('/sla', slaRouter);
 
 // BFF routes - persona-optimized endpoints for each frontend app
 api.route('/bff/customer', customerAppRouter);
@@ -124,6 +128,8 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
+      '/api/v1/maintenance',
+      '/api/v1/sla',
       '/api/v1/dashboard',
       '/api/v1/approvals',
       '/api/v1/bff/customer',

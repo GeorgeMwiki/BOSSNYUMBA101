@@ -50,7 +50,6 @@ export default function MaintenanceFeedbackPage() {
     if (overallRating === 0) return;
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log({ ticketId, overallRating, categoryRatings, selectedTags, comment, wouldRecommend });
     setIsSubmitted(true);
     setIsSubmitting(false);
   };
