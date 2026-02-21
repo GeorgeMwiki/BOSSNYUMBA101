@@ -212,56 +212,6 @@ export const workOrders = pgTable(
 );
 
 // ============================================================================
-// Vendor Scorecards Table
-// ============================================================================
-
-export const vendorScorecards = pgTable(
-  'vendor_scorecards',
-  {
-    id: text('id').primaryKey(),
-    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    vendorId: text('vendor_id').notNull().references(() => vendors.id, { onDelete: 'cascade' }),
-    
-    // Period (month/year format)
-    periodMonth: integer('period_month').notNull(), // 1-12
-    periodYear: integer('period_year').notNull(),
-    
-    // Performance Metrics (scores out of 100 or specific units)
-    responseTime: integer('response_time'), // Average response time in minutes
-    qualityScore: integer('quality_score'), // 0-100 quality rating
-    reopenRate: integer('reopen_rate'), // Percentage of work orders reopened (0-100)
-    slaCompliance: integer('sla_compliance'), // SLA compliance percentage (0-100)
-    tenantSatisfaction: integer('tenant_satisfaction'), // Satisfaction score (0-100)
-    costEfficiency: integer('cost_efficiency'), // Cost efficiency score (0-100)
-    
-    // Aggregated data
-    totalWorkOrders: integer('total_work_orders').notNull().default(0),
-    completedWorkOrders: integer('completed_work_orders').notNull().default(0),
-    onTimeCompletions: integer('on_time_completions').notNull().default(0),
-    averageRating: integer('average_rating'), // Average customer rating (1-5 scaled to 0-100)
-    
-    // Overall score
-    overallScore: integer('overall_score'), // Weighted composite score (0-100)
-    
-    // Notes
-    notes: text('notes'),
-    
-    // Timestamps
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    createdBy: text('created_by'),
-    updatedBy: text('updated_by'),
-  },
-  (table) => ({
-    tenantIdx: index('vendor_scorecards_tenant_idx').on(table.tenantId),
-    vendorIdx: index('vendor_scorecards_vendor_idx').on(table.vendorId),
-    periodIdx: uniqueIndex('vendor_scorecards_vendor_period_idx').on(table.vendorId, table.periodYear, table.periodMonth),
-    periodYearIdx: index('vendor_scorecards_period_year_idx').on(table.periodYear, table.periodMonth),
-    overallScoreIdx: index('vendor_scorecards_overall_score_idx').on(table.overallScore),
-  })
-);
-
-// ============================================================================
 // Relations
 // ============================================================================
 
@@ -272,17 +222,6 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   }),
   workOrders: many(workOrders),
   scorecards: many(vendorScorecards),
-}));
-
-export const vendorScorecardsRelations = relations(vendorScorecards, ({ one }) => ({
-  tenant: one(tenants, {
-    fields: [vendorScorecards.tenantId],
-    references: [tenants.id],
-  }),
-  vendor: one(vendors, {
-    fields: [vendorScorecards.vendorId],
-    references: [vendors.id],
-  }),
 }));
 
 export const workOrdersRelations = relations(workOrders, ({ one }) => ({

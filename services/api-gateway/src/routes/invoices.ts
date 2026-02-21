@@ -32,9 +32,6 @@ import {
 } from '../data/mock-data';
 import type { Invoice } from '../types/mock-types';
 
-// Export for Express compatibility - creates empty router (routes use Hono)
-export const invoicesRouter = null;
-
 const app = new Hono();
 
 // Parse query for list (with optional date range as ISO strings)
