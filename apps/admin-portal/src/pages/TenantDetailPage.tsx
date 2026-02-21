@@ -844,10 +844,115 @@ export function TenantDetailPage() {
         </div>
       )}
 
-      {/* Other tabs placeholder */}
-      {(activeTab === 'users' || activeTab === 'billing') && (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
-          {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} management features coming soon
+      {/* Users tab */}
+      {activeTab === 'users' && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Tenant Users</h3>
+            <button className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700">
+              Invite User
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                <tr className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">John Mwangi</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">john@masakiproperties.co.tz</td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-violet-100 text-violet-800 rounded-full">Tenant Admin</span></td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span></td>
+                  <td className="px-4 py-3 text-sm text-gray-500">2 hours ago</td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">Alice Kimaro</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">alice@masakiproperties.co.tz</td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Property Manager</span></td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span></td>
+                  <td className="px-4 py-3 text-sm text-gray-500">5 hours ago</td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">Sarah Mushi</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">sarah@masakiproperties.co.tz</td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">Accountant</span></td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span></td>
+                  <td className="px-4 py-3 text-sm text-gray-500">Yesterday</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Billing tab */}
+      {activeTab === 'billing' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Current Plan</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">Professional</p>
+              <p className="text-sm text-violet-600 mt-1">TZS 2,500,000/mo</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Total Billed</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">TZS 30,000,000</p>
+              <p className="text-sm text-gray-500 mt-1">Since Jan 2023</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Outstanding Balance</p>
+              <p className="text-xl font-bold text-red-600 mt-1">TZS 2,500,000</p>
+              <p className="text-sm text-gray-500 mt-1">Due Mar 15, 2024</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Billing History</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid On</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-violet-600">PLAT-2024-03-001</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">March 2024</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">TZS 2,500,000</td>
+                    <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">Pending</span></td>
+                    <td className="px-4 py-3 text-sm text-gray-500">-</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-violet-600">PLAT-2024-02-001</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">February 2024</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">TZS 2,500,000</td>
+                    <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Paid</span></td>
+                    <td className="px-4 py-3 text-sm text-gray-500">Feb 5, 2024</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-violet-600">PLAT-2024-01-001</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">January 2024</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">TZS 2,500,000</td>
+                    <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Paid</span></td>
+                    <td className="px-4 py-3 text-sm text-gray-500">Jan 5, 2024</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

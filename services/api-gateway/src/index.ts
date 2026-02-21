@@ -33,6 +33,13 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
+import { customerAppRouter } from './routes/bff/customer-app';
+import { adminPortalRouter } from './routes/bff/admin-portal';
+import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
+import { ownerPortalRouter } from './routes/bff/owner-portal';
+import { dashboardRouter } from './routes/dashboard';
+import { approvalsRouter } from './routes/approvals';
+import { authMiddleware } from './middleware/auth';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -79,7 +86,18 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
+
+// BFF routes - persona-optimized endpoints for each frontend app
+api.route('/bff/customer', customerAppRouter);
+api.route('/bff/admin', adminPortalRouter);
+api.route('/bff/estate-manager', estateManagerAppRouter);
+api.route('/bff/owner', ownerPortalRouter);
+
 app.use('/api/v1', handle(api));
+
+// Express routes (dashboard, approvals)
+app.use('/api/v1/dashboard', authMiddleware, dashboardRouter);
+app.use('/api/v1/approvals', authMiddleware, approvalsRouter);
 
 // API versioning
 app.get('/api/v1', (_req, res) => {
@@ -106,6 +124,12 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
+      '/api/v1/dashboard',
+      '/api/v1/approvals',
+      '/api/v1/bff/customer',
+      '/api/v1/bff/admin',
+      '/api/v1/bff/estate-manager',
+      '/api/v1/bff/owner',
     ],
   });
 });

@@ -388,16 +388,86 @@ export function ConfigurationPage() {
           </div>
         );
 
-      default:
+      case 'database':
         return (
-          <div className="text-center py-12 text-gray-500">
-            <Settings className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}{' '}
-              configuration coming soon
-            </p>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Database Status</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Connection Pool</p>
+                  <p className="text-xl font-bold text-green-600 mt-1">Active</p>
+                  <p className="text-xs text-gray-400 mt-1">8/20 connections in use</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Last Backup</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">2h ago</p>
+                  <p className="text-xs text-gray-400 mt-1">Auto-backup every 6 hours</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-500">Storage Used</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">2.4 GB</p>
+                  <p className="text-xs text-gray-400 mt-1">of 50 GB allocated</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Backup Settings</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Backup Frequency</label>
+                  <select defaultValue="6h" onChange={() => setHasChanges(true)} className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
+                    <option value="1h">Every Hour</option>
+                    <option value="6h">Every 6 Hours</option>
+                    <option value="12h">Every 12 Hours</option>
+                    <option value="24h">Daily</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Backup Retention</label>
+                  <select defaultValue="30" onChange={() => setHasChanges(true)} className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
+                    <option value="7">7 Days</option>
+                    <option value="30">30 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         );
+
+      case 'branding':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Platform Logo</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center max-w-md">
+                <Palette className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">Drop logo here or click to upload</p>
+                <p className="text-xs text-gray-400 mt-1">SVG, PNG, or JPG (max. 2MB)</p>
+                <input type="file" className="hidden" accept="image/*" />
+                <button className="mt-3 px-4 py-2 text-sm text-violet-600 border border-violet-300 rounded-lg hover:bg-violet-50">
+                  Upload Logo
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+              <div className="flex items-center gap-3 max-w-md">
+                <input type="color" defaultValue="#7c3aed" onChange={() => setHasChanges(true)} className="h-10 w-14 rounded border border-gray-300 cursor-pointer" />
+                <input type="text" defaultValue="#7c3aed" onChange={() => setHasChanges(true)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">White-Label Domain</label>
+              <input type="text" placeholder="app.yourdomain.com" onChange={() => setHasChanges(true)} className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
+              <p className="text-xs text-gray-400 mt-1">CNAME record required. Contact support for DNS setup.</p>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 

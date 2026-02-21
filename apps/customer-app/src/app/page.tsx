@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-// placeholder for testing search_replace
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader } from '@/components/layout/PageHeader';

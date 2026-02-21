@@ -74,9 +74,8 @@ export default function PayPage() {
       router.push(`/payments/mpesa?amount=${paymentAmount}`);
     } else if (selectedMethod === 'bank') {
       router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
-    } else {
-      // Card payment - would implement card form
-      alert('Card payments coming soon!');
+    } else if (selectedMethod === 'card') {
+      router.push(`/payments/card?amount=${paymentAmount}`);
     }
   };
 

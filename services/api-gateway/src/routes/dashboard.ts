@@ -14,6 +14,99 @@ import {
   getByTenant,
 } from '../data/mock-data';
 
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: Date;
+  entityType: string;
+  entityId: string;
+}
+
+interface AlertItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  actionRequired: boolean;
+  actionUrl?: string;
+  createdAt: Date;
+}
+
+interface OwnerDashboardData {
+  portfolio: {
+    totalProperties: number;
+    totalUnits: number;
+    totalValue: number;
+    monthlyRevenue: number;
+    yearToDateRevenue: number;
+  };
+  financial: {
+    currentMonthRevenue: number;
+    previousMonthRevenue: number;
+    revenueChange: number;
+    outstandingBalance: number;
+    collectionRate: number;
+    arrearsBreakdown: {
+      current: number;
+      days1to7: number;
+      days8to14: number;
+      days15to30: number;
+      days31to60: number;
+      days60plus: number;
+    };
+  };
+  maintenance: {
+    openRequests: number;
+    inProgress: number;
+    completedThisMonth: number;
+    averageResolutionTime: number;
+    pendingApprovals: number;
+    totalCostThisMonth: number;
+  };
+  occupancy: {
+    occupancyRate: number;
+    vacantUnits: number;
+    expiringLeases: number;
+    pendingMoveIns: number;
+    pendingMoveOuts: number;
+  };
+  recentActivity: ActivityItem[];
+  alerts: AlertItem[];
+}
+
+interface AdminDashboardData {
+  system: {
+    status: string;
+    uptime: number;
+    activeUsers: number;
+    apiLatency: number;
+    errorRate: number;
+  };
+  tenants: {
+    total: number;
+    active: number;
+    trial: number;
+    suspended: number;
+    newThisMonth: number;
+  };
+  users: {
+    total: number;
+    active: number;
+    pendingVerification: number;
+    newThisMonth: number;
+  };
+  operations: {
+    pendingApprovals: number;
+    openCases: number;
+    documentsAwaitingVerification: number;
+    scheduledTasks: number;
+  };
+  recentActivity: ActivityItem[];
+  alerts: AlertItem[];
+}
+
 export const dashboardRouter = Router();
 
 // GET /dashboard/owner - Owner portal dashboard

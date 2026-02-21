@@ -34,8 +34,6 @@ import {
 } from '../data/mock-data';
 import type { Payment } from '../types/mock-types';
 
-export const paymentsRouter = null;
-
 const app = new Hono();
 
 /** Verify M-Pesa callback signature when MPESA_CALLBACK_SECRET is set. Uses HMAC-SHA256. */
