@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ApiProvider } from '@/providers/ApiProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -34,10 +35,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} pb-20`}>
         <QueryProvider>
-          <ApiProvider>
-            {children}
-            <BottomNavigation />
-          </ApiProvider>
+          <AuthProvider>
+            <ApiProvider>
+              {children}
+              <BottomNavigation />
+            </ApiProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

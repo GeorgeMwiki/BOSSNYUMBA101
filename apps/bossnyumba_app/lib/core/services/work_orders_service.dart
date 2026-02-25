@@ -7,9 +7,8 @@ class WorkOrdersService {
     final resp = await _api.get<Map<String, dynamic>>('/work-orders');
     if (!resp.isOk) return ApiResponse.error(resp.error ?? 'Unknown error', statusCode: resp.statusCode);
     final data = resp.data;
-    if (data is Map && data['items'] != null) {
-      return ApiResponse.ok(List<dynamic>.from(data['items'] as List));
-    }
+    if (data is Map && data['items'] != null) return ApiResponse.ok(List<dynamic>.from(data['items'] as List));
+    if (data is Map && data['workOrders'] != null) return ApiResponse.ok(List<dynamic>.from(data['workOrders'] as List));
     if (data is List) return ApiResponse.ok(data);
     return ApiResponse.ok([]);
   }
