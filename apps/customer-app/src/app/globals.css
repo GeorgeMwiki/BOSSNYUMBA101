@@ -2,33 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   BOSSNYUMBA Customer App - PropTech/Fintech Design System
+   Mobile-first tenant experience
+   ============================================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --surface: 0 0% 7%;
-    --surface-elevated: 0 0% 9%;
-    --surface-card: 0 0% 16%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --border: 0 0% 90%;
-    --radius: 0.5rem;
+    /* Core background - Light mode */
+    --background: 210 40% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    /* Surface hierarchy for cards and elevation */
+    --surface: 210 40% 98%;
+    --surface-elevated: 0 0% 100%;
+    --surface-card: 0 0% 100%;
+    --surface-hover: 210 40% 95%;
+
+    /* Primary - Deep Slate Blue */
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Accent - Emerald (CTA, links) */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 160 84% 39.4%;
+    --radius: 0.75rem;
+    --radius-card: 12px;
+    --radius-input: 8px;
   }
 
   .dark,
   html.dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --surface: 0 0% 7%;
-    --surface-elevated: 0 0% 9%;
-    --surface-card: 0 0% 14%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
-    --border: 0 0% 18%;
+    /* Dark mode - Deep Slate Blue background */
+    --background: 222.2 47.4% 11.2%;
+    --foreground: 210 40% 98%;
+
+    /* Dark surface hierarchy */
+    --surface: 222.2 47.4% 11.2%;
+    --surface-elevated: 222.2 47.4% 14.5%;
+    --surface-card: 222.2 47.4% 16%;
+    --surface-hover: 222.2 47.4% 20%;
+
+    /* Primary inverts in dark mode */
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    /* Accent - Emerald stays vibrant */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 160 84% 39.4%;
   }
 }
 
@@ -37,80 +96,119 @@
     @apply border-border;
   }
   html {
-    @apply antialiased;
+    @apply antialiased scroll-smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-[#121212] text-white;
+    @apply bg-background text-foreground font-sans;
     padding-bottom: env(safe-area-inset-bottom);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 }
 
-/* Spotify-style cards */
+/* ============================================================================
+   Customer App Component Styles
+   ============================================================================ */
+
 @layer components {
-  .card-spotify {
-    @apply rounded-spotify bg-surface-card p-4 transition-colors hover:bg-surface-hover;
+  /* Professional property cards */
+  .card-property {
+    @apply rounded-[var(--radius-card)] overflow-hidden bg-surface-card border border-border shadow-card transition-all duration-200;
   }
-  .card-album {
-    @apply rounded-spotify overflow-hidden bg-surface-card shadow-spotify transition-all hover:shadow-spotify-lg hover:scale-[1.02];
+  .card-property:hover {
+    @apply shadow-card-hover;
   }
-  /* Instagram-style feed card */
+
+  /* Feed card (community, announcements) */
   .card-feed {
-    @apply rounded-insta overflow-hidden bg-surface-card border border-white/5;
+    @apply rounded-[var(--radius-card)] overflow-hidden bg-surface-card border border-border;
   }
-  /* WhatsApp-style chat bubble */
+
+  /* Chat bubbles */
   .chat-bubble-sent {
-    @apply ml-auto max-w-[85%] rounded-chat rounded-br-md bg-spotify-green px-4 py-2.5 text-white;
+    @apply ml-auto max-w-[85%] rounded-chat rounded-br-md bg-emerald-500 px-4 py-2.5 text-white;
   }
   .chat-bubble-received {
-    @apply mr-auto max-w-[85%] rounded-chat rounded-bl-md bg-surface-card px-4 py-2.5 text-white;
+    @apply mr-auto max-w-[85%] rounded-chat rounded-bl-md bg-surface-card px-4 py-2.5 text-foreground;
+    @apply border border-border;
   }
-  /* Stories ring (Instagram/TikTok) */
+
+  /* Stories ring */
   .story-ring {
-    @apply rounded-story bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5;
+    @apply rounded-story bg-gradient-to-tr from-amber-400 via-emerald-400 to-emerald-600 p-0.5;
   }
   .story-ring-inner {
-    @apply rounded-story bg-surface p-0.5 flex items-center justify-center;
+    @apply rounded-story bg-background p-0.5 flex items-center justify-center;
   }
-  /* Bottom nav - Spotify dark */
+
+  /* Bottom navigation */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#121212];
+    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-lg;
     padding-bottom: env(safe-area-inset-bottom);
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-3 px-4 text-gray-400 transition-colors min-w-0 min-h-[56px];
+    @apply flex flex-col items-center justify-center py-3 px-4 text-muted-foreground transition-colors min-w-0 min-h-[56px];
   }
   .bottom-nav-item.active {
-    @apply text-spotify-green font-medium;
+    @apply text-emerald-500 font-medium;
   }
+
   /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-spotify px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-spotify-green focus:ring-offset-2 focus:ring-offset-[#121212] disabled:opacity-50 min-h-[44px];
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-input)] px-4 py-3 text-sm font-semibold transition-all duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:ring-offset-2 focus:ring-offset-background;
+    @apply disabled:opacity-50 disabled:pointer-events-none min-h-[44px];
   }
   .btn-primary {
-    @apply btn bg-spotify-green text-black hover:bg-spotify-green-hover active:scale-[0.98];
+    @apply btn bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98];
   }
   .btn-secondary {
-    @apply btn bg-surface-card text-white hover:bg-surface-hover border border-white/10;
+    @apply btn bg-surface-card text-foreground hover:bg-surface-hover border border-border;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-gray-400 hover:text-white hover:bg-white/5;
+    @apply btn bg-transparent text-muted-foreground hover:text-foreground hover:bg-surface-hover;
   }
+  .btn-cta {
+    @apply btn bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98] shadow-glow-amber;
+  }
+
   /* Inputs */
   .input {
-    @apply w-full rounded-spotify border border-white/10 bg-surface-card px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent min-h-[48px];
+    @apply w-full rounded-[var(--radius-input)] border border-input bg-background px-4 py-3 text-foreground;
+    @apply placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-emerald-500;
+    @apply min-h-[48px] transition-colors;
   }
-  /* Profile grid (Instagram) */
+
+  /* Profile grid */
   .profile-grid {
     @apply grid grid-cols-3 gap-0.5;
   }
   .profile-grid-item {
     @apply aspect-square bg-surface-card relative overflow-hidden;
   }
-  /* Marketplace vendor card (TikTok Shop style) */
+
+  /* Vendor card */
   .vendor-card {
-    @apply rounded-insta overflow-hidden bg-surface-card flex-shrink-0 w-[140px] transition-transform active:scale-95;
+    @apply rounded-[var(--radius-card)] overflow-hidden bg-surface-card border border-border flex-shrink-0 w-[140px] transition-transform active:scale-95;
+  }
+
+  /* Payment status badges */
+  .badge-paid {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400;
+  }
+  .badge-pending {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400;
+  }
+  .badge-overdue {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400;
   }
 }
+
+/* ============================================================================
+   Utility classes
+   ============================================================================ */
 
 @keyframes scale-in {
   from { transform: scale(0.8); opacity: 0; }

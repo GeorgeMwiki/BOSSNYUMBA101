@@ -64,22 +64,22 @@ export function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col">
-        <div className="p-6 border-b border-slate-700">
+      <aside className="fixed inset-y-0 left-0 w-64 bg-brand-900 text-white flex flex-col">
+        <div className="p-5 border-b border-brand-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-violet-600 rounded-lg flex items-center justify-center">
-              <Shield className="h-6 w-6" />
+            <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <Shield className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">BOSSNYUMBA</h1>
-              <p className="text-xs text-slate-400">Internal Admin</p>
+              <h1 className="font-bold text-lg text-white">BOSSNYUMBA</h1>
+              <p className="text-xs text-brand-400">Internal Admin</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -89,8 +89,8 @@ export function Layout() {
                 const isSectionActive = item.href !== '/' && (location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
                 return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive || isSectionActive
-                    ? 'bg-violet-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : 'text-brand-300 hover:bg-brand-800 hover:text-white'
                 }`;
               }}
             >
@@ -100,22 +100,22 @@ export function Layout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-brand-700">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 bg-violet-500 rounded-full flex items-center justify-center text-sm font-medium">
+            <div className="w-9 h-9 bg-emerald-500 rounded-full flex items-center justify-center text-sm font-medium text-white">
               {user?.firstName?.[0]}
               {user?.lastName?.[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="text-sm font-medium truncate text-white">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-slate-400 truncate">{user?.role}</p>
+              <p className="text-xs text-brand-400 truncate">{user?.role}</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -126,27 +126,27 @@ export function Layout() {
       {/* Main content */}
       <div className="flex-1 ml-64">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
+        <header className="sticky top-0 z-10 bg-card/95 backdrop-blur-lg border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl font-semibold text-foreground">
                 {getPageTitle()}
               </h1>
             </div>
 
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search..."
-                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 w-64"
+                  className="admin-search"
                 />
               </div>
 
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+              <button className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
               </button>
             </div>
           </div>

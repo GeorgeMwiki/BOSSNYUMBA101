@@ -2,50 +2,144 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   BOSSNYUMBA PropTech/Fintech Design System
+   Design Tokens & Custom Properties
+   ============================================================================
+   Primary:    Deep Slate Blue (#0F172A)
+   Accent:     Emerald (#10B981)
+   Warning:    Amber (#F59E0B)
+   Error:      Rose (#F43F5E)
+   Background: #F8FAFC (light) / #0F172A (dark)
+   Font:       Inter
+   Radius:     12px cards, 8px inputs
+   Shadows:    Subtle, layered
+   ============================================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Background & Foreground */
+    --background: 210 40% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    /* Card surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    /* Primary - Deep Slate Blue */
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
+
+    /* Secondary */
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
+    /* Muted */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+
+    /* Accent - Emerald */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
+    --ring: 160 84% 39.4%;
+
+    /* Radius */
+    --radius: 0.75rem;
+    --radius-card: 12px;
+    --radius-input: 8px;
+
+    /* Sidebar */
+    --sidebar: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+
+    /* Chart palette */
+    --chart-1: 160 84% 39.4%;
+    --chart-2: 37.7 96.3% 50.2%;
+    --chart-3: 222.2 47.4% 11.2%;
+    --chart-4: 349.7 89.3% 60.2%;
+    --chart-5: 200 98% 39.4%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Background & Foreground */
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+
+    /* Card surfaces */
+    --card: 222.2 47.4% 14.5%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+
+    /* Popover */
+    --popover: 222.2 47.4% 14.5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
+
+    /* Primary - stays same in dark */
+    --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
+
+    /* Secondary */
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+
+    /* Muted */
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+
+    /* Accent - Emerald */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+    --ring: 160 84% 39.4%;
+
+    /* Sidebar */
+    --sidebar: 222.2 47.4% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 14%;
+
+    /* Chart palette (dark) */
+    --chart-1: 160 84% 45%;
+    --chart-2: 37.7 96.3% 55%;
+    --chart-3: 210 40% 80%;
+    --chart-4: 349.7 89.3% 65%;
+    --chart-5: 200 98% 50%;
   }
 }
 
@@ -54,7 +148,160 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html {
+    @apply antialiased scroll-smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Improved focus styles for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    ring-color: hsl(var(--ring));
+    ring-offset-color: hsl(var(--background));
+  }
+
+  /* Selection color */
+  ::selection {
+    background-color: hsl(160 84% 39.4% / 0.2);
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ============================================================================
+   PropTech Component Utilities
+   ============================================================================ */
+
+@layer components {
+  /* Professional card with layered shadow */
+  .card-proptech {
+    @apply rounded-[var(--radius-card)] bg-card border border-border shadow-card transition-all duration-200;
+  }
+  .card-proptech:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Stat card for dashboards */
+  .stat-card {
+    @apply card-proptech p-6;
+  }
+
+  /* Input with PropTech styling */
+  .input-proptech {
+    @apply w-full rounded-[var(--radius-input)] border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-accent;
+  }
+
+  /* Buttons */
+  .btn-proptech {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-input)] px-4 py-2.5 text-sm font-semibold transition-all duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:ring-offset-2;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn-proptech bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700;
+    @apply focus:ring-emerald-500/20;
+  }
+
+  .btn-secondary {
+    @apply btn-proptech bg-brand-900 text-white hover:bg-brand-800 active:bg-brand-700;
+    @apply focus:ring-brand-900/20;
+  }
+
+  .btn-outline {
+    @apply btn-proptech border border-border bg-transparent text-foreground hover:bg-muted active:bg-muted/80;
+  }
+
+  .btn-ghost {
+    @apply btn-proptech bg-transparent text-foreground hover:bg-muted active:bg-muted/80;
+  }
+
+  .btn-warning {
+    @apply btn-proptech bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700;
+    @apply focus:ring-amber-500/20;
+  }
+
+  .btn-danger {
+    @apply btn-proptech bg-rose-500 text-white hover:bg-rose-600 active:bg-rose-700;
+    @apply focus:ring-rose-500/20;
+  }
+
+  /* Badge styles */
+  .badge-proptech {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge-proptech bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400;
+  }
+
+  .badge-warning {
+    @apply badge-proptech bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400;
+  }
+
+  .badge-error {
+    @apply badge-proptech bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400;
+  }
+
+  .badge-info {
+    @apply badge-proptech bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300;
+  }
+
+  /* Sidebar navigation */
+  .sidebar-proptech {
+    @apply fixed inset-y-0 left-0 w-64 bg-brand-900 text-white flex flex-col;
+  }
+
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-input)] text-sm font-medium transition-colors;
+    @apply text-brand-300 hover:bg-brand-800 hover:text-white;
+  }
+
+  .sidebar-nav-item.active {
+    @apply bg-emerald-500/15 text-emerald-400;
+  }
+
+  /* Table row hover */
+  .table-row-proptech {
+    @apply border-b border-border transition-colors hover:bg-muted/50;
+  }
+}
+
+/* ============================================================================
+   Scrollbar Styling
+   ============================================================================ */
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

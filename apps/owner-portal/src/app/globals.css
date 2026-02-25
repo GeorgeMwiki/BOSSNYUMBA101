@@ -2,50 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   BOSSNYUMBA Owner Portal - PropTech/Fintech Design Tokens
+   ============================================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Background & Foreground */
+    --background: 210 40% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    /* Card surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    /* Primary - Deep Slate Blue */
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
+
+    /* Secondary */
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
+    /* Muted */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+
+    /* Accent - Emerald */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
+    --ring: 160 84% 39.4%;
+    --radius: 0.75rem;
+    --radius-card: 12px;
+    --radius-input: 8px;
+
+    /* Sidebar */
+    --sidebar: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 17.5%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 47.4% 14.5%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 47.4% 14.5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
+    --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+    --ring: 160 84% 39.4%;
+    --sidebar: 222.2 47.4% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 14%;
   }
 }
 
@@ -54,7 +99,57 @@
     @apply border-border;
   }
 
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+
+  ::selection {
+    background-color: hsl(160 84% 39.4% / 0.2);
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ============================================================================
+   Owner Portal Component Styles
+   ============================================================================ */
+
+@layer components {
+  /* Dashboard stat cards */
+  .stat-card {
+    @apply rounded-[var(--radius-card)] bg-card border border-border shadow-card p-6 transition-all duration-200;
+  }
+  .stat-card:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Revenue indicator */
+  .trend-up {
+    @apply text-emerald-600 font-medium;
+  }
+  .trend-down {
+    @apply text-rose-600 font-medium;
+  }
+  .trend-neutral {
+    @apply text-amber-600 font-medium;
+  }
+
+  /* Property list cards */
+  .property-card {
+    @apply rounded-[var(--radius-card)] bg-card border border-border shadow-card p-5 transition-all duration-200 cursor-pointer;
+  }
+  .property-card:hover {
+    @apply shadow-card-hover border-emerald-200;
+  }
+
+  /* KPI meter */
+  .kpi-bar {
+    @apply h-2 rounded-full bg-muted overflow-hidden;
+  }
+  .kpi-bar-fill {
+    @apply h-full rounded-full bg-emerald-500 transition-all duration-500;
   }
 }

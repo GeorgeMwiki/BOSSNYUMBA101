@@ -2,50 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   BOSSNYUMBA Estate Manager App - PropTech/Fintech Design System
+   Field operations management (mobile + tablet)
+   ============================================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Background & Foreground */
+    --background: 210 40% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    /* Card surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    /* Primary - Deep Slate Blue */
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
+
+    /* Secondary */
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
+    /* Muted */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+
+    /* Accent - Emerald */
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive - Rose */
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
+    --ring: 160 84% 39.4%;
+    --radius: 0.75rem;
+    --radius-card: 12px;
+    --radius-input: 8px;
+
+    /* Sidebar */
+    --sidebar: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 17.5%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 47.4% 14.5%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 47.4% 14.5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
+    --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 160 84% 39.4%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 349.7 89.3% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 37.7 96.3% 50.2%;
+    --warning-foreground: 0 0% 100%;
+    --success: 160 84% 39.4%;
+    --success-foreground: 0 0% 100%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+    --ring: 160 84% 39.4%;
+    --sidebar: 222.2 47.4% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 160 84% 39.4%;
+    --sidebar-border: 217.2 32.6% 14%;
   }
 }
 
@@ -54,116 +100,153 @@
     @apply border-border;
   }
 
+  html {
+    @apply antialiased scroll-smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    padding-bottom: env(safe-area-inset-bottom);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    background-color: hsl(160 84% 39.4% / 0.2);
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ============================================================================
+   Estate Manager Component Styles
+   ============================================================================ */
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-input)] px-4 py-2.5 text-sm font-semibold transition-all duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:ring-offset-2;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700;
+    @apply focus:ring-emerald-500/20;
+  }
+  .btn-secondary {
+    @apply btn bg-muted text-foreground hover:bg-muted/80;
+  }
+  .btn-success {
+    @apply btn bg-emerald-500 text-white hover:bg-emerald-600;
+    @apply focus:ring-emerald-500/20;
+  }
+  .btn-danger {
+    @apply btn bg-rose-500 text-white hover:bg-rose-600;
+    @apply focus:ring-rose-500/20;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-primary {
+    @apply badge bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300;
+  }
+  .badge-info {
+    @apply badge bg-brand-100 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300;
+  }
+  .badge-success {
+    @apply badge bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400;
+  }
+  .badge-warning {
+    @apply badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400;
+  }
+  .badge-danger {
+    @apply badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400;
+  }
+  .badge-gray {
+    @apply badge bg-muted text-muted-foreground;
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-[var(--radius-card)] border border-border bg-card shadow-card;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full rounded-[var(--radius-input)] border border-input bg-background px-3.5 py-2.5 text-sm;
+    @apply placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors;
+  }
+
+  /* Label */
+  .label {
+    @apply block text-sm font-medium text-foreground mb-1;
+  }
+
+  /* Kanban board */
+  .kanban-column {
+    @apply flex-shrink-0 w-72 rounded-[var(--radius-card)] bg-muted/50 border border-border p-3;
+  }
+  .kanban-card {
+    @apply card p-3 cursor-grab active:cursor-grabbing hover:shadow-card-hover transition-shadow;
+  }
+
+  /* Bottom navigation */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-40;
     padding-bottom: env(safe-area-inset-bottom);
   }
-}
-
-@layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-  }
-  .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
-  }
-  .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
-  }
-  .btn-success {
-    @apply btn bg-success-500 text-white hover:bg-success-600 focus:ring-success-500;
-  }
-  .btn-danger {
-    @apply btn bg-danger-500 text-white hover:bg-danger-600 focus:ring-danger-500;
-  }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-  }
-  .badge-primary { @apply badge bg-primary-100 text-primary-600; }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .badge-gray { @apply badge bg-gray-100 text-gray-600; }
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
-  }
-  .input {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
-  .kanban-column {
-    @apply flex-shrink-0 w-72 rounded-xl bg-gray-50 border border-gray-200 p-3;
-  }
-  .kanban-card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow;
-  }
-  .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40;
-  }
   .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-4 text-gray-500 transition-colors min-w-0;
+    @apply flex flex-col items-center justify-center py-2 px-4 text-muted-foreground transition-colors min-w-0;
   }
   .bottom-nav-item.active {
-    @apply text-primary-500;
+    @apply text-emerald-500;
   }
-  .sla-breached { @apply text-danger-600 font-medium; }
-  .sla-warning { @apply text-warning-600; }
-  .sla-ok { @apply text-success-600; }
+
+  /* SLA indicators */
+  .sla-breached {
+    @apply text-rose-600 font-medium;
+  }
+  .sla-warning {
+    @apply text-amber-600;
+  }
+  .sla-ok {
+    @apply text-emerald-600;
+  }
+
+  /* Work order priority tags */
+  .priority-critical {
+    @apply bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20;
+  }
+  .priority-high {
+    @apply bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20;
+  }
+  .priority-medium {
+    @apply bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:border-brand-500/20;
+  }
+  .priority-low {
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20;
+  }
 }
 
-@layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-  }
-  .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
-  }
-  .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
-  }
-  .btn-success {
-    @apply btn bg-success-500 text-white hover:bg-success-600 focus:ring-success-500;
-  }
-  .btn-danger {
-    @apply btn bg-danger-500 text-white hover:bg-danger-600 focus:ring-danger-500;
-  }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-  }
-  .badge-primary { @apply badge bg-primary-100 text-primary-600; }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .badge-gray { @apply badge bg-gray-100 text-gray-600; }
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
-  }
-  .input {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
-  .kanban-column {
-    @apply flex-shrink-0 w-72 rounded-xl bg-gray-50 border border-gray-200 p-3;
-  }
-  .kanban-card {
-    @apply card p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow;
-  }
-  .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-pb;
-  }
-  .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-4 text-gray-500 transition-colors;
-  }
-  .bottom-nav-item.active {
-    @apply text-primary-500;
-  }
-  .sla-breached { @apply text-danger-600 font-medium; }
-  .sla-warning { @apply text-warning-600; }
-  .sla-ok { @apply text-success-600; }
+/* Scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
 }

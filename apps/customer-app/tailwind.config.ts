@@ -10,35 +10,36 @@ const config: Config = {
   theme: {
     ...baseConfig.theme,
     extend: {
-      ...(baseConfig.theme as { extend?: object })?.extend,
+      ...(baseConfig.theme as { extend?: Record<string, unknown> })?.extend,
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+        ...((baseConfig.theme as { extend?: { colors?: Record<string, unknown> } })?.extend?.colors ?? {}),
+
+        // Customer-app specific surface tokens for mobile-first dark UI
+        surface: {
+          DEFAULT: 'hsl(var(--surface))',
+          elevated: 'hsl(var(--surface-elevated))',
+          card: 'hsl(var(--surface-card))',
+          hover: 'hsl(var(--surface-hover))',
         },
-        success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-        },
-        warning: {
-          50: '#fffbeb',
-          500: '#f59e0b',
-          600: '#d97706',
-        },
-        danger: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
-        },
+
+        // Quick access semantic colors
+        'proptech-primary': '#0F172A',
+        'proptech-accent': '#10B981',
+        'proptech-warning': '#F59E0B',
+        'proptech-error': '#F43F5E',
+      },
+      borderRadius: {
+        ...((baseConfig.theme as { extend?: { borderRadius?: Record<string, string> } })?.extend?.borderRadius ?? {}),
+        'card': '12px',
+        'input': '8px',
+        'chat': '18px',
+        'insta': '16px',
+        'story': '9999px',
+      },
+      boxShadow: {
+        ...((baseConfig.theme as { extend?: { boxShadow?: Record<string, string> } })?.extend?.boxShadow ?? {}),
+        'mobile': '0 -1px 3px 0 rgba(15, 23, 42, 0.06)',
+        'mobile-card': '0 2px 8px 0 rgba(15, 23, 42, 0.06)',
       },
     },
   },

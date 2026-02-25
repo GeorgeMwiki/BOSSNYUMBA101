@@ -57,32 +57,34 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
+          className="fixed inset-0 z-40 bg-brand-900/60 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Mobile sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform duration-200 ease-in-out lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-brand-900 transform transition-transform duration-200 ease-in-out lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between px-4 py-4 border-b">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-brand-700">
             <div className="flex items-center gap-2">
-              <Home className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">BOSSNYUMBA</span>
+              <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center">
+                <Home className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">BOSSNYUMBA</span>
             </div>
             <button onClick={() => setSidebarOpen(false)}>
-              <X className="h-6 w-6 text-gray-500" />
+              <X className="h-6 w-6 text-brand-400" />
             </button>
           </div>
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
             {navigation.map((item) => {
               const isActive = location.pathname.startsWith(item.href);
               return (
@@ -90,10 +92,10 @@ export function Layout({ children }: LayoutProps) {
                   key={item.name}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'text-brand-300 hover:bg-brand-800 hover:text-white'
                   }`}
                 >
                   <item.icon className="h-5 w-5" />
@@ -107,25 +109,27 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-          <div className="flex items-center gap-2 px-4 py-4 border-b">
-            <Home className="h-8 w-8 text-blue-600" />
+        <div className="flex flex-col flex-grow bg-brand-900">
+          <div className="flex items-center gap-3 px-4 py-5 border-b border-brand-700">
+            <div className="h-9 w-9 rounded-lg bg-emerald-500 flex items-center justify-center">
+              <Home className="h-5 w-5 text-white" />
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">BOSSNYUMBA</h1>
-              <p className="text-xs text-gray-500">Owner Portal</p>
+              <h1 className="text-lg font-bold text-white">BOSSNYUMBA</h1>
+              <p className="text-xs text-brand-400">Owner Portal</p>
             </div>
           </div>
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
             {navigation.map((item) => {
               const isActive = location.pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'text-brand-300 hover:bg-brand-800 hover:text-white'
                   }`}
                 >
                   <item.icon className="h-5 w-5" />
@@ -134,17 +138,17 @@ export function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
-          <div className="border-t border-gray-200 p-4">
+          <div className="border-t border-brand-700 p-4">
             <Link
               to="/settings"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-brand-300 hover:bg-brand-800 hover:text-white transition-colors"
             >
               <Settings className="h-5 w-5" />
               Settings
             </Link>
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50"
+              className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-colors"
             >
               <LogOut className="h-5 w-5" />
               Sign Out
@@ -156,33 +160,33 @@ export function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/95 backdrop-blur-lg px-4 sm:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden -m-2.5 p-2.5 text-gray-700"
+            className="lg:hidden -m-2.5 p-2.5 text-foreground"
           >
             <Menu className="h-6 w-6" />
           </button>
 
           <div className="flex-1" />
 
-          <button className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100">
+          <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted transition-colors">
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-medium text-white">
               3
             </span>
           </button>
 
-          <div className="flex items-center gap-3 border-l pl-4">
-            <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
+          <div className="flex items-center gap-3 border-l border-border pl-4">
+            <div className="h-9 w-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-medium text-sm">
               {user?.firstName?.[0]}
               {user?.lastName?.[0]}
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium text-foreground">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-gray-500">{tenant?.name}</p>
+              <p className="text-xs text-muted-foreground">{tenant?.name}</p>
             </div>
           </div>
         </header>
