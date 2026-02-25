@@ -1,19 +1,27 @@
+'use client';
+
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@bossnyumba/design-system';
+import { useI18n, LanguageSwitcher } from '@bossnyumba/i18n';
 
 export default function AdminPortalHome() {
+  const { t } = useI18n();
+
   return (
     <main className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">BOSSNYUMBA Admin Portal</h1>
-          <Badge variant="secondary">Internal</Badge>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{t('admin.dashboard.title')}</h1>
+            <Badge variant="secondary">Internal</Badge>
+          </div>
+          <LanguageSwitcher className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader>
-              <CardTitle>Total Tenants</CardTitle>
-              <CardDescription>Active organizations</CardDescription>
+              <CardTitle>{t('admin.dashboard.totalTenants')}</CardTitle>
+              <CardDescription>{t('admin.dashboard.platformOverview')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -22,8 +30,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Total Properties</CardTitle>
-              <CardDescription>Across all tenants</CardDescription>
+              <CardTitle>{t('admin.dashboard.totalProperties')}</CardTitle>
+              <CardDescription>{t('admin.dashboard.platformOverview')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -32,8 +40,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Active Users</CardTitle>
-              <CardDescription>Platform-wide</CardDescription>
+              <CardTitle>{t('admin.dashboard.totalUsers')}</CardTitle>
+              <CardDescription>{t('admin.dashboard.platformOverview')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -42,8 +50,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Support Tickets</CardTitle>
-              <CardDescription>Open tickets</CardDescription>
+              <CardTitle>{t('admin.dashboard.systemHealth')}</CardTitle>
+              <CardDescription>{t('admin.platform.systemStatus')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -54,36 +62,36 @@ export default function AdminPortalHome() {
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Tenant Management</CardTitle>
-              <CardDescription>Manage organizations on the platform</CardDescription>
+              <CardTitle>{t('admin.dashboard.totalTenants')}</CardTitle>
+              <CardDescription>{t('admin.dashboard.platformOverview')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start">
-                Create New Tenant
+                {t('common.actions.create')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                View All Tenants
+                {t('common.actions.view')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                Subscription Management
+                {t('admin.platform.subscriptions')}
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Platform Operations</CardTitle>
-              <CardDescription>System administration tools</CardDescription>
+              <CardTitle>{t('admin.platform.title')}</CardTitle>
+              <CardDescription>{t('admin.platform.systemStatus')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start">
-                Audit Logs
+                {t('admin.compliance.auditLog')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                System Health
+                {t('admin.dashboard.systemHealth')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                Feature Flags
+                {t('admin.platform.featureFlags')}
               </Button>
             </CardContent>
           </Card>

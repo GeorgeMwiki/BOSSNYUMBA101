@@ -13,6 +13,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useI18n } from '@bossnyumba/i18n';
 import type { Payment } from '@/lib/payment-types';
 import {
   MOCK_PAYMENTS,
@@ -21,25 +22,26 @@ import {
   filterPaymentsByDateRange,
 } from '@/lib/payments-data';
 
-const statusConfig = {
-  paid: { label: 'Paid', icon: CheckCircle, color: 'badge-success' },
-  pending: { label: 'Pending', icon: Clock, color: 'badge-warning' },
-  overdue: { label: 'Overdue', icon: AlertCircle, color: 'badge-danger' },
-  processing: { label: 'Processing', icon: Clock, color: 'badge-info' },
-  failed: { label: 'Failed', icon: AlertCircle, color: 'badge-danger' },
-};
-
-const typeLabels: Record<string, string> = {
-  rent: 'Monthly Rent',
-  utilities: 'Utilities',
-  deposit: 'Security Deposit',
-  late_fee: 'Late Fee',
-  other: 'Other',
-};
-
 export default function PaymentsPage() {
+  const { t } = useI18n();
   const [dateRange, setDateRange] = useState('all');
   const [showFilter, setShowFilter] = useState(false);
+
+  const statusConfig = {
+    paid: { label: t('common.status.completed'), icon: CheckCircle, color: 'badge-success' },
+    pending: { label: t('common.status.pending'), icon: Clock, color: 'badge-warning' },
+    overdue: { label: t('common.status.overdue'), icon: AlertCircle, color: 'badge-danger' },
+    processing: { label: t('payments.status.processing'), icon: Clock, color: 'badge-info' },
+    failed: { label: t('payments.status.failed'), icon: AlertCircle, color: 'badge-danger' },
+  };
+
+  const typeLabels: Record<string, string> = {
+    rent: t('customer.payments.title'),
+    utilities: t('customer.utilities.title'),
+    deposit: t('customer.lease.deposit'),
+    late_fee: t('common.status.overdue'),
+    other: t('maintenance.categories.other'),
+  };
 
   const filteredPayments = filterPaymentsByDateRange(MOCK_PAYMENTS, dateRange);
   const pendingPayments = filteredPayments.filter(
@@ -50,13 +52,13 @@ export default function PaymentsPage() {
   return (
     <>
       <PageHeader
-        title="Payments"
+        title={t('customer.payments.title')}
         action={
           <div className="relative">
             <button
               onClick={() => setShowFilter(!showFilter)}
               className="p-2 rounded-lg hover:bg-gray-100 flex items-center gap-1"
-              aria-label="Filter by date"
+              aria-label={t('common.actions.filter')}
             >
               <Filter className="w-5 h-5" />
               <ChevronDown className="w-4 h-4" />
@@ -92,9 +94,9 @@ export default function PaymentsPage() {
       />
 
       <div className="px-4 py-4 space-y-6 pb-24">
-        {/* Balance Card - prominent display */}
+        {/* Balance Card */}
         <div className="card p-6 bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg">
-          <div className="text-sm opacity-90 mb-1">Current Balance Due</div>
+          <div className="text-sm opacity-90 mb-1">{t('customer.payments.amountDue')}</div>
           <div className="text-4xl font-bold mb-6">
             KES {CURRENT_BALANCE.toLocaleString()}
           </div>
@@ -104,7 +106,7 @@ export default function PaymentsPage() {
               className="btn bg-white text-primary-700 w-full py-5 text-lg font-semibold justify-center flex items-center gap-2 min-h-[56px] active:scale-[0.98] transition-transform"
             >
               <CreditCard className="w-6 h-6" />
-              Pay Now
+              {t('customer.payments.payNow')}
             </Link>
             <div className="flex gap-2">
               <Link
@@ -112,14 +114,14 @@ export default function PaymentsPage() {
                 className="btn bg-primary-500/80 text-white py-3 px-4 flex-1 flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
-                History
+                {t('customer.payments.paymentHistory')}
               </Link>
               <Link
                 href={`/payments/plan?amount=${CURRENT_BALANCE}`}
                 className="btn bg-primary-500/80 text-white py-3 px-4 flex-1 flex items-center justify-center gap-2"
               >
                 <Calendar className="w-5 h-5" />
-                Payment Plan
+                {t('customer.payments.paymentPlan')}
               </Link>
             </div>
           </div>
@@ -127,25 +129,25 @@ export default function PaymentsPage() {
 
         {/* Payment History */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Payment History</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('customer.payments.paymentHistory')}</h2>
           <div className="space-y-3">
             {pendingPayments.length > 0 && (
               <>
                 <div className="text-xs text-gray-400 mb-2">
-                  Pending ({pendingPayments.length})
+                  {t('common.status.pending')} ({pendingPayments.length})
                 </div>
                 {pendingPayments.map((payment) => (
-                  <PaymentCard key={payment.id} payment={payment} />
+                  <PaymentCard key={payment.id} payment={payment} statusConfig={statusConfig} typeLabels={typeLabels} t={t} />
                 ))}
               </>
             )}
             {completedPayments.map((payment) => (
-              <PaymentCard key={payment.id} payment={payment} />
+              <PaymentCard key={payment.id} payment={payment} statusConfig={statusConfig} typeLabels={typeLabels} t={t} />
             ))}
             {filteredPayments.length === 0 && (
               <div className="card p-8 text-center text-gray-500">
                 <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p>No payments in this period</p>
+                <p>{t('common.empty.noResults')}</p>
               </div>
             )}
           </div>
@@ -155,14 +157,24 @@ export default function PaymentsPage() {
           href="/payments/history"
           className="block text-center text-sm text-primary-600 py-4"
         >
-          View Full History →
+          {t('common.actions.showMore')} &rarr;
         </Link>
       </div>
     </>
   );
 }
 
-function PaymentCard({ payment }: { payment: Payment }) {
+function PaymentCard({
+  payment,
+  statusConfig,
+  typeLabels,
+  t,
+}: {
+  payment: Payment;
+  statusConfig: Record<string, { label: string; icon: React.ElementType; color: string }>;
+  typeLabels: Record<string, string>;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
   const status = statusConfig[payment.status] || statusConfig.pending;
   const StatusIcon = status.icon;
 
@@ -173,7 +185,7 @@ function PaymentCard({ payment }: { payment: Payment }) {
           <div>
             <div className="font-medium">{typeLabels[payment.type]}</div>
             <div className="text-sm text-gray-500">
-              Due: {new Date(payment.dueDate).toLocaleDateString()}
+              {t('customer.payments.dueDate')}: {new Date(payment.dueDate).toLocaleDateString()}
             </div>
           </div>
           <div className="text-right">
@@ -186,7 +198,7 @@ function PaymentCard({ payment }: { payment: Payment }) {
         </div>
         {payment.paidDate && (
           <div className="text-xs text-gray-400 mt-2">
-            Paid on {new Date(payment.paidDate).toLocaleDateString()} via {payment.channel}
+            {t('customer.payments.paidOn')} {new Date(payment.paidDate).toLocaleDateString()} via {payment.channel}
           </div>
         )}
       </div>
