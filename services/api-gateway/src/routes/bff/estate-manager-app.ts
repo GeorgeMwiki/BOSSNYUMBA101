@@ -192,66 +192,51 @@ estateManagerAppRouter.get('/home', async (c) => {
  * GET /manager/briefing - Morning briefing
  */
 estateManagerAppRouter.get('/briefing', async (c) => {
+  const dataService = getDataService();
+
+  const [workOrders, inspections, occupancy, collections, leases] = await Promise.all([
+    dataService.getWorkOrders({}, { page: 1, pageSize: 200 }),
+    dataService.getInspections({ status: 'scheduled' }, { page: 1, pageSize: 50 }),
+    dataService.getOccupancySummary(),
+    dataService.getCollections({ page: 1, pageSize: 50 }),
+    dataService.getLeases({ page: 1, pageSize: 50 }, { status: 'active' }),
+  ]);
+
+  const woData = workOrders.data as Array<{ id: string; title: string; priority: string; status: string; created_at?: string; createdAt?: string }>;
+  const openWos = woData.filter((wo) => !['completed', 'cancelled'].includes(wo.status));
+  const urgentWos = openWos.filter((wo) => wo.priority === 'emergency' || wo.priority === 'high');
+  const occData = occupancy as { summary?: { occupancyRate?: number } };
+  const collectionsData = collections as { summary?: { totalOutstanding?: number; tenantsInArrears?: number } };
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayInspections = (inspections.data as Array<{ scheduledDate?: string; scheduled_date?: string; type?: string; description?: string }>)
+    .filter((i) => (i.scheduledDate || i.scheduled_date || '').startsWith(todayStr));
+
   const briefing = {
-    date: new Date().toISOString().split('T')[0],
+    date: todayStr,
     generatedAt: new Date().toISOString(),
     summary: {
-      headline: 'Good morning! Here is your daily briefing.',
+      headline: `${getTimeBasedGreeting()}! Here is your daily briefing.`,
       keyMetrics: {
-        occupancyRate: { value: 0.92, change: 0.01, trend: 'up' },
-        collectionRate: { value: 0.89, change: -0.02, trend: 'down' },
-        openWorkOrders: { value: 15, change: 3, trend: 'up' },
-        avgResolutionDays: { value: 2.3, change: -0.2, trend: 'down' },
+        occupancyRate: { value: occData.summary?.occupancyRate || 0, change: 0, trend: 'stable' },
+        collectionRate: { value: 0, change: 0, trend: 'stable' },
+        openWorkOrders: { value: openWos.length, change: 0, trend: 'stable' },
+        avgResolutionDays: { value: 0, change: 0, trend: 'stable' },
       },
     },
-    urgentItems: [
-      {
-        type: 'work_order',
-        id: 'wo-001',
-        title: 'Water leak - Unit A3',
-        priority: 'emergency',
-        detail: 'Submitted 2 hours ago. Customer reports water damage.',
-        suggestedAction: 'Assign to ABC Plumbing immediately',
-      },
-      {
-        type: 'payment',
-        id: 'arr-001',
-        title: 'Arrears: Jane Smith - Unit B2',
-        priority: 'high',
-        detail: '25 days overdue. TSh 1,600,000 outstanding.',
-        suggestedAction: 'Contact for payment plan or escalate',
-      },
-    ],
-    scheduledToday: [
-      { time: '09:00', type: 'inspection', description: 'Move-in inspection - Unit C1', customer: 'New Tenant' },
-      { time: '11:00', type: 'vendor_visit', description: 'AC servicing - Block A', vendor: 'Cool Air Services' },
-      { time: '14:00', type: 'inspection', description: 'Routine inspection - Unit A5', customer: 'John Doe' },
-    ],
-    expiringSoon: {
-      leases: [
-        { customerId: 'cust-001', name: 'Mary Johnson', unit: 'A2', expiresIn: 30, renewalStatus: 'pending' },
-        { customerId: 'cust-002', name: 'Peter Mwangi', unit: 'B4', expiresIn: 45, renewalStatus: 'not_started' },
-      ],
-      documents: [
-        { type: 'insurance', vendorName: 'ABC Plumbing', expiresIn: 14 },
-      ],
-    },
-    vendorPerformance: {
-      topPerformer: { name: 'ABC Plumbing', score: 4.8, completedThisWeek: 5 },
-      needsAttention: { name: 'XYZ Electrical', score: 3.2, reopenRate: 0.25 },
-    },
-    aiInsights: [
-      {
-        type: 'churn_risk',
-        message: 'Unit A5 tenant showing elevated churn risk (72%). Consider proactive engagement.',
-        confidence: 0.72,
-      },
-      {
-        type: 'maintenance_prediction',
-        message: 'Block B water pump likely to need service within 30 days based on usage patterns.',
-        confidence: 0.68,
-      },
-    ],
+    urgentItems: urgentWos.slice(0, 5).map((wo) => ({
+      type: 'work_order',
+      id: wo.id,
+      title: wo.title,
+      priority: wo.priority,
+      detail: `Status: ${wo.status}`,
+      suggestedAction: wo.status === 'submitted' ? 'Triage and assign' : 'Follow up',
+    })),
+    scheduledToday: todayInspections.slice(0, 10).map((i) => ({
+      time: '', type: 'inspection', description: i.description || i.type || 'Inspection', customer: '',
+    })),
+    expiringSoon: { leases: [], documents: [] },
+    vendorPerformance: { topPerformer: null, needsAttention: null },
+    aiInsights: [],
   };
 
   return c.json({ success: true, data: briefing });
@@ -290,89 +275,12 @@ estateManagerAppRouter.get(
  */
 estateManagerAppRouter.get('/work-orders/:id', async (c) => {
   const workOrderId = c.req.param('id');
+  const dataService = getDataService();
 
-  const workOrder = {
-    id: workOrderId,
-    number: 'WO-2024-0150',
-    property: {
-      id: 'prop-001',
-      name: 'Masaki Heights',
-      address: 'Plot 123, Masaki, Dar es Salaam',
-    },
-    unit: {
-      id: 'unit-003',
-      number: 'A3',
-      type: '2 Bedroom',
-      floor: 1,
-    },
-    customer: {
-      id: 'cust-001',
-      name: 'Jane Smith',
-      phone: '+255700000010',
-      email: 'jane@example.com',
-      permissionToEnter: true,
-      entryInstructions: 'Key with security guard',
-    },
-    category: 'plumbing',
-    priority: 'high',
-    source: 'customer_app',
-    title: 'Water leak in bathroom',
-    description: 'Water leak under bathroom sink causing damage. Water is pooling on the floor.',
-    location: 'Bathroom - under sink',
-    status: 'assigned',
-    sla: {
-      submittedAt: '2024-02-28T10:00:00Z',
-      responseDue: new Date(Date.now() + 7200000).toISOString(),
-      resolutionDue: new Date(Date.now() + 86400000).toISOString(),
-      responseBreached: false,
-      resolutionBreached: false,
-      pausedAt: null,
-    },
-    triage: {
-      triagerdBy: 'system',
-      triageMethod: 'ai',
-      originalCategory: 'plumbing',
-      originalPriority: 'high',
-      confidence: 0.92,
-      triageNotes: 'AI triage: Water leak detected. High priority due to potential water damage.',
-    },
-    vendor: {
-      id: 'vendor-001',
-      name: 'ABC Plumbing',
-      phone: '+255700000020',
-      email: 'contact@abcplumbing.co.tz',
-      rating: 4.5,
-      completedJobs: 45,
-      avgResponseTime: '2 hours',
-    },
-    vendorRecommendations: [
-      { vendorId: 'vendor-001', name: 'ABC Plumbing', score: 0.92, reason: 'Highest rated, fastest response' },
-      { vendorId: 'vendor-003', name: 'Quick Fix Plumbing', score: 0.78, reason: 'Good rating, available now' },
-    ],
-    costs: {
-      estimated: 250000,
-      quoted: null,
-      actual: null,
-      laborHours: null,
-      materialsCost: null,
-    },
-    timeline: [
-      { status: 'submitted', timestamp: '2024-02-28T10:00:00Z', actor: 'Jane Smith (Customer)', notes: null },
-      { status: 'triaged', timestamp: '2024-02-28T10:05:00Z', actor: 'System (AI)', notes: 'Category: plumbing, Priority: high' },
-      { status: 'pending_approval', timestamp: '2024-02-28T10:10:00Z', actor: 'System', notes: 'Requires approval - estimated cost > threshold' },
-      { status: 'approved', timestamp: '2024-02-28T11:00:00Z', actor: 'Alice Manager', notes: 'Approved for immediate dispatch' },
-      { status: 'assigned', timestamp: '2024-02-28T11:30:00Z', actor: 'Alice Manager', notes: 'Assigned to ABC Plumbing' },
-    ],
-    attachments: [
-      { id: 'att-001', type: 'image', url: '/attachments/wo-001-1.jpg', description: 'Photo of leak', uploadedBy: 'customer', uploadedAt: '2024-02-28T10:00:00Z' },
-      { id: 'att-002', type: 'image', url: '/attachments/wo-001-2.jpg', description: 'Water damage', uploadedBy: 'customer', uploadedAt: '2024-02-28T10:00:00Z' },
-    ],
-    communications: [
-      { type: 'notification', to: 'customer', message: 'Work order received', timestamp: '2024-02-28T10:00:00Z', status: 'delivered' },
-      { type: 'notification', to: 'vendor', message: 'New assignment', timestamp: '2024-02-28T11:30:00Z', status: 'delivered' },
-    ],
-    availableActions: ['schedule', 'reassign', 'contact_customer', 'contact_vendor', 'add_note', 'cancel'],
-  };
+  const workOrder = await dataService.getWorkOrderById(workOrderId);
+  if (!workOrder) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } }, 404);
+  }
 
   return c.json({ success: true, data: workOrder });
 });
@@ -630,37 +538,12 @@ estateManagerAppRouter.post(
  */
 estateManagerAppRouter.get('/inspections/:id', async (c) => {
   const inspectionId = c.req.param('id');
+  const dataService = getDataService();
 
-  const inspection = {
-    id: inspectionId,
-    type: 'move_in',
-    property: { id: 'prop-001', name: 'Masaki Heights', address: 'Plot 123, Masaki' },
-    unit: { id: 'unit-010', number: 'C1', type: '2 Bedroom', floor: 3 },
-    customer: { id: 'cust-new', name: 'New Tenant', phone: '+255700000030', email: 'new@example.com' },
-    status: 'in_progress',
-    scheduledDate: new Date().toISOString().split('T')[0],
-    scheduledTime: '09:00',
-    inspector: { id: 'usr-001', name: 'Alice Manager' },
-    checklist: {
-      rooms: ['Living Room', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony'],
-      itemsPerRoom: ['Walls', 'Floor', 'Ceiling', 'Windows', 'Doors', 'Electrical Outlets', 'Light Fixtures'],
-      additionalItems: ['Water Heater', 'AC Unit', 'Kitchen Appliances', 'Smoke Detectors'],
-    },
-    meterReadings: {
-      electricity: { meterId: 'LUKU-12345', required: true, reading: null },
-      water: { meterId: 'WTR-C1-2024', required: true, reading: null },
-    },
-    keysHandover: {
-      mainDoor: { quantity: 2, handed: false },
-      backDoor: { quantity: 1, handed: false },
-      mailbox: { quantity: 1, handed: false },
-      remote: { quantity: 1, handed: false },
-    },
-    completedItems: [],
-    baselineComparison: null, // For move_out, this would have move_in data
-    createdAt: '2024-02-27T10:00:00Z',
-    startedAt: new Date().toISOString(),
-  };
+  const inspection = await dataService.getInspectionById(inspectionId);
+  if (!inspection) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Inspection not found' } }, 404);
+  }
 
   return c.json({ success: true, data: inspection });
 });
@@ -885,31 +768,12 @@ estateManagerAppRouter.get(
  */
 estateManagerAppRouter.get('/vendors/:id/scorecard', async (c) => {
   const vendorId = c.req.param('id');
+  const dataService = getDataService();
 
-  const scorecard = {
-    vendorId,
-    vendorName: 'ABC Plumbing',
-    period: '2024-Q1',
-    overallScore: 4.5,
-    metrics: {
-      responseTime: { score: 4.8, benchmark: 4.0, percentile: 92 },
-      completionRate: { score: 4.6, benchmark: 4.2, percentile: 85 },
-      customerSatisfaction: { score: 4.3, benchmark: 4.0, percentile: 78 },
-      reopenRate: { score: 4.7, benchmark: 4.0, percentile: 88 },
-      costEfficiency: { score: 4.2, benchmark: 4.0, percentile: 72 },
-    },
-    trends: [
-      { month: '2024-01', score: 4.3 },
-      { month: '2024-02', score: 4.5 },
-      { month: '2024-03', score: 4.5 },
-    ],
-    recentJobs: [
-      { id: 'wo-001', title: 'Water leak repair', rating: 5, completedAt: '2024-02-28' },
-      { id: 'wo-002', title: 'Pipe replacement', rating: 4, completedAt: '2024-02-25' },
-    ],
-    issues: [],
-    recommendations: ['Maintain current performance levels', 'Consider for emergency priority list'],
-  };
+  const scorecard = await dataService.getVendorScorecard(vendorId);
+  if (!scorecard) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Vendor not found' } }, 404);
+  }
 
   return c.json({ success: true, data: scorecard });
 });
@@ -984,58 +848,8 @@ estateManagerAppRouter.post(
  * GET /manager/sla - SLA compliance dashboard
  */
 estateManagerAppRouter.get('/sla', async (c) => {
-  const sla = {
-    summary: {
-      responseCompliance: 0.94,
-      resolutionCompliance: 0.89,
-      atRiskCount: 2,
-      breachedCount: 1,
-    },
-    byCategory: [
-      { category: 'emergency', responseTarget: '1h', resolutionTarget: '4h', compliance: 0.95 },
-      { category: 'high', responseTarget: '4h', resolutionTarget: '24h', compliance: 0.92 },
-      { category: 'medium', responseTarget: '24h', resolutionTarget: '72h', compliance: 0.90 },
-      { category: 'low', responseTarget: '48h', resolutionTarget: '7d', compliance: 0.88 },
-    ],
-    atRisk: [
-      {
-        workOrderId: 'wo-001',
-        number: 'WO-2024-0150',
-        title: 'Water leak',
-        slaType: 'resolution',
-        timeRemaining: '2 hours',
-        priority: 'high',
-        vendor: 'ABC Plumbing',
-      },
-      {
-        workOrderId: 'wo-003',
-        number: 'WO-2024-0152',
-        title: 'AC repair',
-        slaType: 'response',
-        timeRemaining: '30 minutes',
-        priority: 'medium',
-        vendor: 'Unassigned',
-      },
-    ],
-    breached: [
-      {
-        workOrderId: 'wo-005',
-        number: 'WO-2024-0148',
-        title: 'Lock replacement',
-        slaType: 'resolution',
-        breachedBy: '4 hours',
-        priority: 'medium',
-        vendor: 'Quick Fix Security',
-        reason: 'Parts unavailable',
-      },
-    ],
-    trends: [
-      { week: 'W1', compliance: 0.92 },
-      { week: 'W2', compliance: 0.89 },
-      { week: 'W3', compliance: 0.91 },
-      { week: 'W4', compliance: 0.94 },
-    ],
-  };
+  const dataService = getDataService();
+  const sla = await dataService.getSlaMetrics();
 
   return c.json({ success: true, data: sla });
 });

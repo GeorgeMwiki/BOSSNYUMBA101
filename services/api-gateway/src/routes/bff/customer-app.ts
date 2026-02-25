@@ -168,20 +168,10 @@ customerAppRouter.put('/profile', zValidator('json', z.object({
 });
 
 customerAppRouter.get('/onboarding', async (c) => {
-  const onboarding = {
-    currentStep: 'utility_setup',
-    totalSteps: 6,
-    completedSteps: 4,
-    percentComplete: 67,
-    steps: [
-      { id: 'profile_completion', name: 'Complete Your Profile', description: 'Add your personal details and emergency contact', status: 'completed', completedAt: '2023-06-01T10:00:00Z' },
-      { id: 'id_verification', name: 'Verify Your Identity', description: 'Upload your ID for verification', status: 'completed', completedAt: '2023-06-02T11:00:00Z' },
-      { id: 'lease_signing', name: 'Sign Your Lease', description: 'Review and sign your lease agreement', status: 'completed', completedAt: '2023-06-03T09:00:00Z' },
-      { id: 'move_in_inspection', name: 'Move-In Inspection', description: 'Complete the move-in inspection with photos', status: 'completed', completedAt: '2023-06-04T10:00:00Z' },
-      { id: 'utility_setup', name: 'Set Up Utilities', description: 'Learn how to manage your utilities', status: 'in_progress', procedures: [{ id: 'tanesco_setup', name: 'TANESCO/LUKU Token Entry', completed: true }, { id: 'water_setup', name: 'Water Meter Reading', completed: false }] },
-      { id: 'welcome_completion', name: 'Welcome Complete', description: 'You are all set! Explore your new home', status: 'pending' },
-    ],
-  };
+  const auth = c.get('auth');
+  const dataService = getDataService();
+
+  const onboarding = await dataService.getOnboardingStatus(auth.userId);
   return c.json({ success: true, data: onboarding });
 });
 
@@ -430,7 +420,10 @@ customerAppRouter.post('/notifications/read-all', async (c) => {
 });
 
 customerAppRouter.get('/notifications/preferences', async (c) => {
-  const preferences = { channels: { whatsapp: true, sms: false, email: true, push: true }, quietHours: { enabled: true, start: '22:00', end: '07:00' }, categories: { billing: true, maintenance: true, announcements: true, community: false } };
+  const auth = c.get('auth');
+  const dataService = getDataService();
+
+  const preferences = await dataService.getNotificationPreferences(auth.userId);
   return c.json({ success: true, data: preferences });
 });
 

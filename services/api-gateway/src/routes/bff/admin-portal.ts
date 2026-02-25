@@ -179,60 +179,12 @@ adminPortalRouter.get(
  */
 adminPortalRouter.get('/tenants/:id', async (c) => {
   const tenantId = c.req.param('id');
+  const dataService = getDataService();
 
-  const tenant = {
-    id: tenantId,
-    code: 'MASAKI-PROP',
-    name: 'Masaki Properties Ltd',
-    type: 'company',
-    status: 'active',
-    contact: {
-      name: 'John Mwangi',
-      email: 'john@masakiproperties.co.tz',
-      phone: '+255700000001',
-    },
-    address: {
-      street: 'Plot 45, Masaki Peninsula',
-      city: 'Dar es Salaam',
-      region: 'Kinondoni',
-      country: 'Tanzania',
-    },
-    subscription: {
-      plan: 'professional',
-      status: 'active',
-      startDate: '2023-01-15',
-      renewalDate: '2024-01-15',
-      monthlyBilling: 2500000,
-      features: ['unlimited_users', 'api_access', 'priority_support'],
-    },
-    usage: {
-      properties: 12,
-      units: 286,
-      users: 15,
-      messagesThisMonth: 4500,
-      reportsGenerated: 45,
-      storageUsedMB: 2500,
-    },
-    billing: {
-      totalBilled: 30000000,
-      totalPaid: 27500000,
-      balance: 2500000,
-      lastPaymentDate: '2024-02-05',
-      paymentMethod: 'bank_transfer',
-    },
-    policyConstitution: {
-      approvalThresholds: {
-        feeWaiver: 50000,
-        rentIncrease: 10,
-        workOrderCost: 500000,
-      },
-      gracePeriodDays: 5,
-      lateFeePercentage: 5,
-      renewalNoticeDays: 60,
-    },
-    createdAt: '2023-01-15T00:00:00Z',
-    updatedAt: '2024-02-28T10:00:00Z',
-  };
+  const tenant = await dataService.getTenantById(tenantId);
+  if (!tenant) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
+  }
 
   return c.json({ success: true, data: tenant });
 });
@@ -442,34 +394,14 @@ adminPortalRouter.get(
   zValidator('query', paginationSchema.merge(z.object({ tenantId: z.string().optional() }))),
   async (c) => {
     const { page, pageSize, tenantId } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const roles = [
-      {
-        id: 'role-001',
-        code: 'TENANT_ADMIN',
-        name: 'Tenant Admin',
-        description: 'Full access within tenant',
-        isSystem: true,
-        userCount: 12,
-        permissions: ['users:*', 'properties:*', 'units:*', 'leases:*', 'invoices:*', 'payments:*', 'reports:*'],
-        tenantId: null,
-      },
-      {
-        id: 'role-002',
-        code: 'PROPERTY_MANAGER',
-        name: 'Property Manager',
-        description: 'Manage properties and day-to-day operations',
-        isSystem: true,
-        userCount: 45,
-        permissions: ['properties:read', 'units:*', 'leases:*', 'work_orders:*', 'customers:*'],
-        tenantId: null,
-      },
-    ];
+    const result = await dataService.getRoles({ page, pageSize }, { tenantId });
 
     return c.json({
       success: true,
-      data: roles,
-      pagination: { page, pageSize, total: roles.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -565,34 +497,9 @@ adminPortalRouter.get(
   })),
   async (c) => {
     const { query, type, tenantId } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const results = {
-      customers: [
-        {
-          id: 'cust-001',
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          phone: '+255700000010',
-          unit: 'A1, Masaki Heights',
-          tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-          match: 'name',
-        },
-      ],
-      properties: [],
-      invoices: [
-        {
-          id: 'inv-001',
-          number: 'INV-2024-0001',
-          amount: 800000,
-          status: 'pending',
-          customer: 'Jane Smith',
-          tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-          match: 'customer_name',
-        },
-      ],
-      payments: [],
-      workOrders: [],
-    };
+    const results = await dataService.searchPlatform(query, type, tenantId);
 
     return c.json({ success: true, data: results });
   }
@@ -603,47 +510,12 @@ adminPortalRouter.get(
  */
 adminPortalRouter.get('/support/customers/:id/timeline', async (c) => {
   const customerId = c.req.param('id');
+  const dataService = getDataService();
 
-  const timeline = {
-    customer: {
-      id: customerId,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+255700000010',
-      unit: { id: 'unit-001', number: 'A1', property: 'Masaki Heights' },
-      tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-      status: 'active',
-      moveInDate: '2023-06-01',
-      leaseEndDate: '2024-05-31',
-    },
-    events: [
-      { type: 'payment', timestamp: '2024-03-01T10:00:00Z', description: 'Rent payment - TSh 800,000', status: 'completed' },
-      { type: 'maintenance', timestamp: '2024-02-25T10:00:00Z', description: 'Maintenance request - Plumbing', status: 'completed' },
-      { type: 'communication', timestamp: '2024-02-20T14:00:00Z', description: 'Message sent re: parking', status: 'read' },
-      { type: 'payment', timestamp: '2024-02-01T09:30:00Z', description: 'Rent payment - TSh 800,000', status: 'completed' },
-      { type: 'onboarding', timestamp: '2023-06-05T14:00:00Z', description: 'Onboarding completed', status: 'completed' },
-      { type: 'lease', timestamp: '2023-06-01T00:00:00Z', description: 'Lease started', status: 'active' },
-    ],
-    financials: {
-      totalPaid: 7200000,
-      totalBilled: 7200000,
-      balance: 0,
-      paymentHistory: [
-        { month: '2024-03', amount: 800000, status: 'paid', paidOn: '2024-03-01' },
-        { month: '2024-02', amount: 800000, status: 'paid', paidOn: '2024-02-01' },
-      ],
-    },
-    maintenance: {
-      totalRequests: 3,
-      openRequests: 0,
-      avgResolutionDays: 2.5,
-    },
-    sentiment: {
-      score: 4.2,
-      trend: 'stable',
-      lastCheckIn: '2024-02-15T10:00:00Z',
-    },
-  };
+  const timeline = await dataService.getCustomerTimeline(customerId);
+  if (!timeline) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } }, 404);
+  }
 
   return c.json({ success: true, data: timeline });
 });
@@ -714,28 +586,14 @@ adminPortalRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, tenantId, status } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const invoices = [
-      {
-        id: 'bill-001',
-        invoiceNumber: 'PLAT-2024-03-001',
-        tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-        period: '2024-03',
-        amount: 2500000,
-        status: 'pending',
-        dueDate: '2024-03-15',
-        lineItems: [
-          { description: 'Professional Plan - Monthly', amount: 2000000 },
-          { description: 'Additional Users (5)', amount: 250000 },
-          { description: 'SMS Messages (500)', amount: 250000 },
-        ],
-      },
-    ];
+    const result = await dataService.getBillingInvoices({ page, pageSize }, { tenantId, status });
 
     return c.json({
       success: true,
-      data: invoices,
-      pagination: { page, pageSize, total: invoices.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -778,32 +636,9 @@ adminPortalRouter.get(
   })),
   async (c) => {
     const { tenantId, period } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const usage = [
-      {
-        tenantId: 'tnt-001',
-        tenantName: 'Masaki Properties Ltd',
-        period: period || '2024-03',
-        metrics: {
-          activeUsers: 15,
-          properties: 12,
-          units: 286,
-          messagesWhatsApp: 2500,
-          messagesSms: 500,
-          messagesEmail: 1000,
-          reportsGenerated: 45,
-          storageUsedMB: 2500,
-          apiCalls: 15000,
-        },
-        billing: {
-          basePlan: 2000000,
-          additionalUsers: 250000,
-          messaging: 250000,
-          storage: 0,
-          total: 2500000,
-        },
-      },
-    ];
+    const usage = await dataService.getBillingUsage(tenantId, period);
 
     return c.json({ success: true, data: usage });
   }
@@ -824,42 +659,15 @@ adminPortalRouter.get(
     decisionType: z.string().optional(),
   }))),
   async (c) => {
-    const { page, pageSize } = c.req.valid('query');
+    const { page, pageSize, tenantId, decisionType } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const decisions = [
-      {
-        id: 'ai-001',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        tenantId: 'tnt-001',
-        tenantName: 'Masaki Properties Ltd',
-        decisionType: 'maintenance_triage',
-        input: { description: 'Water leak in bathroom', photos: 2 },
-        output: { category: 'plumbing', priority: 'high', confidence: 0.92 },
-        humanOverride: false,
-        outcome: 'work_order_created',
-      },
-      {
-        id: 'ai-002',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        tenantId: 'tnt-001',
-        tenantName: 'Masaki Properties Ltd',
-        decisionType: 'vendor_recommendation',
-        input: { category: 'plumbing', location: 'Masaki', urgency: 'high' },
-        output: {
-          recommendedVendor: 'ABC Plumbing',
-          score: 0.89,
-          alternatives: ['XYZ Plumbing', 'Quick Fix'],
-        },
-        humanOverride: true,
-        overrideReason: 'Customer requested specific vendor',
-        outcome: 'vendor_assigned',
-      },
-    ];
+    const result = await dataService.getAiDecisions({ page, pageSize }, { tenantId, decisionType });
 
     return c.json({
       success: true,
-      data: decisions,
-      pagination: { page, pageSize, total: decisions.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -868,43 +676,8 @@ adminPortalRouter.get(
  * GET /admin/ai/metrics - AI performance metrics
  */
 adminPortalRouter.get('/ai/metrics', requirePermission('audit:read'), async (c) => {
-  const metrics = {
-    period: '2024-03',
-    triageAccuracy: {
-      correct: 892,
-      incorrect: 45,
-      humanOverrides: 63,
-      accuracy: 0.95,
-    },
-    vendorMatching: {
-      recommendations: 234,
-      accepted: 198,
-      overridden: 36,
-      acceptanceRate: 0.85,
-    },
-    churnPrediction: {
-      predictions: 45,
-      confirmed: 8,
-      falsePositives: 12,
-      accuracy: 0.73,
-    },
-    paymentRisk: {
-      flagged: 156,
-      defaulted: 23,
-      falsePositives: 45,
-      precision: 0.34,
-    },
-    sentimentAnalysis: {
-      analyzed: 4500,
-      accuracy: 0.82,
-      averageConfidence: 0.78,
-    },
-    latency: {
-      avgTriageMs: 245,
-      avgVendorMatchMs: 180,
-      avgSentimentMs: 120,
-    },
-  };
+  const dataService = getDataService();
+  const metrics = await dataService.getAiMetrics();
 
   return c.json({ success: true, data: metrics });
 });
@@ -917,19 +690,8 @@ adminPortalRouter.get('/ai/metrics', requirePermission('audit:read'), async (c) 
  * GET /admin/workflows/stuck - Get stuck workflows
  */
 adminPortalRouter.get('/workflows/stuck', async (c) => {
-  const stuckWorkflows = [
-    {
-      id: 'wf-001',
-      type: 'payment_reconciliation',
-      tenantId: 'tnt-001',
-      tenantName: 'Masaki Properties Ltd',
-      stuckAt: 'matching',
-      stuckSince: new Date(Date.now() - 86400000).toISOString(),
-      reason: 'Ambiguous payment reference',
-      data: { transactionId: 'txn-123', amount: 800000, reference: 'RENT' },
-      suggestedActions: ['Manual match to invoice', 'Request clarification from tenant', 'Mark as unallocated'],
-    },
-  ];
+  const dataService = getDataService();
+  const stuckWorkflows = await dataService.getStuckWorkflows();
 
   return c.json({ success: true, data: stuckWorkflows });
 });

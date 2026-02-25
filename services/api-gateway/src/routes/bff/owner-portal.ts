@@ -156,35 +156,16 @@ ownerPortalRouter.get(
   '/financials/disbursements',
   zValidator('query', paginationSchema),
   async (c) => {
+    const auth = c.get('auth');
     const { page, pageSize } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const disbursements = [
-      {
-        id: 'disb-001',
-        date: '2024-03-05',
-        amount: 15000000,
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        period: '2024-02',
-        bankAccount: '****4567',
-        status: 'completed',
-        reference: 'DISB-2024-02-001',
-      },
-      {
-        id: 'disb-002',
-        date: '2024-02-05',
-        amount: 14500000,
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        period: '2024-01',
-        bankAccount: '****4567',
-        status: 'completed',
-        reference: 'DISB-2024-01-001',
-      },
-    ];
+    const result = await dataService.getDisbursements(auth.userId, { page, pageSize });
 
     return c.json({
       success: true,
-      data: disbursements,
-      pagination: { page, pageSize, total: disbursements.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -196,29 +177,11 @@ ownerPortalRouter.get(
   '/financials/arrears',
   zValidator('query', propertyFilterSchema),
   async (c) => {
-    const arrears = {
-      summary: {
-        totalOutstanding: 3600000,
-        tenantsInArrears: 7,
-        percentageOfRentRoll: 0.08,
-      },
-      byProperty: [
-        { propertyId: 'prop-001', propertyName: 'Masaki Heights', amount: 2400000, tenants: 5 },
-        { propertyId: 'prop-002', propertyName: 'Oyster Bay Apartments', amount: 1200000, tenants: 2 },
-      ],
-      tenants: [
-        {
-          customerId: 'cust-001',
-          name: 'John Doe',
-          unit: 'A5',
-          property: 'Masaki Heights',
-          amountOwed: 800000,
-          daysOverdue: 15,
-          lastPayment: '2024-01-15',
-          status: 'payment_plan',
-        },
-      ],
-    };
+    const auth = c.get('auth');
+    const { propertyIds } = c.req.valid('query');
+    const dataService = getDataService();
+
+    const arrears = await dataService.getArrears(auth.userId, propertyIds);
 
     return c.json({ success: true, data: arrears });
   }
@@ -301,30 +264,11 @@ ownerPortalRouter.get(
   '/maintenance/costs',
   zValidator('query', dateRangeSchema.merge(propertyFilterSchema)),
   async (c) => {
-    const costAnalysis = {
-      summary: {
-        totalCost: 4500000,
-        avgCostPerUnit: 93750,
-        avgCostPerWorkOrder: 225000,
-        workOrderCount: 20,
-      },
-      byCategory: [
-        { category: 'plumbing', cost: 1500000, count: 8, percentage: 33.3 },
-        { category: 'electrical', cost: 1200000, count: 6, percentage: 26.7 },
-        { category: 'appliance', cost: 800000, count: 3, percentage: 17.8 },
-        { category: 'structural', cost: 600000, count: 2, percentage: 13.3 },
-        { category: 'other', cost: 400000, count: 1, percentage: 8.9 },
-      ],
-      byProperty: [
-        { propertyId: 'prop-001', propertyName: 'Masaki Heights', cost: 2800000, count: 12 },
-        { propertyId: 'prop-002', propertyName: 'Oyster Bay Apartments', cost: 1700000, count: 8 },
-      ],
-      trend: [
-        { month: '2024-01', cost: 1200000 },
-        { month: '2024-02', cost: 1500000 },
-        { month: '2024-03', cost: 1800000 },
-      ],
-    };
+    const auth = c.get('auth');
+    const { startDate, endDate, period, propertyIds } = c.req.valid('query');
+    const dataService = getDataService();
+
+    const costAnalysis = await dataService.getMaintenanceCosts(auth.userId, { startDate, endDate, period }, propertyIds);
 
     return c.json({ success: true, data: costAnalysis });
   }
@@ -382,36 +326,8 @@ ownerPortalRouter.get('/documents/:id/download', async (c) => {
  * GET /owner/reports/available - List available reports
  */
 ownerPortalRouter.get('/reports/available', async (c) => {
-  const reports = [
-    {
-      id: 'financial-summary',
-      name: 'Financial Summary',
-      description: 'Monthly income, expenses, and net operating income',
-      formats: ['pdf', 'excel'],
-      frequency: ['monthly', 'quarterly', 'annually'],
-    },
-    {
-      id: 'occupancy-report',
-      name: 'Occupancy Report',
-      description: 'Unit occupancy rates and vacancy analysis',
-      formats: ['pdf', 'excel'],
-      frequency: ['monthly', 'quarterly'],
-    },
-    {
-      id: 'maintenance-report',
-      name: 'Maintenance Report',
-      description: 'Work orders, costs, and vendor performance',
-      formats: ['pdf', 'excel'],
-      frequency: ['monthly'],
-    },
-    {
-      id: 'arrears-report',
-      name: 'Arrears Report',
-      description: 'Outstanding rent and collection efforts',
-      formats: ['pdf', 'excel'],
-      frequency: ['weekly', 'monthly'],
-    },
-  ];
+  const dataService = getDataService();
+  const reports = await dataService.getAvailableReports();
 
   return c.json({ success: true, data: reports });
 });
