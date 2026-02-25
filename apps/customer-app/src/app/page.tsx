@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@bossnyumba/i18n';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StoriesBar } from '@/components/feed/StoriesBar';
 import { FeedCard } from '@/components/feed/FeedCard';
@@ -23,6 +24,7 @@ const MOCK_VENDORS = [
 
 export default function CustomerAppHome() {
   const { isAuthenticated, loading, user } = useAuth();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -40,25 +42,27 @@ export default function CustomerAppHome() {
 
   if (!isAuthenticated) return null;
 
-  const greeting = user?.firstName ? `Welcome back, ${user.firstName}!` : 'Welcome back!';
+  const greeting = user?.firstName
+    ? t('customer.home.greeting', { name: user.firstName })
+    : t('customer.home.greeting', { name: '' });
 
   return (
     <main className="min-h-screen bg-[#121212]">
-      <PageHeader title="BOSSNYUMBA" />
+      <PageHeader title={t('common.appName')} />
 
       <div className="px-4 py-4 pb-24 max-w-2xl mx-auto">
-        {/* Greeting - Spotify style */}
+        {/* Greeting */}
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-white">{greeting}</h2>
-          <p className="text-gray-400 mt-0.5">Your community feed</p>
+          <p className="text-gray-400 mt-0.5">{t('customer.home.recentActivity')}</p>
         </div>
 
-        {/* Stories - Instagram/TikTok/WhatsApp style */}
+        {/* Stories */}
         <section className="mb-6">
           <StoriesBar />
         </section>
 
-        {/* Quick action - Spotify-style card */}
+        {/* Quick action - Pay Rent */}
         <Link
           href="/payments"
           className="card-spotify flex items-center gap-4 mb-6 group"
@@ -67,32 +71,34 @@ export default function CustomerAppHome() {
             <CreditCard className="w-6 h-6 text-black" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white">Pay rent</p>
-            <p className="text-sm text-gray-400">KES 45,000 due</p>
+            <p className="font-semibold text-white">{t('customer.home.payRent')}</p>
+            <p className="text-sm text-gray-400">KES 45,000 {t('customer.payments.amountDue').toLowerCase()}</p>
           </div>
-          <span className="text-spotify-green text-sm font-semibold group-hover:text-spotify-green-hover">Pay</span>
+          <span className="text-spotify-green text-sm font-semibold group-hover:text-spotify-green-hover">
+            {t('customer.payments.payNow')}
+          </span>
         </Link>
 
-        {/* Feed - Instagram style */}
+        {/* Feed */}
         <section className="mb-6">
           <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-            Feed
-            <span className="text-xs font-normal text-gray-500">Community updates</span>
+            {t('customer.home.announcements')}
+            <span className="text-xs font-normal text-gray-500">{t('customer.community.announcements')}</span>
           </h3>
           {MOCK_FEED.map((post) => (
             <FeedCard key={post.id} {...post} />
           ))}
         </section>
 
-        {/* Marketplace - TikTok Shop style */}
+        {/* Marketplace */}
         <section className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <Store className="w-5 h-5 text-spotify-green" />
-              Marketplace
+              {t('customer.marketplace.title')}
             </h3>
             <Link href="/marketplace" className="text-spotify-green text-sm font-semibold hover:text-spotify-green-hover">
-              See all
+              {t('common.actions.showMore')}
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
@@ -102,7 +108,7 @@ export default function CustomerAppHome() {
           </div>
         </section>
 
-        {/* Messages - WhatsApp style CTA */}
+        {/* Messages */}
         <Link
           href="/messages"
           className="card-spotify flex items-center gap-4 group"
@@ -111,10 +117,10 @@ export default function CustomerAppHome() {
             <MessageCircle className="w-6 h-6 text-spotify-green" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white">Messages</p>
-            <p className="text-sm text-gray-400">Chat with estate manager & groups</p>
+            <p className="font-semibold text-white">{t('common.nav.messages')}</p>
+            <p className="text-sm text-gray-400">{t('common.empty.noMessages')}</p>
           </div>
-          <span className="text-gray-400 group-hover:text-white">→</span>
+          <span className="text-gray-400 group-hover:text-white">&rarr;</span>
         </Link>
       </div>
     </main>

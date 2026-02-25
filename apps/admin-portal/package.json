@@ -13,6 +13,7 @@
   "dependencies": {
     "@bossnyumba/design-system": "*",
     "@bossnyumba/domain-models": "*",
+    "@bossnyumba/i18n": "*",
     "@tanstack/react-query": "^5.24.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.312.0",

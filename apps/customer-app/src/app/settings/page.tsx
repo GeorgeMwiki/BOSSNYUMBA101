@@ -3,18 +3,15 @@
 import { useState } from 'react';
 import { Bell, Mail, MessageSquare, Globe, DollarSign } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useI18n, SUPPORTED_LOCALES, LOCALE_NAMES } from '@bossnyumba/i18n';
+import type { Locale } from '@bossnyumba/i18n';
 
 export default function SettingsPage() {
+  const { t, locale, setLocale } = useI18n();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(false);
-  const [language, setLanguage] = useState('en');
   const [currency, setCurrency] = useState('KES');
-
-  const languages = [
-    { value: 'en', label: 'English' },
-    { value: 'sw', label: 'Kiswahili' },
-  ];
 
   const currencies = [
     { value: 'KES', label: 'KES (Kenyan Shilling)' },
@@ -23,13 +20,13 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" showBack />
+      <PageHeader title={t('customer.settings.title')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         {/* Push Notifications */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Notification Preferences
+            {t('customer.settings.notificationPreferences')}
           </h3>
           <div className="card divide-y divide-gray-100">
             <div className="flex items-center justify-between p-4">
@@ -38,9 +35,9 @@ export default function SettingsPage() {
                   <Bell className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
-                  <div className="font-medium">Push notifications</div>
+                  <div className="font-medium">{t('customer.settings.pushNotifications')}</div>
                   <div className="text-sm text-gray-500">
-                    Receive app notifications
+                    {t('customer.settings.receiveAppNotifications')}
                   </div>
                 </div>
               </div>
@@ -66,9 +63,9 @@ export default function SettingsPage() {
                   <Mail className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
-                  <div className="font-medium">Email notifications</div>
+                  <div className="font-medium">{t('customer.settings.emailNotifications')}</div>
                   <div className="text-sm text-gray-500">
-                    Rent reminders, lease updates
+                    {t('customer.settings.rentRemindersLeaseUpdates')}
                   </div>
                 </div>
               </div>
@@ -94,9 +91,9 @@ export default function SettingsPage() {
                   <MessageSquare className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
-                  <div className="font-medium">SMS notifications</div>
+                  <div className="font-medium">{t('customer.settings.smsNotifications')}</div>
                   <div className="text-sm text-gray-500">
-                    Urgent alerts via text
+                    {t('customer.settings.urgentAlertsViaText')}
                   </div>
                 </div>
               </div>
@@ -122,7 +119,7 @@ export default function SettingsPage() {
         {/* Language */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Language Preference
+            {t('customer.settings.appLanguage')}
           </h3>
           <div className="card p-4">
             <div className="flex items-center gap-3">
@@ -131,17 +128,17 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1">
                 <label htmlFor="language" className="font-medium">
-                  App language
+                  {t('customer.settings.appLanguage')}
                 </label>
                 <select
                   id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value as Locale)}
                   className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  {languages.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {SUPPORTED_LOCALES.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {LOCALE_NAMES[loc]}
                     </option>
                   ))}
                 </select>
@@ -153,7 +150,7 @@ export default function SettingsPage() {
         {/* Currency */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Display Preferences
+            {t('customer.settings.currencyDisplay')}
           </h3>
           <div className="card p-4">
             <div className="flex items-center gap-3">
@@ -162,7 +159,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1">
                 <label htmlFor="currency" className="font-medium">
-                  Currency display
+                  {t('customer.settings.currencyDisplay')}
                 </label>
                 <select
                   id="currency"

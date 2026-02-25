@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'core/auth_provider.dart';
+import 'core/locale_provider.dart';
 import 'router.dart';
 
 class BossNyumbaApp extends StatelessWidget {
@@ -9,6 +12,7 @@ class BossNyumbaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
+    final localeProvider = context.watch<LocaleProvider>();
     final router = createGoRouter(auth);
 
     return MaterialApp.router(
@@ -16,6 +20,14 @@ class BossNyumbaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       routerConfig: router,
+      locale: localeProvider.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 

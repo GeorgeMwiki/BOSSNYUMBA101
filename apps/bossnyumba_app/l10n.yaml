@@ -1,0 +1,5 @@
+arb-dir: ../../packages/i18n/src/flutter
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+synthetic-package: true

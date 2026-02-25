@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Plus, Clock, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useI18n } from '@bossnyumba/i18n';
 
 type TicketStatus = 'submitted' | 'in_progress' | 'scheduled' | 'completed';
 
@@ -52,13 +53,6 @@ const tickets: MaintenanceTicket[] = [
   },
 ];
 
-const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
-  submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
-  in_progress: { label: 'In Progress', icon: Wrench, color: 'badge-warning' },
-  scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
-  completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
-};
-
 const priorityColors = {
   emergency: 'border-l-danger-500',
   high: 'border-l-warning-500',
@@ -67,17 +61,26 @@ const priorityColors = {
 };
 
 export default function MaintenancePage() {
-  const openTickets = tickets.filter((t) => t.status !== 'completed');
-  const closedTickets = tickets.filter((t) => t.status === 'completed');
+  const { t } = useI18n();
+
+  const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
+    submitted: { label: t('customer.maintenance.statusLabels.submitted'), icon: Clock, color: 'badge-info' },
+    in_progress: { label: t('customer.maintenance.statusLabels.inProgress'), icon: Wrench, color: 'badge-warning' },
+    scheduled: { label: t('common.status.scheduled'), icon: Clock, color: 'badge-info' },
+    completed: { label: t('customer.maintenance.statusLabels.completed'), icon: CheckCircle, color: 'badge-success' },
+  };
+
+  const openTickets = tickets.filter((tk) => tk.status !== 'completed');
+  const closedTickets = tickets.filter((tk) => tk.status === 'completed');
 
   return (
     <>
       <PageHeader
-        title="Maintenance"
+        title={t('customer.maintenance.title')}
         action={
           <Link href="/maintenance/new" className="btn-primary text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            New Request
+            {t('customer.maintenance.newRequest')}
           </Link>
         }
       />
@@ -86,16 +89,45 @@ export default function MaintenancePage() {
         {/* Open Tickets */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">
-            Open Requests ({openTickets.length})
+            {t('customer.home.activeRequests')} ({openTickets.length})
           </h2>
           <div className="space-y-3">
-            {openTickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
-            ))}
+            {openTickets.map((ticket) => {
+              const status = statusConfig[ticket.status];
+              const StatusIcon = status.icon;
+              return (
+                <Link key={ticket.id} href={`/maintenance/${ticket.id}`}>
+                  <div className={`card p-4 border-l-4 ${priorityColors[ticket.priority]}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="text-xs text-gray-400 mb-1">{ticket.workOrderNumber}</div>
+                        <div className="font-medium">{ticket.title}</div>
+                      </div>
+                      <span className={status.color}>
+                        <StatusIcon className="w-3 h-3 mr-1 inline" />
+                        {status.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span>{ticket.category}</span>
+                      {ticket.scheduledDate && (
+                        <span>{t('common.status.scheduled')}: {new Date(ticket.scheduledDate).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                    {ticket.slaStatus === 'at_risk' && (
+                      <div className="mt-2 flex items-center text-xs text-warning-600">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        {t('estateManager.sla.responseTime')}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
             {openTickets.length === 0 && (
               <div className="card p-6 text-center text-gray-500">
                 <Wrench className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p>No open maintenance requests</p>
+                <p>{t('common.empty.noResults')}</p>
               </div>
             )}
           </div>
@@ -104,49 +136,35 @@ export default function MaintenancePage() {
         {/* Closed Tickets */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">
-            Completed ({closedTickets.length})
+            {t('common.status.completed')} ({closedTickets.length})
           </h2>
           <div className="space-y-3">
-            {closedTickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
-            ))}
+            {closedTickets.map((ticket) => {
+              const status = statusConfig[ticket.status];
+              const StatusIcon = status.icon;
+              return (
+                <Link key={ticket.id} href={`/maintenance/${ticket.id}`}>
+                  <div className={`card p-4 border-l-4 ${priorityColors[ticket.priority]}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="text-xs text-gray-400 mb-1">{ticket.workOrderNumber}</div>
+                        <div className="font-medium">{ticket.title}</div>
+                      </div>
+                      <span className={status.color}>
+                        <StatusIcon className="w-3 h-3 mr-1 inline" />
+                        {status.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span>{ticket.category}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       </div>
     </>
-  );
-}
-
-function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
-  const status = statusConfig[ticket.status];
-  const StatusIcon = status.icon;
-
-  return (
-    <Link href={`/maintenance/${ticket.id}`}>
-      <div className={`card p-4 border-l-4 ${priorityColors[ticket.priority]}`}>
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <div className="text-xs text-gray-400 mb-1">{ticket.workOrderNumber}</div>
-            <div className="font-medium">{ticket.title}</div>
-          </div>
-          <span className={status.color}>
-            <StatusIcon className="w-3 h-3 mr-1 inline" />
-            {status.label}
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-gray-500">
-          <span>{ticket.category}</span>
-          {ticket.scheduledDate && (
-            <span>Scheduled: {new Date(ticket.scheduledDate).toLocaleDateString()}</span>
-          )}
-        </div>
-        {ticket.slaStatus === 'at_risk' && (
-          <div className="mt-2 flex items-center text-xs text-warning-600">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Response time at risk
-          </div>
-        )}
-      </div>
-    </Link>
   );
 }

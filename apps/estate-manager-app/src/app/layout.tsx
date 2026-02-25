@@ -4,6 +4,7 @@ import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ApiProvider } from '@/providers/ApiProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { I18nProvider } from '@bossnyumba/i18n';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -34,14 +35,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} pb-20`}>
-        <QueryProvider>
-          <AuthProvider>
-            <ApiProvider>
-              {children}
-              <BottomNavigation />
-            </ApiProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <I18nProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <ApiProvider>
+                {children}
+                <BottomNavigation />
+              </ApiProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </I18nProvider>
       </body>
     </html>
   );

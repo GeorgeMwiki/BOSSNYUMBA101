@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useI18n } from '@bossnyumba/i18n';
 import {
   propertiesService,
   unitsService,
@@ -24,16 +25,16 @@ import {
   paymentsService,
 } from '@bossnyumba/api-client';
 
-function formatCurrency(amount: number, currency = 'KES') {
-  return new Intl.NumberFormat('en-KE', {
+function formatCurrency(amount: number, currency = 'KES', locale = 'en-KE') {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
   }).format(amount);
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
+function formatDate(dateStr: string, locale = 'en-KE') {
+  return new Date(dateStr).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -41,6 +42,9 @@ function formatDate(dateStr: string) {
 }
 
 export default function DashboardPage() {
+  const { t, locale } = useI18n();
+  const dateLocale = locale === 'sw' ? 'sw-KE' : 'en-KE';
+
   const { data: propertiesData, isLoading: loadingProperties } = useQuery({
     queryKey: ['properties', { page: 1, pageSize: 100 }],
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
@@ -107,8 +111,8 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        subtitle="Estate Manager Overview"
+        title={t('estateManager.dashboard.title')}
+        subtitle={t('estateManager.dashboard.title')}
         showProfile
       />
 
@@ -121,7 +125,9 @@ export default function DashboardPage() {
           <>
             {/* Property Overview Cards */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Property Overview</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">
+                {t('estateManager.properties.title')}
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link href="/properties" className="card p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
@@ -130,7 +136,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{totalProperties}</div>
-                      <div className="text-xs text-gray-500">Properties</div>
+                      <div className="text-xs text-gray-500">{t('estateManager.properties.title')}</div>
                     </div>
                   </div>
                 </Link>
@@ -141,7 +147,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{totalUnits}</div>
-                      <div className="text-xs text-gray-500">Total Units</div>
+                      <div className="text-xs text-gray-500">{t('estateManager.dashboard.totalUnits')}</div>
                     </div>
                   </div>
                 </Link>
@@ -152,7 +158,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{occupancyRate}%</div>
-                      <div className="text-xs text-gray-500">Occupancy Rate</div>
+                      <div className="text-xs text-gray-500">{t('estateManager.dashboard.occupancyRate')}</div>
                     </div>
                   </div>
                 </div>
@@ -161,7 +167,9 @@ export default function DashboardPage() {
 
             {/* Work Order Summary */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Work Orders</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">
+                {t('estateManager.workOrders.title')}
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link href="/work-orders?filter=open" className="card p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
@@ -170,7 +178,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{openWorkOrders}</div>
-                      <div className="text-xs text-gray-500">Open</div>
+                      <div className="text-xs text-gray-500">{t('common.status.open')}</div>
                     </div>
                   </div>
                 </Link>
@@ -181,7 +189,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{inProgressWorkOrders}</div>
-                      <div className="text-xs text-gray-500">In Progress</div>
+                      <div className="text-xs text-gray-500">{t('common.status.inProgress')}</div>
                     </div>
                   </div>
                 </Link>
@@ -192,7 +200,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{completedToday}</div>
-                      <div className="text-xs text-gray-500">Completed Today</div>
+                      <div className="text-xs text-gray-500">{t('common.status.completed')} {t('common.time.today')}</div>
                     </div>
                   </div>
                 </div>
@@ -201,28 +209,30 @@ export default function DashboardPage() {
 
             {/* Quick Actions */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">
+                {t('estateManager.dashboard.quickActions')}
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link
                   href="/work-orders/new"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow border-primary-200 bg-primary-50/50"
                 >
                   <Wrench className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Create Work Order</span>
+                  <span className="font-medium">{t('estateManager.workOrders.createWorkOrder')}</span>
                 </Link>
                 <Link
                   href="/customers/new"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
                 >
                   <UserPlus className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Add Customer</span>
+                  <span className="font-medium">{t('estateManager.customers.addCustomer')}</span>
                 </Link>
                 <Link
                   href="/payments/receive"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
                 >
                   <CreditCard className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Receive Payment</span>
+                  <span className="font-medium">{t('estateManager.payments.receivePayment')}</span>
                 </Link>
               </div>
             </section>
@@ -232,16 +242,16 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
-                  Recent Payments
+                  {t('estateManager.payments.title')}
                 </h2>
                 <Link href="/payments" className="text-sm text-primary-600">
-                  View All
+                  {t('common.actions.view')}
                 </Link>
               </div>
               <div className="card divide-y divide-gray-100">
                 {recentPayments.length === 0 ? (
                   <div className="p-6 text-center text-gray-500 text-sm">
-                    No recent payments
+                    {t('common.empty.noData')}
                   </div>
                 ) : (
                   recentPayments.map(
@@ -263,13 +273,13 @@ export default function DashboardPage() {
                         >
                           <div>
                             <div className="font-medium text-sm">
-                              {formatCurrency(amount, payment.currency)}
+                              {formatCurrency(amount, payment.currency, dateLocale)}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {payment.createdAt ? formatDate(payment.createdAt) : ''}
+                              {payment.createdAt ? formatDate(payment.createdAt, dateLocale) : ''}
                             </div>
                           </div>
-                          <span className="badge-success">Completed</span>
+                          <span className="badge-success">{t('common.status.completed')}</span>
                         </div>
                       );
                     }
@@ -283,16 +293,16 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Upcoming Lease Expirations
+                  {t('estateManager.dashboard.expiringLeases')}
                 </h2>
                 <Link href="/leases?expiring=true" className="text-sm text-primary-600">
-                  View All
+                  {t('common.actions.view')}
                 </Link>
               </div>
               <div className="card divide-y divide-gray-100">
                 {expiringLeases.length === 0 ? (
                   <div className="p-6 text-center text-gray-500 text-sm">
-                    No leases expiring in the next 60 days
+                    {t('common.empty.noData')}
                   </div>
                 ) : (
                   expiringLeases.map(
@@ -307,13 +317,13 @@ export default function DashboardPage() {
                         <div className="p-3 flex justify-between items-center hover:bg-gray-50">
                           <div>
                             <div className="font-medium text-sm">
-                              {lease.unit?.unitNumber} - {lease.customer?.name || 'Tenant'}
+                              {lease.unit?.unitNumber} - {lease.customer?.name || t('estateManager.units.tenant')}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {lease.property?.name} • Expires {formatDate(lease.endDate)}
+                              {lease.property?.name} &bull; {formatDate(lease.endDate, dateLocale)}
                             </div>
                           </div>
-                          <span className="badge-warning">Expiring</span>
+                          <span className="badge-warning">{t('leases.status.expiring')}</span>
                         </div>
                       </Link>
                     )

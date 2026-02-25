@@ -4,6 +4,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { I18nProvider } from '@bossnyumba/i18n';
 import { registerServiceWorker } from '@/lib/pwa/register-sw';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
@@ -83,11 +84,13 @@ class ErrorBoundary extends React.Component<
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <QueryProvider>
-        <AuthProvider>
-          <PWAProvider>{children}</PWAProvider>
-        </AuthProvider>
-      </QueryProvider>
+      <I18nProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <PWAProvider>{children}</PWAProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }
