@@ -416,7 +416,13 @@ customerAppRouter.post('/notifications/:id/read', async (c) => {
 });
 
 customerAppRouter.post('/notifications/read-all', async (c) => {
-  return c.json({ success: true, data: { markedRead: 5, timestamp: new Date().toISOString() }, message: 'All notifications marked as read' });
+  const auth = c.get('auth');
+  const dataService = getDataService();
+
+  const allNotifs = await dataService.getNotifications(auth.userId, { page: 1, pageSize: 200 }, true);
+  const unreadCount = allNotifs.data.length;
+
+  return c.json({ success: true, data: { markedRead: unreadCount, timestamp: new Date().toISOString() }, message: 'All notifications marked as read' });
 });
 
 customerAppRouter.get('/notifications/preferences', async (c) => {
