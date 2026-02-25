@@ -7,8 +7,11 @@ import { createMiddleware } from 'hono/factory';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || 'development-secret-change-in-production';
+const JWT_SECRET = (() => {
+  const s = process.env.JWT_SECRET;
+  if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
+  return s || '';
+})();
 
 export interface AuthContext {
   userId: string;

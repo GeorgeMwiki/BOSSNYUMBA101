@@ -89,7 +89,7 @@ export class CustomerRepository {
 
     if (filters?.status) {
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      conditions.push(inArray(customers.status, statuses as any));
+      conditions.push(inArray(customers.status, statuses as unknown as typeof customers.status.$inferType[]));
     }
 
     if (filters?.search) {

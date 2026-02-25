@@ -112,7 +112,7 @@ export class MaintenanceTriageCopilot extends BaseCopilot<MaintenanceTriageInput
     // Parse JSON response
     const parseResult = this.safeParseJson<TriageAIResponse>(response.content, requestId);
     if (!parseResult.success) {
-      return parseResult;
+      return parseResult as AIResult<MaintenanceTriageOutput, CopilotError>;
     }
 
     const aiResponse = parseResult.data;

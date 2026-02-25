@@ -20,10 +20,21 @@ import {
 // Client Initialization
 // ============================================================================
 
-const API_BASE_URL =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1')
-    : (process.env.API_URL ?? 'http://localhost:4000/api/v1');
+function getApiBaseUrl(): string {
+  const url =
+    typeof window !== 'undefined'
+      ? process.env.NEXT_PUBLIC_API_URL
+      : process.env.API_URL;
+  if (url?.trim()) {
+    const base = url.trim().replace(/\/$/, '');
+    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXT_PUBLIC_API_URL (or API_URL server-side) is required in production');
+  }
+  return 'http://localhost:4000/api/v1';
+}
+const API_BASE_URL = getApiBaseUrl();
 
 function ensureClient() {
   if (!hasApiClient()) {
@@ -111,9 +122,9 @@ const MOCK_LEASE = {
     'Pets allowed with prior approval',
   ],
   propertyManager: {
-    name: 'Jane Mwangi',
-    phone: '+254 700 123 456',
-    email: 'jane@sunsetapartments.co.ke',
+    name: '—',
+    phone: '—',
+    email: '—',
   },
 };
 

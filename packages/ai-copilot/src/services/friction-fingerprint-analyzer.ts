@@ -367,7 +367,7 @@ ${context ? `Tenant Context:\n${JSON.stringify(context, null, 2)}` : ''}`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return FrictionFingerprintResultSchema.parse(JSON.parse(content));
+    return FrictionFingerprintResultSchema.parse(JSON.parse(content)) as FrictionFingerprintResult;
   }
 
   /**
@@ -409,7 +409,7 @@ Return the updated complete fingerprint.`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return FrictionFingerprintResultSchema.parse(JSON.parse(content));
+    return FrictionFingerprintResultSchema.parse(JSON.parse(content)) as FrictionFingerprintResult;
   }
 
   /**

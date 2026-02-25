@@ -256,7 +256,15 @@ customerAppRouter.post('/payments/pay', zValidator('json', paymentInitiationSche
     return c.json({ success: true, data: { ...payment, mpesa: { checkoutRequestId: 'ws_CO_' + Date.now(), merchantRequestId: 'MR-' + Date.now(), message: 'Please check your phone and enter your M-Pesa PIN', phone: phone || '+255700000001' } }, message: 'M-Pesa payment request sent. Check your phone.' }, 202);
   }
   if (paymentMethod === 'bank_transfer') {
-    return c.json({ success: true, data: { ...payment, bankDetails: { bankName: 'CRDB Bank', accountNumber: '0150123456789', accountName: 'BOSSNYUMBA Properties Ltd', reference: 'RENT-' + auth.userId.slice(-6) + '-' + Date.now(), swiftCode: 'COABORTZXXX' } }, message: 'Please transfer to the provided bank account with the reference.' });
+    const tenant = c.get('tenant') as { settings?: { bankName?: string; bankAccount?: string; bankAccountName?: string; bankSwiftCode?: string } } | undefined;
+    const bankDetails = {
+      bankName: tenant?.settings?.bankName || process.env.BANK_NAME || '',
+      accountNumber: tenant?.settings?.bankAccount || process.env.BANK_ACCOUNT_NUMBER || '',
+      accountName: tenant?.settings?.bankAccountName || process.env.BANK_ACCOUNT_NAME || '',
+      reference: 'RENT-' + auth.userId.slice(-6) + '-' + Date.now(),
+      swiftCode: tenant?.settings?.bankSwiftCode || process.env.BANK_SWIFT_CODE || '',
+    };
+    return c.json({ success: true, data: { ...payment, bankDetails }, message: 'Please transfer to the provided bank account with the reference.' });
   }
   return c.json({ success: true, data: payment });
 });
@@ -272,7 +280,8 @@ customerAppRouter.get('/payments/history', zValidator('query', paginationSchema)
 
 customerAppRouter.get('/payments/receipts/:id', async (c) => {
   const receiptId = c.req.param('id');
-  return c.json({ success: true, data: { downloadUrl: 'https://storage.example.com/receipts/' + receiptId + '?token=xxx', expiresAt: new Date(Date.now() + 3600000).toISOString() } });
+  const storageBaseUrl = process.env.STORAGE_BASE_URL || '/storage';
+  return c.json({ success: true, data: { downloadUrl: `${storageBaseUrl}/receipts/${receiptId}?token=xxx`, expiresAt: new Date(Date.now() + 3600000).toISOString() } });
 });
 
 // Maintenance Requests
@@ -338,7 +347,8 @@ customerAppRouter.get('/documents', zValidator('query', paginationSchema.merge(z
 
 customerAppRouter.get('/documents/:id/download', async (c) => {
   const documentId = c.req.param('id');
-  return c.json({ success: true, data: { downloadUrl: 'https://storage.example.com/documents/' + documentId + '?token=xxx', expiresAt: new Date(Date.now() + 3600000).toISOString() } });
+  const storageBaseUrl = process.env.STORAGE_BASE_URL || '/storage';
+  return c.json({ success: true, data: { downloadUrl: `${storageBaseUrl}/documents/${documentId}?token=xxx`, expiresAt: new Date(Date.now() + 3600000).toISOString() } });
 });
 
 customerAppRouter.get('/lease', async (c) => {

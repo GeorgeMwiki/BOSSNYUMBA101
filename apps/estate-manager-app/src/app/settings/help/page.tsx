@@ -31,14 +31,16 @@ export default function HelpPage() {
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Contact</h2>
           <div className="card divide-y divide-gray-100">
-            <a href="mailto:support@bossnyumba.com" className="p-4 flex items-center gap-3 hover:bg-gray-50">
+            {process.env.NEXT_PUBLIC_SUPPORT_EMAIL && (
+            <a href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`} className="p-4 flex items-center gap-3 hover:bg-gray-50">
               <Mail className="w-5 h-5 text-primary-600" />
               <div>
                 <div className="font-medium">Email Support</div>
-                <div className="text-sm text-gray-500">support@bossnyumba.com</div>
+                <div className="text-sm text-gray-500">{process.env.NEXT_PUBLIC_SUPPORT_EMAIL}</div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </a>
+          )}
           </div>
         </section>
       </div>

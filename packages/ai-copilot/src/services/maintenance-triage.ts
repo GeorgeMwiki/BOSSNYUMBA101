@@ -155,7 +155,7 @@ export class MaintenanceTriageService {
     if (!content) throw new Error('No response from OpenAI');
 
     const parsed = JSON.parse(content);
-    return ClassifyMaintenanceResultSchema.parse(parsed);
+    return ClassifyMaintenanceResultSchema.parse(parsed) as ClassifyMaintenanceResult;
   }
 }
 

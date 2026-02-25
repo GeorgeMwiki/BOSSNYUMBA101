@@ -24,7 +24,7 @@ export {
   type InteractiveMessage,
   type SendMessageResponse,
   type WebhookMessage,
-} from './whatsapp/client';
+} from './whatsapp/client.js';
 
 // ============================================================================
 // WhatsApp Business API (Meta Cloud API)
@@ -110,7 +110,7 @@ export {
   type OutgoingInteractiveMessage,
   type MessageTemplate,
   type InteractiveTemplate,
-} from './whatsapp/index';
+} from './whatsapp/index.js';
 
 // ============================================================================
 // Africa's Talking SMS
@@ -124,19 +124,19 @@ export {
   type SmsResponse,
   type DeliveryReport,
   type BulkSmsRequest,
-} from './sms/africas-talking';
+} from './sms/africas-talking.js';
 
 // ============================================================================
 // Email Providers
 // ============================================================================
-export { SendGridProvider, sendGridProvider, type SendGridConfig } from './providers/email/sendgrid';
-export { SmtpProvider, smtpProvider, type SmtpConfig } from './providers/email/smtp';
-export { SesProvider, sesProvider, type SesConfig } from './providers/email/ses';
+export { SendGridProvider, sendGridProvider, type SendGridConfig } from './providers/email/sendgrid.js';
+export { SmtpProvider, smtpProvider, type SmtpConfig } from './providers/email/smtp.js';
+export { SesProvider, sesProvider, type SesConfig } from './providers/email/ses.js';
 
 // ============================================================================
 // Core Notification Service
 // ============================================================================
-export { notificationService, notificationProcessor } from './services/notification.service';
+export { notificationService, notificationProcessor } from './services/notification.service.js';
 
 // ============================================================================
 // In-App Notification Service
@@ -151,7 +151,7 @@ export {
   type NotificationPriority,
   type NotificationCategory,
   type WebSocketConnection,
-} from './services/in-app-notification.service';
+} from './services/in-app-notification.service.js';
 
 // ============================================================================
 // Template Management Service
@@ -167,35 +167,36 @@ export {
   type TemplateCategory,
   type TemplateVariable,
   type TemplateContent,
-} from './services/template-management.service';
+} from './services/template-management.service.js';
 
 // ============================================================================
 // Preferences Service
 // ============================================================================
-export { preferencesService } from './preferences/service';
+export { preferencesService } from './preferences/service.js';
 export type {
   NotificationPreferences,
-  ChannelPreference,
-  QuietHours,
-} from './preferences/types';
+  ChannelPreferences,
+  UpdatePreferencesInput,
+  TemplatePreferences,
+} from './preferences/types.js';
 
 // ============================================================================
 // Providers
 // ============================================================================
-export { providerRegistry } from './providers/index';
-export type { INotificationProvider, SendParams } from './providers/provider.interface';
+export { providerRegistry } from './providers/index.js';
+export type { INotificationProvider, SendParams } from './providers/provider.interface.js';
 
 // ============================================================================
 // Templates
 // ============================================================================
-export { resolveTemplate } from './templates/index';
-export type { TemplateData, RenderedTemplate as ResolvedTemplate } from './templates/manager';
+export { resolveTemplate } from './templates/index.js';
+export type { TemplateData, RenderedTemplate as ResolvedTemplate } from './templates/manager.js';
 
 // ============================================================================
 // Queue
 // ============================================================================
-export { enqueueNotification, enqueueBulkNotifications } from './queue/producer';
-export { startNotificationConsumer, stopNotificationConsumer } from './queue/consumer';
+export { addToQueue as enqueueNotification, addBulkToQueue as enqueueBulkNotifications } from './queue/producer.js';
+export { createNotificationWorker as startNotificationConsumer, stopNotificationConsumer } from './queue/consumer.js';
 
 // ============================================================================
 // Types
@@ -211,4 +212,4 @@ export type {
   NotificationHistoryRecord,
   ProviderConfig,
   NotificationPayload,
-} from './types/index';
+} from './types/index.js';

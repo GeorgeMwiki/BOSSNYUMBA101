@@ -116,7 +116,7 @@ const evidencePacks = new Map<string, EvidencePack>();
 documents.set('doc-001', {
   id: 'doc-001', tenantId: 'tenant-001', customerId: 'customer-001', type: 'id_document',
   name: 'National ID - James Mkenda', mimeType: 'image/jpeg', size: 125000,
-  url: 'https://storage.example.com/docs/id-001.jpg', metadata: {}, tags: ['id', 'verified'],
+  url: '/storage/docs/id-001.jpg', metadata: {}, tags: ['id', 'verified'],
   verificationStatus: 'verified',
   verificationResults: {
     status: 'passed', confidence: 0.95, riskScore: 5,
@@ -336,7 +336,8 @@ evidenceApp.post('/', zValidator('json', evidencePackSchema, validationErrorHook
   }
   
   // Generate download URL
-  pack.downloadUrl = `https://storage.example.com/evidence-packs/${pack.id}.zip`;
+  const storageBase = process.env.STORAGE_BASE_URL || '/storage';
+  pack.downloadUrl = `${storageBase}/evidence-packs/${pack.id}.zip`;
   pack.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
   
   evidencePacks.set(pack.id, pack);

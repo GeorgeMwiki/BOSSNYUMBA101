@@ -163,10 +163,10 @@ export function MaintenancePage() {
         ...(wo.completedAt ? [{ id: '6', action: 'Work Completed', description: `Repair completed and verified. Final cost: ${formatCurrency(wo.actualCost || wo.estimatedCost || 0)}`, timestamp: wo.completedAt }] : []),
       ],
       evidence: wo.status === 'COMPLETED' ? [
-        { id: '1', type: 'before', url: 'https://via.placeholder.com/400x300?text=Before+Photo', caption: 'Before repair', uploadedAt: wo.reportedAt },
-        { id: '2', type: 'after', url: 'https://via.placeholder.com/400x300?text=After+Photo', caption: 'After repair', uploadedAt: wo.completedAt || '' },
+        { id: '1', type: 'before', url: '/placeholder/before-photo.svg', caption: 'Before repair', uploadedAt: wo.reportedAt },
+        { id: '2', type: 'after', url: '/placeholder/after-photo.svg', caption: 'After repair', uploadedAt: wo.completedAt || '' },
       ] : wo.status !== 'SUBMITTED' ? [
-        { id: '1', type: 'before', url: 'https://via.placeholder.com/400x300?text=Issue+Photo', caption: 'Reported issue', uploadedAt: wo.reportedAt },
+        { id: '1', type: 'before', url: '/placeholder/issue-photo.svg', caption: 'Reported issue', uploadedAt: wo.reportedAt },
       ] : [],
     };
     setSelectedWorkOrder(detail);

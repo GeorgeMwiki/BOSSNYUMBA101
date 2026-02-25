@@ -458,7 +458,7 @@ Calculate the dispute risk score and provide comprehensive analysis.`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return DisputeRiskResultSchema.parse(JSON.parse(content));
+    return DisputeRiskResultSchema.parse(JSON.parse(content)) as DisputeRiskResult;
   }
 
   /**
@@ -497,7 +497,7 @@ Calculate the vendor performance score and provide comprehensive analysis.`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return VendorScoreResultSchema.parse(JSON.parse(content));
+    return VendorScoreResultSchema.parse(JSON.parse(content)) as VendorScoreResult;
   }
 
   /**

@@ -2,12 +2,15 @@ import type { ZodIssue } from 'zod';
 import { envSchema } from './schemas.js';
 import type { EnvSchema } from './schemas.js';
 
-/** Load and validate environment variables */
+/** Load and validate environment variables. No hardcoded URLs in production. */
 function loadEnv(): EnvSchema {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   const raw = {
     DATABASE_URL: process.env.DATABASE_URL,
     REDIS_URL: process.env.REDIS_URL,
     JWT_SECRET: process.env.JWT_SECRET,
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     MPESA_CONSUMER_KEY: process.env.MPESA_CONSUMER_KEY,
@@ -24,8 +27,11 @@ function loadEnv(): EnvSchema {
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    API_URL: process.env.API_URL,
-    FRONTEND_URL: process.env.FRONTEND_URL,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+    AI_PROVIDER: process.env.AI_PROVIDER,
+    API_URL: process.env.API_URL ?? (isProduction ? undefined : 'http://localhost:4000'),
+    FRONTEND_URL: process.env.FRONTEND_URL ?? (isProduction ? undefined : 'http://localhost:3000'),
   };
 
   const result = envSchema.safeParse(raw);
@@ -37,7 +43,21 @@ function loadEnv(): EnvSchema {
     throw new Error(`Environment validation failed:\n${issues}`);
   }
 
-  return result.data;
+  const data = result.data;
+
+  if (isProduction) {
+    if (!data.API_URL || !data.FRONTEND_URL) {
+      throw new Error(
+        'Production requires API_URL and FRONTEND_URL to be set in the environment. No hardcoded defaults.'
+      );
+    }
+  }
+
+  return {
+    ...data,
+    API_URL: data.API_URL ?? 'http://localhost:4000',
+    FRONTEND_URL: data.FRONTEND_URL ?? 'http://localhost:3000',
+  } as EnvSchema;
 }
 
 /** Validated config singleton */

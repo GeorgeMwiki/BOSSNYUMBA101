@@ -12,6 +12,7 @@ import {
   DEMO_TENANT_USERS,
   DEMO_TENANT,
   PLATFORM_ADMIN_USERS,
+  getPlatformAdminRoles,
 } from '../data/mock-data';
 import { loginSchema } from './validators';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -47,11 +48,6 @@ const getPermissionsForRole = (role: UserRole): string[] => {
   return basePermissions[role] || [];
 };
 
-const PLATFORM_ADMIN_ROLES: Record<string, UserRole> = {
-  'admin@bossnyumba.com': UserRole.ADMIN,
-  'support@bossnyumba.com': UserRole.SUPPORT,
-};
-
 const app = new Hono();
 
 app.post('/login', zValidator('json', loginSchema), async (c) => {
@@ -59,7 +55,14 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
 
   const platformAdmin = PLATFORM_ADMIN_USERS.find((u) => u.email === email);
   if (platformAdmin) {
-    const role = PLATFORM_ADMIN_ROLES[email] ?? UserRole.SUPPORT;
+    const envPassword = process.env.PLATFORM_ADMIN_PASSWORD;
+    if (envPassword && password !== envPassword) {
+      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+    }
+    if (process.env.NODE_ENV === 'production' && !envPassword) {
+      return c.json({ success: false, error: { code: 'CONFIG_ERROR', message: 'Platform admin login disabled' } }, 503);
+    }
+    const role = getPlatformAdminRoles()[email] ?? UserRole.SUPPORT;
     const token = generateToken({
       userId: platformAdmin.id,
       tenantId: 'platform',

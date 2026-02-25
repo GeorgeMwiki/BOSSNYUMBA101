@@ -28,8 +28,11 @@ function getDefaultConnection(): { host: string; port: number; password?: string
         password: u.password || undefined,
       };
     } catch {
-      // fallback
+      // invalid URL
     }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('REDIS_URL is required in production for the notification queue');
   }
   return { host: 'localhost', port: 6379 };
 }
@@ -110,4 +113,14 @@ export function createNotificationWorker(
   });
 
   return workerInstance;
+}
+
+/**
+ * Stop the notification queue consumer (graceful shutdown)
+ */
+export async function stopNotificationConsumer(): Promise<void> {
+  if (workerInstance) {
+    await workerInstance.close();
+    workerInstance = null;
+  }
 }

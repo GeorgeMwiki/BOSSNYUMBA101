@@ -8,37 +8,39 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./tenant": {
+      "types": "./dist/tenant/index.d.ts",
       "import": "./dist/tenant/index.mjs",
-      "require": "./dist/tenant/index.js",
-      "types": "./dist/tenant/index.d.ts"
+      "require": "./dist/tenant/index.js"
     },
     "./property": {
+      "types": "./dist/property/index.d.ts",
       "import": "./dist/property/index.mjs",
-      "require": "./dist/property/index.js",
-      "types": "./dist/property/index.d.ts"
+      "require": "./dist/property/index.js"
     },
     "./lease": {
+      "types": "./dist/lease/index.d.ts",
       "import": "./dist/lease/index.mjs",
-      "require": "./dist/lease/index.js",
-      "types": "./dist/lease/index.d.ts"
+      "require": "./dist/lease/index.js"
     },
     "./payment": {
+      "types": "./dist/payment/index.d.ts",
       "import": "./dist/payment/index.mjs",
-      "require": "./dist/payment/index.js",
-      "types": "./dist/payment/index.d.ts"
+      "require": "./dist/payment/index.js"
     },
     "./maintenance": {
+      "types": "./dist/maintenance/index.d.ts",
       "import": "./dist/maintenance/index.mjs",
-      "require": "./dist/maintenance/index.js",
-      "types": "./dist/maintenance/index.d.ts"
+      "require": "./dist/maintenance/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -59,7 +59,7 @@ export class SesProvider implements INotificationProvider {
       return { success: false, error: 'SES not configured for tenant' };
     }
 
-    const from = config.fromEmail ?? 'noreply@bossnyumba.com';
+    const from = config.fromEmail ?? process.env.RESEND_FROM_EMAIL ?? process.env.NOTIFICATIONS_FROM_EMAIL ?? 'noreply@bossnyumba.com';
     const fromName = config.fromName ?? 'BOSSNYUMBA';
 
     try {

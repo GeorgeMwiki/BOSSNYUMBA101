@@ -1,7 +1,7 @@
 /**
  * BOSSNYUMBA Database Seed
  * Seeds demo tenant, admin user, sample properties, units, customers, and leases.
- * Admin: admin@bossnyumba.com / admin123
+ * Admin: set SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD in .env (dev default: admin@bossnyumba.com / admin123)
  */
 
 import { eq } from 'drizzle-orm';
@@ -19,11 +19,19 @@ import {
   leases,
 } from './schemas/index.js';
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/bossnyumba';
+const DATABASE_URL =
+  process.env.DATABASE_URL ??
+  (process.env.NODE_ENV === 'production'
+    ? (() => {
+        throw new Error('DATABASE_URL is required in production. Set it in .env');
+      })()
+    : 'postgresql://localhost:5432/bossnyumba');
 
 async function seed() {
   const db = createDatabaseClient(DATABASE_URL);
-  const ADMIN_PASSWORD_HASH = await bcrypt.hash('admin123', 10);
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? (process.env.NODE_ENV === 'production' ? (() => { throw new Error('SEED_ADMIN_EMAIL required in production'); })() : 'admin@bossnyumba.com');
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (process.env.NODE_ENV === 'production' ? (() => { throw new Error('SEED_ADMIN_PASSWORD required in production'); })() : 'admin123');
+  const ADMIN_PASSWORD_HASH = await bcrypt.hash(adminPassword, 10);
 
   const tenantId = crypto.randomUUID();
   const orgId = crypto.randomUUID();
@@ -74,7 +82,7 @@ async function seed() {
       id: adminUserId,
       tenantId,
       organizationId: orgId,
-      email: 'admin@bossnyumba.com',
+      email: adminEmail,
       firstName: 'Admin',
       lastName: 'User',
       displayName: 'Admin User',

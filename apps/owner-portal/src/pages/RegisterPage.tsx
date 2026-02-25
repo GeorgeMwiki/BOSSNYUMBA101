@@ -128,21 +128,30 @@ export function RegisterPage() {
         setMfaSetup(response.data as MfaSetup);
         setStep('mfa-setup');
       } else {
-        // Mock MFA setup for development
-        setMfaSetup({
-          secret: 'JBSWY3DPEHPK3PXP',
-          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=JBSWY3DPEHPK3PXP%26issuer=BOSSNYUMBA`,
-          backupCodes: ['ABC123XYZ', 'DEF456UVW', 'GHI789RST', 'JKL012OPQ', 'MNO345MNO', 'PQR678JKL', 'STU901GHI', 'VWX234DEF'],
-        });
-        setStep('mfa-setup');
+        if (process.env.NODE_ENV !== 'production') {
+          const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+          setMfaSetup({
+            secret: devSecret,
+            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
+            backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
+          });
+          setStep('mfa-setup');
+        } else {
+          setError('MFA setup failed. Please try again.');
+        }
       }
     } catch (err) {
-      setMfaSetup({
-        secret: 'JBSWY3DPEHPK3PXP',
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=JBSWY3DPEHPK3PXP%26issuer=BOSSNYUMBA`,
-        backupCodes: ['ABC123XYZ', 'DEF456UVW', 'GHI789RST', 'JKL012OPQ', 'MNO345MNO', 'PQR678JKL', 'STU901GHI', 'VWX234DEF'],
-      });
-      setStep('mfa-setup');
+      if (process.env.NODE_ENV !== 'production') {
+        const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+        setMfaSetup({
+          secret: devSecret,
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
+          backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
+        });
+        setStep('mfa-setup');
+      } else {
+        setError('MFA setup failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

@@ -22,8 +22,13 @@ import { UserRole } from '../types/user-role';
 // Configuration
 // ============================================================================
 
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-in-production';
+function requireSecret(name: string): string {
+  const v = process.env[name];
+  if (!v && process.env.NODE_ENV === 'production') throw new Error(`Missing required: ${name}`);
+  return v || '';
+}
+const JWT_SECRET = process.env.JWT_SECRET || requireSecret('JWT_SECRET');
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || requireSecret('JWT_REFRESH_SECRET');
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '7d';
 const MFA_TOKEN_EXPIRY = '5m';

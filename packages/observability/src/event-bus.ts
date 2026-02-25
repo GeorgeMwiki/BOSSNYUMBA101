@@ -414,8 +414,8 @@ export class EventBus {
 
     if (pattern.includes(':')) {
       const [aggPattern, typePattern] = pattern.split(':');
-      const aggMatch = aggPattern === '*' || this.wildcardMatch(aggPattern, aggregateType);
-      const typeMatch = typePattern === '*' || this.wildcardMatch(typePattern, eventType);
+      const aggMatch = (aggPattern ?? '*') === '*' || this.wildcardMatch(aggPattern ?? '', aggregateType);
+      const typeMatch = (typePattern ?? '*') === '*' || this.wildcardMatch(typePattern ?? '', eventType);
       return aggMatch && typeMatch;
     }
 

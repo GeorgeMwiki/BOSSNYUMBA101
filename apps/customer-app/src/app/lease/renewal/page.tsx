@@ -372,7 +372,7 @@ export default function LeaseRenewalPage() {
             Download Terms
           </a>
           <a
-            href="https://wa.me/254700123456?text=Hi,%20I%20have%20questions%20about%20my%20lease%20renewal"
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''}?text=Hi,%20I%20have%20questions%20about%20my%20lease%20renewal`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-secondary flex-1 py-3 flex items-center justify-center gap-2"

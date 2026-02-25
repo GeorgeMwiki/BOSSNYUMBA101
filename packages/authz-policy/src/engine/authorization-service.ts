@@ -258,11 +258,11 @@ export class AuthorizationService {
       userId: user.id,
       tenantId: user.tenantId,
       userType: user.type,
-      roleIds: user.roleAssignments.map((a) => a.roleId),
+      roleIds: user.roleAssignments.map((a: { roleId: string; organizationId: string; expiresAt?: string }) => a.roleId),
       organizationIds: Array.from(
         new Set([
           user.primaryOrganizationId,
-          ...user.roleAssignments.map((a) => a.organizationId),
+          ...user.roleAssignments.map((a: { roleId: string; organizationId: string; expiresAt?: string }) => a.organizationId),
         ])
       ),
       primaryOrganizationId: user.primaryOrganizationId,

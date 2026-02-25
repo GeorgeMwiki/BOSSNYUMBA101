@@ -53,7 +53,7 @@ interface TimelineEvent {
 // ─── Mock Data ─────────────────────────────────────────────
 
 const mockCustomers: Customer[] = [
-  { id: 'C001', name: 'John Kamau', email: 'john@acmeproperties.co.ke', phone: '+254712345678', tenant: 'Acme Properties Ltd', role: 'Property Manager', status: 'active', createdAt: '2024-03-15', lastLogin: '2026-02-13T14:20:00Z', avatar: 'JK' },
+  { id: 'C001', name: 'John Kamau', email: 'john@acmeproperties.co.ke', phone: '+254700000000', tenant: 'Acme Properties Ltd', role: 'Property Manager', status: 'active', createdAt: '2024-03-15', lastLogin: '2026-02-13T14:20:00Z', avatar: 'JK' },
   { id: 'C002', name: 'Mary Wanjiku', email: 'mary@sunriserealty.co.ke', phone: '+254723456789', tenant: 'Sunrise Realty', role: 'Admin', status: 'active', createdAt: '2024-05-20', lastLogin: '2026-02-13T10:00:00Z', avatar: 'MW' },
   { id: 'C003', name: 'Peter Ochieng', email: 'peter@metrohousing.co.ke', phone: '+254734567890', tenant: 'Metro Housing', role: 'Owner', status: 'active', createdAt: '2025-01-28', lastLogin: '2026-02-12T16:00:00Z', avatar: 'PO' },
   { id: 'C004', name: 'Fatma Hassan', email: 'fatma@coastalestates.co.ke', phone: '+254745678901', tenant: 'Coastal Estates', role: 'Admin', status: 'suspended', createdAt: '2024-08-10', lastLogin: '2026-01-15T09:00:00Z', avatar: 'FH' },

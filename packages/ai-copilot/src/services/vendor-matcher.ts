@@ -162,7 +162,7 @@ export class VendorMatcherService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return VendorMatchingResultSchema.parse(JSON.parse(content));
+    return VendorMatchingResultSchema.parse(JSON.parse(content)) as VendorMatchingResult;
   }
 
   private getMockVendors(): VendorProfile[] {

@@ -513,7 +513,7 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
    */
   router.get('/session/:phoneNumber', async (req: Request, res: Response): Promise<void> => {
     try {
-      const { phoneNumber } = req.params;
+      const phoneNumber = req.params.phoneNumber ?? '';
       const session = await sessionStore.get(phoneNumber);
 
       if (!session) {
@@ -541,7 +541,7 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
    */
   router.delete('/session/:phoneNumber', async (req: Request, res: Response): Promise<void> => {
     try {
-      const { phoneNumber } = req.params;
+      const phoneNumber = req.params.phoneNumber ?? '';
       await sessionStore.delete(phoneNumber);
       res.json({ success: true, message: 'Session cleared' });
     } catch (error) {

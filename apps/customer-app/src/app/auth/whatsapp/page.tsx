@@ -95,7 +95,7 @@ function WhatsAppRegistrationContent() {
           <h1 className="text-xl font-semibold mb-2">Verification Failed</h1>
           <p className="text-gray-500 text-sm mb-6">{error}</p>
           <a
-            href="https://wa.me/254700123456?text=I%20need%20a%20new%20registration%20link"
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''}?text=I%20need%20a%20new%20registration%20link`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary w-full py-3 flex items-center justify-center gap-2"

@@ -436,6 +436,11 @@ export interface ReminderData {
   documentType?: string;
   expiryDate?: string;
   leaseEndDate?: string;
+  /** Maintenance appointment reminder fields */
+  appointmentDate?: string;
+  appointmentTime?: string;
+  technicianName?: string;
+  issueType?: string;
 }
 
 // ============================================================================

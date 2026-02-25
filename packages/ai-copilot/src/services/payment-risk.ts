@@ -173,7 +173,7 @@ export class PaymentRiskService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return PaymentRiskResultSchema.parse(JSON.parse(content));
+    return PaymentRiskResultSchema.parse(JSON.parse(content)) as PaymentRiskResult;
   }
 
   private buildCustomerData(customerId: string, data?: Partial<PaymentCustomerData>): PaymentCustomerData {

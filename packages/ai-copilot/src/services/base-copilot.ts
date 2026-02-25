@@ -180,12 +180,13 @@ export abstract class BaseCopilot<TInput, TOutput extends CopilotOutputBase> {
         options.modelOverride
       );
       if (!compileResult.success) {
+        const compileErr = (compileResult as { success: false; error: { message: string } }).error;
         const error: CopilotError = {
           code: 'PROMPT_ERROR',
-          message: `Failed to compile prompt: ${compileResult.error.message}`,
+          message: `Failed to compile prompt: ${compileErr.message}`,
           domain: this.domain,
           retryable: false,
-          details: { ...compileResult.error },
+          details: { ...compileErr },
         };
         this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, error));
         return aiErr(error);
@@ -213,12 +214,13 @@ export abstract class BaseCopilot<TInput, TOutput extends CopilotOutputBase> {
       });
 
       if (!aiResult.success) {
+        const aiErrBranch = (aiResult as { success: false; error: { message: string; retryable: boolean } }).error;
         const error: CopilotError = {
           code: 'AI_ERROR',
-          message: aiResult.error.message,
+          message: aiErrBranch.message,
           domain: this.domain,
-          retryable: aiResult.error.retryable,
-          details: { ...aiResult.error },
+          retryable: aiErrBranch.retryable,
+          details: { ...aiErrBranch },
         };
         this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, error));
         return aiErr(error);
@@ -227,15 +229,17 @@ export abstract class BaseCopilot<TInput, TOutput extends CopilotOutputBase> {
       // Parse response
       const parseResult = this.parseAIResponse(aiResult.data, input, requestId);
       if (!parseResult.success) {
-        this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, parseResult.error));
-        return parseResult;
+        const parseErr = (parseResult as { success: false; error: CopilotError }).error;
+        this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, parseErr));
+        return aiErr(parseErr);
       }
 
       // Validate output
       const validateResult = this.validateOutput(parseResult.data);
       if (!validateResult.success) {
-        this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, validateResult.error));
-        return validateResult;
+        const validateErr = (validateResult as { success: false; error: CopilotError }).error;
+        this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, validateErr));
+        return aiErr(validateErr);
       }
 
       // Calculate confidence

@@ -170,7 +170,7 @@ export class SentimentAnalyzerService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return SentimentAnalysisResultSchema.parse(JSON.parse(content));
+    return SentimentAnalysisResultSchema.parse(JSON.parse(content)) as SentimentAnalysisResult;
   }
 }
 

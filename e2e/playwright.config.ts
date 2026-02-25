@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * BOSSNYUMBA Platform E2E Configuration
+ * Uses env: OWNER_PORTAL_URL, ADMIN_PORTAL_URL, CUSTOMER_APP_URL, ESTATE_MANAGER_URL.
+ * For live demo, set these and optionally E2E_TEST_* (see e2e/.env.example), or source e2e/.env before running.
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({

@@ -6,7 +6,14 @@
       "Bash(pnpm --version:*)",
       "Bash(node --version:*)",
       "Bash(npm --version:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

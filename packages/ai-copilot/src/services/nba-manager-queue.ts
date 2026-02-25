@@ -400,7 +400,7 @@ Period: ${now.toISOString()} to ${periodEnd.toISOString()}`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return ManagerQueueResultSchema.parse(JSON.parse(content));
+    return ManagerQueueResultSchema.parse(JSON.parse(content)) as ManagerQueueResult;
   }
 
   /**

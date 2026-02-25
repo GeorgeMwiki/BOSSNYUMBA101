@@ -572,12 +572,13 @@ ownerPortalRouter.get(
  */
 ownerPortalRouter.get('/documents/:id/download', async (c) => {
   const documentId = c.req.param('id');
+  const storageBaseUrl = process.env.STORAGE_BASE_URL || '/storage';
 
   // In production, generate signed URL or stream file
   return c.json({
     success: true,
     data: {
-      downloadUrl: `https://storage.example.com/documents/${documentId}?token=xxx`,
+      downloadUrl: `${storageBaseUrl}/documents/${documentId}?token=xxx`,
       expiresAt: new Date(Date.now() + 3600000).toISOString(),
     },
   });

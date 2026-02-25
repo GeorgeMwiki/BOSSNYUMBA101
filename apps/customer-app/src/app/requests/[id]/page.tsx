@@ -35,7 +35,7 @@ const workOrder = {
   scheduledTimeSlot: '09:00-12:00',
   assignedTechnician: {
     name: 'James Mwangi',
-    phone: '+254 712 345 678',
+    phone: '',
     rating: 4.8,
   },
   permissionToEnter: true,

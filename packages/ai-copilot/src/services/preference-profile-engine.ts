@@ -349,7 +349,7 @@ export class PreferenceProfileEngine {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return PreferenceProfileResultSchema.parse(JSON.parse(content));
+    return PreferenceProfileResultSchema.parse(JSON.parse(content)) as PreferenceProfileResult;
   }
 
   /**
@@ -391,7 +391,7 @@ Return the updated complete profile in the same JSON format.`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return PreferenceProfileResultSchema.parse(JSON.parse(content));
+    return PreferenceProfileResultSchema.parse(JSON.parse(content)) as PreferenceProfileResult;
   }
 
   /**

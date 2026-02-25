@@ -8,7 +8,11 @@ import { SignJWT, jwtVerify } from 'jose';
 import type { UserRole } from '../types/user-role';
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'development-secret-change-in-production'
+  (() => {
+    const s = process.env.JWT_SECRET;
+    if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
+    return s || '';
+  })()
 );
 
 export interface AuthContext {

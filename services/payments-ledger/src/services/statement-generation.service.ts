@@ -327,7 +327,24 @@ export class StatementGenerationService {
     aggregate.markSent(request.recipientEmail);
     await this.statementRepository.update(aggregate.toData());
 
-    // TODO: Actually send the email/notification
+    try {
+      const notificationsUrl = process.env.NOTIFICATIONS_SERVICE_URL || process.env.API_URL;
+      if (notificationsUrl) {
+        await fetch(`${notificationsUrl}/api/v1/notifications/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.INTERNAL_API_KEY || '' },
+          body: JSON.stringify({
+            channel: 'email',
+            to: request.recipientEmail,
+            template: 'statement_delivery',
+            data: { statementId: request.statementId, tenantId: request.tenantId },
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+      }
+    } catch {
+      this.logger?.warn?.({ statementId: request.statementId }, 'Failed to send statement email notification');
+    }
 
     // Publish event
     await this.eventPublisher.publish(

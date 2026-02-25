@@ -30,9 +30,14 @@ export class JwtService {
   private readonly config: JwtConfig;
 
   constructor(config: Partial<JwtConfig> = {}) {
+    const accessSecret = config.accessTokenSecret || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    const refreshSecret = config.refreshTokenSecret || process.env.JWT_REFRESH_SECRET;
+    if (process.env.NODE_ENV === 'production' && (!accessSecret || !refreshSecret)) {
+      throw new Error('JWT_ACCESS_SECRET (or JWT_SECRET) and JWT_REFRESH_SECRET are required in production');
+    }
     this.config = {
-      accessTokenSecret: config.accessTokenSecret || process.env.JWT_ACCESS_SECRET || 'access-secret-change-me',
-      refreshTokenSecret: config.refreshTokenSecret || process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-me',
+      accessTokenSecret: accessSecret || 'access-secret-change-me',
+      refreshTokenSecret: refreshSecret || 'refresh-secret-change-me',
       accessTokenExpiresIn: config.accessTokenExpiresIn || '15m',
       refreshTokenExpiresIn: config.refreshTokenExpiresIn || '7d',
       issuer: config.issuer || 'bossnyumba',
@@ -45,7 +50,7 @@ export class JwtService {
    */
   signAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
     const options: SignOptions = {
-      expiresIn: this.config.accessTokenExpiresIn,
+      expiresIn: this.config.accessTokenExpiresIn as string | number,
       issuer: this.config.issuer,
       audience: this.config.audience,
       subject: payload.sub,
@@ -68,7 +73,7 @@ export class JwtService {
    */
   signRefreshToken(payload: Pick<TokenPayload, 'sub'>): string {
     const options: SignOptions = {
-      expiresIn: this.config.refreshTokenExpiresIn,
+      expiresIn: this.config.refreshTokenExpiresIn as string | number,
       issuer: this.config.issuer,
       audience: this.config.audience,
       subject: payload.sub,

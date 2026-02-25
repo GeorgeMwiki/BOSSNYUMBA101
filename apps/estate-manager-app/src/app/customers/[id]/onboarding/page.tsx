@@ -67,7 +67,7 @@ const MOCK_PROGRESS: OnboardingProgress = {
     signing: { status: 'pending' },
     handover: { status: 'pending' },
   },
-  whatsappLink: 'https://wa.me/254712345678?text=Welcome%20to%20BOSSNYUMBA!',
+  whatsappLink: `https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''}?text=Welcome%20to%20BOSSNYUMBA!`,
   createdAt: '2024-02-10T09:00:00',
 };
 

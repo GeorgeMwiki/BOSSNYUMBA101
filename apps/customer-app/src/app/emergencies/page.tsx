@@ -3,41 +3,10 @@
 import Link from 'next/link';
 import { Phone, AlertTriangle, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-const emergencyContacts = [
-  {
-    name: 'Property Manager',
-    phone: '+254 700 123 456',
-    available: '24/7',
-    type: 'primary',
-  },
-  {
-    name: 'Maintenance Emergency',
-    phone: '+254 700 789 012',
-    available: '8am–6pm',
-    type: 'maintenance',
-  },
-  {
-    name: 'Security',
-    phone: '+254 700 345 678',
-    available: '24/7',
-    type: 'security',
-  },
-  {
-    name: 'National Emergency',
-    phone: '999',
-    available: '24/7',
-    type: 'police',
-  },
-  {
-    name: 'Fire & Ambulance',
-    phone: '999',
-    available: '24/7',
-    type: 'fire',
-  },
-];
+import { getEmergencyContacts } from '@/lib/constants';
 
 export default function EmergenciesPage() {
+  const emergencyContacts = getEmergencyContacts();
   return (
     <>
       <PageHeader

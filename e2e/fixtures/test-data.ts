@@ -61,50 +61,66 @@ export function pastDate(days: number): string {
 }
 
 // ============================================================================
-// TEST USERS
+// TEST USERS — use E2E_TEST_* env when set (live demo / production runs)
 // ============================================================================
 
+function e2eEnv(key: string): string | undefined {
+  return process.env[key]?.trim() || undefined;
+}
+
 export const testUsers = {
-  // Super admin for admin portal
   superAdmin: {
-    email: 'admin@bossnyumba.com',
-    password: 'admin123',
+    get email() {
+      return e2eEnv('E2E_TEST_ADMIN_EMAIL') ?? 'admin@bossnyumba.com';
+    },
+    get password() {
+      return e2eEnv('E2E_TEST_ADMIN_PASSWORD') ?? 'admin123';
+    },
     name: 'Super Admin',
     role: 'super_admin',
   },
 
-  // Regular admin
   admin: {
-    email: 'admin-staff@bossnyumba.com',
-    password: 'admin123',
+    get email() {
+      return e2eEnv('E2E_TEST_ADMIN_EMAIL') ?? 'admin-staff@bossnyumba.com';
+    },
+    get password() {
+      return e2eEnv('E2E_TEST_ADMIN_PASSWORD') ?? 'admin123';
+    },
     name: 'Admin Staff',
     role: 'admin',
   },
 
-  // Property owner
   owner: {
-    email: 'owner@bossnyumba.com',
-    password: 'demo123',
+    get email() {
+      return e2eEnv('E2E_TEST_OWNER_EMAIL') ?? 'owner@bossnyumba.com';
+    },
+    get password() {
+      return e2eEnv('E2E_TEST_OWNER_PASSWORD') ?? 'demo123';
+    },
     name: 'Property Owner',
     role: 'owner',
   },
 
-  // Estate manager
   manager: {
-    email: 'manager@bossnyumba.com',
-    password: 'demo123',
+    get email() {
+      return e2eEnv('E2E_TEST_MANAGER_EMAIL') ?? 'manager@bossnyumba.com';
+    },
+    get password() {
+      return e2eEnv('E2E_TEST_MANAGER_PASSWORD') ?? 'demo123';
+    },
     name: 'Estate Manager',
     role: 'manager',
   },
 
-  // Customer (tenant/resident)
   customer: {
-    phone: '+254712345678',
+    get phone() {
+      return e2eEnv('E2E_TEST_CUSTOMER_PHONE') ?? '+254712345678';
+    },
     name: 'Test Customer',
     role: 'customer',
   },
 
-  // Technician for maintenance
   technician: {
     email: 'tech@bossnyumba.com',
     password: 'demo123',

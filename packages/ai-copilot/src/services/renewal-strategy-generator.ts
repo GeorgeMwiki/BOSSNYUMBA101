@@ -512,7 +512,7 @@ Include detailed NOI impact and churn risk analysis for each option.`,
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return RenewalStrategyResultSchema.parse(JSON.parse(content));
+    return RenewalStrategyResultSchema.parse(JSON.parse(content)) as RenewalStrategyResult;
   }
 
   /**

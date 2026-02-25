@@ -384,7 +384,7 @@ Generate a personalized message that:
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return ConversationResponseSchema.parse(JSON.parse(content));
+    return ConversationResponseSchema.parse(JSON.parse(content)) as ConversationResponse;
   }
 
   /**

@@ -10,7 +10,7 @@ export default defineConfig({
     'maintenance/index': 'src/maintenance/index.ts',
   },
   format: ['cjs', 'esm'],
-  dts: true,
+  dts: false,
   clean: true,
   splitting: false,
   sourcemap: true,

@@ -180,7 +180,7 @@ export class UserRepository {
     ];
 
     if (filters?.status) {
-      conditions.push(eq(users.status, filters.status as any));
+      conditions.push(eq(users.status, filters.status as unknown as typeof users.status.$inferType));
     }
 
     if (filters?.search) {
@@ -241,7 +241,7 @@ export class UserRepository {
     await this.db
       .update(users)
       .set({
-        status: 'deactivated' as any,
+        status: 'deactivated' as unknown as typeof users.status.$inferType,
         deletedAt: new Date(),
         deletedBy,
         updatedAt: new Date(),

@@ -202,6 +202,9 @@ export * from './components/Skeleton';
 // Spinner
 export * from './components/Spinner';
 
+// ErrorBoundary
+export { ErrorBoundary } from './components/ErrorBoundary';
+
 // Pagination
 export * from './components/Pagination';
 
@@ -222,7 +225,6 @@ export * from './components/Stat';
 // ============================================================================
 
 export * from './components/layout/Container';
-export * from './components/layout/PageHeader';
 
 // ============================================================================
 // Form Components

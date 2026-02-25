@@ -218,7 +218,7 @@ export class GraphQueryService {
       nodeLabel: String(r.nodeLabel ?? ''),
       nodeId: String(r.nodeId ?? ''),
       title: String(r.title ?? ''),
-      description: r.description ? String(r.description) : undefined,
+      ...(r.description != null ? { description: String(r.description) } : {}),
       evidencePath: [{
         nodeId: String(r.nodeId ?? ''),
         nodeLabel: String(r.nodeLabel ?? ''),
@@ -285,7 +285,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     const drivers: TenantRiskDriver[] = [];
 
     const unresolvedWO = toNumber(r.unresolvedWorkOrders);
@@ -413,7 +413,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     return {
       vendorId: String(r.vendorId),
       vendorName: String(r.vendorName ?? 'Unknown'),
@@ -474,7 +474,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     const openWO = toNumber(r.openWorkOrders);
     const overdueInv = toNumber(r.overdueInvoices);
     const activeIssues = toNumber(r.activeIssues);
@@ -567,7 +567,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     const now = new Date();
 
     const expiringDocuments = ((r.docs as Array<Record<string, unknown>>) ?? [])
@@ -604,7 +604,7 @@ export class GraphQueryService {
 
     return {
       parcelId,
-      parcelName: r.parcelName ? String(r.parcelName) : undefined,
+      ...(r.parcelName != null ? { parcelName: String(r.parcelName) } : {}),
       expiringDocuments,
       expiringLeases,
       pendingTasks: [],
@@ -673,7 +673,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     return {
       propertyId: String(r.propertyId),
       propertyName: String(r.propertyName ?? 'Unknown'),
@@ -735,7 +735,7 @@ export class GraphQueryService {
       };
     }
 
-    const r = records[0];
+    const r = records[0]!;
     const rawItems = (r.items as Array<Record<string, unknown>>) ?? [];
 
     const items = rawItems
@@ -786,7 +786,7 @@ export class GraphQueryService {
 
     const records = await this.client.readQuery<Record<string, unknown>>(cypher, { tenantId });
 
-    return records.map(r => ({
+    return records.map(r => (r ? {
       propertyId: String(r.propertyId),
       propertyName: String(r.propertyName ?? 'Unknown'),
       totalUnits: toNumber(r.totalUnits),
@@ -799,7 +799,7 @@ export class GraphQueryService {
       totalArrears: 0,
       avgSentiment: 0,
       occupancyRate: Math.round(toNumber(r.occupancyRate) * 100) / 100,
-    }));
+    } : null)).filter((x): x is NonNullable<typeof x> => x != null);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

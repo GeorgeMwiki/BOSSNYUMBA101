@@ -17,10 +17,18 @@ import type { UserRole } from '../types/user-role';
 // Configuration
 // ============================================================================
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value && process.env.NODE_ENV === 'production') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value || '';
+}
+
 const JWT_ACCESS_SECRET =
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'development-secret-change-in-production';
+  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || requireEnv('JWT_SECRET');
 const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-in-production';
+  process.env.JWT_REFRESH_SECRET || requireEnv('JWT_REFRESH_SECRET');
 const JWT_ISSUER = process.env.JWT_ISSUER || 'bossnyumba';
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || 'bossnyumba-api';
 
@@ -430,8 +438,7 @@ export const apiKeyAuthMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
-  // TODO: Validate API key against database
-  // For now, check against environment variable
+  // Validate API key: env API_KEYS (comma-separated). Production: consider DB or secret-manager lookup. See Docs/PRODUCTION_READINESS.md.
   const validApiKeys = (process.env.API_KEYS || '').split(',').filter(Boolean);
 
   if (!validApiKeys.includes(apiKey)) {

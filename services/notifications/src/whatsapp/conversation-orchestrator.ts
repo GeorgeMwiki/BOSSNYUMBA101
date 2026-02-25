@@ -452,7 +452,9 @@ export class ConversationOrchestrator {
       return;
     }
 
-    const [, day, month, year] = match;
+    const day = match[1] ?? '';
+    const month = match[2] ?? '';
+    const year = match[3] ?? '';
     const fullYear = year.length === 2 ? '20' + year : year;
     const moveInDate = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${fullYear}`;
 

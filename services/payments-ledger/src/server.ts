@@ -41,11 +41,7 @@ import { ReconciliationService } from './services/reconciliation.service';
 import { StatementGenerationService, GenerateStatementRequest } from './services/statement-generation.service';
 import { DisbursementService, DisbursementRequest } from './services/disbursement.service';
 import { InMemoryEventPublisher } from './events/event-publisher';
-import { InMemoryPaymentIntentRepository } from './repositories/payment-intent.repository';
-import { InMemoryAccountRepository } from './repositories/account.repository';
-import { InMemoryLedgerRepository } from './repositories/ledger.repository';
-import { InMemoryStatementRepository } from './repositories/statement.repository';
-import { InMemoryDisbursementRepository } from './repositories/disbursement.repository';
+import { createRepositories } from './repositories/factory';
 import { ReconciliationJob } from './jobs/reconciliation.job';
 import { StatementGenerationJob } from './jobs/statement-generation.job';
 import { DisbursementJob } from './jobs/disbursement.job';
@@ -128,14 +124,14 @@ function getTenantId(req: Request): TenantId {
 }
 
 /**
- * Create a mock tenant aggregate for development
- * In production, this would be fetched from the tenant service
+ * Resolve tenant aggregate - uses env-configured defaults (PLATFORM_FEE_PERCENT, etc.).
+ * Production: replace with HTTP call to tenant service when available. See Docs/PRODUCTION_READINESS.md.
  */
-function getMockTenantAggregate(tenantId: TenantId): TenantAggregate {
-  // Mock implementation - in production, fetch from tenant service
+function getTenantAggregate(tenantId: TenantId): TenantAggregate {
+  const platformFee = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5.0');
   return {
     id: tenantId,
-    getPlatformFeePercent: () => 5.0,  // 5% platform fee
+    getPlatformFeePercent: () => platformFee,
     paymentSettings: {
       stripeAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || undefined
     }
@@ -160,14 +156,11 @@ const logger = pino({
 const app = express();
 
 // =============================================================================
-// Initialize Repositories
+// Initialize Repositories (factory switches InMemory vs Prisma based on env)
 // =============================================================================
 
-const paymentIntentRepository = new InMemoryPaymentIntentRepository();
-const accountRepository = new InMemoryAccountRepository();
-const ledgerRepository = new InMemoryLedgerRepository();
-const statementRepository = new InMemoryStatementRepository();
-const disbursementRepository = new InMemoryDisbursementRepository();
+const repos = createRepositories(logger);
+const { paymentIntentRepository, accountRepository, ledgerRepository, statementRepository, disbursementRepository } = repos;
 const eventPublisher = new InMemoryEventPublisher();
 
 // =============================================================================
@@ -254,8 +247,8 @@ if (process.env.MPESA_CONSUMER_KEY) {
   mpesaProvider = new MpesaPaymentProvider({
     consumerKey: process.env.MPESA_CONSUMER_KEY,
     consumerSecret: process.env.MPESA_CONSUMER_SECRET || '',
-    shortCode: process.env.MPESA_SHORT_CODE || '',
-    passKey: process.env.MPESA_PASS_KEY || '',
+    shortCode: process.env.MPESA_SHORT_CODE || process.env.MPESA_SHORTCODE || '',
+    passKey: process.env.MPESA_PASS_KEY || process.env.MPESA_PASSKEY || '',
     environment: (process.env.MPESA_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
     callbackBaseUrl: process.env.MPESA_CALLBACK_URL || ''
   });
@@ -347,7 +340,7 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
 
     const data = validation.data;
     const tenantId = asTenantId(data.tenantId);
-    const tenant = getMockTenantAggregate(tenantId);
+    const tenant = getTenantAggregate(tenantId);
 
     const request: CreatePaymentRequest = {
       tenantId,
@@ -427,7 +420,7 @@ app.post('/api/v1/payments/:id/confirm', async (req: Request, res: Response, nex
       return res.status(400).json({ error: 'paymentMethodId is required' });
     }
 
-    const tenant = getMockTenantAggregate(tenantId);
+    const tenant = getTenantAggregate(tenantId);
     const result = await paymentOrchestrationService.processPayment(
       paymentIntentId,
       tenantId,
@@ -461,7 +454,7 @@ app.post('/api/v1/payments/:id/process', async (req: Request, res: Response, nex
       return res.status(400).json({ error: 'paymentMethodId is required' });
     }
 
-    const tenant = getMockTenantAggregate(tenantId);
+    const tenant = getTenantAggregate(tenantId);
     const result = await paymentOrchestrationService.processPayment(
       paymentIntentId,
       tenantId,

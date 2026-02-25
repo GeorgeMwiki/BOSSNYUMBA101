@@ -72,41 +72,52 @@ export const DEMO_TENANT: Tenant = {
   updatedBy: 'system',
 };
 
-// Platform admin users (BOSSNYUMBA internal)
-export const PLATFORM_ADMIN_USERS: User[] = [
-  {
-    id: 'admin-001',
-    email: 'admin@bossnyumba.com',
-    emailVerified: true,
-    phone: '+254 700 000 001',
-    phoneVerified: true,
-    firstName: 'System',
-    lastName: 'Admin',
-    status: 'ACTIVE',
-    mfaEnabled: true,
-    lastLoginAt: new Date(),
-    createdAt: new Date('2024-01-01'),
-    createdBy: 'system',
-    updatedAt: new Date('2024-01-01'),
-    updatedBy: 'system',
-  },
-  {
-    id: 'admin-002',
-    email: 'support@bossnyumba.com',
-    emailVerified: true,
-    phone: '+254 700 000 002',
-    phoneVerified: true,
-    firstName: 'Support',
-    lastName: 'Team',
-    status: 'ACTIVE',
-    mfaEnabled: false,
-    lastLoginAt: new Date(),
-    createdAt: new Date('2024-01-01'),
-    createdBy: 'system',
-    updatedAt: new Date('2024-01-01'),
-    updatedBy: 'system',
-  },
-];
+function staffEmails(envKey: string): string[] {
+  const v = process.env[envKey];
+  return v ? v.split(',').map((e) => e.trim()).filter(Boolean) : [];
+}
+
+function platformAdminEmails(): string[] {
+  const admin = staffEmails('STAFF_ADMIN_EMAILS');
+  const support = staffEmails('STAFF_SUPPORT_EMAILS');
+  if (admin.length || support.length) return [...admin, ...support];
+  return process.env.NODE_ENV === 'production' ? [] : ['admin@bossnyumba.com', 'support@bossnyumba.com'];
+}
+
+export const PLATFORM_ADMIN_USERS: User[] = (() => {
+  const emails = platformAdminEmails();
+  const list: User[] = [];
+  emails.forEach((email, i) => {
+    list.push({
+      id: `admin-${String(i + 1).padStart(3, '0')}`,
+      email,
+      emailVerified: true,
+      phone: process.env.PLATFORM_ADMIN_PHONE ?? `+25470000000${i + 1}`,
+      phoneVerified: true,
+      firstName: email.startsWith('admin') ? 'System' : 'Support',
+      lastName: email.startsWith('admin') ? 'Admin' : 'Team',
+      status: 'ACTIVE',
+      mfaEnabled: i === 0,
+      lastLoginAt: new Date(),
+      createdAt: new Date('2024-01-01'),
+      createdBy: 'system',
+      updatedAt: new Date('2024-01-01'),
+      updatedBy: 'system',
+    });
+  });
+  return list;
+})();
+
+export function getPlatformAdminRoles(): Record<string, UserRole> {
+  const map: Record<string, UserRole> = {};
+  staffEmails('STAFF_ADMIN_EMAILS').forEach((e) => { map[e] = UserRole.ADMIN; });
+  staffEmails('STAFF_SUPPORT_EMAILS').forEach((e) => { map[e] = UserRole.SUPPORT; });
+  if (Object.keys(map).length === 0 && process.env.NODE_ENV !== 'production') {
+    map['admin@bossnyumba.com'] = UserRole.ADMIN;
+    map['support@bossnyumba.com'] = UserRole.SUPPORT;
+  }
+  return map;
+}
 
 // Demo users
 export const DEMO_USERS: User[] = [

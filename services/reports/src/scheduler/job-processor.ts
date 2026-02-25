@@ -26,11 +26,31 @@ export interface JobProcessorOptions {
   };
 }
 
-const DEFAULT_REDIS = {
-  host: process.env.REDIS_HOST ?? 'localhost',
-  port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
-  password: process.env.REDIS_PASSWORD,
-};
+function getRedisConfig(): { host: string; port: number; password?: string } {
+  const url = process.env.REDIS_URL;
+  if (url) {
+    try {
+      const u = new URL(url);
+      return {
+        host: u.hostname,
+        port: parseInt(u.port ?? '6379', 10),
+        password: u.password || undefined,
+      };
+    } catch {
+      // invalid URL, fall through
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('REDIS_URL is required in production for report job processor');
+  }
+  return {
+    host: process.env.REDIS_HOST ?? 'localhost',
+    port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+    password: process.env.REDIS_PASSWORD,
+  };
+}
+
+const DEFAULT_REDIS = getRedisConfig();
 
 export interface ReportGenerateFn {
   (

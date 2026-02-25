@@ -238,7 +238,7 @@ export default function MoveOutNoticePage() {
 
           <div className="mt-6">
             <a
-              href="tel:+254700123456"
+              href={`tel:${process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? ''}`}
               className="text-primary-600 text-sm flex items-center gap-2"
             >
               <Phone className="w-4 h-4" />

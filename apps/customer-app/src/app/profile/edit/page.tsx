@@ -11,9 +11,9 @@ const initialData = {
   firstName: 'John',
   lastName: 'Kamau',
   email: 'john.kamau@example.com',
-  phone: '+254 712 345 678',
-  emergencyContactName: 'Mary Kamau',
-  emergencyContactPhone: '+254 723 456 789',
+  phone: '',
+  emergencyContactName: '',
+  emergencyContactPhone: '',
 };
 
 export default function EditProfilePage() {

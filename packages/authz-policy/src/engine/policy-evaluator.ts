@@ -188,9 +188,9 @@ export class PolicyEvaluator {
     request: AuthorizationRequest
   ): boolean {
     if (group.logic === 'AND') {
-      return group.conditions.every((c) => this.evaluateConditionOrGroup(c, request));
+      return group.conditions.every((c: PolicyCondition | ConditionGroup) => this.evaluateConditionOrGroup(c, request));
     } else {
-      return group.conditions.some((c) => this.evaluateConditionOrGroup(c, request));
+      return group.conditions.some((c: PolicyCondition | ConditionGroup) => this.evaluateConditionOrGroup(c, request));
     }
   }
   

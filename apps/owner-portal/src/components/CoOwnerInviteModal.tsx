@@ -121,7 +121,7 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
               <label className="block text-sm font-medium text-gray-700 mb-2"><Shield className="h-4 w-4 inline mr-1" />Role *</label>
               <div className="space-y-2">
                 {ROLES.map((role) => (
-                  <label key={role.id} className={\`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors \${formData.role === role.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}\`}>
+                  <label key={role.id} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${formData.role === role.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <input type="radio" name="role" value={role.id} checked={formData.role === role.id} onChange={handleChange} className="mt-1" />
                     <div>
                       <p className="font-medium text-gray-900">{role.name}</p>

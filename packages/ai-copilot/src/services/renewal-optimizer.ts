@@ -180,7 +180,7 @@ export class RenewalOptimizerService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return RenewalOptimizationResultSchema.parse(JSON.parse(content));
+    return RenewalOptimizationResultSchema.parse(JSON.parse(content)) as RenewalOptimizationResult;
   }
 
   private buildLeaseData(leaseId: string, data?: Partial<LeaseData>): LeaseData {

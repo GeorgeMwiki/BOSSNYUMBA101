@@ -56,11 +56,12 @@ export class AfricasTalkingSms {
   private client: AxiosInstance;
 
   constructor(config?: Partial<AfricasTalkingConfig>) {
+    const env = (config?.environment ?? process.env.AFRICAS_TALKING_ENVIRONMENT ?? process.env.AT_ENVIRONMENT ?? 'sandbox') as 'sandbox' | 'production';
     this.config = {
-      apiKey: config?.apiKey || process.env.AT_API_KEY || '',
-      username: config?.username || process.env.AT_USERNAME || 'sandbox',
-      environment: (config?.environment || process.env.AT_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production',
-      senderId: config?.senderId || process.env.AT_SENDER_ID,
+      apiKey: config?.apiKey || process.env.AFRICAS_TALKING_API_KEY || process.env.AT_API_KEY || '',
+      username: config?.username || process.env.AFRICAS_TALKING_USERNAME || process.env.AT_USERNAME || 'sandbox',
+      environment: env,
+      senderId: config?.senderId || process.env.AFRICAS_TALKING_SENDER_ID || process.env.AT_SENDER_ID,
     };
 
     const baseURL = this.config.environment === 'production' ? PRODUCTION_URL : SANDBOX_URL;
@@ -278,10 +279,10 @@ export class AfricasTalkingSms {
    */
   parseDeliveryReport(body: Record<string, string>): DeliveryReport {
     return {
-      id: body.id,
-      status: body.status as DeliveryReport['status'],
-      phoneNumber: body.phoneNumber,
-      networkCode: body.networkCode,
+      id: body.id ?? '',
+      status: (body.status ?? 'Unknown') as DeliveryReport['status'],
+      phoneNumber: body.phoneNumber ?? '',
+      networkCode: body.networkCode ?? '',
       failureReason: body.failureReason,
       retryCount: body.retryCount ? parseInt(body.retryCount) : undefined,
     };

@@ -207,11 +207,10 @@ export class MpesaStkPush {
   getResultMessage(resultCode: string): string {
     const messages: Record<string, string> = {
       '0': 'Transaction successful',
-      '1': 'Insufficient balance',
+      '1': 'Insufficient balance / insufficient funds',
       '1032': 'Transaction cancelled by user',
       '1037': 'Timeout waiting for user input',
       '2001': 'Wrong PIN entered',
-      '1': 'Insufficient funds',
     };
 
     return messages[resultCode] || `Unknown error (code: ${resultCode})`;

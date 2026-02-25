@@ -175,7 +175,7 @@ export class NextBestActionService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return NextBestActionResultSchema.parse(JSON.parse(content));
+    return NextBestActionResultSchema.parse(JSON.parse(content)) as NextBestActionResult;
   }
 
   private buildCustomerContext(customerId: string, context?: Partial<NBACustomerContext>): NBACustomerContext {

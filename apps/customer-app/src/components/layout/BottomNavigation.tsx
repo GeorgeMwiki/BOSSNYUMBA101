@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, CreditCard, Wrench, Bell, User } from 'lucide-react';
+import { Home, FileText, CreditCard, Wrench, Bell, User, MessageCircle, Store } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Home' },
-  { href: '/lease', icon: FileText, label: 'Lease' },
+  { href: '/marketplace', icon: Store, label: 'Marketplace' },
   { href: '/payments', icon: CreditCard, label: 'Pay' },
   { href: '/requests', icon: Wrench, label: 'Requests' },
-  { href: '/notifications', icon: Bell, label: 'Alerts' },
+  { href: '/messages', icon: MessageCircle, label: 'Messages' },
   { href: '/profile', icon: User, label: 'Profile' },
 ];
 

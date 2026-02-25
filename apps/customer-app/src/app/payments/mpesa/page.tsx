@@ -14,7 +14,7 @@ export default function MpesaPage() {
   const amountParam = searchParams.get('amount');
   const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
 
-  const [phone, setPhone] = useState('+254712345678');
+  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {

@@ -375,7 +375,7 @@ function PaymentPlanContent() {
 
           <div className="text-center">
             <a
-              href="https://wa.me/254700123456?text=Hi!%20I%20have%20a%20question%20about%20my%20payment%20plan."
+              href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''}?text=Hi!%20I%20have%20a%20question%20about%20my%20payment%20plan.`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-600 text-sm flex items-center justify-center gap-2"
@@ -426,7 +426,7 @@ function PaymentPlanContent() {
 
           <div className="mt-6">
             <a
-              href="https://wa.me/254700123456?text=Hi!%20I%20submitted%20a%20payment%20plan%20request%20and%20wanted%20to%20follow%20up."
+              href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''}?text=Hi!%20I%20submitted%20a%20payment%20plan%20request%20and%20wanted%20to%20follow%20up.`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-600 text-sm flex items-center gap-2"

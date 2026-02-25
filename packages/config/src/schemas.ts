@@ -36,6 +36,7 @@ export const authSchema = z.object({
     .min(32, 'JWT_SECRET must be at least 32 characters')
     .optional()
     .describe('Secret key for JWT signing'),
+  JWT_REFRESH_SECRET: z.string().optional().describe('Refresh token signing secret'),
   JWT_EXPIRES_IN: z
     .string()
     .default('7d')
@@ -82,18 +83,21 @@ export const storageSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// AI Schema
+// AI Schema (multi-provider: OpenAI, Anthropic, DeepSeek from env)
 // -----------------------------------------------------------------------------
 export const aiSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  DEEPSEEK_API_KEY: z.string().optional(),
+  AI_PROVIDER: z.enum(['openai', 'anthropic', 'deepseek']).optional(),
 });
 
 // -----------------------------------------------------------------------------
-// URLs Schema
+// URLs Schema (no hardcoded defaults; dev defaults applied in loadEnv)
 // -----------------------------------------------------------------------------
 export const urlsSchema = z.object({
-  API_URL: z.string().url().optional().default('http://localhost:4000'),
-  FRONTEND_URL: z.string().url().optional().default('http://localhost:3000'),
+  API_URL: z.string().url().optional().describe('API gateway base URL'),
+  FRONTEND_URL: z.string().url().optional().describe('Frontend app URL'),
 });
 
 // -----------------------------------------------------------------------------

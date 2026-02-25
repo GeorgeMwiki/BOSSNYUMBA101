@@ -456,7 +456,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
         type: body.type,
         itemCount: body.documentIds.length,
         status: 'compiled',
-        pdfUrl: body.generatePdf ? `https://storage.example.com/packs/evp_${Date.now()}.pdf` : null,
+        pdfUrl: body.generatePdf ? `${process.env.STORAGE_BASE_URL || '/storage'}/packs/evp_${Date.now()}.pdf` : null,
         compiledAt: new Date().toISOString(),
       }, 201);
     }
@@ -502,7 +502,7 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
       const { packId } = c.req.valid('param');
       return successResponse(c, {
         packId,
-        pdfUrl: `https://storage.example.com/packs/${packId}.pdf`,
+        pdfUrl: `${process.env.STORAGE_BASE_URL || '/storage'}/packs/${packId}.pdf`,
         integrityHash: 'sha256:abc123...',
         generatedAt: new Date().toISOString(),
       });

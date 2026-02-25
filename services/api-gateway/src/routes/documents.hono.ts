@@ -59,7 +59,8 @@ app.post(
     if (!useMockData && repos) {
       try {
         const id = generateId();
-        const fileUrl = body.url ?? `https://storage.example.com/docs/${Date.now()}`;
+        const storageBaseUrl = process.env.STORAGE_BASE_URL || '/storage';
+        const fileUrl = body.url ?? `${storageBaseUrl}/docs/${Date.now()}`;
 
         const document = await repos.documents.create({
           id,
@@ -107,7 +108,7 @@ app.post(
       name: body.name,
       relatedEntityType: body.relatedEntityType,
       relatedEntityId: body.relatedEntityId,
-      url: body.url ?? `https://storage.example.com/docs/${Date.now()}`,
+      url: body.url ?? `${process.env.STORAGE_BASE_URL || '/storage'}/docs/${Date.now()}`,
       verificationStatus: 'PENDING',
       metadata: body.metadata ?? {},
       createdAt: new Date().toISOString(),
@@ -216,7 +217,8 @@ app.get('/:id/url', zValidator('param', idParamSchema), async (c) => {
     return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
   }
 
-  const signedUrl = `https://storage.example.com/docs/${id}?token=signed-${Date.now()}&expires=3600`;
+  const storageBase = process.env.STORAGE_BASE_URL || '/storage';
+  const signedUrl = `${storageBase}/docs/${id}?token=signed-${Date.now()}&expires=3600`;
 
   return c.json({
     success: true,

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { SUPPORT_PHONE, SUPPORT_WHATSAPP, supportWhatsAppUrl } from '@/lib/constants';
 
 interface MoveInDetail {
   icon: React.ElementType;
@@ -399,35 +400,39 @@ export default function OnboardingCompletePage() {
               </div>
               <div>
                 <div className="font-medium">Jane Mwangi</div>
-                <div className="text-sm text-gray-500">+254 700 123 456</div>
+                <div className="text-sm text-gray-500">{SUPPORT_PHONE || '—'}</div>
               </div>
             </div>
-            <a href="tel:+254700123456" className="btn-secondary">
-              <Phone className="w-4 h-4" />
-            </a>
+            {SUPPORT_PHONE && (
+              <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} className="btn-secondary">
+                <Phone className="w-4 h-4" />
+              </a>
+            )}
           </div>
         </div>
 
-        {/* WhatsApp Community */}
-        <a
-          href="https://wa.me/254700123456?text=Hi!%20I%20just%20completed%20my%20onboarding%20at%20Sunset%20Apartments."
-          target="_blank"
-          rel="noopener noreferrer"
-          className="card p-4 flex items-center gap-3 bg-success-50 border-success-200 hover:bg-success-100 transition-colors"
-        >
-          <div className="p-2 bg-success-100 rounded-lg">
-            <MessageCircle className="w-5 h-5 text-success-700" />
-          </div>
-          <div className="flex-1">
-            <div className="font-medium text-success-900">
-              Join Resident WhatsApp Group
+        {/* WhatsApp Community — only when NEXT_PUBLIC_SUPPORT_WHATSAPP is set */}
+        {SUPPORT_WHATSAPP && (
+          <a
+            href={supportWhatsAppUrl('Hi! I just completed my onboarding.')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card p-4 flex items-center gap-3 bg-success-50 border-success-200 hover:bg-success-100 transition-colors"
+          >
+            <div className="p-2 bg-success-100 rounded-lg">
+              <MessageCircle className="w-5 h-5 text-success-700" />
             </div>
-            <div className="text-sm text-success-700">
-              Connect with your neighbors
+            <div className="flex-1">
+              <div className="font-medium text-success-900">
+                Join Resident WhatsApp Group
+              </div>
+              <div className="text-sm text-success-700">
+                Connect with your neighbors
+              </div>
             </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-success-600" />
-        </a>
+            <ArrowRight className="w-5 h-5 text-success-600" />
+          </a>
+        )}
 
         {/* Go to Dashboard */}
         <Link

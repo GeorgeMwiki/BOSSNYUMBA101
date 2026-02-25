@@ -3,7 +3,20 @@
 import { useEffect } from 'react';
 import { initializeApiClient, getApiClient } from '@bossnyumba/api-client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+function getApiBase(): string {
+  const url = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (url) return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
+  if (process.env.NODE_ENV === 'production') return '';
+  return 'http://localhost:4000/api/v1';
+}
+const API_BASE = getApiBase();
+
+function resolveTenantId(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('tenant_id') || process.env.NEXT_PUBLIC_TENANT_ID || '';
+  }
+  return process.env.NEXT_PUBLIC_TENANT_ID || '';
+}
 
 (() => {
   if (typeof window !== 'undefined') {
@@ -12,7 +25,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v
     } catch {
       initializeApiClient({
         baseUrl: API_BASE,
-        tenantId: 'tenant-001',
+        tenantId: resolveTenantId(),
         accessToken: localStorage.getItem('auth_token') || undefined,
       });
     }
@@ -28,7 +41,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     } catch {
       initializeApiClient({
         baseUrl: API_BASE,
-        tenantId: 'tenant-001',
+        tenantId: resolveTenantId(),
         accessToken: token || undefined,
       });
     }

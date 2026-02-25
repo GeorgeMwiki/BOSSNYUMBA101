@@ -303,9 +303,9 @@ export class AbacEngine {
   }
 
   /**
-   * Evaluate a policy using its combining algorithm
+   * Evaluate a single policy using its combining algorithm
    */
-  private evaluatePolicy(context: EvaluationContext, policy: Policy): EvaluationResult {
+  private evaluateSinglePolicy(context: EvaluationContext, policy: Policy): EvaluationResult {
     // Sort rules by priority (higher priority first)
     const sortedRules = [...policy.rules].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
@@ -377,14 +377,14 @@ export class AbacEngine {
         combiningAlgorithm: 'denyOverrides',
         rules,
       };
-      return this.evaluatePolicy(context, tempPolicy);
+      return this.evaluateSinglePolicy(context, tempPolicy);
     }
 
     // Evaluate all policies
     const results: EvaluationResult[] = [];
 
     for (const policy of this.policies) {
-      const result = this.evaluatePolicy(context, policy);
+      const result = this.evaluateSinglePolicy(context, policy);
       results.push(result);
 
       // Deny overrides across policies

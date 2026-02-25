@@ -30,7 +30,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/domain-models": "workspace:*"
+    "@bossnyumba/domain-models": "workspace:*",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

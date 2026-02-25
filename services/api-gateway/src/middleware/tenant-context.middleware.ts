@@ -175,13 +175,44 @@ const DEFAULT_TENANT_LIMITS: TenantLimits = {
 // Tenant Loader (Mock - Replace with Database in Production)
 // ============================================================================
 
+async function loadTenantFromDatabase(tenantId: string): Promise<TenantConfig | null> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return null;
+
+  try {
+    const apiBase = process.env.TENANT_SERVICE_URL || process.env.API_URL || '';
+    if (!apiBase) return null;
+
+    const res = await fetch(`${apiBase}/internal/tenants/${tenantId}`, {
+      headers: {
+        'X-API-Key': process.env.INTERNAL_API_KEY || '',
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json() as { data?: TenantConfig };
+    return data.data || null;
+  } catch {
+    return null;
+  }
+}
+
 async function loadTenantConfig(tenantId: string): Promise<TenantConfig | null> {
-  // Check cache first
   const cached = tenantCache.get(tenantId);
   if (cached) return cached;
 
-  // TODO: Load from database
-  // For now, return mock data for any tenant ID
+  const fromDb = await loadTenantFromDatabase(tenantId);
+  if (fromDb) {
+    tenantCache.set(tenantId, fromDb);
+    return fromDb;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
   const config: TenantConfig = {
     id: tenantId,
     name: `Tenant ${tenantId}`,
@@ -194,9 +225,7 @@ async function loadTenantConfig(tenantId: string): Promise<TenantConfig | null> 
     updatedAt: new Date(),
   };
 
-  // Cache the config
   tenantCache.set(tenantId, config);
-
   return config;
 }
 

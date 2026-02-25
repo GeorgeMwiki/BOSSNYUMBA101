@@ -27,8 +27,8 @@ export function LoginPage() {
   };
 
   const demoAccounts = [
-    { email: 'admin@bossnyumba.com', password: 'admin123', role: 'Admin' },
-    { email: 'support@bossnyumba.com', password: 'support123', role: 'Support' },
+    { email: import.meta.env.VITE_DEMO_ADMIN_EMAIL || 'admin@bossnyumba.com', password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD || 'admin123', role: 'Admin' },
+    { email: import.meta.env.VITE_DEMO_SUPPORT_EMAIL || 'support@bossnyumba.com', password: import.meta.env.VITE_DEMO_SUPPORT_PASSWORD || 'support123', role: 'Support' },
   ];
 
   return (
@@ -72,7 +72,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                placeholder="admin@bossnyumba.com"
+                placeholder={import.meta.env.VITE_DEMO_ADMIN_EMAIL || 'admin@company.com'}
               />
             </div>
 

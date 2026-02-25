@@ -33,6 +33,11 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
+import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
+import { customerAppRouter } from './routes/bff/customer-app';
+import { ownerPortalRouter } from './routes/bff/owner-portal';
+import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
+import { adminPortalRouter } from './routes/bff/admin-portal';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -46,6 +51,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
+app.use(rateLimitMiddleware());
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -79,6 +85,10 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
+api.route('/customer', customerAppRouter);
+api.route('/owner', ownerPortalRouter);
+api.route('/manager', estateManagerAppRouter);
+api.route('/admin', adminPortalRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning
@@ -131,11 +141,29 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Graceful shutdown
+function gracefulShutdown(signal: string) {
+  logger.info({ signal }, 'Received shutdown signal, closing server...');
+  server?.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10_000);
+}
+
+let server: ReturnType<typeof app.listen> | null = null;
+
 // Start server
 if (require.main === module) {
-  app.listen(port, () => {
+  server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 export default app;

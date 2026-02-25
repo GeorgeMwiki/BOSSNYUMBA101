@@ -141,7 +141,7 @@ export class ChurnPredictorService {
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('No response from OpenAI');
 
-    return ChurnPredictionResultSchema.parse(JSON.parse(content));
+    return ChurnPredictionResultSchema.parse(JSON.parse(content)) as ChurnPredictionResult;
   }
 
   private buildCustomerContext(customerId: string, data?: Partial<CustomerData>): CustomerData {

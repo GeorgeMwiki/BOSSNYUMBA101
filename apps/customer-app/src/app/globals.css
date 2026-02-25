@@ -5,47 +5,30 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
+    --foreground: 0 0% 10%;
+    --surface: 0 0% 7%;
+    --surface-elevated: 0 0% 9%;
+    --surface-card: 0 0% 16%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --border: 0 0% 90%;
     --radius: 0.5rem;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+  .dark,
+  html.dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+    --surface: 0 0% 7%;
+    --surface-elevated: 0 0% 9%;
+    --surface-card: 0 0% 14%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --border: 0 0% 18%;
   }
 }
 
@@ -53,149 +36,91 @@
   * {
     @apply border-border;
   }
-
+  html {
+    @apply antialiased;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#121212] text-white;
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
+/* Spotify-style cards */
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  .card-spotify {
+    @apply rounded-spotify bg-surface-card p-4 transition-colors hover:bg-surface-hover;
   }
-  .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
+  .card-album {
+    @apply rounded-spotify overflow-hidden bg-surface-card shadow-spotify transition-all hover:shadow-spotify-lg hover:scale-[1.02];
   }
-  .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
+  /* Instagram-style feed card */
+  .card-feed {
+    @apply rounded-insta overflow-hidden bg-surface-card border border-white/5;
   }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  /* WhatsApp-style chat bubble */
+  .chat-bubble-sent {
+    @apply ml-auto max-w-[85%] rounded-chat rounded-br-md bg-spotify-green px-4 py-2.5 text-white;
   }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .badge-gray { @apply badge bg-gray-100 text-gray-600; }
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+  .chat-bubble-received {
+    @apply mr-auto max-w-[85%] rounded-chat rounded-bl-md bg-surface-card px-4 py-2.5 text-white;
   }
-  .input {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  /* Stories ring (Instagram/TikTok) */
+  .story-ring {
+    @apply rounded-story bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5;
   }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+  .story-ring-inner {
+    @apply rounded-story bg-surface p-0.5 flex items-center justify-center;
   }
+  /* Bottom nav - Spotify dark */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40;
-  }
-  .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-4 text-gray-500 transition-colors min-w-0;
-  }
-  .bottom-nav-item.active {
-    @apply text-primary-500;
-  }
-}
-
-@layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-  }
-  .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
-  }
-  .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
-  }
-  .btn-success {
-    @apply btn bg-success-500 text-white hover:bg-success-600 focus:ring-success-500;
-  }
-  .btn-danger {
-    @apply btn bg-danger-500 text-white hover:bg-danger-600 focus:ring-danger-500;
-  }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-  }
-  .badge-primary { @apply badge bg-primary-100 text-primary-600; }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .badge-gray { @apply badge bg-gray-100 text-gray-600; }
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
-  }
-  .input {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
-  .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40;
+    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#121212];
     padding-bottom: env(safe-area-inset-bottom);
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-4 text-gray-500 transition-colors min-w-0;
+    @apply flex flex-col items-center justify-center py-3 px-4 text-gray-400 transition-colors min-w-0 min-h-[56px];
   }
   .bottom-nav-item.active {
-    @apply text-primary-500;
+    @apply text-spotify-green font-medium;
   }
-}
-
-@layer components {
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none min-h-[44px];
+    @apply inline-flex items-center justify-center gap-2 rounded-spotify px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-spotify-green focus:ring-offset-2 focus:ring-offset-[#121212] disabled:opacity-50 min-h-[44px];
   }
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 active:bg-primary-800;
+    @apply btn bg-spotify-green text-black hover:bg-spotify-green-hover active:scale-[0.98];
   }
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
+    @apply btn bg-surface-card text-white hover:bg-surface-hover border border-white/10;
   }
-  .btn-success {
-    @apply btn bg-success-500 text-white hover:bg-success-600 focus:ring-success-500;
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-400 hover:text-white hover:bg-white/5;
   }
-  .btn-outline {
-    @apply btn border-2 border-gray-200 bg-transparent hover:bg-gray-50 focus:ring-gray-500;
-  }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-  }
-  .badge-primary { @apply badge bg-primary-100 text-primary-600; }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
-  }
+  /* Inputs */
   .input {
-    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[48px];
+    @apply w-full rounded-spotify border border-white/10 bg-surface-card px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent min-h-[48px];
   }
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+  /* Profile grid (Instagram) */
+  .profile-grid {
+    @apply grid grid-cols-3 gap-0.5;
   }
-  .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40;
-    padding-bottom: env(safe-area-inset-bottom);
+  .profile-grid-item {
+    @apply aspect-square bg-surface-card relative overflow-hidden;
   }
-  .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-3 px-4 text-gray-500 transition-colors min-w-0 min-h-[56px];
-  }
-  .bottom-nav-item.active {
-    @apply text-primary-600 font-medium;
+  /* Marketplace vendor card (TikTok Shop style) */
+  .vendor-card {
+    @apply rounded-insta overflow-hidden bg-surface-card flex-shrink-0 w-[140px] transition-transform active:scale-95;
   }
 }
 
 @keyframes scale-in {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

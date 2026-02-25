@@ -2,6 +2,7 @@
  * Authorization decorators for use in services and controllers.
  */
 
+import 'reflect-metadata';
 import { Action, Resource, PolicyCondition } from './types';
 
 // ============================================================================

@@ -8,7 +8,7 @@
  *  - Graceful shutdown
  */
 
-import neo4j, { Driver, Session, SessionMode } from 'neo4j-driver';
+import neo4j, { Driver, Session, ManagedTransaction } from 'neo4j-driver';
 import { z } from 'zod';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
@@ -75,9 +75,10 @@ export class Neo4jClient {
   }> {
     try {
       const serverInfo = await this.driver.getServerInfo();
+      const serverVersion = serverInfo.protocolVersion?.toString();
       return {
         healthy: true,
-        serverVersion: serverInfo.protocolVersion?.toString(),
+        ...(serverVersion != null ? { serverVersion } : {}),
         database: this.config.database,
       };
     } catch (err) {
@@ -119,7 +120,7 @@ export class Neo4jClient {
     const session = this.readSession(database);
     try {
       const result = await session.run(cypher, params);
-      return result.records.map(record => record.toObject() as T);
+      return result.records.map((record: { toObject(): unknown }) => record.toObject() as T);
     } finally {
       await session.close();
     }
@@ -136,7 +137,7 @@ export class Neo4jClient {
     const session = this.writeSession(database);
     try {
       const result = await session.run(cypher, params);
-      return result.records.map(record => record.toObject() as T);
+      return result.records.map((record: { toObject(): unknown }) => record.toObject() as T);
     } finally {
       await session.close();
     }
@@ -146,7 +147,7 @@ export class Neo4jClient {
    * Execute a write transaction (with retry logic)
    */
   async writeTransaction<T>(
-    work: (tx: neo4j.Transaction) => Promise<T>,
+    work: (tx: ManagedTransaction) => Promise<T>,
     database?: string
   ): Promise<T> {
     const session = this.writeSession(database);
@@ -161,7 +162,7 @@ export class Neo4jClient {
    * Execute a read transaction (with retry logic)
    */
   async readTransaction<T>(
-    work: (tx: neo4j.Transaction) => Promise<T>,
+    work: (tx: ManagedTransaction) => Promise<T>,
     database?: string
   ): Promise<T> {
     const session = this.readSession(database);
@@ -200,15 +201,23 @@ export class Neo4jClient {
 let defaultClient: Neo4jClient | null = null;
 
 /**
- * Create a Neo4j client from environment variables or explicit config
+ * Create a Neo4j client from environment variables or explicit config.
+ * In production, NEO4J_URI and NEO4J_PASSWORD must be set (no hardcoded defaults).
  */
 export function createNeo4jClient(config?: Partial<Neo4jConfig>): Neo4jClient {
-  const envConfig: Partial<Neo4jConfig> = {
-    uri: process.env.NEO4J_URI,
-    username: process.env.NEO4J_USER,
-    password: process.env.NEO4J_PASSWORD,
-    database: process.env.NEO4J_DATABASE,
-  };
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.NEO4J_URI?.trim()) {
+      throw new Error('NEO4J_URI is required in production');
+    }
+    if (!process.env.NEO4J_PASSWORD) {
+      throw new Error('NEO4J_PASSWORD is required in production');
+    }
+  }
+  const envConfig: Partial<Neo4jConfig> = {};
+  if (process.env.NEO4J_URI != null) envConfig.uri = process.env.NEO4J_URI;
+  if (process.env.NEO4J_USER != null) envConfig.username = process.env.NEO4J_USER;
+  if (process.env.NEO4J_PASSWORD != null) envConfig.password = process.env.NEO4J_PASSWORD;
+  if (process.env.NEO4J_DATABASE != null) envConfig.database = process.env.NEO4J_DATABASE;
 
   return new Neo4jClient({ ...envConfig, ...config });
 }

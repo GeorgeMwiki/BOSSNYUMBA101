@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FAQItem } from '@/components/support/FAQItem';
+import { SUPPORT_PHONE, SUPPORT_EMAIL, getEmergencyContacts } from '@/lib/constants';
 
 const faqs = [
   {
@@ -41,13 +42,8 @@ const faqs = [
   },
 ];
 
-const emergencyContacts = [
-  { name: 'Property Manager', phone: '+254 700 123 456', available: '24/7' },
-  { name: 'Maintenance Emergency', phone: '+254 700 789 012', available: '8am–6pm' },
-  { name: 'Security', phone: '+254 700 345 678', available: '24/7' },
-];
-
 export default function SupportPage() {
+  const emergencyContacts = getEmergencyContacts();
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -69,32 +65,36 @@ export default function SupportPage() {
             Contact Property Management
           </h3>
           <div className="card divide-y divide-gray-100">
-            <a
-              href="tel:+254700123456"
-              className="flex items-center gap-3 p-4 hover:bg-gray-50"
-            >
-              <div className="p-2 bg-primary-50 rounded-lg">
-                <Phone className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium">Call us</div>
-                <div className="text-sm text-gray-500">+254 700 123 456</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </a>
-            <a
-              href="mailto:support@bossnyumba.com"
-              className="flex items-center gap-3 p-4 hover:bg-gray-50"
-            >
-              <div className="p-2 bg-primary-50 rounded-lg">
-                <Mail className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium">Email us</div>
-                <div className="text-sm text-gray-500">support@bossnyumba.com</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </a>
+            {SUPPORT_PHONE && (
+              <a
+                href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`}
+                className="flex items-center gap-3 p-4 hover:bg-gray-50"
+              >
+                <div className="p-2 bg-primary-50 rounded-lg">
+                  <Phone className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Call us</div>
+                  <div className="text-sm text-gray-500">{SUPPORT_PHONE}</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </a>
+            )}
+            {SUPPORT_EMAIL && (
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="flex items-center gap-3 p-4 hover:bg-gray-50"
+              >
+                <div className="p-2 bg-primary-50 rounded-lg">
+                  <Mail className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Email us</div>
+                  <div className="text-sm text-gray-500">{SUPPORT_EMAIL}</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </a>
+            )}
             <Link
               href="/requests/new"
               className="flex items-center gap-3 p-4 hover:bg-gray-50"
@@ -140,7 +140,7 @@ export default function SupportPage() {
           </div>
         </section>
 
-        {/* Emergency Contacts */}
+        {/* Emergency Contacts (999 always shown; others from env) */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-danger-500" />

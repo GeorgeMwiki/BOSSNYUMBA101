@@ -2,6 +2,8 @@
 
 > Property Management SaaS Platform for East Africa
 
+**This repository is BOSSNYUMBA only. Pongezi is a separate project (different repo, different product). Do not conflate or mix the two.** See [PROJECT_BOUNDARY.md](./PROJECT_BOUNDARY.md).
+
 BOSSNYUMBA is a comprehensive multi-tenant property management platform designed for property managers, landlords, tenants, and estate managers. It provides end-to-end solutions for portfolio management, tenant operations, payments, maintenance, and reporting.
 
 ## Features
@@ -173,6 +175,7 @@ make deploy-production
 
 ## Documentation
 
+- [Production Readiness](Docs/PRODUCTION_READINESS.md) — Pre-deployment checklist, env, and known integration notes
 - [API Reference](Docs/API.md) — Endpoints, auth, request/response examples
 - [Architecture](Docs/ARCHITECTURE.md) — System design, multi-tenant, database schema
 - [Data Flows](Docs/DATA_FLOWS.md) — Request patterns, event-driven flows

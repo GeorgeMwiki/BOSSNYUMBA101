@@ -11,7 +11,11 @@ export interface AuthContext {
   propertyAccess: string[];
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-change-in-production';
+const JWT_SECRET = (() => {
+  const s = process.env.JWT_SECRET;
+  if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
+  return s || '';
+})();
 
 export interface AuthenticatedRequest extends Request {
   auth: AuthContext;

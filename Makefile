@@ -196,18 +196,18 @@ ecr-push-all: ecr-login ## Build and push all images to ECR
 # Database
 # -----------------------------------------------------------------------------
 db-migrate: ## Run database migrations
-	pnpm --filter @bossnyumba/database migrate
+	pnpm --filter @bossnyumba/database run db:migrate
 
 db-seed: ## Seed database with sample data
-	pnpm --filter @bossnyumba/database seed
+	pnpm --filter @bossnyumba/database run db:seed
 
 db-reset: ## Reset database (DANGER!)
 	@echo "WARNING: This will delete all data!"
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ]
-	pnpm --filter @bossnyumba/database reset
+	pnpm --filter @bossnyumba/database run db:reset
 
 db-studio: ## Open Drizzle Studio
-	pnpm --filter @bossnyumba/database studio
+	pnpm --filter @bossnyumba/database run db:studio
 
 # -----------------------------------------------------------------------------
 # Graph Database (Neo4j / CPG)

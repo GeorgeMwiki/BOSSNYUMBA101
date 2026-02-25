@@ -64,8 +64,11 @@ export const api = {
 };
 
 // Utility functions for formatting
-export function formatCurrency(amount: number, currency = 'TZS'): string {
-  return new Intl.NumberFormat('en-TZ', {
+const DEFAULT_LOCALE = 'en-KE';
+const DEFAULT_CURRENCY = 'KES';
+
+export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): string {
+  return new Intl.NumberFormat(DEFAULT_LOCALE, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -74,7 +77,7 @@ export function formatCurrency(amount: number, currency = 'TZS'): string {
 }
 
 export function formatDate(date: Date | string): string {
-  return new Intl.DateTimeFormat('en-TZ', {
+  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -82,7 +85,7 @@ export function formatDate(date: Date | string): string {
 }
 
 export function formatDateTime(date: Date | string): string {
-  return new Intl.DateTimeFormat('en-TZ', {
+  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -25,8 +25,24 @@ export * from './renewal-optimizer.js';
 // Workflow C.1: Tenant Preference Profile Engine
 export * from './preference-profile-engine.js';
 
-// Workflow C.2: Friction Fingerprint Analyzer
-export * from './friction-fingerprint-analyzer.js';
+// Workflow C.2: Friction Fingerprint Analyzer (exclude InteractionHistory, TenantContext - exported by conversational-personalization)
+export {
+  FrictionFingerprintAnalyzer,
+  createFrictionFingerprintAnalyzer,
+  analyzeFingerprint,
+  SensitivityCategory,
+  EscalationSpeed,
+  ResolutionPreference,
+  ProactivenessLevel,
+  type FrictionFingerprintAnalyzerConfig,
+  type CheckInData,
+  type SensitivityScore,
+  type EscalationProfile,
+  type ResolutionProfile,
+  type AIProactivenessGuideline,
+  type FrictionFingerprintResult,
+} from './friction-fingerprint-analyzer.js';
+export type { InteractionHistory as FrictionInteractionHistory, TenantContext as FrictionTenantContext } from './friction-fingerprint-analyzer.js';
 
 // Workflow C.3: NBA Manager Queue (Enhanced Next Best Action)
 export * from './nba-manager-queue.js';
@@ -37,5 +53,5 @@ export * from './risk-scoring.js';
 // Enhanced Renewal Strategy Generator
 export * from './renewal-strategy-generator.js';
 
-// Conversational Personalization
+// Conversational Personalization (exports InteractionHistory, TenantContext)
 export * from './conversational-personalization.js';

@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-gray-100">
                 <Avatar
                   src={user.avatarUrl}
-                  fallback={user.name}
+                  name={user.name}
                   size="sm"
                 />
                 <div className="hidden lg:block text-left">

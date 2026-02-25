@@ -343,10 +343,10 @@ export class DocumentRepository {
     ];
 
     if (options?.documentType) {
-      conditions.push(eq(documentUploads.documentType, options.documentType as any));
+      conditions.push(eq(documentUploads.documentType, options.documentType as unknown as typeof documentUploads.documentType.$inferType));
     }
     if (options?.status) {
-      conditions.push(eq(documentUploads.status, options.status as any));
+      conditions.push(eq(documentUploads.status, options.status as unknown as typeof documentUploads.status.$inferType));
     }
     if (options?.entityType) {
       conditions.push(eq(documentUploads.entityType, options.entityType));

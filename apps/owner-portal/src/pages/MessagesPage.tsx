@@ -361,9 +361,8 @@ export function MessagesPage() {
                 id: 'att-2',
                 type: 'image',
                 name: 'water_heater_1.jpg',
-                url: 'https://via.placeholder.com/400x300?text=Water+Heater+Photo',
-                thumbnailUrl:
-                  'https://via.placeholder.com/400x300?text=Water+Heater+Photo',
+                url: '/placeholder/water-heater.svg',
+                thumbnailUrl: '/placeholder/water-heater.svg',
                 size: 1200000,
                 mimeType: 'image/jpeg',
               },
@@ -371,9 +370,8 @@ export function MessagesPage() {
                 id: 'att-3',
                 type: 'image',
                 name: 'water_heater_2.jpg',
-                url: 'https://via.placeholder.com/400x300?text=Thermostat+Close-up',
-                thumbnailUrl:
-                  'https://via.placeholder.com/400x300?text=Thermostat+Close-up',
+                url: '/placeholder/thermostat.svg',
+                thumbnailUrl: '/placeholder/thermostat.svg',
                 size: 980000,
                 mimeType: 'image/jpeg',
               },

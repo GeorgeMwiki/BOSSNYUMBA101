@@ -102,6 +102,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       return () => document.removeEventListener('keydown', handleTab);
     }
+    return undefined;
   }, [open]);
 
   if (!open) return null;

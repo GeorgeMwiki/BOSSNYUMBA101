@@ -240,7 +240,7 @@ const seedData = () => {
     title: 'Kitchen sink leak',
     description: 'Water is leaking from under the kitchen sink. It appears to be from the P-trap connection.',
     attachments: [
-      { type: 'photo', url: 'https://storage.example.com/photos/leak-001.jpg', description: 'Photo of leak' },
+      { type: 'photo', url: `${process.env.STORAGE_BASE_URL || '/storage'}/photos/leak-001.jpg`, description: 'Photo of leak' },
     ],
     contactPhone: '+255 755 111 001',
     accessInstructions: 'Please call before arrival',

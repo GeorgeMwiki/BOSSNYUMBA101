@@ -9,7 +9,13 @@ import { fileURLToPath } from 'url';
 import postgres from 'postgres';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/bossnyumba';
+const DATABASE_URL =
+  process.env.DATABASE_URL ??
+  (process.env.NODE_ENV === 'production'
+    ? (() => {
+        throw new Error('DATABASE_URL is required in production. Set it in .env');
+      })()
+    : 'postgresql://localhost:5432/bossnyumba');
 const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
 async function runMigrations() {
