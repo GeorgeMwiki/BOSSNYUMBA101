@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole, requirePermission } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
+import { getDataService } from '../../services/data-access.service';
 
 // ============================================================================
 // Schemas
@@ -120,66 +121,9 @@ export const adminPortalRouter = new Hono()
  */
 adminPortalRouter.get('/dashboard', async (c) => {
   const auth = c.get('auth');
+  const dataService = getDataService();
 
-  // Mock data - aggregate from all services
-  const dashboard = {
-    systemHealth: {
-      status: 'healthy',
-      uptime: 99.95,
-      lastIncident: null,
-      services: [
-        { name: 'api-gateway', status: 'healthy', latencyMs: 45 },
-        { name: 'domain-services', status: 'healthy', latencyMs: 32 },
-        { name: 'payments', status: 'healthy', latencyMs: 78 },
-        { name: 'notifications', status: 'healthy', latencyMs: 28 },
-        { name: 'reports', status: 'healthy', latencyMs: 120 },
-      ],
-    },
-    platformMetrics: {
-      totalTenants: 42,
-      activeTenants: 38,
-      totalUsers: 1250,
-      activeUsers24h: 340,
-      totalProperties: 156,
-      totalUnits: 4820,
-      occupancyRate: 0.89,
-    },
-    financialOverview: {
-      monthlyRecurringRevenue: 125000000,
-      totalTransactionsToday: 847,
-      transactionVolumeToday: 380000000,
-      failedTransactions24h: 12,
-      reconciliationQueue: 23,
-    },
-    operationalAlerts: [
-      {
-        id: 'alert-001',
-        type: 'payment_failure_spike',
-        severity: 'medium',
-        message: 'Payment failure rate increased 15% in last hour',
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        acknowledged: false,
-      },
-      {
-        id: 'alert-002',
-        type: 'sla_breach_risk',
-        severity: 'high',
-        message: '5 work orders at risk of SLA breach',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        acknowledged: true,
-      },
-    ],
-    exceptionQueues: {
-      failedReconciliations: 23,
-      pendingApprovals: 45,
-      escalatedCases: 8,
-      stuckWorkflows: 3,
-    },
-    recentActivity: [
-      { type: 'tenant_created', description: 'New tenant: ABC Properties Ltd', timestamp: new Date().toISOString() },
-      { type: 'payment_exception', description: 'Manual reconciliation required - TXN-12345', timestamp: new Date().toISOString() },
-    ],
-  };
+  const dashboard = await dataService.getPlatformDashboard();
 
   return c.json({ success: true, data: dashboard });
 });
@@ -218,49 +162,14 @@ adminPortalRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, status, type, search } = c.req.valid('query');
+    const dataService = getDataService();
 
-    // Mock data
-    const tenants = [
-      {
-        id: 'tnt-001',
-        code: 'MASAKI-PROP',
-        name: 'Masaki Properties Ltd',
-        type: 'company',
-        status: 'active',
-        contactName: 'John Mwangi',
-        contactEmail: 'john@masakiproperties.co.tz',
-        contactPhone: '+255700000001',
-        subscriptionPlan: 'professional',
-        properties: 12,
-        units: 286,
-        users: 15,
-        monthlyBilling: 2500000,
-        createdAt: '2023-01-15T00:00:00Z',
-        lastLoginAt: '2024-03-01T10:00:00Z',
-      },
-      {
-        id: 'tnt-002',
-        code: 'NHC-TZ',
-        name: 'National Housing Corporation',
-        type: 'institution',
-        status: 'active',
-        contactName: 'Grace Kimaro',
-        contactEmail: 'grace.kimaro@nhc.go.tz',
-        contactPhone: '+255700000002',
-        subscriptionPlan: 'enterprise',
-        properties: 45,
-        units: 1250,
-        users: 120,
-        monthlyBilling: 15000000,
-        createdAt: '2022-06-01T00:00:00Z',
-        lastLoginAt: '2024-03-01T14:30:00Z',
-      },
-    ];
+    const result = await dataService.getTenants({ page, pageSize }, { status: status !== 'all' ? status : undefined, search });
 
     return c.json({
       success: true,
-      data: tenants,
-      pagination: { page, pageSize, total: tenants.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -483,40 +392,14 @@ adminPortalRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, tenantId, role, status, search } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const users = [
-      {
-        id: 'usr-001',
-        email: 'john@masakiproperties.co.tz',
-        firstName: 'John',
-        lastName: 'Mwangi',
-        phone: '+255700000001',
-        tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-        role: { id: 'role-001', name: 'Tenant Admin', code: 'TENANT_ADMIN' },
-        status: 'active',
-        mfaEnabled: true,
-        lastLoginAt: '2024-03-01T10:00:00Z',
-        createdAt: '2023-01-15T00:00:00Z',
-      },
-      {
-        id: 'usr-002',
-        email: 'alice@masakiproperties.co.tz',
-        firstName: 'Alice',
-        lastName: 'Kimaro',
-        phone: '+255700000002',
-        tenant: { id: 'tnt-001', name: 'Masaki Properties Ltd' },
-        role: { id: 'role-002', name: 'Property Manager', code: 'PROPERTY_MANAGER' },
-        status: 'active',
-        mfaEnabled: false,
-        lastLoginAt: '2024-03-01T08:30:00Z',
-        createdAt: '2023-02-20T00:00:00Z',
-      },
-    ];
+    const result = await dataService.getUsers({ page, pageSize }, { tenantId, status: status !== 'all' ? status : undefined, search });
 
     return c.json({
       success: true,
-      data: users,
-      pagination: { page, pageSize, total: users.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -654,40 +537,14 @@ adminPortalRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, tenantId, userId, action } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const auditLogs = [
-      {
-        id: 'audit-001',
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        userId: 'usr-001',
-        userName: 'John Mwangi',
-        tenantId: 'tnt-001',
-        tenantName: 'Masaki Properties Ltd',
-        action: 'user.login',
-        resource: 'auth',
-        resourceId: null,
-        details: { ip: '196.41.55.100', userAgent: 'Mozilla/5.0...' },
-        outcome: 'success',
-      },
-      {
-        id: 'audit-002',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        userId: 'usr-002',
-        userName: 'Alice Kimaro',
-        tenantId: 'tnt-001',
-        tenantName: 'Masaki Properties Ltd',
-        action: 'workorder.approve',
-        resource: 'work_orders',
-        resourceId: 'wo-001',
-        details: { amount: 250000, vendor: 'ABC Plumbing' },
-        outcome: 'success',
-      },
-    ];
+    const result = await dataService.getAuditLogs({ page, pageSize }, { tenantId, userId, action });
 
     return c.json({
       success: true,
-      data: auditLogs,
-      pagination: { page, pageSize, total: auditLogs.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );

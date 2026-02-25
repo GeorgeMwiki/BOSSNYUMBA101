@@ -135,41 +135,16 @@ ownerPortalRouter.get(
   '/financials/statements',
   zValidator('query', dateRangeSchema.merge(propertyFilterSchema).merge(paginationSchema)),
   async (c) => {
-    const { period, propertyIds, page, pageSize } = c.req.valid('query');
+    const auth = c.get('auth');
+    const { period, propertyIds, page, pageSize, startDate, endDate } = c.req.valid('query');
+    const dataService = getDataService();
 
-    // Mock data
-    const statements = [
-      {
-        id: 'stmt-2024-02',
-        period: '2024-02',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        income: {
-          rentCollected: 18240000,
-          lateFees: 120000,
-          otherIncome: 50000,
-          totalIncome: 18410000,
-        },
-        expenses: {
-          maintenance: 800000,
-          utilities: 200000,
-          management: 920500,
-          insurance: 150000,
-          other: 100000,
-          totalExpenses: 2170500,
-        },
-        netOperatingIncome: 16239500,
-        disbursement: {
-          amount: 15000000,
-          date: '2024-03-05',
-          status: 'completed',
-        },
-      },
-    ];
+    const result = await dataService.getFinancialStatements(auth.userId, { page, pageSize }, { startDate, endDate, period });
 
     return c.json({
       success: true,
-      data: statements,
-      pagination: { page, pageSize, total: 1, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -264,44 +239,14 @@ ownerPortalRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, status, priority } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const workOrders = [
-      {
-        id: 'wo-001',
-        number: 'WO-2024-0001',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-003', number: 'A3' },
-        category: 'plumbing',
-        priority: 'high',
-        title: 'Water leak in bathroom',
-        description: 'Tenant reports water leak under bathroom sink',
-        status: 'pending_approval',
-        estimatedCost: 250000,
-        actualCost: null,
-        createdAt: '2024-02-28T10:00:00Z',
-        vendor: { id: 'vendor-001', name: 'ABC Plumbing' },
-      },
-      {
-        id: 'wo-002',
-        number: 'WO-2024-0002',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-005', number: 'B2' },
-        category: 'electrical',
-        priority: 'medium',
-        title: 'AC not cooling properly',
-        description: 'Air conditioning unit not cooling, needs inspection',
-        status: 'in_progress',
-        estimatedCost: 150000,
-        actualCost: null,
-        createdAt: '2024-02-27T14:30:00Z',
-        vendor: { id: 'vendor-002', name: 'Cool Air Services' },
-      },
-    ];
+    const result = await dataService.getWorkOrders({ status, priority }, { page, pageSize });
 
     return c.json({
       success: true,
-      data: workOrders,
-      pagination: { page, pageSize, total: workOrders.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -311,39 +256,12 @@ ownerPortalRouter.get(
  */
 ownerPortalRouter.get('/maintenance/work-orders/:id', async (c) => {
   const workOrderId = c.req.param('id');
+  const dataService = getDataService();
 
-  const workOrder = {
-    id: workOrderId,
-    number: 'WO-2024-0001',
-    property: { id: 'prop-001', name: 'Masaki Heights', address: 'Plot 123, Masaki' },
-    unit: { id: 'unit-003', number: 'A3', tenant: 'Jane Smith' },
-    category: 'plumbing',
-    priority: 'high',
-    title: 'Water leak in bathroom',
-    description: 'Tenant reports water leak under bathroom sink causing water damage',
-    status: 'pending_approval',
-    estimatedCost: 250000,
-    actualCost: null,
-    createdAt: '2024-02-28T10:00:00Z',
-    updatedAt: '2024-02-28T12:00:00Z',
-    vendor: {
-      id: 'vendor-001',
-      name: 'ABC Plumbing',
-      phone: '+255700000002',
-      rating: 4.5,
-    },
-    timeline: [
-      { status: 'submitted', timestamp: '2024-02-28T10:00:00Z', actor: 'Jane Smith (Tenant)' },
-      { status: 'triaged', timestamp: '2024-02-28T10:30:00Z', actor: 'System (AI)' },
-      { status: 'pending_approval', timestamp: '2024-02-28T11:00:00Z', actor: 'Alice Manager' },
-    ],
-    attachments: [
-      { id: 'att-001', type: 'image', url: '/attachments/wo-001-1.jpg', description: 'Photo of leak' },
-    ],
-    quotes: [
-      { vendorId: 'vendor-001', vendorName: 'ABC Plumbing', amount: 250000, notes: 'Includes parts and labor' },
-    ],
-  };
+  const workOrder = await dataService.getWorkOrderById(workOrderId);
+  if (!workOrder) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Work order not found' } }, 404);
+  }
 
   return c.json({ success: true, data: workOrder });
 });
@@ -425,37 +343,16 @@ ownerPortalRouter.get(
     type: z.enum(['all', 'lease', 'report', 'notice', 'invoice', 'statement']).optional().default('all'),
   }))),
   async (c) => {
+    const auth = c.get('auth');
     const { page, pageSize, type } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const documents = [
-      {
-        id: 'doc-001',
-        type: 'statement',
-        name: 'Monthly Statement - February 2024',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        createdAt: '2024-03-01T00:00:00Z',
-        size: 245000,
-        format: 'pdf',
-        downloadUrl: '/api/owner/documents/doc-001/download',
-      },
-      {
-        id: 'doc-002',
-        type: 'lease',
-        name: 'Lease Agreement - Unit A1',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        createdAt: '2024-01-15T10:00:00Z',
-        size: 512000,
-        format: 'pdf',
-        downloadUrl: '/api/owner/documents/doc-002/download',
-        requiresSignature: false,
-        signedAt: '2024-01-16T14:30:00Z',
-      },
-    ];
+    const result = await dataService.getDocuments(auth.userId, { page, pageSize }, type);
 
     return c.json({
       success: true,
-      data: documents,
-      pagination: { page, pageSize, total: documents.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );

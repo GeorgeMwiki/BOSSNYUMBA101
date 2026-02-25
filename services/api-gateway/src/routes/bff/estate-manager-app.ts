@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole, requirePermission, requirePropertyAccess } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
+import { getDataService } from '../../services/data-access.service';
 
 // ============================================================================
 // Schemas
@@ -147,21 +148,31 @@ export const estateManagerAppRouter = new Hono()
  */
 estateManagerAppRouter.get('/home', async (c) => {
   const auth = c.get('auth');
+  const dataService = getDataService();
+
+  const [workOrders, inspections, occupancy, notifications] = await Promise.all([
+    dataService.getWorkOrders({}, { page: 1, pageSize: 100 }),
+    dataService.getInspections({ status: 'scheduled' }, { page: 1, pageSize: 10 }),
+    dataService.getOccupancySummary(),
+    dataService.getNotifications(auth.userId, { page: 1, pageSize: 5 }, true),
+  ]);
+
+  const woData = workOrders.data as Array<{ status: string; priority: string }>;
+  const openWo = woData.filter((wo) => !['completed', 'cancelled'].includes(wo.status));
+  const urgentWo = woData.filter((wo) => wo.priority === 'emergency' || wo.priority === 'high');
+  const occData = occupancy as { summary?: { occupancyRate?: number } };
 
   const home = {
     greeting: getTimeBasedGreeting(),
-    manager: {
-      id: auth.userId,
-      name: 'Alice Manager',
-      properties: ['Masaki Heights', 'Oyster Bay Apartments'],
-    },
+    manager: { id: auth.userId },
     todaySummary: {
-      scheduledInspections: 2,
-      openWorkOrders: 15,
-      urgentWorkOrders: 3,
-      slaAtRisk: 2,
-      collectionsFollowUp: 5,
-      vendorVisitsExpected: 4,
+      scheduledInspections: inspections.data.length,
+      openWorkOrders: openWo.length,
+      urgentWorkOrders: urgentWo.length,
+      slaAtRisk: 0,
+      collectionsFollowUp: 0,
+      vendorVisitsExpected: 0,
+      occupancyRate: occData.summary?.occupancyRate || 0,
     },
     quickActions: [
       { id: 'new_work_order', label: 'New Work Order', icon: 'wrench' },
@@ -169,20 +180,9 @@ estateManagerAppRouter.get('/home', async (c) => {
       { id: 'view_arrears', label: 'View Arrears', icon: 'alert' },
       { id: 'contact_vendor', label: 'Contact Vendor', icon: 'phone' },
     ],
-    alerts: [
-      { id: 'alert-1', type: 'sla_breach', priority: 'high', message: 'WO-2024-0150: SLA breach in 2 hours', actionUrl: '/manager/work-orders/wo-001' },
-      { id: 'alert-2', type: 'payment_overdue', priority: 'medium', message: '3 tenants 15+ days overdue', actionUrl: '/manager/collections' },
-    ],
-    recentActivity: [
-      { type: 'work_order', description: 'WO-2024-0155 completed - Electrical repair', timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { type: 'inspection', description: 'Move-in inspection Unit B5 completed', timestamp: new Date(Date.now() - 7200000).toISOString() },
-      { type: 'collection', description: 'Payment plan approved for John Doe', timestamp: new Date(Date.now() - 14400000).toISOString() },
-    ],
-    dailyBriefing: {
-      available: true,
-      lastGenerated: new Date().toISOString(),
-      url: '/manager/briefing',
-    },
+    alerts: notifications.data,
+    recentActivity: [],
+    dailyBriefing: { available: true, lastGenerated: new Date().toISOString(), url: '/manager/briefing' },
   };
 
   return c.json({ success: true, data: home });
@@ -270,76 +270,17 @@ estateManagerAppRouter.get(
   async (c) => {
     const auth = c.get('auth');
     const { page, pageSize, status, priority, category, propertyId, assignedToMe } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const workOrders = [
-      {
-        id: 'wo-001',
-        number: 'WO-2024-0150',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-003', number: 'A3' },
-        customer: { id: 'cust-001', name: 'Jane Smith', phone: '+255700000010' },
-        category: 'plumbing',
-        priority: 'high',
-        title: 'Water leak in bathroom',
-        description: 'Water leak under bathroom sink causing damage',
-        status: 'assigned',
-        sla: {
-          responseDue: new Date(Date.now() + 7200000).toISOString(),
-          resolutionDue: new Date(Date.now() + 86400000).toISOString(),
-          responseBreached: false,
-          resolutionBreached: false,
-        },
-        vendor: { id: 'vendor-001', name: 'ABC Plumbing', phone: '+255700000020' },
-        estimatedCost: 250000,
-        createdAt: '2024-02-28T10:00:00Z',
-        updatedAt: '2024-02-28T14:00:00Z',
-      },
-      {
-        id: 'wo-002',
-        number: 'WO-2024-0151',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-005', number: 'B2' },
-        customer: { id: 'cust-002', name: 'John Doe', phone: '+255700000011' },
-        category: 'electrical',
-        priority: 'medium',
-        title: 'AC not cooling properly',
-        description: 'Air conditioning unit not cooling',
-        status: 'scheduled',
-        sla: {
-          responseDue: new Date(Date.now() + 86400000).toISOString(),
-          resolutionDue: new Date(Date.now() + 172800000).toISOString(),
-          responseBreached: false,
-          resolutionBreached: false,
-        },
-        vendor: { id: 'vendor-002', name: 'Cool Air Services', phone: '+255700000021' },
-        estimatedCost: 150000,
-        scheduledDate: '2024-03-01',
-        scheduledTime: '14:00-16:00',
-        createdAt: '2024-02-27T14:30:00Z',
-        updatedAt: '2024-02-28T09:00:00Z',
-      },
-    ];
+    const result = await dataService.getWorkOrders(
+      { propertyId, status, priority, assignedTo: assignedToMe ? auth.userId : undefined },
+      { page, pageSize }
+    );
 
     return c.json({
       success: true,
-      data: workOrders,
-      pagination: { page, pageSize, total: workOrders.length, totalPages: 1 },
-      summary: {
-        total: 15,
-        byStatus: {
-          submitted: 2,
-          triaged: 1,
-          pending_approval: 2,
-          approved: 1,
-          assigned: 3,
-          scheduled: 2,
-          in_progress: 2,
-          pending_verification: 1,
-          completed: 1,
-        },
-        byPriority: { emergency: 1, high: 4, medium: 8, low: 2 },
-        slaAtRisk: 2,
-      },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -646,38 +587,14 @@ estateManagerAppRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, type, status, propertyId } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const inspections = [
-      {
-        id: 'insp-001',
-        type: 'move_in',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-010', number: 'C1' },
-        customer: { id: 'cust-new', name: 'New Tenant', phone: '+255700000030' },
-        status: 'scheduled',
-        scheduledDate: new Date().toISOString().split('T')[0],
-        scheduledTime: '09:00',
-        inspector: { id: 'usr-001', name: 'Alice Manager' },
-        createdAt: '2024-02-27T10:00:00Z',
-      },
-      {
-        id: 'insp-002',
-        type: 'routine',
-        property: { id: 'prop-001', name: 'Masaki Heights' },
-        unit: { id: 'unit-005', number: 'A5' },
-        customer: { id: 'cust-001', name: 'John Doe', phone: '+255700000010' },
-        status: 'scheduled',
-        scheduledDate: new Date().toISOString().split('T')[0],
-        scheduledTime: '14:00',
-        inspector: { id: 'usr-001', name: 'Alice Manager' },
-        createdAt: '2024-02-26T14:00:00Z',
-      },
-    ];
+    const result = await dataService.getInspections({ propertyId, type, status }, { page, pageSize });
 
     return c.json({
       success: true,
-      data: inspections,
-      pagination: { page, pageSize, total: inspections.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -821,72 +738,9 @@ estateManagerAppRouter.get(
   zValidator('query', z.object({ propertyId: z.string().optional() })),
   async (c) => {
     const { propertyId } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const occupancy = {
-      summary: {
-        totalUnits: 48,
-        occupied: 44,
-        vacant: 3,
-        turnover: 1,
-        occupancyRate: 0.917,
-      },
-      byProperty: [
-        {
-          propertyId: 'prop-001',
-          propertyName: 'Masaki Heights',
-          totalUnits: 24,
-          occupied: 22,
-          vacant: 1,
-          turnover: 1,
-          occupancyRate: 0.917,
-        },
-        {
-          propertyId: 'prop-002',
-          propertyName: 'Oyster Bay Apartments',
-          totalUnits: 24,
-          occupied: 22,
-          vacant: 2,
-          turnover: 0,
-          occupancyRate: 0.917,
-        },
-      ],
-      units: [
-        {
-          id: 'unit-003',
-          number: 'A3',
-          property: 'Masaki Heights',
-          type: '2 Bedroom',
-          status: 'occupied',
-          customer: { id: 'cust-001', name: 'Jane Smith' },
-          leaseEnd: '2024-06-30',
-          rentAmount: 800000,
-          paymentStatus: 'current',
-        },
-        {
-          id: 'unit-008',
-          number: 'B5',
-          property: 'Masaki Heights',
-          type: 'Studio',
-          status: 'vacant',
-          customer: null,
-          availableFrom: '2024-03-01',
-          rentAmount: 450000,
-          daysVacant: 5,
-        },
-        {
-          id: 'unit-012',
-          number: 'C2',
-          property: 'Masaki Heights',
-          type: '1 Bedroom',
-          status: 'turnover',
-          customer: null,
-          previousCustomer: 'John Former',
-          expectedReady: '2024-03-05',
-          turnoverProgress: 60,
-          pendingItems: ['Deep cleaning', 'Paint touch-up'],
-        },
-      ],
-    };
+    const occupancy = await dataService.getOccupancySummary(propertyId);
 
     return c.json({ success: true, data: occupancy });
   }
@@ -933,67 +787,14 @@ estateManagerAppRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, propertyId, minDaysOverdue } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const collections = {
-      summary: {
-        totalOutstanding: 8500000,
-        tenantsInArrears: 12,
-        percentageOfRentRoll: 0.11,
-      },
-      byAgingBucket: {
-        '0-7': { count: 3, amount: 1200000 },
-        '8-14': { count: 2, amount: 1600000 },
-        '15-30': { count: 4, amount: 2800000 },
-        '31-60': { count: 2, amount: 1900000 },
-        '60+': { count: 1, amount: 1000000 },
-      },
-      accounts: [
-        {
-          customerId: 'cust-005',
-          name: 'Peter Mwangi',
-          unit: 'B4',
-          property: 'Masaki Heights',
-          phone: '+255700000015',
-          amountOwed: 1600000,
-          daysOverdue: 25,
-          lastPayment: { date: '2024-01-15', amount: 800000 },
-          paymentHistory: { onTimePercentage: 0.65, avgDaysLate: 8 },
-          riskScore: 0.72,
-          status: 'active_collection',
-          lastContact: '2024-02-20',
-          notes: 'Promised payment by month end',
-          suggestedAction: 'Follow up on promise',
-        },
-        {
-          customerId: 'cust-008',
-          name: 'Mary Johnson',
-          unit: 'A6',
-          property: 'Masaki Heights',
-          phone: '+255700000018',
-          amountOwed: 2400000,
-          daysOverdue: 45,
-          lastPayment: { date: '2023-12-15', amount: 800000 },
-          paymentHistory: { onTimePercentage: 0.45, avgDaysLate: 15 },
-          riskScore: 0.85,
-          status: 'payment_plan',
-          paymentPlan: {
-            totalAmount: 2400000,
-            installments: 3,
-            paidInstallments: 1,
-            nextDue: '2024-03-15',
-            nextAmount: 800000,
-          },
-          lastContact: '2024-02-25',
-          notes: 'On payment plan, 1 of 3 paid',
-          suggestedAction: 'Monitor payment plan compliance',
-        },
-      ],
-    };
+    const collections = await dataService.getCollections({ page, pageSize }, propertyId);
 
     return c.json({
       success: true,
       data: collections,
-      pagination: { page, pageSize, total: 12, totalPages: 1 },
+      pagination: { page, pageSize, total: 0, totalPages: 0 },
     });
   }
 );
@@ -1067,56 +868,14 @@ estateManagerAppRouter.get(
   }))),
   async (c) => {
     const { page, pageSize, specialization, status } = c.req.valid('query');
+    const dataService = getDataService();
 
-    const vendors = [
-      {
-        id: 'vendor-001',
-        name: 'ABC Plumbing',
-        specializations: ['plumbing'],
-        status: 'active',
-        contact: { phone: '+255700000020', email: 'contact@abcplumbing.co.tz' },
-        performance: {
-          rating: 4.5,
-          completedJobs: 45,
-          avgResponseTime: '2 hours',
-          reopenRate: 0.05,
-          onTimeCompletion: 0.92,
-        },
-        rates: {
-          calloutFee: 50000,
-          hourlyRate: 35000,
-        },
-        isPreferred: true,
-        emergencyAvailable: true,
-        activeWorkOrders: 3,
-      },
-      {
-        id: 'vendor-002',
-        name: 'Cool Air Services',
-        specializations: ['hvac', 'electrical'],
-        status: 'active',
-        contact: { phone: '+255700000021', email: 'info@coolair.co.tz' },
-        performance: {
-          rating: 4.2,
-          completedJobs: 32,
-          avgResponseTime: '4 hours',
-          reopenRate: 0.08,
-          onTimeCompletion: 0.88,
-        },
-        rates: {
-          calloutFee: 60000,
-          hourlyRate: 40000,
-        },
-        isPreferred: false,
-        emergencyAvailable: true,
-        activeWorkOrders: 2,
-      },
-    ];
+    const result = await dataService.getVendors({ page, pageSize }, { specialization, status });
 
     return c.json({
       success: true,
-      data: vendors,
-      pagination: { page, pageSize, total: vendors.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );

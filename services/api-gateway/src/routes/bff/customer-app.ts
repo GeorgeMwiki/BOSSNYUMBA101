@@ -269,13 +269,13 @@ customerAppRouter.get('/maintenance', zValidator('query', paginationSchema.merge
 
 customerAppRouter.get('/maintenance/:id', async (c) => {
   const requestId = c.req.param('id');
-  const request = {
-    id: requestId, ticketNumber: 'WO-2024-0150', category: 'plumbing', priority: 'medium', title: 'Leaking faucet in kitchen', description: 'Kitchen faucet is dripping constantly. Water is pooling under the sink.', location: 'Kitchen', status: 'in_progress', permissionToEnter: true, entryInstructions: 'Key with security guard', createdAt: '2024-02-25T10:00:00Z', lastUpdate: '2024-02-26T14:00:00Z', scheduledDate: '2024-02-28', scheduledTimeSlot: '14:00-16:00',
-    assignedTo: { id: 'vendor-001', name: 'ABC Plumbing', phone: '+255700000003', rating: 4.5 },
-    attachments: [{ id: 'att-001', type: 'image', url: '/attachments/maint-001-1.jpg', description: 'Photo of leak' }],
-    timeline: [{ status: 'submitted', timestamp: '2024-02-25T10:00:00Z', message: 'Request submitted', actor: 'You' }, { status: 'triaged', timestamp: '2024-02-25T11:00:00Z', message: 'Issue categorized', actor: 'System' }, { status: 'assigned', timestamp: '2024-02-26T09:00:00Z', message: 'Assigned to ABC Plumbing', actor: 'Alice Manager' }, { status: 'scheduled', timestamp: '2024-02-26T14:00:00Z', message: 'Visit scheduled for Feb 28, 2-4pm', actor: 'ABC Plumbing' }],
-    canCancel: true, canReschedule: true,
-  };
+  const dataService = getDataService();
+
+  const request = await dataService.getWorkOrderById(requestId);
+  if (!request) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Maintenance request not found' } }, 404);
+  }
+
   return c.json({ success: true, data: request });
 });
 
@@ -324,13 +324,12 @@ customerAppRouter.post('/maintenance/:id/confirm', zValidator('json', z.object({
 customerAppRouter.get('/documents', zValidator('query', paginationSchema.merge(z.object({
   type: z.enum(['all', 'lease', 'notice', 'receipt', 'inspection', 'rules']).optional().default('all'),
 }))), async (c) => {
-  const { page, pageSize } = c.req.valid('query');
-  const documents = [
-    { id: 'doc-001', type: 'lease', name: 'Lease Agreement - Unit A1', description: '12-month lease agreement', uploadedAt: '2023-06-01T00:00:00Z', size: 512000, format: 'pdf', requiresSignature: false, signed: true, signedAt: '2023-06-03T09:00:00Z', downloadUrl: '/api/customer/documents/doc-001/download' },
-    { id: 'doc-002', type: 'inspection', name: 'Move-In Inspection Report', description: 'Condition report at move-in', uploadedAt: '2023-06-04T00:00:00Z', size: 2048000, format: 'pdf', downloadUrl: '/api/customer/documents/doc-002/download' },
-    { id: 'doc-003', type: 'rules', name: 'House Rules & Regulations', description: 'Property rules and guidelines', uploadedAt: '2023-06-01T00:00:00Z', size: 256000, format: 'pdf', downloadUrl: '/api/customer/documents/doc-003/download' },
-  ];
-  return c.json({ success: true, data: documents, pagination: { page, pageSize, total: documents.length, totalPages: 1 } });
+  const auth = c.get('auth');
+  const { page, pageSize, type } = c.req.valid('query');
+  const dataService = getDataService();
+
+  const result = await dataService.getDocuments(auth.userId, { page, pageSize }, type);
+  return c.json({ success: true, data: result.data, pagination: result.pagination });
 });
 
 customerAppRouter.get('/documents/:id/download', async (c) => {
@@ -340,14 +339,16 @@ customerAppRouter.get('/documents/:id/download', async (c) => {
 });
 
 customerAppRouter.get('/lease', async (c) => {
-  const lease = {
-    id: 'lease-001', leaseNumber: 'LSE-2023-0601-001', status: 'active',
-    unit: { id: 'unit-001', number: 'A1', type: '2 Bedroom', floor: 2, size: 85 },
-    property: { id: 'prop-001', name: 'Masaki Heights', address: 'Plot 123, Masaki, Dar es Salaam' },
-    terms: { startDate: '2023-06-01', endDate: '2024-05-31', monthlyRent: 800000, securityDeposit: 1600000, depositStatus: 'held', paymentDueDay: 1, lateFeePercentage: 5, gracePeriodDays: 5 },
-    renewal: { eligible: true, windowOpens: '2024-03-01', windowCloses: '2024-04-30', offers: null },
-    contacts: { estateManager: { name: 'Alice Manager', phone: '+255700000001', email: 'alice@example.com' }, emergencyMaintenance: '+255700000099' },
-  };
+  const auth = c.get('auth');
+  const dataService = getDataService();
+
+  const leases = await dataService.getLeases({ page: 1, pageSize: 1 }, { status: 'active' });
+  const lease = leases.data[0] || null;
+
+  if (!lease) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'No active lease found' } }, 404);
+  }
+
   return c.json({ success: true, data: lease });
 });
 
@@ -372,22 +373,23 @@ customerAppRouter.post('/lease/move-out-notice', zValidator('json', z.object({
 
 // Communication
 customerAppRouter.get('/messages', zValidator('query', paginationSchema), async (c) => {
+  const auth = c.get('auth');
   const { page, pageSize } = c.req.valid('query');
-  const messages = [
-    { id: 'msg-001', direction: 'inbound', from: { id: 'user-mgr-001', name: 'Alice Manager', role: 'estate_manager' }, subject: 'Welcome to Masaki Heights!', preview: 'Welcome to your new home! Here are some important things...', createdAt: '2023-06-01T10:00:00Z', read: true, hasAttachments: true },
-    { id: 'msg-002', direction: 'outbound', to: { id: 'user-mgr-001', name: 'Alice Manager', role: 'estate_manager' }, subject: 'Question about parking', preview: 'Hi, I wanted to ask about guest parking...', createdAt: '2023-06-15T14:00:00Z', read: true, hasAttachments: false },
-  ];
-  return c.json({ success: true, data: messages, pagination: { page, pageSize, total: messages.length, totalPages: 1 } });
+  const dataService = getDataService();
+
+  const result = await dataService.getMessages(auth.userId, { page, pageSize });
+  return c.json({ success: true, data: result.data, pagination: result.pagination });
 });
 
 customerAppRouter.get('/messages/:id', async (c) => {
+  const auth = c.get('auth');
   const messageId = c.req.param('id');
-  const message = {
-    id: messageId, direction: 'inbound', from: { id: 'user-mgr-001', name: 'Alice Manager', role: 'estate_manager' }, subject: 'Welcome to Masaki Heights!',
-    body: 'Dear John,\n\nWelcome to your new home at Masaki Heights! We are delighted to have you as part of our community.\n\nHere are some important things to help you settle in:\n\n1. Emergency Contacts\n   - Management: +255700000001\n   - Emergency Maintenance: +255700000099\n   - Security: +255700000088\n\n2. Utility Setup\n   - Your TANESCO/LUKU meter number is: 12345678\n   - Water account: WTR-A1-2023\n\n3. Community Guidelines\n   - Quiet hours: 10 PM - 7 AM\n   - Guest parking in designated areas only\n   - Waste collection: Monday & Thursday mornings\n\nPlease do not hesitate to reach out if you have any questions!\n\nBest regards,\nAlice Manager',
-    createdAt: '2023-06-01T10:00:00Z', read: true,
-    attachments: [{ id: 'att-001', name: 'Welcome_Pack.pdf', size: 256000, type: 'application/pdf' }], replies: [],
-  };
+  const dataService = getDataService();
+
+  const message = await dataService.getMessageById(messageId, auth.userId);
+  if (!message) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Message not found' } }, 404);
+  }
   return c.json({ success: true, data: message });
 });
 

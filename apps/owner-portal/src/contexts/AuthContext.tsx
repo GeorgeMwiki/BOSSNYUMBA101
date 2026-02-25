@@ -76,16 +76,20 @@ const DEFAULT_SESSION_TIMEOUT = 30;
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+  });
   const [role, setRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [contexts, setContexts] = useState<UserContext[]>([]);
   const [activeContext, setActiveContext] = useState<UserContext | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(
-    parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT))
-  );
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SESSION_TIMEOUT;
+    return parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT));
+  });
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
 
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
