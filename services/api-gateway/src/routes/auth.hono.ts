@@ -234,11 +234,14 @@ app.get('/me', authMiddleware, async (c) => {
 });
 
 app.get('/demo-users', (c) => {
+  if (process.env.NODE_ENV === 'production') {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Not found' } }, 404);
+  }
+
   const demoLogins = DEMO_USERS.map((user) => {
     const tenantUser = DEMO_TENANT_USERS.find((tu) => tu.userId === user.id);
     return {
       email: user.email,
-      password: 'demo123',
       name: `${user.firstName} ${user.lastName}`,
       role: tenantUser?.role ?? 'Unknown',
     };

@@ -10,8 +10,12 @@ import type { UserRole } from '../types/user-role';
 const JWT_SECRET = new TextEncoder().encode(
   (() => {
     const s = process.env.JWT_SECRET;
-    if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
-    return s || '';
+    if (!s) {
+      if (process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
+      console.warn('[auth] JWT_SECRET not set - using insecure dev-only fallback');
+      return 'bossnyumba-dev-jwt-secret-do-not-use-in-production';
+    }
+    return s;
   })()
 );
 

@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole, requirePermission, requirePropertyAccess } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
+import { getDataService } from '../../services/data-access.service';
 
 // ============================================================================
 // Schemas
@@ -62,59 +63,8 @@ ownerPortalRouter.get(
     const auth = c.get('auth');
     const { startDate, endDate, period, propertyIds } = c.req.valid('query');
 
-    // Filter by owner's property access
-    const accessibleProperties = auth.propertyAccess.includes('*') 
-      ? undefined 
-      : auth.propertyAccess;
-
-    const requestedProperties = propertyIds?.split(',').filter(Boolean);
-    const filteredProperties = requestedProperties 
-      ? requestedProperties.filter(p => !accessibleProperties || accessibleProperties.includes(p))
-      : accessibleProperties;
-
-    // Mock data - in production, aggregate from domain services
-    const dashboardData = {
-      portfolioSummary: {
-        totalProperties: 5,
-        totalUnits: 48,
-        occupancyRate: 0.92,
-        totalValue: 2500000000, // TZS
-        monthOverMonthChange: 0.03,
-      },
-      financials: {
-        rentBilled: 45000000,
-        rentCollected: 41400000,
-        collectionRate: 0.92,
-        arrearsTotal: 3600000,
-        netOperatingIncome: 38200000,
-        expenses: 3200000,
-      },
-      arrearsBuckets: {
-        '0-7': { count: 2, amount: 800000 },
-        '8-14': { count: 1, amount: 400000 },
-        '15-30': { count: 2, amount: 1200000 },
-        '31-60': { count: 1, amount: 600000 },
-        '60+': { count: 1, amount: 600000 },
-      },
-      maintenance: {
-        openWorkOrders: 8,
-        urgentWorkOrders: 2,
-        pendingApprovals: 3,
-        avgResolutionDays: 2.5,
-        totalMaintenanceCost: 1200000,
-      },
-      leases: {
-        expiringIn30Days: 2,
-        expiringIn60Days: 4,
-        renewalRate: 0.78,
-        vacantUnits: 4,
-      },
-      recentActivity: [
-        { type: 'payment', description: 'Rent payment received - Unit A1', amount: 800000, date: new Date().toISOString() },
-        { type: 'workOrder', description: 'Work order completed - Plumbing repair', amount: 150000, date: new Date().toISOString() },
-        { type: 'lease', description: 'Lease renewed - Unit B3', amount: null, date: new Date().toISOString() },
-      ],
-    };
+    const dataService = getDataService();
+    const dashboardData = await dataService.getOwnerDashboard(auth.userId, { startDate, endDate, period });
 
     return c.json({
       success: true,
@@ -138,46 +88,13 @@ ownerPortalRouter.get(
   async (c) => {
     const auth = c.get('auth');
     const { page, pageSize } = c.req.valid('query');
-
-    // Mock data
-    const properties = [
-      {
-        id: 'prop-001',
-        name: 'Masaki Heights',
-        address: 'Plot 123, Masaki, Dar es Salaam',
-        type: 'residential',
-        totalUnits: 24,
-        occupiedUnits: 22,
-        occupancyRate: 0.917,
-        monthlyRentRoll: 19200000,
-        collectionRate: 0.95,
-        openWorkOrders: 3,
-        status: 'active',
-      },
-      {
-        id: 'prop-002',
-        name: 'Oyster Bay Apartments',
-        address: 'Plot 456, Oyster Bay, Dar es Salaam',
-        type: 'residential',
-        totalUnits: 16,
-        occupiedUnits: 14,
-        occupancyRate: 0.875,
-        monthlyRentRoll: 16800000,
-        collectionRate: 0.89,
-        openWorkOrders: 4,
-        status: 'active',
-      },
-    ];
+    const dataService = getDataService();
+    const result = await dataService.getPropertiesByOwner(auth.userId, { page, pageSize });
 
     return c.json({
       success: true,
-      data: properties,
-      pagination: {
-        page,
-        pageSize,
-        total: properties.length,
-        totalPages: Math.ceil(properties.length / pageSize),
-      },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );
@@ -188,6 +105,7 @@ ownerPortalRouter.get(
 ownerPortalRouter.get('/properties/:id', async (c) => {
   const auth = c.get('auth');
   const propertyId = c.req.param('id');
+  const dataService = getDataService();
 
   // Check property access
   if (!auth.propertyAccess.includes('*') && !auth.propertyAccess.includes(propertyId)) {
@@ -197,36 +115,11 @@ ownerPortalRouter.get('/properties/:id', async (c) => {
     }, 403);
   }
 
-  // Mock data
-  const property = {
-    id: propertyId,
-    name: 'Masaki Heights',
-    address: 'Plot 123, Masaki, Dar es Salaam',
-    type: 'residential',
-    description: 'Modern apartment complex with 24 units',
-    amenities: ['Swimming Pool', 'Gym', 'Parking', 'Security'],
-    totalUnits: 24,
-    occupiedUnits: 22,
-    vacantUnits: 2,
-    units: [
-      { id: 'unit-001', number: 'A1', type: '2BR', status: 'occupied', rentAmount: 800000, tenant: 'John Doe' },
-      { id: 'unit-002', number: 'A2', type: '2BR', status: 'occupied', rentAmount: 800000, tenant: 'Jane Smith' },
-      { id: 'unit-003', number: 'A3', type: '2BR', status: 'vacant', rentAmount: 850000, tenant: null },
-    ],
-    financials: {
-      totalRentRoll: 19200000,
-      collectedThisMonth: 18240000,
-      arrearsTotal: 960000,
-      expenses: 1800000,
-      netIncome: 16440000,
-    },
-    estateManager: {
-      id: 'user-001',
-      name: 'Alice Manager',
-      phone: '+255700000001',
-      email: 'alice@example.com',
-    },
-  };
+  const property = await dataService.getPropertyById(propertyId, auth.userId);
+
+  if (!property) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Property not found' } }, 404);
+  }
 
   return c.json({ success: true, data: property });
 });
@@ -671,33 +564,15 @@ ownerPortalRouter.get(
   '/messages',
   zValidator('query', paginationSchema),
   async (c) => {
+    const auth = c.get('auth');
     const { page, pageSize } = c.req.valid('query');
-
-    const messages = [
-      {
-        id: 'msg-001',
-        from: { id: 'user-001', name: 'Alice Manager', role: 'estate_manager' },
-        subject: 'Monthly Update - February 2024',
-        preview: 'Here is your monthly property update...',
-        createdAt: '2024-03-01T09:00:00Z',
-        read: true,
-        hasAttachments: true,
-      },
-      {
-        id: 'msg-002',
-        from: { id: 'user-001', name: 'Alice Manager', role: 'estate_manager' },
-        subject: 'Work Order Approval Required',
-        preview: 'A work order requires your approval...',
-        createdAt: '2024-02-28T14:00:00Z',
-        read: false,
-        hasAttachments: false,
-      },
-    ];
+    const dataService = getDataService();
+    const result = await dataService.getMessages(auth.userId, { page, pageSize });
 
     return c.json({
       success: true,
-      data: messages,
-      pagination: { page, pageSize, total: messages.length, totalPages: 1 },
+      data: result.data,
+      pagination: result.pagination,
     });
   }
 );

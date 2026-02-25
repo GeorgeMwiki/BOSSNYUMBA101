@@ -16,7 +16,7 @@ import { z } from 'zod';
 export const Neo4jConfigSchema = z.object({
   uri: z.string().default('bolt://localhost:7687'),
   username: z.string().default('neo4j'),
-  password: z.string().default('bossnyumba_graph_dev'),
+  password: z.string().min(1, 'NEO4J_PASSWORD is required'),
   database: z.string().default('neo4j'),
   maxConnectionPoolSize: z.number().default(50),
   connectionAcquisitionTimeoutMs: z.number().default(30000),

@@ -13,23 +13,36 @@ function loadEnv(): EnvSchema {
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    // Supabase (BOSSNYUMBA's own project - never shared)
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    // Neo4j
+    NEO4J_URI: process.env.NEO4J_URI,
+    NEO4J_USER: process.env.NEO4J_USER,
+    NEO4J_PASSWORD: process.env.NEO4J_PASSWORD,
+    // Payments
     MPESA_CONSUMER_KEY: process.env.MPESA_CONSUMER_KEY,
     MPESA_CONSUMER_SECRET: process.env.MPESA_CONSUMER_SECRET,
     MPESA_PASSKEY: process.env.MPESA_PASSKEY,
     MPESA_SHORTCODE: process.env.MPESA_SHORTCODE,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     FLUTTERWAVE_SECRET_KEY: process.env.FLUTTERWAVE_SECRET_KEY,
+    // Notifications
     AFRICAS_TALKING_API_KEY: process.env.AFRICAS_TALKING_API_KEY,
     AFRICAS_TALKING_USERNAME: process.env.AFRICAS_TALKING_USERNAME,
     SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
     FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    // Storage
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
+    // AI
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
     AI_PROVIDER: process.env.AI_PROVIDER,
+    // URLs - no hardcoded defaults in production
     API_URL: process.env.API_URL ?? (isProduction ? undefined : 'http://localhost:4000'),
     FRONTEND_URL: process.env.FRONTEND_URL ?? (isProduction ? undefined : 'http://localhost:3000'),
   };
@@ -143,10 +156,36 @@ export const storage = () => ({
 });
 
 /**
+ * Supabase configuration (BOSSNYUMBA's own project)
+ */
+export const supabase = () => ({
+  url: getConfig().NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: getConfig().NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  serviceRoleKey: getConfig().SUPABASE_SERVICE_ROLE_KEY,
+  isConfigured: !!(
+    getConfig().NEXT_PUBLIC_SUPABASE_URL &&
+    getConfig().NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ),
+});
+
+/**
+ * Neo4j configuration
+ */
+export const neo4j = () => ({
+  uri: getConfig().NEO4J_URI,
+  user: getConfig().NEO4J_USER,
+  password: getConfig().NEO4J_PASSWORD,
+  isConfigured: !!(getConfig().NEO4J_URI && getConfig().NEO4J_USER),
+});
+
+/**
  * AI configuration
  */
 export const ai = () => ({
   openaiApiKey: getConfig().OPENAI_API_KEY,
+  anthropicApiKey: getConfig().ANTHROPIC_API_KEY,
+  deepseekApiKey: getConfig().DEEPSEEK_API_KEY,
+  provider: getConfig().AI_PROVIDER,
 });
 
 /**
@@ -163,6 +202,8 @@ export {
   databaseSchema,
   redisSchema,
   authSchema,
+  supabaseSchema,
+  neo4jSchema,
   paymentsSchema,
   notificationsSchema,
   storageSchema,
@@ -170,3 +211,11 @@ export {
   urlsSchema,
 } from './schemas.js';
 export type { EnvSchema } from './schemas.js';
+
+/** Re-export Supabase config helpers */
+export {
+  getSupabaseConfig,
+  isSupabaseConfigured,
+  requireSupabase,
+} from './supabase.js';
+export type { SupabaseConfig } from './supabase.js';

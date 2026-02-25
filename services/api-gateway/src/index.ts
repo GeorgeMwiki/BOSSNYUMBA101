@@ -13,6 +13,7 @@ import pinoHttp from 'pino-http';
 import { handle } from '@hono/node-server/vercel';
 import { Hono } from 'hono';
 import { authRouter } from './routes/auth';
+import { authV2Router } from './routes/auth-v2';
 import { tenantsRouter } from './routes/tenants.hono';
 import { usersRouter } from './routes/users.hono';
 import { propertiesRouter } from './routes/properties';
@@ -65,6 +66,7 @@ app.get('/health', (_req, res) => {
 // API v1 - Hono routes
 const api = new Hono();
 api.route('/auth', authRouter);
+api.route('/auth/v2', authV2Router);
 api.route('/tenants', tenantsRouter);
 api.route('/users', usersRouter);
 api.route('/properties', propertiesRouter);
@@ -97,6 +99,7 @@ app.get('/api/v1', (_req, res) => {
     version: '1.0.0',
     endpoints: [
       '/api/v1/auth',
+      '/api/v1/auth/v2',
       '/api/v1/tenants',
       '/api/v1/users',
       '/api/v1/properties',

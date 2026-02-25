@@ -101,11 +101,43 @@ export const urlsSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// Supabase Schema (BOSSNYUMBA's own Supabase project - never mix with others)
+// -----------------------------------------------------------------------------
+export const supabaseSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe('Supabase project URL (BOSSNYUMBA-specific, never shared)'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
+    .string()
+    .min(20)
+    .optional()
+    .describe('Supabase anon/public key'),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .min(20)
+    .optional()
+    .describe('Supabase service role key (server-side only)'),
+});
+
+// -----------------------------------------------------------------------------
+// Neo4j Graph Database Schema
+// -----------------------------------------------------------------------------
+export const neo4jSchema = z.object({
+  NEO4J_URI: z.string().optional().describe('Neo4j bolt URI'),
+  NEO4J_USER: z.string().optional().describe('Neo4j username'),
+  NEO4J_PASSWORD: z.string().optional().describe('Neo4j password'),
+});
+
+// -----------------------------------------------------------------------------
 // Combined Environment Schema
 // -----------------------------------------------------------------------------
 export const envSchema = databaseSchema
   .merge(redisSchema)
   .merge(authSchema)
+  .merge(supabaseSchema)
+  .merge(neo4jSchema)
   .merge(paymentsSchema)
   .merge(notificationsSchema)
   .merge(storageSchema)
@@ -120,6 +152,8 @@ export type EnvSchema = z.infer<typeof envSchema>;
 export const apiGatewayEnvSchema = databaseSchema
   .merge(redisSchema)
   .merge(authSchema)
+  .merge(supabaseSchema)
+  .merge(neo4jSchema)
   .merge(urlsSchema);
 
 export const paymentsEnvSchema = databaseSchema

@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
     "drizzle-orm": "^0.29.3",
     "postgres": "^3.4.3",
     "bcrypt": "^5.1.1"

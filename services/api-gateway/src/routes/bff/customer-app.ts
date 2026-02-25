@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole, requireOwnership } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
+import { getDataService } from '../../services/data-access.service';
 
 // ============================================================================
 // Schemas
@@ -108,44 +109,29 @@ export const customerAppRouter = new Hono()
 // Dashboard & Home
 customerAppRouter.get('/home', async (c) => {
   const auth = c.get('auth');
+  const dataService = getDataService();
+
+  // Fetch real profile data
+  const profile = await dataService.getCustomerProfile(auth.userId);
+  const invoices = await dataService.getCustomerInvoices(auth.userId, { page: 1, pageSize: 5 }, 'pending');
+  const maintenance = await dataService.getCustomerMaintenanceRequests(auth.userId, { page: 1, pageSize: 5 });
+  const notifications = await dataService.getNotifications(auth.userId, { page: 1, pageSize: 5 }, true);
+
+  const pendingInvoices = invoices.data as Array<{ amount: number; dueDate: string; description: string }>;
+  const openMaintenance = maintenance.data as Array<{ status: string }>;
+
   const homeData = {
     greeting: getTimeBasedGreeting(),
-    customer: {
-      id: auth.userId,
-      firstName: 'John',
-      lastName: 'Doe',
-      unitNumber: 'A1',
-      propertyName: 'Masaki Heights',
-    },
+    customer: profile || { id: auth.userId },
     quickStats: {
-      currentBalance: 0,
-      nextPaymentDue: '2024-04-01',
-      nextPaymentAmount: 800000,
-      openMaintenanceRequests: 1,
+      currentBalance: pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+      nextPaymentDue: pendingInvoices[0]?.dueDate || null,
+      nextPaymentAmount: pendingInvoices[0]?.amount || 0,
+      openMaintenanceRequests: openMaintenance.filter((m) => !['completed', 'cancelled'].includes(m.status)).length,
     },
-    alerts: [
-      {
-        id: 'alert-1',
-        type: 'payment_reminder',
-        priority: 'medium',
-        message: 'Rent payment due in 5 days',
-        actionUrl: '/payments',
-        dismissible: true,
-      },
-    ],
-    recentActivity: [
-      { type: 'payment', description: 'Payment of TSh 800,000 received', date: '2024-02-01T10:00:00Z' },
-      { type: 'maintenance', description: 'Plumbing issue resolved', date: '2024-01-28T14:30:00Z' },
-    ],
-    announcements: [
-      {
-        id: 'ann-1',
-        title: 'Water Supply Maintenance',
-        preview: 'Scheduled water maintenance on Sunday 6am-10am',
-        date: '2024-03-01T00:00:00Z',
-        important: true,
-      },
-    ],
+    alerts: notifications.data,
+    recentActivity: [],
+    announcements: [],
   };
   return c.json({ success: true, data: homeData });
 });
@@ -153,34 +139,13 @@ customerAppRouter.get('/home', async (c) => {
 // Profile & Onboarding
 customerAppRouter.get('/profile', async (c) => {
   const auth = c.get('auth');
-  const profile = {
-    id: auth.userId,
-    email: 'john.doe@example.com',
-    phone: '+255700000001',
-    firstName: 'John',
-    lastName: 'Doe',
-    idNumber: 'ID-123456789',
-    idVerified: true,
-    emergencyContact: { name: 'Jane Doe', phone: '+255700000002', relationship: 'Spouse' },
-    preferences: { language: 'en', preferredChannel: 'whatsapp', quietHours: { enabled: false, start: '22:00', end: '07:00' } },
-    occupancy: {
-      unitId: 'unit-001', unitNumber: 'A1', propertyId: 'prop-001',
-      propertyName: 'Masaki Heights', propertyAddress: 'Plot 123, Masaki, Dar es Salaam',
-      moveInDate: '2023-06-01', leaseEndDate: '2024-05-31',
-    },
-    onboardingStatus: {
-      completed: true,
-      completedAt: '2023-06-05T14:00:00Z',
-      steps: {
-        profile_completion: { completed: true, completedAt: '2023-06-01T10:00:00Z' },
-        id_verification: { completed: true, completedAt: '2023-06-02T11:00:00Z' },
-        lease_signing: { completed: true, completedAt: '2023-06-03T09:00:00Z' },
-        move_in_inspection: { completed: true, completedAt: '2023-06-04T10:00:00Z' },
-        utility_setup: { completed: true, completedAt: '2023-06-05T11:00:00Z' },
-        welcome_completion: { completed: true, completedAt: '2023-06-05T14:00:00Z' },
-      },
-    },
-  };
+  const dataService = getDataService();
+  const profile = await dataService.getCustomerProfile(auth.userId);
+
+  if (!profile) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not found' } }, 404);
+  }
+
   return c.json({ success: true, data: profile });
 });
 
@@ -229,10 +194,19 @@ customerAppRouter.post('/onboarding/progress', zValidator('json', onboardingProg
 
 // Payments & Billing
 customerAppRouter.get('/payments/balance', async (c) => {
+  const auth = c.get('auth');
+  const dataService = getDataService();
+  const invoices = await dataService.getCustomerInvoices(auth.userId, { page: 1, pageSize: 100 }, 'pending');
+  const payments = await dataService.getCustomerPayments(auth.userId, { page: 1, pageSize: 1 });
+
+  const pendingAmount = (invoices.data as Array<{ amount: number }>).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+  const lastPayment = (payments.data as Array<Record<string, unknown>>)[0] || null;
+
   const balance = {
-    currentBalance: 0, creditBalance: 50000, pendingCharges: 800000,
-    nextPayment: { amount: 800000, dueDate: '2024-04-01', description: 'April 2024 Rent' },
-    lastPayment: { amount: 800000, date: '2024-03-01T10:00:00Z', method: 'mpesa', reference: 'PAY-2024-0301-001' },
+    currentBalance: 0,
+    pendingCharges: pendingAmount,
+    nextPayment: invoices.data[0] || null,
+    lastPayment,
   };
   return c.json({ success: true, data: balance });
 });
@@ -240,12 +214,11 @@ customerAppRouter.get('/payments/balance', async (c) => {
 customerAppRouter.get('/payments/invoices', zValidator('query', paginationSchema.merge(z.object({
   status: z.enum(['all', 'pending', 'paid', 'overdue', 'partial']).optional().default('all'),
 }))), async (c) => {
-  const { page, pageSize } = c.req.valid('query');
-  const invoices = [
-    { id: 'inv-2024-04', invoiceNumber: 'INV-2024-0401-001', period: 'April 2024', description: 'Monthly Rent - Unit A1', amount: 800000, dueDate: '2024-04-01', status: 'pending', lineItems: [{ description: 'Monthly Rent', amount: 800000 }], paymentUrl: '/api/customer/payments/pay/inv-2024-04' },
-    { id: 'inv-2024-03', invoiceNumber: 'INV-2024-0301-001', period: 'March 2024', description: 'Monthly Rent - Unit A1', amount: 800000, dueDate: '2024-03-01', status: 'paid', paidAt: '2024-03-01T10:00:00Z', paymentMethod: 'mpesa', receiptUrl: '/api/customer/payments/receipts/rcpt-2024-03', lineItems: [{ description: 'Monthly Rent', amount: 800000 }] },
-  ];
-  return c.json({ success: true, data: invoices, pagination: { page, pageSize, total: invoices.length, totalPages: 1 } });
+  const auth = c.get('auth');
+  const { page, pageSize, status } = c.req.valid('query');
+  const dataService = getDataService();
+  const result = await dataService.getCustomerInvoices(auth.userId, { page, pageSize }, status);
+  return c.json({ success: true, data: result.data, pagination: result.pagination });
 });
 
 customerAppRouter.post('/payments/pay', zValidator('json', paymentInitiationSchema), async (c) => {
@@ -270,12 +243,11 @@ customerAppRouter.post('/payments/pay', zValidator('json', paymentInitiationSche
 });
 
 customerAppRouter.get('/payments/history', zValidator('query', paginationSchema), async (c) => {
+  const auth = c.get('auth');
   const { page, pageSize } = c.req.valid('query');
-  const payments = [
-    { id: 'pay-001', date: '2024-03-01T10:00:00Z', amount: 800000, method: 'mpesa', reference: 'PAY-2024-0301-001', status: 'completed', invoiceId: 'inv-2024-03', description: 'March 2024 Rent', receiptUrl: '/api/customer/payments/receipts/rcpt-2024-03' },
-    { id: 'pay-002', date: '2024-02-01T09:30:00Z', amount: 800000, method: 'bank_transfer', reference: 'PAY-2024-0201-001', status: 'completed', invoiceId: 'inv-2024-02', description: 'February 2024 Rent', receiptUrl: '/api/customer/payments/receipts/rcpt-2024-02' },
-  ];
-  return c.json({ success: true, data: payments, pagination: { page, pageSize, total: payments.length, totalPages: 1 } });
+  const dataService = getDataService();
+  const result = await dataService.getCustomerPayments(auth.userId, { page, pageSize });
+  return c.json({ success: true, data: result.data, pagination: result.pagination });
 });
 
 customerAppRouter.get('/payments/receipts/:id', async (c) => {
@@ -288,11 +260,11 @@ customerAppRouter.get('/payments/receipts/:id', async (c) => {
 customerAppRouter.get('/maintenance', zValidator('query', paginationSchema.merge(z.object({
   status: z.enum(['all', 'open', 'in_progress', 'completed', 'cancelled']).optional().default('all'),
 }))), async (c) => {
+  const auth = c.get('auth');
   const { page, pageSize } = c.req.valid('query');
-  const requests = [
-    { id: 'maint-001', ticketNumber: 'WO-2024-0150', category: 'plumbing', priority: 'medium', title: 'Leaking faucet in kitchen', description: 'Kitchen faucet is dripping constantly', status: 'in_progress', createdAt: '2024-02-25T10:00:00Z', lastUpdate: '2024-02-26T14:00:00Z', estimatedCompletion: '2024-02-28T18:00:00Z', assignedTo: { name: 'ABC Plumbing', phone: '+255700000003' }, timeline: [{ status: 'submitted', timestamp: '2024-02-25T10:00:00Z', message: 'Request submitted' }, { status: 'triaged', timestamp: '2024-02-25T11:00:00Z', message: 'Categorized as plumbing issue' }, { status: 'assigned', timestamp: '2024-02-26T09:00:00Z', message: 'Assigned to ABC Plumbing' }, { status: 'scheduled', timestamp: '2024-02-26T14:00:00Z', message: 'Scheduled for Feb 28, 2pm-4pm' }] },
-  ];
-  return c.json({ success: true, data: requests, pagination: { page, pageSize, total: requests.length, totalPages: 1 } });
+  const dataService = getDataService();
+  const result = await dataService.getCustomerMaintenanceRequests(auth.userId, { page, pageSize });
+  return c.json({ success: true, data: result.data, pagination: result.pagination });
 });
 
 customerAppRouter.get('/maintenance/:id', async (c) => {
@@ -310,8 +282,24 @@ customerAppRouter.get('/maintenance/:id', async (c) => {
 customerAppRouter.post('/maintenance', zValidator('json', createMaintenanceRequestSchema), async (c) => {
   const auth = c.get('auth');
   const body = c.req.valid('json');
-  const request = { id: 'maint_' + Date.now(), ticketNumber: 'WO-2024-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0'), ...body, status: 'submitted', customerId: auth.userId, createdAt: new Date().toISOString(), estimatedResponseTime: getEstimatedResponseTime(body.priority) };
-  return c.json({ success: true, data: request, message: 'Maintenance request submitted successfully. You will be notified of updates.' }, 201);
+  const dataService = getDataService();
+
+  const request = await dataService.createMaintenanceRequest({
+    customerId: auth.userId,
+    category: body.category,
+    priority: body.priority,
+    title: body.title,
+    description: body.description,
+    location: body.location,
+    permissionToEnter: body.permissionToEnter,
+    entryInstructions: body.entryInstructions,
+  });
+
+  return c.json({
+    success: true,
+    data: { ...request as object, estimatedResponseTime: getEstimatedResponseTime(body.priority) },
+    message: 'Maintenance request submitted successfully. You will be notified of updates.',
+  }, 201);
 });
 
 customerAppRouter.post('/maintenance/:id/cancel', zValidator('json', z.object({ reason: z.string().min(1).max(500) })), async (c) => {
@@ -422,13 +410,12 @@ customerAppRouter.post('/feedback', zValidator('json', feedbackSchema), async (c
 customerAppRouter.get('/notifications', zValidator('query', paginationSchema.merge(z.object({
   unreadOnly: z.coerce.boolean().optional().default(false),
 }))), async (c) => {
-  const { page, pageSize } = c.req.valid('query');
-  const notifications = [
-    { id: 'notif-001', type: 'payment_reminder', title: 'Rent Due Soon', message: 'Your rent payment of TSh 800,000 is due on April 1st.', createdAt: new Date(Date.now() - 86400000).toISOString(), read: false, actionUrl: '/payments', actionLabel: 'Pay Now' },
-    { id: 'notif-002', type: 'maintenance_update', title: 'Maintenance Scheduled', message: 'Your plumbing repair has been scheduled for Feb 28, 2-4pm.', createdAt: new Date(Date.now() - 172800000).toISOString(), read: true, actionUrl: '/maintenance/maint-001', actionLabel: 'View Details' },
-    { id: 'notif-003', type: 'announcement', title: 'Water Maintenance Notice', message: 'Scheduled water maintenance on Sunday 6am-10am.', createdAt: new Date(Date.now() - 259200000).toISOString(), read: true },
-  ];
-  return c.json({ success: true, data: notifications, pagination: { page, pageSize, total: notifications.length, totalPages: 1 }, unreadCount: notifications.filter(n => !n.read).length });
+  const auth = c.get('auth');
+  const { page, pageSize, unreadOnly } = c.req.valid('query');
+  const dataService = getDataService();
+  const result = await dataService.getNotifications(auth.userId, { page, pageSize }, unreadOnly);
+  const unreadCount = (result.data as Array<{ read: boolean }>).filter(n => !n.read).length;
+  return c.json({ success: true, data: result.data, pagination: result.pagination, unreadCount });
 });
 
 customerAppRouter.post('/notifications/:id/read', async (c) => {
