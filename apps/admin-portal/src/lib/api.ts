@@ -1,4 +1,19 @@
-const API_BASE = '/api';
+function getApiBase(): string {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '').endsWith('/api/v1')
+      ? configured.replace(/\/$/, '')
+      : `${configured.replace(/\/$/, '')}/api/v1`;
+  }
+
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:4000/api/v1';
+  }
+
+  return '/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 interface ApiResponse<T> {
   success: boolean;
@@ -33,7 +48,10 @@ async function request<T>(
         localStorage.removeItem('admin_user');
         window.location.href = '/login';
       }
-      return { success: false, error: data.message || 'Request failed' };
+      return {
+        success: false,
+        error: data.error?.message || data.message || 'Request failed',
+      };
     }
 
     return { success: true, data: data.data };

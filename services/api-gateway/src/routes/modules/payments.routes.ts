@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
+import { liveDataRequired } from '../../middleware/live-data';
 import { validationErrorHook } from '../validators';
 
 const app = new Hono();
@@ -77,6 +78,7 @@ const invoices: Record<string, unknown> = {};
 const payments: Record<string, unknown> = {};
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Payments module'));
 
 // GET /invoices - List invoices
 app.get('/', zValidator('query', listInvoicesSchema, validationErrorHook), (c) => {
@@ -151,6 +153,7 @@ export const invoicesRouter = app;
 // Separate Hono app for payments
 const paymentsApp = new Hono();
 paymentsApp.use('*', authMiddleware);
+paymentsApp.use('*', liveDataRequired('Payments module'));
 
 // POST /payments/initiate - Initiate payment
 paymentsApp.post('/initiate', zValidator('json', initiatePaymentSchema, validationErrorHook), (c) => {
@@ -221,6 +224,8 @@ export const paymentsRouter = paymentsApp;
 // Separate app for reconciliation
 const reconciliationApp = new Hono();
 reconciliationApp.use('*', authMiddleware);
+reconciliationApp.use('*', liveDataRequired('Payments reconciliation'));
+reconciliationApp.use('*', authMiddleware);
 
 // POST /reconciliation/match - Match payment to invoice
 reconciliationApp.post('/match', zValidator('json', reconcileSchema, validationErrorHook), (c) => {
@@ -252,6 +257,8 @@ export const reconciliationRouter = reconciliationApp;
 
 // Separate app for statements
 const statementsApp = new Hono();
+statementsApp.use('*', authMiddleware);
+statementsApp.use('*', liveDataRequired('Statements generation'));
 statementsApp.use('*', authMiddleware);
 
 // GET /statements/:customerId - Get customer statement

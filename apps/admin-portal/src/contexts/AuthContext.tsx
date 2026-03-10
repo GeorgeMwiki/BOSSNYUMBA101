@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { api } from '../lib/api';
 
 interface User {
   id: string;
@@ -31,34 +32,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    const response = await api.post<{
+      token: string;
+      user: User;
+    }>('/auth/login', { email, password });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Login failed');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Login failed');
     }
 
-    const data = await response.json();
-
     // Check for admin or support roles
-    if (!['ADMIN', 'SUPER_ADMIN', 'SUPPORT'].includes(data.data.user.role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'SUPPORT'].includes(response.data.user.role)) {
       throw new Error('Access denied. Admin privileges required.');
     }
 
-    setToken(data.data.token);
-    setUser(data.data.user);
-    localStorage.setItem('admin_token', data.data.token);
-    localStorage.setItem('admin_user', JSON.stringify(data.data.user));
+    setToken(response.data.token);
+    setUser(response.data.user);
+    localStorage.setItem('admin_token', response.data.token);
+    localStorage.setItem('admin_user', JSON.stringify(response.data.user));
   };
 
   const logout = () => {

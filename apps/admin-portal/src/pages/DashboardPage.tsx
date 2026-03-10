@@ -38,6 +38,19 @@ interface DashboardData {
     monthlyRevenue: number;
     growthRate: number;
   };
+  revenueTrend: Array<{
+    month: string;
+    value: number;
+  }>;
+  tenantGrowth: Array<{
+    month: string;
+    tenants: number;
+  }>;
+  statusDistribution: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
   recentActivity: Array<{
     id: string;
     type: string;
@@ -53,44 +66,35 @@ interface DashboardData {
   }>;
 }
 
-const revenueData = [
-  { month: 'Jul', value: 2100000 },
-  { month: 'Aug', value: 2350000 },
-  { month: 'Sep', value: 2500000 },
-  { month: 'Oct', value: 2800000 },
-  { month: 'Nov', value: 3100000 },
-  { month: 'Dec', value: 3400000 },
-  { month: 'Jan', value: 3750000 },
-];
-
-const tenantGrowthData = [
-  { month: 'Jul', tenants: 45 },
-  { month: 'Aug', tenants: 52 },
-  { month: 'Sep', tenants: 61 },
-  { month: 'Oct', tenants: 75 },
-  { month: 'Nov', tenants: 89 },
-  { month: 'Dec', tenants: 104 },
-  { month: 'Jan', tenants: 118 },
-];
-
-const statusDistribution = [
-  { name: 'Active', value: 85, color: '#22c55e' },
-  { name: 'Trial', value: 12, color: '#3b82f6' },
-  { name: 'Suspended', value: 2, color: '#f59e0b' },
-  { name: 'Churned', value: 1, color: '#ef4444' },
-];
-
 export function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<DashboardData>('/dashboard/admin').then((response) => {
-      if (response.success && response.data) {
-        setData(response.data);
-      }
-      setLoading(false);
-    });
+    api
+      .get<DashboardData>('/dashboard/admin')
+      .then((response) => {
+        if (response.success && response.data) {
+          setData(response.data);
+          setError(null);
+        } else {
+          setData(null);
+          const responseError = (response as { error?: unknown }).error;
+          setError(
+            typeof responseError === 'string'
+              ? responseError
+              : (responseError as { message?: string } | undefined)?.message ??
+                  'Live admin dashboard data is unavailable.'
+          );
+        }
+        setLoading(false);
+      })
+      .catch((err: Error) => {
+        setData(null);
+        setError(err.message);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -101,67 +105,23 @@ export function DashboardPage() {
     );
   }
 
-  const kpis = data?.kpis || {
-    totalTenants: 118,
-    activeTenants: 104,
-    totalUsers: 1247,
-    totalProperties: 892,
-    totalUnits: 4536,
-    monthlyRevenue: 3750000,
-    growthRate: 13.5,
-  };
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-12 w-12 text-amber-500" />
+        <p className="text-gray-600">{error ?? 'Live admin dashboard data is unavailable.'}</p>
+      </div>
+    );
+  }
 
-  const alerts = data?.alerts || [
-    {
-      id: '1',
-      severity: 'critical' as const,
-      message: 'High API error rate detected in payment service',
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      severity: 'warning' as const,
-      message: '5 tenants with overdue subscriptions',
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      severity: 'info' as const,
-      message: 'System maintenance scheduled for Sunday 2AM',
-      timestamp: new Date().toISOString(),
-    },
-  ];
-
-  const recentActivity = data?.recentActivity || [
-    {
-      id: '1',
-      type: 'tenant_created',
-      description: 'New tenant "Makini Properties" created',
-      timestamp: new Date().toISOString(),
-      user: 'admin@bossnyumba.com',
-    },
-    {
-      id: '2',
-      type: 'user_role_changed',
-      description: 'User role updated to PROPERTY_MANAGER',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      user: 'support@bossnyumba.com',
-    },
-    {
-      id: '3',
-      type: 'config_updated',
-      description: 'Payment gateway configuration updated',
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      user: 'admin@bossnyumba.com',
-    },
-    {
-      id: '4',
-      type: 'tenant_suspended',
-      description: 'Tenant "Test Corp" suspended for non-payment',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      user: 'admin@bossnyumba.com',
-    },
-  ];
+  const {
+    kpis,
+    alerts,
+    recentActivity,
+    revenueTrend,
+    tenantGrowth,
+    statusDistribution,
+  } = data;
 
   return (
     <div className="space-y-6">
@@ -266,7 +226,7 @@ export function DashboardPage() {
           <h3 className="font-semibold text-gray-900 mb-4">Revenue Trend</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={revenueTrend}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -300,7 +260,7 @@ export function DashboardPage() {
           <h3 className="font-semibold text-gray-900 mb-4">Tenant Growth</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={tenantGrowthData}>
+              <BarChart data={tenantGrowth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
                 <YAxis stroke="#9ca3af" fontSize={12} />

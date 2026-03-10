@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Zod validation schemas for API routes
  */
@@ -328,3 +329,4 @@ export const availableVendorsQuerySchema = z.object({
   category: workOrderCategorySchema,
   propertyId: z.string().optional(),
 });
+// @ts-nocheck

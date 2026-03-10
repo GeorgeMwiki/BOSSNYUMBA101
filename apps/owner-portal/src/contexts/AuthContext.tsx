@@ -167,9 +167,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       if (token) {
         try {
-          const response = await api.get('/auth/me');
+          const response: any = await api.get('/auth/me');
           if (response.data?.success || response.success) {
-            const data = response.data?.data || response.data;
+            const data: any = response.data?.data || response.data;
             if (data) {
               setUser(data.user);
               setTenant(data.tenant);
@@ -179,51 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               resetSessionTimeout();
             }
           } else {
-            // For development - mock data when API not available
-            setUser({
-              id: '1',
-              email: 'owner@bossnyumba.com',
-              firstName: 'John',
-              lastName: 'Doe',
-              mfaEnabled: true,
-            });
-            setTenant({
-              id: '1',
-              name: 'Doe Properties',
-              slug: 'doe-properties',
-            });
-            setRole('OWNER');
-            setPermissions(['view:all', 'manage:properties', 'approve:maintenance']);
-            setProperties([
-              { id: '1', name: 'Palm Gardens' },
-              { id: '2', name: 'Ocean View Apartments' },
-              { id: '3', name: 'City Center Plaza' },
-            ]);
-            resetSessionTimeout();
+            logout();
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          // For development - use mock data
-          setUser({
-            id: '1',
-            email: 'owner@bossnyumba.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            mfaEnabled: true,
-          });
-          setTenant({
-            id: '1',
-            name: 'Doe Properties',
-            slug: 'doe-properties',
-          });
-          setRole('OWNER');
-          setPermissions(['view:all', 'manage:properties', 'approve:maintenance']);
-          setProperties([
-            { id: '1', name: 'Palm Gardens' },
-            { id: '2', name: 'Ocean View Apartments' },
-            { id: '3', name: 'City Center Plaza' },
-          ]);
-          resetSessionTimeout();
+          logout();
         }
       }
       setLoading(false);
@@ -234,10 +194,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response: any = await api.post('/auth/login', { email, password });
 
       if (response.data?.success || response.success) {
-        const data = response.data?.data || response.data;
+        const data: any = response.data?.data || response.data;
         const { token: newToken, user: newUser, tenant: newTenant, role: newRole, permissions: newPerms, properties: newProps } = data;
         localStorage.setItem('token', newToken);
         setToken(newToken);
@@ -251,30 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(response.data?.error?.message || 'Login failed');
       }
     } catch (error) {
-      // For development - simulate successful login
-      const mockToken = 'mock-jwt-token-' + Date.now();
-      localStorage.setItem('token', mockToken);
-      setToken(mockToken);
-      setUser({
-        id: '1',
-        email,
-        firstName: 'John',
-        lastName: 'Doe',
-        mfaEnabled: true,
-      });
-      setTenant({
-        id: '1',
-        name: 'Doe Properties',
-        slug: 'doe-properties',
-      });
-      setRole('OWNER');
-      setPermissions(['view:all', 'manage:properties', 'approve:maintenance']);
-      setProperties([
-        { id: '1', name: 'Palm Gardens' },
-        { id: '2', name: 'Ocean View Apartments' },
-        { id: '3', name: 'City Center Plaza' },
-      ]);
-      resetSessionTimeout();
+      throw error instanceof Error ? error : new Error('Login failed');
     }
   };
 

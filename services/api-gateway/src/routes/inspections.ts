@@ -8,6 +8,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { liveDataRequired } from '../middleware/live-data';
 import {
   idParamSchema,
   paginationQuerySchema,
@@ -57,6 +58,7 @@ const listInspectionsQuerySchema = paginationQuerySchema.extend({
 });
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Inspections API'));
 
 // GET /inspections/compare - Must be before /:id
 app.get('/compare', zValidator('query', compareInspectionsQuerySchema), (c) => {

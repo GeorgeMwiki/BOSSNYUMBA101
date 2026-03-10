@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { liveDataRequired } from '../middleware/live-data';
 import {
   idParamSchema,
   paginationQuerySchema,
@@ -47,6 +48,7 @@ const complaintIdParamSchema = z.object({
 });
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Feedback API'));
 
 // POST /feedback - Submit feedback
 app.post(

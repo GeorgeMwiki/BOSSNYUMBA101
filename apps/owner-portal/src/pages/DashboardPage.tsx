@@ -93,87 +93,37 @@ export function DashboardPage() {
   const [data, setData] = useState<OwnerDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [properties, setProperties] = useState<Property[]>([]);
-  const [drillDownModal, setDrillDownModal] = useState<{
-    type: string;
-    title: string;
-    data: unknown;
-  } | null>(null);
   const navigate = useNavigate();
 
   const fetchData = async () => {
-    // Fetch properties list
-    const propertiesResponse = await api.get<Property[]>('/properties');
-    if (propertiesResponse.success && propertiesResponse.data) {
-      setProperties(propertiesResponse.data);
-    } else {
-      // Mock properties for development
-      setProperties([
-        { id: '1', name: 'Palm Gardens' },
-        { id: '2', name: 'Ocean View Apartments' },
-        { id: '3', name: 'City Center Plaza' },
-        { id: '4', name: 'Green Valley Estate' },
-        { id: '5', name: 'Sunset Towers' },
-      ]);
-    }
+    setError(null);
+    try {
+      const propertiesResponse = await api.get<Property[]>('/properties');
+      if (propertiesResponse.success && propertiesResponse.data) {
+        setProperties(propertiesResponse.data);
+      } else {
+        setProperties([]);
+      }
 
-    // Fetch dashboard data with filters
-    const queryParams = new URLSearchParams();
-    if (selectedProperty !== 'all') queryParams.append('propertyId', selectedProperty);
-    queryParams.append('dateRange', dateRange);
+      const queryParams = new URLSearchParams();
+      if (selectedProperty !== 'all') queryParams.append('propertyId', selectedProperty);
+      queryParams.append('dateRange', dateRange);
 
-    const response = await api.get<OwnerDashboardData>(`/dashboard/owner?${queryParams.toString()}`);
-    if (response.success && response.data) {
-      setData(response.data);
-    } else {
-      // Mock data for development
-      setData({
-        portfolio: {
-          totalProperties: selectedProperty === 'all' ? 5 : 1,
-          totalUnits: selectedProperty === 'all' ? 127 : 25,
-          portfolioValue: selectedProperty === 'all' ? 2500000000 : 500000000,
-        },
-        financial: {
-          currentMonthRevenue: selectedProperty === 'all' ? 45000000 : 9000000,
-          revenueChange: 5.2,
-          outstandingBalance: selectedProperty === 'all' ? 8500000 : 1700000,
-          collectionRate: 84.1,
-          collectionRateChange: 2.3,
-          noi: selectedProperty === 'all' ? 32000000 : 6400000,
-        },
-        maintenance: {
-          openRequests: selectedProperty === 'all' ? 12 : 3,
-          inProgress: selectedProperty === 'all' ? 5 : 1,
-          completedThisMonth: selectedProperty === 'all' ? 23 : 5,
-          totalCostThisMonth: selectedProperty === 'all' ? 3500000 : 700000,
-          pendingApprovals: selectedProperty === 'all' ? 3 : 1,
-        },
-        occupancy: {
-          occupancyRate: 92.3,
-          occupancyChange: 1.5,
-          vacantUnits: selectedProperty === 'all' ? 10 : 2,
-          totalTenants: selectedProperty === 'all' ? 117 : 23,
-        },
-        arrears: [
-          { bucket: '0-7 days', amount: 2500000, count: 15 },
-          { bucket: '8-14 days', amount: 1800000, count: 8 },
-          { bucket: '15-30 days', amount: 2200000, count: 12 },
-          { bucket: '31-60 days', amount: 1200000, count: 5 },
-          { bucket: '60+ days', amount: 800000, count: 3 },
-        ],
-        recentActivity: [
-          { id: '1', type: 'payment', title: 'Payment Received', description: 'Unit A-102 - TZS 850,000', timestamp: new Date().toISOString() },
-          { id: '2', type: 'work_order', title: 'Work Order Completed', description: 'Plumbing repair - Block B', timestamp: new Date(Date.now() - 3600000).toISOString() },
-          { id: '3', type: 'document', title: 'Lease Signed', description: 'New tenant - Unit C-205', timestamp: new Date(Date.now() - 7200000).toISOString() },
-          { id: '4', type: 'payment', title: 'Payment Received', description: 'Unit B-301 - TZS 1,200,000', timestamp: new Date(Date.now() - 14400000).toISOString() },
-        ],
-        alerts: [
-          { id: '1', type: 'ACTION_REQUIRED', title: 'Approval Required', message: '3 work orders need your approval', actionUrl: '/approvals' },
-          { id: '2', type: 'WARNING', title: 'Overdue Payments', message: '8 tenants have payments overdue by more than 14 days', actionUrl: '/financial?filter=overdue' },
-        ],
-      });
+      const response = await api.get<OwnerDashboardData>(`/dashboard/owner?${queryParams.toString()}`);
+      if (response.success && response.data) {
+        setData(response.data);
+      } else {
+        setData(null);
+        setError(response.error?.message ?? 'Live owner dashboard data is unavailable.');
+      }
+    } catch (err) {
+      setProperties([]);
+      setData(null);
+      setError(err instanceof Error ? err.message : 'Live owner dashboard data is unavailable.');
     }
     setLoading(false);
     setRefreshing(false);
@@ -226,7 +176,7 @@ export function DashboardPage() {
     return (
       <div className="text-center py-12">
         <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Failed to load dashboard data</p>
+        <p className="text-gray-500">{error ?? 'Failed to load dashboard data'}</p>
         <button
           onClick={handleRefresh}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -244,14 +194,7 @@ export function DashboardPage() {
     { name: 'Vacant', value: 100 - occupancy.occupancyRate },
   ];
 
-  const revenueTrendData = [
-    { month: 'Sep', revenue: 38500000 },
-    { month: 'Oct', revenue: 42200000 },
-    { month: 'Nov', revenue: 40800000 },
-    { month: 'Dec', revenue: 43500000 },
-    { month: 'Jan', revenue: 44100000 },
-    { month: 'Feb', revenue: financial.currentMonthRevenue },
-  ];
+  const revenueTrendData: Array<{ month: string; revenue: number }> = [];
 
   return (
     <div className="space-y-6">
@@ -517,22 +460,28 @@ export function DashboardPage() {
             </Link>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-                />
-                <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#DBEAFE" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {revenueTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#DBEAFE" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+                Revenue trend is unavailable until live time-series data is wired.
+              </div>
+            )}
           </div>
         </div>
 

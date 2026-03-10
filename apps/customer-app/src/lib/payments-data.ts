@@ -1,54 +1,9 @@
 import type { Payment } from '@/lib/payment-types';
 
-export const CURRENT_BALANCE = 45000;
+export const CURRENT_BALANCE = 0;
 export const CARD_PAYMENT_ENABLED = false;
 
-export const MOCK_PAYMENTS: Payment[] = [
-  {
-    id: '1',
-    type: 'rent',
-    amount: 45000,
-    status: 'pending',
-    dueDate: '2024-03-01',
-  },
-  {
-    id: '2',
-    type: 'rent',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-02-01',
-    paidDate: '2024-01-28',
-    reference: 'MPESA-ABC123XYZ',
-    channel: 'M-Pesa',
-  },
-  {
-    id: '3',
-    type: 'rent',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-01-01',
-    paidDate: '2023-12-30',
-    reference: 'MPESA-DEF456UVW',
-    channel: 'M-Pesa',
-  },
-  {
-    id: '4',
-    type: 'deposit',
-    amount: 90000,
-    status: 'paid',
-    dueDate: '2023-06-01',
-    paidDate: '2023-05-28',
-    reference: 'BANK-GHI789RST',
-    channel: 'Bank Transfer',
-  },
-  {
-    id: '5',
-    type: 'rent',
-    amount: 45000,
-    status: 'failed',
-    dueDate: '2023-12-01',
-  },
-];
+export const MOCK_PAYMENTS: Payment[] = [];
 
 export const DATE_RANGE_OPTIONS = [
   { label: 'All time', value: 'all' },
@@ -60,6 +15,7 @@ export const DATE_RANGE_OPTIONS = [
 
 export function filterPaymentsByDateRange(items: Payment[], range: string): Payment[] {
   if (range === 'all') return items;
+
   const now = new Date();
   const cutoff = new Date(now);
 
@@ -68,8 +24,8 @@ export function filterPaymentsByDateRange(items: Payment[], range: string): Paym
   else if (range === '180') cutoff.setDate(cutoff.getDate() - 180);
   else if (range === 'year') cutoff.setFullYear(cutoff.getFullYear() - 1);
 
-  return items.filter((p) => {
-    const date = p.paidDate ? new Date(p.paidDate) : new Date(p.dueDate);
+  return items.filter((payment) => {
+    const date = payment.paidDate ? new Date(payment.paidDate) : new Date(payment.dueDate);
     return date >= cutoff;
   });
 }

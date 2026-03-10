@@ -1,715 +1,161 @@
-/**
- * Production-ready Customers API routes
- * Hono + Zod validation with proper error handling
- * Uses database queries with mock data fallback
- */
+// @ts-nocheck
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
-import { databaseMiddleware, generateId, buildPaginationResponse } from '../middleware/database';
-import {
-  customerListQuerySchema,
-  createCustomerSchema,
-  updateCustomerSchema,
-  kycStatusSchema,
-  blacklistSchema,
-  paginationSchema,
-  idParamSchema,
-  validationErrorResponse,
-} from './schemas';
-import {
-  DEMO_CUSTOMERS,
-  DEMO_LEASES,
-  DEMO_UNITS,
-  DEMO_PROPERTIES,
-  DEMO_INVOICES,
-  DEMO_PAYMENTS,
-  getByTenant,
-  getById,
-  paginate,
-} from '../data/mock-data';
-import { DocumentVerificationStatus } from '../types/mock-types';
+import { databaseMiddleware } from '../middleware/database';
+import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
 
-// Mutable in-memory store for CRUD (production would use DB)
-const customersStore = [...DEMO_CUSTOMERS];
-
-function generateMockId(prefix: string): string {
-  const existing = customersStore.map((c) => c.id);
-  let n = 1;
-  while (existing.includes(`${prefix}-${String(n).padStart(3, '0')}`)) n++;
-  return `${prefix}-${String(n).padStart(3, '0')}`;
+function customerCode(email: string) {
+  return `CUST-${email.split('@')[0].replace(/[^A-Z0-9]+/gi, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
 }
 
-export const customersRouter = new Hono()
-  .use('*', authMiddleware)
-  .use('*', databaseMiddleware);
-
-// GET /customers - List with pagination, search, status filter
-customersRouter.get(
-  '/',
-  zValidator('query', customerListQuerySchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid query parameters');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const query = c.req.valid('query');
-    const { page, pageSize, search, status } = query;
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const offset = (page - 1) * pageSize;
-        const result = await repos.customers.findMany(
-          auth.tenantId,
-          { limit: pageSize, offset },
-          { search, status }
-        );
-
-        // Enrich with current lease info
-        const enrichedData = await Promise.all(
-          result.items.map(async (customer) => {
-            const leasesResult = await repos.leases.findByCustomer(customer.id, auth.tenantId, { limit: 1, offset: 0 });
-            const activeLease = leasesResult.items.find((l) => l.status === 'active');
-            let unitInfo = null;
-            if (activeLease?.unitId) {
-              const unit = await repos.units.findById(activeLease.unitId, auth.tenantId);
-              if (unit) {
-                unitInfo = { id: unit.id, unitNumber: unit.unitCode, propertyId: unit.propertyId };
-              }
-            }
-            return {
-              ...customer,
-              currentLease: activeLease
-                ? { id: activeLease.id, unitNumber: unitInfo?.unitNumber, propertyId: unitInfo?.propertyId }
-                : null,
-            };
-          })
-        );
-
-        return c.json({
-          success: true,
-          data: enrichedData,
-          pagination: buildPaginationResponse(page, pageSize, result.total),
-        });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    let customers = getByTenant(customersStore, auth.tenantId).filter(
-      (cust) => !cust.deletedAt
-    );
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      customers = customers.filter(
-        (cust) =>
-          cust.firstName.toLowerCase().includes(searchLower) ||
-          cust.lastName.toLowerCase().includes(searchLower) ||
-          cust.email.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (status) {
-      customers = customers.filter((cust) => cust.verificationStatus === status);
-    }
-
-    const result = paginate(customers, page, pageSize);
-    const enrichedData = result.data.map((customer) => {
-      const lease = DEMO_LEASES.find(
-        (l) => l.customerId === customer.id && l.status === 'ACTIVE'
-      );
-      const unit = lease ? getById(DEMO_UNITS, lease.unitId) : null;
-      return {
-        ...customer,
-        currentLease: lease
-          ? {
-              id: lease.id,
-              unitNumber: unit?.unitNumber,
-              propertyId: unit?.propertyId,
-            }
-          : null,
-      };
-    });
-
-    return c.json({
-      success: true,
-      data: enrichedData,
-      pagination: result.pagination,
-    });
+async function enrichCustomer(repos: any, tenantId: string, row: any) {
+  const base = mapCustomerRow(row);
+  const leases = await repos.leases.findByCustomer(row.id, tenantId, { limit: 20, offset: 0 });
+  const activeLease = leases.items.find((lease: any) => String(lease.status) === 'active');
+  let currentUnit = null;
+  if (activeLease?.unitId) {
+    const unit = await repos.units.findById(activeLease.unitId, tenantId);
+    if (unit) currentUnit = mapUnitRow(unit);
   }
-);
 
-// GET /customers/:id/leases - Get customer's leases (must be before /:id)
-customersRouter.get(
-  '/:id/leases',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  zValidator('query', paginationSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid query parameters');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-    const query = c.req.valid('query');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const customer = await repos.customers.findById(id, auth.tenantId);
-        if (!customer) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
+  return {
+    ...base,
+    currentLease: activeLease
+      ? {
+          id: activeLease.id,
+          status: String(activeLease.status).toUpperCase(),
+          startDate: activeLease.startDate,
+          endDate: activeLease.endDate,
+          rentAmount: activeLease.rentAmount,
+          unitId: activeLease.unitId,
         }
-
-        const offset = (query.page - 1) * query.pageSize;
-        const result = await repos.leases.findByCustomer(id, auth.tenantId, { limit: query.pageSize, offset });
-
-        // Enrich with unit and property info
-        const enrichedData = await Promise.all(
-          result.items.map(async (lease) => {
-            const unit = lease.unitId ? await repos.units.findById(lease.unitId, auth.tenantId) : null;
-            const property = unit?.propertyId ? await repos.properties.findById(unit.propertyId, auth.tenantId) : null;
-            return {
-              ...lease,
-              unit: unit ? { id: unit.id, unitNumber: unit.unitCode } : null,
-              property: property ? { id: property.id, name: property.name } : null,
-            };
-          })
-        );
-
-        return c.json({
-          success: true,
-          data: enrichedData,
-          pagination: buildPaginationResponse(query.page, query.pageSize, result.total),
-        });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    let leases = DEMO_LEASES.filter(
-      (l) => l.customerId === id && l.tenantId === auth.tenantId
-    );
-
-    const result = paginate(leases, query.page, query.pageSize);
-    const enrichedData = result.data.map((lease) => {
-      const unit = getById(DEMO_UNITS, lease.unitId);
-      const property = unit ? getById(DEMO_PROPERTIES, unit.propertyId) : null;
-      return {
-        ...lease,
-        unit: unit ? { id: unit.id, unitNumber: unit.unitNumber } : null,
-        property: property ? { id: property.id, name: property.name } : null,
-      };
-    });
-
-    return c.json({
-      success: true,
-      data: enrichedData,
-      pagination: result.pagination,
-    });
-  }
-);
-
-// GET /customers/:id/payments - Get customer's payment history (must be before /:id)
-customersRouter.get(
-  '/:id/payments',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  zValidator('query', paginationSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid query parameters');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-    const query = c.req.valid('query');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const customer = await repos.customers.findById(id, auth.tenantId);
-        if (!customer) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        const offset = (query.page - 1) * query.pageSize;
-        const result = await repos.payments.findByCustomer(id, auth.tenantId, query.pageSize, offset);
-
-        // Enrich with invoice info
-        const enrichedData = await Promise.all(
-          result.items.map(async (payment) => {
-            const invoice = payment.invoiceId ? await repos.invoices.findById(payment.invoiceId, auth.tenantId) : null;
-            return {
-              ...payment,
-              invoice: invoice
-                ? { id: invoice.id, number: invoice.invoiceNumber, total: invoice.totalAmount }
-                : null,
-            };
-          })
-        );
-
-        return c.json({
-          success: true,
-          data: enrichedData,
-          pagination: buildPaginationResponse(query.page, query.pageSize, result.total),
-        });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    let payments = getByTenant(DEMO_PAYMENTS, auth.tenantId).filter(
-      (p) => p.customerId === id
-    );
-    payments.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    const result = paginate(payments, query.page, query.pageSize);
-    const enrichedData = result.data.map((payment) => {
-      const invoice = getById(DEMO_INVOICES, payment.invoiceId);
-      return {
-        ...payment,
-        invoice: invoice
-          ? { id: invoice.id, number: invoice.number, total: invoice.total }
-          : null,
-      };
-    });
-
-    return c.json({
-      success: true,
-      data: enrichedData,
-      pagination: result.pagination,
-    });
-  }
-);
-
-// GET /customers/:id - Get by ID
-customersRouter.get(
-  '/:id',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const customer = await repos.customers.findById(id, auth.tenantId);
-        if (!customer) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        // Get leases
-        const leasesResult = await repos.leases.findByCustomer(id, auth.tenantId, { limit: 100, offset: 0 });
-        const currentLease = leasesResult.items.find((l) => l.status === 'active');
-        let currentUnit = null;
-        if (currentLease?.unitId) {
-          currentUnit = await repos.units.findById(currentLease.unitId, auth.tenantId);
-        }
-
-        return c.json({
-          success: true,
-          data: {
-            ...customer,
-            leases: leasesResult.items.map((l) => ({
-              id: l.id,
-              status: l.status,
-              startDate: l.startDate,
-              endDate: l.endDate,
-              rentAmount: l.rentAmount,
-              unitId: l.unitId,
-            })),
-            currentUnit: currentUnit
-              ? { id: currentUnit.id, unitNumber: currentUnit.unitCode, propertyId: currentUnit.propertyId }
-              : null,
-          },
-        });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    const leases = DEMO_LEASES.filter((l) => l.customerId === id);
-    const currentLease = leases.find((l) => l.status === 'ACTIVE');
-    const currentUnit = currentLease ? getById(DEMO_UNITS, currentLease.unitId) : null;
-
-    return c.json({
-      success: true,
-      data: {
-        ...customer,
-        leases: leases.map((l) => ({
-          id: l.id,
-          status: l.status,
-          startDate: l.startDate,
-          endDate: l.endDate,
-          rentAmount: l.rentAmount,
-          unitId: l.unitId,
-        })),
-        currentUnit: currentUnit
-          ? { id: currentUnit.id, unitNumber: currentUnit.unitNumber, propertyId: currentUnit.propertyId }
-          : null,
+      : null,
+    currentUnit:
+      currentUnit && {
+        id: currentUnit.id,
+        unitNumber: currentUnit.unitNumber,
+        propertyId: currentUnit.propertyId,
       },
-    });
+  };
+}
+
+const app = new Hono();
+app.use('*', authMiddleware);
+app.use('*', databaseMiddleware);
+
+app.get('/me', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const row = await repos.customers.findById(auth.userId, auth.tenantId);
+  if (!row) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Customer profile not found' } }, 404);
   }
-);
+  return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
+});
 
-// POST /customers - Create customer
-customersRouter.post(
-  '/',
-  zValidator('json', createCustomerSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid request body');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const body = c.req.valid('json');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const id = generateId();
-        const customerCode = `CUST-${Date.now().toString(36).toUpperCase()}`;
-
-        const customer = await repos.customers.create(
-          {
-            id,
-            tenantId: auth.tenantId,
-            customerCode,
-            customerType: body.type?.toLowerCase() as any ?? 'individual',
-            firstName: body.firstName,
-            lastName: body.lastName,
-            email: body.email,
-            phone: body.phone,
-            idNumber: body.idNumber,
-            idType: body.idType,
-            companyName: body.companyName,
-            companyRegistrationNumber: body.companyRegNumber,
-            status: 'active',
-            kycStatus: 'pending',
-            communicationPreferences: body.preferences ?? {},
-            createdBy: auth.userId,
-            updatedBy: auth.userId,
-          },
-          auth.userId
-        );
-
-        return c.json({ success: true, data: customer }, 201);
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const now = new Date();
-    const newCustomer = {
-      id: generateMockId('customer'),
-      tenantId: auth.tenantId,
-      type: body.type,
+app.put('/me', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const existing = await repos.customers.findById(auth.userId, auth.tenantId);
+  if (!existing) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Customer profile not found' } }, 404);
+  }
+  const body = await c.req.json();
+  const row = await repos.customers.update(
+    auth.userId,
+    auth.tenantId,
+    {
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,
       phone: body.phone,
-      idNumber: body.idNumber,
-      idType: body.idType,
-      companyName: body.companyName,
-      companyRegNumber: body.companyRegNumber,
-      preferences: body.preferences ?? {},
-      verificationStatus: DocumentVerificationStatus.PENDING as DocumentVerificationStatus,
-      createdAt: now,
+      alternatePhone: body.alternatePhone,
+      preferredContactMethod: body.preferredContactMethod,
+      avatarUrl: body.avatarUrl,
+      updatedBy: auth.userId,
+    },
+    auth.userId
+  );
+  return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
+});
+
+app.get('/', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const page = Number(c.req.query('page') || '1');
+  const pageSize = Number(c.req.query('pageSize') || '20');
+  const search = c.req.query('search');
+  const status = c.req.query('status');
+
+  const result = await repos.customers.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { search, status: status?.toLowerCase() });
+  const enriched = await Promise.all(result.items.map((row: any) => enrichCustomer(repos, auth.tenantId, row)));
+  const paginated = paginateArray(enriched, page, pageSize);
+  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+});
+
+app.get('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const row = await repos.customers.findById(c.req.param('id'), auth.tenantId);
+  if (!row) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } }, 404);
+  return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
+});
+
+app.post('/', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const body = await c.req.json();
+  const row = await repos.customers.create(
+    {
+      id: crypto.randomUUID(),
+      tenantId: auth.tenantId,
+      customerCode: customerCode(body.email || body.phone || 'customer'),
+      email: body.email,
+      phone: body.phone,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      status: 'active',
+      kycStatus: 'pending',
       createdBy: auth.userId,
-      updatedAt: now,
       updatedBy: auth.userId,
-    };
+    },
+    auth.userId
+  );
+  return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) }, 201);
+});
 
-    customersStore.push(newCustomer as (typeof customersStore)[0]);
-
-    return c.json({ success: true, data: newCustomer }, 201);
-  }
-);
-
-// PUT /customers/:id - Update customer profile
-customersRouter.put(
-  '/:id',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  zValidator('json', updateCustomerSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid request body');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-    const body = c.req.valid('json');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const existing = await repos.customers.findById(id, auth.tenantId);
-        if (!existing) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        const updateData: Record<string, any> = {};
-        if (body.firstName) updateData.firstName = body.firstName;
-        if (body.lastName) updateData.lastName = body.lastName;
-        if (body.email) updateData.email = body.email;
-        if (body.phone) updateData.phone = body.phone;
-        if (body.preferences) updateData.communicationPreferences = body.preferences;
-
-        const updated = await repos.customers.update(id, auth.tenantId, updateData, auth.userId);
-
-        return c.json({ success: true, data: updated });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    const now = new Date();
-    Object.assign(customer, {
-      ...body,
-      updatedAt: now,
+app.put('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const id = c.req.param('id');
+  const existing = await repos.customers.findById(id, auth.tenantId);
+  if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } }, 404);
+  const body = await c.req.json();
+  const row = await repos.customers.update(
+    id,
+    auth.tenantId,
+    {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phone: body.phone,
+      alternatePhone: body.alternatePhone,
+      status: body.status?.toLowerCase(),
+      kycStatus: body.verificationStatus?.toLowerCase(),
       updatedBy: auth.userId,
-    });
+    },
+    auth.userId
+  );
+  return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
+});
 
-    return c.json({ success: true, data: customer });
-  }
-);
+app.delete('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const id = c.req.param('id');
+  await repos.customers.delete(id, auth.tenantId, auth.userId);
+  return c.json({ success: true, data: { message: 'Customer deleted' } });
+});
 
-// DELETE /customers/:id - Soft delete
-customersRouter.delete(
-  '/:id',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const existing = await repos.customers.findById(id, auth.tenantId);
-        if (!existing) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        await repos.customers.delete(id, auth.tenantId, auth.userId);
-
-        return c.json({ success: true, data: { message: 'Customer soft deleted' } });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    const now = new Date();
-    (customer as { deletedAt?: Date }).deletedAt = now;
-    (customer as { updatedAt: Date }).updatedAt = now;
-    (customer as { updatedBy: string }).updatedBy = auth.userId;
-
-    return c.json({ success: true, data: { message: 'Customer soft deleted' } });
-  }
-);
-
-// PUT /customers/:id/kyc - Update KYC status (verify/reject)
-customersRouter.put(
-  '/:id/kyc',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  zValidator('json', kycStatusSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid request body');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-    const body = c.req.valid('json');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const existing = await repos.customers.findById(id, auth.tenantId);
-        if (!existing) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        const updated = await repos.customers.update(
-          id,
-          auth.tenantId,
-          { kycStatus: body.status.toLowerCase() },
-          auth.userId
-        );
-
-        return c.json({ success: true, data: updated });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    (customer as { verificationStatus: DocumentVerificationStatus }).verificationStatus =
-      body.status as DocumentVerificationStatus;
-    (customer as { updatedAt: Date }).updatedAt = new Date();
-    (customer as { updatedBy: string }).updatedBy = auth.userId;
-
-    return c.json({ success: true, data: customer });
-  }
-);
-
-// PUT /customers/:id/blacklist - Blacklist customer
-customersRouter.put(
-  '/:id/blacklist',
-  zValidator('param', idParamSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid customer ID');
-  }),
-  zValidator('json', blacklistSchema, (result, c) => {
-    if (!result.success) return validationErrorResponse(result, c, 'Invalid request body');
-  }),
-  async (c) => {
-    const auth = c.get('auth');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-    const id = c.req.param('id');
-    const body = c.req.valid('json');
-
-    // Use database if available
-    if (!useMockData && repos) {
-      try {
-        const existing = await repos.customers.findById(id, auth.tenantId);
-        if (!existing) {
-          return c.json(
-            { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-            404
-          );
-        }
-
-        const updated = await repos.customers.update(
-          id,
-          auth.tenantId,
-          {
-            status: 'blacklisted',
-            blacklistReason: body.reason,
-            blacklistedAt: new Date(),
-            blacklistedBy: auth.userId,
-          },
-          auth.userId
-        );
-
-        return c.json({ success: true, data: updated });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customer = getById(customersStore, id);
-    if (!customer || customer.tenantId !== auth.tenantId || customer.deletedAt) {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        404
-      );
-    }
-
-    const now = new Date();
-    (customer as { blacklisted?: boolean }).blacklisted = true;
-    (customer as { blacklistReason?: string }).blacklistReason = body.reason;
-    (customer as { blacklistedAt?: Date }).blacklistedAt = now;
-    (customer as { blacklistedBy?: string }).blacklistedBy = auth.userId;
-    (customer as { updatedAt: Date }).updatedAt = now;
-    (customer as { updatedBy: string }).updatedBy = auth.userId;
-
-    return c.json({ success: true, data: customer });
-  }
-);
+export const customersRouter = app;

@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { liveDataRequired } from '../middleware/live-data';
 import { idParamSchema, validationErrorHook } from './validators';
 import { z } from 'zod';
 
@@ -27,6 +28,7 @@ const resolveComplaintSchema = z.object({
 });
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Complaints API'));
 
 // POST /complaints - Create complaint
 app.post(

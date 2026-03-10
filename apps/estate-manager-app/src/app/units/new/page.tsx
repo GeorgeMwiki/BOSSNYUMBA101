@@ -51,7 +51,7 @@ export default function UnitFormPage() {
         rentAmount: parseFloat(data.rentAmount) || 0,
         depositAmount: parseFloat(data.depositAmount) || 0,
       }),
-    onSuccess: (response) => {
+    onSuccess: (response: { data: { id: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       router.push(`/units/${response.data.id}`);

@@ -20,6 +20,7 @@ import {
   History,
 } from 'lucide-react';
 import { api, formatDate, formatDateTime } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface SignatureDocument {
@@ -177,6 +178,7 @@ function SignatureCanvas({
 // ─── Main Page ───────────────────────────────────────────────────
 export function ESignaturePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [pendingDocs, setPendingDocs] = useState<SignatureDocument[]>([]);
   const [history, setHistory] = useState<SignatureHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,6 +186,7 @@ export function ESignaturePage() {
   const [signingDoc, setSigningDoc] = useState<SignatureDocument | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [successDoc, setSuccessDoc] = useState<string | null>(null);
@@ -194,6 +197,7 @@ export function ESignaturePage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await api.get<{ pending: SignatureDocument[]; history: SignatureHistoryEntry[] }>(
         '/owner/documents/signatures'
@@ -201,85 +205,15 @@ export function ESignaturePage() {
       if (response.success && response.data) {
         setPendingDocs(response.data.pending || []);
         setHistory(response.data.history || []);
+      } else {
+        setPendingDocs([]);
+        setHistory([]);
+        setError(response.error?.message ?? 'Live signature data is unavailable.');
       }
-    } catch {
-      // Fallback mock data for development
-      setPendingDocs([
-        {
-          id: 'sig-1',
-          name: 'Move-In Inspection Report - B-301.pdf',
-          type: 'INSPECTION_REPORT',
-          category: 'reports',
-          property: { id: '1', name: 'Palm Gardens' },
-          unit: { id: '2', unitNumber: 'B-301' },
-          customer: { id: '2', name: 'Jane Smith' },
-          signatureStatus: 'PENDING',
-          expiresAt: '2026-03-05T00:00:00Z',
-          createdAt: '2026-02-05T14:30:00Z',
-          size: 5820000,
-        },
-        {
-          id: 'sig-2',
-          name: 'Lease Renewal Agreement - D-101.pdf',
-          type: 'LEASE',
-          category: 'leases',
-          property: { id: '2', name: 'Ocean View Apartments' },
-          unit: { id: '5', unitNumber: 'D-101' },
-          customer: { id: '5', name: 'David Brown' },
-          signatureStatus: 'PENDING',
-          expiresAt: '2026-02-28T00:00:00Z',
-          createdAt: '2026-02-10T09:00:00Z',
-          size: 2340000,
-        },
-        {
-          id: 'sig-3',
-          name: 'Property Management Agreement 2026.pdf',
-          type: 'CONTRACT',
-          category: 'compliance',
-          property: { id: '1', name: 'Palm Gardens' },
-          signatureStatus: 'PENDING',
-          expiresAt: '2026-03-15T00:00:00Z',
-          createdAt: '2026-02-12T11:00:00Z',
-          size: 1890000,
-        },
-      ]);
-
-      setHistory([
-        {
-          id: 'hist-1',
-          documentName: 'Lease Agreement - Unit A-102.pdf',
-          signedAt: '2026-01-12T14:20:00Z',
-          signedBy: 'John Doe',
-          property: { id: '1', name: 'Palm Gardens' },
-          status: 'SIGNED',
-          ipAddress: '192.168.1.***',
-        },
-        {
-          id: 'hist-2',
-          documentName: 'Insurance Certificate Acknowledgment.pdf',
-          signedAt: '2026-01-08T10:15:00Z',
-          signedBy: 'John Doe',
-          property: { id: '1', name: 'Palm Gardens' },
-          status: 'SIGNED',
-          ipAddress: '192.168.1.***',
-        },
-        {
-          id: 'hist-3',
-          documentName: 'Maintenance Policy Update 2026.pdf',
-          signedAt: '2025-12-20T16:30:00Z',
-          signedBy: 'John Doe',
-          property: { id: '2', name: 'Ocean View Apartments' },
-          status: 'SIGNED',
-          ipAddress: '10.0.0.***',
-        },
-        {
-          id: 'hist-4',
-          documentName: 'Vendor Contract - ABC Plumbing.pdf',
-          signedAt: '2025-12-15T09:45:00Z',
-          signedBy: 'John Doe',
-          status: 'DECLINED',
-        },
-      ]);
+    } catch (err) {
+      setPendingDocs([]);
+      setHistory([]);
+      setError(err instanceof Error ? err.message : 'Live signature data is unavailable.');
     }
     setLoading(false);
   };
@@ -289,12 +223,17 @@ export function ESignaturePage() {
     setSubmitting(true);
 
     try {
-      await api.post(`/owner/documents/${signingDoc.id}/sign`, {
+      const response = await api.post(`/owner/documents/${signingDoc.id}/sign`, {
         signatureImage: signatureData,
         agreedToTerms: true,
       });
-    } catch {
-      // Dev fallback
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Signature submission failed');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signature submission failed');
+      setSubmitting(false);
+      return;
     }
 
     // Optimistic update
@@ -304,7 +243,11 @@ export function ESignaturePage() {
         id: `hist-${Date.now()}`,
         documentName: signingDoc.name,
         signedAt: new Date().toISOString(),
-        signedBy: 'John Doe',
+        signedBy:
+          [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+          user?.email ||
+          user?.id ||
+          'Current User',
         property: signingDoc.property,
         status: 'SIGNED',
       },
@@ -383,6 +326,12 @@ export function ESignaturePage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Success notification */}
       {successDoc && (

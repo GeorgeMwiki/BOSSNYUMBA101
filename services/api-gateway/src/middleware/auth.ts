@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '../types/user-role';
+import { getJwtSecret } from '../config/jwt';
 
-// Simplified AuthContext for the mock API gateway
+// Simplified AuthContext for the API gateway
 export interface AuthContext {
   userId: string;
   tenantId: string;
@@ -11,11 +12,7 @@ export interface AuthContext {
   propertyAccess: string[];
 }
 
-const JWT_SECRET = (() => {
-  const s = process.env.JWT_SECRET;
-  if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
-  return s || '';
-})();
+const JWT_SECRET = getJwtSecret();
 
 export interface AuthenticatedRequest extends Request {
   auth: AuthContext;

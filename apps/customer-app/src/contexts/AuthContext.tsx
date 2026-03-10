@@ -59,62 +59,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'Please enter a valid phone number' };
     }
 
-    // Demo: Simulate OTP send. In production, call API to send SMS.
-    const storedPhone = `+${normalized}`;
-    sessionStorage.setItem('otp_phone', storedPhone);
-    sessionStorage.setItem('otp_code', '123456'); // Demo OTP
-    return { success: true };
+    return {
+      success: false,
+      message: 'Resident OTP authentication is not wired to a live provider in this build.',
+    };
   }, []);
 
   const verifyOtp = useCallback(async (phone: string, otp: string) => {
-    const storedPhone = sessionStorage.getItem('otp_phone');
-    const storedOtp = sessionStorage.getItem('otp_code');
-
-    if (!storedPhone || !storedOtp) {
-      return { success: false, message: 'OTP expired. Please request a new one.' };
-    }
-
-    const normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '254');
-    const storedNormalized = storedPhone.replace(/\D/g, '').replace(/^254/, '');
-
-    if (!normalizedPhone.includes(storedNormalized) && !storedPhone.includes(normalizedPhone)) {
-      return { success: false, message: 'Phone number mismatch' };
-    }
-
-    if (otp !== storedOtp) {
-      return { success: false, message: 'Invalid OTP. Please try again.' };
-    }
-
-    // Demo: Create/login user. In production, call API.
-    const demoUser: CustomerUser = {
-      id: 'customer-1',
-      phone: storedPhone,
-      firstName: 'John',
-      lastName: 'Kamau',
-      email: 'john.kamau@example.com',
+    void phone;
+    void otp;
+    return {
+      success: false,
+      message: 'Resident OTP verification is not wired to a live provider in this build.',
     };
-
-    const demoToken = `demo-token-${Date.now()}`;
-    setUser(demoUser);
-    setToken(demoToken);
-    localStorage.setItem(CUSTOMER_TOKEN_KEY, demoToken);
-    localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(demoUser));
-    sessionStorage.removeItem('otp_phone');
-    sessionStorage.removeItem('otp_code');
-
-    return { success: true };
   }, []);
 
   const register = useCallback(
     async (data: { phone: string; firstName: string; lastName: string; email?: string }) => {
-      const normalized = data.phone.replace(/\D/g, '').replace(/^0/, '254');
-      const storedPhone = `+${normalized}`;
-
-      sessionStorage.setItem('otp_phone', storedPhone);
-      sessionStorage.setItem('otp_code', '123456');
-      sessionStorage.setItem('register_data', JSON.stringify(data));
-
-      return { success: true };
+      void data;
+      return {
+        success: false,
+        message: 'Resident self-registration is not wired to a live provider in this build.',
+      };
     },
     []
   );

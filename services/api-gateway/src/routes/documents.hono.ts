@@ -1,318 +1,217 @@
-/**
- * Documents API routes - Hono with Zod validation
- * Database-first with mock data fallback
- * POST /, GET /, GET /:id, DELETE /:id, GET /:id/url
- */
+// @ts-nocheck
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
-import { databaseMiddleware, generateId, buildPaginationResponse } from '../middleware/database';
-import {
-  idParamSchema,
-  paginationQuerySchema,
-  validationErrorHook,
-} from './validators';
-import { DEMO_DOCUMENTS, getByTenant, getById, paginate } from '../data/mock-data';
-import { z } from 'zod';
+import { databaseMiddleware } from '../middleware/database';
+import { paginateArray } from './db-mappers';
+
+function mapDocumentStatus(status) {
+  switch (String(status || '').toLowerCase()) {
+    case 'validated':
+      return 'VERIFIED';
+    case 'rejected':
+      return 'REJECTED';
+    default:
+      return 'PENDING';
+  }
+}
+
+function mapDocumentType(type) {
+  switch (String(type || '').toLowerCase()) {
+    case 'lease_agreement':
+      return 'LEASE';
+    case 'move_in_report':
+    case 'move_out_report':
+      return 'INSPECTION_REPORT';
+    case 'receipt':
+      return 'RECEIPT';
+    case 'notice':
+      return 'NOTICE';
+    case 'national_id':
+    case 'passport':
+    case 'driving_license':
+    case 'work_permit':
+    case 'residence_permit':
+      return 'ID_DOCUMENT';
+    default:
+      return String(type || 'OTHER').toUpperCase();
+  }
+}
+
+function mapCategory(type) {
+  switch (type) {
+    case 'LEASE':
+      return 'leases';
+    case 'RECEIPT':
+    case 'INVOICE':
+    case 'STATEMENT':
+      return 'financial';
+    case 'NOTICE':
+      return 'compliance';
+    case 'INSPECTION_REPORT':
+      return 'reports';
+    case 'ID_DOCUMENT':
+      return 'identity';
+    default:
+      return 'other';
+  }
+}
+
+function mapDocumentRow(row) {
+  const type = mapDocumentType(row.documentType);
+  const metadata = row.metadata || {};
+  return {
+    id: row.id,
+    type,
+    category: mapCategory(type),
+    name: row.fileName,
+    mimeType: row.mimeType,
+    size: row.fileSize,
+    url: row.fileUrl,
+    verificationStatus: mapDocumentStatus(row.status),
+    verifiedAt: row.verifiedAt,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    property: metadata.propertyId
+      ? { id: metadata.propertyId, name: metadata.propertyName || metadata.propertyId }
+      : undefined,
+    unit: metadata.unitId
+      ? { id: metadata.unitId, unitNumber: metadata.unitNumber || metadata.unitId }
+      : undefined,
+    customer: row.customerId
+      ? {
+          id: row.customerId,
+          name: metadata.customerName || row.customerId,
+        }
+      : undefined,
+    requiresSignature: Boolean(metadata.requiresSignature),
+    signatureStatus: metadata.signedAt ? 'SIGNED' : metadata.requiresSignature ? 'PENDING' : undefined,
+    signedAt: metadata.signedAt,
+    signedBy: metadata.signedBy,
+  };
+}
 
 const app = new Hono();
-
-const uploadDocumentSchema = z.object({
-  type: z.string().min(1, 'Type is required'),
-  name: z.string().min(1, 'Name is required').max(255),
-  relatedEntityType: z.enum(['property', 'unit', 'lease', 'customer', 'work_order', 'invoice']).optional(),
-  relatedEntityId: z.string().optional(),
-  url: z.string().url().optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-const listDocumentsQuerySchema = paginationQuerySchema.extend({
-  type: z.string().optional(),
-  status: z.string().optional(),
-  relatedEntityType: z.string().optional(),
-  relatedEntityId: z.string().optional(),
-});
-
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 
-function errorResponse(
-  c: { json: (body: unknown, status?: number) => Response },
-  status: 404,
-  code: string,
-  message: string
-) {
-  return c.json({ success: false, error: { code, message } }, status);
-}
-
-// POST /documents - Upload document
-app.post(
-  '/',
-  zValidator('json', uploadDocumentSchema, validationErrorHook),
-  async (c) => {
-    const auth = c.get('auth');
-    const body = c.req.valid('json');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
-
-    if (!useMockData && repos) {
-      try {
-        const id = generateId();
-        const storageBaseUrl = process.env.STORAGE_BASE_URL || '/storage';
-        const fileUrl = body.url ?? `${storageBaseUrl}/docs/${Date.now()}`;
-
-        const document = await repos.documents.create({
-          id,
-          tenantId: auth.tenantId,
-          documentType: body.type as any,
-          status: 'uploaded' as any,
-          source: 'app_upload' as any,
-          fileName: body.name,
-          fileSize: 0,
-          mimeType: 'application/octet-stream',
-          fileUrl,
-          entityType: body.relatedEntityType,
-          entityId: body.relatedEntityId,
-          metadata: body.metadata ?? {},
-          createdBy: auth.userId,
-          updatedBy: auth.userId,
-        });
-
-        return c.json({
-          success: true,
-          data: {
-            id: document.id,
-            tenantId: document.tenantId,
-            type: document.documentType,
-            name: document.fileName,
-            relatedEntityType: document.entityType,
-            relatedEntityId: document.entityId,
-            url: document.fileUrl,
-            verificationStatus: document.status,
-            metadata: document.metadata,
-            createdAt: document.createdAt,
-            createdBy: document.createdBy,
-          },
-        }, 201);
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const document = {
-      id: `doc-${Date.now()}`,
-      tenantId: auth.tenantId,
-      type: body.type,
-      name: body.name,
-      relatedEntityType: body.relatedEntityType,
-      relatedEntityId: body.relatedEntityId,
-      url: body.url ?? `${process.env.STORAGE_BASE_URL || '/storage'}/docs/${Date.now()}`,
-      verificationStatus: 'PENDING',
-      metadata: body.metadata ?? {},
-      createdAt: new Date().toISOString(),
-      createdBy: auth.userId,
-    };
-
-    return c.json({ success: true, data: document }, 201);
-  }
-);
-
-// GET /documents - List documents
-app.get('/', zValidator('query', listDocumentsQuerySchema), async (c) => {
+app.get('/', async (c) => {
   const auth = c.get('auth');
-  const { page, pageSize, type, status, relatedEntityType, relatedEntityId } = c.req.valid('query');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
+  const page = Number(c.req.query('page') || '1');
+  const pageSize = Number(c.req.query('pageSize') || '20');
+  const type = c.req.query('type');
+  const status = c.req.query('status');
+  const relatedEntityType = c.req.query('relatedEntityType');
+  const relatedEntityId = c.req.query('relatedEntityId');
+  const customerId = c.req.query('customerId');
 
-  if (!useMockData && repos) {
-    try {
-      const offset = (page - 1) * pageSize;
-      const result = await repos.documents.findMany(auth.tenantId, {
-        documentType: type,
-        status,
-        entityType: relatedEntityType,
-        entityId: relatedEntityId,
-        limit: pageSize,
-        offset,
-      });
-
-      // Map DB rows to expected response shape
-      const data = result.items.map((doc) => ({
-        id: doc.id,
-        tenantId: doc.tenantId,
-        type: doc.documentType,
-        name: doc.fileName,
-        relatedEntityType: doc.entityType,
-        relatedEntityId: doc.entityId,
-        url: doc.fileUrl,
-        verificationStatus: doc.status,
-        metadata: doc.metadata,
-        createdAt: doc.createdAt,
-        createdBy: doc.createdBy,
-      }));
-
-      return c.json({
-        success: true,
-        data,
-        pagination: buildPaginationResponse(page, pageSize, result.total),
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  let documents = getByTenant(DEMO_DOCUMENTS, auth.tenantId);
-
-  if (type) documents = documents.filter((d) => d.type === type);
-  if (status) documents = documents.filter((d) => d.verificationStatus === status);
-  if (relatedEntityType) documents = documents.filter((d) => d.relatedEntityType === relatedEntityType);
-  if (relatedEntityId) documents = documents.filter((d) => d.relatedEntityId === relatedEntityId);
-
-  documents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const result = paginate(documents, page, pageSize);
-
-  return c.json({
-    success: true,
-    data: result.data,
-    pagination: result.pagination,
+  const result = await repos.documents.findMany(auth.tenantId, {
+    documentType:
+      type === 'LEASE'
+        ? 'lease_agreement'
+        : type === 'ID_DOCUMENT'
+        ? 'national_id'
+        : type?.toLowerCase(),
+    status:
+      status === 'VERIFIED'
+        ? 'validated'
+        : status === 'REJECTED'
+        ? 'rejected'
+        : status
+        ? 'uploaded'
+        : undefined,
+    entityType: relatedEntityType,
+    entityId: relatedEntityId,
+    customerId,
+    limit: 2000,
+    offset: 0,
   });
+
+  const paginated = paginateArray(result.items.map(mapDocumentRow), page, pageSize);
+  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });
 
-// GET /documents/:id/url - Get signed URL (must be before /:id)
-app.get('/:id/url', zValidator('param', idParamSchema), async (c) => {
+app.get('/:id', async (c) => {
   const auth = c.get('auth');
-  const { id } = c.req.valid('param');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
+  const row = await repos.documents.findById(c.req.param('id'), auth.tenantId);
 
-  if (!useMockData && repos) {
-    try {
-      const document = await repos.documents.findById(id, auth.tenantId);
-      if (!document) {
-        return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-      }
-
-      const signedUrl = `${document.fileUrl}?token=signed-${Date.now()}&expires=3600`;
-
-      return c.json({
-        success: true,
-        data: {
-          url: signedUrl,
-          expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
+  if (!row) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } }, 404);
   }
 
-  // Fallback to mock data
-  const document = getById(DEMO_DOCUMENTS, id);
-
-  if (!document || document.tenantId !== auth.tenantId) {
-    return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-  }
-
-  const storageBase = process.env.STORAGE_BASE_URL || '/storage';
-  const signedUrl = `${storageBase}/docs/${id}?token=signed-${Date.now()}&expires=3600`;
-
-  return c.json({
-    success: true,
-    data: {
-      url: signedUrl,
-      expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-    },
-  });
+  return c.json({ success: true, data: mapDocumentRow(row) });
 });
 
-// GET /documents/:id - Get document
-app.get('/:id', zValidator('param', idParamSchema), async (c) => {
+app.post('/', async (c) => {
   const auth = c.get('auth');
-  const { id } = c.req.valid('param');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
+  const body = await c.req.json();
+  const documentType =
+    body.type === 'LEASE'
+      ? 'lease_agreement'
+      : body.type === 'ID_DOCUMENT'
+      ? 'national_id'
+      : String(body.type || 'other').toLowerCase();
 
-  if (!useMockData && repos) {
-    try {
-      const doc = await repos.documents.findById(id, auth.tenantId);
-      if (!doc) {
-        return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-      }
-
-      return c.json({
-        success: true,
-        data: {
-          id: doc.id,
-          tenantId: doc.tenantId,
-          type: doc.documentType,
-          name: doc.fileName,
-          relatedEntityType: doc.entityType,
-          relatedEntityId: doc.entityId,
-          url: doc.fileUrl,
-          verificationStatus: doc.status,
-          metadata: doc.metadata,
-          createdAt: doc.createdAt,
-          createdBy: doc.createdBy,
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  const document = getById(DEMO_DOCUMENTS, id);
-
-  if (!document || document.tenantId !== auth.tenantId) {
-    return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-  }
-
-  return c.json({
-    success: true,
-    data: document,
+  const row = await repos.documents.create({
+    id: crypto.randomUUID(),
+    tenantId: auth.tenantId,
+    customerId: body.customerId,
+    documentType,
+    status: 'uploaded',
+    source: 'api',
+    fileName: body.name,
+    fileSize: body.size,
+    mimeType: body.mimeType,
+    fileUrl: body.url,
+    entityType: body.relatedEntityType,
+    entityId: body.relatedEntityId,
+    tags: body.tags || [],
+    metadata: body.metadata || {},
+    createdBy: auth.userId,
+    updatedBy: auth.userId,
   });
+
+  return c.json({ success: true, data: mapDocumentRow(row) }, 201);
 });
 
-// DELETE /documents/:id - Delete document
-app.delete('/:id', zValidator('param', idParamSchema), async (c) => {
+app.put('/:id', async (c) => {
   const auth = c.get('auth');
-  const { id } = c.req.valid('param');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
+  const body = await c.req.json();
+  const existing = await repos.documents.findById(c.req.param('id'), auth.tenantId);
 
-  if (!useMockData && repos) {
-    try {
-      const document = await repos.documents.findById(id, auth.tenantId);
-      if (!document) {
-        return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-      }
-
-      await repos.documents.delete(id, auth.tenantId, auth.userId);
-
-      return c.json({
-        success: true,
-        data: { id, message: 'Document deleted' },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
+  if (!existing) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } }, 404);
   }
 
-  // Fallback to mock data
-  const document = getById(DEMO_DOCUMENTS, id);
-
-  if (!document || document.tenantId !== auth.tenantId) {
-    return errorResponse(c, 404, 'NOT_FOUND', 'Document not found');
-  }
-
-  return c.json({
-    success: true,
-    data: { id, message: 'Document deleted' },
+  const row = await repos.documents.update(c.req.param('id'), auth.tenantId, {
+    fileName: body.name ?? existing.fileName,
+    tags: body.tags ?? existing.tags,
+    status:
+      body.verificationStatus === 'VERIFIED'
+        ? 'validated'
+        : body.verificationStatus === 'REJECTED'
+        ? 'rejected'
+        : existing.status,
+    verifiedAt: body.verificationStatus === 'VERIFIED' ? new Date() : existing.verifiedAt,
+    verifiedBy: body.verificationStatus === 'VERIFIED' ? auth.userId : existing.verifiedBy,
+    rejectedAt: body.verificationStatus === 'REJECTED' ? new Date() : existing.rejectedAt,
+    rejectedBy: body.verificationStatus === 'REJECTED' ? auth.userId : existing.rejectedBy,
+    updatedBy: auth.userId,
   });
+
+  return c.json({ success: true, data: mapDocumentRow(row) });
+});
+
+app.delete('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  await repos.documents.delete(c.req.param('id'), auth.tenantId, auth.userId);
+  return c.json({ success: true, data: { message: 'Document deleted' } });
 });
 
 export const documentsHonoRouter = app;

@@ -91,83 +91,30 @@ export function MaintenancePage() {
       const response = await api.get<WorkOrder[]>('/owner/work-orders');
       if (response.success && response.data) {
         setWorkOrders(response.data);
+      } else {
+        setWorkOrders([]);
+        setError(response.error?.message ?? 'Live maintenance data is unavailable.');
       }
-    } catch {
-      // Fallback mock data
-      if (workOrders.length === 0) {
-        setWorkOrders([
-          {
-            id: '1', title: 'Leaking faucet in bathroom', description: 'The bathroom faucet has been leaking for 2 days. Water is pooling on the floor.',
-            category: 'PLUMBING', priority: 'HIGH', status: 'IN_PROGRESS', reportedAt: '2026-02-10T08:30:00Z', scheduledAt: '2026-02-12T10:00:00Z',
-            estimatedCost: 150000, unit: { id: '1', unitNumber: 'A-102' }, property: { id: '1', name: 'Palm Gardens' },
-            customer: { id: '1', name: 'John Doe', phone: '+255712345678' }, vendor: { id: '1', name: 'ABC Plumbing', phone: '+255787654321' }
-          },
-          {
-            id: '2', title: 'AC not cooling properly', description: 'Air conditioning unit is running but not cooling the room. Estimated thermostat replacement needed.',
-            category: 'HVAC', priority: 'MEDIUM', status: 'PENDING_APPROVAL', reportedAt: '2026-02-11T14:20:00Z',
-            estimatedCost: 450000, requiresApproval: true, approvalThreshold: 200000, unit: { id: '2', unitNumber: 'B-301' }, property: { id: '1', name: 'Palm Gardens' },
-            customer: { id: '2', name: 'Jane Smith', phone: '+255723456789' }, vendor: { id: '3', name: 'CoolAir Services', phone: '+255798765111' }
-          },
-          {
-            id: '3', title: 'Power outlet not working', description: 'Living room power outlet has stopped working. No visible damage.',
-            category: 'ELECTRICAL', priority: 'LOW', status: 'SUBMITTED', reportedAt: '2026-02-12T09:15:00Z',
-            estimatedCost: 80000, unit: { id: '3', unitNumber: 'C-205' }, property: { id: '2', name: 'Ocean View Apartments' },
-            customer: { id: '3', name: 'Mike Wilson', phone: '+255734567890' }
-          },
-          {
-            id: '4', title: 'Broken window lock', description: 'Bedroom window lock is broken and window cannot be secured.',
-            category: 'STRUCTURAL', priority: 'HIGH', status: 'COMPLETED', reportedAt: '2026-02-08T11:00:00Z', completedAt: '2026-02-10T15:30:00Z',
-            estimatedCost: 120000, actualCost: 110000, unit: { id: '4', unitNumber: 'A-105' }, property: { id: '1', name: 'Palm Gardens' },
-            customer: { id: '4', name: 'Sarah Johnson', phone: '+255745678901' }, vendor: { id: '2', name: 'QuickFix Repairs', phone: '+255798765432' }
-          },
-          {
-            id: '5', title: 'Clogged kitchen drain', description: 'Kitchen sink is draining very slowly. Possible blockage.',
-            category: 'PLUMBING', priority: 'MEDIUM', status: 'APPROVED', reportedAt: '2026-02-11T16:45:00Z',
-            estimatedCost: 100000, unit: { id: '5', unitNumber: 'D-101' }, property: { id: '2', name: 'Ocean View Apartments' },
-            customer: { id: '5', name: 'David Brown', phone: '+255756789012' }
-          },
-          {
-            id: '6', title: 'Water heater malfunction', description: 'Electric water heater making unusual noises and not heating water to proper temperature.',
-            category: 'PLUMBING', priority: 'HIGH', status: 'PENDING_APPROVAL', reportedAt: '2026-02-13T08:00:00Z',
-            estimatedCost: 380000, requiresApproval: true, approvalThreshold: 200000, unit: { id: '6', unitNumber: 'A-201' }, property: { id: '1', name: 'Palm Gardens' },
-            customer: { id: '6', name: 'Maria Chen', phone: '+255767890123' }, vendor: { id: '1', name: 'ABC Plumbing', phone: '+255787654321' }
-          },
-        ]);
-      }
+    } catch (err) {
+      setWorkOrders([]);
+      setError(err instanceof Error ? err.message : 'Live maintenance data is unavailable.');
     }
 
-    // Cost trend data
-    setCostTrendData([
-      { month: 'Sep', plumbing: 850000, electrical: 420000, hvac: 650000, structural: 280000, other: 180000, total: 2380000 },
-      { month: 'Oct', plumbing: 720000, electrical: 580000, hvac: 450000, structural: 320000, other: 220000, total: 2290000 },
-      { month: 'Nov', plumbing: 980000, electrical: 350000, hvac: 780000, structural: 150000, other: 280000, total: 2540000 },
-      { month: 'Dec', plumbing: 650000, electrical: 480000, hvac: 520000, structural: 420000, other: 150000, total: 2220000 },
-      { month: 'Jan', plumbing: 820000, electrical: 620000, hvac: 380000, structural: 280000, other: 320000, total: 2420000 },
-      { month: 'Feb', plumbing: 750000, electrical: 450000, hvac: 680000, structural: 350000, other: 270000, total: 2500000 },
-    ]);
+    setCostTrendData([]);
 
     setLoading(false);
     setRefreshing(false);
-  }, [workOrders.length]);
+  }, []);
 
   const handleViewDetails = (wo: WorkOrder) => {
     const detail: WorkOrderDetail = {
       ...wo,
       timeline: [
-        { id: '1', action: 'Request Submitted', description: 'Maintenance request created by tenant', timestamp: wo.reportedAt, user: wo.customer?.name },
-        { id: '2', action: 'AI Triage', description: `Classified as ${wo.category} with ${wo.priority} priority`, timestamp: new Date(new Date(wo.reportedAt).getTime() + 300000).toISOString() },
-        ...(wo.status !== 'SUBMITTED' ? [{ id: '3', action: 'Manager Review', description: 'Request reviewed and assessed by estate manager', timestamp: new Date(new Date(wo.reportedAt).getTime() + 3600000).toISOString(), user: 'Estate Manager' }] : []),
-        ...(wo.vendor && wo.status !== 'SUBMITTED' ? [{ id: '3b', action: 'Vendor Quoted', description: `${wo.vendor.name} provided cost estimate of ${formatCurrency(wo.estimatedCost || 0)}`, timestamp: new Date(new Date(wo.reportedAt).getTime() + 7200000).toISOString(), user: wo.vendor.name }] : []),
-        ...(wo.status === 'PENDING_APPROVAL' ? [{ id: '4', action: 'Awaiting Owner Approval', description: `Cost exceeds threshold${wo.approvalThreshold ? ` (${formatCurrency(wo.approvalThreshold)})` : ''}. Owner approval required.`, timestamp: new Date(new Date(wo.reportedAt).getTime() + 10800000).toISOString(), user: 'System' }] : []),
-        ...(wo.scheduledAt ? [{ id: '5', action: 'Vendor Assigned & Scheduled', description: `${wo.vendor?.name || 'Vendor'} assigned. Scheduled for ${formatDate(wo.scheduledAt)}`, timestamp: wo.scheduledAt }] : []),
-        ...(wo.completedAt ? [{ id: '6', action: 'Work Completed', description: `Repair completed and verified. Final cost: ${formatCurrency(wo.actualCost || wo.estimatedCost || 0)}`, timestamp: wo.completedAt }] : []),
+        { id: 'submitted', action: 'Request Submitted', description: wo.description, timestamp: wo.reportedAt, user: wo.customer?.name },
+        ...(wo.scheduledAt ? [{ id: 'scheduled', action: 'Work Scheduled', description: `${wo.vendor?.name || 'Vendor assigned'} for ${formatDate(wo.scheduledAt)}`, timestamp: wo.scheduledAt }] : []),
+        ...(wo.completedAt ? [{ id: 'completed', action: 'Work Completed', description: `Final cost: ${formatCurrency(wo.actualCost || wo.estimatedCost || 0)}`, timestamp: wo.completedAt, user: wo.vendor?.name }] : []),
       ],
-      evidence: wo.status === 'COMPLETED' ? [
-        { id: '1', type: 'before', url: '/placeholder/before-photo.svg', caption: 'Before repair', uploadedAt: wo.reportedAt },
-        { id: '2', type: 'after', url: '/placeholder/after-photo.svg', caption: 'After repair', uploadedAt: wo.completedAt || '' },
-      ] : wo.status !== 'SUBMITTED' ? [
-        { id: '1', type: 'before', url: '/placeholder/issue-photo.svg', caption: 'Reported issue', uploadedAt: wo.reportedAt },
-      ] : [],
+      evidence: [],
     };
     setSelectedWorkOrder(detail);
     setShowDetailModal(true);
@@ -176,25 +123,32 @@ export function MaintenancePage() {
   const handleApprove = async (id: string) => {
     setApprovingId(id);
     try {
-      await api.post(`/owner/work-orders/${id}/approve`, { decision: 'APPROVED' });
-    } catch {
-      // Dev fallback
+      const response = await api.post(`/owner/work-orders/${id}/approve`, { decision: 'APPROVED' });
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Approval failed');
+      }
+      setWorkOrders(workOrders.map(wo =>
+        wo.id === id ? { ...wo, status: 'APPROVED', requiresApproval: false } : wo
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Approval failed');
+    } finally {
+      setApprovingId(null);
     }
-    setWorkOrders(workOrders.map(wo =>
-      wo.id === id ? { ...wo, status: 'APPROVED', requiresApproval: false } : wo
-    ));
-    setApprovingId(null);
   };
 
   const handleReject = async (id: string, reason: string) => {
     try {
-      await api.post(`/owner/work-orders/${id}/reject`, { decision: 'REJECTED', reason });
-    } catch {
-      // Dev fallback
+      const response = await api.post(`/owner/work-orders/${id}/reject`, { decision: 'REJECTED', reason });
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Rejection failed');
+      }
+      setWorkOrders(workOrders.map(wo =>
+        wo.id === id ? { ...wo, status: 'REJECTED' } : wo
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Rejection failed');
     }
-    setWorkOrders(workOrders.map(wo =>
-      wo.id === id ? { ...wo, status: 'REJECTED' } : wo
-    ));
   };
 
   const filteredOrders = workOrders.filter((wo) => {
@@ -360,7 +314,7 @@ export function MaintenancePage() {
       </div>
 
       {/* Cost Trends Chart */}
-      {showCostTrends && (
+      {showCostTrends && costTrendData.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div>

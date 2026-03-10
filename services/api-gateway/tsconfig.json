@@ -5,6 +5,13 @@
     "rootDir": "./src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "strict": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "noImplicitReturns": false,
+    "noImplicitAny": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

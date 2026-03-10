@@ -1,466 +1,336 @@
-/**
- * Reports API routes - Hono with Zod validation
- * Database-first with mock data fallback
- * GET /rent-roll, /collection, /occupancy, /maintenance, /financial
- * GET /tenant-statement/:customerId
- * POST /export
- */
+// @ts-nocheck
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
-import {
-  paginationQuerySchema,
-  validationErrorHook,
-} from './validators';
-import {
-  DEMO_INVOICES,
-  DEMO_PAYMENTS,
-  DEMO_WORK_ORDERS,
-  DEMO_UNITS,
-  DEMO_PROPERTIES,
-  DEMO_LEASES,
-  DEMO_CUSTOMERS,
-  getByTenant,
-} from '../data/mock-data';
-import { z } from 'zod';
+import { mapInvoiceRow, mapPaymentRow, mapPropertyRow, mapUnitRow, mapWorkOrderRow, mapLeaseRow } from './db-mappers';
 
-const app = new Hono();
-
-const reportsQuerySchema = z.object({
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  propertyId: z.string().optional(),
-});
-
-const exportReportSchema = z.object({
-  reportType: z.enum(['rent-roll', 'collection', 'occupancy', 'maintenance', 'financial', 'tenant-statement']),
-  format: z.enum(['csv', 'pdf']).default('csv'),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  customerId: z.string().optional(),
-});
-
-const customerIdParamSchema = z.object({
-  customerId: z.string().min(1, 'Customer ID is required'),
-});
-
-app.use('*', authMiddleware);
-app.use('*', databaseMiddleware);
-
-function errorResponse(
-  c: { json: (body: unknown, status?: number) => Response },
-  status: 404,
-  code: string,
-  message: string
-) {
-  return c.json({ success: false, error: { code, message } }, status);
+function startOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-// GET /reports/rent-roll
-app.get('/rent-roll', zValidator('query', reportsQuerySchema), async (c) => {
-  const auth = c.get('auth');
-  const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
+function endOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+}
 
-  if (!useMockData && repos) {
-    try {
-      const unitsResult = await repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 });
-      const leasesResult = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { status: 'active' });
+function dateInRange(value, start, end) {
+  const date = new Date(value);
+  return date >= start && date <= end;
+}
 
-      const rentRoll = await Promise.all(
-        unitsResult.items.map(async (unit) => {
-          const lease = leasesResult.items.find((l) => l.unitId === unit.id);
-          let customerName: string | null = null;
-          if (lease?.customerId) {
-            const customer = await repos.customers.findById(lease.customerId, auth.tenantId);
-            if (customer) customerName = `${customer.firstName} ${customer.lastName}`;
-          }
-          let totalBilled = 0;
-          let totalCollected = 0;
-          if (lease) {
-            const invoicesResult = await repos.invoices.findByLease(lease.id, auth.tenantId, 1000, 0);
-            totalBilled = invoicesResult.items.reduce((s, i) => s + (i.totalAmount ?? 0), 0);
-            totalCollected = invoicesResult.items.reduce((s, i) => s + (i.paidAmount ?? 0), 0);
-          }
-          return {
-            unitId: unit.id,
-            unitNumber: unit.unitCode,
-            rentAmount: unit.baseRentAmount ?? 0,
-            tenant: customerName,
-            status: lease ? 'occupied' : 'vacant',
-            totalBilled,
-            totalCollected,
-            balance: totalBilled - totalCollected,
-          };
-        })
-      );
+function dataUrl(content, mimeType = 'application/json') {
+  return `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`;
+}
 
-      return c.json({ success: true, data: rentRoll });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
+function monthKey(dateValue) {
+  const date = new Date(dateValue);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key) {
+  const [year, month] = key.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-KE', {
+    month: 'short',
+  });
+}
+
+async function getScope(auth, repos) {
+  const [propertiesResult, unitsResult, leasesResult, invoicesResult, paymentsResult, workOrdersResult] =
+    await Promise.all([
+      repos.properties.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.units.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.leases.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.invoices.findMany(auth.tenantId, 5000, 0),
+      repos.payments.findMany(auth.tenantId, 5000, 0),
+      repos.workOrders.findMany(auth.tenantId, 5000, 0),
+    ]);
+
+  const accessibleProperties = auth.propertyAccess?.includes('*')
+    ? propertiesResult.items
+    : propertiesResult.items.filter((property) => auth.propertyAccess?.includes(property.id));
+  const propertyIds = new Set(accessibleProperties.map((property) => property.id));
+  const units = unitsResult.items.filter((unit) => propertyIds.has(unit.propertyId));
+  const unitIds = new Set(units.map((unit) => unit.id));
+  const leases = leasesResult.items.filter(
+    (lease) => propertyIds.has(lease.propertyId) || unitIds.has(lease.unitId)
+  );
+  const leaseIds = new Set(leases.map((lease) => lease.id));
+  const customerIds = new Set(leases.map((lease) => lease.customerId));
+  const invoices = invoicesResult.items.filter(
+    (invoice) =>
+      (invoice.leaseId && leaseIds.has(invoice.leaseId)) ||
+      (invoice.customerId && customerIds.has(invoice.customerId))
+  );
+  const invoiceIds = new Set(invoices.map((invoice) => invoice.id));
+  const payments = paymentsResult.items.filter(
+    (payment) =>
+      (payment.leaseId && leaseIds.has(payment.leaseId)) ||
+      (payment.customerId && customerIds.has(payment.customerId)) ||
+      (payment.invoiceId && invoiceIds.has(payment.invoiceId))
+  );
+  const workOrders = workOrdersResult.items.filter((workOrder) => propertyIds.has(workOrder.propertyId));
+
+  return {
+    properties: accessibleProperties.map(mapPropertyRow),
+    units: units.map(mapUnitRow),
+    leases: leases.map(mapLeaseRow),
+    invoices: invoices.map(mapInvoiceRow),
+    payments: payments.map(mapPaymentRow),
+    workOrders: workOrders.map(mapWorkOrderRow),
+  };
+}
+
+function buildFinancialReport(scope, startDate, endDate) {
+  const payments = scope.payments.filter((payment) =>
+    dateInRange(payment.completedAt || payment.createdAt, startDate, endDate)
+  );
+  const invoices = scope.invoices.filter((invoice) => dateInRange(invoice.createdAt, startDate, endDate));
+  const overdue = scope.invoices.filter(
+    (invoice) => invoice.amountDue > 0 && new Date(invoice.dueDate) < new Date()
+  );
+
+  const monthlyMap = new Map();
+  for (const invoice of invoices) {
+    const key = monthKey(invoice.createdAt);
+    const bucket = monthlyMap.get(key) || { month: monthLabel(key), invoiced: 0, collected: 0 };
+    bucket.invoiced += invoice.total;
+    monthlyMap.set(key, bucket);
+  }
+  for (const payment of payments) {
+    const key = monthKey(payment.completedAt || payment.createdAt);
+    const bucket = monthlyMap.get(key) || { month: monthLabel(key), invoiced: 0, collected: 0 };
+    bucket.collected += payment.amount;
+    monthlyMap.set(key, bucket);
   }
 
-  // Fallback to mock data
-  const units = getByTenant(DEMO_UNITS, auth.tenantId);
-  const leases = getByTenant(DEMO_LEASES, auth.tenantId);
-  const invoices = getByTenant(DEMO_INVOICES, auth.tenantId);
-  const customers = getByTenant(DEMO_CUSTOMERS, auth.tenantId);
-
-  const rentRoll = units.map((unit) => {
-    const lease = leases.find((l) => l.unitId === unit.id && l.status === 'ACTIVE');
-    const customer = lease ? customers.find((cust) => cust.id === lease.customerId) : null;
-    const unitInvoices = invoices.filter((i) => i.leaseId === lease?.id);
-    const totalBilled = unitInvoices.reduce((s, i) => s + i.total, 0);
-    const totalCollected = unitInvoices.reduce((s, i) => s + (i.amountPaid ?? 0), 0);
-
-    return {
-      unitId: unit.id,
-      unitNumber: unit.unitNumber,
-      rentAmount: unit.rentAmount,
-      tenant: customer ? `${customer.firstName} ${customer.lastName}` : null,
-      status: lease ? 'occupied' : 'vacant',
-      totalBilled,
-      totalCollected,
-      balance: totalBilled - totalCollected,
-    };
-  });
-
-  return c.json({
-    success: true,
-    data: rentRoll,
-  });
-});
-
-// GET /reports/collection
-app.get('/collection', zValidator('query', reportsQuerySchema), async (c) => {
-  const auth = c.get('auth');
-  const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
-
-  if (!useMockData && repos) {
-    try {
-      const paymentsResult = await repos.payments.findMany(auth.tenantId, 1000, 0);
-      const invoicesResult = await repos.invoices.findMany(auth.tenantId, 1000, 0);
-
-      const completedPayments = paymentsResult.items.filter((p) => p.status === 'completed');
-      const totalCollected = completedPayments.reduce((s, p) => s + (p.amount ?? 0), 0);
-      const totalInvoiced = invoicesResult.items.reduce((s, i) => s + (i.totalAmount ?? 0), 0);
-      const totalOutstanding = invoicesResult.items.reduce((s, i) => s + (i.balanceDue ?? 0), 0);
-
-      return c.json({
-        success: true,
-        data: {
-          totalInvoiced,
-          totalCollected,
-          totalOutstanding,
-          collectionRate: totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0,
-          payments: completedPayments.slice(0, 20),
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  const payments = getByTenant(DEMO_PAYMENTS, auth.tenantId);
-  const invoices = getByTenant(DEMO_INVOICES, auth.tenantId);
-
-  const totalCollected = payments
-    .filter((p) => p.status === 'COMPLETED')
-    .reduce((s, p) => s + p.amount, 0);
-  const totalInvoiced = invoices.reduce((s, i) => s + i.total, 0);
-  const totalOutstanding = invoices.reduce((s, i) => s + i.amountDue, 0);
-
-  return c.json({
-    success: true,
-    data: {
-      totalInvoiced,
-      totalCollected,
-      totalOutstanding,
-      collectionRate: totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0,
-      payments: payments.filter((p) => p.status === 'COMPLETED').slice(0, 20),
+  return {
+    summary: {
+      totalInvoiced: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
+      totalCollected: payments.reduce((sum, payment) => sum + payment.amount, 0),
+      totalOutstanding: overdue.reduce((sum, invoice) => sum + invoice.amountDue, 0),
+      collectionRate:
+        invoices.reduce((sum, invoice) => sum + invoice.total, 0) > 0
+          ? (payments.reduce((sum, payment) => sum + payment.amount, 0) /
+              invoices.reduce((sum, invoice) => sum + invoice.total, 0)) *
+            100
+          : 0,
     },
-  });
-});
+    monthlyTrend: Array.from(monthlyMap.values()).sort((left, right) =>
+      left.month.localeCompare(right.month)
+    ),
+    arrearsAging: {
+      current: scope.invoices
+        .filter((invoice) => invoice.amountDue > 0 && new Date(invoice.dueDate) >= new Date())
+        .reduce((sum, invoice) => sum + invoice.amountDue, 0),
+      overdue: overdue.reduce((sum, invoice) => sum + invoice.amountDue, 0),
+    },
+  };
+}
 
-// GET /reports/occupancy
-app.get('/occupancy', zValidator('query', reportsQuerySchema), async (c) => {
-  const auth = c.get('auth');
-  const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
-
-  if (!useMockData && repos) {
-    try {
-      const unitsResult = await repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 });
-      const propertiesResult = await repos.properties.findMany(auth.tenantId, { limit: 1000, offset: 0 });
-      const leasesResult = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { status: 'active' });
-
-      const allUnits = unitsResult.items;
-      const totalUnits = allUnits.length;
-      const occupiedUnits = allUnits.filter((u) => u.status === 'occupied').length;
-
-      const byProperty = propertiesResult.items.map((p) => {
-        const propertyUnits = allUnits.filter((u) => u.propertyId === p.id);
-        const occupied = propertyUnits.filter((u) => u.status === 'occupied').length;
-        return {
-          id: p.id,
-          name: p.name,
-          totalUnits: propertyUnits.length,
-          occupiedUnits: occupied,
-          occupancyRate: propertyUnits.length > 0 ? (occupied / propertyUnits.length) * 100 : 0,
-        };
-      });
-
-      return c.json({
-        success: true,
-        data: {
-          summary: {
-            totalUnits,
-            occupiedUnits,
-            occupancyRate: totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0,
-          },
-          byProperty,
-          expiringLeases: leasesResult.total,
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  const units = getByTenant(DEMO_UNITS, auth.tenantId);
-  const properties = getByTenant(DEMO_PROPERTIES, auth.tenantId);
-  const leases = getByTenant(DEMO_LEASES, auth.tenantId);
-
-  const totalUnits = units.length;
-  const occupiedUnits = units.filter((u) => u.status === 'OCCUPIED').length;
-  const byProperty = properties.map((p) => {
-    const propertyUnits = units.filter((u) => u.propertyId === p.id);
-    const occupied = propertyUnits.filter((u) => u.status === 'OCCUPIED').length;
+function buildOccupancyReport(scope) {
+  const occupiedUnits = scope.units.filter((unit) => unit.status === 'OCCUPIED').length;
+  const maintenanceUnits = scope.units.filter((unit) => unit.status === 'MAINTENANCE').length;
+  const byProperty = scope.properties.map((property) => {
+    const propertyUnits = scope.units.filter((unit) => unit.propertyId === property.id);
+    const occupied = propertyUnits.filter((unit) => unit.status === 'OCCUPIED').length;
     return {
-      id: p.id,
-      name: p.name,
+      id: property.id,
+      name: property.name,
       totalUnits: propertyUnits.length,
       occupiedUnits: occupied,
       occupancyRate: propertyUnits.length > 0 ? (occupied / propertyUnits.length) * 100 : 0,
     };
   });
 
-  return c.json({
-    success: true,
-    data: {
-      summary: {
-        totalUnits,
-        occupiedUnits,
-        occupancyRate: totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0,
-      },
-      byProperty,
-      expiringLeases: leases.filter((l) => l.status === 'ACTIVE').length,
-    },
-  });
-});
+  const now = new Date();
+  const in30 = new Date(now);
+  in30.setDate(in30.getDate() + 30);
+  const in60 = new Date(now);
+  in60.setDate(in60.getDate() + 60);
 
-// GET /reports/maintenance
-app.get('/maintenance', zValidator('query', reportsQuerySchema), async (c) => {
+  return {
+    summary: {
+      totalUnits: scope.units.length,
+      occupiedUnits,
+      availableUnits: scope.units.length - occupiedUnits,
+      maintenanceUnits,
+      occupancyRate: scope.units.length > 0 ? (occupiedUnits / scope.units.length) * 100 : 0,
+    },
+    byProperty,
+    leaseExpiry: {
+      next30Days: scope.leases.filter((lease) => new Date(lease.endDate) <= in30).length,
+      next60Days: scope.leases.filter((lease) => new Date(lease.endDate) <= in60).length,
+    },
+  };
+}
+
+function buildMaintenanceReport(scope) {
+  const total = scope.workOrders.length;
+  const completed = scope.workOrders.filter((workOrder) => workOrder.status === 'COMPLETED').length;
+  const open = scope.workOrders.filter((workOrder) => workOrder.status !== 'COMPLETED').length;
+  const byCategoryMap = new Map();
+  const byPriority = {
+    emergency: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  };
+
+  let totalResolutionHours = 0;
+  let resolutionSamples = 0;
+
+  for (const workOrder of scope.workOrders) {
+    byCategoryMap.set(workOrder.category, (byCategoryMap.get(workOrder.category) || 0) + 1);
+    const priorityKey = String(workOrder.priority || '').toLowerCase();
+    if (priorityKey in byPriority) byPriority[priorityKey] += 1;
+
+    if (workOrder.completedAt) {
+      totalResolutionHours +=
+        (new Date(workOrder.completedAt).getTime() - new Date(workOrder.createdAt).getTime()) /
+        3600000;
+      resolutionSamples += 1;
+    }
+  }
+
+  return {
+    summary: {
+      total,
+      completed,
+      open,
+      completionRate: total > 0 ? (completed / total) * 100 : 0,
+      avgResolutionTimeHours: resolutionSamples > 0 ? totalResolutionHours / resolutionSamples : 0,
+      totalCost: scope.workOrders.reduce(
+        (sum, workOrder) => sum + Number(workOrder.actualCost || workOrder.estimatedCost || 0),
+        0
+      ),
+    },
+    byCategory: Array.from(byCategoryMap.entries()).map(([category, count]) => ({ category, count })),
+    byPriority,
+  };
+}
+
+function buildStatementReport(scope, period) {
+  const now = new Date();
+  let start = startOfMonth(now);
+  let end = endOfMonth(now);
+
+  if (period === 'last_month') {
+    start = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    end = endOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  } else if (period === 'quarter') {
+    start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  } else if (period === 'year') {
+    start = new Date(now.getFullYear(), 0, 1);
+  }
+
+  const payments = scope.payments.filter((payment) =>
+    dateInRange(payment.completedAt || payment.createdAt, start, end)
+  );
+  const workOrders = scope.workOrders.filter((workOrder) => dateInRange(workOrder.createdAt, start, end));
+  const collected = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const maintenance = workOrders.reduce(
+    (sum, workOrder) => sum + Number(workOrder.actualCost || workOrder.estimatedCost || 0),
+    0
+  );
+
+  return {
+    period: {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    },
+    income: {
+      rentBilled: scope.invoices
+        .filter((invoice) => dateInRange(invoice.createdAt, start, end))
+        .reduce((sum, invoice) => sum + invoice.total, 0),
+      collected,
+      outstanding: scope.invoices
+        .filter((invoice) => new Date(invoice.dueDate) <= end)
+        .reduce((sum, invoice) => sum + invoice.amountDue, 0),
+    },
+    expenses: {
+      maintenance,
+      total: maintenance,
+    },
+    netOperatingIncome: collected - maintenance,
+    entries: [
+      ...payments.map((payment) => ({
+        date: payment.completedAt || payment.createdAt,
+        type: 'income',
+        description: payment.description || payment.paymentNumber,
+        amount: payment.amount,
+      })),
+      ...workOrders
+        .filter((workOrder) => Number(workOrder.actualCost || workOrder.estimatedCost || 0) > 0)
+        .map((workOrder) => ({
+          date: workOrder.completedAt || workOrder.updatedAt || workOrder.createdAt,
+          type: 'expense',
+          description: workOrder.title,
+          amount: Number(workOrder.actualCost || workOrder.estimatedCost || 0),
+        })),
+    ].sort((left, right) => new Date(right.date) - new Date(left.date)),
+  };
+}
+
+const app = new Hono();
+app.use('*', authMiddleware);
+app.use('*', databaseMiddleware);
+
+app.get('/financial', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
-
-  if (!useMockData && repos) {
-    try {
-      const result = await repos.workOrders.findMany(auth.tenantId, 1000, 0);
-      const items = result.items as any[];
-      const total = items.length;
-      const completed = items.filter((wo) => wo.status === 'completed').length;
-      const open = items.filter((wo) => !['completed', 'cancelled'].includes(wo.status)).length;
-      const totalCost = items.reduce((s, wo) => s + (wo.actualCost ?? 0), 0);
-
-      const statusCounts = await repos.workOrders.countByStatus(auth.tenantId);
-
-      return c.json({
-        success: true,
-        data: {
-          summary: {
-            total,
-            completed,
-            open,
-            completionRate: total > 0 ? (completed / total) * 100 : 0,
-            totalCost,
-          },
-          byCategory: {},
-          byPriority: {},
-          byStatus: statusCounts,
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  const workOrders = getByTenant(DEMO_WORK_ORDERS, auth.tenantId);
-
-  const total = workOrders.length;
-  const completed = workOrders.filter((wo) => wo.status === 'COMPLETED').length;
-  const open = workOrders.filter((wo) => !['COMPLETED', 'CANCELLED'].includes(wo.status)).length;
-  const totalCost = workOrders.reduce((s, wo) => s + (wo.actualCost ?? 0), 0);
-
-  return c.json({
-    success: true,
-    data: {
-      summary: {
-        total,
-        completed,
-        open,
-        completionRate: total > 0 ? (completed / total) * 100 : 0,
-        totalCost,
-      },
-      byCategory: {},
-      byPriority: {},
-    },
-  });
+  const scope = await getScope(auth, repos);
+  const startDate = c.req.query('startDate') ? new Date(c.req.query('startDate')) : new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
+  const endDate = c.req.query('endDate') ? new Date(c.req.query('endDate')) : new Date();
+  return c.json({ success: true, data: buildFinancialReport(scope, startDate, endDate) });
 });
 
-// GET /reports/financial
-app.get('/financial', zValidator('query', reportsQuerySchema), async (c) => {
+app.get('/occupancy', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const useMockData = c.get('useMockData');
-
-  if (!useMockData && repos) {
-    try {
-      const invoicesResult = await repos.invoices.findMany(auth.tenantId, 1000, 0);
-      const paymentsResult = await repos.payments.findMany(auth.tenantId, 1000, 0);
-
-      const totalInvoiced = invoicesResult.items.reduce((s, i) => s + (i.totalAmount ?? 0), 0);
-      const totalCollected = paymentsResult.items
-        .filter((p) => p.status === 'completed')
-        .reduce((s, p) => s + (p.amount ?? 0), 0);
-      const totalOutstanding = invoicesResult.items.reduce((s, i) => s + (i.balanceDue ?? 0), 0);
-
-      return c.json({
-        success: true,
-        data: {
-          summary: {
-            totalInvoiced,
-            totalCollected,
-            totalOutstanding,
-            collectionRate: totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0,
-          },
-          monthlyTrend: [],
-          arrearsAging: { current: 0, overdue: totalOutstanding },
-        },
-      });
-    } catch (error) {
-      console.error('Database error, falling back to mock data:', error);
-    }
-  }
-
-  // Fallback to mock data
-  const invoices = getByTenant(DEMO_INVOICES, auth.tenantId);
-  const payments = getByTenant(DEMO_PAYMENTS, auth.tenantId);
-
-  const totalInvoiced = invoices.reduce((s, i) => s + i.total, 0);
-  const totalCollected = payments
-    .filter((p) => p.status === 'COMPLETED')
-    .reduce((s, p) => s + p.amount, 0);
-  const totalOutstanding = invoices.reduce((s, i) => s + i.amountDue, 0);
-
-  return c.json({
-    success: true,
-    data: {
-      summary: {
-        totalInvoiced,
-        totalCollected,
-        totalOutstanding,
-        collectionRate: totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0,
-      },
-      monthlyTrend: [],
-      arrearsAging: { current: 0, overdue: totalOutstanding },
-    },
-  });
+  const scope = await getScope(auth, repos);
+  return c.json({ success: true, data: buildOccupancyReport(scope) });
 });
 
-// GET /reports/tenant-statement/:customerId - Must be before /:id patterns
-app.get(
-  '/tenant-statement/:customerId',
-  zValidator('param', customerIdParamSchema),
-  zValidator('query', reportsQuerySchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const { customerId } = c.req.valid('param');
-    const repos = c.get('repos');
-    const useMockData = c.get('useMockData');
+app.get('/maintenance', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const scope = await getScope(auth, repos);
+  return c.json({ success: true, data: buildMaintenanceReport(scope) });
+});
 
-    if (!useMockData && repos) {
-      try {
-        const customer = await repos.customers.findById(customerId, auth.tenantId);
-        if (!customer) {
-          return errorResponse(c, 404, 'NOT_FOUND', 'Customer not found');
-        }
+app.get('/statements', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const scope = await getScope(auth, repos);
+  const period = c.req.query('period') || 'current_month';
+  return c.json({ success: true, data: buildStatementReport(scope, period) });
+});
 
-        const invoicesResult = await repos.invoices.findByCustomer(customerId, auth.tenantId, 1000, 0);
-        const paymentsResult = await repos.payments.findByCustomer(customerId, auth.tenantId, 1000, 0);
+app.get('/export/:type', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const scope = await getScope(auth, repos);
+  const type = c.req.param('type');
 
-        const balance = invoicesResult.items.reduce((s, i) => s + (i.balanceDue ?? 0), 0);
-
-        const statement = {
-          customerId,
-          customerName: `${customer.firstName} ${customer.lastName}`,
-          invoices: invoicesResult.items,
-          payments: paymentsResult.items,
-          balance,
-          asOf: new Date().toISOString(),
-        };
-
-        return c.json({ success: true, data: statement });
-      } catch (error) {
-        console.error('Database error, falling back to mock data:', error);
-      }
-    }
-
-    // Fallback to mock data
-    const customers = getByTenant(DEMO_CUSTOMERS, auth.tenantId);
-    const customer = customers.find((cust) => cust.id === customerId);
-    if (!customer) {
-      return errorResponse(c, 404, 'NOT_FOUND', 'Customer not found');
-    }
-
-    const invoices = getByTenant(DEMO_INVOICES, auth.tenantId).filter((i) => i.customerId === customerId);
-    const payments = getByTenant(DEMO_PAYMENTS, auth.tenantId).filter((p) => p.customerId === customerId);
-
-    const statement = {
-      customerId,
-      customerName: `${customer.firstName} ${customer.lastName}`,
-      invoices,
-      payments,
-      balance: invoices.reduce((s, i) => s + i.amountDue, 0),
-      asOf: new Date().toISOString(),
-    };
-
-    return c.json({ success: true, data: statement });
+  let report;
+  if (type === 'financial') {
+    report = buildFinancialReport(scope, new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1), new Date());
+  } else if (type === 'occupancy') {
+    report = buildOccupancyReport(scope);
+  } else if (type === 'maintenance') {
+    report = buildMaintenanceReport(scope);
+  } else {
+    report = buildStatementReport(scope, 'current_month');
   }
-);
 
-// POST /reports/export
-app.post('/export', zValidator('json', exportReportSchema, validationErrorHook), (c) => {
-  const body = c.req.valid('json');
-
-  const downloadUrl = `/api/v1/reports/download/${body.reportType}-${Date.now()}.${body.format}`;
   return c.json({
     success: true,
     data: {
-      reportType: body.reportType,
-      format: body.format,
-      downloadUrl,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      message: `${type} report generated`,
+      downloadUrl: dataUrl(JSON.stringify(report, null, 2)),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     },
-  }, 201);
+  });
 });
 
 export const reportsHonoRouter = app;

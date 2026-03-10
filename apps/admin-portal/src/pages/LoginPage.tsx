@@ -25,12 +25,6 @@ export function LoginPage() {
       setLoading(false);
     }
   };
-
-  const demoAccounts = [
-    { email: import.meta.env.VITE_DEMO_ADMIN_EMAIL || 'admin@bossnyumba.com', password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD || 'admin123', role: 'Admin' },
-    { email: import.meta.env.VITE_DEMO_SUPPORT_EMAIL || 'support@bossnyumba.com', password: import.meta.env.VITE_DEMO_SUPPORT_PASSWORD || 'support123', role: 'Support' },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -72,7 +66,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                placeholder={import.meta.env.VITE_DEMO_ADMIN_EMAIL || 'admin@company.com'}
+                placeholder="admin@company.com"
               />
             </div>
 
@@ -107,37 +101,6 @@ export function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-600" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-800 text-slate-400">
-                  Demo accounts
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {demoAccounts.map((account) => (
-                <button
-                  key={account.email}
-                  onClick={() => {
-                    setEmail(account.email);
-                    setPassword(account.password);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 border border-slate-600 rounded-lg text-sm text-slate-300 hover:bg-slate-700 transition-colors"
-                >
-                  <span>{account.email}</span>
-                  <span className="px-2 py-0.5 bg-violet-500/20 text-violet-400 rounded text-xs">
-                    {account.role}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -72,6 +72,7 @@ export function DisbursementsPage() {
   const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
   const [stats, setStats] = useState<DisbursementStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [propertyFilter, setPropertyFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -83,6 +84,7 @@ export function DisbursementsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await api.get<{
         disbursements: Disbursement[];
@@ -91,129 +93,15 @@ export function DisbursementsPage() {
       if (response.success && response.data) {
         setDisbursements(response.data.disbursements || []);
         setStats(response.data.stats || null);
+      } else {
+        setDisbursements([]);
+        setStats(null);
+        setError(response.error?.message ?? 'Live disbursement data is unavailable.');
       }
-    } catch {
-      // Fallback mock data for development
-      setStats({
-        totalDisbursed: 154200000,
-        pendingAmount: 25400000,
-        nextDisbursementDate: '2026-02-28',
-        yearToDate: 46700000,
-        averageMonthly: 23350000,
-      });
-
-      setDisbursements([
-        {
-          id: 'dis-1',
-          reference: 'DIS-2026-0024',
-          amount: 14980000,
-          date: '2026-02-28',
-          status: 'PENDING',
-          method: 'BANK_TRANSFER',
-          period: 'February 2026',
-          bankAccount: '****4521',
-          property: { id: '1', name: 'Palm Gardens' },
-          breakdown: {
-            rentCollected: 25500000,
-            managementFees: 2670000,
-            maintenanceCosts: 2100000,
-            utilities: 1800000,
-            insurance: 450000,
-            repairs: 3500000,
-            otherDeductions: 0,
-            netDisbursement: 14980000,
-          },
-        },
-        {
-          id: 'dis-2',
-          reference: 'DIS-2026-0025',
-          amount: 10420000,
-          date: '2026-02-28',
-          status: 'PENDING',
-          method: 'BANK_TRANSFER',
-          period: 'February 2026',
-          bankAccount: '****4521',
-          property: { id: '2', name: 'Ocean View Apartments' },
-          breakdown: {
-            rentCollected: 18500000,
-            managementFees: 1930000,
-            maintenanceCosts: 1500000,
-            utilities: 1400000,
-            insurance: 350000,
-            repairs: 2800000,
-            otherDeductions: 100000,
-            netDisbursement: 10420000,
-          },
-        },
-        {
-          id: 'dis-3',
-          reference: 'DIS-2026-0022',
-          amount: 12500000,
-          date: '2026-01-31',
-          status: 'COMPLETED',
-          method: 'BANK_TRANSFER',
-          period: 'January 2026',
-          bankAccount: '****4521',
-          property: { id: '1', name: 'Palm Gardens' },
-          breakdown: {
-            rentCollected: 24800000,
-            managementFees: 2480000,
-            maintenanceCosts: 1850000,
-            utilities: 1750000,
-            insurance: 450000,
-            repairs: 5770000,
-            otherDeductions: 0,
-            netDisbursement: 12500000,
-          },
-          statementUrl: '#',
-        },
-        {
-          id: 'dis-4',
-          reference: 'DIS-2026-0023',
-          amount: 9200000,
-          date: '2026-01-31',
-          status: 'COMPLETED',
-          method: 'BANK_TRANSFER',
-          period: 'January 2026',
-          bankAccount: '****4521',
-          property: { id: '2', name: 'Ocean View Apartments' },
-          breakdown: {
-            rentCollected: 17200000,
-            managementFees: 1720000,
-            maintenanceCosts: 1200000,
-            utilities: 1350000,
-            insurance: 350000,
-            repairs: 3380000,
-            otherDeductions: 0,
-            netDisbursement: 9200000,
-          },
-          statementUrl: '#',
-        },
-        {
-          id: 'dis-5',
-          reference: 'DIS-2025-0020',
-          amount: 13800000,
-          date: '2025-12-31',
-          status: 'COMPLETED',
-          method: 'BANK_TRANSFER',
-          period: 'December 2025',
-          bankAccount: '****4521',
-          property: { id: '1', name: 'Palm Gardens' },
-          statementUrl: '#',
-        },
-        {
-          id: 'dis-6',
-          reference: 'DIS-2025-0021',
-          amount: 9500000,
-          date: '2025-12-31',
-          status: 'COMPLETED',
-          method: 'BANK_TRANSFER',
-          period: 'December 2025',
-          bankAccount: '****4521',
-          property: { id: '2', name: 'Ocean View Apartments' },
-          statementUrl: '#',
-        },
-      ]);
+    } catch (err) {
+      setDisbursements([]);
+      setStats(null);
+      setError(err instanceof Error ? err.message : 'Live disbursement data is unavailable.');
     }
     setLoading(false);
   };
@@ -221,13 +109,15 @@ export function DisbursementsPage() {
   const handleDownloadStatement = async (disbursement: Disbursement) => {
     setDownloading(disbursement.id);
     try {
-      await api.get(`/owner/disbursements/${disbursement.id}/statement`);
-    } catch {
-      // Dev fallback
+      const response = await api.get(`/owner/disbursements/${disbursement.id}/statement`);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Statement download is unavailable.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Statement download is unavailable.');
+    } finally {
+      setDownloading(null);
     }
-    await new Promise((r) => setTimeout(r, 1200));
-    setDownloading(null);
-    alert(`Statement for ${disbursement.reference} downloaded`);
   };
 
   const getStatusIcon = (status: string) => {
@@ -260,14 +150,26 @@ export function DisbursementsPage() {
     }
   };
 
-  const chartData = [
-    { month: 'Sep', palmGardens: 12200000, oceanView: 8800000 },
-    { month: 'Oct', palmGardens: 13100000, oceanView: 9100000 },
-    { month: 'Nov', palmGardens: 12800000, oceanView: 8600000 },
-    { month: 'Dec', palmGardens: 13800000, oceanView: 9500000 },
-    { month: 'Jan', palmGardens: 12500000, oceanView: 9200000 },
-    { month: 'Feb', palmGardens: 14980000, oceanView: 10420000 },
-  ];
+  const chartData = Array.from(
+    disbursements.reduce((acc, disbursement) => {
+      const month = new Date(disbursement.date).toLocaleDateString('en-KE', {
+        month: 'short',
+        year: 'numeric',
+      });
+      const entry = acc.get(month) ?? { month };
+      const propertyKey = disbursement.property?.id ? `property_${disbursement.property.id}` : 'unassigned';
+      entry[propertyKey] = ((entry[propertyKey] as number | undefined) ?? 0) + disbursement.amount;
+      acc.set(month, entry);
+      return acc;
+    }, new Map<string, Record<string, string | number>>()).values()
+  );
+  const propertyOptions = Array.from(
+    new Map(
+      disbursements
+        .filter((d) => d.property)
+        .map((d) => [d.property!.id, d.property!])
+    ).values()
+  );
 
   const filteredDisbursements = disbursements.filter((d) => {
     const matchesProperty =
@@ -286,6 +188,11 @@ export function DisbursementsPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -377,37 +284,40 @@ export function DisbursementsPage() {
           </div>
         </div>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
-              <YAxis
-                stroke="#9CA3AF"
-                fontSize={12}
-                tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="palmGardens"
-                name="Palm Gardens"
-                fill="#3B82F6"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="oceanView"
-                name="Ocean View"
-                fill="#10B981"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
+                <YAxis
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #E5E7EB',
+                  }}
+                />
+                <Legend />
+                {propertyOptions.map((property, index) => (
+                  <Bar
+                    key={property.id}
+                    dataKey={`property_${property.id}`}
+                    name={property.name}
+                    fill={index % 2 === 0 ? '#3B82F6' : '#10B981'}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+              Disbursement trend is unavailable until live payout data is wired.
+            </div>
+          )}
         </div>
       </div>
 
@@ -421,8 +331,11 @@ export function DisbursementsPage() {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Properties</option>
-            <option value="1">Palm Gardens</option>
-            <option value="2">Ocean View Apartments</option>
+            {propertyOptions.map((property) => (
+              <option key={property.id} value={property.id}>
+                {property.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex items-center gap-2">

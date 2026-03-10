@@ -147,98 +147,44 @@ export function FinancialPage() {
     setError(null);
 
     try {
-      // Try API calls first
       const [statsRes, invoicesRes, paymentsRes] = await Promise.allSettled([
         api.get<FinancialStats>('/owner/financial/stats'),
         api.get<Invoice[]>('/owner/invoices'),
         api.get<Payment[]>('/owner/payments'),
       ]);
 
-      // If any API call succeeded, use the data
       if (statsRes.status === 'fulfilled' && statsRes.value.success) {
         setStats(statsRes.value.data!);
+      } else {
+        setStats(null);
       }
       if (invoicesRes.status === 'fulfilled' && invoicesRes.value.success) {
         setInvoices(invoicesRes.value.data!);
+      } else {
+        setInvoices([]);
       }
       if (paymentsRes.status === 'fulfilled' && paymentsRes.value.success) {
         setPayments(paymentsRes.value.data!);
+      } else {
+        setPayments([]);
       }
-    } catch {
-      // Fallback to mock data
-    }
-
-    // Always set mock data as fallback if state is empty
-    if (!stats) {
-      setStats({
-        totalInvoiced: 52000000,
-        totalCollected: 45000000,
-        totalOutstanding: 7000000,
-        collectionRate: 86.5,
-        pendingDisbursement: 38500000,
-      });
-    }
-
-    if (invoices.length === 0) {
-      setInvoices([
-        { id: '1', number: 'INV-2026-0145', status: 'PAID', type: 'RENT', dueDate: '2026-02-05', total: 850000, amountPaid: 850000, amountDue: 0, customer: { id: '1', name: 'John Doe' }, unit: { id: '1', unitNumber: 'A-102' }, property: { id: '1', name: 'Palm Gardens' } },
-        { id: '2', number: 'INV-2026-0146', status: 'OVERDUE', type: 'RENT', dueDate: '2026-02-05', total: 1200000, amountPaid: 0, amountDue: 1200000, customer: { id: '2', name: 'Jane Smith' }, unit: { id: '2', unitNumber: 'B-301' }, property: { id: '1', name: 'Palm Gardens' } },
-        { id: '3', number: 'INV-2026-0147', status: 'PARTIALLY_PAID', type: 'RENT', dueDate: '2026-02-05', total: 950000, amountPaid: 500000, amountDue: 450000, customer: { id: '3', name: 'Mike Wilson' }, unit: { id: '3', unitNumber: 'C-205' }, property: { id: '2', name: 'Ocean View Apartments' } },
-        { id: '4', number: 'INV-2026-0148', status: 'PENDING', type: 'RENT', dueDate: '2026-02-10', total: 750000, amountPaid: 0, amountDue: 750000, customer: { id: '4', name: 'Sarah Johnson' }, unit: { id: '4', unitNumber: 'A-105' }, property: { id: '1', name: 'Palm Gardens' } },
-      ]);
-    }
-
-    if (payments.length === 0) {
-      setPayments([
-        { id: '1', amount: 850000, currency: 'TZS', method: 'MPESA', status: 'COMPLETED', reference: 'MP2026020512345', createdAt: '2026-02-05T10:30:00Z', customer: { id: '1', name: 'John Doe' } },
-        { id: '2', amount: 500000, currency: 'TZS', method: 'BANK_TRANSFER', status: 'COMPLETED', reference: 'BT2026020567890', createdAt: '2026-02-06T14:15:00Z', customer: { id: '3', name: 'Mike Wilson' } },
-        { id: '3', amount: 1200000, currency: 'TZS', method: 'MPESA', status: 'COMPLETED', reference: 'MP2026020598765', createdAt: '2026-02-07T09:45:00Z', customer: { id: '5', name: 'David Brown' } },
-      ]);
-    }
-
-    if (statements.length === 0) {
-      setStatements([
-        {
-          propertyId: '1', propertyName: 'Palm Gardens', month: 'Feb 2026',
-          rentCollected: 25500000, otherIncome: 1200000, totalIncome: 26700000,
-          operatingExpenses: 3500000, maintenanceCosts: 2100000, managementFees: 2670000,
-          utilities: 1800000, insurance: 450000, taxes: 1200000, totalExpenses: 11720000,
-          netOperatingIncome: 14980000
-        },
-        {
-          propertyId: '2', propertyName: 'Ocean View Apartments', month: 'Feb 2026',
-          rentCollected: 18500000, otherIncome: 800000, totalIncome: 19300000,
-          operatingExpenses: 2800000, maintenanceCosts: 1500000, managementFees: 1930000,
-          utilities: 1400000, insurance: 350000, taxes: 900000, totalExpenses: 8880000,
-          netOperatingIncome: 10420000
-        },
-      ]);
-    }
-
-    if (disbursements.length === 0) {
-      setDisbursements([
-        { id: '1', amount: 12500000, date: '2026-02-10', status: 'COMPLETED', method: 'BANK_TRANSFER', reference: 'DIS-2026-0022', period: 'January 2026', property: { id: '1', name: 'Palm Gardens' } },
-        { id: '2', amount: 9200000, date: '2026-02-10', status: 'COMPLETED', method: 'BANK_TRANSFER', reference: 'DIS-2026-0023', period: 'January 2026', property: { id: '2', name: 'Ocean View Apartments' } },
-        { id: '3', amount: 14980000, date: '2026-02-15', status: 'PENDING', method: 'BANK_TRANSFER', reference: 'DIS-2026-0024', period: 'February 2026', property: { id: '1', name: 'Palm Gardens' } },
-      ]);
-    }
-
-    // Transaction drill-down data
-    if (transactions.length === 0) {
-      setTransactions([
-        { id: 't1', type: 'income', amount: 850000, date: '2026-02-05', description: 'Rent Payment - A-102', reference: 'MP2026020512345', category: 'Rent', property: { id: '1', name: 'Palm Gardens' }, unit: { id: '1', unitNumber: 'A-102' }, customer: { id: '1', name: 'John Doe' }, relatedInvoice: 'INV-2026-0145', paymentMethod: 'M-Pesa' },
-        { id: 't2', type: 'income', amount: 500000, date: '2026-02-06', description: 'Partial Rent Payment - C-205', reference: 'BT2026020567890', category: 'Rent', property: { id: '2', name: 'Ocean View Apartments' }, unit: { id: '3', unitNumber: 'C-205' }, customer: { id: '3', name: 'Mike Wilson' }, relatedInvoice: 'INV-2026-0147', paymentMethod: 'Bank Transfer' },
-        { id: 't3', type: 'expense', amount: 150000, date: '2026-02-10', description: 'Plumbing Repair - A-102', reference: 'WO-2026-0045', category: 'Maintenance', property: { id: '1', name: 'Palm Gardens' }, unit: { id: '1', unitNumber: 'A-102' } },
-        { id: 't4', type: 'income', amount: 1200000, date: '2026-02-07', description: 'Rent Payment - D-101', reference: 'MP2026020598765', category: 'Rent', property: { id: '2', name: 'Ocean View Apartments' }, unit: { id: '5', unitNumber: 'D-101' }, customer: { id: '5', name: 'David Brown' }, paymentMethod: 'M-Pesa' },
-        { id: 't5', type: 'expense', amount: 2670000, date: '2026-02-01', description: 'Management Fee - Palm Gardens', reference: 'FEE-2026-02-PG', category: 'Management Fee', property: { id: '1', name: 'Palm Gardens' } },
-        { id: 't6', type: 'expense', amount: 1800000, date: '2026-02-03', description: 'Utility Bills - Palm Gardens', reference: 'UTL-2026-02-PG', category: 'Utilities', property: { id: '1', name: 'Palm Gardens' } },
-        { id: 't7', type: 'income', amount: 300000, date: '2026-02-08', description: 'Parking Fee - B-301', reference: 'PKG-2026-02-001', category: 'Other Income', property: { id: '1', name: 'Palm Gardens' }, unit: { id: '2', unitNumber: 'B-301' } },
-      ]);
+      if (
+        (statsRes.status !== 'fulfilled' || !statsRes.value.success) &&
+        (invoicesRes.status !== 'fulfilled' || !invoicesRes.value.success) &&
+        (paymentsRes.status !== 'fulfilled' || !paymentsRes.value.success)
+      ) {
+        setError('Live owner financial data is unavailable.');
+      }
+    } catch (err) {
+      setStats(null);
+      setInvoices([]);
+      setPayments([]);
+      setError(err instanceof Error ? err.message : 'Live owner financial data is unavailable.');
     }
 
     setLoading(false);
     setRefreshing(false);
-  }, [stats, invoices.length, payments.length, statements.length, disbursements.length, transactions.length]);
+  }, []);
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     setExporting(true);
@@ -248,23 +194,28 @@ export function FinancialPage() {
       );
       if (response.success && response.data?.downloadUrl) {
         window.open(response.data.downloadUrl, '_blank');
+      } else {
+        setError(response.error?.message ?? 'Financial export is unavailable.');
       }
-    } catch {
-      // Simulate download
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      alert(`Financial report exported as ${format.toUpperCase()}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Financial export is unavailable.');
     }
     setExporting(false);
   };
 
-  const chartData = [
-    { month: 'Sep', collected: 38500000, outstanding: 4500000 },
-    { month: 'Oct', collected: 42200000, outstanding: 3300000 },
-    { month: 'Nov', collected: 40800000, outstanding: 5700000 },
-    { month: 'Dec', collected: 43500000, outstanding: 3200000 },
-    { month: 'Jan', collected: 44100000, outstanding: 4400000 },
-    { month: 'Feb', collected: stats?.totalCollected || 0, outstanding: stats?.totalOutstanding || 0 },
-  ];
+  const chartData = Array.from(
+    payments.reduce((acc, payment) => {
+      const month = new Date(payment.createdAt).toLocaleDateString('en-KE', {
+        month: 'short',
+        year: 'numeric',
+      });
+      const entry = acc.get(month) ?? { month, collected: 0, outstanding: 0 };
+      entry.collected += payment.amount;
+      acc.set(month, entry);
+      return acc;
+    }, new Map<string, { month: string; collected: number; outstanding: number }>())
+      .values()
+  );
 
   const expenseBreakdown = statements.length > 0 ? [
     { name: 'Operating', value: statements.reduce((s, st) => s + st.operatingExpenses, 0), color: '#3B82F6' },

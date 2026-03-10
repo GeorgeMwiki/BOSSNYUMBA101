@@ -27,7 +27,7 @@ export default function CustomerFormPage() {
         email: data.email,
         phone: data.phone || 'N/A',
       }),
-    onSuccess: (response) => {
+    onSuccess: (response: { data: { id: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       router.push(`/customers/${response.data.id}`);
     },

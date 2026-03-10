@@ -173,10 +173,6 @@ export default function OTPVerifyPage() {
             {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
           </button>
         </div>
-
-        <p className="text-xs text-gray-400 text-center mt-8">
-          Demo: Use OTP <strong>123456</strong> to sign in
-        </p>
       </div>
     </main>
   );

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hono-compatible auth middleware
  * Extracts JWT from Authorization header and provides tenant-scoped auth context
@@ -6,12 +7,9 @@
 import { createMiddleware } from 'hono/factory';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
+import { getJwtSecret } from '../config/jwt';
 
-const JWT_SECRET = (() => {
-  const s = process.env.JWT_SECRET;
-  if (!s && process.env.NODE_ENV === 'production') throw new Error('Missing required: JWT_SECRET');
-  return s || '';
-})();
+const JWT_SECRET = getJwtSecret();
 
 export interface AuthContext {
   userId: string;

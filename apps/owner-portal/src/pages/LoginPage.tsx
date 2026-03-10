@@ -4,13 +4,6 @@ import { Home, Loader2, Shield, Smartphone, CheckCircle, AlertCircle } from 'luc
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 
-interface DemoUser {
-  email: string;
-  password: string;
-  name: string;
-  role: string;
-}
-
 type LoginStep = 'credentials' | 'mfa_verify' | 'mfa_setup';
 
 export function LoginPage() {
@@ -22,7 +15,6 @@ export function LoginPage() {
   const [step, setStep] = useState<LoginStep>('credentials');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -32,15 +24,6 @@ export function LoginPage() {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
-
-  useEffect(() => {
-    // Fetch demo users
-    api.get<DemoUser[]>('/auth/demo-users').then((response) => {
-      if (response.success && response.data) {
-        setDemoUsers(response.data);
-      }
-    });
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,13 +124,6 @@ export function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoLogin = (user: DemoUser) => {
-    setEmail(user.email);
-    setPassword(user.password);
-    setStep('credentials');
-    setMfaCode('');
   };
 
   return (
@@ -381,37 +357,6 @@ export function LoginPage() {
                 </button>
               </div>
             </>
-          )}
-
-          {/* Demo users */}
-          {demoUsers.length > 0 && (
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                Demo Accounts
-              </h3>
-              <div className="space-y-2">
-                {demoUsers.map((user) => (
-                  <button
-                    key={user.email}
-                    onClick={() => handleDemoLogin(user)}
-                    className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
-                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                      {user.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-gray-500">
-                Click any account above to autofill credentials (password: demo123)
-              </p>
-            </div>
           )}
         </div>
       </div>

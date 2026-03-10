@@ -65,6 +65,7 @@ export function DocumentsPage() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -86,50 +87,20 @@ export function DocumentsPage() {
   }, []);
 
   const loadData = async () => {
-    // Mock data for development
-    setDocuments([
-      {
-        id: '1', type: 'LEASE', category: 'leases', name: 'Lease Agreement - Unit A-102.pdf', mimeType: 'application/pdf', size: 2458000,
-        verificationStatus: 'VERIFIED', verifiedAt: '2026-01-15T10:30:00Z', tags: ['active', 'residential'],
-        createdAt: '2026-01-10T08:00:00Z', updatedAt: '2026-01-15T10:30:00Z',
-        property: { id: '1', name: 'Palm Gardens' }, unit: { id: '1', unitNumber: 'A-102' }, customer: { id: '1', name: 'John Doe' },
-        requiresSignature: true, signatureStatus: 'SIGNED', signedAt: '2026-01-12T14:20:00Z', signedBy: 'John Doe',
-        versions: [
-          { id: 'v3', versionNumber: 3, uploadedAt: '2026-01-10T08:00:00Z', uploadedBy: 'System', changeNote: 'Final signed version', size: 2458000 },
-          { id: 'v2', versionNumber: 2, uploadedAt: '2026-01-08T15:30:00Z', uploadedBy: 'Estate Manager', changeNote: 'Updated rent amount', size: 2445000 },
-          { id: 'v1', versionNumber: 1, uploadedAt: '2026-01-05T09:00:00Z', uploadedBy: 'Estate Manager', changeNote: 'Initial draft', size: 2420000 },
-        ]
-      },
-      {
-        id: '2', type: 'INVOICE', category: 'financial', name: 'Invoice_Feb2026_A102.pdf', mimeType: 'application/pdf', size: 156000,
-        verificationStatus: 'VERIFIED', tags: ['february', '2026'], createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z',
-        property: { id: '1', name: 'Palm Gardens' }, unit: { id: '1', unitNumber: 'A-102' },
-      },
-      {
-        id: '3', type: 'INSPECTION_REPORT', category: 'reports', name: 'Move-In Inspection Report - B-301.pdf', mimeType: 'application/pdf', size: 5820000,
-        verificationStatus: 'VERIFIED', verifiedAt: '2026-02-05T16:00:00Z', tags: ['inspection', 'move-in'],
-        createdAt: '2026-02-05T14:30:00Z', updatedAt: '2026-02-05T16:00:00Z',
-        property: { id: '1', name: 'Palm Gardens' }, unit: { id: '2', unitNumber: 'B-301' }, customer: { id: '2', name: 'Jane Smith' },
-        requiresSignature: true, signatureStatus: 'PENDING',
-        versions: [
-          { id: 'v1', versionNumber: 1, uploadedAt: '2026-02-05T14:30:00Z', uploadedBy: 'Estate Manager', size: 5820000 },
-        ]
-      },
-      {
-        id: '4', type: 'LICENSE', category: 'compliance', name: 'Business License 2026.pdf', mimeType: 'application/pdf', size: 890000,
-        verificationStatus: 'VERIFIED', tags: ['license', '2026', 'compliance'], createdAt: '2026-01-02T09:00:00Z', updatedAt: '2026-01-02T09:00:00Z',
-        property: { id: '1', name: 'Palm Gardens' },
-      },
-      {
-        id: '5', type: 'ID_DOCUMENT', category: 'identity', name: 'Tenant ID - Mike Wilson.jpg', mimeType: 'image/jpeg', size: 1240000,
-        verificationStatus: 'PENDING', tags: ['id', 'verification'], createdAt: '2026-02-10T11:00:00Z', updatedAt: '2026-02-10T11:00:00Z',
-        customer: { id: '3', name: 'Mike Wilson' },
-      },
-      {
-        id: '6', type: 'STATEMENT', category: 'financial', name: 'Owner Statement - January 2026.pdf', mimeType: 'application/pdf', size: 345000,
-        verificationStatus: 'VERIFIED', tags: ['statement', 'january', '2026'], createdAt: '2026-02-05T00:00:00Z', updatedAt: '2026-02-05T00:00:00Z',
-      },
-    ]);
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.get<Document[]>('/documents');
+      if (response.success && response.data) {
+        setDocuments(response.data);
+      } else {
+        setDocuments([]);
+        setError(response.error?.message ?? 'Live document data is unavailable.');
+      }
+    } catch (err) {
+      setDocuments([]);
+      setError(err instanceof Error ? err.message : 'Live document data is unavailable.');
+    }
     setLoading(false);
   };
 
@@ -202,6 +173,11 @@ export function DocumentsPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
@@ -453,8 +429,7 @@ export function DocumentsPage() {
                     <div>
                       <p className="font-medium text-blue-800">E-Signature Integration</p>
                       <p className="text-sm text-blue-600 mt-1">
-                        This is a placeholder for e-signature integration. In production, this would connect to
-                        a service like DocuSign, HelloSign, or similar e-signature provider.
+                        Live e-signature delivery is not yet wired to a production provider in this build.
                       </p>
                     </div>
                   </div>

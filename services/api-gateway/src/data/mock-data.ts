@@ -34,8 +34,37 @@ import {
   ApprovalStatus,
 } from '../types/mock-types';
 
+const RUNTIME_DEMO_DATA_ALLOWED = process.env.NODE_ENV === 'test';
+
+function runtimeDemoDataError(label: string): Error {
+  return new Error(
+    `Runtime demo data "${label}" is disabled. Connect a live data source instead.`
+  );
+}
+
+function blockRuntimeDemoData<T extends object>(label: string, value: T): T {
+  if (RUNTIME_DEMO_DATA_ALLOWED) {
+    return value;
+  }
+
+  return new Proxy(value, {
+    get() {
+      throw runtimeDemoDataError(label);
+    },
+    set() {
+      throw runtimeDemoDataError(label);
+    },
+    ownKeys() {
+      throw runtimeDemoDataError(label);
+    },
+    getOwnPropertyDescriptor() {
+      throw runtimeDemoDataError(label);
+    },
+  });
+}
+
 // Demo tenant
-export const DEMO_TENANT: Tenant = {
+export let DEMO_TENANT: Tenant = {
   id: 'tenant-001',
   name: 'Mwanga Properties',
   slug: 'mwanga-properties',
@@ -84,7 +113,7 @@ function platformAdminEmails(): string[] {
   return process.env.NODE_ENV === 'production' ? [] : ['admin@bossnyumba.com', 'support@bossnyumba.com'];
 }
 
-export const PLATFORM_ADMIN_USERS: User[] = (() => {
+export let PLATFORM_ADMIN_USERS: User[] = (() => {
   const emails = platformAdminEmails();
   const list: User[] = [];
   emails.forEach((email, i) => {
@@ -120,7 +149,7 @@ export function getPlatformAdminRoles(): Record<string, UserRole> {
 }
 
 // Demo users
-export const DEMO_USERS: User[] = [
+export let DEMO_USERS: User[] = [
   {
     id: 'user-001',
     email: 'admin@mwangaproperties.co.tz',
@@ -169,7 +198,7 @@ export const DEMO_USERS: User[] = [
   },
 ];
 
-export const DEMO_TENANT_USERS: TenantUser[] = [
+export let DEMO_TENANT_USERS: TenantUser[] = [
   {
     tenantId: 'tenant-001',
     userId: 'user-001',
@@ -200,7 +229,7 @@ export const DEMO_TENANT_USERS: TenantUser[] = [
 ];
 
 // Demo properties
-export const DEMO_PROPERTIES: Property[] = [
+export let DEMO_PROPERTIES: Property[] = [
   {
     id: 'property-001',
     tenantId: 'tenant-001',
@@ -261,7 +290,7 @@ export const DEMO_PROPERTIES: Property[] = [
 ];
 
 // Demo units
-export const DEMO_UNITS: Unit[] = [
+export let DEMO_UNITS: Unit[] = [
   {
     id: 'unit-001',
     tenantId: 'tenant-001',
@@ -327,7 +356,7 @@ export const DEMO_UNITS: Unit[] = [
 ];
 
 // Demo customers
-export const DEMO_CUSTOMERS: Customer[] = [
+export let DEMO_CUSTOMERS: Customer[] = [
   {
     id: 'customer-001',
     tenantId: 'tenant-001',
@@ -377,7 +406,7 @@ export const DEMO_CUSTOMERS: Customer[] = [
 ];
 
 // Demo leases
-export const DEMO_LEASES: Lease[] = [
+export let DEMO_LEASES: Lease[] = [
   {
     id: 'lease-001',
     tenantId: 'tenant-001',
@@ -435,7 +464,7 @@ export const DEMO_LEASES: Lease[] = [
 ];
 
 // Demo vendors
-export const DEMO_VENDORS: Vendor[] = [
+export let DEMO_VENDORS: Vendor[] = [
   {
     id: 'vendor-001',
     tenantId: 'tenant-001',
@@ -490,7 +519,7 @@ export const DEMO_VENDORS: Vendor[] = [
 ];
 
 // Demo work orders
-export const DEMO_WORK_ORDERS: WorkOrder[] = [
+export let DEMO_WORK_ORDERS: WorkOrder[] = [
   {
     id: 'wo-001',
     tenantId: 'tenant-001',
@@ -576,7 +605,7 @@ export const DEMO_WORK_ORDERS: WorkOrder[] = [
 ];
 
 // Demo invoices
-export const DEMO_INVOICES: Invoice[] = [
+export let DEMO_INVOICES: Invoice[] = [
   {
     id: 'inv-001',
     tenantId: 'tenant-001',
@@ -674,7 +703,7 @@ export const DEMO_INVOICES: Invoice[] = [
 ];
 
 // Demo payments
-export const DEMO_PAYMENTS: Payment[] = [
+export let DEMO_PAYMENTS: Payment[] = [
   {
     id: 'pay-001',
     tenantId: 'tenant-001',
@@ -711,7 +740,7 @@ export const DEMO_PAYMENTS: Payment[] = [
 ];
 
 // Demo documents
-export const DEMO_DOCUMENTS: Document[] = [
+export let DEMO_DOCUMENTS: Document[] = [
   {
     id: 'doc-001',
     tenantId: 'tenant-001',
@@ -753,7 +782,7 @@ export const DEMO_DOCUMENTS: Document[] = [
 ];
 
 // Demo approvals
-export const DEMO_APPROVALS: Approval[] = [
+export let DEMO_APPROVALS: Approval[] = [
   {
     id: 'approval-001',
     tenantId: 'tenant-001',
@@ -1011,4 +1040,21 @@ export function paginate<T>(
       hasPreviousPage: page > 1,
     },
   };
+}
+
+if (!RUNTIME_DEMO_DATA_ALLOWED) {
+  DEMO_TENANT = blockRuntimeDemoData('DEMO_TENANT', DEMO_TENANT);
+  PLATFORM_ADMIN_USERS = blockRuntimeDemoData('PLATFORM_ADMIN_USERS', PLATFORM_ADMIN_USERS);
+  DEMO_USERS = blockRuntimeDemoData('DEMO_USERS', DEMO_USERS);
+  DEMO_TENANT_USERS = blockRuntimeDemoData('DEMO_TENANT_USERS', DEMO_TENANT_USERS);
+  DEMO_PROPERTIES = blockRuntimeDemoData('DEMO_PROPERTIES', DEMO_PROPERTIES);
+  DEMO_UNITS = blockRuntimeDemoData('DEMO_UNITS', DEMO_UNITS);
+  DEMO_CUSTOMERS = blockRuntimeDemoData('DEMO_CUSTOMERS', DEMO_CUSTOMERS);
+  DEMO_LEASES = blockRuntimeDemoData('DEMO_LEASES', DEMO_LEASES);
+  DEMO_VENDORS = blockRuntimeDemoData('DEMO_VENDORS', DEMO_VENDORS);
+  DEMO_WORK_ORDERS = blockRuntimeDemoData('DEMO_WORK_ORDERS', DEMO_WORK_ORDERS);
+  DEMO_INVOICES = blockRuntimeDemoData('DEMO_INVOICES', DEMO_INVOICES);
+  DEMO_PAYMENTS = blockRuntimeDemoData('DEMO_PAYMENTS', DEMO_PAYMENTS);
+  DEMO_DOCUMENTS = blockRuntimeDemoData('DEMO_DOCUMENTS', DEMO_DOCUMENTS);
+  DEMO_APPROVALS = blockRuntimeDemoData('DEMO_APPROVALS', DEMO_APPROVALS);
 }

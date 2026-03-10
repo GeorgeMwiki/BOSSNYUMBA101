@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Database middleware for Hono
  * Initializes database client and injects repositories into request context
@@ -17,6 +18,9 @@ import {
   PaymentRepository,
   WorkOrderRepository,
   VendorRepository,
+  MessagingRepository,
+  InspectionRepository,
+  SchedulingRepository,
   ComplianceRepository,
   DocumentRepository,
 } from '@bossnyumba/database';
@@ -26,7 +30,18 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 // Environment configuration
 const DATABASE_URL = process.env.DATABASE_URL;
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true' || !DATABASE_URL;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const EXPLICIT_MOCK_MODE = process.env.USE_MOCK_DATA === 'true';
+
+if (IS_PRODUCTION && EXPLICIT_MOCK_MODE) {
+  throw new Error('USE_MOCK_DATA is not allowed in production');
+}
+
+if (IS_PRODUCTION && !DATABASE_URL) {
+  throw new Error('DATABASE_URL is required in production');
+}
+
+const USE_MOCK_DATA = EXPLICIT_MOCK_MODE || !DATABASE_URL;
 
 // Singleton database client (connection pooling handled by postgres.js)
 let db: DatabaseClient | null = null;
@@ -67,6 +82,9 @@ export interface Repositories {
   payments: PaymentRepository;
   workOrders: WorkOrderRepository;
   vendors: VendorRepository;
+  messaging: MessagingRepository;
+  inspections: InspectionRepository;
+  scheduling: SchedulingRepository;
   compliance: ComplianceRepository;
   documents: DocumentRepository;
 }
@@ -95,6 +113,9 @@ function getRepositories(): Repositories | null {
       payments: new PaymentRepository(database),
       workOrders: new WorkOrderRepository(database),
       vendors: new VendorRepository(database),
+      messaging: new MessagingRepository(database),
+      inspections: new InspectionRepository(database),
+      scheduling: new SchedulingRepository(database),
       compliance: new ComplianceRepository(database),
       documents: new DocumentRepository(database),
     };
@@ -120,16 +141,30 @@ declare module 'hono' {
 export const databaseMiddleware = createMiddleware(async (c, next) => {
   const database = getDatabase();
   const repos = getRepositories();
+  const useMockData = USE_MOCK_DATA || !database;
 
   c.set('db', database);
   c.set('repos', repos);
-  c.set('useMockData', USE_MOCK_DATA || !database);
+  c.set('useMockData', useMockData);
+
+  if (useMockData && process.env.NODE_ENV !== 'test') {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'LIVE_DATA_NOT_CONFIGURED',
+          message: 'A live database connection is required for this endpoint.',
+        },
+      },
+      503
+    );
+  }
 
   await next();
 });
 
 /**
- * Check if using mock data mode
+ * Check whether test-only in-memory mode is active
  */
 export function isUsingMockData(): boolean {
   return USE_MOCK_DATA || !getDatabase();

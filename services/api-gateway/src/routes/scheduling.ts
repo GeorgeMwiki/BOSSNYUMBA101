@@ -8,6 +8,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { liveDataRequired } from '../middleware/live-data';
 import {
   idParamSchema,
   paginationQuerySchema,
@@ -66,6 +67,7 @@ const availabilityQuerySchema = z.object({
 });
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Scheduling API'));
 
 function errorResponse(
   c: { json: (body: unknown, status?: number) => Response },

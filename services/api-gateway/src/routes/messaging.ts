@@ -8,6 +8,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
+import { liveDataRequired } from '../middleware/live-data';
 import {
   idParamSchema,
   paginationQuerySchema,
@@ -44,6 +45,7 @@ const listMessagesQuerySchema = paginationQuerySchema.extend({
 });
 
 app.use('*', authMiddleware);
+app.use('*', liveDataRequired('Messaging API'));
 
 function errorResponse(
   c: { json: (body: unknown, status?: number) => Response },

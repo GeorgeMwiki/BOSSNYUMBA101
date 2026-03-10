@@ -168,6 +168,7 @@ export function MessagesPage() {
     useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
@@ -206,6 +207,7 @@ export function MessagesPage() {
 
   const loadConversations = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await api.get<Conversation[]>(
         '/owner/messaging/conversations'
@@ -215,47 +217,13 @@ export function MessagesPage() {
         if (response.data.length > 0) {
           selectConversation(response.data[0]);
         }
+      } else {
+        setConversations([]);
+        setError(response.error?.message ?? 'Live messaging data is unavailable.');
       }
-    } catch {
-      // Fallback mock data
-      const mockConversations: Conversation[] = [
-        {
-          id: 'conv-1',
-          participantName: 'Sarah Kimaro',
-          participantRole: 'Property Manager - Palm Gardens',
-          participantInitials: 'SK',
-          lastMessage:
-            'The maintenance request for Unit A101 has been completed.',
-          lastMessageTime: '2026-02-13T08:30:00Z',
-          unreadCount: 2,
-          isOnline: true,
-          propertyContext: 'Palm Gardens',
-        },
-        {
-          id: 'conv-2',
-          participantName: 'John Mwanga',
-          participantRole: 'Estate Manager - Ocean View',
-          participantInitials: 'JM',
-          lastMessage: 'Monthly report is ready for your review.',
-          lastMessageTime: '2026-02-12T14:15:00Z',
-          unreadCount: 0,
-          isOnline: false,
-          propertyContext: 'Ocean View Apartments',
-        },
-        {
-          id: 'conv-3',
-          participantName: 'Amina Hassan',
-          participantRole: 'Finance Manager',
-          participantInitials: 'AH',
-          lastMessage:
-            'The February disbursement will be processed on the 28th.',
-          lastMessageTime: '2026-02-11T10:00:00Z',
-          unreadCount: 0,
-          isOnline: true,
-        },
-      ];
-      setConversations(mockConversations);
-      selectConversation(mockConversations[0]);
+    } catch (err) {
+      setConversations([]);
+      setError(err instanceof Error ? err.message : 'Live messaging data is unavailable.');
     }
     setLoading(false);
   };
@@ -278,124 +246,25 @@ export function MessagesPage() {
 
   const loadMessages = async (conversationId: string, silent = false) => {
     if (!silent) setMessagesLoading(true);
+    setError(null);
     try {
       const response = await api.get<Message[]>(
         `/owner/messaging/conversations/${conversationId}/messages`
       );
       if (response.success && response.data) {
         setMessages(response.data);
+      } else if (!silent) {
+        setMessages([]);
+        setError(response.error?.message ?? 'Live messages are unavailable.');
       }
-    } catch {
-      // Mock messages
+    } catch (err) {
       if (!silent) {
-        const mockMessages: Message[] = [
-          {
-            id: 'm1',
-            conversationId,
-            senderId: 'manager-1',
-            senderType: 'manager',
-            senderName: 'Sarah Kimaro',
-            content:
-              'Good morning! The maintenance request for Unit A101 has been completed. The plumber replaced the faulty valve under the kitchen sink.',
-            status: 'READ',
-            attachments: [],
-            readAt: '2026-02-13T08:35:00Z',
-            createdAt: '2026-02-13T08:30:00Z',
-          },
-          {
-            id: 'm2',
-            conversationId,
-            senderId: 'owner-1',
-            senderType: 'owner',
-            senderName: 'John Doe',
-            content: 'Thank you for the update. What was the total cost?',
-            status: 'READ',
-            attachments: [],
-            readAt: '2026-02-13T08:46:00Z',
-            createdAt: '2026-02-13T08:45:00Z',
-          },
-          {
-            id: 'm3',
-            conversationId,
-            senderId: 'manager-1',
-            senderType: 'manager',
-            senderName: 'Sarah Kimaro',
-            content:
-              "The total cost was TZS 45,000 including parts and labor. I've uploaded the receipt to the documents section.",
-            status: 'READ',
-            attachments: [
-              {
-                id: 'att-1',
-                type: 'document',
-                name: 'Plumbing_Receipt_A101.pdf',
-                url: '#',
-                size: 245000,
-                mimeType: 'application/pdf',
-              },
-            ],
-            readAt: '2026-02-13T08:55:00Z',
-            createdAt: '2026-02-13T08:52:00Z',
-          },
-          {
-            id: 'm4',
-            conversationId,
-            senderId: 'owner-1',
-            senderType: 'owner',
-            senderName: 'John Doe',
-            content: 'Good, that seems reasonable. Please also check Unit B-301 water heater.',
-            status: 'DELIVERED',
-            attachments: [],
-            createdAt: '2026-02-13T09:00:00Z',
-          },
-          {
-            id: 'm5',
-            conversationId,
-            senderId: 'manager-1',
-            senderType: 'manager',
-            senderName: 'Sarah Kimaro',
-            content:
-              'Will do! I have inspected B-301 this morning. Here are the photos of the water heater. It looks like it needs a thermostat replacement. Estimated cost TZS 120,000.',
-            status: 'READ',
-            attachments: [
-              {
-                id: 'att-2',
-                type: 'image',
-                name: 'water_heater_1.jpg',
-                url: '/placeholder/water-heater.svg',
-                thumbnailUrl: '/placeholder/water-heater.svg',
-                size: 1200000,
-                mimeType: 'image/jpeg',
-              },
-              {
-                id: 'att-3',
-                type: 'image',
-                name: 'water_heater_2.jpg',
-                url: '/placeholder/thermostat.svg',
-                thumbnailUrl: '/placeholder/thermostat.svg',
-                size: 980000,
-                mimeType: 'image/jpeg',
-              },
-            ],
-            readAt: '2026-02-13T09:20:00Z',
-            createdAt: '2026-02-13T09:15:00Z',
-          },
-          {
-            id: 'm6',
-            conversationId,
-            senderId: 'manager-1',
-            senderType: 'manager',
-            senderName: 'Sarah Kimaro',
-            content:
-              'Should I go ahead and authorize the repair? The vendor can schedule it for tomorrow.',
-            status: 'DELIVERED',
-            attachments: [],
-            createdAt: '2026-02-13T09:16:00Z',
-          },
-        ];
-        setMessages(mockMessages);
+        setMessages([]);
+        setError(err instanceof Error ? err.message : 'Live messages are unavailable.');
       }
+    } finally {
+      if (!silent) setMessagesLoading(false);
     }
-    if (!silent) setMessagesLoading(false);
   };
 
   const handleSendMessage = async () => {
@@ -403,12 +272,17 @@ export function MessagesPage() {
       return;
 
     const tempId = `temp-${Date.now()}`;
+    const senderName =
+      [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+      user?.email ||
+      user?.id ||
+      'Current User';
     const tempMessage: Message = {
       id: tempId,
       conversationId: activeConversation.id,
-      senderId: user?.id || 'owner-1',
+      senderId: user?.id || activeConversation.id,
       senderType: 'owner',
-      senderName: `${user?.firstName || 'John'} ${user?.lastName || 'Doe'}`,
+      senderName,
       content: newMessage.trim(),
       status: 'SENDING',
       attachments: pendingAttachments.map((file, i) => ({
@@ -426,35 +300,29 @@ export function MessagesPage() {
     setNewMessage('');
     setPendingAttachments([]);
     setSending(true);
+    setError(null);
 
     try {
-      await api.post(
+      const response = await api.post(
         `/owner/messaging/conversations/${activeConversation.id}/messages`,
         { content: tempMessage.content }
       );
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to send message');
+      }
       // Update message status to SENT
       setMessages((prev) =>
         prev.map((m) =>
           m.id === tempId ? { ...m, status: 'SENT' as MessageStatus } : m
         )
       );
-
-      // Simulate delivered after 1.5s
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId
-              ? { ...m, status: 'DELIVERED' as MessageStatus }
-              : m
-          )
-        );
-      }, 1500);
-    } catch {
+    } catch (err) {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...m, status: 'SENT' as MessageStatus } : m
+          m.id === tempId ? { ...m, status: 'FAILED' as MessageStatus } : m
         )
       );
+      setError(err instanceof Error ? err.message : 'Failed to send message');
     }
 
     // Update conversation last message
@@ -536,6 +404,11 @@ export function MessagesPage() {
         <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
         <p className="text-gray-500">Communicate with your property managers</p>
       </div>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 h-[calc(100vh-240px)] flex overflow-hidden">
         {/* Sidebar */}

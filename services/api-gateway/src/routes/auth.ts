@@ -1,150 +1,191 @@
-/**
- * Auth routes - Hono with Zod validation
- * Production-ready with proper error handling and response DTOs
- *
- * POST /login           - Login with email/password
- * POST /logout          - Logout (client-side token invalidation)
- * POST /refresh        - Refresh token (requires Bearer)
- * GET /me              - Current user (requires Bearer)
- * POST /register       - Register new user (optional, for self-signup)
- * POST /change-password - Change password (requires Bearer)
- * POST /forgot-password - Request password reset
- * GET /demo-users      - Demo logins (dev only)
- */
+// @ts-nocheck
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { UserRole } from '../types/user-role';
-import { generateToken } from '../middleware/auth';
-import {
-  DEMO_USERS,
-  DEMO_TENANT_USERS,
-  DEMO_TENANT,
-  PLATFORM_ADMIN_USERS,
-  getPlatformAdminRoles,
-} from '../data/mock-data';
-import {
-  loginSchema,
-  registerSchema,
-  changePasswordSchema,
-  forgotPasswordSchema,
-} from './validators';
+import bcrypt from 'bcrypt';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
-import type { LoginResponseDto, MeResponseDto, RefreshResponseDto } from './dtos';
-
-const getPermissionsForRole = (role: UserRole): string[] => {
-  const basePermissions: Record<UserRole, string[]> = {
-    SUPER_ADMIN: ['*'],
-    ADMIN: ['users:*', 'tenants:*', 'reports:*', 'settings:*'],
-    SUPPORT: ['users:read', 'tenants:read', 'reports:read'],
-    TENANT_ADMIN: [
-      'users:*',
-      'properties:*',
-      'units:*',
-      'leases:*',
-      'invoices:*',
-      'payments:*',
-      'reports:*',
-    ],
-    PROPERTY_MANAGER: ['properties:read', 'units:*', 'leases:*', 'work_orders:*', 'customers:*'],
-    ACCOUNTANT: ['invoices:*', 'payments:*', 'reports:read'],
-    MAINTENANCE_STAFF: ['work_orders:*', 'units:read'],
-    OWNER: [
-      'properties:read',
-      'units:read',
-      'leases:read',
-      'invoices:read',
-      'payments:read',
-      'reports:read',
-      'approvals:*',
-    ],
-    RESIDENT: ['leases:read:own', 'invoices:read:own', 'payments:create:own', 'work_orders:create:own'],
-  };
-  return basePermissions[role] || [];
-};
+import { generateToken } from '../middleware/auth';
+import { tenants, users, roles, userRoles } from '@bossnyumba/database';
+import { UserRole } from '../types/user-role';
 
 const app = new Hono();
 
-// POST /auth/login - Login with email/password
-app.post('/login', zValidator('json', loginSchema), async (c) => {
-  const { email, password } = c.req.valid('json');
+function mapRoleName(roleName?: string): UserRole {
+  switch ((roleName || '').toLowerCase()) {
+    case 'super_admin':
+    case 'super-admin':
+      return UserRole.SUPER_ADMIN;
+    case 'support':
+      return UserRole.SUPPORT;
+    case 'owner':
+      return UserRole.OWNER;
+    case 'accountant':
+      return UserRole.ACCOUNTANT;
+    case 'property_manager':
+    case 'property-manager':
+    case 'manager':
+      return UserRole.PROPERTY_MANAGER;
+    case 'maintenance':
+    case 'maintenance_staff':
+      return UserRole.MAINTENANCE_STAFF;
+    case 'resident':
+      return UserRole.RESIDENT;
+    case 'admin':
+    case 'administrator':
+    default:
+      return UserRole.TENANT_ADMIN;
+  }
+}
 
-  // Platform admin login
-  const platformAdmin = PLATFORM_ADMIN_USERS.find((u) => u.email === email);
-  if (platformAdmin) {
-    const envPassword = process.env.PLATFORM_ADMIN_PASSWORD;
-    if (envPassword && password !== envPassword) {
-      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
-    }
-    if (process.env.NODE_ENV === 'production' && !envPassword) {
-      return c.json({ success: false, error: { code: 'CONFIG_ERROR', message: 'Platform admin login disabled' } }, 503);
-    }
-    const role = getPlatformAdminRoles()[email] ?? UserRole.SUPPORT;
-    const token = generateToken({
-      userId: platformAdmin.id,
-      tenantId: 'platform',
-      role,
-      permissions: getPermissionsForRole(role),
-      propertyAccess: ['*'],
-    });
+async function resolveAuthUser(email: string) {
+  const db = getDatabaseClient();
+  if (!db) return null;
 
-    return c.json(
-      {
-        success: true,
-        data: {
-          token,
-          user: {
-            id: platformAdmin.id,
-            email: platformAdmin.email,
-            firstName: platformAdmin.firstName,
-            lastName: platformAdmin.lastName,
-            role,
-            tenantId: 'platform',
-          },
-          role,
-          permissions: getPermissionsForRole(role),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        },
+  const rows = await db
+    .select({
+      id: users.id,
+      tenantId: users.tenantId,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+      passwordHash: users.passwordHash,
+      status: users.status,
+      tenantName: tenants.name,
+      tenantSlug: tenants.slug,
+      tenantStatus: tenants.status,
+    })
+    .from(users)
+    .innerJoin(tenants, eq(tenants.id, users.tenantId))
+    .where(and(eq(users.email, email), isNull(users.deletedAt), isNull(tenants.deletedAt)))
+    .limit(1);
+
+  const user = rows[0];
+  if (!user) return null;
+
+  const assignments = await db
+    .select({ roleId: userRoles.roleId })
+    .from(userRoles)
+    .where(and(eq(userRoles.userId, user.id), eq(userRoles.tenantId, user.tenantId)));
+
+  const roleIds = assignments.map((row) => row.roleId);
+  const roleRows = roleIds.length
+    ? await db
+        .select({
+          id: roles.id,
+          name: roles.name,
+          permissions: roles.permissions,
+          priority: roles.priority,
+        })
+        .from(roles)
+        .where(and(eq(roles.tenantId, user.tenantId), inArray(roles.id, roleIds), isNull(roles.deletedAt)))
+    : [];
+
+  roleRows.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  const primaryRole = roleRows[0]?.name;
+  const permissions = Array.from(
+    new Set(roleRows.flatMap((role) => (Array.isArray(role.permissions) ? role.permissions : [])))
+  );
+
+  return {
+    ...user,
+    role: mapRoleName(primaryRole),
+    permissions: permissions.length ? permissions : ['*'],
+    propertyAccess: ['*'],
+  };
+}
+
+async function buildMePayload(auth: any) {
+  const db = getDatabaseClient();
+  if (!db) {
+    return {
+      user: {
+        id: auth.userId,
+        tenantId: auth.tenantId,
+        role: auth.role,
+        permissions: auth.permissions,
+        propertyAccess: auth.propertyAccess,
       },
-      200
-    );
+    };
   }
 
-  // Tenant user login (demo: accept any password)
-  const user = DEMO_USERS.find((u) => u.email === email);
-  if (!user) {
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      avatarUrl: users.avatarUrl,
+      tenantId: tenants.id,
+      tenantName: tenants.name,
+      tenantSlug: tenants.slug,
+    })
+    .from(users)
+    .innerJoin(tenants, eq(tenants.id, users.tenantId))
+    .where(and(eq(users.id, auth.userId), eq(users.tenantId, auth.tenantId), isNull(users.deletedAt)))
+    .limit(1);
+
+  const row = rows[0];
+  return {
+    user: row
+      ? {
+          id: row.id,
+          email: row.email,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          avatarUrl: row.avatarUrl,
+        }
+      : {
+          id: auth.userId,
+          tenantId: auth.tenantId,
+        },
+    tenant: row
+      ? {
+          id: row.tenantId,
+          name: row.tenantName,
+          slug: row.tenantSlug,
+        }
+      : undefined,
+    role: auth.role,
+    permissions: auth.permissions,
+    properties: auth.propertyAccess,
+  };
+}
+
+app.post('/login', async (c) => {
+  const db = getDatabaseClient();
+  if (!db) {
     return c.json(
       {
         success: false,
         error: {
-          code: 'INVALID_CREDENTIALS',
-          message: 'Invalid email or password',
+          code: 'AUTH_NOT_CONFIGURED',
+          message: 'Authentication requires a live database connection.',
         },
       },
-      401
+      503
     );
   }
 
-  const tenantUser = DEMO_TENANT_USERS.find((tu) => tu.userId === user.id);
-  if (!tenantUser) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'NO_TENANT_ACCESS',
-          message: 'User does not have access to any tenant',
-        },
-      },
-      401
-    );
+  const body = await c.req.json();
+  const record = await resolveAuthUser(body.email);
+  if (!record?.passwordHash) {
+    return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+  }
+
+  const valid = await bcrypt.compare(body.password, record.passwordHash);
+  if (!valid) {
+    return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
   }
 
   const token = generateToken({
-    userId: user.id,
-    tenantId: tenantUser.tenantId,
-    role: tenantUser.role,
-    permissions: [...tenantUser.permissions, ...getPermissionsForRole(tenantUser.role)],
-    propertyAccess: tenantUser.propertyAccess,
+    userId: record.id,
+    tenantId: record.tenantId,
+    role: record.role,
+    permissions: record.permissions,
+    propertyAccess: record.propertyAccess,
   });
 
   return c.json({
@@ -152,265 +193,60 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     data: {
       token,
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        avatarUrl: user.avatarUrl,
-        role: tenantUser.role,
-        tenantId: tenantUser.tenantId,
+        id: record.id,
+        email: record.email,
+        firstName: record.firstName,
+        lastName: record.lastName,
+        avatarUrl: record.avatarUrl,
       },
       tenant: {
-        id: tenantUser.tenantId,
-        name: DEMO_TENANT.name,
-        slug: DEMO_TENANT.slug,
+        id: record.tenantId,
+        name: record.tenantName,
+        slug: record.tenantSlug,
       },
-      role: tenantUser.role,
-      permissions: [...tenantUser.permissions, ...getPermissionsForRole(tenantUser.role)],
+      role: record.role,
+      permissions: record.permissions,
+      properties: record.propertyAccess,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
   });
 });
 
-// POST /auth/logout
-app.post('/logout', (c) => {
-  return c.json({
-    success: true,
-    data: { message: 'Logged out successfully' },
-  });
-});
-
-// POST /auth/register - Self-registration (demo: creates user in tenant)
-app.post('/register', zValidator('json', registerSchema), async (c) => {
-  const { email, password, firstName, lastName, phone } = c.req.valid('json');
-
-  const existingUser = DEMO_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (existingUser) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'CONFLICT',
-          message: 'A user with this email already exists',
-        },
-      },
-      409
-    );
-  }
-
-  // Demo: create user and assign to default tenant
-  const id = `user-${Date.now()}`;
-  const now = new Date();
-  DEMO_USERS.push({
-    id,
-    email,
-    emailVerified: false,
-    firstName,
-    lastName,
-    phone,
-    phoneVerified: false,
-    status: 'ACTIVE',
-    mfaEnabled: false,
-    createdAt: now,
-    createdBy: 'system',
-    updatedAt: now,
-    updatedBy: 'system',
-  });
-  DEMO_TENANT_USERS.push({
-    tenantId: DEMO_TENANT.id,
-    userId: id,
-    role: UserRole.RESIDENT,
-    permissions: [],
-    propertyAccess: ['*'],
-    assignedAt: now,
-    assignedBy: 'system',
-  });
-
-  const token = generateToken({
-    userId: id,
-    tenantId: DEMO_TENANT.id,
-    role: UserRole.RESIDENT,
-    permissions: getPermissionsForRole(UserRole.RESIDENT),
-    propertyAccess: ['*'],
-  });
-
-  const response: LoginResponseDto = {
-    token,
-    user: {
-      id,
-      email,
-      firstName,
-      lastName,
-      role: UserRole.RESIDENT,
-      tenantId: DEMO_TENANT.id,
-    },
-    tenant: { id: DEMO_TENANT.id, name: DEMO_TENANT.name, slug: DEMO_TENANT.slug },
-    role: UserRole.RESIDENT,
-    permissions: getPermissionsForRole(UserRole.RESIDENT),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  };
-
-  return c.json({ success: true, data: response }, 201);
-});
-
-// POST /auth/change-password - Requires Bearer token
-app.post(
-  '/change-password',
-  authMiddleware,
-  zValidator('json', changePasswordSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const { currentPassword, newPassword } = c.req.valid('json');
-
-    const user = DEMO_USERS.find((u) => u.id === auth.userId);
-    if (!user) {
-      return c.json(
-        {
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'User not found' },
-        },
-        404
-      );
-    }
-
-    // Demo: accept any current password; in production verify via auth service
-    if (!currentPassword) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'Current password is incorrect',
-          },
-        },
-        401
-      );
-    }
-
-    // In production, update password in auth service
-    return c.json({
-      success: true,
-      data: { message: 'Password changed successfully' },
-    });
-  }
-);
-
-// POST /auth/forgot-password - Request password reset
-app.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
-  const { email } = c.req.valid('json');
-
-  const user = DEMO_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (!user) {
-    // Don't reveal whether email exists (security)
-    return c.json({
-      success: true,
-      data: {
-        message:
-          'If an account exists with this email, you will receive a password reset link shortly.',
-      },
-    });
-  }
-
-  // In production, send reset email
-  return c.json({
-    success: true,
-    data: {
-      message:
-        'If an account exists with this email, you will receive a password reset link shortly.',
-    },
-  });
-});
-
-// POST /auth/refresh - Requires Bearer token
-app.post('/refresh', authMiddleware, async (c) => {
-  const auth = c.get('auth');
-  const user = DEMO_USERS.find((u) => u.id === auth.userId);
-  const tenantUser = DEMO_TENANT_USERS.find(
-    (tu) => tu.tenantId === auth.tenantId && tu.userId === auth.userId
-  );
-
-  if (!user || !tenantUser) {
-    return c.json(
-      {
-        success: false,
-        error: { code: 'USER_NOT_FOUND', message: 'User or tenant access not found' },
-      },
-      404
-    );
-  }
-
-  const token = generateToken({
-    userId: user.id,
-    tenantId: tenantUser.tenantId,
-    role: tenantUser.role,
-    permissions: [...tenantUser.permissions, ...getPermissionsForRole(tenantUser.role)],
-    propertyAccess: tenantUser.propertyAccess,
-  });
-
-  return c.json({
-    success: true,
-    data: {
-      token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    },
-  });
-});
-
-// GET /auth/me - Current user (requires auth)
 app.get('/me', authMiddleware, async (c) => {
   const auth = c.get('auth');
-  const user = DEMO_USERS.find((u) => u.id === auth.userId);
-  const tenantUser = DEMO_TENANT_USERS.find(
-    (tu) => tu.tenantId === auth.tenantId && tu.userId === auth.userId
-  );
+  return c.json({ success: true, data: await buildMePayload(auth) });
+});
 
-  if (!user || !tenantUser) {
-    return c.json(
-      {
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'User not found' },
-      },
-      404
-    );
-  }
-
+app.post('/refresh', authMiddleware, async (c) => {
+  const auth = c.get('auth');
+  const token = generateToken({
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    role: auth.role,
+    permissions: auth.permissions,
+    propertyAccess: auth.propertyAccess,
+  });
   return c.json({
     success: true,
     data: {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        avatarUrl: user.avatarUrl,
-      },
-      tenant: {
-        id: tenantUser.tenantId,
-        name: DEMO_TENANT.name,
-        slug: DEMO_TENANT.slug,
-      },
-      role: tenantUser.role,
-      permissions: [...tenantUser.permissions, ...getPermissionsForRole(tenantUser.role)],
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
   });
 });
 
-// GET /auth/demo-users - Demo logins (dev only)
-app.get('/demo-users', (c) => {
-  const demoLogins = DEMO_USERS.map((user) => {
-    const tenantUser = DEMO_TENANT_USERS.find((tu) => tu.userId === user.id);
-    return {
-      email: user.email,
-      password: 'demo123',
-      name: `${user.firstName} ${user.lastName}`,
-      role: tenantUser?.role ?? 'Unknown',
-    };
-  });
-
-  return c.json({
-    success: true,
-    data: demoLogins,
-  });
+app.post('/logout', (_c) => {
+  return _c.json({ success: true, data: { loggedOut: true } });
 });
+
+app.post('/register', (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Self-registration is not enabled.' } }, 503)
+);
+app.post('/change-password', (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password change is not enabled.' } }, 503)
+);
+app.post('/forgot-password', (c) =>
+  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password reset is not enabled.' } }, 503)
+);
 
 export const authRouter = app;

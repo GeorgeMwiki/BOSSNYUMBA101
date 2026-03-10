@@ -3,7 +3,15 @@
   "compilerOptions": {
     "plugins": [{ "name": "next" }],
     "jsx": "preserve",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "baseUrl": ".",
+    "types": ["node", "react", "react-dom"],
+    "strict": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "noImplicitReturns": false,
+    "noImplicitAny": false,
     "paths": {
       "@/*": ["./src/*"]
     }

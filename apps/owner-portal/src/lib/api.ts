@@ -1,4 +1,19 @@
-const API_BASE = '/api/v1';
+function getApiBase(): string {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '').endsWith('/api/v1')
+      ? configured.replace(/\/$/, '')
+      : `${configured.replace(/\/$/, '')}/api/v1`;
+  }
+
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:4000/api/v1';
+  }
+
+  return '/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 interface ApiResponse<T = unknown> {
   success: boolean;
