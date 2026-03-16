@@ -34,11 +34,11 @@
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.0",
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.5.0",
     "@types/pdfkit": "^0.13.0",
     "@types/uuid": "^9.0.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "hono": "^4.0.0"
