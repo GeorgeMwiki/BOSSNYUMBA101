@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Send, User, Building2, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
-import { customersService, staffService } from '@bossnyumba/api-client';
+import { customersService, staffService, messagingService } from '@bossnyumba/api-client';
 
 export default function NewConversationPage() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function NewConversationPage() {
   });
   const [search, setSearch] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
@@ -58,10 +59,16 @@ export default function NewConversationPage() {
     e.preventDefault();
     if (!formData.recipientId || !formData.subject || !formData.message) return;
     setIsSending(true);
+    setSendError(null);
     try {
-      // API call to create conversation would go here
+      await messagingService.createConversation({
+        participantId: formData.recipientId,
+        subject: formData.subject,
+        initialMessage: formData.message,
+      });
       router.push('/messaging');
     } catch {
+      setSendError('Failed to send message. Please try again.');
       setIsSending(false);
     }
   };
@@ -71,6 +78,11 @@ export default function NewConversationPage() {
       <PageHeader title="New Message" showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+        {sendError && (
+          <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
+            {sendError}
+          </div>
+        )}
         <div className="card p-4 space-y-4">
           <div>
             <label className="label">Recipient Type</label>

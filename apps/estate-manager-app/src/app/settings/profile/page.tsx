@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getApiClient } from '@bossnyumba/api-client';
@@ -17,6 +17,24 @@ interface UserProfile {
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      await getApiClient().post('/users/me/avatar', formData);
+    } catch {
+      // Avatar upload failed silently - user can retry
+    }
+    setAvatarUploading(false);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
+
   const [formData, setFormData] = useState<UserProfile>({
     firstName: '',
     lastName: '',
@@ -84,13 +102,20 @@ export default function ProfileSettingsPage() {
         {/* Avatar */}
         <div className="flex flex-col items-center">
           <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center relative">
-            <User className="w-12 h-12 text-primary-600" />
+            {avatarUploading ? (
+              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            ) : (
+              <User className="w-12 h-12 text-primary-600" />
+            )}
             <button
               type="button"
-              className="absolute bottom-0 right-0 p-2 bg-primary-500 text-white rounded-full"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute bottom-0 right-0 p-2 bg-primary-500 text-white rounded-full disabled:opacity-50"
             >
               <Camera className="w-4 h-4" />
             </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
           <p className="text-sm text-gray-500 mt-2">Tap to change photo</p>
         </div>

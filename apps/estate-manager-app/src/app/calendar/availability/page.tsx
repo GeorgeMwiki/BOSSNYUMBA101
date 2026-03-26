@@ -18,6 +18,7 @@ export default function SetAvailabilityPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Load current availability from API
   useEffect(() => {
@@ -65,13 +66,8 @@ export default function SetAvailabilityPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      // Save availability preferences via scheduling API
-      // Each available slot is stored as a recurring availability window
-      const slots = Object.entries(availability).flatMap(([day, times]) =>
-        times.map((time) => ({ day, time }))
-      );
-      // Use the scheduling service to persist availability preferences
       await schedulingService.create({
         type: 'OTHER',
         title: 'Availability Preferences',
@@ -79,11 +75,11 @@ export default function SetAvailabilityPage() {
         startAt: new Date().toISOString(),
         endAt: new Date().toISOString(),
       });
+      router.push('/calendar');
     } catch {
-      // Continue even if save fails
+      setSaveError('Failed to save availability. Please try again.');
     }
     setSaving(false);
-    router.push('/calendar');
   };
 
   return (
@@ -136,6 +132,12 @@ export default function SetAvailabilityPage() {
             </table>
           </div>
         </div>
+
+        {saveError && (
+          <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
+            {saveError}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">

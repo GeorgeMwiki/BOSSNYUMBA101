@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Calendar, Mail, FileText, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useQuery } from '@tanstack/react-query';
-import { reportsService } from '@bossnyumba/api-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { reportsService, getApiClient } from '@bossnyumba/api-client';
 
 type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
@@ -24,6 +26,22 @@ const frequencyLabels: Record<ScheduleFrequency, string> = {
 };
 
 export default function ScheduledReportsPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this scheduled report?')) return;
+    setDeletingId(id);
+    try {
+      await getApiClient().delete(`/reports/scheduled/${id}`);
+      queryClient.invalidateQueries({ queryKey: ['scheduled-reports'] });
+    } catch {
+      // Report may already be deleted
+    }
+    setDeletingId(null);
+  };
+
   const { data: reportsData, isLoading } = useQuery({
     queryKey: ['scheduled-reports'],
     queryFn: async () => {
@@ -78,10 +96,10 @@ export default function ScheduledReportsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 rounded-lg hover:bg-gray-100">
+                  <button onClick={() => router.push(`/reports/scheduled/${report.id}/edit`)} className="p-2 rounded-lg hover:bg-gray-100">
                     <Edit className="w-4 h-4 text-gray-500" />
                   </button>
-                  <button className="p-2 rounded-lg hover:bg-danger-50 text-danger-600">
+                  <button onClick={() => handleDelete(report.id)} disabled={deletingId === report.id} className="p-2 rounded-lg hover:bg-danger-50 text-danger-600 disabled:opacity-50">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

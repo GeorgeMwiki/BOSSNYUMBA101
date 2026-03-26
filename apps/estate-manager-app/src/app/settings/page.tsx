@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Bell, Shield, HelpCircle, ChevronRight, LogOut } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -29,6 +30,19 @@ const settingsSections: { title: string; items: SettingsItem[] }[] = [
 ];
 
 export default function SettingsOverviewPage() {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      await client.post('/auth/logout', {});
+    } catch {
+      // Continue with local cleanup even if API call fails
+    }
+    router.push('/auth/login');
+  };
+
   return (
     <>
       <PageHeader title="Settings" subtitle="Manage your account" />
@@ -62,7 +76,7 @@ export default function SettingsOverviewPage() {
         ))}
 
         <div className="pt-4">
-          <button className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors">
+          <button onClick={handleSignOut} className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors">
             <LogOut className="w-5 h-5" />
             Sign Out
           </button>
