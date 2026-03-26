@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface UtilitySetup {
   id: string;
@@ -152,6 +153,18 @@ export default function OnboardingUtilitiesPage() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const logCopyMutation = useMutation<unknown, { text: string }>(
+    (client, variables) => client.post('/onboarding/utilities/copy-log', { text: variables.text }),
+    {
+      onSuccess: (_data, variables) => {
+        setCopiedText(variables.text);
+      },
+      onSettled: () => {
+        setCopiedText(null);
+      },
+    }
+  );
+
   const acknowledgedCount = utilities.filter(
     (u) => u.status === 'acknowledged'
   ).length;
@@ -174,8 +187,6 @@ export default function OnboardingUtilitiesPage() {
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedText(text);
-      setTimeout(() => setCopiedText(null), 2000);
     } catch {
       // Fallback
       const textarea = document.createElement('textarea');
@@ -184,9 +195,8 @@ export default function OnboardingUtilitiesPage() {
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      setCopiedText(text);
-      setTimeout(() => setCopiedText(null), 2000);
     }
+    logCopyMutation.mutate({ text });
   };
 
   const handleContinue = async () => {

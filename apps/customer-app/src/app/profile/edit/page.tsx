@@ -6,6 +6,7 @@ import { Mail, Phone, AlertCircle, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
 import { api } from '@/lib/api';
+import { useMutation } from '@bossnyumba/api-client';
 
 export default function EditProfilePage() {
   const router = useRouter();

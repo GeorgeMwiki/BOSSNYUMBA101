@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, supportWhatsAppUrl } from '@/lib/constants';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface MoveInDetail {
   icon: React.ElementType;
@@ -82,13 +83,19 @@ export default function OnboardingCompletePage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [checkInScheduled, setCheckInScheduled] = useState(false);
-  const [showBadge, setShowBadge] = useState(true);
+  const [showBadge, setShowBadge] = useState(false);
 
-  // Trigger confetti-like animation on mount
-  useEffect(() => {
-    const timer = setTimeout(() => setShowBadge(true), 500);
-    return () => clearTimeout(timer);
-  }, []);
+  const completeOnboardingMutation = useMutation<unknown, void>(
+    (client) => client.post('/onboarding/complete', {}),
+    {
+      onSuccess: () => {
+        setShowBadge(true);
+      },
+      onError: () => {
+        setShowBadge(true);
+      },
+    }
+  );
 
   // Mark onboarding as complete
   useEffect(() => {
@@ -99,8 +106,8 @@ export default function OnboardingCompletePage() {
     localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
     localStorage.setItem('onboarding_completed', 'true');
 
-    // Notify API
-    api.onboarding.completeOnboarding({}).catch(() => {});
+    // Notify API and trigger badge animation on completion
+    completeOnboardingMutation.mutate();
   }, []);
 
   const toggleWelcomeItem = (id: string) => {
