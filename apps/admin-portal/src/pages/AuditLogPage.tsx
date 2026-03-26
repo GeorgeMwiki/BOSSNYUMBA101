@@ -238,7 +238,7 @@ export function AuditLogPage() {
             <option value="last30">Last 30 days</option>
             <option value="last90">Last 90 days</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={() => setCategoryFilter(categoryFilter === 'all' ? categories[0] || 'all' : 'all')} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Filter className="h-4 w-4" />
             More Filters
           </button>

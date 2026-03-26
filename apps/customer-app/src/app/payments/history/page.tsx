@@ -71,7 +71,7 @@ export default function PaymentHistoryPage() {
               </div>
               <div className="text-right">
                 <div className="text-white">{payment.currency} {Number(payment.amount).toLocaleString()}</div>
-                <div className="text-xs text-gray-500">{payment.completedAt || payment.createdAt}</div>
+                <div className="text-xs text-gray-500">{(payment.completedAt || payment.createdAt) ? new Date(payment.completedAt || payment.createdAt).toLocaleDateString('en-TZ', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}</div>
               </div>
             </div>
           </div>

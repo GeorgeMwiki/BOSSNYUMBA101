@@ -29,6 +29,7 @@ export function RegisterPage() {
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [resendMessage, setResendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const navigate = useNavigate();
 
   const registerMutation = useMutation<unknown, {
@@ -287,7 +288,7 @@ export function RegisterPage() {
                 <div className="flex items-start gap-2">
                   <input type="checkbox" name="acceptTerms" id="acceptTerms" checked={formData.acceptTerms} onChange={handleChange} className="mt-1" />
                   <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                    I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
+                    I agree to the <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Privacy Policy</a>
                   </label>
                 </div>
 
@@ -326,10 +327,15 @@ export function RegisterPage() {
                 Didn't receive the code? <button onClick={async () => {
                   try {
                     await api.post('/auth/resend-verification', { email: formData.email });
-                    alert('Verification code resent');
-                  } catch { alert('Failed to resend code'); }
+                    setResendMessage({ type: 'success', text: 'Verification code resent' });
+                  } catch { setResendMessage({ type: 'error', text: 'Failed to resend code' }); }
                 }} className="text-blue-600 font-medium hover:underline">Resend</button>
               </p>
+              {resendMessage && (
+                <p className={`mt-2 text-center text-sm ${resendMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {resendMessage.text}
+                </p>
+              )}
             </>
           )}
 

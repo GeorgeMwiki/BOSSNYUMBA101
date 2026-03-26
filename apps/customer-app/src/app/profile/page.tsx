@@ -23,8 +23,8 @@ export default function ProfilePage() {
   const displayName = user
     ? `${user.firstName} ${user.lastName}`.trim() || 'User'
     : 'User';
-  const displayEmail = user?.email || '—';
-  const displayPhone = user?.phone || '—';
+  const displayEmail = user?.email || 'Not provided';
+  const displayPhone = user?.phone || 'Not provided';
 
   const handleLogout = () => {
     logout();

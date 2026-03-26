@@ -100,7 +100,28 @@ export function MaintenancePage() {
       setError(err instanceof Error ? err.message : 'Live maintenance data is unavailable.');
     }
 
-    setCostTrendData([]);
+    // Derive cost trend data from completed work orders
+    const completedOrders = (response.success && response.data ? response.data : []).filter(
+      (wo: WorkOrder) => wo.completedAt && (wo.actualCost || wo.estimatedCost)
+    );
+    const monthMap: Record<string, CostTrendData> = {};
+    for (const wo of completedOrders) {
+      const date = new Date(wo.completedAt!);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      if (!monthMap[monthKey]) {
+        monthMap[monthKey] = { month: monthKey, plumbing: 0, electrical: 0, hvac: 0, structural: 0, other: 0, total: 0 };
+      }
+      const cost = wo.actualCost || wo.estimatedCost || 0;
+      const cat = wo.category?.toLowerCase() || 'other';
+      if (cat.includes('plumbing')) monthMap[monthKey].plumbing += cost;
+      else if (cat.includes('electrical')) monthMap[monthKey].electrical += cost;
+      else if (cat.includes('hvac')) monthMap[monthKey].hvac += cost;
+      else if (cat.includes('structural')) monthMap[monthKey].structural += cost;
+      else monthMap[monthKey].other += cost;
+      monthMap[monthKey].total += cost;
+    }
+    const sortedTrend = Object.values(monthMap).sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+    setCostTrendData(sortedTrend);
 
     setLoading(false);
     setRefreshing(false);

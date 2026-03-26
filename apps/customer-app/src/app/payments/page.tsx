@@ -147,7 +147,7 @@ export default function PaymentsPage() {
               history.map((payment: any) => (
                 <Link
                   key={payment.id}
-                  href="/payments/history"
+                  href={`/payments/${payment.id}`}
                   className="flex items-center justify-between rounded-xl border border-white/10 p-3"
                 >
                   <div>

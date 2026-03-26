@@ -527,7 +527,7 @@ export function MessagesPage() {
                   <button onClick={() => window.open('tel:' + (activeConversation?.participantPhone || ''), '_self')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <Phone className="h-5 w-5" />
                   </button>
-                  <button onClick={() => alert('Options: Mute, Block, Delete conversation')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button title="Conversation options" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-5 w-5" />
                   </button>
                 </div>

@@ -48,6 +48,7 @@ export default function AnalyticsExportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -94,7 +95,7 @@ export default function AnalyticsExportsPage() {
         setRecentExports((prev) => [res.data!, ...prev]);
       }
     } catch {
-      // Export request failed silently; user can check recent exports
+      setExportError('Export request failed. Please try again.');
     } finally {
       setExportingId(null);
     }
@@ -108,7 +109,7 @@ export default function AnalyticsExportsPage() {
         window.open(res.data.url, '_blank');
       }
     } catch {
-      // Download failed
+      setExportError('Download failed. Please try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -163,6 +164,17 @@ export default function AnalyticsExportsPage() {
 
   return (
     <div className="space-y-6">
+      {exportError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800">{exportError}</span>
+          </div>
+          <button onClick={() => setExportError(null)} className="text-red-400 hover:text-red-600">
+            <span className="sr-only">Dismiss</span>&times;
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">

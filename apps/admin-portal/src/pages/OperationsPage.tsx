@@ -393,7 +393,7 @@ export function OperationsPage() {
                   <Zap className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">45ms</p>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? Math.round(systemHealth.reduce((sum, s) => sum + s.latency, 0) / systemHealth.length) : 0}ms</p>
                   <p className="text-sm text-gray-500">Avg Latency</p>
                 </div>
               </div>
@@ -404,7 +404,7 @@ export function OperationsPage() {
                   <TrendingUp className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">99.95%</p>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? (Math.round(systemHealth.reduce((sum, s) => sum + s.uptime, 0) / systemHealth.length * 100) / 100).toFixed(2) : 0}%</p>
                   <p className="text-sm text-gray-500">Avg Uptime</p>
                 </div>
               </div>
@@ -415,7 +415,7 @@ export function OperationsPage() {
                   <AlertTriangle className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">0.24%</p>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? (Math.round(systemHealth.reduce((sum, s) => sum + s.errorRate, 0) / systemHealth.length * 100) / 100).toFixed(2) : 0}%</p>
                   <p className="text-sm text-gray-500">Error Rate</p>
                 </div>
               </div>
@@ -592,7 +592,7 @@ export function OperationsPage() {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Stuck Workflows ({stuckWorkflows.length})</h3>
-            <button className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
+            <button onClick={() => setActiveTab('workflows')} className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
           </div>
           {stuckWorkflows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -825,7 +825,23 @@ export function OperationsPage() {
                   Close
                 </button>
                 {!selectedDecision.overridden && (
-                  <button className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.post(`/ai/decisions/${selectedDecision.id}/override`, {});
+                        if (res.success) {
+                          queryClient.invalidateQueries({ queryKey: ['ai-decisions'] });
+                          setSelectedDecision(null);
+                          setNotification({ type: 'success', message: `Decision ${selectedDecision.id} overridden successfully` });
+                        } else {
+                          setNotification({ type: 'error', message: res.error || 'Failed to override decision' });
+                        }
+                      } catch {
+                        setNotification({ type: 'error', message: 'Failed to override decision' });
+                      }
+                    }}
+                    className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700"
+                  >
                     Override Decision
                   </button>
                 )}

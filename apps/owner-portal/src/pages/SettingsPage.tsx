@@ -360,15 +360,15 @@ export function SettingsPage() {
                     const current = (form[0] as HTMLInputElement)?.value;
                     const newPw = (form[1] as HTMLInputElement)?.value;
                     const confirm = (form[2] as HTMLInputElement)?.value;
-                    if (!current || !newPw || !confirm) { alert('Please fill all password fields'); return; }
-                    if (newPw !== confirm) { alert('Passwords do not match'); return; }
+                    if (!current || !newPw || !confirm) { setNotification({ type: 'error', message: 'Please fill all password fields' }); return; }
+                    if (newPw !== confirm) { setNotification({ type: 'error', message: 'Passwords do not match' }); return; }
                     try {
                       await api.put('/users/me/password', { currentPassword: current, newPassword: newPw });
-                      alert('Password updated successfully');
+                      setNotification({ type: 'success', message: 'Password updated successfully' });
                       (form[0] as HTMLInputElement).value = '';
                       (form[1] as HTMLInputElement).value = '';
                       (form[2] as HTMLInputElement).value = '';
-                    } catch (err) { alert(err instanceof Error ? err.message : 'Failed to update password'); }
+                    } catch (err) { setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update password' }); }
                   }} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                     Update Password
                   </button>
@@ -394,7 +394,7 @@ export function SettingsPage() {
                   <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-900">Current Session</p>
-                      <p className="text-sm text-gray-500">Chrome on macOS - Dar es Salaam, Tanzania</p>
+                      <p className="text-sm text-gray-500">Current session</p>
                     </div>
                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Active</span>
                   </div>

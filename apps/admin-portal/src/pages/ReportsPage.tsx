@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
@@ -116,6 +116,21 @@ export function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'templates' | 'scheduled'>('dashboard');
   const [dateRange, setDateRange] = useState('last30');
+  const [scheduledReports, setScheduledReports] = useState<Array<{ name: string; schedule: string; recipients: number; status: string; nextRun: string | null }>>([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
+
+  const fetchScheduledReports = useCallback(async () => {
+    setLoadingScheduled(true);
+    const res = await api.get<Array<{ name: string; schedule: string; recipients: number; status: string; nextRun: string | null }>>('/reports/scheduled');
+    if (res.success && res.data) {
+      setScheduledReports(res.data);
+    }
+    setLoadingScheduled(false);
+  }, []);
+
+  useEffect(() => {
+    fetchScheduledReports();
+  }, [fetchScheduledReports]);
 
   const fetchOverview = async () => {
     setLoading(true);
@@ -492,29 +507,14 @@ export function ReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {[
-                {
-                  name: 'Weekly Revenue Summary',
-                  schedule: 'Weekly (Monday 9 AM)',
-                  recipients: 3,
-                  status: 'active',
-                  nextRun: '2025-02-17',
-                },
-                {
-                  name: 'Monthly Growth Report',
-                  schedule: 'Monthly (1st day)',
-                  recipients: 5,
-                  status: 'active',
-                  nextRun: '2025-03-01',
-                },
-                {
-                  name: 'Daily Operations Summary',
-                  schedule: 'Daily (6 AM)',
-                  recipients: 2,
-                  status: 'paused',
-                  nextRun: null,
-                },
-              ].map((report, index) => (
+              {scheduledReports.length === 0 && !loadingScheduled && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    No scheduled reports. Click "Schedule New" to create one.
+                  </td>
+                </tr>
+              )}
+              {scheduledReports.map((report, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-medium text-gray-900">

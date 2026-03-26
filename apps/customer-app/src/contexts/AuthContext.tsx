@@ -59,28 +59,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'Please enter a valid phone number' };
     }
 
-    return {
-      success: false,
-      message: 'OTP authentication is temporarily unavailable. Please try again later.',
-    };
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      await client.post('/auth/otp/send', { phone: normalized });
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'Failed to send OTP. Please try again.' };
+    }
   }, []);
 
   const verifyOtp = useCallback(async (phone: string, otp: string) => {
-    void phone;
-    void otp;
-    return {
-      success: false,
-      message: 'OTP verification is temporarily unavailable. Please try again later.',
-    };
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      const res = await client.post<{ token: string; user: CustomerUser }>('/auth/otp/verify', { phone, otp });
+      if (res.data?.token && res.data?.user) {
+        setToken(res.data.token);
+        setUser(res.data.user);
+        localStorage.setItem(CUSTOMER_TOKEN_KEY, res.data.token);
+        localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(res.data.user));
+        return { success: true };
+      }
+      return { success: false, message: 'Invalid verification response' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'OTP verification failed. Please try again.' };
+    }
   }, []);
 
   const register = useCallback(
     async (data: { phone: string; firstName: string; lastName: string; email?: string }) => {
-      void data;
-      return {
-        success: false,
-        message: 'Registration is temporarily unavailable. Please try again later.',
-      };
+      try {
+        const { getApiClient } = await import('@bossnyumba/api-client');
+        const client = getApiClient();
+        const res = await client.post<{ token: string; user: CustomerUser }>('/auth/register', data);
+        if (res.data?.token && res.data?.user) {
+          setToken(res.data.token);
+          setUser(res.data.user);
+          localStorage.setItem(CUSTOMER_TOKEN_KEY, res.data.token);
+          localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(res.data.user));
+          return { success: true };
+        }
+        return { success: true, message: 'Account created' };
+      } catch (err) {
+        return { success: false, message: err instanceof Error ? err.message : 'Registration failed. Please try again.' };
+      }
     },
     []
   );

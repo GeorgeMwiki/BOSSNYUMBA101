@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   HeadphonesIcon,
   Search,
@@ -63,6 +63,7 @@ const priorityColors: Record<string, { bg: string; text: string }> = {
 };
 
 export function SupportPage() {
+  const navigate = useNavigate();
   const [cases, setCases] = useState<SupportCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -220,7 +221,7 @@ export function SupportPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm font-medium">Resolved Today</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">5</p>
+          <p className="text-2xl font-bold text-gray-900">{cases.filter((c) => c.status === 'resolved' && new Date(c.updatedAt).toDateString() === new Date().toDateString()).length}</p>
         </div>
       </div>
 
@@ -324,7 +325,7 @@ export function SupportPage() {
                       {selectedCase.subject}
                     </h2>
                   </div>
-                  <button onClick={() => alert('Case actions: Escalate, Reassign, Close')} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => navigate('/support/cases/' + selectedCase.id)} className="p-2 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-4 w-4 text-gray-400" />
                   </button>
                 </div>
@@ -401,7 +402,7 @@ export function SupportPage() {
                     />
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = () => { /* File selected */ }; input.click(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); formData.append('caseId', selectedCase.id); try { await api.post('/support/cases/' + selectedCase.id + '/attachments', formData); } catch { /* Attachment may fail silently */ } }; input.click(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                           <Paperclip className="h-4 w-4" />
                         </button>
                         <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -419,7 +420,19 @@ export function SupportPage() {
                           <option value="resolved">Mark Resolved</option>
                           <option value="closed">Close Ticket</option>
                         </select>
-                        <button className="flex items-center gap-2 px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700">
+                        <button
+                          onClick={async () => {
+                            if (!replyText.trim() || !selectedCase) return;
+                            try {
+                              const res = await api.post('/support/cases/' + selectedCase.id + '/messages', { message: replyText });
+                              if (res.success) {
+                                setReplyText('');
+                                fetchCases();
+                              }
+                            } catch { /* Send may fail silently */ }
+                          }}
+                          className="flex items-center gap-2 px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700"
+                        >
                           <Send className="h-4 w-4" />
                           Send
                         </button>

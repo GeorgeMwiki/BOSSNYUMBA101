@@ -130,7 +130,7 @@ export function FinancialPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
-  const [selectedMonth, setSelectedMonth] = useState('Feb 2026');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetail | null>(null);
