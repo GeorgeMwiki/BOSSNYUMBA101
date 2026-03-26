@@ -15,7 +15,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge } from '@/components/maintenance';
-import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
+import { workOrdersService, vendorsService, staffService } from '@bossnyumba/api-client';
 
 const priorities = [
   { value: 'EMERGENCY', label: 'Emergency' },
@@ -65,6 +65,14 @@ export default function WorkOrderTriage() {
     retry: false,
   });
 
+  // Fetch technicians/staff from API
+  const { data: staffData, isLoading: loadingStaff } = useQuery({
+    queryKey: ['staff', 'technicians'],
+    queryFn: () => staffService.list({ role: 'TECHNICIAN' as never, isActive: true }),
+    enabled: assigneeType === 'technician',
+    retry: false,
+  });
+
   // Fetch vendors from API
   const { data: vendorsData, isLoading: loadingVendors } = useQuery({
     queryKey: ['vendors', 'list', category],
@@ -87,6 +95,15 @@ export default function WorkOrderTriage() {
       setCategory(String(wo.category ?? 'GENERAL'));
     }
   }, [wo, priority]);
+
+  const technicians = useMemo(() => {
+    if (!staffData?.data?.length) return [];
+    return (staffData.data as Array<{ id: string; name: string; role?: string }>).map((s) => ({
+      id: s.id,
+      name: s.name,
+      role: s.role ?? 'Technician',
+    }));
+  }, [staffData]);
 
   const vendors = useMemo(() => {
     if (!vendorsData?.data?.length) return [];
@@ -220,15 +237,29 @@ export default function WorkOrderTriage() {
             </div>
 
             {assigneeType === 'technician' && (
-              <select
-                className="input"
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-              >
-                <option value="">Select technician</option>
-                <option value="tech-1">James Mwangi</option>
-                <option value="tech-2">Peter Ochieng</option>
-              </select>
+              <>
+                {loadingStaff ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
+                    <span className="text-sm text-gray-500 ml-2">Loading technicians...</span>
+                  </div>
+                ) : technicians.length === 0 ? (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500">No technicians available</p>
+                  </div>
+                ) : (
+                  <select
+                    className="input"
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                  >
+                    <option value="">Select technician</option>
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
+              </>
             )}
 
             {assigneeType === 'vendor' && (
