@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Target, AlertCircle, BarChart3 } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -24,28 +24,23 @@ interface ForecastData {
 export default function BudgetForecastsPage() {
   const [data, setData] = useState<ForecastData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<ForecastData[]>('/budgets/forecasts').then((res) => {
       if (res.success && res.data) {
         setData(res.data);
+      } else {
+        setError(res.error || 'Failed to load forecast data.');
       }
+      setLoading(false);
+    }).catch(() => {
+      setError('An unexpected error occurred while loading forecast data.');
       setLoading(false);
     });
   }, []);
 
-  const forecastData = data.length
-    ? data
-    : [
-        { month: 'Mar', projectedRevenue: 9600000, projectedExpenses: 2200000, projectedNoi: 7400000 },
-        { month: 'Apr', projectedRevenue: 9800000, projectedExpenses: 2200000, projectedNoi: 7600000 },
-        { month: 'May', projectedRevenue: 9800000, projectedExpenses: 2300000, projectedNoi: 7500000 },
-        { month: 'Jun', projectedRevenue: 9900000, projectedExpenses: 2300000, projectedNoi: 7600000 },
-        { month: 'Jul', projectedRevenue: 10000000, projectedExpenses: 2350000, projectedNoi: 7650000 },
-        { month: 'Aug', projectedRevenue: 10100000, projectedExpenses: 2350000, projectedNoi: 7750000 },
-        { month: 'Sep', projectedRevenue: 10200000, projectedExpenses: 2400000, projectedNoi: 7800000 },
-        { month: 'Oct', projectedRevenue: 10300000, projectedExpenses: 2400000, projectedNoi: 7900000 },
-      ];
+  const forecastData = data;
 
   const totalProjectedRevenue = forecastData.reduce((a, d) => a + d.projectedRevenue, 0);
   const totalProjectedExpenses = forecastData.reduce((a, d) => a + d.projectedExpenses, 0);
@@ -55,6 +50,32 @@ export default function BudgetForecastsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+        <p className="text-gray-700 font-medium mb-2">Unable to load forecast data</p>
+        <p className="text-sm text-gray-500 mb-4">{error}</p>
+        <Link to="/budgets" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to Budgets
+        </Link>
+      </div>
+    );
+  }
+
+  if (forecastData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <BarChart3 className="h-12 w-12 text-gray-300 mb-4" />
+        <p className="text-gray-700 font-medium mb-2">No forecast data available yet</p>
+        <p className="text-sm text-gray-500 mb-4">Forecast data will appear here once it has been generated.</p>
+        <Link to="/budgets" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to Budgets
+        </Link>
       </div>
     );
   }

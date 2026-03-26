@@ -35,7 +35,7 @@ export function LiveDataRequiredScreen({
               <h2 className="text-lg font-semibold text-white">{feature} unavailable</h2>
               <p className="text-sm text-red-100">
                 {description ??
-                  `This screen is unavailable until live ${feature.toLowerCase()} is wired.`}
+                  `${feature} data is not yet available. Please check back once the service has been configured.`}
               </p>
             </div>
           </div>

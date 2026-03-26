@@ -23,6 +23,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery, type LeaseWithDetails } from '@bossnyumba/api-client';
 
 interface Document {
   id: string;
@@ -34,6 +35,14 @@ interface Document {
   status?: 'active' | 'expired' | 'pending';
 }
 
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS', maximumFractionDigits: 0 }).format(amount);
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleDateString('en-TZ', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
 interface HouseRule {
   id: string;
   title: string;
@@ -42,49 +51,7 @@ interface HouseRule {
   items: string[];
 }
 
-const documents: Document[] = [
-  {
-    id: '1',
-    name: 'Lease Agreement',
-    category: 'lease',
-    date: '2023-05-28',
-    type: 'pdf',
-    size: '2.4 MB',
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Move-in Inspection Report',
-    category: 'inspection',
-    date: '2023-06-01',
-    type: 'pdf',
-    size: '4.1 MB',
-  },
-  {
-    id: '3',
-    name: 'February 2024 Statement',
-    category: 'payment',
-    date: '2024-02-01',
-    type: 'pdf',
-    size: '156 KB',
-  },
-  {
-    id: '4',
-    name: 'January 2024 Statement',
-    category: 'payment',
-    date: '2024-01-01',
-    type: 'pdf',
-    size: '148 KB',
-  },
-  {
-    id: '5',
-    name: 'House Rules',
-    category: 'lease',
-    date: '2023-05-28',
-    type: 'pdf',
-    size: '890 KB',
-  },
-];
+/* documents are now fetched from the API below */
 
 const HOUSE_RULES: HouseRule[] = [
   {
@@ -176,8 +143,24 @@ export default function DocumentsPage() {
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
+  const { data: leases, isLoading: isLeaseLoading } = useQuery<LeaseWithDetails[]>(
+    '/leases?status=ACTIVE&pageSize=1',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const currentLease = leases?.[0];
+
+  const { data: documents = [], isLoading: isDocsLoading } = useQuery<Document[]>(
+    '/documents',
+    { staleTime: 5 * 60 * 1000 }
+  );
+
   const leaseDocuments = documents.filter((d) => d.category === 'lease' || d.category === 'inspection');
   const paymentDocuments = documents.filter((d) => d.category === 'payment');
+
+  const unitLabel = currentLease?.unit?.unitNumber
+    ? `Unit ${currentLease.unit.unitNumber}`
+    : '-';
+  const propertyLabel = currentLease?.property?.name || '-';
 
   const toggleRule = (ruleId: string) => {
     setExpandedRule(expandedRule === ruleId ? null : ruleId);
@@ -217,36 +200,49 @@ export default function DocumentsPage() {
             {/* Lease Summary Card */}
             <div className="card overflow-hidden">
               <div className="p-4 bg-gradient-to-br from-primary-600 to-primary-700 text-white">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Home className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Active Lease</h3>
-                    <p className="text-sm opacity-90">Unit A-204 • Sunset Apartments</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="opacity-75 mb-0.5">Start Date</div>
-                    <div className="font-medium">June 1, 2023</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">End Date</div>
-                    <div className="font-medium">May 31, 2024</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">Monthly Rent</div>
-                    <div className="font-medium">TZS 40,000</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">Status</div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="font-medium">Active</span>
+                {isLeaseLoading ? (
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-5 w-40 bg-white/20 rounded" />
+                    <div className="h-4 w-32 bg-white/20 rounded" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="h-4 w-24 bg-white/20 rounded" />
+                      <div className="h-4 w-24 bg-white/20 rounded" />
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <Home className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Active Lease</h3>
+                        <p className="text-sm opacity-90">{unitLabel} {propertyLabel !== '-' ? `• ${propertyLabel}` : ''}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="opacity-75 mb-0.5">Start Date</div>
+                        <div className="font-medium">{formatDate(currentLease?.startDate)}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75 mb-0.5">End Date</div>
+                        <div className="font-medium">{formatDate(currentLease?.endDate)}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75 mb-0.5">Monthly Rent</div>
+                        <div className="font-medium">{currentLease?.rentAmount ? formatCurrency(currentLease.rentAmount) : '-'}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75 mb-0.5">Status</div>
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="font-medium">{currentLease?.status || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex border-t border-gray-100">
                 <Link

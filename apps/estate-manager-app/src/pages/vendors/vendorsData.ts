@@ -9,4 +9,4 @@ export interface VendorListItem {
   status: string;
 }
 
-export const mockVendors: VendorListItem[] = [];
+export const initialVendors: VendorListItem[] = [];

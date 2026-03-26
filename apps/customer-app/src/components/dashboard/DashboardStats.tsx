@@ -1,27 +1,7 @@
 'use client';
 
 import { Home, Calendar, Wrench } from 'lucide-react';
-
-const stats = [
-  {
-    label: 'Unit',
-    value: 'A-204',
-    icon: Home,
-    color: 'bg-primary-500/20 text-primary-400',
-  },
-  {
-    label: 'Lease Ends',
-    value: '45 days',
-    icon: Calendar,
-    color: 'bg-warning-500/20 text-warning-400',
-  },
-  {
-    label: 'Open Tickets',
-    value: '1',
-    icon: Wrench,
-    color: 'bg-green-500/20 text-green-400',
-  },
-];
+import { useQuery, type LeaseWithDetails } from '@bossnyumba/api-client';
 
 export function DashboardStatsSkeleton() {
   return (
@@ -37,7 +17,54 @@ export function DashboardStatsSkeleton() {
   );
 }
 
+function getDaysUntil(dateString: string | undefined): string {
+  if (!dateString) return '-';
+  const end = new Date(dateString);
+  const now = new Date();
+  const diffMs = end.getTime() - now.getTime();
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 0) return 'Expired';
+  return `${days} days`;
+}
+
 export function DashboardStats() {
+  const { data: leases, isLoading } = useQuery<LeaseWithDetails[]>(
+    '/leases?status=ACTIVE&pageSize=1',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const { data: tickets } = useQuery<{ id: string }[]>(
+    '/work-orders?status=OPEN&pageSize=100',
+    { staleTime: 2 * 60 * 1000 }
+  );
+
+  if (isLoading) {
+    return <DashboardStatsSkeleton />;
+  }
+
+  const lease = leases?.[0];
+  const openTicketCount = tickets?.length ?? 0;
+
+  const stats = [
+    {
+      label: 'Unit',
+      value: lease?.unit?.unitNumber ?? '-',
+      icon: Home,
+      color: 'bg-primary-500/20 text-primary-400',
+    },
+    {
+      label: 'Lease Ends',
+      value: getDaysUntil(lease?.endDate),
+      icon: Calendar,
+      color: 'bg-warning-500/20 text-warning-400',
+    },
+    {
+      label: 'Open Tickets',
+      value: String(openTicketCount),
+      icon: Wrench,
+      color: 'bg-green-500/20 text-green-400',
+    },
+  ];
+
   return (
     <div className="grid grid-cols-3 gap-3">
       {stats.map((stat) => {

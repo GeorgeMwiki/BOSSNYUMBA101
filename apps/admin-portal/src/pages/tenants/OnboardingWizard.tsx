@@ -292,7 +292,7 @@ export default function OnboardingWizard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                <input type="url" value={orgDetails.website} onChange={(e) => setOrgDetails({ ...orgDetails, website: e.target.value })} placeholder="https://www.company.co.ke" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+                <input type="url" value={orgDetails.website} onChange={(e) => setOrgDetails({ ...orgDetails, website: e.target.value })} placeholder="https://www.company.co.tz" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
               </div>
             </div>
           </div>

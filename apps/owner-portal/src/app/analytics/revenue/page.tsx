@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, DollarSign, TrendingUp } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -30,29 +30,41 @@ export default function RevenuePage() {
     });
   }, []);
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', rent: 7800000, other: 400000 },
-        { month: 'Sep', rent: 8200000, other: 450000 },
-        { month: 'Oct', rent: 8500000, other: 500000 },
-        { month: 'Nov', rent: 8800000, other: 480000 },
-        { month: 'Dec', rent: 9200000, other: 520000 },
-        { month: 'Jan', rent: 9100000, other: 420000 },
-        { month: 'Feb', rent: 9400000, other: 500000 },
-      ];
+  const chartData = data;
 
-  const bySource = [
-    { name: 'Rent', value: 9400000 },
-    { name: 'Parking', value: 280000 },
-    { name: 'Utilities', value: 420000 },
-    { name: 'Other', value: 500000 },
-  ];
+  const latestMonth = chartData[chartData.length - 1];
+  const bySource = latestMonth
+    ? [
+        { name: 'Rent', value: latestMonth.rent },
+        { name: 'Other', value: latestMonth.other },
+      ]
+    : [];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link to="/analytics" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Revenue Analysis</h1>
+            <p className="text-gray-500">Breakdown of revenue sources and trends</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">No revenue data yet</h2>
+          <p className="text-sm text-gray-500 mt-1">Revenue analytics will appear once payments are recorded.</p>
+        </div>
       </div>
     );
   }
@@ -78,7 +90,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Total Revenue</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length)}
+            {chartData.length > 0 ? formatCurrency(chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length) : '-'}
           </p>
           <p className="text-sm text-gray-500">avg monthly</p>
         </div>
@@ -90,7 +102,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Rent Revenue</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.rent || 9400000)}
+            {chartData.length > 0 ? formatCurrency(chartData[chartData.length - 1].rent) : '-'}
           </p>
           <p className="text-sm text-gray-500">this month</p>
         </div>
@@ -102,7 +114,7 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Other Income</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.other || 500000)}
+            {chartData.length > 0 ? formatCurrency(chartData[chartData.length - 1].other) : '-'}
           </p>
           <p className="text-sm text-gray-500">this month</p>
         </div>

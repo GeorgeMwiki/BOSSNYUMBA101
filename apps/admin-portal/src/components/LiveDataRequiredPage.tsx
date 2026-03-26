@@ -25,7 +25,7 @@ export function LiveDataRequiredPage({
             <h2 className="text-lg font-semibold text-red-900">{feature} unavailable</h2>
             <p className="text-sm text-red-800">
               {description ??
-                `This screen used development-only sample data. The sample path has been removed, and this view now stays unavailable until the live ${feature.toLowerCase()} integration is wired.`}
+                `${feature} data is not yet available. This view requires a configured ${feature.toLowerCase()} integration to display live data.`}
             </p>
           </div>
         </div>

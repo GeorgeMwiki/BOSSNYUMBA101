@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Building2, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Building2, TrendingUp, TrendingDown } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -35,18 +35,33 @@ export default function PortfolioPerformancePage() {
     });
   }, []);
 
-  const chartData = data.length
-    ? data
-    : [
-        { name: 'Property A', revenue: 850000, occupancy: 92, noi: 620000 },
-        { name: 'Property B', revenue: 920000, occupancy: 88, noi: 580000 },
-        { name: 'Property C', revenue: 450000, occupancy: 95, noi: 320000 },
-      ];
+  const chartData = data;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link to="/portfolio" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Property Performance</h1>
+            <p className="text-gray-500">Compare performance across your properties</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">No performance data yet</h2>
+          <p className="text-sm text-gray-500 mt-1">Performance metrics will appear once your properties have activity.</p>
+        </div>
       </div>
     );
   }
@@ -92,7 +107,7 @@ export default function PortfolioPerformancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(data.length ? data : chartData.map((d, i) => ({ ...d, id: String(i), capRate: 6.5 + i }))).map(
+        {chartData.map(
           (property) => (
             <div
               key={property.id}

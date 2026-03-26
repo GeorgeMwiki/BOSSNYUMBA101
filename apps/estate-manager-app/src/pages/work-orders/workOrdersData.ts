@@ -10,4 +10,4 @@ export const KANBAN_COLUMNS = [
 
 export type KanbanColumnId = (typeof KANBAN_COLUMNS)[number]['id'];
 
-export const mockWorkOrders: WorkOrderCardData[] = [];
+export const initialWorkOrders: WorkOrderCardData[] = [];

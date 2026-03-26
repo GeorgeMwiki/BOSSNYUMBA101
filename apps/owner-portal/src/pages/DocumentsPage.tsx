@@ -500,7 +500,7 @@ export function DocumentsPage() {
                     <div>
                       <p className="font-medium text-blue-800">E-Signature Integration</p>
                       <p className="text-sm text-blue-600 mt-1">
-                        Live e-signature delivery is not yet wired to a production provider in this build.
+                        E-signature delivery is being configured. Please check back later.
                       </p>
                     </div>
                   </div>

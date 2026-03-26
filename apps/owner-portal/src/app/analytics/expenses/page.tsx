@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Wrench, Zap, Shield, FileText } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Wrench, Zap, Shield, FileText } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -30,30 +30,42 @@ export default function ExpensesPage() {
     });
   }, []);
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', maintenance: 450000, utilities: 320000, admin: 180000 },
-        { month: 'Sep', maintenance: 520000, utilities: 310000, admin: 190000 },
-        { month: 'Oct', maintenance: 480000, utilities: 340000, admin: 175000 },
-        { month: 'Nov', maintenance: 550000, utilities: 330000, admin: 200000 },
-        { month: 'Dec', maintenance: 420000, utilities: 360000, admin: 210000 },
-        { month: 'Jan', maintenance: 490000, utilities: 350000, admin: 195000 },
-        { month: 'Feb', maintenance: 510000, utilities: 340000, admin: 205000 },
-      ];
+  const chartData = data;
 
-  const byCategory = [
-    { name: 'Maintenance', value: 510000 },
-    { name: 'Utilities', value: 340000 },
-    { name: 'Admin', value: 205000 },
-    { name: 'Insurance', value: 120000 },
-    { name: 'Other', value: 180000 },
-  ];
+  const latestMonth = chartData[chartData.length - 1];
+  const byCategory = latestMonth
+    ? [
+        { name: 'Maintenance', value: latestMonth.maintenance },
+        { name: 'Utilities', value: latestMonth.utilities },
+        { name: 'Admin', value: latestMonth.admin },
+      ]
+    : [];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link to="/analytics" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Expense Breakdown</h1>
+            <p className="text-gray-500">Track and analyze property expenses</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">No expense data yet</h2>
+          <p className="text-sm text-gray-500 mt-1">Expense analytics will appear once transactions are recorded.</p>
+        </div>
       </div>
     );
   }

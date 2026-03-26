@@ -164,12 +164,6 @@ export default function PaymentsPage() {
           </div>
         </section>
 
-        <div className="card border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <p>Live balances and history are enabled. Plan management and receipt generation are still being wired.</p>
-          </div>
-        </div>
           </>
         )}
       </div>

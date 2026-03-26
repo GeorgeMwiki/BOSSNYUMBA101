@@ -315,7 +315,7 @@ export function DisbursementsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
-              Disbursement trend is unavailable until live payout data is wired.
+              Disbursement trend data is not yet available.
             </div>
           )}
         </div>

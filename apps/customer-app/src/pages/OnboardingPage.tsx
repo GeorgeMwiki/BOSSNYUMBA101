@@ -18,6 +18,15 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useQuery, type LeaseWithDetails } from '@bossnyumba/api-client';
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS', maximumFractionDigits: 0 }).format(amount);
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleDateString('en-TZ', { year: 'numeric', month: 'long', day: 'numeric' });
+};
 
 type OnboardingStep = 'welcome' | 'id_upload' | 'inspection' | 'signature';
 
@@ -74,6 +83,12 @@ export default function OnboardingPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: leases } = useQuery<LeaseWithDetails[]>(
+    '/leases?status=ACTIVE&pageSize=1',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const currentLease = leases?.[0];
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
@@ -485,21 +500,26 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <h3 className="font-medium">Lease Agreement</h3>
-                  <p className="text-sm text-gray-500">Unit A-204 • 12 months</p>
+                  <p className="text-sm text-gray-500">
+                    {currentLease?.unit?.unitNumber ? `Unit ${currentLease.unit.unitNumber}` : 'Your unit'}
+                    {currentLease?.startDate && currentLease?.endDate
+                      ? ` • ${Math.round((new Date(currentLease.endDate).getTime() - new Date(currentLease.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30))} months`
+                      : ''}
+                  </p>
                 </div>
               </div>
               <div className="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-4">
                 <div className="flex justify-between">
                   <span>Monthly Rent</span>
-                  <span className="font-medium text-gray-900">TZS 40,000</span>
+                  <span className="font-medium text-gray-900">{currentLease?.rentAmount ? formatCurrency(currentLease.rentAmount) : '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Start Date</span>
-                  <span className="font-medium text-gray-900">June 1, 2024</span>
+                  <span className="font-medium text-gray-900">{formatDate(currentLease?.startDate)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>End Date</span>
-                  <span className="font-medium text-gray-900">May 31, 2025</span>
+                  <span className="font-medium text-gray-900">{formatDate(currentLease?.endDate)}</span>
                 </div>
               </div>
               <a

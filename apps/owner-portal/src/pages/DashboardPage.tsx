@@ -531,7 +531,7 @@ export function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
-                Revenue trend is unavailable until live time-series data is wired.
+                Revenue trend data is not yet available.
               </div>
             )}
           </div>

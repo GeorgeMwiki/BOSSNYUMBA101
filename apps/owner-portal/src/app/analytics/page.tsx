@@ -170,7 +170,7 @@ export default function AnalyticsPage() {
             <span className="text-sm font-medium text-gray-500">Monthly Revenue</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(stats?.revenue || 9400000)}
+            {stats?.revenue ? formatCurrency(stats.revenue) : '-'}
           </p>
           <Link to="/analytics/revenue" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
             View analysis <ArrowRight className="h-4 w-4" />
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
             <span className="text-sm font-medium text-gray-500">Monthly Expenses</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(stats?.expenses || 2100000)}
+            {stats?.expenses ? formatCurrency(stats.expenses) : '-'}
           </p>
           <Link to="/analytics/expenses" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
             View breakdown <ArrowRight className="h-4 w-4" />
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
             <span className="text-sm font-medium text-gray-500">Net Operating Income</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(stats?.noi || 7300000)}
+            {stats?.noi ? formatCurrency(stats.noi) : '-'}
           </p>
         </div>
       </div>

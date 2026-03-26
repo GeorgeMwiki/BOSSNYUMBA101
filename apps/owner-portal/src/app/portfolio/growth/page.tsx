@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Target } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Target, AlertCircle, BarChart3 } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -22,32 +22,61 @@ interface GrowthData {
 export default function PortfolioGrowthPage() {
   const [data, setData] = useState<GrowthData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<GrowthData[]>('/portfolio/growth').then((res) => {
       if (res.success && res.data) {
         setData(res.data);
+      } else {
+        setError(res.error || 'Failed to load growth data.');
       }
+      setLoading(false);
+    }).catch(() => {
+      setError('An unexpected error occurred while loading growth data.');
       setLoading(false);
     });
   }, []);
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', revenue: 7800000, value: 125000000, occupancy: 85 },
-        { month: 'Sep', revenue: 8200000, value: 128000000, occupancy: 87 },
-        { month: 'Oct', revenue: 8500000, value: 130000000, occupancy: 89 },
-        { month: 'Nov', revenue: 8800000, value: 132000000, occupancy: 91 },
-        { month: 'Dec', revenue: 9200000, value: 135000000, occupancy: 92 },
-        { month: 'Jan', revenue: 9100000, value: 136000000, occupancy: 91 },
-        { month: 'Feb', revenue: 9500000, value: 138000000, occupancy: 93 },
-      ];
+  const chartData = data;
+
+  const revenueGrowth = chartData.length >= 2
+    ? ((chartData[chartData.length - 1].revenue - chartData[0].revenue) / chartData[0].revenue) * 100
+    : null;
+
+  const latestValue = chartData.length > 0 ? chartData[chartData.length - 1].value : null;
+  const latestOccupancy = chartData.length > 0 ? chartData[chartData.length - 1].occupancy : null;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+        <p className="text-gray-700 font-medium mb-2">Unable to load growth data</p>
+        <p className="text-sm text-gray-500 mb-4">{error}</p>
+        <Link to="/portfolio" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to Portfolio
+        </Link>
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <BarChart3 className="h-12 w-12 text-gray-300 mb-4" />
+        <p className="text-gray-700 font-medium mb-2">No growth data available yet</p>
+        <p className="text-sm text-gray-500 mb-4">Growth data will appear here once portfolio performance has been recorded.</p>
+        <Link to="/portfolio" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to Portfolio
+        </Link>
       </div>
     );
   }
@@ -75,7 +104,9 @@ export default function PortfolioGrowthPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">Revenue Growth</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">+12.5%</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">
+            {revenueGrowth !== null ? `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toFixed(1)}%` : '-'}
+          </p>
           <p className="text-sm text-gray-500">vs last 6 months</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -86,7 +117,7 @@ export default function PortfolioGrowthPage() {
             <span className="text-sm font-medium text-gray-500">Portfolio Value</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.value || 138000000)}
+            {latestValue !== null ? formatCurrency(latestValue) : '-'}
           </p>
           <p className="text-sm text-gray-500">current estimate</p>
         </div>
@@ -98,7 +129,7 @@ export default function PortfolioGrowthPage() {
             <span className="text-sm font-medium text-gray-500">Occupancy Trend</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(chartData[chartData.length - 1]?.occupancy || 93)}
+            {latestOccupancy !== null ? formatPercentage(latestOccupancy) : '-'}
           </p>
           <p className="text-sm text-gray-500">current rate</p>
         </div>

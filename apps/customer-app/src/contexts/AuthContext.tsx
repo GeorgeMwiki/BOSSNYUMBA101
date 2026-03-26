@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return {
       success: false,
-      message: 'Resident OTP authentication is not wired to a live provider in this build.',
+      message: 'OTP authentication is temporarily unavailable. Please try again later.',
     };
   }, []);
 
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void otp;
     return {
       success: false,
-      message: 'Resident OTP verification is not wired to a live provider in this build.',
+      message: 'OTP verification is temporarily unavailable. Please try again later.',
     };
   }, []);
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void data;
       return {
         success: false,
-        message: 'Resident self-registration is not wired to a live provider in this build.',
+        message: 'Registration is temporarily unavailable. Please try again later.',
       };
     },
     []

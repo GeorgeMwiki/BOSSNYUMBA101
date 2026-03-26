@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
-import { useMutation } from '@bossnyumba/api-client';
+import { useMutation, useQuery } from '@bossnyumba/api-client';
 
 interface UtilitySetup {
   id: string;
@@ -41,32 +41,26 @@ interface UtilityInstruction {
   };
 }
 
-const UTILITY_SETUPS: UtilitySetup[] = [
+const DEFAULT_UTILITY_SETUPS: UtilitySetup[] = [
   {
     id: 'electricity',
     name: 'Electricity (TANESCO)',
     icon: Zap,
     description: 'Pre-paid electricity via LUKU tokens',
     status: 'pending',
-    meterNumber: '04-123-4567-890',
     accountInfo: 'LUKU Pre-paid Meter',
     instructions: [
       {
         step: 1,
         title: 'Find Your LUKU Meter',
         content:
-          'Your LUKU pre-paid electricity meter is located near the main electrical panel inside your unit. The meter number is printed on the front.',
+          'Your LUKU pre-paid electricity meter is located near the main electrical panel inside your unit. Check your meter panel for the meter number.',
       },
       {
         step: 2,
         title: 'Buy LUKU Tokens',
         content:
-          'You can purchase LUKU tokens via M-Pesa. Dial *150*00# and select "Buy Electricity/LUKU". Enter your meter number when prompted.',
-        action: {
-          label: 'Copy Meter Number',
-          type: 'copy',
-          value: '04-123-4567-890',
-        },
+          'You can purchase LUKU tokens via M-Pesa. Dial *150*00# and select "Buy Electricity/LUKU". Enter your meter number when prompted. Check your meter panel for the number.',
       },
       {
         step: 3,
@@ -88,14 +82,13 @@ const UTILITY_SETUPS: UtilitySetup[] = [
     icon: Droplets,
     description: 'Water billing and usage',
     status: 'pending',
-    meterNumber: 'WTR-204-A',
     accountInfo: 'Included in monthly utilities',
     instructions: [
       {
         step: 1,
         title: 'Water Meter Location',
         content:
-          'Your water meter is located at the building\'s water distribution panel on the ground floor. Your unit meter is labeled "A-204".',
+          'Your water meter is located at the building\'s water distribution panel on the ground floor. See your unit\'s meter for the label.',
       },
       {
         step: 2,
@@ -146,10 +139,36 @@ const UTILITY_SETUPS: UtilitySetup[] = [
   },
 ];
 
+const ICON_MAP: Record<string, React.ElementType> = {
+  electricity: Zap,
+  water: Droplets,
+  gas: Flame,
+};
+
+function mergeApiUtilities(apiData: UtilitySetup[] | undefined): UtilitySetup[] {
+  if (!apiData || apiData.length === 0) return DEFAULT_UTILITY_SETUPS;
+  return apiData.map((item) => ({
+    ...item,
+    icon: ICON_MAP[item.id] || Zap,
+    status: item.status || 'pending',
+  }));
+}
+
 export default function OnboardingUtilitiesPage() {
   const router = useRouter();
-  const [utilities, setUtilities] = useState<UtilitySetup[]>(UTILITY_SETUPS);
+  const { data: apiUtilities } = useQuery<UtilitySetup[]>(
+    '/onboarding/utilities',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const [utilities, setUtilities] = useState<UtilitySetup[]>(DEFAULT_UTILITY_SETUPS);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>('electricity');
+
+  // Merge API data once available
+  if (apiUtilities && !hasInitialized) {
+    setUtilities(mergeApiUtilities(apiUtilities));
+    setHasInitialized(true);
+  }
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
