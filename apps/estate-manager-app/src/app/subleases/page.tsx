@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Search, AlertTriangle, ChevronRight, Eye, Shield, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { subleaseAlertsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -19,7 +20,7 @@ export default function SubleaseMonitoringPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['sublease-alerts', { status: statusFilter || undefined }],
-    queryFn: async () => ({ data: [], pagination: { totalItems: 0 } }),
+    queryFn: () => subleaseAlertsService.list({ status: statusFilter || undefined }),
     retry: false,
   });
 

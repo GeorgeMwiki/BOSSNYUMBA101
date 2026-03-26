@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ClipboardCheck, Search, ChevronRight, Plus, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { conditionSurveysService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -19,7 +20,7 @@ export default function ConditionSurveysPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['condition-surveys', { year: yearFilter || undefined }],
-    queryFn: async () => ({ data: [], pagination: { totalItems: 0 } }),
+    queryFn: () => conditionSurveysService.list({ year: yearFilter || undefined }),
     retry: false,
   });
 

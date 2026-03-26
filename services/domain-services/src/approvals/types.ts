@@ -24,6 +24,8 @@ export const APPROVAL_TYPES = [
   'lease_exception',
   'refund',
   'discount',
+  'lease_application',
+  'bareland_application',
 ] as const;
 
 export type ApprovalType = (typeof APPROVAL_TYPES)[number];
@@ -78,11 +80,33 @@ export interface DiscountDetails {
   readonly validUntil?: ISOTimestamp;
 }
 
+export interface LeaseApplicationDetails {
+  readonly applicationId: string;
+  readonly applicantName: string;
+  readonly proposedRentAmount: number;
+  readonly currency: string;
+  readonly requestedLocation?: string;
+  readonly applicationType: string;
+  readonly requiresCivilEngReview: boolean;
+}
+
+export interface BarelandApplicationDetails {
+  readonly applicationId: string;
+  readonly applicantName: string;
+  readonly parcelId?: string;
+  readonly proposedRentAmount: number;
+  readonly currency: string;
+  readonly requestedAreaSqm?: number;
+  readonly nearRailwayReserve: boolean;
+}
+
 export type ApprovalRequestDetails =
   | MaintenanceCostDetails
   | LeaseExceptionDetails
   | RefundDetails
-  | DiscountDetails;
+  | DiscountDetails
+  | LeaseApplicationDetails
+  | BarelandApplicationDetails;
 
 // ============================================================================
 // Approval Request Entity

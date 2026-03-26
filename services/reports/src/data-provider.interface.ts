@@ -8,6 +8,11 @@ import type { OccupancyReportData } from './reports/occupancy-report.js';
 import type { MaintenanceReportData } from './reports/maintenance-report.js';
 import type { TenantReportData } from './reports/tenant-report.js';
 import type { PropertyReportData } from './reports/property-report.js';
+import type { RevenueReportData } from './reports/revenue-report.js';
+import type { AssetRegisterReportData } from './reports/asset-register-report.js';
+import type { ContractStatusReportData } from './reports/contract-status-report.js';
+import type { ConditionSurveyReportData } from './reports/condition-survey-report.js';
+import type { CollectionsReportData } from './reports/collections-report.js';
 import type { ReportParams } from './reports/report-types.js';
 
 export interface IReportDataProvider {
@@ -32,6 +37,31 @@ export interface IReportDataProvider {
     tenantId: string,
     params: ReportParams
   ): Promise<PropertyReportData>;
+
+  getRevenueData?(
+    tenantId: string,
+    params: ReportParams
+  ): Promise<RevenueReportData>;
+
+  getAssetRegisterData?(
+    tenantId: string,
+    params: ReportParams
+  ): Promise<AssetRegisterReportData>;
+
+  getContractStatusData?(
+    tenantId: string,
+    params: ReportParams
+  ): Promise<ContractStatusReportData>;
+
+  getConditionSurveyData?(
+    tenantId: string,
+    params: ReportParams
+  ): Promise<ConditionSurveyReportData>;
+
+  getCollectionsData?(
+    tenantId: string,
+    params: ReportParams
+  ): Promise<CollectionsReportData>;
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { ClipboardCheck, User, Calendar, Camera, Package, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { conditionSurveysService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 function formatDate(date: string | undefined): string {
@@ -28,7 +29,7 @@ export default function SurveyDetailPage() {
 
   const { data: survey, isLoading } = useQuery({
     queryKey: ['condition-survey', surveyId],
-    queryFn: async () => null,
+    queryFn: () => conditionSurveysService.get(surveyId).then(r => r.data),
     retry: false,
   });
 

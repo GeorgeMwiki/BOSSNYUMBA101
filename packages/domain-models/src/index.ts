@@ -25,9 +25,12 @@ export * from './audit/audit-event';
 export * from './property/property';
 export * from './property/unit';
 export * from './property/block';
+export * from './property/parcel';
+export * from './property/application';
 
 // Customer management
 export * from './customer/customer';
+export * from './customer/financial-profile';
 
 // Lease management
 export * from './lease/lease';
@@ -66,6 +69,7 @@ export * from './operations/maintenance-request';
 export * from './operations/dispatch-event';
 export * from './operations/completion-proof';
 export * from './operations/dual-signoff';
+export * from './operations/asset-register';
 
 // Legal (Cases, Notices)
 export * from './legal/case';
@@ -73,6 +77,7 @@ export * from './legal/timeline-event';
 export * from './legal/evidence-attachment';
 export * from './legal/notice';
 export * from './legal/notice-service-receipt';
+export * from './legal/sublease-alert';
 
 // Documents
 export * from './documents/document-upload';

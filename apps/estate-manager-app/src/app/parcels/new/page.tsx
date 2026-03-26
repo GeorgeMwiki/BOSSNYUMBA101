@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { parcelsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function NewParcelPage() {
@@ -11,11 +12,31 @@ export default function NewParcelPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // API integration point
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const formData = new FormData(e.currentTarget);
+    try {
+      await parcelsService.create({
+        parcelCode: formData.get('parcelCode') as string,
+        name: formData.get('name') as string,
+        type: formData.get('type') as string,
+        totalAreaSqm: Number(formData.get('totalAreaSqm') || 0),
+        description: formData.get('description') as string || undefined,
+        region: formData.get('region') as string || undefined,
+        city: formData.get('city') as string || undefined,
+        addressLine1: formData.get('addressLine1') as string || undefined,
+        latitude: formData.get('latitude') ? Number(formData.get('latitude')) : undefined,
+        longitude: formData.get('longitude') ? Number(formData.get('longitude')) : undefined,
+        mapUrl: formData.get('mapUrl') as string || undefined,
+        titleDeedNumber: formData.get('titleDeedNumber') as string || undefined,
+        cadastralReference: formData.get('cadastralReference') as string || undefined,
+        surveyorName: formData.get('surveyorName') as string || undefined,
+        surveyDate: formData.get('surveyDate') as string || undefined,
+        nearRailwayReserve: formData.get('nearRailwayReserve') === 'on',
+        requiresCivilEngNotification: formData.get('requiresCivilEngNotification') === 'on',
+      });
       router.push('/parcels');
-    }, 1000);
+    } catch {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -30,17 +51,17 @@ export default function NewParcelPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Parcel Code *</label>
-                <input type="text" className="input" placeholder="e.g., PRC-DAR-001" required />
+                <input type="text" name="parcelCode" className="input" placeholder="e.g., PRC-DAR-001" required />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Name *</label>
-                <input type="text" className="input" placeholder="Parcel name" required />
+                <input type="text" name="name" className="input" placeholder="Parcel name" required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Type *</label>
-                <select className="input" required>
+                <select name="type" className="input" required>
                   <option value="">Select type</option>
                   <option value="bareland">Bareland</option>
                   <option value="railway_reserve">Railway Reserve</option>
@@ -52,12 +73,12 @@ export default function NewParcelPage() {
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Total Area (sqm) *</label>
-                <input type="number" className="input" placeholder="0" required />
+                <input type="number" name="totalAreaSqm" className="input" placeholder="0" required />
               </div>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Description</label>
-              <textarea className="input" rows={2} placeholder="Describe the parcel..." />
+              <textarea name="description" className="input" rows={2} placeholder="Describe the parcel..." />
             </div>
           </div>
 
@@ -67,30 +88,30 @@ export default function NewParcelPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Region</label>
-                <input type="text" className="input" placeholder="e.g., Dar es Salaam" />
+                <input type="text" name="region" className="input" placeholder="e.g., Dar es Salaam" />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">City</label>
-                <input type="text" className="input" placeholder="e.g., Dar es Salaam" />
+                <input type="text" name="city" className="input" placeholder="e.g., Dar es Salaam" />
               </div>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Address</label>
-              <input type="text" className="input" placeholder="Street address" />
+              <input type="text" name="addressLine1" className="input" placeholder="Street address" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Latitude</label>
-                <input type="number" step="any" className="input" placeholder="-6.7924" />
+                <input type="number" name="latitude" step="any" className="input" placeholder="-6.7924" />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Longitude</label>
-                <input type="number" step="any" className="input" placeholder="39.2083" />
+                <input type="number" name="longitude" step="any" className="input" placeholder="39.2083" />
               </div>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Google Maps URL</label>
-              <input type="url" className="input" placeholder="https://maps.google.com/..." />
+              <input type="url" name="mapUrl" className="input" placeholder="https://maps.google.com/..." />
             </div>
           </div>
 
@@ -117,11 +138,11 @@ export default function NewParcelPage() {
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="rounded border-gray-300" />
+                <input type="checkbox" name="nearRailwayReserve" className="rounded border-gray-300" />
                 <span>Near Railway Reserve</span>
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="rounded border-gray-300" />
+                <input type="checkbox" name="requiresCivilEngNotification" className="rounded border-gray-300" />
                 <span>Requires Civil Engineering Notification</span>
               </label>
             </div>
@@ -133,21 +154,21 @@ export default function NewParcelPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Title Deed Number</label>
-                <input type="text" className="input" placeholder="Title deed ref" />
+                <input type="text" name="titleDeedNumber" className="input" placeholder="Title deed ref" />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Cadastral Reference</label>
-                <input type="text" className="input" placeholder="Cadastral ref" />
+                <input type="text" name="cadastralReference" className="input" placeholder="Cadastral ref" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Surveyor Name</label>
-                <input type="text" className="input" placeholder="Surveyor" />
+                <input type="text" name="surveyorName" className="input" placeholder="Surveyor" />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Survey Date</label>
-                <input type="date" className="input" />
+                <input type="date" name="surveyDate" className="input" />
               </div>
             </div>
           </div>

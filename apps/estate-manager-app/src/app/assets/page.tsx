@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Search, ChevronRight, Package, ClipboardCheck, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { assetsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const CONDITION_COLORS: Record<string, string> = {
@@ -22,8 +23,8 @@ export default function AssetRegisterPage() {
   const [occupancyFilter, setOccupancyFilter] = useState<string>('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['asset-register', { page, pageSize: 20, search: search || undefined, condition: conditionFilter || undefined }],
-    queryFn: async () => ({ data: [], pagination: { totalItems: 0, page: 1, totalPages: 1, hasPreviousPage: false, hasNextPage: false } }),
+    queryKey: ['asset-register', { page, pageSize: 20, search: search || undefined, condition: conditionFilter || undefined, occupancyStatus: occupancyFilter || undefined }],
+    queryFn: () => assetsService.list({ page, pageSize: 20, search: search || undefined, condition: conditionFilter || undefined, occupancyStatus: occupancyFilter || undefined }),
     retry: false,
   });
 

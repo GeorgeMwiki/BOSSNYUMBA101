@@ -22,7 +22,12 @@ export type ReportType =
   | 'occupancy'
   | 'maintenance'
   | 'tenant'
-  | 'property';
+  | 'property'
+  | 'revenue'
+  | 'asset_register'
+  | 'contract_status'
+  | 'condition_survey'
+  | 'collections';
 
 export type ReportFormat = 'pdf' | 'excel' | 'csv';
 

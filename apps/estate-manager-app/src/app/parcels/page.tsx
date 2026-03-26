@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, MapPin, ChevronRight, Landmark } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { parcelsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function ParcelsListPage() {
@@ -14,7 +15,7 @@ export default function ParcelsListPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['parcels', { page, pageSize: 20, search: search || undefined, type: typeFilter || undefined, status: statusFilter || undefined }],
-    queryFn: async () => ({ data: [], pagination: { totalItems: 0, page: 1, totalPages: 1, hasPreviousPage: false, hasNextPage: false } }),
+    queryFn: () => parcelsService.list({ page, pageSize: 20, search: search || undefined, type: typeFilter || undefined, status: statusFilter || undefined }),
     retry: false,
   });
 

@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, Layers, ExternalLink, User, FileText, Grid3X3 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { parcelsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function ParcelDetailPage() {
@@ -12,7 +13,7 @@ export default function ParcelDetailPage() {
 
   const { data: parcel, isLoading } = useQuery({
     queryKey: ['parcel', parcelId],
-    queryFn: async () => null,
+    queryFn: () => parcelsService.get(parcelId).then(r => r.data),
     retry: false,
   });
 

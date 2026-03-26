@@ -16,6 +16,11 @@ import { occupancyReportToReportData } from './reports/occupancy-report.js';
 import { maintenanceReportToReportData } from './reports/maintenance-report.js';
 import { tenantReportToReportData } from './reports/tenant-report.js';
 import { propertyReportToReportData } from './reports/property-report.js';
+import { revenueReportToReportData } from './reports/revenue-report.js';
+import { assetRegisterReportToReportData } from './reports/asset-register-report.js';
+import { contractStatusReportToReportData } from './reports/contract-status-report.js';
+import { conditionSurveyReportToReportData } from './reports/condition-survey-report.js';
+import { collectionsReportToReportData } from './reports/collections-report.js';
 import type { IReportDataProvider } from './data-provider.interface.js';
 import type { IReportStorage } from './storage/storage.js';
 import type { ReportListFilters } from './storage/storage.js';
@@ -50,6 +55,11 @@ const REPORT_TITLES: Record<ReportType, string> = {
   maintenance: 'Maintenance Report',
   tenant: 'Tenant Report',
   property: 'Property Report',
+  revenue: 'Revenue Report',
+  asset_register: 'Asset Register Report',
+  contract_status: 'Contract Status Report',
+  condition_survey: 'Condition Survey Report',
+  collections: 'Collections Report',
 };
 
 export interface ReportGenerationServiceOptions {
@@ -145,7 +155,7 @@ export class ReportGenerationService {
   }
 
   private validateReportType(reportType: string): asserts reportType is ReportType {
-    const valid: ReportType[] = ['financial', 'occupancy', 'maintenance', 'tenant', 'property'];
+    const valid: ReportType[] = ['financial', 'occupancy', 'maintenance', 'tenant', 'property', 'revenue', 'asset_register', 'contract_status', 'condition_survey', 'collections'];
     if (!valid.includes(reportType as ReportType)) {
       throw new ReportGenerationError(
         `Unknown report type: ${reportType}. Valid types: ${valid.join(', ')}`,
@@ -301,6 +311,16 @@ export class ReportGenerationService {
           tenantId,
           reportParams
         );
+      case 'revenue':
+        return this.options.dataProvider.getRevenueData?.(tenantId, reportParams) ?? {};
+      case 'asset_register':
+        return this.options.dataProvider.getAssetRegisterData?.(tenantId, reportParams) ?? {};
+      case 'contract_status':
+        return this.options.dataProvider.getContractStatusData?.(tenantId, reportParams) ?? {};
+      case 'condition_survey':
+        return this.options.dataProvider.getConditionSurveyData?.(tenantId, reportParams) ?? {};
+      case 'collections':
+        return this.options.dataProvider.getCollectionsData?.(tenantId, reportParams) ?? {};
       default:
         throw new ReportGenerationError(
           `Unknown report type: ${reportType}`,
@@ -330,6 +350,26 @@ export class ReportGenerationService {
       case 'property':
         return propertyReportToReportData(
           data as import('./reports/property-report.js').PropertyReportData
+        );
+      case 'revenue':
+        return revenueReportToReportData(
+          data as import('./reports/revenue-report.js').RevenueReportData
+        );
+      case 'asset_register':
+        return assetRegisterReportToReportData(
+          data as import('./reports/asset-register-report.js').AssetRegisterReportData
+        );
+      case 'contract_status':
+        return contractStatusReportToReportData(
+          data as import('./reports/contract-status-report.js').ContractStatusReportData
+        );
+      case 'condition_survey':
+        return conditionSurveyReportToReportData(
+          data as import('./reports/condition-survey-report.js').ConditionSurveyReportData
+        );
+      case 'collections':
+        return collectionsReportToReportData(
+          data as import('./reports/collections-report.js').CollectionsReportData
         );
       default:
         throw new ReportGenerationError(

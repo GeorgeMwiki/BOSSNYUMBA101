@@ -9,15 +9,21 @@ import {
   Calendar,
   BarChart3,
   Wrench,
+  MapPin,
+  FileText,
+  Package,
+  Shield,
+  DollarSign,
+  Menu,
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/work-orders', icon: ClipboardList, label: 'Tasks' },
-  { href: '/maintenance', icon: Wrench, label: 'Maint' },
-  { href: '/inspections', icon: Search, label: 'Inspect' },
-  { href: '/schedule', icon: Calendar, label: 'Schedule' },
-  { href: '/sla', icon: BarChart3, label: 'SLA' },
+  { href: '/', icon: LayoutDashboard, label: 'Home' },
+  { href: '/parcels', icon: MapPin, label: 'Parcels' },
+  { href: '/applications', icon: FileText, label: 'Apps' },
+  { href: '/assets', icon: Package, label: 'Assets' },
+  { href: '/collections', icon: DollarSign, label: 'Collect' },
+  { href: '/reports', icon: BarChart3, label: 'Reports' },
 ];
 
 export function BottomNavigation() {

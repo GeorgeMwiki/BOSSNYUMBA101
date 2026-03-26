@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { Package, MapPin, DollarSign, ClipboardCheck, Calendar, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { assetsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 function formatDate(date: string | undefined): string {
@@ -29,7 +30,7 @@ export default function AssetDetailPage() {
 
   const { data: asset, isLoading } = useQuery({
     queryKey: ['asset', assetId],
-    queryFn: async () => null,
+    queryFn: () => assetsService.get(assetId).then(r => r.data),
     retry: false,
   });
 

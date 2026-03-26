@@ -5,6 +5,7 @@ import {
   FileText, MapPin, User, Clock, CheckCircle, XCircle, ArrowRight, Building2, Send, AlertTriangle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { applicationsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 function formatDate(date: string | undefined): string {
@@ -22,7 +23,7 @@ export default function ApplicationDetailPage() {
 
   const { data: application, isLoading } = useQuery({
     queryKey: ['application', applicationId],
-    queryFn: async () => null,
+    queryFn: () => applicationsService.get(applicationId).then(r => r.data),
     retry: false,
   });
 

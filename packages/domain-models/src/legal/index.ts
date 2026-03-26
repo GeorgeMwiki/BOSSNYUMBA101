@@ -8,3 +8,4 @@ export * from './timeline-event';
 export * from './evidence-attachment';
 export * from './notice';
 export * from './notice-service-receipt';
+export * from './sublease-alert';

@@ -98,6 +98,35 @@ function getDefaultPolicyTemplate(type: ApprovalType): {
         defaultTimeoutHours: 48,
         autoEscalateToRole: 'property_manager',
       };
+    case 'lease_application':
+      return {
+        thresholds: [
+          { minAmount: 0, maxAmount: 500000, requiredRole: 'emu_head', approvalLevel: 1 },
+          { minAmount: 500000, maxAmount: null, requiredRole: 'director_general', approvalLevel: 2 },
+        ],
+        autoApproveRules: [],
+        approvalChain: [
+          { level: 1, requiredRole: 'emu_head', timeoutHours: 72, escalateToRole: 'director_general' },
+          { level: 2, requiredRole: 'director_general', timeoutHours: 120, escalateToRole: null },
+        ],
+        defaultTimeoutHours: 72,
+        autoEscalateToRole: 'director_general',
+      };
+    case 'bareland_application':
+      return {
+        thresholds: [
+          { minAmount: 0, maxAmount: 500000, requiredRole: 'emu_head', approvalLevel: 1 },
+          { minAmount: 500000, maxAmount: null, requiredRole: 'director_general', approvalLevel: 2 },
+        ],
+        autoApproveRules: [],
+        approvalChain: [
+          { level: 1, requiredRole: 'emu_head', timeoutHours: 72, escalateToRole: 'director_civil_engineering' },
+          { level: 2, requiredRole: 'director_civil_engineering', timeoutHours: 96, escalateToRole: 'director_general' },
+          { level: 3, requiredRole: 'director_general', timeoutHours: 120, escalateToRole: null },
+        ],
+        defaultTimeoutHours: 72,
+        autoEscalateToRole: 'director_general',
+      };
     default:
       throw new Error(`Unknown approval type: ${type}`);
   }

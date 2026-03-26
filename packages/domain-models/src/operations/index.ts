@@ -8,3 +8,4 @@ export * from './dispatch-event';
 export * from './completion-proof';
 export * from './dual-signoff';
 export * from './asset';
+export * from './asset-register';

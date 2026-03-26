@@ -34,6 +34,12 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
+import { parcelsRouter } from './routes/parcels';
+import { applicationsRouter } from './routes/applications';
+import { assetsRouter } from './routes/assets';
+import { conditionSurveysRouter } from './routes/condition-surveys';
+import { subleaseAlertsRouter } from './routes/sublease-alerts';
+import { financialProfilesRouter } from './routes/financial-profiles';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
@@ -87,6 +93,12 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
+api.route('/parcels', parcelsRouter);
+api.route('/applications', applicationsRouter);
+api.route('/assets', assetsRouter);
+api.route('/condition-surveys', conditionSurveysRouter);
+api.route('/sublease-alerts', subleaseAlertsRouter);
+api.route('/financial-profiles', financialProfilesRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -119,6 +131,12 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
+      '/api/v1/parcels',
+      '/api/v1/applications',
+      '/api/v1/assets',
+      '/api/v1/condition-surveys',
+      '/api/v1/sublease-alerts',
+      '/api/v1/financial-profiles',
     ],
   });
 });

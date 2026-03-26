@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, FileText, ChevronRight, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { applicationsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,7 +27,7 @@ export default function ApplicationsListPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['applications', { page, pageSize: 20, search: search || undefined, status: statusFilter || undefined }],
-    queryFn: async () => ({ data: [], pagination: { totalItems: 0, page: 1, totalPages: 1, hasPreviousPage: false, hasNextPage: false } }),
+    queryFn: () => applicationsService.list({ page, pageSize: 20, search: search || undefined, status: statusFilter || undefined }),
     retry: false,
   });
 
