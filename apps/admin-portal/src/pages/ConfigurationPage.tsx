@@ -69,6 +69,7 @@ const configSections: ConfigSection[] = [
 export function ConfigurationPage() {
   const [activeSection, setActiveSection] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
+  const [paybillNumber, setPaybillNumber] = useState('');
 
   const renderSectionContent = () => {
     switch (activeSection) {
@@ -181,7 +182,7 @@ export function ConfigurationPage() {
               <div>
                 <p className="font-medium text-green-800">M-Pesa Connected</p>
                 <p className="text-sm text-green-600">
-                  Paybill: 123456 | Account: Active
+                  {paybillNumber ? `Paybill: ${paybillNumber} | Account: Active` : 'Connected - Paybill not yet configured'}
                 </p>
               </div>
             </div>
@@ -227,8 +228,12 @@ export function ConfigurationPage() {
                 </label>
                 <input
                   type="text"
-                  defaultValue="123456"
-                  onChange={() => setHasChanges(true)}
+                  value={paybillNumber}
+                  placeholder="Enter paybill number"
+                  onChange={(e) => {
+                    setPaybillNumber(e.target.value);
+                    setHasChanges(true);
+                  }}
                   className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
@@ -389,11 +394,13 @@ export function ConfigurationPage() {
 
       default:
         return (
-          <div className="text-center py-12 text-gray-500">
-            <Settings className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}{' '}
-              configuration coming soon
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="p-3 bg-gray-100 rounded-full mb-4">
+              <Settings className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-700">Not Available</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-sm">
+              This configuration section is not yet available.
             </p>
           </div>
         );

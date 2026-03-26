@@ -30,7 +30,7 @@ export default function ControlTower() {
             <p className="text-sm text-red-700 mt-1">
               {error instanceof Error
                 ? error.message
-                : 'This control tower is disabled until production monitoring feeds are connected.'}
+                : 'Operations monitoring data is not yet available. Please check back once the service has been configured.'}
             </p>
           </div>
         </div>

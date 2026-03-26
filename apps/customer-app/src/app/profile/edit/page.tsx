@@ -23,6 +23,20 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [verifying, setVerifying] = useState<'email' | 'phone' | null>(null);
+
+  const handleVerify = async (type: 'email' | 'phone') => {
+    setVerifying(type);
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      await client.post(`/customers/me/verify-${type}`, {});
+      setMessage({ type: 'success', text: `Verification ${type === 'email' ? 'email' : 'SMS'} sent. Please check your ${type === 'email' ? 'inbox' : 'messages'}.` });
+    } catch {
+      setMessage({ type: 'error', text: `Unable to send ${type} verification. Please try again later.` });
+    }
+    setVerifying(null);
+  };
 
   const updateProfileMutation = useMutation<
     unknown,
@@ -177,8 +191,8 @@ export default function EditProfilePage() {
             )}
           </div>
           {!emailVerified && (
-            <button type="button" className="text-sm text-primary-600 mt-1">
-              Verify email
+            <button type="button" onClick={() => handleVerify('email')} disabled={verifying === 'email'} className="text-sm text-primary-600 mt-1 disabled:opacity-50">
+              {verifying === 'email' ? 'Sending...' : 'Verify email'}
             </button>
           )}
         </section>
@@ -206,8 +220,8 @@ export default function EditProfilePage() {
             )}
           </div>
           {!phoneVerified && (
-            <button type="button" className="text-sm text-primary-600 mt-1">
-              Verify phone
+            <button type="button" onClick={() => handleVerify('phone')} disabled={verifying === 'phone'} className="text-sm text-primary-600 mt-1 disabled:opacity-50">
+              {verifying === 'phone' ? 'Sending...' : 'Verify phone'}
             </button>
           )}
         </section>

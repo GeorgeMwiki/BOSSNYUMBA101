@@ -72,7 +72,6 @@ export default function NewRequestPage() {
       } as Record<string, unknown>);
       router.push('/requests?submitted=true');
     } catch (err) {
-      console.error('Failed to submit request:', err);
       setSubmitError((err as Error).message || 'Failed to submit request. Please try again.');
       setIsSubmitting(false);
       return;

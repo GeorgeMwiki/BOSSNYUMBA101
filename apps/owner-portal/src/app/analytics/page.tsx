@@ -47,11 +47,11 @@ export default function AnalyticsPage() {
     });
   }, []);
 
-  const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number }>>([]);
+  const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; expenses?: number }>>([]);
 
   useEffect(() => {
     if (stats) {
-      api.get<Array<{ month: string; revenue: number }>>('/analytics/revenue-trend').then((res) => {
+      api.get<Array<{ month: string; revenue: number; expenses?: number }>>('/analytics/revenue-trend').then((res) => {
         if (res.success && res.data) {
           setRevenueData(res.data);
         }
@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
             <span className="text-sm font-medium text-gray-500">Occupancy Rate</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(stats?.occupancy || 91)}
+            {stats?.occupancy ? formatPercentage(stats.occupancy) : '-'}
           </p>
           <Link to="/analytics/occupancy" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
             View trends <ArrowRight className="h-4 w-4" />
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue vs Expenses</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData.map((d) => ({ ...d, expenses: 2100000 }))}>
+              <BarChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
                 <YAxis
@@ -251,7 +251,9 @@ export default function AnalyticsPage() {
                   contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
                 />
                 <Bar dataKey="revenue" name="Revenue" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                {revenueData.some((d) => d.expenses != null) && (
+                  <Bar dataKey="expenses" name="Expenses" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -46,12 +46,24 @@ export default function SupportPage() {
   const emergencyContacts = getEmergencyContacts();
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedback.trim()) return;
-    setSubmitted(true);
-    setFeedback('');
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      await client.post('/support/feedback', { message: feedback });
+      setSubmitted(true);
+      setFeedback('');
+    } catch {
+      setSubmitError('Unable to submit feedback. Please try again later.');
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -218,9 +230,18 @@ export default function SupportPage() {
                   placeholder="Share your suggestions or report an issue..."
                 />
               </div>
-              <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
-                <Send className="w-4 h-4" />
-                Submit feedback
+              {submitError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                  {submitError}
+                </div>
+              )}
+              <button type="submit" disabled={submitting} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+                {submitting ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {submitting ? 'Submitting...' : 'Submit feedback'}
               </button>
             </form>
           )}

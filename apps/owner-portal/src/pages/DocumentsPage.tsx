@@ -74,6 +74,50 @@ export function DocumentsPage() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showESignModal, setShowESignModal] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append('files', file));
+      await api.post('/documents/upload', formData);
+      loadData();
+    } catch {
+      setError('Failed to upload document. Please try again.');
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleViewDocument = async (doc: Document) => {
+    try {
+      const response = await api.get<{ url: string }>(`/documents/${doc.id}/view`);
+      if (response.success && response.data?.url) {
+        window.open(response.data.url, '_blank');
+      }
+    } catch {
+      setError('Unable to open document. Please try again.');
+    }
+  };
+
+  const handleDownloadDocument = async (doc: Document) => {
+    try {
+      const response = await api.get<{ url: string }>(`/documents/${doc.id}/download`);
+      if (response.success && response.data?.url) {
+        const a = document.createElement('a');
+        a.href = response.data.url;
+        a.download = doc.name;
+        a.click();
+      }
+    } catch {
+      setError('Unable to download document. Please try again.');
+    }
+  };
 
   const categories: DocumentCategory[] = [
     { id: 'leases', name: 'Leases & Agreements', icon: '📄', count: 0, description: 'Rental agreements, addendums' },
@@ -241,10 +285,11 @@ export function DocumentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
           <p className="text-gray-500">View and manage property documents</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+        <button onClick={handleUploadClick} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
           <Upload className="h-4 w-4" />
           Upload Document
         </button>
+        <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden" onChange={handleFileSelected} />
       </div>
 
       {/* Document Categories */}
@@ -374,10 +419,10 @@ export function DocumentsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="View">
+                      <button onClick={() => handleViewDocument(doc)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="View">
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Download">
+                      <button onClick={() => handleDownloadDocument(doc)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Download">
                         <Download className="h-4 w-4" />
                       </button>
                       {doc.versions && doc.versions.length > 1 && (
@@ -419,6 +464,7 @@ export function DocumentsPage() {
               : 'No documents have been uploaded yet. Upload a document to get started.'}
           </p>
           <button
+            onClick={handleUploadClick}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
           >
             <Upload className="h-4 w-4" />
@@ -456,10 +502,10 @@ export function DocumentsPage() {
                         {index === 0 && <span className="text-xs text-blue-600">Current</span>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                        <button onClick={() => handleViewDocument(selectedDocument)} className="p-1 text-gray-400 hover:text-gray-600">
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                        <button onClick={() => handleDownloadDocument(selectedDocument)} className="p-1 text-gray-400 hover:text-gray-600">
                           <Download className="h-4 w-4" />
                         </button>
                       </div>
@@ -519,7 +565,7 @@ export function DocumentsPage() {
                           </p>
                         </div>
                       </div>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                      <button onClick={() => navigate('/documents/e-signature')} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                         <Edit3 className="h-4 w-4" />
                         Sign Now
                       </button>

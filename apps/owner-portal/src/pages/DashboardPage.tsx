@@ -632,7 +632,7 @@ export function DashboardPage() {
               </div>
               <p className="mt-2 text-2xl font-semibold text-green-800">{maintenance.completedThisMonth}</p>
             </Link>
-            <Link to="/maintenance/trends" className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+            <Link to="/maintenance" className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
               <div className="flex items-center gap-2 text-purple-700">
                 <DollarSign className="h-5 w-5" />
                 <span className="text-sm font-medium">Cost</span>

@@ -114,22 +114,26 @@ export default function NotificationsPage() {
     { staleTime: 30 * 1000 }
   );
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleMarkAsRead = useCallback(async (id: string) => {
+    setActionError(null);
     try {
       await notificationsService.markAsRead(id);
       refetch();
     } catch {
-      // silently fail
+      setActionError('Failed to mark notification as read. Please try again.');
     }
   }, [refetch]);
 
   const handleMarkAllAsRead = useCallback(async () => {
     setMarkingAll(true);
+    setActionError(null);
     try {
       await notificationsService.markAllAsRead();
       refetch();
     } catch {
-      // silently fail
+      setActionError('Failed to mark all as read. Please try again.');
     } finally {
       setMarkingAll(false);
     }
@@ -155,6 +159,12 @@ export default function NotificationsPage() {
           ) : undefined
         }
       />
+      {actionError && (
+        <div className="mx-4 mt-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-300 ml-2 text-xs">Dismiss</button>
+        </div>
+      )}
       <div className="pb-24">
         {isLoading ? (
           <NotificationsSkeleton />

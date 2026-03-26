@@ -70,7 +70,6 @@ export default function FeedbackPage() {
 
       router.push('/requests?feedback=submitted');
     } catch (err) {
-      console.error('Failed to submit feedback:', err);
       setIsSubmitting(false);
     }
   };

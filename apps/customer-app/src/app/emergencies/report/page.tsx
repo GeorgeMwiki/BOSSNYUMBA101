@@ -65,7 +65,6 @@ export default function ReportEmergencyPage() {
       } as Record<string, unknown>);
       router.push('/emergencies?reported=true');
     } catch (err) {
-      console.error('Failed to report emergency:', err);
       setIsSubmitting(false);
       return;
     }

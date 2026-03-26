@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import {
   Building2,
@@ -17,6 +18,7 @@ import {
 import { useState } from 'react';
 
 export function TenantManagementPage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
@@ -70,7 +72,10 @@ export function TenantManagementPage() {
           <h1 className="text-2xl font-bold text-gray-900">Tenant Management</h1>
           <p className="text-sm text-gray-500 mt-1">Manage tenant provisioning, billing, and policies</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+        <button
+          onClick={() => navigate('/tenants/onboard')}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
           <Plus className="h-4 w-4" />
           Add Tenant
         </button>

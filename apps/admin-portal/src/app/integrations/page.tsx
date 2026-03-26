@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plug,
   Webhook,
@@ -59,6 +59,7 @@ function LoadingSkeleton() {
 }
 
 export default function IntegrationsPage() {
+  const navigate = useNavigate();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +187,10 @@ export default function IntegrationsPage() {
                   {integration.description}
                 </p>
                 <div className="mt-4 flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+                  <button
+                    onClick={() => navigate(`/integrations/${integration.id}`)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50"
+                  >
                     <Settings className="h-4 w-4" />
                     {integration.status === 'connected' ? 'Configure' : 'Connect'}
                   </button>

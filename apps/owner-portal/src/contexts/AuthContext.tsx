@@ -182,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             logout();
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
           logout();
         }
       }

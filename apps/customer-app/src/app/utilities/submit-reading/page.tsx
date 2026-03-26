@@ -52,7 +52,6 @@ export default function SubmitReadingPage() {
       } as Record<string, unknown>);
       router.push('/utilities?submitted=true');
     } catch (err) {
-      console.error('Failed to submit reading:', err);
       setIsSubmitting(false);
       return;
     }

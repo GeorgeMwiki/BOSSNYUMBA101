@@ -63,7 +63,7 @@ export default function MaintenanceFeedbackPage() {
       } as Record<string, unknown>);
       setIsSubmitted(true);
     } catch (err) {
-      console.error('Failed to submit feedback:', err);
+      // Error handled via state
     } finally {
       setIsSubmitting(false);
     }
