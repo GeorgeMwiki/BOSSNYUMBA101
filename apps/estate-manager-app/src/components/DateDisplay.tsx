@@ -31,7 +31,7 @@ function formatRelative(date: Date): string {
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return date.toLocaleDateString('en-KE', {
+  return date.toLocaleDateString('en-TZ', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -49,7 +49,7 @@ export function DateDisplay({
     return <span className={className}>—</span>;
   }
 
-  const locale = 'en-KE';
+  const locale = 'en-TZ';
 
   let formatted: string;
   switch (format) {

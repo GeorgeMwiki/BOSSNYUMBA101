@@ -133,9 +133,9 @@ export default function CustomerDetailPage() {
                         {new Date(lease.endDate).toLocaleDateString()}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {new Intl.NumberFormat('en-KE', {
+                        {new Intl.NumberFormat('en-TZ', {
                           style: 'currency',
-                          currency: 'KES',
+                          currency: 'TZS',
                           minimumFractionDigits: 0,
                         }).format(lease.rentAmount)}
                         /month

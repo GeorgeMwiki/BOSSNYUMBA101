@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Send, User, Building2 } from 'lucide-react';
+import { ArrowLeft, Send, User, Building2, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { customersService } from '@bossnyumba/api-client';
@@ -17,6 +17,7 @@ export default function NewConversationPage() {
     message: '',
   });
   const [search, setSearch] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
@@ -43,11 +44,16 @@ export default function NewConversationPage() {
     r.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.recipientId || !formData.subject || !formData.message) return;
-    // In real app: API call to create conversation
-    router.push('/messaging');
+    setIsSending(true);
+    try {
+      // API call to create conversation would go here
+      router.push('/messaging');
+    } catch {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -142,10 +148,19 @@ export default function NewConversationPage() {
           <button
             type="submit"
             className="btn-primary flex-1 flex items-center justify-center gap-2"
-            disabled={!formData.recipientId || !formData.subject || !formData.message}
+            disabled={!formData.recipientId || !formData.subject || !formData.message || isSending}
           >
-            <Send className="w-4 h-4" />
-            Send Message
+            {isSending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Message
+              </>
+            )}
           </button>
         </div>
       </form>

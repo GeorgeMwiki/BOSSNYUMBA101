@@ -175,7 +175,7 @@ const auditEvents: AuditEvent[] = [
     },
     tenant: 'Acme Properties Ltd',
     resource: { type: 'invoice', id: 'inv_567', name: 'January Invoice' },
-    details: { amount: 125000, currency: 'KES', method: 'mpesa' },
+    details: { amount: 125000, currency: 'TZS', method: 'mpesa' },
     ipAddress: '10.0.0.1',
     userAgent: 'BOSSNYUMBA/System',
   },

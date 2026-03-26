@@ -187,7 +187,7 @@ export default function VendorForm() {
         <div className="card p-4 space-y-3">
           <h3 className="font-medium">Rate Card</h3>
           <div>
-            <label className="label">Hourly Rate (KES)</label>
+            <label className="label">Hourly Rate (TZS)</label>
             <input
               type="text"
               className="input"
@@ -199,7 +199,7 @@ export default function VendorForm() {
             />
           </div>
           <div>
-            <label className="label">Call-out Fee (KES)</label>
+            <label className="label">Call-out Fee (TZS)</label>
             <input
               type="text"
               className="input"

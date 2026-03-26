@@ -9,7 +9,7 @@ export default function SettingsPage() {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [language, setLanguage] = useState('en');
-  const [currency, setCurrency] = useState('KES');
+  const [currency, setCurrency] = useState('TZS');
 
   const languages = [
     { value: 'en', label: 'English' },
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   ];
 
   const currencies = [
+    { value: 'TZS', label: 'TZS (Tanzanian Shilling)' },
     { value: 'KES', label: 'KES (Kenyan Shilling)' },
     { value: 'USD', label: 'USD (US Dollar)' },
   ];

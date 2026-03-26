@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Info } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { workOrdersService } from '@bossnyumba/api-client';
 import {
@@ -54,6 +54,7 @@ export default function NewRequestPage() {
   });
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +73,7 @@ export default function NewRequestPage() {
       router.push('/requests?submitted=true');
     } catch (err) {
       console.error('Failed to submit request:', err);
+      setSubmitError((err as Error).message || 'Failed to submit request. Please try again.');
       setIsSubmitting(false);
       return;
     }
@@ -231,13 +233,27 @@ export default function NewRequestPage() {
           </div>
         )}
 
+        {/* Error feedback */}
+        {submitError && (
+          <div className="card border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+            {submitError}
+          </div>
+        )}
+
         {/* Submit */}
         <button
           type="submit"
-          className="btn-primary w-full py-3"
+          className="btn-primary w-full py-3 flex items-center justify-center gap-2"
           disabled={!formData.category || !formData.description || isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            'Submit Request'
+          )}
         </button>
       </form>
     </>

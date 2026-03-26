@@ -119,7 +119,7 @@ export function ReportsPage() {
   const [dateRange, setDateRange] = useState('last30');
 
   const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString('en-KE', {
+    return new Date(isoString).toLocaleDateString('en-TZ', {
       month: 'short',
       day: 'numeric',
     });

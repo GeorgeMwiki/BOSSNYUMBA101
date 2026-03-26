@@ -24,7 +24,7 @@ export default function OwnerPortalHome() {
               <CardDescription>Rent collections this month</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">KES 0</p>
+              <p className="text-2xl font-bold">TZS 0</p>
               <p className="text-sm text-muted-foreground">Collected</p>
             </CardContent>
           </Card>

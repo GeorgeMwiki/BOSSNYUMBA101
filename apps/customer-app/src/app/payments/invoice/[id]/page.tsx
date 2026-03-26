@@ -174,7 +174,7 @@ export default function InvoicePage() {
             <span className={status.color}>{status.label}</span>
           </div>
           <div className="text-2xl font-bold text-primary-400">
-            KES {invoice.amount.toLocaleString()}
+            TZS {invoice.amount.toLocaleString()}
           </div>
         </div>
 
@@ -195,14 +195,14 @@ export default function InvoicePage() {
                     <div className="text-sm text-gray-400">Qty: {item.quantity}</div>
                   )}
                 </div>
-                <div className="font-medium text-white">KES {item.amount.toLocaleString()}</div>
+                <div className="font-medium text-white">TZS {item.amount.toLocaleString()}</div>
               </div>
             ))}
           </div>
           <div className="p-4 bg-white/5 border-t border-white/10">
             <div className="flex justify-between font-semibold text-white">
               <span>Total</span>
-              <span>KES {invoice.amount.toLocaleString()}</span>
+              <span>TZS {invoice.amount.toLocaleString()}</span>
             </div>
           </div>
         </section>

@@ -1,14 +1,15 @@
 'use client';
 
-import { LiveDataRequiredScreen } from '@/components/LiveDataRequired';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function NewMaintenancePage() {
-  return (
-    <LiveDataRequiredScreen
-      title="Report Issue"
-      feature="maintenance intake"
-      description="Simulated issue submission, placeholder photo uploads, and offline voice-note flows have been removed. This screen now requires live maintenance intake APIs."
-      showBack
-    />
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to the requests/new page which handles maintenance requests
+    router.replace('/requests/new');
+  }, [router]);
+
+  return null;
 }

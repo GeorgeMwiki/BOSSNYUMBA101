@@ -75,7 +75,7 @@ export function PaymentsList() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">KES {payment.amount?.toLocaleString()}</p>
+                <p className="font-semibold">TZS {payment.amount?.toLocaleString()}</p>
                 <span
                   className={`text-xs px-2 py-1 rounded-full font-medium ${
                     payment.status === 'completed'

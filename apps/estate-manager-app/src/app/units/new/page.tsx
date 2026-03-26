@@ -170,7 +170,7 @@ export default function UnitFormPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Monthly Rent (KES) *</label>
+              <label className="label">Monthly Rent (TZS) *</label>
               <input
                 type="number"
                 className="input"
@@ -181,7 +181,7 @@ export default function UnitFormPage() {
               />
             </div>
             <div>
-              <label className="label">Deposit (KES)</label>
+              <label className="label">Deposit (TZS)</label>
               <input
                 type="number"
                 className="input"

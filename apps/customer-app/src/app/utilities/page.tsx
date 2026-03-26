@@ -101,7 +101,7 @@ export default function UtilitiesPage() {
                   <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
                     <span className="text-gray-500">Due {util.dueDate}</span>
                     <span className="font-medium">
-                      KES {util.amount.toLocaleString()}
+                      TZS {util.amount.toLocaleString()}
                     </span>
                   </div>
                   {util.status === 'pending' && (
@@ -130,7 +130,7 @@ export default function UtilitiesPage() {
                 <div>
                   <div className="font-medium text-sm">{bill.month}</div>
                   <div className="text-xs text-gray-500">
-                    KES {bill.total.toLocaleString()}
+                    TZS {bill.total.toLocaleString()}
                   </div>
                 </div>
                 <span

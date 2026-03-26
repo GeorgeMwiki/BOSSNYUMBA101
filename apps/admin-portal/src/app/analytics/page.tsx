@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
             <BarChart3 className="h-5 w-5 text-violet-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">KES {totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">TZS {totalRevenue.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Total Revenue</p>
           </div>
         </div>
@@ -184,8 +184,8 @@ export default function AnalyticsPage() {
               {financialReport.monthlyTrend.map((m: any, i: number) => (
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{m.month}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">KES {(m.invoiced || 0).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">KES {(m.collected || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">TZS {(m.invoiced || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">TZS {(m.collected || 0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

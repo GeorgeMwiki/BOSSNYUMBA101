@@ -7,7 +7,7 @@ const activities = [
     id: '1',
     type: 'payment',
     title: 'Rent Payment Received',
-    description: 'KES 45,000 paid via M-Pesa',
+    description: 'TZS 45,000 paid via M-Pesa',
     time: '2 days ago',
     icon: CreditCard,
     iconColor: 'text-green-400 bg-green-500/20',

@@ -94,7 +94,7 @@ export default function PlatformBillingPage() {
             <DollarSign className="h-5 w-5 text-green-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">KES {totalInvoiced.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">TZS {totalInvoiced.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Total Invoiced</p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function PlatformBillingPage() {
             <CreditCard className="h-5 w-5 text-blue-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">KES {totalCollected.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">TZS {totalCollected.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Total Collected</p>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function PlatformBillingPage() {
                     {inv.invoiceNumber || inv.id}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    KES {(inv.amount || 0).toLocaleString()}
+                    TZS {(inv.amount || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${

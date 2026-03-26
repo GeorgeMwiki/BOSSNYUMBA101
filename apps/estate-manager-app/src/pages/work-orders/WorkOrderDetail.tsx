@@ -186,7 +186,7 @@ export default function WorkOrderDetail() {
       workOrdersService.complete(workOrderId as never, {
         completionNotes: workNotes,
         actualCost: materials.length > 0
-          ? { amount: materials.reduce((s, m) => s + m.cost * m.quantity, 0), currency: 'KES' }
+          ? { amount: materials.reduce((s, m) => s + m.cost * m.quantity, 0), currency: 'TZS' }
           : undefined,
       }),
     onSuccess: () => {
@@ -683,7 +683,7 @@ export default function WorkOrderDetail() {
                     <div key={material.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div><span className="font-medium">{material.name}</span><span className="text-sm text-gray-500 ml-2">x{material.quantity}</span></div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">KES {(material.cost * material.quantity).toLocaleString()}</span>
+                        <span className="text-sm font-medium">TZS {(material.cost * material.quantity).toLocaleString()}</span>
                         <button onClick={() => removeMaterial(material.id)} className="text-danger-500 p-1"><X className="w-4 h-4" /></button>
                       </div>
                     </div>
@@ -698,7 +698,7 @@ export default function WorkOrderDetail() {
                 {materials.length > 0 && (
                   <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
                     <span className="text-sm text-primary-700">Total Materials Cost</span>
-                    <span className="font-semibold text-primary-900">KES {totalMaterialsCost.toLocaleString()}</span>
+                    <span className="font-semibold text-primary-900">TZS {totalMaterialsCost.toLocaleString()}</span>
                   </div>
                 )}
               </div>

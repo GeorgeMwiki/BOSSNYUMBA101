@@ -205,7 +205,7 @@ export function FinancialPage() {
 
   const chartData = Array.from(
     payments.reduce((acc, payment) => {
-      const month = new Date(payment.createdAt).toLocaleDateString('en-KE', {
+      const month = new Date(payment.createdAt).toLocaleDateString('en-TZ', {
         month: 'short',
         year: 'numeric',
       });

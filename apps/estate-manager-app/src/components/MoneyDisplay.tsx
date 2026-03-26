@@ -2,12 +2,13 @@
 
 import { cn } from '@bossnyumba/design-system';
 
-export type Currency = 'KES' | 'USD' | 'EUR';
+export type Currency = 'TZS' | 'KES' | 'USD' | 'EUR';
 
 const currencyConfig: Record<
   Currency,
   { symbol: string; locale: string; decimals?: number }
 > = {
+  TZS: { symbol: 'TZS', locale: 'en-TZ', decimals: 0 },
   KES: { symbol: 'KES', locale: 'en-KE', decimals: 0 },
   USD: { symbol: 'USD', locale: 'en-US', decimals: 2 },
   EUR: { symbol: '€', locale: 'de-DE', decimals: 2 },
@@ -23,7 +24,7 @@ interface MoneyDisplayProps {
 
 export function MoneyDisplay({
   amount,
-  currency = 'KES',
+  currency = 'TZS',
   showSymbol = true,
   compact = false,
   className,
@@ -36,18 +37,13 @@ export function MoneyDisplay({
     ...(compact && { notation: 'compact', compactDisplay: 'short' }),
   }).format(amount);
 
-  const symbol =
-    currency === 'KES'
-      ? `${config.symbol} `
-      : showSymbol
-        ? `${config.symbol}`
-        : '';
+  const isPrefixCurrency = currency === 'TZS' || currency === 'KES';
 
   return (
     <span className={cn('tabular-nums', className)}>
-      {showSymbol && currency === 'KES' ? `${config.symbol} ` : ''}
+      {showSymbol && isPrefixCurrency ? `${config.symbol} ` : ''}
       {formatted}
-      {showSymbol && currency !== 'KES' ? ` ${config.symbol}` : ''}
+      {showSymbol && !isPrefixCurrency ? ` ${config.symbol}` : ''}
     </span>
   );
 }

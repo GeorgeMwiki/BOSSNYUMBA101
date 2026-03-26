@@ -317,11 +317,11 @@ export default function OnboardingWizard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Late Fee Type</label>
                   <select value={policy.lateFeeType} onChange={(e) => setPolicy({ ...policy, lateFeeType: e.target.value as 'percentage' | 'fixed' })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
                     <option value="percentage">Percentage of rent</option>
-                    <option value="fixed">Fixed amount (KES)</option>
+                    <option value="fixed">Fixed amount (TZS)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Late Fee Value ({policy.lateFeeType === 'percentage' ? '%' : 'KES'})</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Late Fee Value ({policy.lateFeeType === 'percentage' ? '%' : 'TZS'})</label>
                   <input type="number" value={policy.lateFeeValue} onChange={(e) => setPolicy({ ...policy, lateFeeValue: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                 </div>
                 <div>
@@ -413,7 +413,7 @@ export default function OnboardingWizard() {
                   {plan.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-violet-600 text-white text-xs font-medium rounded-full">Most Popular</span>}
                   <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
                   <div className="mt-2 mb-4">
-                    <span className="text-3xl font-bold text-gray-900">KES {(subscription.billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice).toLocaleString()}</span>
+                    <span className="text-3xl font-bold text-gray-900">TZS {(subscription.billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice).toLocaleString()}</span>
                     <span className="text-sm text-gray-500">/{subscription.billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
                   </div>
                   <ul className="space-y-2">
@@ -516,7 +516,7 @@ export default function OnboardingWizard() {
                   <button onClick={() => setCurrentStep(1)} className="ml-auto text-xs text-violet-600 hover:text-violet-700">Edit</button>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-500">Late Fee:</span><span className="font-medium text-gray-900">{policy.lateFeeValue}{policy.lateFeeType === 'percentage' ? '%' : ' KES'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Late Fee:</span><span className="font-medium text-gray-900">{policy.lateFeeValue}{policy.lateFeeType === 'percentage' ? '%' : ' TZS'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Grace Period:</span><span className="font-medium text-gray-900">{policy.gracePeriodDays} days</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Security Deposit:</span><span className="font-medium text-gray-900">{policy.securityDepositMonths} months</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Auto Reminders:</span><span className="font-medium text-gray-900">{policy.autoReminders ? 'Yes' : 'No'}</span></div>
@@ -533,7 +533,7 @@ export default function OnboardingWizard() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-gray-500">Plan:</span><span className="font-medium text-gray-900">{selectedPlan.name}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Billing:</span><span className="font-medium text-gray-900">{subscription.billingCycle}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Price:</span><span className="font-medium text-gray-900">KES {price.toLocaleString()}/{subscription.billingCycle === 'monthly' ? 'mo' : 'yr'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Price:</span><span className="font-medium text-gray-900">TZS {price.toLocaleString()}/{subscription.billingCycle === 'monthly' ? 'mo' : 'yr'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Trial:</span><span className="font-medium text-gray-900">{subscription.startTrial ? '14-day trial' : 'No trial'}</span></div>
                 </div>
               </div>

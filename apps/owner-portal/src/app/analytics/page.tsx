@@ -47,14 +47,17 @@ export default function AnalyticsPage() {
     });
   }, []);
 
-  const revenueData = [
-    { month: 'Sep', revenue: 8500000 },
-    { month: 'Oct', revenue: 9200000 },
-    { month: 'Nov', revenue: 8800000 },
-    { month: 'Dec', revenue: 9500000 },
-    { month: 'Jan', revenue: 9100000 },
-    { month: 'Feb', revenue: stats?.revenue || 9400000 },
-  ];
+  const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number }>>([]);
+
+  useEffect(() => {
+    if (stats) {
+      api.get<Array<{ month: string; revenue: number }>>('/analytics/revenue-trend').then((res) => {
+        if (res.success && res.data) {
+          setRevenueData(res.data);
+        }
+      });
+    }
+  }, [stats]);
 
   if (loading) {
     return (

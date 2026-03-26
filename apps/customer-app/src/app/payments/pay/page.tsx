@@ -83,6 +83,7 @@ export default function PayPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [showAmountInput, setShowAmountInput] = useState(false);
+  const [cardNotice, setCardNotice] = useState(false);
 
   const paymentAmount = customAmount ?? amount;
 
@@ -94,8 +95,8 @@ export default function PayPage() {
     } else if (selectedMethod === 'bank') {
       router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
     } else {
-      // Card payment - would implement card form
-      alert('Card payments coming soon!');
+      setCardNotice(true);
+      setTimeout(() => setCardNotice(false), 4000);
     }
   };
 
@@ -110,7 +111,7 @@ export default function PayPage() {
             <div>
               <div className="text-sm text-gray-500">Amount to Pay</div>
               <div className="text-3xl font-bold text-gray-900">
-                KES {paymentAmount.toLocaleString()}
+                TZS {paymentAmount.toLocaleString()}
               </div>
             </div>
             <button
@@ -126,7 +127,7 @@ export default function PayPage() {
               <label className="label">Enter custom amount</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                  KES
+                  TZS
                 </span>
                 <input
                   type="number"
@@ -143,7 +144,7 @@ export default function PayPage() {
                   onClick={() => setCustomAmount(Math.round(amount / 2))}
                   className="btn-secondary text-xs flex-1"
                 >
-                  Half (KES {Math.round(amount / 2).toLocaleString()})
+                  Half (TZS {Math.round(amount / 2).toLocaleString()})
                 </button>
                 <button
                   onClick={() => setCustomAmount(amount)}
@@ -155,7 +156,7 @@ export default function PayPage() {
               {customAmount && customAmount < amount && (
                 <div className="p-3 bg-warning-50 rounded-lg text-sm text-warning-700">
                   <Info className="w-4 h-4 inline mr-1" />
-                  Partial payment. Remaining balance: KES {(amount - customAmount).toLocaleString()}
+                  Partial payment. Remaining balance: TZS {(amount - customAmount).toLocaleString()}
                 </div>
               )}
             </div>
@@ -225,6 +226,14 @@ export default function PayPage() {
             })}
           </div>
         </section>
+
+        {/* Card notice */}
+        {cardNotice && (
+          <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-primary-700">Card payments are coming soon. Please use M-Pesa or bank transfer for now.</p>
+          </div>
+        )}
 
         {/* Security Note */}
         <div className="flex items-start gap-3 text-sm text-gray-600">

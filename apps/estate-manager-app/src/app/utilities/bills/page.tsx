@@ -33,9 +33,9 @@ const utilityLabels: Record<string, string> = {
 };
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-KE', {
+  return new Intl.NumberFormat('en-TZ', {
     style: 'currency',
-    currency: 'KES',
+    currency: 'TZS',
     minimumFractionDigits: 0,
   }).format(amount);
 }

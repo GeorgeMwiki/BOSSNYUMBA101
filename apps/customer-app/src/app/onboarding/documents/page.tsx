@@ -84,6 +84,7 @@ export default function OnboardingDocumentsPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [showQualityModal, setShowQualityModal] = useState(false);
@@ -254,9 +255,10 @@ export default function OnboardingDocumentsPage() {
     const missingDocs = requiredDocs.filter((d) => d.status !== 'uploaded');
 
     if (missingDocs.length > 0) {
-      alert('Please upload all required documents');
+      setValidationError('Please upload all required documents before continuing.');
       return;
     }
+    setValidationError(null);
 
     setIsSubmitting(true);
 
@@ -326,6 +328,14 @@ export default function OnboardingDocumentsPage() {
             visible and not blurry.
           </p>
         </div>
+
+        {/* Validation Error */}
+        {validationError && (
+          <div className="p-4 bg-danger-50 border border-danger-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-danger-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-danger-700">{validationError}</p>
+          </div>
+        )}
 
         {/* Document List */}
         <div className="space-y-4">

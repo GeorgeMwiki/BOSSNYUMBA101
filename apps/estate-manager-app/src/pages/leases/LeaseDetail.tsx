@@ -36,7 +36,7 @@ export function LeaseDetail({ leaseId }: LeaseDetailProps) {
                 <div><div className="text-sm text-gray-500">Customer</div><div className="font-medium">{lease.customer?.name || lease.customerId}</div></div>
                 <div><div className="text-sm text-gray-500">Unit</div><div className="font-medium">{lease.unit?.unitNumber || lease.unitId}</div></div>
                 <div><div className="text-sm text-gray-500">Status</div><div className="font-medium">{lease.status}</div></div>
-                <div><div className="text-sm text-gray-500">Rent</div><div className="font-medium">KES {Number(lease.rentAmount).toLocaleString()}</div></div>
+                <div><div className="text-sm text-gray-500">Rent</div><div className="font-medium">TZS {Number(lease.rentAmount).toLocaleString()}</div></div>
                 <div><div className="text-sm text-gray-500">Start Date</div><div className="font-medium">{new Date(lease.startDate).toLocaleDateString()}</div></div>
                 <div><div className="text-sm text-gray-500">End Date</div><div className="font-medium">{new Date(lease.endDate).toLocaleDateString()}</div></div>
               </div>

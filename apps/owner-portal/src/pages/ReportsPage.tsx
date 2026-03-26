@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   BarChart3,
+  CheckCircle,
   Download,
   FileText,
   DollarSign,
@@ -83,17 +84,47 @@ export function ReportsPage() {
     });
   }, []);
 
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+
   const handleExport = async (type: string) => {
     const response = await api.get(`/reports/export/${type}`);
     if (response.success) {
-      alert(`Export initiated. Download link will be available shortly.`);
+      setExportMessage('Export initiated. Download link will be available shortly.');
+      setTimeout(() => setExportMessage(null), 5000);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-32" />
+            <div className="h-4 bg-gray-200 rounded w-48" />
+          </div>
+          <div className="h-10 bg-gray-200 rounded-lg w-24" />
+        </div>
+        <div className="flex gap-2 border-b border-gray-200 pb-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-9 bg-gray-200 rounded w-28" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+              <div className="h-3 bg-gray-200 rounded w-24" />
+              <div className="h-6 bg-gray-200 rounded w-28" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="h-5 bg-gray-200 rounded w-32" />
+          <div className="grid grid-cols-2 gap-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 bg-gray-100 rounded-lg" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -119,6 +150,14 @@ export function ReportsPage() {
           Export
         </button>
       </div>
+
+      {/* Export success message */}
+      {exportMessage && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+          <p className="text-sm text-green-700">{exportMessage}</p>
+        </div>
+      )}
 
       {/* Report tabs */}
       <div className="flex gap-2 border-b border-gray-200">

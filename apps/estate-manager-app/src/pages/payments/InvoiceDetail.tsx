@@ -72,12 +72,12 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
         <hr />
         <div className="flex justify-between">
           <span className="text-gray-500">Amount</span>
-          <span className="font-semibold text-lg">KES {(inv.amount || inv.totalAmount)?.toLocaleString()}</span>
+          <span className="font-semibold text-lg">TZS {(inv.amount || inv.totalAmount)?.toLocaleString()}</span>
         </div>
         {inv.balanceDue !== undefined && (
           <div className="flex justify-between">
             <span className="text-gray-500">Balance Due</span>
-            <span className="font-semibold">KES {inv.balanceDue?.toLocaleString()}</span>
+            <span className="font-semibold">TZS {inv.balanceDue?.toLocaleString()}</span>
           </div>
         )}
         <div className="flex justify-between">
@@ -97,7 +97,7 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
             {inv.lineItems.map((item: any, idx: number) => (
               <div key={idx} className="flex justify-between text-sm">
                 <span>{item.description || item.name}</span>
-                <span className="font-medium">KES {item.amount?.toLocaleString()}</span>
+                <span className="font-medium">TZS {item.amount?.toLocaleString()}</span>
               </div>
             ))}
           </div>

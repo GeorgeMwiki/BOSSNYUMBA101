@@ -79,7 +79,7 @@ export const api = {
 };
 
 // Utility functions for formatting
-const DEFAULT_LOCALE = 'en-KE';
+const DEFAULT_LOCALE = 'en-TZ';
 const DEFAULT_CURRENCY = 'KES';
 
 export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): string {

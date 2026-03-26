@@ -53,13 +53,13 @@ export default function CollectionsPage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="card p-4 text-center border-red-200 bg-red-50">
           <p className="text-2xl font-bold text-red-600">
-            KES {totalOverdue.toLocaleString()}
+            TZS {totalOverdue.toLocaleString()}
           </p>
           <p className="text-sm text-red-500 mt-1">Overdue ({overdueInvoices.length})</p>
         </div>
         <div className="card p-4 text-center border-yellow-200 bg-yellow-50">
           <p className="text-2xl font-bold text-yellow-600">
-            KES {totalUnpaid.toLocaleString()}
+            TZS {totalUnpaid.toLocaleString()}
           </p>
           <p className="text-sm text-yellow-500 mt-1">Unpaid ({unpaidInvoices.length})</p>
         </div>
@@ -91,7 +91,7 @@ export default function CollectionsPage() {
               </div>
               <div className="text-right">
                 <p className="font-semibold text-red-600">
-                  KES {(invoice.balanceDue || invoice.amount || invoice.totalAmount)?.toLocaleString()}
+                  TZS {(invoice.balanceDue || invoice.amount || invoice.totalAmount)?.toLocaleString()}
                 </p>
                 <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
                   overdue
@@ -130,7 +130,7 @@ export default function CollectionsPage() {
               </div>
               <div className="text-right">
                 <p className="font-semibold">
-                  KES {(invoice.balanceDue || invoice.amount || invoice.totalAmount)?.toLocaleString()}
+                  TZS {(invoice.balanceDue || invoice.amount || invoice.totalAmount)?.toLocaleString()}
                 </p>
                 <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
                   unpaid

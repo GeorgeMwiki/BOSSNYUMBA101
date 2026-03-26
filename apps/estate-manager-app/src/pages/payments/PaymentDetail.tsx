@@ -61,7 +61,7 @@ export function PaymentDetail({ paymentId }: PaymentDetailProps) {
       <div className="card p-4 space-y-3">
         <div className="flex justify-between">
           <span className="text-gray-500">Amount</span>
-          <span className="font-semibold text-lg">KES {pay.amount?.toLocaleString()}</span>
+          <span className="font-semibold text-lg">TZS {pay.amount?.toLocaleString()}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Payment Method</span>

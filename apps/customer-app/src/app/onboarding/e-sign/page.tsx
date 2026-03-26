@@ -42,12 +42,12 @@ const DOCUMENTS: Document[] = [
       {
         title: 'Term of Lease',
         content:
-          'This lease begins on June 1, 2024 and ends on May 31, 2025. The monthly rent is KES 40,000, due on the 1st of each month.',
+          'This lease begins on June 1, 2024 and ends on May 31, 2025. The monthly rent is TZS 40,000, due on the 1st of each month.',
       },
       {
         title: 'Security Deposit',
         content:
-          'A security deposit of KES 80,000 (equivalent to 2 months rent) has been paid and will be held for the duration of the lease.',
+          'A security deposit of TZS 80,000 (equivalent to 2 months rent) has been paid and will be held for the duration of the lease.',
       },
       {
         title: 'Maintenance & Repairs',

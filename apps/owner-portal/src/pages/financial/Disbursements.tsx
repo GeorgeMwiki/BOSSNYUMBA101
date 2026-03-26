@@ -152,7 +152,7 @@ export function DisbursementsPage() {
 
   const chartData = Array.from(
     disbursements.reduce((acc, disbursement) => {
-      const month = new Date(disbursement.date).toLocaleDateString('en-KE', {
+      const month = new Date(disbursement.date).toLocaleDateString('en-TZ', {
         month: 'short',
         year: 'numeric',
       });

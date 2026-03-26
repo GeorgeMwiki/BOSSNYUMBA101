@@ -47,7 +47,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 const initialRules: ApprovalRule[] = [
   {
     id: '1', name: 'High-Value Disbursement', category: 'finance', description: 'Requires approval for disbursements above threshold',
-    trigger: 'disbursement.created', thresholdType: 'amount', thresholdValue: 100000, thresholdCurrency: 'KES',
+    trigger: 'disbursement.created', thresholdType: 'amount', thresholdValue: 100000, thresholdCurrency: 'TZS',
     approvers: [
       { level: 1, role: 'Finance Manager', requiredCount: 1, autoApproveAfterHours: 0 },
       { level: 2, role: 'Finance Director', requiredCount: 1, autoApproveAfterHours: 0 },
@@ -55,8 +55,8 @@ const initialRules: ApprovalRule[] = [
     escalationHours: 24, autoRejectAfterHours: 72, isActive: true,
   },
   {
-    id: '2', name: 'Maintenance Work Order > KES 50K', category: 'maintenance', description: 'Approval for expensive maintenance work',
-    trigger: 'workorder.created', thresholdType: 'amount', thresholdValue: 50000, thresholdCurrency: 'KES',
+    id: '2', name: 'Maintenance Work Order > TZS 50K', category: 'maintenance', description: 'Approval for expensive maintenance work',
+    trigger: 'workorder.created', thresholdType: 'amount', thresholdValue: 50000, thresholdCurrency: 'TZS',
     approvers: [{ level: 1, role: 'Operations Lead', requiredCount: 1, autoApproveAfterHours: 48 }],
     escalationHours: 12, autoRejectAfterHours: 48, isActive: true,
   },
@@ -170,7 +170,7 @@ export default function ApprovalMatrix() {
       trigger: '',
       thresholdType: 'amount',
       thresholdValue: 0,
-      thresholdCurrency: 'KES',
+      thresholdCurrency: 'TZS',
       approvers: [{ level: 1, role: 'Finance Manager', requiredCount: 1, autoApproveAfterHours: 0 }],
       escalationHours: 24,
       autoRejectAfterHours: 72,
@@ -336,7 +336,7 @@ export default function ApprovalMatrix() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                           <select value={rule.thresholdCurrency} onChange={(e) => updateRule(rule.id, { thresholdCurrency: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
-                            <option value="KES">KES</option>
+                            <option value="TZS">TZS</option>
                             <option value="%">Percentage</option>
                             <option value="units">Units</option>
                           </select>

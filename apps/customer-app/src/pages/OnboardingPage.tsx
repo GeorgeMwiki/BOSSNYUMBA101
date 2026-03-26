@@ -491,7 +491,7 @@ export default function OnboardingPage() {
               <div className="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-4">
                 <div className="flex justify-between">
                   <span>Monthly Rent</span>
-                  <span className="font-medium text-gray-900">KES 40,000</span>
+                  <span className="font-medium text-gray-900">TZS 40,000</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Start Date</span>

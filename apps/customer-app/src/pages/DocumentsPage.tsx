@@ -237,7 +237,7 @@ export default function DocumentsPage() {
                   </div>
                   <div>
                     <div className="opacity-75 mb-0.5">Monthly Rent</div>
-                    <div className="font-medium">KES 40,000</div>
+                    <div className="font-medium">TZS 40,000</div>
                   </div>
                   <div>
                     <div className="opacity-75 mb-0.5">Status</div>

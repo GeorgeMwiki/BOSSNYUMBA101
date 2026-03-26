@@ -108,14 +108,13 @@ export function ConfigurationPage() {
                 Default Currency
               </label>
               <select
-                defaultValue="KES"
+                defaultValue="TZS"
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
-                <option value="KES">Kenyan Shilling (KES)</option>
+                <option value="TZS">Tanzanian Shilling (TZS)</option>
                 <option value="USD">US Dollar (USD)</option>
                 <option value="UGX">Ugandan Shilling (UGX)</option>
-                <option value="TZS">Tanzanian Shilling (TZS)</option>
               </select>
             </div>
 

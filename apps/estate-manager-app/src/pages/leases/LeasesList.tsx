@@ -41,7 +41,7 @@ export function LeasesList() {
               </div>
               <div className="text-right">
                 <div className="badge-info text-xs">{lease.status}</div>
-                <div className="mt-1 text-sm text-gray-500">KES {Number(lease.rentAmount).toLocaleString()}</div>
+                <div className="mt-1 text-sm text-gray-500">TZS {Number(lease.rentAmount).toLocaleString()}</div>
               </div>
             </div>
           </Link>

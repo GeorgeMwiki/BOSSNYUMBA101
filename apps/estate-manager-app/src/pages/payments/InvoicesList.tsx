@@ -70,7 +70,7 @@ export function InvoicesList() {
               </div>
               <div className="text-right">
                 <p className="font-semibold">
-                  KES {(invoice.amount || invoice.totalAmount)?.toLocaleString()}
+                  TZS {(invoice.amount || invoice.totalAmount)?.toLocaleString()}
                 </p>
                 <span
                   className={`text-xs px-2 py-1 rounded-full font-medium ${

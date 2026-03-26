@@ -72,7 +72,7 @@ export const api = {
 };
 
 export function formatCurrency(amount: number, currency = 'KES'): string {
-  return new Intl.NumberFormat('en-KE', {
+  return new Intl.NumberFormat('en-TZ', {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -81,7 +81,7 @@ export function formatCurrency(amount: number, currency = 'KES'): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-KE', {
+  return new Intl.DateTimeFormat('en-TZ', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -89,7 +89,7 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatDateTime(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-KE', {
+  return new Intl.DateTimeFormat('en-TZ', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -90,7 +90,7 @@ export default function PlatformOverviewPage() {
   const totalRevenue = invoiceList.reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
   const totalUnits = propertyList.reduce((sum: number, p: any) => sum + (p.totalUnits || 0), 0);
 
-  const formatCurrency = (value: number) => `KES ${value.toLocaleString()}`;
+  const formatCurrency = (value: number) => `TZS ${value.toLocaleString()}`;
 
   return (
     <div className="space-y-6">

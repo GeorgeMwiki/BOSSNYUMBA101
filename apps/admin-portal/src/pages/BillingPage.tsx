@@ -137,7 +137,7 @@ export function BillingPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">KES {totalInvoiced.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">TZS {totalInvoiced.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Total Invoiced</p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export function BillingPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">KES {totalCollected.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">TZS {totalCollected.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Total Collected</p>
           </div>
         </div>
@@ -168,7 +168,7 @@ export function BillingPage() {
       {/* Outstanding */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="font-semibold text-gray-900 mb-2">Outstanding Balance</h3>
-        <p className="text-3xl font-bold text-red-600">KES {outstanding.toLocaleString()}</p>
+        <p className="text-3xl font-bold text-red-600">TZS {outstanding.toLocaleString()}</p>
       </div>
 
       {/* Recent Invoices */}
@@ -201,7 +201,7 @@ export function BillingPage() {
                     {invoice.invoiceNumber || invoice.id}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    KES {(invoice.amount || 0).toLocaleString()}
+                    TZS {(invoice.amount || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${

@@ -129,7 +129,7 @@ export function LeaseForm() {
         </div>
 
         <div className="space-y-2">
-          <label className="label">Monthly Rent (KES)</label>
+          <label className="label">Monthly Rent (TZS)</label>
           <input
             type="number"
             className="input"
@@ -143,7 +143,7 @@ export function LeaseForm() {
         </div>
 
         <div className="space-y-2">
-          <label className="label">Security Deposit (KES)</label>
+          <label className="label">Security Deposit (TZS)</label>
           <input
             type="number"
             className="input"

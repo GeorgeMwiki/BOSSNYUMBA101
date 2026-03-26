@@ -72,7 +72,7 @@ export function RecordPayment() {
             {loadingInvoices && <option disabled>Loading invoices...</option>}
             {invoices.map((inv: any) => (
               <option key={inv.id} value={inv.id}>
-                {inv.invoiceNumber || inv.id} - {inv.tenantName || inv.customer?.name || 'Tenant'} - KES {inv.amount?.toLocaleString() || inv.totalAmount?.toLocaleString()}
+                {inv.invoiceNumber || inv.id} - {inv.tenantName || inv.customer?.name || 'Tenant'} - TZS {inv.amount?.toLocaleString() || inv.totalAmount?.toLocaleString()}
               </option>
             ))}
           </select>
@@ -80,13 +80,13 @@ export function RecordPayment() {
 
         {selectedInvoice && (
           <div className="card p-3 bg-blue-50 border-blue-200 text-sm">
-            <p><span className="font-medium">Amount Due:</span> KES {(selectedInvoice.amount || selectedInvoice.totalAmount || selectedInvoice.balanceDue)?.toLocaleString()}</p>
+            <p><span className="font-medium">Amount Due:</span> TZS {(selectedInvoice.amount || selectedInvoice.totalAmount || selectedInvoice.balanceDue)?.toLocaleString()}</p>
             <p><span className="font-medium">Tenant:</span> {selectedInvoice.tenantName || selectedInvoice.customer?.name}</p>
           </div>
         )}
 
         <div className="space-y-2">
-          <label className="label">Amount (KES)</label>
+          <label className="label">Amount (TZS)</label>
           <input
             type="number"
             className="input"
