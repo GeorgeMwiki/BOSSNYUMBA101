@@ -30,16 +30,8 @@ export default function InsurancePage() {
     });
   }, []);
 
-  const displayPolicies = policies.length
-    ? policies
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', provider: 'Jubilee Insurance', type: 'Property', policyNumber: 'POL-2024-001', coverage: 50000000, premium: 450000, startDate: '2024-01-01', endDate: '2024-12-31', status: 'ACTIVE' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', provider: 'APA Insurance', type: 'Liability', policyNumber: 'POL-2024-002', coverage: 10000000, premium: 120000, startDate: '2024-01-01', endDate: '2024-12-31', status: 'ACTIVE' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', provider: 'Jubilee Insurance', type: 'Property', policyNumber: 'POL-2024-003', coverage: 35000000, premium: 320000, startDate: '2024-02-01', endDate: '2025-01-31', status: 'ACTIVE' },
-      ];
-
-  const totalCoverage = displayPolicies.reduce((a, p) => a + p.coverage, 0);
-  const totalPremium = displayPolicies.reduce((a, p) => a + p.premium, 0);
+  const totalCoverage = policies.reduce((a, p) => a + p.coverage, 0);
+  const totalPremium = policies.reduce((a, p) => a + p.premium, 0);
 
   if (loading) {
     return (
@@ -86,6 +78,17 @@ export default function InsurancePage() {
         </div>
       </div>
 
+      {policies.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-gray-200">
+          <Shield className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No insurance policies</h3>
+          <p className="text-gray-500 mb-4">Insurance policies for your properties will appear here.</p>
+          <Link to="/compliance" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Compliance
+          </Link>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -101,7 +104,7 @@ export default function InsurancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {displayPolicies.map((policy) => (
+              {policies.map((policy) => (
                 <tr key={policy.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -156,6 +159,7 @@ export default function InsurancePage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

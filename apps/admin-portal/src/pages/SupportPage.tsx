@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   HeadphonesIcon,
@@ -9,6 +9,7 @@ import {
   User,
   Tag,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   XCircle,
   MoreVertical,
@@ -17,8 +18,9 @@ import {
   Users,
   ArrowUp,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
-import { formatDateTime } from '../lib/api';
+import { api, formatDateTime } from '../lib/api';
 
 interface SupportCase {
   id: string;
@@ -45,94 +47,6 @@ interface SupportCase {
   }>;
 }
 
-const cases: SupportCase[] = [
-  {
-    id: '1',
-    ticketNumber: 'SUP-2025-0142',
-    subject: 'Unable to process M-Pesa payments',
-    description:
-      'Our tenants are unable to make payments via M-Pesa. The payment gateway seems to be timing out.',
-    status: 'open',
-    priority: 'critical',
-    category: 'Payments',
-    tenant: 'Acme Properties Ltd',
-    requester: { name: 'John Kamau', email: 'john@acmeproperties.co.ke' },
-    assignee: null,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        sender: 'John Kamau',
-        message:
-          'Hi, we have been experiencing payment failures since this morning. Our tenants are complaining they cannot pay rent via M-Pesa.',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        isInternal: false,
-      },
-    ],
-  },
-  {
-    id: '2',
-    ticketNumber: 'SUP-2025-0141',
-    subject: 'How to generate custom reports',
-    description: 'Need help understanding how to create custom financial reports.',
-    status: 'in_progress',
-    priority: 'medium',
-    category: 'Reports',
-    tenant: 'Sunrise Realty',
-    requester: { name: 'Mary Wanjiku', email: 'mary@sunriserealty.co.ke' },
-    assignee: 'Support Team',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 7200000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        sender: 'Mary Wanjiku',
-        message: 'I need to generate a custom report showing all payments for the last quarter. How do I do this?',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        isInternal: false,
-      },
-      {
-        id: '2',
-        sender: 'Support Team',
-        message:
-          'Hi Mary, I can help you with that. You can generate custom reports from the Reports section. Let me walk you through the steps.',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        isInternal: false,
-      },
-    ],
-  },
-  {
-    id: '3',
-    ticketNumber: 'SUP-2025-0140',
-    subject: 'Request for API documentation',
-    description: 'We want to integrate with your API for our custom dashboard.',
-    status: 'resolved',
-    priority: 'low',
-    category: 'Technical',
-    tenant: 'Highland Properties',
-    requester: { name: 'David Kipchoge', email: 'david@highland.co.ke' },
-    assignee: 'Support Team',
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    messages: [],
-  },
-  {
-    id: '4',
-    ticketNumber: 'SUP-2025-0139',
-    subject: 'Billing inquiry - incorrect charges',
-    description: 'We were charged for 50 units but we only have 38.',
-    status: 'open',
-    priority: 'high',
-    category: 'Billing',
-    tenant: 'Coastal Estates',
-    requester: { name: 'Fatma Hassan', email: 'fatma@coastalestates.co.ke' },
-    assignee: null,
-    createdAt: new Date(Date.now() - 259200000).toISOString(),
-    updatedAt: new Date(Date.now() - 259200000).toISOString(),
-    messages: [],
-  },
-];
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   open: { bg: 'bg-amber-100', text: 'text-amber-700' },
@@ -149,10 +63,29 @@ const priorityColors: Record<string, { bg: string; text: string }> = {
 };
 
 export function SupportPage() {
+  const [cases, setCases] = useState<SupportCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCase, setSelectedCase] = useState<SupportCase | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [replyText, setReplyText] = useState('');
+
+  const fetchCases = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await api.get<SupportCase[]>('/support/cases');
+    if (res.success && res.data) {
+      setCases(res.data);
+    } else {
+      setError(res.error || 'Failed to load support cases');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchCases();
+  }, []);
 
   const filteredCases = cases.filter((c) => {
     const matchesSearch =
@@ -162,6 +95,77 @@ export function SupportPage() {
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 bg-gray-200 rounded w-40" />
+          <div className="h-4 bg-gray-200 rounded w-64" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-16" />
+              <div className="h-8 bg-gray-200 rounded w-10" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+            <div className="h-9 bg-gray-200 rounded w-full" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2 py-3 border-b border-gray-100">
+                <div className="h-3 bg-gray-200 rounded w-24" />
+                <div className="h-4 bg-gray-200 rounded w-full" />
+                <div className="h-3 bg-gray-200 rounded w-32" />
+              </div>
+            ))}
+          </div>
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-12 flex items-center justify-center">
+            <div className="h-12 w-12 bg-gray-200 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Failed to Load Support Cases</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={fetchCases}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (cases.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Support Center</h1>
+            <p className="text-gray-500">Manage customer support tickets</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center h-96 text-center">
+          <HeadphonesIcon className="h-12 w-12 text-gray-300 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">No Support Cases</h2>
+          <p className="text-sm text-gray-500 mt-1">There are no support cases to display at this time.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

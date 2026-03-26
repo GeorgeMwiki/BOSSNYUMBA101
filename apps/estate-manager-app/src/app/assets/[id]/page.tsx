@@ -38,7 +38,11 @@ export default function AssetDetailPage() {
     return (
       <>
         <PageHeader title="Asset Detail" showBack />
-        <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+        <div className="px-4 py-4 space-y-4 animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3" />
+          <div className="h-4 bg-gray-200 rounded w-2/3" />
+          <div className="h-64 bg-gray-200 rounded" />
+        </div>
       </>
     );
   }

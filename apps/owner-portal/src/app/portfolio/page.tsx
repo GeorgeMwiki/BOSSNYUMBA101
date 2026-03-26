@@ -32,6 +32,7 @@ export default function PortfolioPage() {
     address: { city: string; country: string };
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -45,6 +46,9 @@ export default function PortfolioPage() {
         setProperties(propertiesRes.data);
       }
       setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Failed to load portfolio data.');
+      setLoading(false);
     });
   }, []);
 
@@ -52,6 +56,25 @@ export default function PortfolioPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Portfolio Overview</h1>
+          <p className="text-gray-500">View and manage your property investments</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-red-200">
+          <Building2 className="h-12 w-12 text-red-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Failed to load portfolio</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

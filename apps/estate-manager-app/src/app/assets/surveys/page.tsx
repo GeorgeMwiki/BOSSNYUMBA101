@@ -52,7 +52,11 @@ export default function ConditionSurveysPage() {
 
         {/* Surveys List */}
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
+          <div className="space-y-4 animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3" />
+            <div className="h-4 bg-gray-200 rounded w-2/3" />
+            <div className="h-64 bg-gray-200 rounded" />
+          </div>
         ) : surveys.length === 0 ? (
           <div className="card p-8 text-center">
             <ClipboardCheck className="w-12 h-12 mx-auto text-gray-300 mb-3" />

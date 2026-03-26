@@ -23,12 +23,14 @@ export default function FeedbackPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.message.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await feedbackService.create({
         type: formData.type?.toUpperCase() || 'GENERAL',
@@ -38,7 +40,7 @@ export default function FeedbackPage() {
       setSubmitted(true);
       setFormData({ type: '', subject: '', message: '' });
     } catch (err) {
-      console.error('Failed to submit feedback:', err);
+      setSubmitError((err as Error).message || 'Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +149,12 @@ export default function FeedbackPage() {
             required
           />
         </section>
+
+        {submitError && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            {submitError}
+          </div>
+        )}
 
         <button
           type="submit"

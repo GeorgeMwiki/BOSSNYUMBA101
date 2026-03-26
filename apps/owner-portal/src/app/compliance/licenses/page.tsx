@@ -28,14 +28,6 @@ export default function LicensesPage() {
     });
   }, []);
 
-  const displayLicenses = licenses.length
-    ? licenses
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Rental License', number: 'RL-2024-001', issuingAuthority: 'City Council', issueDate: '2024-01-01', expiryDate: '2025-01-01', status: 'ACTIVE' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Fire Safety Certificate', number: 'FSC-2024-001', issuingAuthority: 'Fire Department', issueDate: '2024-02-01', expiryDate: '2024-03-15', status: 'EXPIRING_SOON' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Rental License', number: 'RL-2024-002', issuingAuthority: 'City Council', issueDate: '2024-01-15', expiryDate: '2025-01-15', status: 'ACTIVE' },
-      ];
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -56,6 +48,17 @@ export default function LicensesPage() {
         </div>
       </div>
 
+      {licenses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-gray-200">
+          <FileCheck className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No licenses found</h3>
+          <p className="text-gray-500 mb-4">Property licenses and permits will appear here.</p>
+          <Link to="/compliance" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Compliance
+          </Link>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -70,7 +73,7 @@ export default function LicensesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {displayLicenses.map((license) => (
+              {licenses.map((license) => (
                 <tr key={license.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -120,6 +123,7 @@ export default function LicensesPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

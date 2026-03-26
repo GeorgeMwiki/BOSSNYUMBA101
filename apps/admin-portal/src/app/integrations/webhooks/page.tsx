@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Webhook,
   Plus,
   Search,
   Filter,
   MoreVertical,
-  CheckCircle,
-  XCircle,
-  Clock,
   Copy,
-  Trash2,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
-import { formatDateTime } from '../../../lib/api';
+import { api, formatDateTime } from '../../../lib/api';
 
 interface WebhookConfig {
   id: string;
@@ -26,57 +24,6 @@ interface WebhookConfig {
   createdAt: string;
 }
 
-const webhooks: WebhookConfig[] = [
-  {
-    id: '1',
-    name: 'Payment Success',
-    url: 'https://acmeproperties.co.ke/webhooks/payments',
-    events: ['payment.completed', 'payment.refunded'],
-    tenantId: 't1',
-    tenantName: 'Acme Properties Ltd',
-    status: 'active',
-    lastTriggered: new Date(Date.now() - 3600000).toISOString(),
-    successRate: 99.2,
-    createdAt: '2024-06-15',
-  },
-  {
-    id: '2',
-    name: 'Tenant Created',
-    url: 'https://api.bossnyumba.com/internal/tenant-events',
-    events: ['tenant.created', 'tenant.updated'],
-    tenantId: null,
-    tenantName: null,
-    status: 'active',
-    lastTriggered: new Date(Date.now() - 86400000).toISOString(),
-    successRate: 100,
-    createdAt: '2024-01-01',
-  },
-  {
-    id: '3',
-    name: 'Property Sync',
-    url: 'https://highland.co.ke/api/sync/properties',
-    events: ['property.created', 'property.updated', 'property.deleted'],
-    tenantId: 't5',
-    tenantName: 'Highland Properties',
-    status: 'failing',
-    lastTriggered: new Date(Date.now() - 7200000).toISOString(),
-    successRate: 72.5,
-    createdAt: '2024-09-20',
-  },
-  {
-    id: '4',
-    name: 'Lease Expiry Alert',
-    url: 'https://sunriserealty.co.ke/webhooks/leases',
-    events: ['lease.expiring', 'lease.expired'],
-    tenantId: 't2',
-    tenantName: 'Sunrise Realty',
-    status: 'inactive',
-    lastTriggered: null,
-    successRate: 0,
-    createdAt: '2024-08-10',
-  },
-];
-
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   inactive: 'bg-gray-100 text-gray-700',
@@ -84,8 +31,31 @@ const statusColors: Record<string, string> = {
 };
 
 export default function IntegrationsWebhooksPage() {
+  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const fetchWebhooks = () => {
+    setLoading(true);
+    setError(false);
+    api.get<WebhookConfig[]>('/integrations/webhooks').then((res) => {
+      if (res.success && res.data) {
+        setWebhooks(res.data);
+      } else {
+        setWebhooks([]);
+      }
+      setLoading(false);
+    }).catch(() => {
+      setError(true);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchWebhooks();
+  }, []);
 
   const filteredWebhooks = webhooks.filter((wh) => {
     const matchesSearch =
@@ -96,16 +66,52 @@ export default function IntegrationsWebhooksPage() {
     return matchesSearch && matchesStatus;
   });
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-1/4 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-16 mb-2" />
+              <div className="h-4 bg-gray-200 rounded w-24" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-8 animate-pulse">
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Unable to load webhooks</h2>
+        <p className="text-sm text-gray-500 mt-1">Something went wrong while fetching webhook configurations.</p>
+        <button
+          onClick={fetchWebhooks}
+          className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Webhooks
-          </h1>
-          <p className="text-gray-500">
-            Manage outbound webhook endpoints for events
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Webhooks</h1>
+          <p className="text-gray-500">Manage outbound webhook endpoints for events</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
           <Plus className="h-4 w-4" />
@@ -172,30 +178,14 @@ export default function IntegrationsWebhooksPage() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Webhook
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                URL
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tenant
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Events
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Success Rate
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Triggered
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Webhook</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Events</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Triggered</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -204,36 +194,20 @@ export default function IntegrationsWebhooksPage() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <Webhook className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium text-gray-900">
-                      {webhook.name}
-                    </span>
+                    <span className="font-medium text-gray-900">{webhook.name}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate">
-                  {webhook.url}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {webhook.tenantName || 'Platform'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {webhook.events.length} events
-                </td>
+                <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate">{webhook.url}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{webhook.tenantName || 'Platform'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{webhook.events.length} events</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      statusColors[webhook.status]
-                    }`}
-                  >
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[webhook.status]}`}>
                     {webhook.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {webhook.successRate}%
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{webhook.successRate}%</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {webhook.lastTriggered
-                    ? formatDateTime(webhook.lastTriggered)
-                    : '-'}
+                  {webhook.lastTriggered ? formatDateTime(webhook.lastTriggered) : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -252,8 +226,10 @@ export default function IntegrationsWebhooksPage() {
       </div>
 
       {filteredWebhooks.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No webhooks found
+        <div className="text-center py-12">
+          <Webhook className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">No webhooks found</p>
+          <p className="text-sm text-gray-400 mt-1">Create a webhook to get started with event notifications.</p>
         </div>
       )}
     </div>

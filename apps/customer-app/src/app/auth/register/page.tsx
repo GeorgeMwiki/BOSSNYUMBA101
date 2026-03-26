@@ -63,7 +63,7 @@ export default function RegisterPage() {
                 type="text"
                 value={formData.firstName}
                 onChange={(e) => setFormData((p) => ({ ...p, firstName: e.target.value }))}
-                placeholder="John"
+                placeholder="First name"
                 className="input pl-12"
                 required
               />
@@ -81,7 +81,7 @@ export default function RegisterPage() {
                 type="text"
                 value={formData.lastName}
                 onChange={(e) => setFormData((p) => ({ ...p, lastName: e.target.value }))}
-                placeholder="Kamau"
+                placeholder="Last name"
                 className="input pl-12"
                 required
               />
@@ -99,7 +99,7 @@ export default function RegisterPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="+254 7XX XXX XXX"
+                placeholder="+255 7XX XXX XXX"
                 className="input pl-12"
                 required
                 autoComplete="tel"

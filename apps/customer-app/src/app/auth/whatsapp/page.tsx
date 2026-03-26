@@ -123,7 +123,10 @@ export default function WhatsAppRegistrationPage() {
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
-          <h1 className="text-xl font-semibold mb-2">Loading...</h1>
+          <h1 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Loading
+          </h1>
         </div>
       </main>
     }>

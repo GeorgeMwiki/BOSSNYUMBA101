@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   Download,
@@ -12,6 +12,8 @@ import {
   Play,
   Clock,
   CheckCircle,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -27,7 +29,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { formatCurrency } from '../lib/api';
+import { api, formatCurrency } from '../lib/api';
 
 interface ReportTemplate {
   id: string;
@@ -89,34 +91,45 @@ const reportTemplates: ReportTemplate[] = [
   },
 ];
 
-const revenueData = [
-  { month: 'Aug', mrr: 2100000, newMrr: 180000, churnedMrr: 50000 },
-  { month: 'Sep', mrr: 2350000, newMrr: 300000, churnedMrr: 50000 },
-  { month: 'Oct', mrr: 2600000, newMrr: 320000, churnedMrr: 70000 },
-  { month: 'Nov', mrr: 2900000, newMrr: 380000, churnedMrr: 80000 },
-  { month: 'Dec', mrr: 3200000, newMrr: 400000, churnedMrr: 100000 },
-  { month: 'Jan', mrr: 3500000, newMrr: 420000, churnedMrr: 120000 },
-];
-
-const planDistribution = [
-  { name: 'Enterprise', value: 35, color: '#8b5cf6' },
-  { name: 'Professional', value: 45, color: '#3b82f6' },
-  { name: 'Starter', value: 15, color: '#22c55e' },
-  { name: 'Trial', value: 5, color: '#f59e0b' },
-];
-
-const tenantGrowthData = [
-  { month: 'Aug', acquired: 12, churned: 2 },
-  { month: 'Sep', acquired: 15, churned: 3 },
-  { month: 'Oct', acquired: 18, churned: 2 },
-  { month: 'Nov', acquired: 20, churned: 4 },
-  { month: 'Dec', acquired: 22, churned: 3 },
-  { month: 'Jan', acquired: 25, churned: 5 },
-];
+interface ReportsOverview {
+  kpis: {
+    totalMrr: number;
+    mrrChangePercent: number;
+    activeTenants: number;
+    newTenantsThisMonth: number;
+    totalUnits: number;
+    newUnitsThisMonth: number;
+    churnRate: number;
+    churnRateChange: number;
+  };
+  revenueData: Array<{ month: string; mrr: number; newMrr: number; churnedMrr: number }>;
+  tenantGrowthData: Array<{ month: string; acquired: number; churned: number }>;
+  planDistribution: Array<{ name: string; value: number; color: string }>;
+  topTenants: Array<{ name: string; mrr: number; units: number }>;
+}
 
 export function ReportsPage() {
+  const [overview, setOverview] = useState<ReportsOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'templates' | 'scheduled'>('dashboard');
   const [dateRange, setDateRange] = useState('last30');
+
+  const fetchOverview = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await api.get<ReportsOverview>('/reports/overview');
+    if (res.success && res.data) {
+      setOverview(res.data);
+    } else {
+      setError(res.error || 'Failed to load reports data');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOverview();
+  }, []);
 
   const formatDate = (isoString: string) => {
     return new Date(isoString).toLocaleDateString('en-TZ', {
@@ -191,161 +204,217 @@ export function ReportsPage() {
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Total MRR</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(3500000)}
-              </p>
-              <p className="text-sm text-green-600 mt-1">+9.4% vs last month</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Active Tenants</p>
-              <p className="text-2xl font-bold text-gray-900">118</p>
-              <p className="text-sm text-green-600 mt-1">+20 this month</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Total Units</p>
-              <p className="text-2xl font-bold text-gray-900">4,536</p>
-              <p className="text-sm text-green-600 mt-1">+342 this month</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Churn Rate</p>
-              <p className="text-2xl font-bold text-gray-900">2.1%</p>
-              <p className="text-sm text-green-600 mt-1">-0.3% vs last month</p>
-            </div>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">MRR Trend</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData}>
-                    <defs>
-                      <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-                    <YAxis
-                      stroke="#9ca3af"
-                      fontSize={12}
-                      tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="mrr"
-                      stroke="#8b5cf6"
-                      strokeWidth={2}
-                      fill="url(#colorMrr)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Tenant Acquisition vs Churn
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tenantGrowthData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-                    <YAxis stroke="#9ca3af" fontSize={12} />
-                    <Tooltip />
-                    <Bar
-                      dataKey="acquired"
-                      fill="#22c55e"
-                      name="Acquired"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="churned"
-                      fill="#ef4444"
-                      name="Churned"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Revenue by Plan
-              </h3>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={planDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
-                      dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name} ${(percent * 100).toFixed(0)}%`
-                      }
-                      labelLine={false}
-                    >
-                      {planDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Top Performing Tenants
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { name: 'Acme Properties Ltd', mrr: 125000, units: 320 },
-                  { name: 'Highland Properties', mrr: 95000, units: 195 },
-                  { name: 'Sunrise Realty', mrr: 45000, units: 85 },
-                  { name: 'Metro Housing', mrr: 35000, units: 65 },
-                  { name: 'Coastal Estates', mrr: 28000, units: 52 },
-                ].map((tenant, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
-                        {index + 1}
-                      </span>
-                      <span className="font-medium text-gray-900">
-                        {tenant.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{tenant.units} units</span>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency(tenant.mrr)}/mo
-                      </span>
-                    </div>
+          {loading ? (
+            <div className="animate-pulse space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-20" />
+                    <div className="h-8 bg-gray-200 rounded w-28" />
+                    <div className="h-3 bg-gray-200 rounded w-24" />
                   </div>
                 ))}
               </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+                    <div className="h-5 bg-gray-200 rounded w-32" />
+                    <div className="h-64 bg-gray-200 rounded" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+                  <div className="h-5 bg-gray-200 rounded w-32" />
+                  <div className="h-48 bg-gray-200 rounded" />
+                </div>
+                <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+                  <div className="h-5 bg-gray-200 rounded w-40" />
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex justify-between py-2 border-b border-gray-100">
+                      <div className="h-4 bg-gray-200 rounded w-40" />
+                      <div className="h-4 bg-gray-200 rounded w-24" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+              <div className="p-4 bg-amber-50 rounded-full mb-4">
+                <AlertTriangle className="h-10 w-10 text-amber-500" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Failed to Load Reports</h2>
+              <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+              <button
+                onClick={fetchOverview}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </button>
+            </div>
+          ) : overview ? (
+            <>
+              {/* KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-sm text-gray-500 mb-1">Total MRR</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(overview.kpis.totalMrr)}
+                  </p>
+                  <p className={`text-sm mt-1 ${overview.kpis.mrrChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {overview.kpis.mrrChangePercent >= 0 ? '+' : ''}{overview.kpis.mrrChangePercent}% vs last month
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-sm text-gray-500 mb-1">Active Tenants</p>
+                  <p className="text-2xl font-bold text-gray-900">{overview.kpis.activeTenants}</p>
+                  <p className="text-sm text-green-600 mt-1">+{overview.kpis.newTenantsThisMonth} this month</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-sm text-gray-500 mb-1">Total Units</p>
+                  <p className="text-2xl font-bold text-gray-900">{overview.kpis.totalUnits.toLocaleString()}</p>
+                  <p className="text-sm text-green-600 mt-1">+{overview.kpis.newUnitsThisMonth} this month</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-sm text-gray-500 mb-1">Churn Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{overview.kpis.churnRate}%</p>
+                  <p className={`text-sm mt-1 ${overview.kpis.churnRateChange <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {overview.kpis.churnRateChange <= 0 ? '' : '+'}{overview.kpis.churnRateChange}% vs last month
+                  </p>
+                </div>
+              </div>
+
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4">MRR Trend</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={overview.revenueData}>
+                        <defs>
+                          <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
+                        <YAxis
+                          stroke="#9ca3af"
+                          fontSize={12}
+                          tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => formatCurrency(value)}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="mrr"
+                          stroke="#8b5cf6"
+                          strokeWidth={2}
+                          fill="url(#colorMrr)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4">
+                    Tenant Acquisition vs Churn
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={overview.tenantGrowthData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
+                        <YAxis stroke="#9ca3af" fontSize={12} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="acquired"
+                          fill="#22c55e"
+                          name="Acquired"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="churned"
+                          fill="#ef4444"
+                          name="Churned"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4">
+                    Revenue by Plan
+                  </h3>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={overview.planDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                          labelLine={false}
+                        >
+                          {overview.planDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4">
+                    Top Performing Tenants
+                  </h3>
+                  <div className="space-y-3">
+                    {overview.topTenants.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-8">No tenant data available.</p>
+                    ) : (
+                      overview.topTenants.map((tenant, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
+                              {index + 1}
+                            </span>
+                            <span className="font-medium text-gray-900">
+                              {tenant.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-gray-500">{tenant.units} units</span>
+                            <span className="font-medium text-gray-900">
+                              {formatCurrency(tenant.mrr)}/mo
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       )}
 

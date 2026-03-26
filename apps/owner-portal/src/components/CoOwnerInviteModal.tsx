@@ -69,7 +69,7 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
       setStep('success');
       onSuccess?.();
     } catch (err) {
-      setStep('success');
+      setError(err instanceof Error ? err.message : 'Failed to send invitation. Please try again.');
     } finally {
       setLoading(false);
     }

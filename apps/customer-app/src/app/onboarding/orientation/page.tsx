@@ -106,7 +106,7 @@ const HOUSE_RULES: HouseRule[] = [
       'Do not share your access card or gate code',
       'Report lost access cards immediately',
       'Do not prop open security doors',
-      'Report suspicious activity to security: +254 700 000 111',
+      'Report suspicious activity to security: +255 700 000 111',
       'Use intercom to verify deliveries before granting access',
     ],
     acknowledged: false,

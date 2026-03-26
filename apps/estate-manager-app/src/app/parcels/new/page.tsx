@@ -8,10 +8,12 @@ import { PageHeader } from '@/components/layout/PageHeader';
 export default function NewParcelPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     const formData = new FormData(e.currentTarget);
     try {
       await parcelsService.create({
@@ -34,7 +36,8 @@ export default function NewParcelPage() {
         requiresCivilEngNotification: formData.get('requiresCivilEngNotification') === 'on',
       });
       router.push('/parcels');
-    } catch {
+    } catch (err) {
+      setError((err as Error).message || 'Failed to create parcel');
       setIsSubmitting(false);
     }
   };
@@ -172,6 +175,12 @@ export default function NewParcelPage() {
               </div>
             </div>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Submit */}
           <div className="flex gap-3">

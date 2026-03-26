@@ -134,7 +134,7 @@ export default function ProfileSettingsPage() {
               className="input"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+254..."
+              placeholder="+255..."
             />
           </div>
 

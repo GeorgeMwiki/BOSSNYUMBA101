@@ -36,15 +36,7 @@ export default function VendorContractsPage() {
     });
   }, []);
 
-  const displayContracts = contracts.length
-    ? contracts
-    : [
-        { id: '1', vendorId: '1', vendorName: 'QuickFix Plumbing', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2024-01-01', endDate: '2024-12-31', value: 2400000, status: 'ACTIVE', type: 'Annual Maintenance' },
-        { id: '2', vendorId: '2', vendorName: 'SafeElectric Ltd', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2024-02-01', endDate: '2025-01-31', value: 1800000, status: 'ACTIVE', type: 'Electrical Services' },
-        { id: '3', vendorId: '3', vendorName: 'CleanPro Services', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2023-06-01', endDate: '2024-05-31', value: 960000, status: 'EXPIRING_SOON', type: 'Cleaning' },
-      ];
-
-  const expiringSoon = displayContracts.filter((c) => c.status === 'EXPIRING_SOON' || c.status === 'EXPIRING');
+  const expiringSoon = contracts.filter((c) => c.status === 'EXPIRING_SOON' || c.status === 'EXPIRING');
 
   if (loading) {
     return (
@@ -79,6 +71,17 @@ export default function VendorContractsPage() {
         </div>
       )}
 
+      {contracts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-gray-200">
+          <FileText className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No contracts yet</h3>
+          <p className="text-gray-500 mb-4">Vendor contracts will appear here once created.</p>
+          <Link to="/vendors" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Vendors
+          </Link>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -94,7 +97,7 @@ export default function VendorContractsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {displayContracts.map((contract) => (
+              {contracts.map((contract) => (
                 <tr key={contract.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <Link
@@ -149,6 +152,7 @@ export default function VendorContractsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function ApplicationDetailPage() {
   const params = useParams();
   const applicationId = params.id as string;
 
-  const { data: application, isLoading } = useQuery({
+  const { data: application, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['application', applicationId],
     queryFn: () => applicationsService.get(applicationId).then(r => r.data),
     retry: false,
@@ -32,6 +32,20 @@ export default function ApplicationDetailPage() {
       <>
         <PageHeader title="Application" showBack />
         <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <PageHeader title="Application" showBack />
+        <div className="px-4 py-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-600 font-medium mb-1">Failed to load application</p>
+          <p className="text-sm text-gray-500 mb-4">{(error as Error).message}</p>
+          <button onClick={() => refetch()} className="btn-primary text-sm">Retry</button>
+        </div>
       </>
     );
   }

@@ -9,10 +9,12 @@ import { Upload } from 'lucide-react';
 export default function NewApplicationPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     const formData = new FormData(e.currentTarget);
     try {
       await applicationsService.create({
@@ -32,7 +34,8 @@ export default function NewApplicationPage() {
         receivingStationId: formData.get('receivingStationId') as string || undefined,
       });
       router.push('/applications');
-    } catch {
+    } catch (err) {
+      setError((err as Error).message || 'Failed to submit application');
       setIsSubmitting(false);
     }
   };
@@ -149,6 +152,12 @@ export default function NewApplicationPage() {
               <textarea name="purposeOfUse" className="input" rows={2} placeholder="Describe intended use..." />
             </div>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Submit */}
           <div className="flex gap-3">

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  AlertTriangle,
   Building2,
   DollarSign,
   Wrench,
@@ -28,13 +29,19 @@ export default function PropertyBudgetPage() {
   const { propertyId } = useParams<{ propertyId: string }>();
   const [budget, setBudget] = useState<PropertyBudget | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (propertyId) {
       api.get<PropertyBudget>(`/budgets/${propertyId}`).then((res) => {
         if (res.success && res.data) {
           setBudget(res.data);
+        } else {
+          setError(true);
         }
+        setLoading(false);
+      }).catch(() => {
+        setError(true);
         setLoading(false);
       });
     }
@@ -48,19 +55,20 @@ export default function PropertyBudgetPage() {
     );
   }
 
-  const displayBudget = budget || {
-    propertyId: propertyId!,
-    propertyName: 'Westlands Apartments',
-    totalBudget: 12000000,
-    totalSpent: 5500000,
-    categories: [
-      { category: 'Maintenance', budgeted: 3000000, spent: 1450000, variance: -1550000 },
-      { category: 'Utilities', budgeted: 2000000, spent: 1050000, variance: -950000 },
-      { category: 'Admin', budgeted: 1200000, spent: 600000, variance: -600000 },
-      { category: 'Insurance', budgeted: 720000, spent: 360000, variance: -360000 },
-      { category: 'Other', budgeted: 1080000, spent: 540000, variance: -540000 },
-    ],
-  };
+  if (error || !budget) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Budget Data Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1">Unable to load budget details for this property.</p>
+        <Link to="/budgets" className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium">
+          Back to Budgets
+        </Link>
+      </div>
+    );
+  }
+
+  const displayBudget = budget;
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {

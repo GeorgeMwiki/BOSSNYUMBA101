@@ -27,17 +27,8 @@ export default function InspectionsPage() {
     });
   }, []);
 
-  const displayInspections = inspections.length
-    ? inspections
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Fire Safety', scheduledDate: '2024-02-28', status: 'SCHEDULED' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Electrical', scheduledDate: '2024-01-15', completedDate: '2024-01-15', status: 'PASSED', result: 'PASSED' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Fire Safety', scheduledDate: '2024-03-15', status: 'SCHEDULED' },
-        { id: '4', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Health & Safety', scheduledDate: '2024-02-10', completedDate: '2024-02-10', status: 'PASSED', result: 'PASSED' },
-      ];
-
-  const upcoming = displayInspections.filter((i) => i.status === 'SCHEDULED');
-  const completed = displayInspections.filter((i) => i.status === 'PASSED' || i.status === 'COMPLETED');
+  const upcoming = inspections.filter((i) => i.status === 'SCHEDULED');
+  const completed = inspections.filter((i) => i.status === 'PASSED' || i.status === 'COMPLETED');
 
   if (loading) {
     return (
@@ -85,10 +76,21 @@ export default function InspectionsPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">Total</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">{displayInspections.length}</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">{inspections.length}</p>
         </div>
       </div>
 
+      {inspections.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-gray-200">
+          <ClipboardList className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No inspections scheduled</h3>
+          <p className="text-gray-500 mb-4">Property inspections and compliance checks will appear here.</p>
+          <Link to="/compliance" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Compliance
+          </Link>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">All Inspections</h3>
@@ -106,7 +108,7 @@ export default function InspectionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {displayInspections.map((inspection) => (
+              {inspections.map((inspection) => (
                 <tr key={inspection.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -158,6 +160,7 @@ export default function InspectionsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

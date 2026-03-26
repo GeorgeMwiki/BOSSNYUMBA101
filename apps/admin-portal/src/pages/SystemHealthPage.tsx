@@ -1,8 +1,4 @@
-'use client';
-
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { notificationsService } from '@bossnyumba/api-client';
+import React, { useState, useEffect } from 'react';
 import {
   Server,
   CheckCircle,
@@ -12,24 +8,62 @@ import {
   Database,
   Cpu,
   HardDrive,
+  XCircle,
 } from 'lucide-react';
+import { api } from '../lib/api';
+
+interface ServiceStatus {
+  name: string;
+  status: 'healthy' | 'degraded' | 'down';
+  uptime?: string;
+}
+
+interface SystemHealthData {
+  overallStatus: string;
+  services: ServiceStatus[];
+  notifications: Array<{
+    id: string;
+    title?: string;
+    message?: string;
+    createdAt?: string;
+  }>;
+}
+
+const serviceIcons: Record<string, React.ElementType> = {
+  'API Gateway': Server,
+  'Auth Service': Cpu,
+  'Database Primary': Database,
+  'Object Storage': HardDrive,
+};
+
+const statusConfig: Record<string, { bg: string; iconColor: string; label: string; Icon: React.ElementType }> = {
+  healthy: { bg: 'bg-green-100', iconColor: 'text-green-600', label: 'Healthy', Icon: CheckCircle },
+  degraded: { bg: 'bg-amber-100', iconColor: 'text-amber-600', label: 'Degraded', Icon: AlertTriangle },
+  down: { bg: 'bg-red-100', iconColor: 'text-red-600', label: 'Down', Icon: XCircle },
+};
 
 export function SystemHealthPage() {
-  const {
-    data: notifications,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['admin-system-health'],
-    queryFn: async () => {
-      const res = await notificationsService.list();
-      if (res.success && res.data) return res.data;
-      throw new Error(res.error?.message || 'Failed to load system health data');
-    },
-    staleTime: 15_000,
-  });
+  const [healthData, setHealthData] = useState<SystemHealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (isLoading) {
+  const fetchHealth = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await api.get<SystemHealthData>('/system/health');
+    if (res.success && res.data) {
+      setHealthData(res.data);
+    } else {
+      setError(res.error || 'Failed to load system health data');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchHealth();
+  }, []);
+
+  if (loading) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="space-y-2">
@@ -82,11 +116,9 @@ export function SystemHealthPage() {
           <AlertTriangle className="h-10 w-10 text-amber-500" />
         </div>
         <h2 className="text-lg font-semibold text-gray-900">System Health Unavailable</h2>
-        <p className="text-sm text-gray-500 mt-1 max-w-md">
-          {error instanceof Error ? error.message : 'Unable to load system health data. Please check your connection and try again.'}
-        </p>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={fetchHealth}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />
@@ -96,14 +128,9 @@ export function SystemHealthPage() {
     );
   }
 
-  const notifList = Array.isArray(notifications) ? notifications : [];
-
-  const services = [
-    { name: 'API Gateway', icon: Server, status: 'healthy' },
-    { name: 'Auth Service', icon: Cpu, status: 'healthy' },
-    { name: 'Database Primary', icon: Database, status: 'healthy' },
-    { name: 'Object Storage', icon: HardDrive, status: 'healthy' },
-  ];
+  const services = healthData?.services ?? [];
+  const notifList = healthData?.notifications ?? [];
+  const overallStatus = healthData?.overallStatus ?? 'unknown';
 
   return (
     <div className="space-y-6">
@@ -115,32 +142,53 @@ export function SystemHealthPage() {
       {/* Overall Status */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center gap-3">
-          <CheckCircle className="h-6 w-6 text-green-600" />
+          {overallStatus === 'healthy' ? (
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          ) : overallStatus === 'degraded' ? (
+            <AlertTriangle className="h-6 w-6 text-amber-600" />
+          ) : (
+            <XCircle className="h-6 w-6 text-red-600" />
+          )}
           <div>
-            <h3 className="font-semibold text-gray-900">All Systems Operational</h3>
+            <h3 className="font-semibold text-gray-900">
+              {overallStatus === 'healthy' ? 'All Systems Operational' : overallStatus === 'degraded' ? 'Some Systems Degraded' : 'System Issues Detected'}
+            </h3>
             <p className="text-sm text-gray-500">Connected to live monitoring</p>
           </div>
         </div>
       </div>
 
       {/* Service Grid */}
+      {services.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Server className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">No Services Found</h3>
+          <p className="text-sm text-gray-500">No service status data is available at this time.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {services.map((svc) => (
-          <div key={svc.name} className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svc.icon className="h-5 w-5 text-green-600" />
+        {services.map((svc) => {
+          const SvcIcon = serviceIcons[svc.name] || Server;
+          const svcStatus = statusConfig[svc.status] || statusConfig.healthy;
+          const StatusIcon = svcStatus.Icon;
+          return (
+            <div key={svc.name} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`p-2 ${svcStatus.bg} rounded-lg`}>
+                  <SvcIcon className={`h-5 w-5 ${svcStatus.iconColor}`} />
+                </div>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium ${svcStatus.iconColor}`}>
+                  <StatusIcon className="h-3 w-3" />
+                  {svcStatus.label}
+                </span>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600">
-                <CheckCircle className="h-3 w-3" />
-                Healthy
-              </span>
+              <h4 className="font-medium text-gray-900">{svc.name}</h4>
+              <p className="text-xs text-gray-500 mt-1">Uptime: {svc.uptime || 'N/A'}</p>
             </div>
-            <h4 className="font-medium text-gray-900">{svc.name}</h4>
-            <p className="text-xs text-gray-500 mt-1">Uptime: 99.9%+</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
+      )}
 
       {/* Recent Alerts */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText,
@@ -10,10 +10,12 @@ import {
   PenLine,
   AlertCircle,
   Eye,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { useQuery, type LeaseWithDetails } from '@bossnyumba/api-client';
 
 interface Document {
   id: string;
@@ -31,91 +33,132 @@ interface DocumentSection {
   content: string;
 }
 
-const DOCUMENTS: Document[] = [
-  {
-    id: 'lease',
-    name: 'Lease Agreement',
-    type: 'lease',
-    summary:
-      'Your 12-month residential lease agreement for Unit A-204 at Sunset Apartments.',
-    sections: [
-      {
-        title: 'Term of Lease',
-        content:
-          'This lease begins on June 1, 2024 and ends on May 31, 2025. The monthly rent is TZS 40,000, due on the 1st of each month.',
-      },
-      {
-        title: 'Security Deposit',
-        content:
-          'A security deposit of TZS 80,000 (equivalent to 2 months rent) has been paid and will be held for the duration of the lease.',
-      },
-      {
-        title: 'Maintenance & Repairs',
-        content:
-          'The landlord is responsible for major repairs and maintenance. The tenant must report any issues promptly through the app.',
-      },
-      {
-        title: 'Rules & Regulations',
-        content:
-          'The tenant agrees to abide by all property rules, including quiet hours (10pm-7am), parking regulations, and common area usage guidelines.',
-      },
-    ],
-    signed: false,
-  },
-  {
-    id: 'inspection',
-    name: 'Move-in Condition Report',
-    type: 'inspection',
-    summary:
-      'Document confirming the condition of the unit at move-in.',
-    sections: [
-      {
-        title: 'Unit Condition',
-        content:
-          'Based on your move-in inspection, this report documents the current condition of all rooms, fixtures, and appliances in the unit.',
-      },
-      {
-        title: 'Acknowledgment',
-        content:
-          'By signing, you confirm that the condition report accurately reflects the state of the unit at the time of move-in.',
-      },
-    ],
-    signed: false,
-  },
-  {
-    id: 'rules',
-    name: 'House Rules Agreement',
-    type: 'rules',
-    summary: 'Property rules and community guidelines.',
-    sections: [
-      {
-        title: 'Quiet Hours',
-        content:
-          'Quiet hours are observed from 10:00 PM to 7:00 AM daily. Please be considerate of neighbors during these times.',
-      },
-      {
-        title: 'Common Areas',
-        content:
-          'Common areas including the lobby, gym, and rooftop are for resident use only. Guests must be accompanied at all times.',
-      },
-      {
-        title: 'Parking',
-        content:
-          'Each unit is assigned one parking space. Additional parking is available on a first-come, first-served basis.',
-      },
-    ],
-    signed: false,
-  },
-];
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(amount);
+
+function buildDocuments(lease: LeaseWithDetails | undefined): Document[] {
+  const unitLabel = lease?.unit?.unitNumber
+    ? `Unit ${lease.unit.unitNumber}`
+    : 'your unit';
+  const propertyLabel = lease?.property?.name || 'the property';
+  const rentAmount = lease?.rentAmount ? formatCurrency(lease.rentAmount) : 'the agreed amount';
+  const depositAmount = lease?.depositAmount ? formatCurrency(lease.depositAmount) : 'the agreed deposit';
+  const startDate = lease?.startDate
+    ? new Date(lease.startDate).toLocaleDateString('en-TZ', { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'the start date';
+  const endDate = lease?.endDate
+    ? new Date(lease.endDate).toLocaleDateString('en-TZ', { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'the end date';
+  const dueDay = lease?.paymentDueDay ?? 1;
+
+  return [
+    {
+      id: 'lease',
+      name: 'Lease Agreement',
+      type: 'lease',
+      summary: `Your residential lease agreement for ${unitLabel} at ${propertyLabel}.`,
+      sections: [
+        {
+          title: 'Term of Lease',
+          content: `This lease begins on ${startDate} and ends on ${endDate}. The monthly rent is ${rentAmount}, due on the ${dueDay}${dueDay === 1 ? 'st' : dueDay === 2 ? 'nd' : dueDay === 3 ? 'rd' : 'th'} of each month.`,
+        },
+        {
+          title: 'Security Deposit',
+          content: `A security deposit of ${depositAmount} has been paid and will be held for the duration of the lease.`,
+        },
+        {
+          title: 'Maintenance & Repairs',
+          content: 'The landlord is responsible for major repairs and maintenance. The tenant must report any issues promptly through the app.',
+        },
+        {
+          title: 'Rules & Regulations',
+          content: 'The tenant agrees to abide by all property rules, including quiet hours (10pm-7am), parking regulations, and common area usage guidelines.',
+        },
+      ],
+      signed: false,
+    },
+    {
+      id: 'inspection',
+      name: 'Move-in Condition Report',
+      type: 'inspection',
+      summary: 'Document confirming the condition of the unit at move-in.',
+      sections: [
+        {
+          title: 'Unit Condition',
+          content: 'Based on your move-in inspection, this report documents the current condition of all rooms, fixtures, and appliances in the unit.',
+        },
+        {
+          title: 'Acknowledgment',
+          content: 'By signing, you confirm that the condition report accurately reflects the state of the unit at the time of move-in.',
+        },
+      ],
+      signed: false,
+    },
+    {
+      id: 'rules',
+      name: 'House Rules Agreement',
+      type: 'rules',
+      summary: 'Property rules and community guidelines.',
+      sections: [
+        {
+          title: 'Quiet Hours',
+          content: 'Quiet hours are observed from 10:00 PM to 7:00 AM daily. Please be considerate of neighbors during these times.',
+        },
+        {
+          title: 'Common Areas',
+          content: 'Common areas including the lobby, gym, and rooftop are for resident use only. Guests must be accompanied at all times.',
+        },
+        {
+          title: 'Parking',
+          content: 'Each unit is assigned one parking space. Additional parking is available on a first-come, first-served basis.',
+        },
+      ],
+      signed: false,
+    },
+  ];
+}
 
 export default function OnboardingESignPage() {
   const router = useRouter();
-  const [documents, setDocuments] = useState<Document[]>(DOCUMENTS);
+
+  const { data: leases, isLoading: isLeaseLoading } = useQuery<LeaseWithDetails[]>(
+    '/leases?status=ACTIVE&pageSize=1',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const currentLease = leases?.[0];
+
+  const initialDocs = useMemo(() => buildDocuments(currentLease), [currentLease]);
+  const [documents, setDocuments] = useState<Document[]>(initialDocs);
   const [expandedDocId, setExpandedDocId] = useState<string | null>('lease');
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update documents when lease data arrives
+  const [prevLease, setPrevLease] = useState<LeaseWithDetails | undefined>(undefined);
+  if (currentLease && currentLease !== prevLease) {
+    setPrevLease(currentLease);
+    setDocuments((prev) => {
+      const fresh = buildDocuments(currentLease);
+      // Preserve signed state from previous documents
+      return fresh.map((doc) => {
+        const existing = prev.find((p) => p.id === doc.id);
+        return existing?.signed ? { ...doc, signed: existing.signed, signedAt: existing.signedAt, signatureData: existing.signatureData } : doc;
+      });
+    });
+  }
+
+  if (isLeaseLoading) {
+    return (
+      <>
+        <PageHeader title="Sign Documents" showBack />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+        </div>
+      </>
+    );
+  }
 
   const allSigned = documents.every((doc) => doc.signed);
   const canComplete = allSigned && agreedToTerms;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Search,
@@ -18,8 +18,10 @@ import {
   LogOut,
   CreditCard,
   Building2,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
-import { formatDateTime } from '../lib/api';
+import { api, formatDateTime } from '../lib/api';
 
 interface AuditEvent {
   id: string;
@@ -66,143 +68,31 @@ const actionColors: Record<string, { bg: string; text: string }> = {
   failed: { bg: 'bg-red-100', text: 'text-red-700' },
 };
 
-const auditEvents: AuditEvent[] = [
-  {
-    id: '1',
-    timestamp: new Date().toISOString(),
-    action: 'user.login',
-    category: 'Authentication',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: { type: 'session', id: 'sess_123', name: 'Admin Session' },
-    details: { method: 'password', mfaUsed: false },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '2',
-    timestamp: new Date(Date.now() - 1800000).toISOString(),
-    action: 'tenant.created',
-    category: 'Tenant Management',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: {
-      type: 'tenant',
-      id: 'ten_456',
-      name: 'Makini Properties Ltd',
-    },
-    details: { plan: 'Professional', trialDays: 14 },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '3',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    action: 'user.created',
-    category: 'User Management',
-    actor: {
-      id: '2',
-      name: 'Support Team',
-      email: 'support@bossnyumba.com',
-      role: 'SUPPORT',
-    },
-    tenant: 'Acme Properties Ltd',
-    resource: { type: 'user', id: 'usr_789', name: 'Jane Doe' },
-    details: { email: 'jane@acmeproperties.co.ke', role: 'PROPERTY_MANAGER' },
-    ipAddress: '197.232.15.78',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-  },
-  {
-    id: '4',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    action: 'settings.updated',
-    category: 'Configuration',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: {
-      type: 'settings',
-      id: 'payments',
-      name: 'Payment Configuration',
-    },
-    details: {
-      changes: { 'mpesa.paybill': { from: '123455', to: '123456' } },
-    },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '5',
-    timestamp: new Date(Date.now() - 14400000).toISOString(),
-    action: 'role.updated',
-    category: 'Access Control',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: 'Sunrise Realty',
-    resource: { type: 'user', id: 'usr_234', name: 'Mary Wanjiku' },
-    details: { previousRole: 'ACCOUNTANT', newRole: 'PROPERTY_MANAGER' },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '6',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    action: 'payment.processed',
-    category: 'Billing',
-    actor: {
-      id: 'system',
-      name: 'System',
-      email: 'system@bossnyumba.com',
-      role: 'SYSTEM',
-    },
-    tenant: 'Acme Properties Ltd',
-    resource: { type: 'invoice', id: 'inv_567', name: 'January Invoice' },
-    details: { amount: 125000, currency: 'TZS', method: 'mpesa' },
-    ipAddress: '10.0.0.1',
-    userAgent: 'BOSSNYUMBA/System',
-  },
-  {
-    id: '7',
-    timestamp: new Date(Date.now() - 172800000).toISOString(),
-    action: 'user.deleted',
-    category: 'User Management',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: 'Coastal Estates',
-    resource: { type: 'user', id: 'usr_890', name: 'Test User' },
-    details: { reason: 'Account cleanup' },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-];
 
 export function AuditLogPage() {
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('last7');
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await api.get<AuditEvent[]>('/audit-log/events');
+    if (res.success && res.data) {
+      setAuditEvents(res.data);
+    } else {
+      setError(res.error || 'Failed to load audit events');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const getActionType = (action: string) => {
     const parts = action.split('.');
@@ -225,6 +115,77 @@ export function AuditLogPage() {
   });
 
   const categories = Array.from(new Set(auditEvents.map((e) => e.category)));
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 bg-gray-200 rounded w-32" />
+          <div className="h-4 bg-gray-200 rounded w-64" />
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-1 h-10 bg-gray-200 rounded" />
+          <div className="h-10 bg-gray-200 rounded w-40" />
+          <div className="h-10 bg-gray-200 rounded w-36" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 space-y-2">
+              <div className="h-8 bg-gray-200 rounded w-10" />
+              <div className="h-4 bg-gray-200 rounded w-20" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="p-4 border-b border-gray-100 flex items-start gap-4">
+              <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-48" />
+                <div className="h-3 bg-gray-200 rounded w-72" />
+                <div className="h-3 bg-gray-200 rounded w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Failed to Load Audit Events</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={fetchEvents}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (auditEvents.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
+          <p className="text-gray-500">Track all system activities and changes</p>
+        </div>
+        <div className="flex flex-col items-center justify-center h-96 text-center">
+          <FileText className="h-12 w-12 text-gray-300 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">No Audit Events</h2>
+          <p className="text-sm text-gray-500 mt-1">There are no audit events recorded yet.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

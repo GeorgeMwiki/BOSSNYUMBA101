@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Building2, Home, Edit, MapPin } from 'lucide-react';
+import { ArrowLeft, Building2, Home, Edit, MapPin, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
@@ -12,7 +12,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['property', id],
     queryFn: () => propertiesService.get(id),
     retry: false,
@@ -25,6 +25,20 @@ export default function PropertyDetailPage() {
       <>
         <PageHeader title="Property" showBack />
         <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <PageHeader title="Property" showBack />
+        <div className="px-4 py-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-600 font-medium mb-1">Failed to load property</p>
+          <p className="text-sm text-gray-500 mb-4">{(error as Error).message}</p>
+          <button onClick={() => refetch()} className="btn-primary text-sm">Retry</button>
+        </div>
       </>
     );
   }

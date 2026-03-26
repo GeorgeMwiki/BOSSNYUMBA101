@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, User, Mail, Phone, Calendar, Edit, FileText } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar, Edit, FileText, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
@@ -12,7 +12,7 @@ export default function CustomerDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['customer', id],
     queryFn: () => customersService.get(id),
     retry: false,
@@ -25,6 +25,20 @@ export default function CustomerDetailPage() {
       <>
         <PageHeader title="Customer" showBack />
         <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <PageHeader title="Customer" showBack />
+        <div className="px-4 py-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-600 font-medium mb-1">Failed to load customer</p>
+          <p className="text-sm text-gray-500 mb-4">{(error as Error).message}</p>
+          <button onClick={() => refetch()} className="btn-primary text-sm">Retry</button>
+        </div>
       </>
     );
   }

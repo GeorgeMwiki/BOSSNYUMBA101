@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, Layers, ExternalLink, User, FileText, Grid3X3 } from 'lucide-react';
+import { MapPin, Layers, ExternalLink, User, FileText, Grid3X3, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { parcelsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -11,7 +11,7 @@ export default function ParcelDetailPage() {
   const params = useParams();
   const parcelId = params.id as string;
 
-  const { data: parcel, isLoading } = useQuery({
+  const { data: parcel, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['parcel', parcelId],
     queryFn: () => parcelsService.get(parcelId).then(r => r.data),
     retry: false,
@@ -26,7 +26,20 @@ export default function ParcelDetailPage() {
     );
   }
 
-  // Placeholder display for when API is wired
+  if (isError) {
+    return (
+      <>
+        <PageHeader title="Parcel Detail" showBack />
+        <div className="px-4 py-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-600 font-medium mb-1">Failed to load parcel</p>
+          <p className="text-sm text-gray-500 mb-4">{(error as Error).message}</p>
+          <button onClick={() => refetch()} className="btn-primary text-sm">Retry</button>
+        </div>
+      </>
+    );
+  }
+
   const p = parcel as Record<string, unknown> | null;
 
   return (

@@ -22,19 +22,13 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, supportWhatsAppUrl } from '@/lib/constants';
-import { useMutation } from '@bossnyumba/api-client';
+import { useMutation, useQuery, type LeaseWithDetails } from '@bossnyumba/api-client';
 
 interface MoveInDetail {
   icon: React.ElementType;
   label: string;
   value: string;
 }
-
-const MOVE_IN_DETAILS: MoveInDetail[] = [
-  { icon: Calendar, label: 'Move-in Date', value: 'June 1, 2024' },
-  { icon: Clock, label: 'Key Collection', value: '10:00 AM - 12:00 PM' },
-  { icon: MapPin, label: 'Location', value: 'Sunset Apartments, Management Office' },
-];
 
 const WELCOME_ITEMS = [
   {
@@ -78,6 +72,41 @@ const TIME_SLOTS = [
 export default function OnboardingCompletePage() {
   const router = useRouter();
   const { user } = useAuth();
+
+  const { data: leases, isLoading: isLeaseLoading } = useQuery<LeaseWithDetails[]>(
+    '/leases?status=ACTIVE&pageSize=1',
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const currentLease = leases?.[0];
+
+  const moveInDetails: MoveInDetail[] = [
+    {
+      icon: Calendar,
+      label: 'Move-in Date',
+      value: currentLease?.startDate
+        ? new Date(currentLease.startDate).toLocaleDateString('en-TZ', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'To be confirmed',
+    },
+    { icon: Clock, label: 'Key Collection', value: '10:00 AM - 12:00 PM' },
+    {
+      icon: MapPin,
+      label: 'Location',
+      value: currentLease?.property?.name
+        ? `${currentLease.property.name}, Management Office`
+        : 'Management Office',
+    },
+  ];
+
+  const managerName = currentLease?.property?.name
+    ? `${currentLease.property.name} Manager`
+    : 'Property Manager';
+  const managerInitials = managerName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   const [welcomeItems, setWelcomeItems] = useState(WELCOME_ITEMS);
   const [showScheduler, setShowScheduler] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -195,7 +224,7 @@ export default function OnboardingCompletePage() {
         <div className="card p-5 shadow-lg">
           <h2 className="font-semibold text-lg mb-4">Move-in Details</h2>
           <div className="space-y-4">
-            {MOVE_IN_DETAILS.map((detail, idx) => {
+            {moveInDetails.map((detail, idx) => {
               const Icon = detail.icon;
               return (
                 <div key={idx} className="flex items-center gap-3">
@@ -403,10 +432,10 @@ export default function OnboardingCompletePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                <span className="text-primary-700 font-semibold">JM</span>
+                <span className="text-primary-700 font-semibold">{managerInitials}</span>
               </div>
               <div>
-                <div className="font-medium">Jane Mwangi</div>
+                <div className="font-medium">{managerName}</div>
                 <div className="text-sm text-gray-500">{SUPPORT_PHONE || '—'}</div>
               </div>
             </div>

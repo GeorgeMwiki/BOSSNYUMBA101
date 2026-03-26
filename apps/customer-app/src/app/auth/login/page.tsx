@@ -52,7 +52,7 @@ export default function LoginPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+254 7XX XXX XXX"
+                placeholder="+255 7XX XXX XXX"
                 className="input pl-12"
                 required
                 autoComplete="tel"
