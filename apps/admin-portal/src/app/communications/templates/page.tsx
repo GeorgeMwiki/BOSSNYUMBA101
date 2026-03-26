@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Mail,
@@ -63,6 +64,7 @@ function LoadingSkeleton() {
 }
 
 export default function CommunicationsTemplatesPage() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +127,10 @@ export default function CommunicationsTemplatesPage() {
             Manage communication templates across tenants
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+        <button
+          onClick={() => navigate('/communications/templates/new')}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
           <Plus className="h-4 w-4" />
           New Template
         </button>
@@ -179,10 +184,16 @@ export default function CommunicationsTemplatesPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => navigate(`/communications/templates/${template.id}/edit`)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
                     <Edit className="h-4 w-4 text-gray-500" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => navigate(`/communications/templates/${template.id}/copy`)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
                     <Copy className="h-4 w-4 text-gray-500" />
                   </button>
                   <button className="p-2 hover:bg-gray-100 rounded-lg">
@@ -215,7 +226,10 @@ export default function CommunicationsTemplatesPage() {
           <p className="text-sm text-gray-500 mt-1 max-w-md">
             Create your first email or SMS template to get started with automated communications.
           </p>
-          <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+          <button
+            onClick={() => navigate('/communications/templates/new')}
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          >
             <Plus className="h-4 w-4" />
             New Template
           </button>

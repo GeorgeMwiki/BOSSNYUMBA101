@@ -554,7 +554,10 @@ export function DisbursementsPage() {
                       Download Statement
                     </button>
                   )}
-                  <button className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium">
+                  <button
+                    onClick={() => navigate(`/financial/disbursements/${disbursement.id}`)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+                  >
                     <Eye className="h-4 w-4" />
                     View Full Report
                   </button>

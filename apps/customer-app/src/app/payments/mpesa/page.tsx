@@ -21,12 +21,13 @@ export default function MpesaPage() {
   const mpesaMutation = useMutation<MpesaResponse, { amount: number; phoneNumber: string }>(
     (client, variables) => client.post('/payments/mpesa/initiate', variables),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setProcessing(true);
-        // Simulate waiting for M-Pesa callback confirmation
-        setTimeout(() => {
+        if (data?.checkoutRequestId) {
+          pollPaymentStatus(data.checkoutRequestId);
+        } else {
           router.push(`/payments/success?amount=${amount}&method=mpesa`);
-        }, 5000);
+        }
       },
       onError: (err) => {
         setProcessing(false);
@@ -34,6 +35,31 @@ export default function MpesaPage() {
       },
     }
   );
+
+  const pollPaymentStatus = async (checkoutRequestId: string) => {
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      try {
+        const { getApiClient } = await import('@bossnyumba/api-client');
+        const client = getApiClient();
+        const result = await client.get<{ status: string }>(`/payments/mpesa/status/${checkoutRequestId}`);
+        if (result.data?.status === 'completed') {
+          router.push(`/payments/success?amount=${amount}&method=mpesa`);
+          return;
+        }
+        if (result.data?.status === 'failed' || result.data?.status === 'cancelled') {
+          setProcessing(false);
+          setError('Payment was not completed. Please try again.');
+          return;
+        }
+      } catch {
+        // Continue polling on network errors
+      }
+    }
+    setProcessing(false);
+    setError('Payment confirmation timed out. If you completed the payment, it will be reflected in your account shortly.');
+  };
 
   const formatPhoneForApi = (phone: string): string => {
     const digits = phone.replace(/\D/g, '');

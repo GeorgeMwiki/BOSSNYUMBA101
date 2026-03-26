@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tenantsService } from '@bossnyumba/api-client';
 import {
   Key,
@@ -18,11 +18,57 @@ import {
   RefreshCw,
   AlertTriangle,
 } from 'lucide-react';
+import { api } from '../../../lib/api';
 
 export default function IntegrationsApiKeysPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [keyName, setKeyName] = useState('');
+  const [keyScope, setKeyScope] = useState('platform');
+  const [keyPermissions, setKeyPermissions] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const handleGenerateKey = async () => {
+    if (!keyName.trim()) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await api.post<{ key: string }>('/admin/integrations/api-keys', {
+        name: keyName,
+        scope: keyScope,
+        permissions: keyPermissions,
+      });
+      if (res.success && res.data) {
+        setGeneratedKey(res.data.key);
+        queryClient.invalidateQueries({ queryKey: ['admin-api-keys-tenant'] });
+      } else {
+        setGenerateError(res.error || 'Failed to generate API key');
+      }
+    } catch {
+      setGenerateError('Network error while generating key');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setKeyName('');
+    setKeyScope('platform');
+    setKeyPermissions([]);
+    setGeneratedKey(null);
+    setGenerateError(null);
+  };
+
+  const togglePermission = (perm: string) => {
+    setKeyPermissions((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
+  };
 
   const {
     data: tenant,
@@ -115,7 +161,7 @@ export default function IntegrationsApiKeysPage() {
             <Key className="h-5 w-5 text-violet-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-2xl font-bold text-gray-900">0</p>
             <p className="text-sm text-gray-500">Total API Keys</p>
           </div>
         </div>
@@ -124,7 +170,7 @@ export default function IntegrationsApiKeysPage() {
             <Globe className="h-5 w-5 text-blue-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-2xl font-bold text-gray-900">0</p>
             <p className="text-sm text-gray-500">Platform Keys</p>
           </div>
         </div>
@@ -161,60 +207,93 @@ export default function IntegrationsApiKeysPage() {
               </p>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Key Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  placeholder="e.g. Integration Name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Scope
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500">
-                  <option value="platform">Platform</option>
-                  <option value="tenant">Tenant</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Permissions
-                </label>
-                <div className="space-y-2">
-                  {['read', 'write', 'admin'].map((perm) => (
-                    <label
-                      key={perm}
-                      className="flex items-center gap-2"
+              {generatedKey ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-700">
+                    Your API key has been generated. Copy it now -- you will not be able to see it again.
+                  </p>
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <code className="flex-1 text-sm font-mono break-all text-gray-900">{generatedKey}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(generatedKey)}
+                      className="p-2 text-gray-500 hover:bg-gray-200 rounded"
                     >
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                      />
-                      <span className="text-sm text-gray-700 capitalize">
-                        {perm}
-                      </span>
-                    </label>
-                  ))}
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Key Name
+                    </label>
+                    <input
+                      type="text"
+                      value={keyName}
+                      onChange={(e) => setKeyName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="e.g. Integration Name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Scope
+                    </label>
+                    <select
+                      value={keyScope}
+                      onChange={(e) => setKeyScope(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="platform">Platform</option>
+                      <option value="tenant">Tenant</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Permissions
+                    </label>
+                    <div className="space-y-2">
+                      {['read', 'write', 'admin'].map((perm) => (
+                        <label
+                          key={perm}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={keyPermissions.includes(perm)}
+                            onChange={() => togglePermission(perm)}
+                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-gray-700 capitalize">
+                            {perm}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {generateError && (
+                    <p className="text-sm text-red-600">{generateError}</p>
+                  )}
+                </>
+              )}
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={handleCloseModal}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                Cancel
+                {generatedKey ? 'Close' : 'Cancel'}
               </button>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
-              >
-                Generate Key
-              </button>
+              {!generatedKey && (
+                <button
+                  onClick={handleGenerateKey}
+                  disabled={generating || !keyName.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generating ? 'Generating...' : 'Generate Key'}
+                </button>
+              )}
             </div>
           </div>
         </div>

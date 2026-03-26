@@ -127,7 +127,7 @@ export default function PlatformOverviewPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-2xl font-bold text-gray-900">0</p>
             <p className="text-sm text-gray-500">Platform Users</p>
           </div>
           <p className="mt-2 text-xs text-gray-400">Across all tenants</p>

@@ -19,17 +19,19 @@ export default function ProfileSettingsPage() {
   const router = useRouter();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
+    setAvatarError(null);
     try {
       const formData = new FormData();
       formData.append('avatar', file);
       await getApiClient().post('/users/me/avatar', formData);
-    } catch {
-      // Avatar upload failed silently - user can retry
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Failed to upload avatar. Please try again.');
     }
     setAvatarUploading(false);
     if (avatarInputRef.current) avatarInputRef.current.value = '';

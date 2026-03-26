@@ -49,12 +49,14 @@ export default function ReportEmergencyPage() {
     canBeReached: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.type) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await workOrdersService.create({
         title: `Emergency: ${formData.type}`,
@@ -65,8 +67,8 @@ export default function ReportEmergencyPage() {
       } as Record<string, unknown>);
       router.push('/emergencies?reported=true');
     } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to report emergency. Please try again or call the emergency number.');
       setIsSubmitting(false);
-      return;
     }
   };
 
@@ -95,6 +97,13 @@ export default function ReportEmergencyPage() {
             </div>
           </div>
         </div>
+
+        {submitError && (
+          <div className="flex items-center gap-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {submitError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <section>

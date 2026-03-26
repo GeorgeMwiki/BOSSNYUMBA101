@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   Plus,
@@ -73,6 +74,7 @@ function LoadingSkeleton() {
 }
 
 export default function CommunicationsCampaignsPage() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +142,10 @@ export default function CommunicationsCampaignsPage() {
             Create and manage email/SMS campaigns
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+        <button
+          onClick={() => navigate('/communications/campaigns/new')}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
           <Plus className="h-4 w-4" />
           New Campaign
         </button>
@@ -286,7 +291,10 @@ export default function CommunicationsCampaignsPage() {
           <p className="text-sm text-gray-500 mt-1 max-w-md">
             Create your first marketing campaign to engage with tenants and property managers.
           </p>
-          <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+          <button
+            onClick={() => navigate('/communications/campaigns/new')}
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          >
             <Plus className="h-4 w-4" />
             New Campaign
           </button>

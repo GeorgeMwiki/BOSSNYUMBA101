@@ -148,7 +148,19 @@ export default function ComplianceDocumentsPage() {
                     {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await documentsService.get(doc.id);
+                          if (res.success && res.data?.url) {
+                            window.open(res.data.url, '_blank');
+                          }
+                        } catch {
+                          // Download failed
+                        }
+                      }}
+                      className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                    >
                       <Download className="h-4 w-4" />
                     </button>
                   </td>

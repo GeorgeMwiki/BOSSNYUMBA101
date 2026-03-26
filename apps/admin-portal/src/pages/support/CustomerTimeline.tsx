@@ -99,8 +99,8 @@ export default function CustomerTimeline() {
             <Clock className="h-5 w-5 text-blue-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">--</p>
-            <p className="text-sm text-gray-500">Active Events</p>
+            <p className="text-2xl font-bold text-gray-900">0</p>
+            <p className="text-sm text-gray-500">No active events</p>
           </div>
         </div>
       </div>

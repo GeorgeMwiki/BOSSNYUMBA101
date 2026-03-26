@@ -100,7 +100,7 @@ export default function ComplianceDataRequestsPage() {
             <CheckCircle className="h-5 w-5 text-green-600" />
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-2xl font-bold text-gray-900">0</p>
             <p className="text-sm text-gray-500">Requests Fulfilled</p>
           </div>
         </div>

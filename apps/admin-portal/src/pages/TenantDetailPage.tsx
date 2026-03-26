@@ -97,7 +97,7 @@ export function TenantDetailPage() {
           </div>
           <div className="mt-4">
             <p className="text-sm font-medium text-gray-900">Users</p>
-            <p className="text-sm text-gray-500">{t.userCount || '--'}</p>
+            <p className="text-sm text-gray-500">{t.userCount ?? 0}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -106,7 +106,7 @@ export function TenantDetailPage() {
           </div>
           <div className="mt-4">
             <p className="text-sm font-medium text-gray-900">Properties</p>
-            <p className="text-sm text-gray-500">{t.propertyCount || '--'}</p>
+            <p className="text-sm text-gray-500">{t.propertyCount ?? 0}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">

@@ -89,8 +89,11 @@ export function SettingsPage() {
         if (propertiesRes.success && propertiesRes.data) {
           setProperties(propertiesRes.data.map((p) => p.name));
         }
-      } catch {
-        // Keep empty state on error
+      } catch (err) {
+        setNotification({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Failed to load settings data. Please try again.',
+        });
       }
       setLoadingUsers(false);
     };

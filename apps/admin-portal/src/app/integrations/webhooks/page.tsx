@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Webhook,
   Plus,
@@ -31,6 +32,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function IntegrationsWebhooksPage() {
+  const navigate = useNavigate();
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -113,7 +115,10 @@ export default function IntegrationsWebhooksPage() {
           <h1 className="text-2xl font-bold text-gray-900">Webhooks</h1>
           <p className="text-gray-500">Manage outbound webhook endpoints for events</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+        <button
+          onClick={() => navigate('/integrations/webhooks/new')}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
           <Plus className="h-4 w-4" />
           Add Webhook
         </button>

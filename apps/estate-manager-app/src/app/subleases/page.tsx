@@ -32,10 +32,10 @@ export default function SubleaseMonitoringPage() {
         title="Sublease Monitoring"
         subtitle="Detect and manage unauthorized sub-leasing"
         action={
-          <button className="btn-primary text-sm flex items-center gap-1">
+          <Link href="/subleases/report" className="btn-primary text-sm flex items-center gap-1">
             <AlertTriangle className="w-4 h-4" />
             Report Alert
-          </button>
+          </Link>
         }
       />
 

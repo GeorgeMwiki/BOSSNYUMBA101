@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Phone, AlertCircle, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,6 +24,23 @@ export default function EditProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [verifying, setVerifying] = useState<'email' | 'phone' | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { getApiClient } = await import('@bossnyumba/api-client');
+      const client = getApiClient();
+      const formData = new FormData();
+      formData.append('avatar', file);
+      await client.post('/customers/me/avatar', formData);
+      setMessage({ type: 'success', text: 'Profile photo updated.' });
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to update profile photo.' });
+    }
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
 
   const handleVerify = async (type: 'email' | 'phone') => {
     setVerifying(type);
@@ -117,6 +134,8 @@ export default function EditProfilePage() {
     <>
       <PageHeader title="Edit Profile" showBack />
 
+      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+
       <form onSubmit={handleSave} className="px-4 py-4 space-y-6">
         {/* Profile Picture */}
         <div className="flex items-center gap-4">
@@ -128,7 +147,7 @@ export default function EditProfilePage() {
             <h3 className="font-medium text-gray-900">Profile photo</h3>
             <p className="text-sm text-gray-500">Tap to change</p>
           </div>
-          <button type="button" className="btn-secondary text-sm ml-auto">
+          <button type="button" onClick={() => avatarInputRef.current?.click()} className="btn-secondary text-sm ml-auto">
             Change
           </button>
         </div>

@@ -166,16 +166,18 @@ function RatingSection({ workOrderId, onRated }: { workOrderId: string; onRated:
   const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (rating === 0 || submitting) return;
     setSubmitting(true);
+    setRatingError(null);
     try {
       await workOrdersService.rate(workOrderId, { rating, feedback: feedback || undefined });
       setSubmitted(true);
       onRated();
-    } catch {
-      // allow retry
+    } catch (err) {
+      setRatingError(err instanceof Error ? err.message : 'Failed to submit rating. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -193,6 +195,9 @@ function RatingSection({ workOrderId, onRated }: { workOrderId: string; onRated:
   return (
     <div className="bg-surface-card rounded-xl p-4 space-y-3">
       <h3 className="text-white font-medium">Rate this request</h3>
+      {ratingError && (
+        <p className="text-sm text-red-400">{ratingError}</p>
+      )}
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button

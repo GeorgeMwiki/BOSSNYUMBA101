@@ -282,6 +282,7 @@ export default function OnboardingDocumentsPage() {
 
       router.push('/onboarding/inspection');
     } catch (err) {
+      setValidationError(err instanceof Error ? err.message : 'Failed to upload documents. Please try again.');
       setIsSubmitting(false);
     }
   };

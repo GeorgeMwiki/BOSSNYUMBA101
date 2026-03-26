@@ -147,6 +147,7 @@ export default function OnboardingOrientationPage() {
   );
   const [agreedToAll, setAgreedToAll] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const acknowledgedCount = rules.filter((r) => r.acknowledged).length;
   const allRulesAcknowledged = acknowledgedCount === rules.length;
@@ -184,8 +185,10 @@ export default function OnboardingOrientationPage() {
         rulesAcknowledged: rules.map((r) => r.id),
         agreedAt: new Date().toISOString(),
       });
-    } catch {
-      // Continue
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save acknowledgement. Please try again.');
+      setIsSubmitting(false);
+      return;
     }
 
     const progress = JSON.parse(

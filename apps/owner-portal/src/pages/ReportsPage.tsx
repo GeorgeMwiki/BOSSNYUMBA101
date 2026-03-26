@@ -86,11 +86,20 @@ export function ReportsPage() {
 
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
+  const [exportError, setExportError] = useState<string | null>(null);
+
   const handleExport = async (type: string) => {
-    const response = await api.get(`/reports/export/${type}`);
-    if (response.success) {
-      setExportMessage('Export initiated. Download link will be available shortly.');
-      setTimeout(() => setExportMessage(null), 5000);
+    setExportError(null);
+    try {
+      const response = await api.get(`/reports/export/${type}`);
+      if (response.success) {
+        setExportMessage('Export initiated. Download link will be available shortly.');
+        setTimeout(() => setExportMessage(null), 5000);
+      } else {
+        setExportError(response.error?.message || 'Failed to export report. Please try again.');
+      }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export report. Please try again.');
     }
   };
 
@@ -156,6 +165,14 @@ export function ReportsPage() {
         <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
           <p className="text-sm text-green-700">{exportMessage}</p>
+        </div>
+      )}
+
+      {/* Export error message */}
+      {exportError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <FileText className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="text-sm text-red-700">{exportError}</p>
         </div>
       )}
 

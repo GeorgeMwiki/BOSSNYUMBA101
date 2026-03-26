@@ -29,15 +29,17 @@ export default function ScheduledReportsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this scheduled report?')) return;
     setDeletingId(id);
+    setDeleteError(null);
     try {
       await getApiClient().delete(`/reports/scheduled/${id}`);
       queryClient.invalidateQueries({ queryKey: ['scheduled-reports'] });
-    } catch {
-      // Report may already be deleted
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete report. Please try again.');
     }
     setDeletingId(null);
   };
@@ -74,6 +76,12 @@ export default function ScheduledReportsPage() {
       />
 
       <div className="px-4 py-4 space-y-4">
+        {deleteError && (
+          <div className="flex items-center gap-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
+            {deleteError}
+            <button onClick={() => setDeleteError(null)} className="ml-auto text-danger-500 hover:text-danger-700">&times;</button>
+          </div>
+        )}
         <div className="space-y-3">
           {scheduledReports.map((report) => (
             <div key={report.id} className="card p-4">

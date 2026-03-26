@@ -79,6 +79,7 @@ export function WorkOrderDetailModal({
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [approvalComment, setApprovalComment] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   if (!isOpen || !workOrder) return null;
 
@@ -121,6 +122,7 @@ export function WorkOrderDetailModal({
 
   const handleApprove = async () => {
     setApproving(true);
+    setActionError(null);
     try {
       await api.post(`/owner/work-orders/${workOrder.id}/approve`, {
         comment: approvalComment || undefined,
@@ -129,9 +131,7 @@ export function WorkOrderDetailModal({
       setApprovalComment('');
       onClose();
     } catch (err) {
-      // Still call onApprove so the parent can handle it
-      onApprove?.(workOrder.id);
-      onClose();
+      setActionError(err instanceof Error ? err.message : 'Failed to approve work order. Please try again.');
     }
     setApproving(false);
   };
@@ -139,6 +139,7 @@ export function WorkOrderDetailModal({
   const handleReject = async () => {
     if (!rejectReason.trim()) return;
     setRejecting(true);
+    setActionError(null);
     try {
       await api.post(`/owner/work-orders/${workOrder.id}/reject`, {
         reason: rejectReason,
@@ -148,9 +149,7 @@ export function WorkOrderDetailModal({
       setRejectReason('');
       onClose();
     } catch (err) {
-      // Still call onReject so the parent can handle it
-      onReject?.(workOrder.id, rejectReason);
-      onClose();
+      setActionError(err instanceof Error ? err.message : 'Failed to reject work order. Please try again.');
     }
     setRejecting(false);
   };
@@ -522,6 +521,12 @@ export function WorkOrderDetailModal({
         {/* Footer with approval actions */}
         {showApproval && (
           <div className="border-t border-gray-200 p-4 flex-shrink-0">
+            {actionError && (
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-700">{actionError}</p>
+              </div>
+            )}
             {showRejectForm ? (
               <div className="space-y-3">
                 <div>

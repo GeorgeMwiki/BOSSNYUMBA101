@@ -57,6 +57,7 @@ export default function OnboardingWelcomePage() {
   const [language, setLanguage] = useState('en');
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['whatsapp']);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const toggleChannel = (channelId: string) => {
     setSelectedChannels((prev) =>
@@ -76,8 +77,10 @@ export default function OnboardingWelcomePage() {
         language,
         preferredChannels: selectedChannels,
       });
-    } catch {
-      // Continue even if API fails
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save preferences. Please try again.');
+      setIsSubmitting(false);
+      return;
     }
 
     // Save progress locally

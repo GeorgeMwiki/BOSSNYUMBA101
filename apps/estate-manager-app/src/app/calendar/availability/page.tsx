@@ -45,8 +45,8 @@ export default function SetAvailabilityPage() {
             setAvailability(parsed);
           }
         }
-      } catch {
-        // Keep empty state on error
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Failed to load availability data.');
       }
       setLoading(false);
     };

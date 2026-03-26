@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Download,
   FileSpreadsheet,
@@ -8,7 +8,10 @@ import {
   CheckCircle,
   Clock,
   Database,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
+import { api } from '../../../lib/api';
 
 interface ExportTemplate {
   id: string;
@@ -19,83 +22,15 @@ interface ExportTemplate {
   lastExported: string | null;
 }
 
-const exportTemplates: ExportTemplate[] = [
-  {
-    id: '1',
-    name: 'Tenant Summary',
-    description: 'All tenants with subscription and usage data',
-    format: 'csv',
-    dataScope: 'Platform',
-    lastExported: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Revenue Report',
-    description: 'MRR, ARR, and payment history by tenant',
-    format: 'xlsx',
-    dataScope: 'Platform',
-    lastExported: new Date(Date.now() - 172800000).toISOString(),
-  },
-  {
-    id: '3',
-    name: 'User Activity Log',
-    description: 'Login and audit events per tenant',
-    format: 'csv',
-    dataScope: 'Platform',
-    lastExported: null,
-  },
-  {
-    id: '4',
-    name: 'Property Portfolio',
-    description: 'All properties and units across tenants',
-    format: 'xlsx',
-    dataScope: 'Platform',
-    lastExported: new Date(Date.now() - 259200000).toISOString(),
-  },
-  {
-    id: '5',
-    name: 'API Usage Analytics',
-    description: 'API calls, endpoints, and errors by tenant',
-    format: 'json',
-    dataScope: 'Platform',
-    lastExported: new Date(Date.now() - 43200000).toISOString(),
-  },
-  {
-    id: '6',
-    name: 'Compliance Report',
-    description: 'GDPR data requests and processing status',
-    format: 'csv',
-    dataScope: 'Platform',
-    lastExported: null,
-  },
-];
-
-const recentExports = [
-  {
-    id: '1',
-    name: 'Tenant Summary',
-    format: 'csv',
-    size: '2.4 MB',
-    status: 'completed',
-    exportedAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    name: 'API Usage Analytics',
-    format: 'json',
-    size: '5.1 MB',
-    status: 'completed',
-    exportedAt: new Date(Date.now() - 43200000).toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Revenue Report',
-    format: 'xlsx',
-    size: '1.2 MB',
-    status: 'in_progress',
-    exportedAt: null,
-  },
-];
+interface RecentExport {
+  id: string;
+  name: string;
+  format: string;
+  size: string;
+  status: 'completed' | 'in_progress' | 'failed';
+  exportedAt: string | null;
+  downloadUrl?: string;
+}
 
 const formatIcons: Record<string, React.ElementType> = {
   csv: FileText,
@@ -105,6 +40,124 @@ const formatIcons: Record<string, React.ElementType> = {
 
 export default function AnalyticsExportsPage() {
   const [dateRange, setDateRange] = useState('last30');
+  const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>([]);
+  const [recentExports, setRecentExports] = useState<RecentExport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [templatesRes, recentRes] = await Promise.all([
+        api.get<ExportTemplate[]>('/admin/analytics/exports/templates'),
+        api.get<RecentExport[]>('/admin/analytics/exports/recent'),
+      ]);
+
+      if (templatesRes.success && templatesRes.data) {
+        setExportTemplates(templatesRes.data);
+      } else {
+        setError(templatesRes.error || 'Failed to load export templates');
+        return;
+      }
+
+      if (recentRes.success && recentRes.data) {
+        setRecentExports(recentRes.data);
+      } else {
+        setError(recentRes.error || 'Failed to load recent exports');
+        return;
+      }
+    } catch {
+      setError('Network error while loading export data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleExport = async (template: ExportTemplate) => {
+    setExportingId(template.id);
+    try {
+      const res = await api.post<RecentExport>('/admin/analytics/exports', {
+        templateId: template.id,
+        format: template.format,
+        dateRange,
+      });
+      if (res.success && res.data) {
+        setRecentExports((prev) => [res.data!, ...prev]);
+      }
+    } catch {
+      // Export request failed silently; user can check recent exports
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleDownload = async (exp: RecentExport) => {
+    setDownloadingId(exp.id);
+    try {
+      const res = await api.get<{ url: string }>(`/admin/analytics/exports/${exp.id}/download`);
+      if (res.success && res.data?.url) {
+        window.open(res.data.url, '_blank');
+      }
+    } catch {
+      // Download failed
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-7 w-56 bg-gray-200 rounded" />
+            <div className="h-4 w-72 bg-gray-200 rounded mt-2" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-36 bg-gray-200 rounded-lg" />
+            <div className="h-10 w-24 bg-gray-200 rounded-lg" />
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="h-5 w-36 bg-gray-200 rounded mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-lg border border-gray-200">
+                <div className="h-10 w-10 bg-gray-200 rounded-lg mb-3" />
+                <div className="h-5 w-32 bg-gray-200 rounded" />
+                <div className="h-4 w-48 bg-gray-200 rounded mt-2" />
+                <div className="h-9 w-full bg-gray-200 rounded mt-3" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Failed to Load Exports</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={fetchData}
+          className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -140,7 +193,7 @@ export default function AnalyticsExportsPage() {
         <h3 className="font-semibold text-gray-900 mb-4">Export Templates</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {exportTemplates.map((template) => {
-            const FormatIcon = formatIcons[template.format];
+            const FormatIcon = formatIcons[template.format] || FileText;
             return (
               <div
                 key={template.id}
@@ -161,9 +214,22 @@ export default function AnalyticsExportsPage() {
                     Last exported: {new Date(template.lastExported).toLocaleDateString()}
                   </p>
                 )}
-                <button className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
-                  <Download className="h-4 w-4" />
-                  Export {template.format.toUpperCase()}
+                <button
+                  onClick={() => handleExport(template)}
+                  disabled={exportingId === template.id}
+                  className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exportingId === template.id ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Export {template.format.toUpperCase()}
+                    </>
+                  )}
                 </button>
               </div>
             );
@@ -234,8 +300,12 @@ export default function AnalyticsExportsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   {exp.status === 'completed' && (
-                    <button className="text-sm text-violet-600 hover:text-violet-700">
-                      Download
+                    <button
+                      onClick={() => handleDownload(exp)}
+                      disabled={downloadingId === exp.id}
+                      className="text-sm text-violet-600 hover:text-violet-700 disabled:opacity-50"
+                    >
+                      {downloadingId === exp.id ? 'Downloading...' : 'Download'}
                     </button>
                   )}
                 </td>
