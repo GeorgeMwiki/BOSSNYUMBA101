@@ -21,7 +21,8 @@ export function PageHeader({ title, showBack, showSettings, action, onBackClick 
           {showBack && (
             <button
               onClick={onBackClick ?? (() => router.back())}
-              className="p-2 -ml-2 rounded-full hover:bg-white/5 text-white"
+              className="p-3 -ml-3 rounded-full hover:bg-white/5 text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -31,7 +32,7 @@ export function PageHeader({ title, showBack, showSettings, action, onBackClick 
         <div className="flex items-center gap-2">
           {action}
           {showSettings && (
-            <button className="p-2 rounded-full hover:bg-white/5 text-white">
+            <button className="p-3 rounded-full hover:bg-white/5 text-white min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </button>
           )}

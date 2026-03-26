@@ -30,7 +30,8 @@ export function PageHeader({
           {showBack && (
             <button
               onClick={() => router.back()}
-              className="p-2 -ml-2 rounded-full hover:bg-gray-100"
+              className="p-3 -ml-3 rounded-full hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -45,13 +46,13 @@ export function PageHeader({
         <div className="flex items-center gap-2">
           {action}
           {showNotifications && (
-            <Link href="/notifications" className="p-2 rounded-full hover:bg-gray-100 relative">
+            <Link href="/notifications" className="p-3 rounded-full hover:bg-gray-100 relative min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Notifications">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger-500 rounded-full" />
             </Link>
           )}
           {showProfile && (
-            <Link href="/settings" className="p-2 rounded-full hover:bg-gray-100">
+            <Link href="/settings" className="p-3 rounded-full hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Settings">
               <User className="w-5 h-5" />
             </Link>
           )}
