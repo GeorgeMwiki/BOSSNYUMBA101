@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +15,7 @@ import {
   Calendar,
   ChevronRight,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { invoicesService, paymentsService } from '@bossnyumba/api-client';
 
@@ -31,6 +32,8 @@ export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const invoiceId = params.id as string;
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', invoiceId],
@@ -139,11 +142,19 @@ export default function CollectionDetailPage() {
           </div>
         </div>
 
+        {/* Action Error */}
+        {actionError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-700">Actions</h3>
           <div className="grid grid-cols-1 gap-2">
-            <button onClick={async () => { if (!confirm('Send payment demand notice to customer?')) return; const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/demand-notice`, {}); window.location.reload(); }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
+            <button onClick={async () => { if (!confirm('Send payment demand notice to customer?')) return; try { setActionError(null); const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/demand-notice`, {}); queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] }); } catch (err) { setActionError(err instanceof Error ? err.message : 'Failed to send demand notice'); } }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-50 rounded-lg">
                   <Send className="w-5 h-5 text-orange-600" />
@@ -167,7 +178,7 @@ export default function CollectionDetailPage() {
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </button>
-            <button onClick={async () => { if (!confirm('Escalate this to a formal dispute case?')) return; const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/escalate`, {}); window.location.reload(); }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
+            <button onClick={async () => { if (!confirm('Escalate this to a formal dispute case?')) return; try { setActionError(null); const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/escalate`, {}); queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] }); } catch (err) { setActionError(err instanceof Error ? err.message : 'Failed to escalate case'); } }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-50 rounded-lg">
                   <AlertTriangle className="w-5 h-5 text-red-600" />

@@ -313,7 +313,7 @@ export function OperationsPage() {
             <Eye className="h-4 w-4" />
             Enhanced Control Tower
           </a>
-          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={() => { queryClient.invalidateQueries({ queryKey: ['system-health'] }); queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] }); queryClient.invalidateQueries({ queryKey: ['operations-workflows'] }); queryClient.invalidateQueries({ queryKey: ['ai-decisions'] }); queryClient.invalidateQueries({ queryKey: ['health-metrics'] }); }} className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
@@ -574,7 +574,7 @@ export function OperationsPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       {exception.status !== 'resolved' && (
-                        <button onClick={async () => { const assignee = prompt('Assign to user ID:'); if (!assignee) return; await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assignee }); window.location.reload(); }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+                        <button onClick={async () => { const assignee = prompt('Assign to user ID:'); if (!assignee) return; try { setNotification(null); await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assignee }); queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] }); setNotification({ type: 'success', message: 'Exception assigned successfully' }); } catch (err) { setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to assign exception' }); } }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                           Assign
                         </button>
                       )}

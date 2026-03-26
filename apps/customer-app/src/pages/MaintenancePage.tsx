@@ -111,6 +111,8 @@ export default function MaintenancePage() {
   const [priority, setPriority] = useState<Priority>('medium');
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,7 +127,7 @@ export default function MaintenancePage() {
           );
         }
       } catch {
-        // Keep empty array on error
+        setFetchError('Failed to load maintenance requests. Pull down to refresh.');
       }
       setLoading(false);
     };
@@ -155,6 +157,7 @@ export default function MaintenancePage() {
     if (!selectedCategory || !title || !description) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const response = await workOrdersService.create({
         propertyId: '', // Will be resolved by backend from current user's lease
@@ -183,7 +186,7 @@ export default function MaintenancePage() {
       setPhotos([]);
       setShowNewRequestForm(false);
     } catch {
-      // Could show error notification
+      setSubmitError('Failed to submit request. Please try again.');
     }
     setIsSubmitting(false);
   };
@@ -260,10 +263,16 @@ export default function MaintenancePage() {
         {/* Tickets List */}
         <section>
           <div className="space-y-3">
+            {fetchError && (
+              <div className="card p-4 flex items-center gap-3 text-danger-600 bg-danger-50">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p className="text-sm">{fetchError}</p>
+              </div>
+            )}
             {displayedTickets.map((ticket) => (
               <TicketCard key={ticket.id} ticket={ticket} />
             ))}
-            {displayedTickets.length === 0 && (
+            {!fetchError && displayedTickets.length === 0 && (
               <div className="card p-8 text-center text-gray-500">
                 <Wrench className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium mb-1">No {activeTab} requests</p>
@@ -414,6 +423,12 @@ export default function MaintenancePage() {
 
           {/* Submit Button */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 safe-area-bottom">
+            {submitError && (
+              <div className="flex items-center gap-2 text-danger-600 text-sm mb-3">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}

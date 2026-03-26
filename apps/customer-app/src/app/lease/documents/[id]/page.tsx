@@ -1,32 +1,50 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Download } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Download, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@bossnyumba/api-client';
 
-const documents: Record<string, { name: string; date: string }> = {
-  '1': { name: 'Lease Agreement', date: '2023-05-28' },
-  '2': { name: 'Move-in Inspection Report', date: '2023-06-01' },
-  '3': { name: 'House Rules', date: '2023-05-28' },
-};
+function LeaseDocumentSkeleton() {
+  return (
+    <div className="p-4 space-y-4 animate-pulse">
+      <div className="card p-4 space-y-3">
+        <div className="h-4 w-40 bg-gray-200 rounded" />
+        <div className="h-12 bg-gray-200 rounded-xl" />
+      </div>
+    </div>
+  );
+}
 
 export default function LeaseDocumentPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
-  const doc = documents[id];
+  const { data: document, isLoading, isError, refetch } = useQuery<any>(`/lease/documents/${id}`);
 
   const handleDownload = () => {
-    // In production, would fetch PDF and trigger download
     window.open(`/lease/documents/${id}/download`, '_blank');
   };
 
-  if (!doc) {
+  if (isLoading) {
     return (
       <>
         <PageHeader title="Document" showBack />
-        <div className="p-4">
-          <p className="text-gray-500">Document not found.</p>
+        <LeaseDocumentSkeleton />
+      </>
+    );
+  }
+
+  if (isError || !document) {
+    return (
+      <>
+        <PageHeader title="Document" showBack />
+        <div className="flex flex-col items-center justify-center px-4 py-20 text-center">
+          <AlertTriangle className="w-12 h-12 text-warning-400 mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Document not found</h2>
+          <p className="text-gray-500 text-sm mb-6">Could not load this document.</p>
+          <button onClick={() => refetch()} className="btn-primary px-6 py-2 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
         </div>
       </>
     );
@@ -34,10 +52,10 @@ export default function LeaseDocumentPage() {
 
   return (
     <>
-      <PageHeader title={doc.name} showBack />
+      <PageHeader title={document.name} showBack />
       <div className="p-4 space-y-4">
         <div className="card p-4">
-          <p className="text-sm text-gray-500 mb-2">Date: {new Date(doc.date).toLocaleDateString()}</p>
+          <p className="text-sm text-gray-500 mb-2">Date: {new Date(document.date).toLocaleDateString()}</p>
           <button onClick={handleDownload} className="btn-primary w-full flex items-center justify-center gap-2">
             <Download className="w-5 h-5" />
             Download document

@@ -55,6 +55,7 @@ export default function MessageThreadPage() {
   const id = params.id as string;
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: conversation } = useQuery<Conversation>(
@@ -81,12 +82,13 @@ export default function MessageThreadPage() {
     if (!message.trim() || sending) return;
 
     setSending(true);
+    setSendError(null);
     try {
       await messagingService.sendMessage(id, { content: message.trim() });
       setMessage('');
       refetch();
     } catch {
-      // allow retry
+      setSendError('Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -162,6 +164,12 @@ export default function MessageThreadPage() {
 
       {/* Message input */}
       <div className="border-t border-white/10 bg-[#121212] p-3 pb-safe">
+        {sendError && (
+          <div className="flex items-center gap-2 text-danger-400 text-sm mb-2 px-1">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{sendError}</span>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             value={message}

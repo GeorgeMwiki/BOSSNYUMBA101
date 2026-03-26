@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   FileText, MapPin, User, Clock, CheckCircle, XCircle, ArrowRight, Building2, Send, AlertTriangle,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applicationsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -20,6 +21,8 @@ function formatCurrency(amount: number): string {
 export default function ApplicationDetailPage() {
   const params = useParams();
   const applicationId = params.id as string;
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: application, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['application', applicationId],
@@ -210,21 +213,39 @@ export default function ApplicationDetailPage() {
         </div>
 
         {/* Actions */}
+        {/* Action Error */}
+        {actionError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button onClick={async () => {
             const dest = prompt('Forward to (organization/user ID):');
             if (!dest) return;
-            const client = (await import('@bossnyumba/api-client')).getApiClient();
-            await client.post(`/applications/${applicationId}/route`, { toOrganizationId: dest });
-            window.location.reload();
+            try {
+              setActionError(null);
+              const client = (await import('@bossnyumba/api-client')).getApiClient();
+              await client.post(`/applications/${applicationId}/route`, { toOrganizationId: dest });
+              queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
+            } catch (err) {
+              setActionError(err instanceof Error ? err.message : 'Failed to forward application');
+            }
           }} className="btn-secondary flex-1 flex items-center justify-center gap-2">
             <Send className="w-4 h-4" /> Forward
           </button>
           <button onClick={async () => {
             if (!confirm('Approve this application?')) return;
-            const client = (await import('@bossnyumba/api-client')).getApiClient();
-            await client.post(`/applications/${applicationId}/approve`, {});
-            window.location.reload();
+            try {
+              setActionError(null);
+              const client = (await import('@bossnyumba/api-client')).getApiClient();
+              await client.post(`/applications/${applicationId}/approve`, {});
+              queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
+            } catch (err) {
+              setActionError(err instanceof Error ? err.message : 'Failed to approve application');
+            }
           }} className="btn-primary flex-1 flex items-center justify-center gap-2">
             <CheckCircle className="w-4 h-4" /> Approve
           </button>

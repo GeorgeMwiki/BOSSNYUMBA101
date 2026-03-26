@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileCheck, Building2, Calendar } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 
@@ -16,6 +16,7 @@ interface License {
 }
 
 export default function LicensesPage() {
+  const navigate = useNavigate();
   const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,7 +114,7 @@ export default function LicensesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                    <button onClick={() => navigate(`/compliance/licenses/${license.id}`)} className="text-sm font-medium text-blue-600 hover:text-blue-700">
                       View
                     </button>
                   </td>

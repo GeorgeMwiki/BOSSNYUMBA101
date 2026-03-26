@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, Building2, Calendar } from 'lucide-react';
 import { api, formatCurrency, formatDate } from '../../../lib/api';
 
@@ -18,6 +18,7 @@ interface InsurancePolicy {
 }
 
 export default function InsurancePage() {
+  const navigate = useNavigate();
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -149,7 +150,7 @@ export default function InsurancePage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                    <button onClick={() => navigate(`/compliance/insurance/${policy.id}`)} className="text-sm font-medium text-blue-600 hover:text-blue-700">
                       View
                     </button>
                   </td>

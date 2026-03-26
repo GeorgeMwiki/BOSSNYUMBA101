@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home, Package, ClipboardCheck, Users, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
@@ -74,6 +75,7 @@ const reportTypes: ReportCard[] = [
 ];
 
 export default function ReportsDashboardPage() {
+  const router = useRouter();
   const { data: reportsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['recent-reports'],
     queryFn: async () => {
@@ -207,7 +209,7 @@ export default function ReportsDashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <button className="text-sm text-primary-600">View</button>
+                  <button onClick={() => router.push('/reports/' + report.id)} className="text-sm text-primary-600">View</button>
                 </div>
               ))}
             </div>

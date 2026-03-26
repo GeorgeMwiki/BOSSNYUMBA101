@@ -1,47 +1,51 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Megaphone } from 'lucide-react';
+import { Megaphone, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@bossnyumba/api-client';
 
-const announcements: Record<
-  string,
-  { title: string; summary: string; body: string; date: string; priority: string }
-> = {
-  '1': {
-    title: 'Water Shut-off Scheduled',
-    summary: 'Water will be shut off on Feb 20 from 8am to 12pm for pipe repairs.',
-    body: 'Dear Residents,\n\nWe would like to inform you that scheduled maintenance on the building\'s plumbing system will require a temporary water shut-off on Wednesday, February 20, 2024, from 8:00 AM to 12:00 PM.\n\nPlease store water in advance for drinking and other essential use during this period. We apologize for any inconvenience and thank you for your understanding.\n\nIf you have any questions, please contact the property management office.',
-    date: '2024-02-10',
-    priority: 'high',
-  },
-  '2': {
-    title: 'Elevator Maintenance',
-    summary: 'Elevator B will be under maintenance Feb 15–16. Use Elevator A.',
-    body: 'Elevator B will be undergoing scheduled maintenance from February 15 to February 16, 2024. During this time, please use Elevator A for access to all floors.\n\nWe expect the maintenance to be completed by end of day February 16. Thank you for your patience.',
-    date: '2024-02-08',
-    priority: 'medium',
-  },
-  '3': {
-    title: 'New Security Hours',
-    summary: '24/7 security is now active. Report any concerns to the guard desk.',
-    body: 'We are pleased to announce that 24/7 security coverage is now active at the property. Our security team is available around the clock to assist with any concerns.\n\nPlease report any suspicious activity or safety issues to the guard desk or call the emergency line. Your safety is our priority.',
-    date: '2024-02-01',
-    priority: 'info',
-  },
-};
+function AnnouncementSkeleton() {
+  return (
+    <div className="px-4 py-4 space-y-4 animate-pulse">
+      <div className="card p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 bg-gray-200 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-24 bg-gray-200 rounded" />
+            <div className="h-5 w-48 bg-gray-200 rounded" />
+            <div className="h-3 w-full bg-gray-200 rounded" />
+            <div className="h-3 w-full bg-gray-200 rounded" />
+            <div className="h-3 w-3/4 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AnnouncementDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const ann = announcements[id];
+  const { data: announcement, isLoading, isError } = useQuery<any>(`/announcements/${id}`);
 
-  if (!ann) {
+  if (isLoading) {
     return (
       <>
         <PageHeader title="Announcement" showBack />
-        <div className="p-4">
-          <p className="text-gray-500">Announcement not found.</p>
+        <AnnouncementSkeleton />
+      </>
+    );
+  }
+
+  if (isError || !announcement) {
+    return (
+      <>
+        <PageHeader title="Announcement" showBack />
+        <div className="flex flex-col items-center justify-center px-4 py-20 text-center">
+          <AlertTriangle className="w-12 h-12 text-warning-400 mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Announcement not found</h2>
+          <p className="text-gray-500 text-sm mb-6">Could not load this announcement.</p>
         </div>
       </>
     );
@@ -49,24 +53,24 @@ export default function AnnouncementDetailPage() {
 
   return (
     <>
-      <PageHeader title={ann.title} showBack />
+      <PageHeader title={announcement.title} showBack />
       <div className="px-4 py-4 space-y-4">
         <div className="card p-4">
           <div className="flex items-start gap-3">
             <div
               className={`p-2 rounded-lg flex-shrink-0 ${
-                ann.priority === 'high'
+                announcement.priority === 'high'
                   ? 'bg-warning-50'
-                  : ann.priority === 'medium'
+                  : announcement.priority === 'medium'
                   ? 'bg-primary-50'
                   : 'bg-gray-100'
               }`}
             >
               <Megaphone
                 className={`w-5 h-5 ${
-                  ann.priority === 'high'
+                  announcement.priority === 'high'
                     ? 'text-warning-600'
-                    : ann.priority === 'medium'
+                    : announcement.priority === 'medium'
                     ? 'text-primary-600'
                     : 'text-gray-600'
                 }`}
@@ -74,11 +78,11 @@ export default function AnnouncementDetailPage() {
             </div>
             <div className="flex-1">
               <div className="text-xs text-gray-500 mb-2">
-                {new Date(ann.date).toLocaleDateString()}
+                {new Date(announcement.date).toLocaleDateString()}
               </div>
-              <h2 className="font-semibold text-lg mb-3">{ann.title}</h2>
+              <h2 className="font-semibold text-lg mb-3">{announcement.title}</h2>
               <p className="text-sm text-gray-600 whitespace-pre-line leading-relaxed">
-                {ann.body}
+                {announcement.body}
               </p>
             </div>
           </div>

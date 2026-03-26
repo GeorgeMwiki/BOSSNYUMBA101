@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Send,
@@ -150,6 +151,7 @@ function AttachmentPreview({
         </p>
       </div>
       <button
+        onClick={async () => { const res = await api.get('/messages/attachments/' + attachment.id + '/download'); if ((res as any).data?.url) window.open((res as any).data.url, '_blank'); }}
         className={`p-1 rounded hover:bg-black/10 ${
           isOwn ? 'text-white' : 'text-gray-400'
         }`}
@@ -162,6 +164,7 @@ function AttachmentPreview({
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function MessagesPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -527,7 +530,7 @@ export function MessagesPage() {
                   <button onClick={() => window.open('tel:' + (activeConversation?.participantPhone || ''), '_self')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <Phone className="h-5 w-5" />
                   </button>
-                  <button title="Conversation options" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button title="Conversation options" onClick={() => navigate('/messages/' + activeConversation?.id + '/settings')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-5 w-5" />
                   </button>
                 </div>

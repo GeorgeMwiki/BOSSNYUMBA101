@@ -80,6 +80,7 @@ export default function CommunicationsCampaignsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
@@ -201,6 +202,14 @@ export default function CommunicationsCampaignsPage() {
         </button>
       </div>
 
+      {/* Action Error */}
+      {actionError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       {/* Campaigns Table */}
       {filteredCampaigns.length > 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -265,12 +274,12 @@ export default function CommunicationsCampaignsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       {campaign.status === 'draft' && (
-                        <button onClick={async () => { if (!confirm('Launch this campaign?')) return; await api.post('/communications/campaigns/' + campaign.id + '/start', {}); window.location.reload(); }} className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
+                        <button onClick={async () => { if (!confirm('Launch this campaign?')) return; try { setActionError(null); await api.post('/communications/campaigns/' + campaign.id + '/start', {}); await fetchCampaigns(); } catch (err) { setActionError(err instanceof Error ? err.message : 'Failed to start campaign'); } }} className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
                           <Play className="h-4 w-4" />
                         </button>
                       )}
                       {campaign.status === 'running' && (
-                        <button onClick={async () => { if (!confirm('Pause this campaign?')) return; await api.post('/communications/campaigns/' + campaign.id + '/pause', {}); window.location.reload(); }} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg">
+                        <button onClick={async () => { if (!confirm('Pause this campaign?')) return; try { setActionError(null); await api.post('/communications/campaigns/' + campaign.id + '/pause', {}); await fetchCampaigns(); } catch (err) { setActionError(err instanceof Error ? err.message : 'Failed to pause campaign'); } }} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg">
                           <Pause className="h-4 w-4" />
                         </button>
                       )}

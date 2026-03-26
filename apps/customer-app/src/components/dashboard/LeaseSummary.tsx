@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, ChevronRight, Home } from 'lucide-react';
+import { FileText, ChevronRight, Home, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface LeaseData {
@@ -39,6 +39,7 @@ function LeaseSkeleton() {
 export function LeaseSummary() {
   const [lease, setLease] = useState<LeaseData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     async function loadLease() {
@@ -57,7 +58,7 @@ export function LeaseSummary() {
           daysRemaining,
         });
       } catch {
-        // Lease not available - component won't render
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -67,6 +68,18 @@ export function LeaseSummary() {
 
   if (loading) {
     return <LeaseSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <section>
+        <h2 className="text-sm font-medium text-gray-400 mb-3">Current Lease</h2>
+        <div className="card p-4 flex items-center gap-3 text-warning-400">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm">Unable to load lease information.</p>
+        </div>
+      </section>
+    );
   }
 
   if (!lease) return null;

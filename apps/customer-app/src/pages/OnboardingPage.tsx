@@ -83,6 +83,7 @@ export default function OnboardingPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   const { data: leases } = useQuery<LeaseWithDetails[]>(
     '/leases?status=ACTIVE&pageSize=1',
@@ -184,18 +185,20 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setIsSubmitting(true);
+    setCompleteError(null);
     try {
       const canvas = canvasRef.current;
       const signatureData = canvas ? canvas.toDataURL('image/png') : undefined;
       await api.onboarding.completeOnboarding({
         signature: signatureData,
       });
+      localStorage.setItem('onboarding_completed', 'true');
+      router.push('/');
     } catch {
-      // Continue even if API call fails
+      setCompleteError('Failed to complete onboarding. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    localStorage.setItem('onboarding_completed', 'true');
-    setIsSubmitting(false);
-    router.push('/');
   };
 
   const canProceedFromIdUpload = idFrontImage && idBackImage && selfieImage;
@@ -579,6 +582,12 @@ export default function OnboardingPage() {
 
       {/* Fixed Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 safe-area-bottom">
+        {completeError && (
+          <div className="flex items-center gap-2 text-danger-600 text-sm mb-3">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{completeError}</span>
+          </div>
+        )}
         <div className="flex gap-3">
           {currentStepIndex > 0 && (
             <button onClick={goToPreviousStep} className="btn-secondary flex-1 py-4">

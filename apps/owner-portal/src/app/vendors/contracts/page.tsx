@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   FileText,
@@ -24,6 +24,7 @@ interface VendorContract {
 }
 
 export default function VendorContractsPage() {
+  const navigate = useNavigate();
   const [contracts, setContracts] = useState<VendorContract[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -142,7 +143,7 @@ export default function VendorContractsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                    <button onClick={() => navigate(`/vendors/contracts/${contract.id}`)} className="text-sm font-medium text-blue-600 hover:text-blue-700">
                       View
                     </button>
                   </td>

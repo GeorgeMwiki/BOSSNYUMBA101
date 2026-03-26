@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Building2, Calendar, CheckCircle } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 
@@ -15,6 +15,7 @@ interface Inspection {
 }
 
 export default function InspectionsPage() {
+  const navigate = useNavigate();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -150,7 +151,7 @@ export default function InspectionsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                    <button onClick={() => navigate(`/compliance/inspections/${inspection.id}`)} className="text-sm font-medium text-blue-600 hover:text-blue-700">
                       View
                     </button>
                   </td>

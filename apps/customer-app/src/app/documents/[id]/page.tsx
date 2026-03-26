@@ -1,54 +1,57 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@bossnyumba/api-client';
 
-const documents: Record<
-  string,
-  { name: string; category: string; date: string; type: string }
-> = {
-  '1': {
-    name: 'Lease Agreement',
-    category: 'Lease',
-    date: '2023-05-28',
-    type: 'pdf',
-  },
-  '2': {
-    name: 'Move-in Inspection Report',
-    category: 'Lease',
-    date: '2023-06-01',
-    type: 'pdf',
-  },
-  '3': {
-    name: 'February 2024 Statement',
-    category: 'Payment',
-    date: '2024-02-01',
-    type: 'pdf',
-  },
-  '4': {
-    name: 'House Rules',
-    category: 'Lease',
-    date: '2023-05-28',
-    type: 'pdf',
-  },
-};
+function DocumentSkeleton() {
+  return (
+    <div className="px-4 py-4 space-y-4 animate-pulse">
+      <div className="card p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-14 h-14 bg-gray-200 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-48 bg-gray-200 rounded" />
+            <div className="h-4 w-24 bg-gray-200 rounded" />
+            <div className="h-3 w-32 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+      <div className="h-12 bg-gray-200 rounded-xl" />
+    </div>
+  );
+}
 
 export default function DocumentViewerPage() {
   const params = useParams();
   const id = params.id as string;
-  const doc = documents[id];
+  const { data: document, isLoading, isError, refetch } = useQuery<any>(`/documents/${id}`);
 
   const handleDownload = () => {
     window.open(`/documents/${id}/download`, '_blank');
   };
 
-  if (!doc) {
+  if (isLoading) {
     return (
       <>
         <PageHeader title="Document" showBack />
-        <div className="p-4">
-          <p className="text-gray-500">Document not found.</p>
+        <DocumentSkeleton />
+      </>
+    );
+  }
+
+  if (isError || !document) {
+    return (
+      <>
+        <PageHeader title="Document" showBack />
+        <div className="flex flex-col items-center justify-center px-4 py-20 text-center">
+          <AlertTriangle className="w-12 h-12 text-warning-400 mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Document not found</h2>
+          <p className="text-gray-500 text-sm mb-6">Could not load this document.</p>
+          <button onClick={() => refetch()} className="btn-primary px-6 py-2 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
         </div>
       </>
     );
@@ -56,7 +59,7 @@ export default function DocumentViewerPage() {
 
   return (
     <>
-      <PageHeader title={doc.name} showBack />
+      <PageHeader title={document.name} showBack />
       <div className="px-4 py-4 space-y-4">
         <div className="card p-4">
           <div className="flex items-start gap-3">
@@ -64,10 +67,10 @@ export default function DocumentViewerPage() {
               <FileText className="w-8 h-8 text-gray-600" />
             </div>
             <div className="flex-1">
-              <h2 className="font-semibold">{doc.name}</h2>
-              <div className="text-sm text-gray-500 mt-1">{doc.category}</div>
+              <h2 className="font-semibold">{document.name}</h2>
+              <div className="text-sm text-gray-500 mt-1">{document.category}</div>
               <div className="text-xs text-gray-400 mt-1">
-                {new Date(doc.date).toLocaleDateString()} · {doc.type.toUpperCase()}
+                {new Date(document.date).toLocaleDateString()} · {(document.type || '').toUpperCase()}
               </div>
             </div>
           </div>

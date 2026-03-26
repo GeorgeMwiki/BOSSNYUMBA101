@@ -262,10 +262,14 @@ export function SettingsPage() {
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const formData = new FormData();
-                    formData.append('avatar', file);
-                    await api.post('/users/me/avatar', formData);
-                    window.location.reload();
+                    try {
+                      const formData = new FormData();
+                      formData.append('avatar', file);
+                      await api.post('/users/me/avatar', formData);
+                      setNotification({ type: 'success', message: 'Avatar updated successfully' });
+                    } catch (err) {
+                      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to upload avatar' });
+                    }
                   }} />
                 </div>
               </div>
@@ -472,7 +476,7 @@ export function SettingsPage() {
                             )}
                             {member.role !== 'OWNER' && (
                               <>
-                                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Edit">
+                                <button onClick={() => navigate('/settings/team/' + member.id)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Edit">
                                   <Edit className="h-4 w-4" />
                                 </button>
                                 <button onClick={() => handleRemoveUser(member.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Remove">
