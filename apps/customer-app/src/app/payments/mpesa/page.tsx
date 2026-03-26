@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Loader2, Phone, RefreshCw, Smartphone } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -17,6 +17,11 @@ export default function MpesaPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const mpesaMutation = useMutation<MpesaResponse, { amount: number; phoneNumber: string }>(
     (client, variables) => client.post('/payments/mpesa/initiate', variables),
@@ -37,13 +42,20 @@ export default function MpesaPage() {
   );
 
   const pollPaymentStatus = async (checkoutRequestId: string) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     const maxAttempts = 12;
+    let networkErrors = 0;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (controller.signal.aborted) return;
       await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (controller.signal.aborted) return;
       try {
         const { getApiClient } = await import('@bossnyumba/api-client');
         const client = getApiClient();
         const result = await client.get<{ status: string }>(`/payments/mpesa/status/${checkoutRequestId}`);
+        networkErrors = 0;
         if (result.data?.status === 'completed') {
           router.push(`/payments/success?amount=${amount}&method=mpesa`);
           return;
@@ -54,7 +66,12 @@ export default function MpesaPage() {
           return;
         }
       } catch {
-        // Continue polling on network errors
+        networkErrors++;
+        if (networkErrors >= 3) {
+          setProcessing(false);
+          setError('Network error while checking payment status. Please check your internet connection.');
+          return;
+        }
       }
     }
     setProcessing(false);

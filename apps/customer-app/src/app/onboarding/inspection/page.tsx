@@ -12,6 +12,7 @@ import {
   Gauge,
   Droplets,
   Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
@@ -129,6 +130,7 @@ export default function OnboardingInspectionPage() {
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTips, setShowTips] = useState(true);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
   const currentRoom = rooms[currentRoomIndex];
   const overallProgress =
@@ -249,7 +251,7 @@ export default function OnboardingInspectionPage() {
         signature: signature || undefined,
       });
     } catch {
-      // Continue even if API fails
+      setSaveWarning('Your progress may not have been saved. You can continue.');
     }
 
     // Save progress
@@ -428,6 +430,12 @@ export default function OnboardingInspectionPage() {
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+          {saveWarning && (
+            <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {saveWarning}
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               onClick={() => setPhase('meters')}

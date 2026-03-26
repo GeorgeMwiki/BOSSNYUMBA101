@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, KeyRound } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function OTPVerifyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setPhone(phoneParam);
@@ -33,12 +34,18 @@ export default function OTPVerifyPage() {
     }
   }, [isAuthenticated, router]);
 
+  useEffect(() => {
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, []);
+
   const startResendCooldown = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setResendCooldown(RESEND_COOLDOWN);
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          intervalRef.current = null;
           return 0;
         }
         return prev - 1;

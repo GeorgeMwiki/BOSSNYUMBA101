@@ -134,6 +134,7 @@ export default function OnboardingESignPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
   // Update documents when lease data arrives
   const [prevLease, setPrevLease] = useState<LeaseWithDetails | undefined>(undefined);
@@ -201,7 +202,7 @@ export default function OnboardingESignPage() {
         })),
       });
     } catch {
-      // Continue
+      setSaveWarning('Your progress may not have been saved. You can continue.');
     }
 
     // Save progress
@@ -386,6 +387,12 @@ export default function OnboardingESignPage() {
 
       {/* Fixed Bottom Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+        {saveWarning && (
+          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {saveWarning}
+          </div>
+        )}
         <button
           onClick={handleComplete}
           disabled={!canComplete || isSubmitting}

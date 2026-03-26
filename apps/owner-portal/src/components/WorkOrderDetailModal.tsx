@@ -469,24 +469,27 @@ export function WorkOrderDetailModal({
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Cost Justification</h4>
+                <h4 className="font-medium text-gray-900 mb-3">Estimated Cost Breakdown</h4>
+                <p className="text-xs text-gray-500 mb-2">
+                  Approximate split based on typical ratios. Actual amounts may vary.
+                </p>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Labor</span>
+                    <span className="text-sm text-gray-600">Labor (est. 40%)</span>
                     <span className="font-medium text-gray-900">
-                      {formatCurrency((workOrder.estimatedCost || 0) * 0.4)}
+                      ~{formatCurrency((workOrder.estimatedCost || 0) * 0.4)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Parts & Materials</span>
+                    <span className="text-sm text-gray-600">Parts & Materials (est. 45%)</span>
                     <span className="font-medium text-gray-900">
-                      {formatCurrency((workOrder.estimatedCost || 0) * 0.45)}
+                      ~{formatCurrency((workOrder.estimatedCost || 0) * 0.45)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Service Fee</span>
+                    <span className="text-sm text-gray-600">Service Fee (est. 15%)</span>
                     <span className="font-medium text-gray-900">
-                      {formatCurrency((workOrder.estimatedCost || 0) * 0.15)}
+                      ~{formatCurrency((workOrder.estimatedCost || 0) * 0.15)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">

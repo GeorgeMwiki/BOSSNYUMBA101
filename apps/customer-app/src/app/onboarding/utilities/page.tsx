@@ -171,6 +171,7 @@ export default function OnboardingUtilitiesPage() {
   }
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
   const logCopyMutation = useMutation<unknown, { text: string }>(
     (client, variables) => client.post('/onboarding/utilities/copy-log', { text: variables.text }),
@@ -226,7 +227,7 @@ export default function OnboardingUtilitiesPage() {
         acknowledged: utilities.map((u) => u.id),
       });
     } catch {
-      // Continue even if API fails
+      setSaveWarning('Your progress may not have been saved. You can continue.');
     }
 
     const progress = JSON.parse(
@@ -420,6 +421,12 @@ export default function OnboardingUtilitiesPage() {
 
       {/* Fixed bottom button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+        {saveWarning && (
+          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {saveWarning}
+          </div>
+        )}
         <button
           onClick={handleContinue}
           disabled={!allAcknowledged || isSubmitting}

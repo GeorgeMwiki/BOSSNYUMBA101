@@ -16,6 +16,7 @@ import { useState } from 'react';
 
 export default function ComplianceDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const {
     data: documents,
@@ -110,6 +111,15 @@ export default function ComplianceDocumentsPage() {
         />
       </div>
 
+      {/* Download Error */}
+      {downloadError && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          {downloadError}
+          <button onClick={() => setDownloadError(null)} className="ml-auto text-red-500 hover:text-red-700 text-xs font-medium">Dismiss</button>
+        </div>
+      )}
+
       {/* Documents Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {filteredDocs.length === 0 ? (
@@ -150,13 +160,14 @@ export default function ComplianceDocumentsPage() {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={async () => {
+                        setDownloadError(null);
                         try {
                           const res = await documentsService.get(doc.id);
                           if (res.success && res.data?.url) {
                             window.open(res.data.url, '_blank');
                           }
                         } catch {
-                          // Download failed
+                          setDownloadError(`Failed to download "${doc.name || doc.title || 'document'}". Please try again.`);
                         }
                       }}
                       className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"

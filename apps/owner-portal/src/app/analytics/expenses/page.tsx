@@ -91,7 +91,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Maintenance</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(510000)}
+            {formatCurrency(latestMonth?.maintenance ?? 0)}
           </p>
           <p className="text-sm text-gray-500">this month</p>
         </div>
@@ -103,7 +103,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Utilities</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(340000)}
+            {formatCurrency(latestMonth?.utilities ?? 0)}
           </p>
           <p className="text-sm text-gray-500">this month</p>
         </div>
@@ -115,7 +115,7 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Admin</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(205000)}
+            {formatCurrency(latestMonth?.admin ?? 0)}
           </p>
           <p className="text-sm text-gray-500">this month</p>
         </div>
@@ -127,9 +127,13 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Insurance</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(120000)}
+            {formatCurrency(
+              (latestMonth?.maintenance ?? 0) +
+              (latestMonth?.utilities ?? 0) +
+              (latestMonth?.admin ?? 0)
+            )}
           </p>
-          <p className="text-sm text-gray-500">monthly</p>
+          <p className="text-sm text-gray-500">total this month</p>
         </div>
       </div>
 

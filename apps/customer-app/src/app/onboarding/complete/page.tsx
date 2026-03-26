@@ -18,6 +18,7 @@ import {
   Star,
   Shield,
   Award,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -113,6 +114,7 @@ export default function OnboardingCompletePage() {
   const [selectedTime, setSelectedTime] = useState('');
   const [checkInScheduled, setCheckInScheduled] = useState(false);
   const [showBadge, setShowBadge] = useState(false);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
   const completeOnboardingMutation = useMutation<unknown, void>(
     (client) => client.post('/onboarding/complete', {}),
@@ -157,7 +159,7 @@ export default function OnboardingCompletePage() {
         preferredTimeSlot: selectedTime,
       });
     } catch {
-      // Continue
+      setSaveWarning('Your progress may not have been saved. You can continue.');
     }
 
     setCheckInScheduled(true);
@@ -468,6 +470,14 @@ export default function OnboardingCompletePage() {
             </div>
             <ArrowRight className="w-5 h-5 text-success-600" />
           </a>
+        )}
+
+        {/* Save Warning */}
+        {saveWarning && (
+          <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {saveWarning}
+          </div>
         )}
 
         {/* Go to Dashboard */}

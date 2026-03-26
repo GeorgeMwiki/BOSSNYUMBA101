@@ -71,6 +71,9 @@ export function SupportPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const fetchCases = async () => {
     setLoading(true);
@@ -391,6 +394,12 @@ export function SupportPage() {
 
               {/* Reply */}
               <div className="p-4 border-t border-gray-200">
+                {replyError && (
+                  <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    {replyError}
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <textarea
@@ -402,7 +411,7 @@ export function SupportPage() {
                     />
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); formData.append('caseId', selectedCase.id); try { await api.post('/support/cases/' + selectedCase.id + '/attachments', formData); } catch { /* Attachment may fail silently */ } }; input.click(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <button disabled={uploading} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); formData.append('caseId', selectedCase.id); setUploading(true); setReplyError(null); try { await api.post('/support/cases/' + selectedCase.id + '/attachments', formData); } catch { setReplyError('Failed to upload attachment. Please try again.'); } finally { setUploading(false); } }; input.click(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50">
                           <Paperclip className="h-4 w-4" />
                         </button>
                         <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -423,18 +432,22 @@ export function SupportPage() {
                         <button
                           onClick={async () => {
                             if (!replyText.trim() || !selectedCase) return;
+                            setSendingReply(true);
+                            setReplyError(null);
                             try {
                               const res = await api.post('/support/cases/' + selectedCase.id + '/messages', { message: replyText });
                               if (res.success) {
                                 setReplyText('');
                                 fetchCases();
                               }
-                            } catch { /* Send may fail silently */ }
+                            } catch { setReplyError('Failed to send reply. Please try again.'); }
+                            finally { setSendingReply(false); }
                           }}
-                          className="flex items-center gap-2 px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700"
+                          disabled={sendingReply || !replyText.trim()}
+                          className="flex items-center gap-2 px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50"
                         >
-                          <Send className="h-4 w-4" />
-                          Send
+                          <Send className={`h-4 w-4 ${sendingReply ? 'animate-pulse' : ''}`} />
+                          {sendingReply ? 'Sending...' : 'Send'}
                         </button>
                       </div>
                     </div>
