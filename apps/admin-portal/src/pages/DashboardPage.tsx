@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Building2,
   Users,
@@ -67,6 +67,7 @@ interface DashboardData {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +189,7 @@ export function DashboardPage() {
             >
               <AlertTriangle className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm flex-1">{alert.message}</span>
-              <button className="text-sm font-medium hover:underline">
+              <button onClick={() => navigate('/operations')} className="text-sm font-medium hover:underline">
                 View
               </button>
             </div>

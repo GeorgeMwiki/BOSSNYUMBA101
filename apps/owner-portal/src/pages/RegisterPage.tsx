@@ -323,7 +323,12 @@ export function RegisterPage() {
               </form>
 
               <p className="mt-6 text-center text-sm text-gray-500">
-                Didn't receive the code? <button className="text-blue-600 font-medium hover:underline">Resend</button>
+                Didn't receive the code? <button onClick={async () => {
+                  try {
+                    await api.post('/auth/resend-verification', { email: formData.email });
+                    alert('Verification code resent');
+                  } catch { alert('Failed to resend code'); }
+                }} className="text-blue-600 font-medium hover:underline">Resend</button>
               </p>
             </>
           )}

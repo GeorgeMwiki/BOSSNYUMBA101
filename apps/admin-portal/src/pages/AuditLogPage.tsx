@@ -194,7 +194,10 @@ export function AuditLogPage() {
           <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
           <p className="text-gray-500">Track all system activities and changes</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <button onClick={async () => {
+  const res = await api.get<{ url: string }>('/audit-log/export');
+  if (res.data?.url) window.open(res.data.url, '_blank');
+}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
           <Download className="h-4 w-4" />
           Export Log
         </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { customersService } from '@bossnyumba/api-client';
 import {
@@ -15,6 +16,7 @@ import {
 import { useState } from 'react';
 
 export function UsersPage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
@@ -102,7 +104,7 @@ export function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500 mt-1">Platform user directory</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+        <button onClick={() => navigate('/users/new')} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
           <Plus className="h-4 w-4" />
           Add User
         </button>

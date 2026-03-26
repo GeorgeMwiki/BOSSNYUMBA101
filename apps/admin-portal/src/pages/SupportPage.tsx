@@ -324,7 +324,7 @@ export function SupportPage() {
                       {selectedCase.subject}
                     </h2>
                   </div>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => alert('Case actions: Escalate, Reassign, Close')} className="p-2 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-4 w-4 text-gray-400" />
                   </button>
                 </div>
@@ -401,7 +401,7 @@ export function SupportPage() {
                     />
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
-                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.onchange = () => { /* File selected */ }; input.click(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                           <Paperclip className="h-4 w-4" />
                         </button>
                         <label className="flex items-center gap-2 text-sm text-gray-600">

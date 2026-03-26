@@ -53,6 +53,7 @@ interface Conversation {
   participantRole: string;
   participantInitials: string;
   participantAvatar?: string;
+  participantPhone?: string;
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount: number;
@@ -523,10 +524,10 @@ export function MessagesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => window.open('tel:' + (activeConversation?.participantPhone || ''), '_self')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <Phone className="h-5 w-5" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => alert('Options: Mute, Block, Delete conversation')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-5 w-5" />
                   </button>
                 </div>

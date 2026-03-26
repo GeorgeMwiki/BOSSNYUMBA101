@@ -747,7 +747,7 @@ export function FinancialPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                        <button onClick={() => navigate('/financials/invoices/' + invoice.id)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
                           <Eye className="h-4 w-4" />
                         </button>
                       </td>

@@ -265,16 +265,16 @@ export default function CommunicationsCampaignsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       {campaign.status === 'draft' && (
-                        <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
+                        <button onClick={async () => { if (!confirm('Launch this campaign?')) return; await api.post('/communications/campaigns/' + campaign.id + '/start', {}); window.location.reload(); }} className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
                           <Play className="h-4 w-4" />
                         </button>
                       )}
                       {campaign.status === 'running' && (
-                        <button className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg">
+                        <button onClick={async () => { if (!confirm('Pause this campaign?')) return; await api.post('/communications/campaigns/' + campaign.id + '/pause', {}); window.location.reload(); }} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg">
                           <Pause className="h-4 w-4" />
                         </button>
                       )}
-                      <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                      <button onClick={() => navigate('/communications/campaigns/' + campaign.id)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                         <MoreVertical className="h-4 w-4" />
                       </button>
                     </div>

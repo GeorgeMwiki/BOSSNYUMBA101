@@ -172,7 +172,7 @@ export default function IntegrationsWebhooksPage() {
           <option value="inactive">Inactive</option>
           <option value="failing">Failing</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <button onClick={() => setStatusFilter(statusFilter === 'all' ? 'failing' : 'all')} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
           <Filter className="h-4 w-4" />
           More Filters
         </button>
@@ -216,10 +216,10 @@ export default function IntegrationsWebhooksPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                    <button onClick={() => { navigator.clipboard.writeText(webhook.url); }} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                       <Copy className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                    <button onClick={() => navigate('/integrations/webhooks/' + webhook.id)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                       <MoreVertical className="h-4 w-4" />
                     </button>
                   </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   DollarSign,
@@ -29,6 +29,7 @@ function formatDate(date: string | undefined): string {
 
 export default function CollectionDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const invoiceId = params.id as string;
 
   const { data: invoice, isLoading } = useQuery({
@@ -142,7 +143,7 @@ export default function CollectionDetailPage() {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-700">Actions</h3>
           <div className="grid grid-cols-1 gap-2">
-            <button className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
+            <button onClick={async () => { if (!confirm('Send payment demand notice to customer?')) return; const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/demand-notice`, {}); window.location.reload(); }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-50 rounded-lg">
                   <Send className="w-5 h-5 text-orange-600" />
@@ -154,7 +155,7 @@ export default function CollectionDetailPage() {
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </button>
-            <button className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
+            <button onClick={() => router.push(`/collections/${invoiceId}/payment-plan`)} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-50 rounded-lg">
                   <CreditCard className="w-5 h-5 text-blue-600" />
@@ -166,7 +167,7 @@ export default function CollectionDetailPage() {
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </button>
-            <button className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
+            <button onClick={async () => { if (!confirm('Escalate this to a formal dispute case?')) return; const client = (await import('@bossnyumba/api-client')).getApiClient(); await client.post(`/invoices/${invoiceId}/escalate`, {}); window.location.reload(); }} className="card p-4 hover:shadow-md transition-shadow flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-50 rounded-lg">
                   <AlertTriangle className="w-5 h-5 text-red-600" />

@@ -212,7 +212,16 @@ export default function PermissionMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={async () => {
+  const data = roles.map(r => ({ ...r, permissions: Array.from(r.permissions) }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'permission-matrix.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Download className="h-4 w-4" />
             Export
           </button>

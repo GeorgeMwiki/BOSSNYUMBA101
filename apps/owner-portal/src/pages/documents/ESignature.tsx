@@ -517,7 +517,10 @@ export function ESignaturePage() {
                       >
                         {entry.status}
                       </span>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                      <button onClick={async () => {
+                        const res = await api.get<{ url: string }>('/documents/' + entry.id + '/download');
+                        if (res.data?.url) window.open(res.data.url, '_blank');
+                      }} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
                         <Download className="h-4 w-4" />
                       </button>
                     </div>

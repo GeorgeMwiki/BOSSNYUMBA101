@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Download,
   FileSpreadsheet,
@@ -39,6 +40,7 @@ const formatIcons: Record<string, React.ElementType> = {
 };
 
 export default function AnalyticsExportsPage() {
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('last30');
   const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>([]);
   const [recentExports, setRecentExports] = useState<RecentExport[]>([]);
@@ -181,7 +183,7 @@ export default function AnalyticsExportsPage() {
             <option value="last90">Last 90 days</option>
             <option value="custom">Custom range</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={() => setDateRange(dateRange === 'last30' ? 'last7' : 'last30')} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Filter className="h-4 w-4" />
             Filters
           </button>
@@ -323,7 +325,7 @@ export default function AnalyticsExportsPage() {
           <p className="text-gray-500">
             No scheduled exports. Set up automated exports for recurring reports.
           </p>
-          <button className="mt-4 px-4 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+          <button onClick={() => navigate('/analytics/exports/schedule')} className="mt-4 px-4 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
             Schedule Export
           </button>
         </div>

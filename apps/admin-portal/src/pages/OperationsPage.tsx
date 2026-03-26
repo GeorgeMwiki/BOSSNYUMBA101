@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -95,6 +96,7 @@ interface AIDecision {
 const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
 
 export function OperationsPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('health');
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowItem | null>(null);
@@ -311,7 +313,7 @@ export function OperationsPage() {
             <Eye className="h-4 w-4" />
             Enhanced Control Tower
           </a>
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
@@ -568,11 +570,11 @@ export function OperationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
+                      <button onClick={() => navigate('/operations/exceptions/' + exception.id)} className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
                         <Eye className="h-4 w-4" />
                       </button>
                       {exception.status !== 'resolved' && (
-                        <button className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+                        <button onClick={async () => { const assignee = prompt('Assign to user ID:'); if (!assignee) return; await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assignee }); window.location.reload(); }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                           Assign
                         </button>
                       )}
@@ -682,7 +684,7 @@ export function OperationsPage() {
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Recent AI Decisions</h3>
-              <button className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
+              <button onClick={async () => { const res = await api.get<{ url: string }>('/operations/ai-decisions/export'); if (res.data?.url) window.open(res.data.url, '_blank'); }} className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
                 <Download className="h-4 w-4" />
                 Export Log
               </button>

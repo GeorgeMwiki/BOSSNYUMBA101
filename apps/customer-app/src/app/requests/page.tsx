@@ -73,7 +73,7 @@ export default function RequestsPage() {
         )}
 
         {!isLoading &&
-          !error &&
+          !isError &&
           requestList.map((req: any) => {
             const status = statusConfig[req.status] || statusConfig.OPEN;
             const StatusIcon = status.icon;

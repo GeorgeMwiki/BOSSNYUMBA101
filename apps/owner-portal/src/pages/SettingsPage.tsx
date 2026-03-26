@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   Bell,
@@ -39,6 +40,8 @@ interface CoOwner {
 
 export function SettingsPage() {
   const { user, tenant } = useAuth();
+  const navigate = useNavigate();
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [coOwners, setCoOwners] = useState<CoOwner[]>([]);
@@ -253,9 +256,17 @@ export function SettingsPage() {
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
                 <div>
-                  <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
+                  <button onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
                     Change Photo
                   </button>
+                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const formData = new FormData();
+                    formData.append('avatar', file);
+                    await api.post('/users/me/avatar', formData);
+                    window.location.reload();
+                  }} />
                 </div>
               </div>
 
@@ -344,7 +355,21 @@ export function SettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                     <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                  <button onClick={async () => {
+                    const form = document.querySelectorAll('input[type="password"]');
+                    const current = (form[0] as HTMLInputElement)?.value;
+                    const newPw = (form[1] as HTMLInputElement)?.value;
+                    const confirm = (form[2] as HTMLInputElement)?.value;
+                    if (!current || !newPw || !confirm) { alert('Please fill all password fields'); return; }
+                    if (newPw !== confirm) { alert('Passwords do not match'); return; }
+                    try {
+                      await api.put('/users/me/password', { currentPassword: current, newPassword: newPw });
+                      alert('Password updated successfully');
+                      (form[0] as HTMLInputElement).value = '';
+                      (form[1] as HTMLInputElement).value = '';
+                      (form[2] as HTMLInputElement).value = '';
+                    } catch (err) { alert(err instanceof Error ? err.message : 'Failed to update password'); }
+                  }} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                     Update Password
                   </button>
                 </div>
@@ -355,7 +380,7 @@ export function SettingsPage() {
               <div>
                 <h3 className="font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
                 <p className="text-sm text-gray-500 mb-4">Add an extra layer of security to your account.</p>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
+                <button onClick={() => navigate('/settings/security/2fa')} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
                   <Key className="h-4 w-4" />
                   Enable 2FA
                 </button>

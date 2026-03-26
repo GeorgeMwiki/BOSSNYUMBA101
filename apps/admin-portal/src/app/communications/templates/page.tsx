@@ -157,7 +157,7 @@ export default function CommunicationsTemplatesPage() {
           <option value="email">Email</option>
           <option value="sms">SMS</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <button onClick={() => setTypeFilter(typeFilter === 'all' ? 'email' : 'all')} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
           <Filter className="h-4 w-4" />
           Category
         </button>
@@ -196,7 +196,7 @@ export default function CommunicationsTemplatesPage() {
                   >
                     <Copy className="h-4 w-4 text-gray-500" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => navigate('/communications/templates/' + template.id)} className="p-2 hover:bg-gray-100 rounded-lg">
                     <MoreVertical className="h-4 w-4 text-gray-500" />
                   </button>
                 </div>

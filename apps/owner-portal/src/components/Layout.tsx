@@ -166,7 +166,7 @@ export function Layout({ children }: LayoutProps) {
 
           <div className="flex-1" />
 
-          <button className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100">
+          <button onClick={() => navigate('/notifications')} className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100">
             <Bell className="h-5 w-5" />
             <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
               3

@@ -10,6 +10,10 @@ interface FeedCardProps {
   likes?: number;
   comments?: number;
   timeAgo?: string;
+  onLike?: () => void;
+  onComment?: () => void;
+  onShare?: () => void;
+  onBookmark?: () => void;
 }
 
 export function FeedCard({
@@ -19,6 +23,10 @@ export function FeedCard({
   likes = 0,
   comments = 0,
   timeAgo = '2h',
+  onLike,
+  onComment,
+  onShare,
+  onBookmark,
 }: FeedCardProps) {
   return (
     <article className="card-feed mb-4">
@@ -52,19 +60,19 @@ export function FeedCard({
       {/* Actions - Instagram style */}
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
+          <button onClick={onLike} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
             <Heart className="w-5 h-5" strokeWidth={2} />
             <span className="text-sm">{likes || 'Like'}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
+          <button onClick={onComment} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors">
             <MessageCircle className="w-5 h-5" strokeWidth={2} />
             <span className="text-sm">{comments || 'Comment'}</span>
           </button>
-          <button className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onShare} className="text-gray-400 hover:text-white transition-colors">
             <Share2 className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
-        <button className="text-gray-400 hover:text-white transition-colors">
+        <button onClick={onBookmark} className="text-gray-400 hover:text-white transition-colors">
           <Bookmark className="w-5 h-5" strokeWidth={2} />
         </button>
       </div>
