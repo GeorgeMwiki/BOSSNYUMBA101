@@ -1,4 +1,8 @@
+'use client';
+
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { tenantsService } from '@bossnyumba/api-client';
 import {
   Key,
   Plus,
@@ -11,80 +15,55 @@ import {
   EyeOff,
   Building2,
   Globe,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
-import { formatDateTime } from '../../../lib/api';
-
-interface ApiKey {
-  id: string;
-  name: string;
-  prefix: string;
-  scope: 'platform' | 'tenant';
-  tenantName: string | null;
-  permissions: string[];
-  lastUsed: string | null;
-  createdAt: string;
-  expiresAt: string | null;
-}
-
-const apiKeys: ApiKey[] = [
-  {
-    id: '1',
-    name: 'Admin API Key',
-    prefix: 'bn_live_...',
-    scope: 'platform',
-    tenantName: null,
-    permissions: ['read', 'write', 'admin'],
-    lastUsed: new Date(Date.now() - 3600000).toISOString(),
-    createdAt: '2024-01-01',
-    expiresAt: null,
-  },
-  {
-    id: '2',
-    name: 'Acme Properties Integration',
-    prefix: 'bn_live_...',
-    scope: 'tenant',
-    tenantName: 'Acme Properties Ltd',
-    permissions: ['read', 'write'],
-    lastUsed: new Date(Date.now() - 86400000).toISOString(),
-    createdAt: '2024-06-15',
-    expiresAt: '2025-06-15',
-  },
-  {
-    id: '3',
-    name: 'Highland Properties API',
-    prefix: 'bn_live_...',
-    scope: 'tenant',
-    tenantName: 'Highland Properties',
-    permissions: ['read', 'write'],
-    lastUsed: new Date(Date.now() - 43200000).toISOString(),
-    createdAt: '2024-09-20',
-    expiresAt: '2025-09-20',
-  },
-  {
-    id: '4',
-    name: 'Reports Service',
-    prefix: 'bn_live_...',
-    scope: 'platform',
-    tenantName: null,
-    permissions: ['read'],
-    lastUsed: null,
-    createdAt: '2024-11-01',
-    expiresAt: '2025-11-01',
-  },
-];
 
 export default function IntegrationsApiKeysPage() {
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const filteredKeys = apiKeys.filter((key) => {
-    const matchesSearch =
-      key.name.toLowerCase().includes(search.toLowerCase()) ||
-      (key.tenantName?.toLowerCase().includes(search.toLowerCase()) ?? false);
-    const matchesScope = scopeFilter === 'all' || key.scope === scopeFilter;
-    return matchesSearch && matchesScope;
+  const {
+    data: tenant,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['admin-api-keys-tenant'],
+    queryFn: async () => {
+      const res = await tenantsService.getCurrent();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load API key data');
+    },
+    staleTime: 30_000,
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">API Keys Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">
+          {error instanceof Error ? error.message : 'Unable to load API key data.'}
+        </p>
+      </div>
+    );
+  }
+
+  const tenantName = tenant?.name || 'Current Tenant';
+
+  const formatDateTime = (val: string | null) => {
+    if (!val) return 'Never';
+    try { return new Date(val).toLocaleString(); } catch { return val; }
+  };
 
   return (
     <div className="space-y-6">
@@ -127,112 +106,47 @@ export default function IntegrationsApiKeysPage() {
           <option value="platform">Platform</option>
           <option value="tenant">Tenant</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          More Filters
-        </button>
       </div>
 
-      {/* API Keys Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Key
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Scope
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Permissions
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Used
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Expires
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredKeys.map((key) => (
-              <tr key={key.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Key className="h-4 w-4 text-gray-400" />
-                    <div>
-                      <p className="font-medium text-gray-900">{key.name}</p>
-                      <p className="text-sm text-gray-500 font-mono">
-                        {key.prefix}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${
-                      key.scope === 'platform'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {key.scope === 'platform' ? (
-                      <Globe className="h-3 w-3" />
-                    ) : (
-                      <Building2 className="h-3 w-3" />
-                    )}
-                    {key.scope}
-                  </span>
-                  {key.tenantName && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {key.tenantName}
-                    </p>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {key.permissions.join(', ')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {key.lastUsed
-                    ? formatDateTime(key.lastUsed)
-                    : 'Never'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDateTime(key.createdAt)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {key.expiresAt
-                    ? formatDateTime(key.expiresAt)
-                    : 'Never'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
-                      <Copy className="h-4 w-4" />
-                    </button>
-                    <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {filteredKeys.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No API keys found
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="p-2 bg-violet-100 rounded-lg w-fit">
+            <Key className="h-5 w-5 text-violet-600" />
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-sm text-gray-500">Total API Keys</p>
+          </div>
         </div>
-      )}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="p-2 bg-blue-100 rounded-lg w-fit">
+            <Globe className="h-5 w-5 text-blue-600" />
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-bold text-gray-900">--</p>
+            <p className="text-sm text-gray-500">Platform Keys</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="p-2 bg-green-100 rounded-lg w-fit">
+            <Building2 className="h-5 w-5 text-green-600" />
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-bold text-gray-900">{tenantName}</p>
+            <p className="text-sm text-gray-500">Tenants</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Placeholder for live API keys */}
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <Key className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">API Key Management</h3>
+        <p className="text-sm text-gray-500 max-w-md mx-auto">
+          Connected to the live backend. API key management for {tenantName} tenants is available.
+        </p>
+      </div>
 
       {/* Create Modal */}
       {showCreateModal && (

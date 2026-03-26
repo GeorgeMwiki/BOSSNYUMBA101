@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PenLine, RotateCcw, Check, X } from 'lucide-react';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface ESignatureProps {
   /** Called when signature is saved - returns base64 PNG data URL */
@@ -79,13 +80,19 @@ export function ESignature({
     }
   }, [penColor, penWidth]);
 
+  const initCanvasMutation = useMutation<unknown, void>(
+    (client) => client.get('/documents/canvas-config'),
+    {
+      onSuccess: () => initCanvas(),
+      onError: () => initCanvas(),
+    }
+  );
+
   useEffect(() => {
     if (mode === 'inline' || isOpen) {
-      // Small delay to ensure canvas is mounted
-      const timer = setTimeout(initCanvas, 50);
-      return () => clearTimeout(timer);
+      initCanvasMutation.mutate();
     }
-  }, [mode, isOpen, initCanvas]);
+  }, [mode, isOpen]);
 
   const getCoordinates = (
     e: React.MouseEvent | React.TouchEvent

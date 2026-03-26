@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, MessageCircle, ChevronRight, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { messagingService } from '@bossnyumba/api-client';
 
 type ConversationStatus = 'unread' | 'read';
 
@@ -16,37 +18,6 @@ interface Conversation {
   status: ConversationStatus;
   preview: string;
 }
-
-// Mock data - replace with API
-const conversations: Conversation[] = [
-  {
-    id: '1',
-    subject: 'Water leak in Unit A-301',
-    participants: ['Maintenance Team', 'Mary Wanjiku'],
-    lastMessage: 'The plumber has been scheduled for tomorrow.',
-    lastMessageAt: '2024-02-25T10:30:00',
-    status: 'unread',
-    preview: 'Thanks for the update. I\'ll be home in the afternoon.',
-  },
-  {
-    id: '2',
-    subject: 'Lease renewal - Unit B-105',
-    participants: ['Peter Ochieng', 'Property Manager'],
-    lastMessage: 'Please find the renewal documents attached.',
-    lastMessageAt: '2024-02-24T14:20:00',
-    status: 'read',
-    preview: 'I\'ve reviewed the terms. When can we sign?',
-  },
-  {
-    id: '3',
-    subject: 'Rent payment confirmation',
-    participants: ['Grace Muthoni'],
-    lastMessage: 'Payment received. Receipt #REC-2024-4521',
-    lastMessageAt: '2024-02-24T09:15:00',
-    status: 'read',
-    preview: 'Thank you for your prompt payment.',
-  },
-];
 
 function formatTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -63,6 +34,24 @@ function formatTime(dateStr: string) {
 
 export default function MessagingPage() {
   const [search, setSearch] = useState('');
+
+  const { data: conversationsData, isLoading } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
+      const response = await messagingService.list();
+      return response.data;
+    },
+  });
+
+  const conversations: Conversation[] = (conversationsData ?? []).map((c: any) => ({
+    id: c.id,
+    subject: c.subject ?? '',
+    participants: c.participants?.map((p: any) => p.name ?? p.id) ?? [],
+    lastMessage: c.lastMessage ?? '',
+    lastMessageAt: c.lastMessageAt ?? c.updatedAt ?? '',
+    status: c.read || c.readAt ? 'read' as const : 'unread' as const,
+    preview: c.preview ?? c.lastMessage ?? '',
+  }));
 
   const filteredConversations = conversations.filter(
     (c) =>

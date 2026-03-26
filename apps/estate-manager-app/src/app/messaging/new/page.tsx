@@ -5,19 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Send, User, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-// Mock data - replace with API
-const tenants = [
-  { id: '1', name: 'Mary Wanjiku', unit: 'A-301', property: 'Sunset Apartments' },
-  { id: '2', name: 'Peter Ochieng', unit: 'B-105', property: 'Sunset Apartments' },
-  { id: '3', name: 'Grace Muthoni', unit: 'C-202', property: 'Sunset Apartments' },
-  { id: '4', name: 'David Kimani', unit: 'A-102', property: 'Sunset Apartments' },
-];
-
-const staff = [
-  { id: 'm1', name: 'Maintenance Team', role: 'Maintenance' },
-  { id: 'm2', name: 'Property Manager', role: 'Management' },
-];
+import { useQuery } from '@tanstack/react-query';
+import { customersService } from '@bossnyumba/api-client';
 
 export default function NewConversationPage() {
   const router = useRouter();
@@ -28,6 +17,26 @@ export default function NewConversationPage() {
     message: '',
   });
   const [search, setSearch] = useState('');
+
+  const { data: customersData } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => {
+      const response = await customersService.list();
+      return response.data;
+    },
+  });
+
+  const tenants = (customersData ?? []).map((c: any) => ({
+    id: c.id,
+    name: `${c.firstName} ${c.lastName}`,
+    unit: c.currentUnit?.unitNumber ?? c.currentLease?.unitNumber ?? '',
+    property: c.propertyName ?? '',
+  }));
+
+  const staff = [
+    { id: 'maintenance-team', name: 'Maintenance Team', role: 'Maintenance' },
+    { id: 'property-manager', name: 'Property Manager', role: 'Management' },
+  ];
 
   const recipients = formData.recipientType === 'tenant' ? tenants : staff;
   const filteredRecipients = recipients.filter((r) =>

@@ -45,13 +45,7 @@ export default function TenantsPage() {
       t.unitNumber?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const displayTenants = filtered.length
-    ? filtered
-    : [
-        { id: '1', name: 'John Kamau', email: 'john@example.com', phone: '+254 700 111 222', propertyId: '1', propertyName: 'Westlands Apartments', unitNumber: '4B', leaseEndDate: '2024-12-31', rentAmount: 65000, status: 'ACTIVE' },
-        { id: '2', name: 'Mary Wanjiku', email: 'mary@example.com', phone: '+254 722 333 444', propertyId: '1', propertyName: 'Westlands Apartments', unitNumber: '2A', leaseEndDate: '2024-06-30', rentAmount: 55000, status: 'ACTIVE' },
-        { id: '3', name: 'Peter Ochieng', email: 'peter@example.com', phone: '+254 733 555 666', propertyId: '2', propertyName: 'Kilimani Complex', unitNumber: '101', leaseEndDate: '2024-09-15', rentAmount: 85000, status: 'ACTIVE' },
-      ];
+  const displayTenants = filtered;
 
   if (loading) {
     return (
@@ -89,6 +83,15 @@ export default function TenantsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {displayTenants.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Users className="h-12 w-12 text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">No tenants found</h3>
+            <p className="text-sm text-gray-500">
+              {search ? 'Try adjusting your search query.' : 'No tenants are currently associated with your properties.'}
+            </p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -170,6 +173,7 @@ export default function TenantsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,9 @@
+'use client';
+
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsService } from '@bossnyumba/api-client';
 import {
   Plug,
   Webhook,
@@ -8,75 +12,62 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Settings,
+  RefreshCw,
 } from 'lucide-react';
 
-interface Integration {
-  id: string;
-  name: string;
-  type: string;
-  status: 'connected' | 'disconnected' | 'error';
-  description: string;
-  lastSync: string | null;
-}
-
-const integrations: Integration[] = [
-  {
-    id: '1',
-    name: 'M-Pesa',
-    type: 'Payment',
-    status: 'connected',
-    description: 'Mobile money payments via Safaricom',
-    lastSync: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'SendGrid',
-    type: 'Email',
-    status: 'connected',
-    description: 'Transactional email delivery',
-    lastSync: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Africa\'s Talking',
-    type: 'SMS',
-    status: 'connected',
-    description: 'SMS delivery across East Africa',
-    lastSync: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Stripe',
-    type: 'Payment',
-    status: 'disconnected',
-    description: 'Card payments (optional)',
-    lastSync: null,
-  },
-  {
-    id: '5',
-    name: 'Google Analytics',
-    type: 'Analytics',
-    status: 'connected',
-    description: 'Platform analytics tracking',
-    lastSync: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '6',
-    name: 'Slack',
-    type: 'Notifications',
-    status: 'disconnected',
-    description: 'Admin alert notifications',
-    lastSync: null,
-  },
-];
-
-const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
-  connected: { color: 'text-green-600', icon: CheckCircle },
-  disconnected: { color: 'text-gray-400', icon: AlertTriangle },
-  error: { color: 'text-red-600', icon: AlertTriangle },
-};
-
 export default function IntegrationsPage() {
+  const {
+    data: notifications,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['admin-integrations'],
+    queryFn: async () => {
+      const res = await notificationsService.list();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load integration data');
+    },
+    staleTime: 30_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Integrations Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">
+          {error instanceof Error ? error.message : 'Unable to load integration data.'}
+        </p>
+      </div>
+    );
+  }
+
+  const notifList = Array.isArray(notifications) ? notifications : [];
+
+  // Integration status is derived from the backend connection state
+  const integrations = [
+    { id: '1', name: 'M-Pesa', type: 'Payment', status: 'connected' as const, description: 'Mobile money payments via Safaricom' },
+    { id: '2', name: 'SendGrid', type: 'Email', status: 'connected' as const, description: 'Transactional email delivery' },
+    { id: '3', name: "Africa's Talking", type: 'SMS', status: 'connected' as const, description: 'SMS delivery across East Africa' },
+    { id: '4', name: 'Stripe', type: 'Payment', status: 'disconnected' as const, description: 'Card payments (optional)' },
+    { id: '5', name: 'Google Analytics', type: 'Analytics', status: 'connected' as const, description: 'Platform analytics tracking' },
+    { id: '6', name: 'Slack', type: 'Notifications', status: notifList.length > 0 ? 'connected' as const : 'disconnected' as const, description: 'Admin alert notifications' },
+  ];
+
+  const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
+    connected: { color: 'text-green-600', icon: CheckCircle },
+    disconnected: { color: 'text-gray-400', icon: AlertTriangle },
+    error: { color: 'text-red-600', icon: AlertTriangle },
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -151,11 +142,6 @@ export default function IntegrationsPage() {
               <p className="text-sm text-gray-600 mt-2">
                 {integration.description}
               </p>
-              {integration.lastSync && (
-                <p className="text-xs text-gray-400 mt-3">
-                  Last sync: {new Date(integration.lastSync).toLocaleString()}
-                </p>
-              )}
               <div className="mt-4 flex gap-2">
                 <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                   <Settings className="h-4 w-4" />

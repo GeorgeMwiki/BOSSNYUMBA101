@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Plus,
@@ -18,8 +18,10 @@ import {
   Lightbulb,
   DoorOpen,
   Settings,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { workOrdersService } from '@bossnyumba/api-client';
 
 type TicketStatus = 'submitted' | 'in_progress' | 'scheduled' | 'completed';
 type Priority = 'emergency' | 'high' | 'medium' | 'low';
@@ -53,41 +55,34 @@ const CATEGORIES: Category[] = [
   { id: 'general', name: 'General', icon: DoorOpen, color: 'bg-gray-100 text-gray-600' },
 ];
 
-const tickets: MaintenanceTicket[] = [
-  {
-    id: '1',
-    workOrderNumber: 'WO-2024-0042',
-    title: 'Kitchen sink leaking',
-    category: 'plumbing',
-    status: 'scheduled',
-    priority: 'high',
-    createdAt: '2024-02-20',
-    scheduledDate: '2024-02-25',
-    slaStatus: 'on_track',
-    photoCount: 3,
-  },
-  {
-    id: '2',
-    workOrderNumber: 'WO-2024-0038',
-    title: 'AC not cooling properly',
-    category: 'hvac',
-    status: 'in_progress',
-    priority: 'medium',
-    createdAt: '2024-02-18',
-    slaStatus: 'at_risk',
-    photoCount: 2,
-  },
-  {
-    id: '3',
-    workOrderNumber: 'WO-2024-0031',
-    title: 'Broken door handle',
-    category: 'general',
-    status: 'completed',
-    priority: 'low',
-    createdAt: '2024-02-10',
-    slaStatus: 'on_track',
-  },
-];
+function mapWorkOrderToTicket(wo: Record<string, unknown>): MaintenanceTicket {
+  const status = (wo.status as string || '').toLowerCase();
+  let mappedStatus: TicketStatus = 'submitted';
+  if (status.includes('complete')) mappedStatus = 'completed';
+  else if (status.includes('progress') || status.includes('started')) mappedStatus = 'in_progress';
+  else if (status.includes('scheduled')) mappedStatus = 'scheduled';
+
+  const priority = (wo.priority as string || 'medium').toLowerCase() as Priority;
+  const category = (wo.category as string || 'general').toLowerCase();
+
+  const sla = wo.sla as Record<string, unknown> | undefined;
+  let slaStatus: 'on_track' | 'at_risk' | 'breached' = 'on_track';
+  if (sla?.breached) slaStatus = 'breached';
+  else if (sla?.atRisk) slaStatus = 'at_risk';
+
+  return {
+    id: wo.id as string,
+    workOrderNumber: (wo.number as string) || `WO-${wo.id}`,
+    title: wo.title as string || '',
+    category,
+    status: mappedStatus,
+    priority: ['emergency', 'high', 'medium', 'low'].includes(priority) ? priority : 'medium',
+    createdAt: wo.createdAt as string || '',
+    scheduledDate: wo.scheduledDate as string | undefined,
+    slaStatus,
+    photoCount: (wo.attachments as unknown[] | undefined)?.length,
+  };
+}
 
 const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
   submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
@@ -106,7 +101,9 @@ const priorityConfig: Record<Priority, { label: string; color: string; borderCol
 export default function MaintenancePage() {
   const [showNewRequestForm, setShowNewRequestForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
-  
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+
   // Form state
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -114,8 +111,26 @@ export default function MaintenancePage() {
   const [priority, setPriority] = useState<Priority>('medium');
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const loadTickets = async () => {
+      setLoading(true);
+      try {
+        const response = await workOrdersService.getMyRequests();
+        if (response.data) {
+          setTickets(
+            (response.data as unknown as Record<string, unknown>[]).map(mapWorkOrderToTicket)
+          );
+        }
+      } catch {
+        // Keep empty array on error
+      }
+      setLoading(false);
+    };
+    loadTickets();
+  }, []);
 
   const openTickets = tickets.filter((t) => t.status !== 'completed');
   const closedTickets = tickets.filter((t) => t.status === 'completed');
@@ -138,18 +153,38 @@ export default function MaintenancePage() {
 
   const handleSubmit = async () => {
     if (!selectedCategory || !title || !description) return;
-    
+
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Reset form
-    setSelectedCategory(null);
-    setTitle('');
-    setDescription('');
-    setPriority('medium');
-    setPhotos([]);
-    setShowNewRequestForm(false);
+    try {
+      const response = await workOrdersService.create({
+        propertyId: '', // Will be resolved by backend from current user's lease
+        title,
+        description,
+        category: selectedCategory.toUpperCase() as never,
+        priority: priority.toUpperCase() as never,
+        location: '',
+        attachments: photos.map((url, idx) => ({
+          type: 'image',
+          url,
+          filename: `photo-${idx + 1}.jpg`,
+        })),
+      });
+
+      if (response.data) {
+        const newTicket = mapWorkOrderToTicket(response.data as unknown as Record<string, unknown>);
+        setTickets((prev) => [newTicket, ...prev]);
+      }
+
+      // Reset form
+      setSelectedCategory(null);
+      setTitle('');
+      setDescription('');
+      setPriority('medium');
+      setPhotos([]);
+      setShowNewRequestForm(false);
+    } catch {
+      // Could show error notification
+    }
     setIsSubmitting(false);
   };
 

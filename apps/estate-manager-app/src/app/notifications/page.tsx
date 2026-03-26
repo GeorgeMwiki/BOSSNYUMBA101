@@ -3,15 +3,38 @@
 import Link from 'next/link';
 import { Bell, Settings, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsService } from '@bossnyumba/api-client';
 
-// Mock data
-const notifications = [
-  { id: '1', title: 'Work Order Updated', message: 'WO-2024-0042 status changed to In Progress', time: '10 min ago', read: false },
-  { id: '2', title: 'Inspection Reminder', message: 'Move-in inspection at Unit A-301 tomorrow at 10:00 AM', time: '2 hours ago', read: false },
-  { id: '3', title: 'Payment Received', message: 'KES 25,000 received from Grace Muthoni', time: 'Yesterday', read: true },
-];
+function formatRelativeTime(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs} hours ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays} days ago`;
+}
 
 export default function NotificationsPage() {
+  const { data: notificationsData, isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const response = await notificationsService.list();
+      return response.data;
+    },
+  });
+
+  const notifications = (notificationsData ?? []).map((n: any) => ({
+    id: n.id,
+    title: n.title ?? '',
+    message: n.message ?? n.body ?? '',
+    time: n.createdAt ? formatRelativeTime(n.createdAt) : '',
+    read: n.read ?? n.readAt != null,
+  }));
   return (
     <>
       <PageHeader

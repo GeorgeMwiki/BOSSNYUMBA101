@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Clock, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
+import { Plus, Clock, CheckCircle, AlertCircle, Wrench, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { workOrdersService } from '@bossnyumba/api-client';
 
 type TicketStatus = 'submitted' | 'in_progress' | 'scheduled' | 'completed';
 
@@ -17,40 +19,6 @@ interface MaintenanceTicket {
   scheduledDate?: string;
   slaStatus: 'on_track' | 'at_risk' | 'breached';
 }
-
-const tickets: MaintenanceTicket[] = [
-  {
-    id: '1',
-    workOrderNumber: 'WO-2024-0042',
-    title: 'Kitchen sink leaking',
-    category: 'Plumbing',
-    status: 'scheduled',
-    priority: 'high',
-    createdAt: '2024-02-20',
-    scheduledDate: '2024-02-25',
-    slaStatus: 'on_track',
-  },
-  {
-    id: '2',
-    workOrderNumber: 'WO-2024-0038',
-    title: 'AC not cooling properly',
-    category: 'HVAC',
-    status: 'in_progress',
-    priority: 'medium',
-    createdAt: '2024-02-18',
-    slaStatus: 'at_risk',
-  },
-  {
-    id: '3',
-    workOrderNumber: 'WO-2024-0031',
-    title: 'Broken door handle',
-    category: 'General',
-    status: 'completed',
-    priority: 'low',
-    createdAt: '2024-02-10',
-    slaStatus: 'on_track',
-  },
-];
 
 const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
   submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
@@ -67,8 +35,77 @@ const priorityColors = {
 };
 
 export default function MaintenancePage() {
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadTickets() {
+      try {
+        const response = await workOrdersService.getMyRequests();
+        const items = (response.data as unknown as Record<string, unknown>[]) ?? [];
+        setTickets(
+          items.map((wo: Record<string, unknown>) => ({
+            id: (wo.id as string) ?? '',
+            workOrderNumber: (wo.workOrderNumber as string) ?? wo.id as string,
+            title: (wo.title as string) ?? '',
+            category: (wo.category as string) ?? '',
+            status: (wo.status as TicketStatus) ?? 'submitted',
+            priority: (wo.priority as MaintenanceTicket['priority']) ?? 'medium',
+            createdAt: (wo.createdAt as string) ?? '',
+            scheduledDate: wo.scheduledDate as string | undefined,
+            slaStatus: (wo.slaStatus as MaintenanceTicket['slaStatus']) ?? 'on_track',
+          }))
+        );
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load maintenance requests');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTickets();
+  }, []);
+
   const openTickets = tickets.filter((t) => t.status !== 'completed');
   const closedTickets = tickets.filter((t) => t.status === 'completed');
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader
+          title="Maintenance"
+          action={
+            <Link href="/maintenance/new" className="btn-primary text-sm">
+              <Plus className="w-4 h-4 mr-1" />
+              New Request
+            </Link>
+          }
+        />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <>
+        <PageHeader
+          title="Maintenance"
+          action={
+            <Link href="/maintenance/new" className="btn-primary text-sm">
+              <Plus className="w-4 h-4 mr-1" />
+              New Request
+            </Link>
+          }
+        />
+        <div className="px-4 py-8 text-center">
+          <p className="text-gray-600">{loadError}</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

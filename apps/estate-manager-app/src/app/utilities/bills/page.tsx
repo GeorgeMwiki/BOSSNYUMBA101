@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileText, ChevronRight, Calendar, DollarSign } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { invoicesService } from '@bossnyumba/api-client';
 
 type BillStatus = 'paid' | 'pending' | 'overdue';
 
@@ -17,15 +19,6 @@ interface UtilityBill {
   dueDate: string;
   paidAt?: string;
 }
-
-// Mock data - replace with API
-const bills: UtilityBill[] = [
-  { id: '1', period: 'Feb 2024', utilityType: 'water', property: 'Sunset Apartments', amount: 12450, status: 'paid', dueDate: '2024-02-28', paidAt: '2024-02-20' },
-  { id: '2', period: 'Feb 2024', utilityType: 'electricity', property: 'Sunset Apartments', amount: 45600, status: 'pending', dueDate: '2024-02-28' },
-  { id: '3', period: 'Jan 2024', utilityType: 'water', property: 'Sunset Apartments', amount: 11200, status: 'paid', dueDate: '2024-01-31', paidAt: '2024-01-25' },
-  { id: '4', period: 'Jan 2024', utilityType: 'electricity', property: 'Sunset Apartments', amount: 42100, status: 'paid', dueDate: '2024-01-31', paidAt: '2024-01-28' },
-  { id: '5', period: 'Dec 2023', utilityType: 'gas', property: 'Sunset Apartments', amount: 8800, status: 'paid', dueDate: '2023-12-31', paidAt: '2023-12-29' },
-];
 
 const statusConfig: Record<BillStatus, { label: string; color: string }> = {
   paid: { label: 'Paid', color: 'badge-success' },
@@ -49,6 +42,25 @@ function formatCurrency(amount: number) {
 
 export default function UtilityBillsPage() {
   const [filter, setFilter] = useState<string>('all');
+
+  const { data: billsData, isLoading } = useQuery({
+    queryKey: ['utility-bills'],
+    queryFn: async () => {
+      const response = await invoicesService.list();
+      return response.data;
+    },
+  });
+
+  const bills: UtilityBill[] = (billsData ?? []).map((inv: any) => ({
+    id: inv.id,
+    period: new Date(inv.dueDate ?? inv.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    utilityType: inv.utilityType ?? 'electricity',
+    property: inv.propertyName ?? inv.description ?? '',
+    amount: inv.totalAmount ?? inv.amount ?? 0,
+    status: inv.status?.toLowerCase() === 'paid' ? 'paid' as const : inv.status?.toLowerCase() === 'overdue' ? 'overdue' as const : 'pending' as const,
+    dueDate: inv.dueDate ?? '',
+    paidAt: inv.paidAt,
+  }));
 
   const filteredBills = bills.filter((b) => {
     if (filter === 'all') return true;

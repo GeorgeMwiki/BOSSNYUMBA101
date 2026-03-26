@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Shield,
@@ -24,6 +24,8 @@ import {
   Grid3X3,
   GitBranch,
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../lib/api';
 
 interface Permission {
   id: string;
@@ -148,14 +150,11 @@ const permissionCategories = [
 ];
 
 export function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showPermissionAudit, setShowPermissionAudit] = useState(false);
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [roleForm, setRoleForm] = useState<{
     name: string;
@@ -167,142 +166,112 @@ export function RolesPage() {
     permissions: [],
   });
 
-  useEffect(() => {
-    // Mock data
-    setRoles([
-      {
-        id: '1',
-        name: 'Super Admin',
-        description: 'Full system access with all permissions',
-        permissions: permissionCategories.flatMap(c => c.permissions.map(p => p.id)),
-        userCount: 3,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '2',
-        name: 'Support Agent',
-        description: 'Customer support with read access and impersonation',
-        permissions: [
-          'tenants.view', 'users.view', 'users.impersonate',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.audit',
-        ],
-        userCount: 8,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '3',
-        name: 'Finance Manager',
-        description: 'Full access to financial operations',
-        permissions: [
-          'tenants.view', 'users.view',
-          'finance.view', 'finance.invoices', 'finance.payments', 'finance.disbursements', 'finance.adjustments',
-        ],
-        userCount: 5,
-        isSystem: false,
-        createdAt: '2024-06-15',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '4',
-        name: 'Operations Lead',
-        description: 'Manages daily operations and workflows',
-        permissions: [
-          'tenants.view', 'users.view',
-          'maintenance.view', 'maintenance.create', 'maintenance.assign', 'maintenance.approve', 'maintenance.complete',
-          'documents.view', 'documents.upload',
-        ],
-        userCount: 4,
-        isSystem: false,
-        createdAt: '2024-08-20',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '5',
-        name: 'Read Only',
-        description: 'View-only access to all modules',
-        permissions: [
-          'properties.view', 'units.view', 'tenants.view', 'users.view',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.view',
-        ],
-        userCount: 12,
-        isSystem: false,
-        createdAt: '2024-09-10',
-        createdBy: 'admin@bossnyumba.com',
-      },
-    ]);
+  const { data: roles = [], isLoading: loading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const res = await api.get<Role[]>('/roles');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load roles');
+      return res.data;
+    },
+    staleTime: 30_000,
+  });
 
-    setAuditLog([
-      { id: '1', action: 'Role Created', actor: 'admin@bossnyumba.com', target: 'Operations Lead', changes: 'New role with 7 permissions', timestamp: '2026-02-13T10:30:00Z' },
-      { id: '2', action: 'Permission Added', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added finance.adjustments', timestamp: '2026-02-12T15:45:00Z' },
-      { id: '3', action: 'Permission Removed', actor: 'super@bossnyumba.com', target: 'Support Agent', changes: 'Removed users.edit', timestamp: '2026-02-11T09:20:00Z' },
-      { id: '4', action: 'Role Updated', actor: 'admin@bossnyumba.com', target: 'Read Only', changes: 'Updated description', timestamp: '2026-02-10T14:00:00Z' },
-      { id: '5', action: 'User Assigned', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added john@tenant.com to role', timestamp: '2026-02-09T11:30:00Z' },
-    ]);
-
-    setLoading(false);
-  }, []);
+  const { data: auditLog = [] } = useQuery({
+    queryKey: ['roles-audit'],
+    queryFn: async () => {
+      const res = await api.get<AuditEntry[]>('/roles/audit');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load audit log');
+      return res.data;
+    },
+    staleTime: 30_000,
+  });
 
   const filteredRoles = roles.filter(role =>
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     role.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateRole = async () => {
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newRole: Role = {
-      id: String(roles.length + 1),
+  const createRoleMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; permissions: string[] }) => {
+      const res = await api.post<Role>('/roles', data);
+      if (!res.success) throw new Error(res.error || 'Failed to create role');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setShowCreateModal(false);
+      setRoleForm({ name: '', description: '', permissions: [] });
+      setNotification({ type: 'success', message: 'Role created successfully' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to create role' });
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; description: string; permissions: string[] } }) => {
+      const res = await api.put<Role>(`/roles/${id}`, data);
+      if (!res.success) throw new Error(res.error || 'Failed to update role');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setSelectedRole(null);
+      setRoleForm({ name: '', description: '', permissions: [] });
+      setNotification({ type: 'success', message: 'Role updated successfully' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update role' });
+    },
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete(`/roles/${id}`);
+      if (!res.success) throw new Error(res.error || 'Failed to delete role');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setNotification({ type: 'success', message: 'Role deleted successfully' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to delete role' });
+    },
+  });
+
+  const saving = createRoleMutation.isPending || updateRoleMutation.isPending;
+
+  const handleCreateRole = () => {
+    createRoleMutation.mutate({
       name: roleForm.name,
       description: roleForm.description,
       permissions: roleForm.permissions,
-      userCount: 0,
-      isSystem: false,
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: 'admin@bossnyumba.com',
-    };
-    setRoles([...roles, newRole]);
-    setSaving(false);
-    setShowCreateModal(false);
-    setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role created successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    });
   };
 
-  const handleUpdateRole = async () => {
+  const handleUpdateRole = () => {
     if (!selectedRole) return;
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRoles(roles.map(r => r.id === selectedRole.id ? {
-      ...r,
-      name: roleForm.name,
-      description: roleForm.description,
-      permissions: roleForm.permissions,
-    } : r));
-    setSaving(false);
-    setSelectedRole(null);
-    setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role updated successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    updateRoleMutation.mutate({
+      id: selectedRole.id,
+      data: {
+        name: roleForm.name,
+        description: roleForm.description,
+        permissions: roleForm.permissions,
+      },
+    });
   };
 
-  const handleDeleteRole = async (role: Role) => {
+  const handleDeleteRole = (role: Role) => {
     if (role.isSystem) {
       setNotification({ type: 'error', message: 'Cannot delete system roles' });
-      setTimeout(() => setNotification(null), 3000);
       return;
     }
     if (role.userCount > 0) {
       setNotification({ type: 'error', message: 'Cannot delete role with assigned users' });
-      setTimeout(() => setNotification(null), 3000);
       return;
     }
-    setRoles(roles.filter(r => r.id !== role.id));
-    setNotification({ type: 'success', message: 'Role deleted successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    deleteRoleMutation.mutate(role.id);
   };
 
   const togglePermission = (permissionId: string) => {

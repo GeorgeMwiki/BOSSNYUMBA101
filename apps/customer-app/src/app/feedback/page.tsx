@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Send, MessageSquare, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { feedbackService } from '@bossnyumba/api-client';
 
 const feedbackTypes = [
   { value: 'suggestion', label: 'Suggestion' },
@@ -28,10 +29,19 @@ export default function FeedbackPage() {
     if (!formData.message.trim()) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setSubmitted(true);
-    setIsSubmitting(false);
-    setFormData({ type: '', subject: '', message: '' });
+    try {
+      await feedbackService.create({
+        type: formData.type?.toUpperCase() || 'GENERAL',
+        subject: formData.subject || 'General Feedback',
+        description: formData.message,
+      } as Record<string, unknown>);
+      setSubmitted(true);
+      setFormData({ type: '', subject: '', message: '' });
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {

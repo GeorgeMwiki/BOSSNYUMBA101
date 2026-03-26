@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home, Package, ClipboardCheck, Users, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { reportsService } from '@bossnyumba/api-client';
 
 interface ReportCard {
   id: string;
@@ -71,14 +73,21 @@ const reportTypes: ReportCard[] = [
   },
 ];
 
-// Mock data
-const recentReports = [
-  { id: '1', name: 'Occupancy - Feb 2024', generatedAt: '2024-02-25', type: 'occupancy' },
-  { id: '2', name: 'Revenue - Jan 2024', generatedAt: '2024-02-01', type: 'revenue' },
-  { id: '3', name: 'Maintenance - Q4 2023', generatedAt: '2024-01-15', type: 'maintenance' },
-];
-
 export default function ReportsDashboardPage() {
+  const { data: reportsData, isLoading } = useQuery({
+    queryKey: ['recent-reports'],
+    queryFn: async () => {
+      const response = await reportsService.list({ limit: 10 });
+      return response.data;
+    },
+  });
+
+  const recentReports = (reportsData ?? []).map((r: any) => ({
+    id: r.id,
+    name: r.name ?? r.title ?? '',
+    generatedAt: r.generatedAt ?? r.createdAt ?? '',
+    type: r.type ?? '',
+  }));
   return (
     <>
       <PageHeader

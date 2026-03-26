@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -13,6 +13,8 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { schedulingService } from '@bossnyumba/api-client';
 
 type ViewMode = 'month' | 'week';
 
@@ -24,15 +26,6 @@ interface CalendarEvent {
   type: 'work_order' | 'inspection' | 'appointment';
   unit?: string;
 }
-
-// Mock data - replace with API
-const events: CalendarEvent[] = [
-  { id: '1', title: 'Kitchen sink repair', date: '2024-02-25', time: '09:00', type: 'work_order', unit: 'A-204' },
-  { id: '2', title: 'Move-in Inspection', date: '2024-02-25', time: '10:00', type: 'inspection', unit: 'A-301' },
-  { id: '3', title: 'AC repair', date: '2024-02-25', time: '11:00', type: 'work_order', unit: 'B-102' },
-  { id: '4', title: 'Move-out Inspection', date: '2024-02-26', time: '14:00', type: 'inspection', unit: 'B-105' },
-  { id: '5', title: 'Door lock replacement', date: '2024-02-27', time: '14:00', type: 'work_order', unit: 'C-301' },
-];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -46,17 +39,40 @@ function getDaysInMonth(year: number, month: number) {
   return days;
 }
 
-function getEventsForDate(dateStr: string) {
-  return events.filter((e) => e.date === dateStr);
-}
-
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date('2024-02-25'));
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const days = getDaysInMonth(year, month);
+
+  const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+  const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+  const { data: calendarData, isLoading } = useQuery({
+    queryKey: ['calendar', startDate, endDate],
+    queryFn: async () => {
+      const response = await schedulingService.getCalendar(startDate, endDate);
+      return response.data;
+    },
+  });
+
+  const events: CalendarEvent[] = useMemo(() =>
+    (calendarData ?? []).map((e: any) => ({
+      id: e.id,
+      title: e.title ?? '',
+      date: e.date ?? (e.startDate ? e.startDate.split('T')[0] : ''),
+      time: e.time ?? (e.startDate ? new Date(e.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''),
+      type: e.type ?? 'appointment',
+      unit: e.unit ?? e.unitNumber,
+    })),
+    [calendarData]
+  );
+
+  function getEventsForDate(dateStr: string) {
+    return events.filter((e) => e.date === dateStr);
+  }
 
   const navigate = (direction: number) => {
     const newDate = new Date(currentDate);

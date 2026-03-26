@@ -4,52 +4,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Megaphone, Pin, Calendar, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsService } from '@bossnyumba/api-client';
 
 type AnnouncementPriority = 'normal' | 'important' | 'urgent';
-
-// Mock data - replace with API
-const announcementData: Record<string, {
-  id: string;
-  title: string;
-  content: string;
-  priority: AnnouncementPriority;
-  publishedAt: string;
-  expiresAt?: string;
-  isPinned: boolean;
-  property?: string;
-  author?: string;
-}> = {
-  '1': {
-    id: '1',
-    title: 'Water Maintenance - Scheduled Shutdown',
-    content: 'Water supply will be temporarily shut down on Feb 28, 9 AM - 2 PM for pump maintenance. Please store water in advance. We apologize for any inconvenience.',
-    priority: 'urgent',
-    publishedAt: '2024-02-25T08:00:00',
-    expiresAt: '2024-02-28',
-    isPinned: true,
-    property: 'Sunset Apartments',
-    author: 'Property Management',
-  },
-  '2': {
-    id: '2',
-    title: 'New Parking Rules Effective March 1',
-    content: 'Please review the updated parking policy. Visitor parking is now limited to 2 hours. Resident parking permits must be displayed. Unauthorized vehicles will be towed.',
-    priority: 'important',
-    publishedAt: '2024-02-20T10:00:00',
-    expiresAt: '2024-03-01',
-    isPinned: false,
-    author: 'Property Management',
-  },
-  '3': {
-    id: '3',
-    title: 'Rent Payment Reminder',
-    content: 'Rent payments are due by the 5th of each month. Late fees apply after the 10th. Please use the online portal or visit the office during business hours.',
-    priority: 'normal',
-    publishedAt: '2024-02-15T09:00:00',
-    isPinned: false,
-    author: 'Property Management',
-  },
-};
 
 const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
   normal: { label: 'Normal', color: 'badge-gray' },
@@ -62,7 +20,28 @@ export default function AnnouncementDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const announcement = announcementData[id];
+  const { data: announcementRaw, isLoading } = useQuery({
+    queryKey: ['announcement', id],
+    queryFn: async () => {
+      const response = await notificationsService.get(id);
+      return response.data;
+    },
+    enabled: !!id,
+  });
+
+  const announcement = announcementRaw
+    ? {
+        id: announcementRaw.id,
+        title: announcementRaw.title ?? '',
+        content: announcementRaw.content ?? announcementRaw.body ?? announcementRaw.message ?? '',
+        priority: (announcementRaw.priority ?? 'normal') as AnnouncementPriority,
+        publishedAt: announcementRaw.publishedAt ?? announcementRaw.createdAt ?? '',
+        expiresAt: announcementRaw.expiresAt,
+        isPinned: announcementRaw.isPinned ?? false,
+        property: announcementRaw.propertyName ?? announcementRaw.property,
+        author: announcementRaw.author ?? announcementRaw.createdBy,
+      }
+    : null;
 
   if (!announcement) {
     return (

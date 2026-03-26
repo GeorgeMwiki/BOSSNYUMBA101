@@ -1,20 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Star, AlertTriangle } from 'lucide-react';
+import { Star, AlertTriangle, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-const workOrder = {
-  id: '1',
-  workOrderNumber: 'WO-2024-0031',
-  title: 'Broken door handle',
-  category: 'Structural',
-};
+import { workOrdersService, feedbackService } from '@bossnyumba/api-client';
 
 export default function FeedbackPage() {
   const params = useParams();
   const router = useRouter();
+  const id = params.id as string;
+
+  const [workOrder, setWorkOrder] = useState<{
+    id: string;
+    workOrderNumber: string;
+    title: string;
+    category: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -24,15 +29,73 @@ export default function FeedbackPage() {
 
   const displayRating = hoverRating || rating;
 
+  useEffect(() => {
+    async function loadWorkOrder() {
+      try {
+        const response = await workOrdersService.get(id);
+        const wo = response.data;
+        setWorkOrder({
+          id: wo.id,
+          workOrderNumber: (wo as Record<string, unknown>).workOrderNumber as string ?? wo.id,
+          title: wo.title,
+          category: wo.category,
+        });
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load work order');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadWorkOrder();
+  }, [id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      await feedbackService.create({
+        type: issueNotResolved ? 'COMPLAINT' : 'GENERAL',
+        subject: `Feedback for ${workOrder?.workOrderNumber ?? id}`,
+        description: feedback || `Rating: ${rating}/5`,
+        workOrderId: id,
+        rating,
+      });
 
-    router.push('/requests?feedback=submitted');
+      if (issueNotResolved && issueDetails) {
+        await workOrdersService.update(id, {
+          completionNotes: `Issue not resolved: ${issueDetails}`,
+        });
+      }
+
+      router.push('/requests?feedback=submitted');
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="Rate Service" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (loadError || !workOrder) {
+    return (
+      <>
+        <PageHeader title="Rate Service" showBack />
+        <div className="px-4 py-8 text-center">
+          <p className="text-gray-600">{loadError ?? 'Work order not found'}</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

@@ -22,6 +22,8 @@ import {
   DocumentQualityChecker,
   type QualityCheck,
 } from '@/components/onboarding/DocumentQualityChecker';
+import { api } from '@/lib/api';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface DocumentUpload {
   id: string;
@@ -85,6 +87,34 @@ export default function OnboardingDocumentsPage() {
 
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [showQualityModal, setShowQualityModal] = useState(false);
+
+  const qualityConfirmMutation = useMutation<unknown, { documentId: string; qualityScore: number }>(
+    (client, variables) =>
+      client.post('/documents/quality-confirm', {
+        documentId: variables.documentId,
+        qualityScore: variables.qualityScore,
+      }),
+    {
+      onSuccess: () => {
+        setShowQualityModal(false);
+        setAnalyzingDocId(null);
+      },
+      onError: () => {
+        setShowQualityModal(false);
+        setAnalyzingDocId(null);
+      },
+    }
+  );
+
+  const retakeDocMutation = useMutation<unknown, { documentId: string }>(
+    (client, variables) =>
+      client.post('/documents/retake', { documentId: variables.documentId }),
+    {
+      onSettled: (_data, _error, variables) => {
+        openFilePicker(variables.documentId, true);
+      },
+    }
+  );
 
   const handleFileSelect = (docId: string, file: File) => {
     const doc = documents.find((d) => d.id === docId);
@@ -151,12 +181,12 @@ export default function OnboardingDocumentsPage() {
         )
       );
 
-      // Close modal after a delay if passed
+      // Confirm quality via API if passed
       if (passes) {
-        setTimeout(() => {
-          setShowQualityModal(false);
-          setAnalyzingDocId(null);
-        }, 1000);
+        qualityConfirmMutation.mutate({
+          documentId: analyzingDocId,
+          qualityScore,
+        });
       }
     },
     [analyzingDocId]
@@ -182,8 +212,8 @@ export default function OnboardingDocumentsPage() {
     );
     setShowQualityModal(false);
     setAnalyzingDocId(null);
-    // Trigger camera again
-    setTimeout(() => openFilePicker(docId, true), 100);
+    // Trigger camera again via mutation callback
+    retakeDocMutation.mutate({ documentId: docId });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,15 +260,29 @@ export default function OnboardingDocumentsPage() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      // Upload each document that has a file
+      const uploadPromises = documents
+        .filter((d) => d.file && (d.status === 'uploaded' || d.status === 'quality_warning'))
+        .map((d) => {
+          const formData = new FormData();
+          formData.append('file', d.file!);
+          formData.append('documentType', d.id);
+          return api.onboarding.uploadDocument(formData);
+        });
 
-    // Save progress
-    const progress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
-    progress.documents = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+      await Promise.all(uploadPromises);
 
-    router.push('/onboarding/inspection');
+      // Save progress
+      const progress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
+      progress.documents = 'completed';
+      localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+
+      router.push('/onboarding/inspection');
+    } catch (err) {
+      console.error('Failed to upload documents:', err);
+      setIsSubmitting(false);
+    }
   };
 
   const uploadedCount = documents.filter((d) => d.status === 'uploaded').length;

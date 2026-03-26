@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useMutation } from '@tanstack/react-query';
+import { inspectionsService } from '@bossnyumba/api-client';
 import {
   Camera,
   Check,
@@ -114,8 +116,18 @@ export default function ConductInspectionPage() {
   const [showMeterStep, setShowMeterStep] = useState(false);
   const [showSignatureStep, setShowSignatureStep] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
+
+  const submitMutation = useMutation({
+    mutationFn: (inspectionData: any) => inspectionsService.create(inspectionData),
+    onSuccess: () => {
+      router.push(`/inspections/${params.id}?completed=true`);
+    },
+    onError: (err: Error) => {
+      setSubmitError(err.message || 'Failed to submit inspection');
+    },
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -286,12 +298,7 @@ export default function ConductInspectionPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Save inspection data
+    setSubmitError(null);
     const inspectionData = {
       id: params.id,
       type: inspectionType,
@@ -300,9 +307,7 @@ export default function ConductInspectionPage() {
       signature,
       completedAt: new Date().toISOString(),
     };
-    console.log('Inspection data:', inspectionData);
-
-    router.push(`/inspections/${params.id}?completed=true`);
+    submitMutation.mutate(inspectionData);
   };
 
   return (
@@ -565,6 +570,12 @@ export default function ConductInspectionPage() {
                 </div>
               </div>
             )}
+
+            {submitError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {submitError}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -579,10 +590,10 @@ export default function ConductInspectionPage() {
           {showSignatureStep ? (
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || !signature}
+              disabled={submitMutation.isPending || !signature}
               className="btn-primary flex-1 py-4"
             >
-              {isSubmitting ? (
+              {submitMutation.isPending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>

@@ -1,5 +1,9 @@
+'use client';
+
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { tenantsService, invoicesService, propertiesService, unitsService } from '@bossnyumba/api-client';
 import {
   Building2,
   Users,
@@ -8,37 +12,86 @@ import {
   Activity,
   ArrowUpRight,
   CheckCircle,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import { formatCurrency } from '../../../lib/api';
-
-const revenueData = [
-  { month: 'Aug', value: 2100000 },
-  { month: 'Sep', value: 2350000 },
-  { month: 'Oct', value: 2600000 },
-  { month: 'Nov', value: 2900000 },
-  { month: 'Dec', value: 3200000 },
-  { month: 'Jan', value: 3500000 },
-];
-
-const tenantGrowthData = [
-  { month: 'Aug', active: 85, trial: 12 },
-  { month: 'Sep', active: 92, trial: 15 },
-  { month: 'Oct', active: 98, trial: 18 },
-  { month: 'Nov', active: 104, trial: 14 },
-  { month: 'Dec', active: 110, trial: 12 },
-  { month: 'Jan', active: 118, trial: 10 },
-];
 
 export default function PlatformOverviewPage() {
+  const {
+    data: tenant,
+    isLoading: loadingTenants,
+    error: tenantsError,
+  } = useQuery({
+    queryKey: ['admin-platform-overview-tenant'],
+    queryFn: async () => {
+      const res = await tenantsService.getCurrent();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load tenant');
+    },
+    staleTime: 30_000,
+  });
+
+  const {
+    data: invoices,
+    isLoading: loadingInvoices,
+    error: invoicesError,
+  } = useQuery({
+    queryKey: ['admin-platform-overview-invoices'],
+    queryFn: async () => {
+      const res = await invoicesService.list();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load invoices');
+    },
+    staleTime: 30_000,
+  });
+
+  const {
+    data: properties,
+    isLoading: loadingProperties,
+    error: propertiesError,
+  } = useQuery({
+    queryKey: ['admin-platform-overview-properties'],
+    queryFn: async () => {
+      const res = await propertiesService.list();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load properties');
+    },
+    staleTime: 30_000,
+  });
+
+  const isLoading = loadingTenants || loadingInvoices || loadingProperties;
+  const error = tenantsError || invoicesError || propertiesError;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Platform Overview Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">
+          {error instanceof Error ? error.message : 'Unable to load platform data.'}
+        </p>
+      </div>
+    );
+  }
+
+  const tenantName = tenant?.name || 'Current Tenant';
+  const tenantStatus = tenant?.status || '-';
+  const invoiceList = Array.isArray(invoices) ? invoices : [];
+  const propertyList = Array.isArray(properties) ? properties : [];
+
+  const totalRevenue = invoiceList.reduce((sum: number, inv: any) => sum + (inv.total || inv.amount || 0), 0);
+  const totalUnits = propertyList.reduce((sum: number, p: any) => sum + (p.totalUnits || 0), 0);
+
+  const formatCurrency = (value: number) => `KES ${value.toLocaleString()}`;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -56,15 +109,15 @@ export default function PlatformOverviewPage() {
               <Building2 className="h-5 w-5 text-violet-600" />
             </div>
             <span className="flex items-center gap-1 text-sm text-green-600">
-              <TrendingUp className="h-4 w-4" />
-              +12%
-            </span>
+                <TrendingUp className="h-4 w-4" />
+                {tenantStatus}
+              </span>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">118</p>
-            <p className="text-sm text-gray-500">Active Tenants</p>
+            <p className="text-2xl font-bold text-gray-900">{tenantName}</p>
+            <p className="text-sm text-gray-500">Active Tenant</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">104 paying, 14 trial</p>
+          <p className="mt-2 text-xs text-gray-400">{propertyList.length} properties</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -74,7 +127,7 @@ export default function PlatformOverviewPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">1,247</p>
+            <p className="text-2xl font-bold text-gray-900">--</p>
             <p className="text-sm text-gray-500">Platform Users</p>
           </div>
           <p className="mt-2 text-xs text-gray-400">Across all tenants</p>
@@ -88,11 +141,11 @@ export default function PlatformOverviewPage() {
           </div>
           <div className="mt-4">
             <p className="text-2xl font-bold text-gray-900">
-              {formatCurrency(3750000)}
+              {formatCurrency(totalRevenue)}
             </p>
-            <p className="text-sm text-gray-500">Monthly Revenue</p>
+            <p className="text-sm text-gray-500">Total Revenue</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">MRR from subscriptions</p>
+          <p className="mt-2 text-xs text-gray-400">From invoices</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -102,85 +155,10 @@ export default function PlatformOverviewPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="text-2xl font-bold text-gray-900">4,536</p>
+            <p className="text-2xl font-bold text-gray-900">{totalUnits.toLocaleString()}</p>
             <p className="text-sm text-gray-500">Units Managed</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">892 properties</p>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="colorPlatformRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-                <YAxis
-                  stroke="#9ca3af"
-                  fontSize={12}
-                  tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
-                />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelStyle={{ color: '#374151' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  fill="url(#colorPlatformRevenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Tenant Growth</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={tenantGrowthData}>
-                <defs>
-                  <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorTrial" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} />
-                <Tooltip labelStyle={{ color: '#374151' }} />
-                <Area
-                  type="monotone"
-                  dataKey="active"
-                  name="Active"
-                  stroke="#8b5cf6"
-                  fill="url(#colorActive)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="trial"
-                  name="Trial"
-                  stroke="#3b82f6"
-                  fill="url(#colorTrial)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="mt-2 text-xs text-gray-400">{propertyList.length} properties</p>
         </div>
       </div>
 

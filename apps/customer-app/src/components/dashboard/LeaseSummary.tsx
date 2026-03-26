@@ -1,18 +1,60 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, ChevronRight, Home } from 'lucide-react';
+import { FileText, ChevronRight, Home, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
-// Mock lease data - would come from API/React Query
-const lease = {
-  property: 'Sunset Apartments',
-  unit: 'A-204',
-  type: '2 Bedroom',
-  endDate: '2024-05-31',
-  daysRemaining: 75,
-};
+interface LeaseData {
+  property: string;
+  unit: string;
+  type: string;
+  endDate: string;
+  daysRemaining: number;
+}
 
 export function LeaseSummary() {
+  const [lease, setLease] = useState<LeaseData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadLease() {
+      try {
+        const data = await api.lease.getCurrent() as Record<string, unknown>;
+        const endDate = (data.endDate as string) ?? '';
+        const daysRemaining = endDate
+          ? Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : 0;
+
+        setLease({
+          property: ((data.property as Record<string, unknown>)?.name as string) ?? 'My Property',
+          unit: ((data.unit as Record<string, unknown>)?.unitNumber as string) ?? '',
+          type: (data.type as string) ?? '',
+          endDate,
+          daysRemaining,
+        });
+      } catch {
+        // Lease not available - component won't render
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadLease();
+  }, []);
+
+  if (loading) {
+    return (
+      <section>
+        <h2 className="text-sm font-medium text-gray-500 mb-3">Current Lease</h2>
+        <div className="card p-4 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!lease) return null;
+
   return (
     <section>
       <h2 className="text-sm font-medium text-gray-500 mb-3">Current Lease</h2>
@@ -28,7 +70,7 @@ export function LeaseSummary() {
                   {lease.property} · {lease.unit}
                 </div>
                 <div className="text-sm text-gray-500 mt-0.5">
-                  {lease.type} · Ends in {lease.daysRemaining} days
+                  {lease.type ? `${lease.type} · ` : ''}Ends in {lease.daysRemaining} days
                 </div>
               </div>
             </div>

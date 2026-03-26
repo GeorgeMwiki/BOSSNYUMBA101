@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, TrendingUp, Droplet, Zap, Flame } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { invoicesService } from '@bossnyumba/api-client';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
 
@@ -32,18 +34,30 @@ const utilityLabels: Record<UtilityType, string> = {
   gas: 'Gas',
 };
 
-// Mock data - replace with API
-const readings: Reading[] = [
-  { id: '1', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'water', previousReading: 45, currentReading: 52, consumption: 7, unitLabel: 'm³', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '2', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 320, currentReading: 385, consumption: 65, unitLabel: 'kWh', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '3', unit: 'A-102', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-  { id: '4', unit: 'B-105', property: 'Sunset Apartments', utilityType: 'water', previousReading: 28, currentReading: 31, consumption: 3, unitLabel: 'm³', recordedAt: '2024-02-24', status: 'recorded' },
-  { id: '5', unit: 'C-202', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-];
-
 export default function MeterReadingsPage() {
   const [filter, setFilter] = useState<'all' | 'pending'>('pending');
   const [utilityFilter, setUtilityFilter] = useState<UtilityType | 'all'>('all');
+
+  const { data: readingsData, isLoading } = useQuery({
+    queryKey: ['meter-readings'],
+    queryFn: async () => {
+      const response = await invoicesService.list();
+      return response.data;
+    },
+  });
+
+  const readings: Reading[] = (readingsData ?? []).map((item: any) => ({
+    id: item.id,
+    unit: item.unitNumber ?? '',
+    property: item.propertyName ?? '',
+    utilityType: item.utilityType ?? 'electricity',
+    previousReading: item.previousReading ?? 0,
+    currentReading: item.currentReading ?? 0,
+    consumption: item.consumption ?? 0,
+    unitLabel: item.utilityType === 'water' ? 'm³' : item.utilityType === 'gas' ? 'm³' : 'kWh',
+    recordedAt: item.recordedAt,
+    status: item.recordedAt ? 'recorded' as const : 'pending' as const,
+  }));
 
   const filteredReadings = readings.filter((r) => {
     if (filter === 'pending' && r.status !== 'pending') return false;

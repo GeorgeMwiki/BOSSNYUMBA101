@@ -11,6 +11,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { workOrdersService } from '@bossnyumba/api-client';
 
 const emergencyTypes = [
   {
@@ -54,8 +55,20 @@ export default function ReportEmergencyPage() {
     if (!formData.type) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push('/emergencies?reported=true');
+    try {
+      await workOrdersService.create({
+        title: `Emergency: ${formData.type}`,
+        category: formData.type,
+        description: formData.description,
+        priority: 'emergency',
+        location: formData.location,
+      } as Record<string, unknown>);
+      router.push('/emergencies?reported=true');
+    } catch (err) {
+      console.error('Failed to report emergency:', err);
+      setIsSubmitting(false);
+      return;
+    }
   };
 
   return (

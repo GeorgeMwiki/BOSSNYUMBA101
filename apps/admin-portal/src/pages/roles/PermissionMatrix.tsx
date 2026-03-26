@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
 import {
   Shield,
   CheckCircle,
@@ -102,11 +104,29 @@ const initialRoles: RoleData[] = [
 
 export default function PermissionMatrix() {
   const navigate = useNavigate();
-  const [roles, setRoles] = useState<RoleData[]>(initialRoles);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  const { data: fetchedRoles } = useQuery({
+    queryKey: ['permission-matrix-roles'],
+    queryFn: async () => {
+      const res = await api.get<RoleData[]>('/roles/permissions');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load roles');
+      return res.data.map((r: any) => ({ ...r, permissions: new Set(r.permissions || []) }));
+    },
+    staleTime: 30_000,
+  });
+
+  const [roles, setRoles] = useState<RoleData[]>(initialRoles);
+
+  // Sync fetched roles into local state when loaded
+  React.useEffect(() => {
+    if (fetchedRoles && fetchedRoles.length > 0) {
+      setRoles(fetchedRoles);
+    }
+  }, [fetchedRoles]);
 
   const allPermissions = useMemo(() => modules.flatMap((m) => m.permissions.map((p) => p.id)), []);
 
@@ -152,13 +172,30 @@ export default function PermissionMatrix() {
     setHasChanges(true);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaving(false);
-    setHasChanges(false);
-    setNotification({ type: 'success', message: 'Permission matrix saved successfully' });
-    setTimeout(() => setNotification(null), 3000);
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = roles.map((r) => ({
+        ...r,
+        permissions: Array.from(r.permissions),
+      }));
+      const res = await api.put('/roles/permissions', payload);
+      if (!res.success) throw new Error(res.error || 'Failed to save permissions');
+      return res.data;
+    },
+    onSuccess: () => {
+      setHasChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['permission-matrix-roles'] });
+      setNotification({ type: 'success', message: 'Permission matrix saved successfully' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to save' });
+    },
+  });
+
+  const saving = saveMutation.isPending;
+
+  const handleSave = () => {
+    saveMutation.mutate();
   };
 
   return (

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
 import {
   ArrowLeft,
   Plus,
@@ -85,13 +87,63 @@ const initialRules: ApprovalRule[] = [
 
 export default function ApprovalMatrix() {
   const navigate = useNavigate();
-  const [rules, setRules] = useState<ApprovalRule[]>(initialRules);
+  const queryClient = useQueryClient();
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const [editForm, setEditForm] = useState<ApprovalRule | null>(null);
+
+  const { data: fetchedRules } = useQuery({
+    queryKey: ['approval-rules'],
+    queryFn: async () => {
+      const res = await api.get<ApprovalRule[]>('/approval-rules');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load approval rules');
+      return res.data;
+    },
+    staleTime: 30_000,
+  });
+
+  const [rules, setRules] = useState<ApprovalRule[]>(initialRules);
+
+  React.useEffect(() => {
+    if (fetchedRules && fetchedRules.length > 0) {
+      setRules(fetchedRules);
+    }
+  }, [fetchedRules]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.put('/approval-rules', rules);
+      if (!res.success) throw new Error(res.error || 'Failed to save approval rules');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['approval-rules'] });
+      setNotification({ type: 'success', message: 'Approval matrix saved successfully' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to save' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete(`/approval-rules/${id}`);
+      if (!res.success) throw new Error(res.error || 'Failed to delete rule');
+      return id;
+    },
+    onSuccess: (id) => {
+      setRules(rules.filter((r) => r.id !== id));
+      queryClient.invalidateQueries({ queryKey: ['approval-rules'] });
+      setNotification({ type: 'success', message: 'Approval rule deleted' });
+    },
+    onError: (err) => {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to delete' });
+    },
+  });
+
+  const saving = saveMutation.isPending;
 
   const toggleExpand = (id: string) => {
     setExpandedRule(expandedRule === id ? null : id);
@@ -102,17 +154,11 @@ export default function ApprovalMatrix() {
   };
 
   const deleteRule = (id: string) => {
-    setRules(rules.filter((r) => r.id !== id));
-    setNotification({ type: 'success', message: 'Approval rule deleted' });
-    setTimeout(() => setNotification(null), 3000);
+    deleteMutation.mutate(id);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaving(false);
-    setNotification({ type: 'success', message: 'Approval matrix saved successfully' });
-    setTimeout(() => setNotification(null), 3000);
+  const handleSave = () => {
+    saveMutation.mutate();
   };
 
   const addNewRule = () => {

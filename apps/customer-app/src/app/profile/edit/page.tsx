@@ -1,28 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Phone, AlertCircle } from 'lucide-react';
+import { Mail, Phone, AlertCircle, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
-
-// Mock initial data
-const initialData = {
-  firstName: 'John',
-  lastName: 'Kamau',
-  email: 'john.kamau@example.com',
-  phone: '',
-  emergencyContactName: '',
-  emergencyContactPhone: '',
-};
+import { api } from '@/lib/api';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [formData, setFormData] = useState(initialData);
-  const [emailVerified] = useState(true);
-  const [phoneVerified] = useState(true);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+  });
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const data = await api.profile.get() as Record<string, unknown>;
+        setFormData({
+          firstName: (data.firstName as string) ?? '',
+          lastName: (data.lastName as string) ?? '',
+          email: (data.email as string) ?? '',
+          phone: (data.phone as string) ?? '',
+          emergencyContactName: (data.emergencyContactName as string) ?? '',
+          emergencyContactPhone: (data.emergencyContactPhone as string) ?? '',
+        });
+        setEmailVerified(!!(data.emailVerified));
+        setPhoneVerified(!!(data.phoneVerified));
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProfile();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,8 +59,7 @@ export default function EditProfilePage() {
     setMessage(null);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await api.profile.update(formData);
       setMessage({ type: 'success', text: 'Profile updated successfully' });
       setTimeout(() => router.back(), 1500);
     } catch {
@@ -46,6 +68,28 @@ export default function EditProfilePage() {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="Edit Profile" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <>
+        <PageHeader title="Edit Profile" showBack />
+        <div className="px-4 py-8 text-center">
+          <p className="text-gray-600">{loadError}</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

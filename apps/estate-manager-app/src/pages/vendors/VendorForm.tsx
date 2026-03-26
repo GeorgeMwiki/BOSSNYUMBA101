@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMutation } from '@tanstack/react-query';
+import { vendorsService } from '@bossnyumba/api-client';
 import { Plus, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -29,7 +31,17 @@ export default function VendorForm() {
     callOutFee: '',
     paymentTerms: 'Net 30',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: (request: any) => vendorsService.create(request),
+    onSuccess: () => {
+      router.push('/vendors');
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to add vendor');
+    },
+  });
 
   const toggleCategory = (cat: string) => {
     setFormData((prev) => ({
@@ -42,16 +54,29 @@ export default function VendorForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/vendors');
+    setError(null);
+    createMutation.mutate({
+      name: formData.name,
+      type: formData.type,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address,
+      categories: formData.selectedCategories,
+      hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined,
+      callOutFee: formData.callOutFee ? parseFloat(formData.callOutFee) : undefined,
+      paymentTerms: formData.paymentTerms,
+    });
   };
 
   return (
     <>
       <PageHeader title="Add Vendor" showBack />
+
+      {error && (
+        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
         {/* Basic Info */}
@@ -213,10 +238,10 @@ export default function VendorForm() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createMutation.isPending}
             className="btn-primary flex-1"
           >
-            {isSubmitting ? 'Saving...' : 'Add Vendor'}
+            {createMutation.isPending ? 'Saving...' : 'Add Vendor'}
           </button>
         </div>
       </form>

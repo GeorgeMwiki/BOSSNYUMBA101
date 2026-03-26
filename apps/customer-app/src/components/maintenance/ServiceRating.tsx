@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Star, Loader2, Send, ThumbsUp } from 'lucide-react';
+import { useMutation, feedbackService } from '@bossnyumba/api-client';
 
 interface ServiceRatingProps {
   onSubmit: (score: number, comment: string) => Promise<void>;
@@ -23,8 +24,26 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+
+  const submitRatingMutation = useMutation<unknown, { score: number; comment: string }>(
+    (client, variables) =>
+      client.post('/feedback', {
+        type: 'PRAISE',
+        subject: 'Service Rating',
+        description: variables.comment,
+        rating: variables.score,
+      }),
+    {
+      onSuccess: (_data, variables) => {
+        onSubmit(variables.score, variables.comment);
+        setShowThankYou(true);
+      },
+      onSettled: () => {
+        onClose();
+      },
+    }
+  );
 
   const toggleFeedback = (feedback: string) => {
     setSelectedFeedback((prev) =>
@@ -34,22 +53,15 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (rating === 0) return;
-    
-    setSubmitting(true);
+
     const fullComment = [
       ...selectedFeedback,
       comment.trim(),
     ].filter(Boolean).join('. ');
-    
-    await onSubmit(rating, fullComment);
-    setShowThankYou(true);
-    
-    // Auto close after showing thank you
-    setTimeout(() => {
-      onClose();
-    }, 2000);
+
+    submitRatingMutation.mutate({ score: rating, comment: fullComment });
   };
 
   const getRatingLabel = (score: number) => {
@@ -177,10 +189,10 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
           </button>
           <button
             onClick={handleSubmit}
-            disabled={rating === 0 || submitting}
+            disabled={rating === 0 || submitRatingMutation.isLoading}
             className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
           >
-            {submitting ? (
+            {submitRatingMutation.isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>

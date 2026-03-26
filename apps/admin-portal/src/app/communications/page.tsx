@@ -1,5 +1,9 @@
+'use client';
+
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { messagingService, notificationsService } from '@bossnyumba/api-client';
 import {
   Mail,
   MessageSquare,
@@ -11,71 +15,100 @@ import {
   CheckCircle,
   Clock,
   BarChart3,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 
-const stats = [
-  {
-    label: 'Emails Sent (30d)',
-    value: '12,450',
-    change: '+8%',
-    icon: Mail,
-    color: 'text-blue-600',
-    bg: 'bg-blue-100',
-  },
-  {
-    label: 'SMS Sent (30d)',
-    value: '8,230',
-    change: '+12%',
-    icon: MessageSquare,
-    color: 'text-green-600',
-    bg: 'bg-green-100',
-  },
-  {
-    label: 'Active Campaigns',
-    value: '5',
-    change: '2 running',
-    icon: Send,
-    color: 'text-violet-600',
-    bg: 'bg-violet-100',
-  },
-  {
-    label: 'Templates',
-    value: '24',
-    change: 'Email + SMS',
-    icon: FileText,
-    color: 'text-amber-600',
-    bg: 'bg-amber-100',
-  },
-];
-
-const recentBroadcasts = [
-  {
-    id: '1',
-    title: 'January Rent Reminder',
-    channel: 'email',
-    sentAt: new Date(Date.now() - 3600000).toISOString(),
-    recipients: 1240,
-    openRate: 68,
-  },
-  {
-    id: '2',
-    title: 'Maintenance Notice - Building A',
-    channel: 'sms',
-    sentAt: new Date(Date.now() - 86400000).toISOString(),
-    recipients: 156,
-    openRate: 94,
-  },
-  {
-    id: '3',
-    title: 'Payment Success Confirmation',
-    channel: 'email',
-    sentAt: new Date(Date.now() - 172800000).toISOString(),
-    recipients: 890,
-    openRate: 72,
-  },
-];
-
 export default function CommunicationsPage() {
+  const {
+    data: messages,
+    isLoading: loadingMessages,
+    error: messagesError,
+  } = useQuery({
+    queryKey: ['admin-comms-messages'],
+    queryFn: async () => {
+      const res = await messagingService.listConversations();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load conversations');
+    },
+    staleTime: 30_000,
+  });
+
+  const {
+    data: notifications,
+    isLoading: loadingNotif,
+    error: notifError,
+  } = useQuery({
+    queryKey: ['admin-comms-notifications'],
+    queryFn: async () => {
+      const res = await notificationsService.list();
+      if (res.success && res.data) return res.data;
+      throw new Error(res.error?.message || 'Failed to load notifications');
+    },
+    staleTime: 30_000,
+  });
+
+  const isLoading = loadingMessages || loadingNotif;
+  const error = messagesError || notifError;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Communications Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">
+          {error instanceof Error ? error.message : 'Unable to load communications data.'}
+        </p>
+      </div>
+    );
+  }
+
+  const messageList = Array.isArray(messages) ? messages : [];
+  const notifList = Array.isArray(notifications) ? notifications : [];
+
+  const stats = [
+    {
+      label: 'Messages',
+      value: messageList.length.toLocaleString(),
+      change: 'Total',
+      icon: Mail,
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
+    },
+    {
+      label: 'Notifications',
+      value: notifList.length.toLocaleString(),
+      change: 'Total',
+      icon: MessageSquare,
+      color: 'text-green-600',
+      bg: 'bg-green-100',
+    },
+    {
+      label: 'Active Campaigns',
+      value: '--',
+      change: 'Live data',
+      icon: Send,
+      color: 'text-violet-600',
+      bg: 'bg-violet-100',
+    },
+    {
+      label: 'Templates',
+      value: '--',
+      change: 'Email + SMS',
+      icon: FileText,
+      color: 'text-amber-600',
+      bg: 'bg-amber-100',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -159,10 +192,10 @@ export default function CommunicationsPage() {
         </Link>
       </div>
 
-      {/* Recent Broadcasts */}
+      {/* Recent Messages */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Recent Broadcasts</h3>
+          <h3 className="font-semibold text-gray-900">Recent Messages</h3>
           <Link
             to="/communications/broadcasts"
             className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1"
@@ -171,56 +204,48 @@ export default function CommunicationsPage() {
             <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Broadcast
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Channel
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Recipients
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Open Rate
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sent
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {recentBroadcasts.map((b) => (
-              <tr key={b.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                  {b.title}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-0.5 text-xs font-medium rounded ${
-                      b.channel === 'email'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {b.channel.toUpperCase()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {b.recipients.toLocaleString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {b.openRate}%
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(b.sentAt).toLocaleDateString()}
-                </td>
+        {messageList.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">No recent messages</div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Message
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Channel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sent
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {messageList.slice(0, 5).map((msg: any) => (
+                <tr key={msg.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                    {msg.subject || msg.title || msg.id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-700">
+                      {(msg.channel || msg.type || 'email').toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {msg.status || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

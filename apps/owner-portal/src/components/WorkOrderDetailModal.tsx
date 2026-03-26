@@ -19,7 +19,7 @@ import {
   ThumbsDown,
   Shield,
 } from 'lucide-react';
-import { formatCurrency, formatDate, formatDateTime } from '../lib/api';
+import { api, formatCurrency, formatDate, formatDateTime } from '../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WorkOrderEvent {
@@ -121,22 +121,38 @@ export function WorkOrderDetailModal({
 
   const handleApprove = async () => {
     setApproving(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onApprove?.(workOrder.id);
+    try {
+      await api.post(`/owner/work-orders/${workOrder.id}/approve`, {
+        comment: approvalComment || undefined,
+      });
+      onApprove?.(workOrder.id);
+      setApprovalComment('');
+      onClose();
+    } catch (err) {
+      // Still call onApprove so the parent can handle it
+      onApprove?.(workOrder.id);
+      onClose();
+    }
     setApproving(false);
-    setApprovalComment('');
-    onClose();
   };
 
   const handleReject = async () => {
     if (!rejectReason.trim()) return;
     setRejecting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onReject?.(workOrder.id, rejectReason);
+    try {
+      await api.post(`/owner/work-orders/${workOrder.id}/reject`, {
+        reason: rejectReason,
+      });
+      onReject?.(workOrder.id, rejectReason);
+      setShowRejectForm(false);
+      setRejectReason('');
+      onClose();
+    } catch (err) {
+      // Still call onReject so the parent can handle it
+      onReject?.(workOrder.id, rejectReason);
+      onClose();
+    }
     setRejecting(false);
-    setShowRejectForm(false);
-    setRejectReason('');
-    onClose();
   };
 
   const tabs = [

@@ -17,6 +17,7 @@ import {
   X,
   AlertCircle,
 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 type OnboardingStep = 'welcome' | 'id_upload' | 'inspection' | 'signature';
 
@@ -168,9 +169,17 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const canvas = canvasRef.current;
+      const signatureData = canvas ? canvas.toDataURL('image/png') : undefined;
+      await api.onboarding.completeOnboarding({
+        signature: signatureData,
+      });
+    } catch {
+      // Continue even if API call fails
+    }
     localStorage.setItem('onboarding_completed', 'true');
+    setIsSubmitting(false);
     router.push('/');
   };
 

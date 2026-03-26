@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { workOrdersService } from '@bossnyumba/api-client';
 import {
   CategorySelector,
   PrioritySelector,
@@ -58,10 +59,22 @@ export default function NewRequestPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/requests?submitted=true');
+    try {
+      await workOrdersService.create({
+        title: formData.description.slice(0, 100),
+        category: formData.category,
+        description: formData.description,
+        priority: formData.priority,
+        location: formData.location,
+        permissionToEnter: formData.permissionToEnter,
+        preferredSlot: formData.preferredSlot || undefined,
+      } as Record<string, unknown>);
+      router.push('/requests?submitted=true');
+    } catch (err) {
+      console.error('Failed to submit request:', err);
+      setIsSubmitting(false);
+      return;
+    }
   };
 
   const selectedPriority = PRIORITIES.find((p) => p.value === formData.priority);

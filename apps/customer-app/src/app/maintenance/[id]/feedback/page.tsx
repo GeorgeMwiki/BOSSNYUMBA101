@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Star, ThumbsUp, ThumbsDown, CheckCircle, Send, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { feedbackService } from '@bossnyumba/api-client';
 
 const feedbackCategories = [
   { id: 'quality', label: 'Work Quality', description: 'Was the issue properly fixed?' },
@@ -49,10 +50,23 @@ export default function MaintenanceFeedbackPage() {
   const handleSubmit = async () => {
     if (overallRating === 0) return;
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log({ ticketId, overallRating, categoryRatings, selectedTags, comment, wouldRecommend });
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+    try {
+      await feedbackService.create({
+        type: 'MAINTENANCE',
+        subject: `Maintenance feedback for ${ticketId}`,
+        description: comment || `Rating: ${overallRating}/5`,
+        workOrderId: ticketId,
+        rating: overallRating,
+        categoryRatings,
+        tags: selectedTags,
+        wouldRecommend,
+      } as Record<string, unknown>);
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {

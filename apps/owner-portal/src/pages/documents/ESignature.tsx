@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMutation } from '@bossnyumba/api-client';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface SignatureDocument {
@@ -185,11 +186,52 @@ export function ESignaturePage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [signingDoc, setSigningDoc] = useState<SignatureDocument | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [successDoc, setSuccessDoc] = useState<string | null>(null);
+
+  const signDocumentMutation = useMutation<
+    unknown,
+    { documentId: string; signatureImage: string; agreedToTerms: boolean }
+  >(
+    (client, variables) =>
+      client.post(`/owner/documents/${variables.documentId}/sign`, {
+        signatureImage: variables.signatureImage,
+        agreedToTerms: variables.agreedToTerms,
+      }),
+    {
+      onSuccess: () => {
+        if (!signingDoc) return;
+
+        // Optimistic update
+        setPendingDocs((prev) => prev.filter((d) => d.id !== signingDoc.id));
+        setHistory((prev) => [
+          {
+            id: `hist-${Date.now()}`,
+            documentName: signingDoc.name,
+            signedAt: new Date().toISOString(),
+            signedBy:
+              [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+              user?.email ||
+              user?.id ||
+              'Current User',
+            property: signingDoc.property,
+            status: 'SIGNED',
+          },
+          ...prev,
+        ]);
+
+        setSuccessDoc(signingDoc.name);
+        setSigningDoc(null);
+        setSignatureData(null);
+        setAgreedToTerms(false);
+      },
+      onError: (err) => {
+        setError(err.message || 'Signature submission failed');
+      },
+    }
+  );
 
   useEffect(() => {
     loadData();
@@ -218,49 +260,13 @@ export function ESignaturePage() {
     setLoading(false);
   };
 
-  const handleSignAndSubmit = async () => {
+  const handleSignAndSubmit = () => {
     if (!signingDoc || !signatureData || !agreedToTerms) return;
-    setSubmitting(true);
-
-    try {
-      const response = await api.post(`/owner/documents/${signingDoc.id}/sign`, {
-        signatureImage: signatureData,
-        agreedToTerms: true,
-      });
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Signature submission failed');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signature submission failed');
-      setSubmitting(false);
-      return;
-    }
-
-    // Optimistic update
-    setPendingDocs((prev) => prev.filter((d) => d.id !== signingDoc.id));
-    setHistory((prev) => [
-      {
-        id: `hist-${Date.now()}`,
-        documentName: signingDoc.name,
-        signedAt: new Date().toISOString(),
-        signedBy:
-          [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
-          user?.email ||
-          user?.id ||
-          'Current User',
-        property: signingDoc.property,
-        status: 'SIGNED',
-      },
-      ...prev,
-    ]);
-
-    setSuccessDoc(signingDoc.name);
-    setSubmitting(false);
-    setSigningDoc(null);
-    setSignatureData(null);
-    setAgreedToTerms(false);
-
-    setTimeout(() => setSuccessDoc(null), 4000);
+    signDocumentMutation.mutate({
+      documentId: signingDoc.id,
+      signatureImage: signatureData,
+      agreedToTerms: true,
+    });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -656,10 +662,10 @@ export function ESignaturePage() {
                 </button>
                 <button
                   onClick={handleSignAndSubmit}
-                  disabled={!signatureData || !agreedToTerms || submitting}
+                  disabled={!signatureData || !agreedToTerms || signDocumentMutation.isLoading}
                   className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? (
+                  {signDocumentMutation.isLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Signing...

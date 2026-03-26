@@ -1,9 +1,12 @@
 import type { Payment } from '@/lib/payment-types';
 
-export const CURRENT_BALANCE = 0;
-export const CARD_PAYMENT_ENABLED = false;
+/**
+ * Payment data configuration.
+ * All payment data is fetched from the API via paymentsService.
+ * This file provides utility constants and helpers only.
+ */
 
-export const MOCK_PAYMENTS: Payment[] = [];
+export const CARD_PAYMENT_ENABLED = false;
 
 export const DATE_RANGE_OPTIONS = [
   { label: 'All time', value: 'all' },

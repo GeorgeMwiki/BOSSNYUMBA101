@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -11,9 +11,10 @@ import {
   Shield,
   Clock,
   Info,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { CURRENT_BALANCE } from '@/lib/payments-data';
+import { api } from '@/lib/api';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
 
@@ -59,8 +60,26 @@ export default function PayPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
-  const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
-  
+  const [balanceDue, setBalanceDue] = useState(0);
+  const [loadingBalance, setLoadingBalance] = useState(!amountParam);
+
+  useEffect(() => {
+    if (!amountParam) {
+      const loadBalance = async () => {
+        try {
+          const data = await api.payments.getBalance();
+          setBalanceDue((data as { totalDue?: { amount?: number } })?.totalDue?.amount || 0);
+        } catch {
+          setBalanceDue(0);
+        }
+        setLoadingBalance(false);
+      };
+      loadBalance();
+    }
+  }, [amountParam]);
+
+  const amount = amountParam ? parseInt(amountParam, 10) : balanceDue;
+
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [showAmountInput, setShowAmountInput] = useState(false);

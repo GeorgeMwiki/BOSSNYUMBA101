@@ -1,109 +1,26 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, CreditCard, FileText } from 'lucide-react';
+import { ArrowLeft, Download, CreditCard, FileText, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { invoicesService } from '@bossnyumba/api-client';
 
-// Mock invoice data - would come from API
-const invoices: Record<
-  string,
-  {
-    id: string;
-    invoiceNumber: string;
-    amount: number;
-    status: string;
-    dueDate: string;
-    paidDate?: string;
-    lineItems: { description: string; amount: number; quantity?: number }[];
-    property: string;
-    unit: string;
-    createdAt: string;
-    channel?: string;
-    reference?: string;
-  }
-> = {
-  '1': {
-    id: '1',
-    invoiceNumber: 'INV-2024-0301',
-    amount: 45000,
-    status: 'pending',
-    dueDate: '2024-03-01',
-    lineItems: [
-      { description: 'Monthly Rent - March 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2024-02-15',
-  },
-  '2': {
-    id: '2',
-    invoiceNumber: 'INV-2024-0201',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-02-01',
-    paidDate: '2024-01-28',
-    channel: 'M-Pesa',
-    reference: 'MPESA-ABC123XYZ',
-    lineItems: [
-      { description: 'Monthly Rent - February 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2024-01-15',
-  },
-  '3': {
-    id: '3',
-    invoiceNumber: 'INV-2024-0101',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-01-01',
-    paidDate: '2023-12-30',
-    channel: 'M-Pesa',
-    reference: 'MPESA-DEF456UVW',
-    lineItems: [
-      { description: 'Monthly Rent - January 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-12-15',
-  },
-  '4': {
-    id: '4',
-    invoiceNumber: 'INV-2023-0601',
-    amount: 90000,
-    status: 'paid',
-    dueDate: '2023-06-01',
-    paidDate: '2023-05-28',
-    channel: 'Bank Transfer',
-    reference: 'BANK-GHI789RST',
-    lineItems: [{ description: 'Security Deposit', amount: 90000, quantity: 1 }],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-05-20',
-  },
-  '5': {
-    id: '5',
-    invoiceNumber: 'INV-2023-1201',
-    amount: 45000,
-    status: 'failed',
-    dueDate: '2023-12-01',
-    lineItems: [
-      { description: 'Monthly Rent - December 2023', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-11-15',
-  },
-};
+interface InvoiceData {
+  id: string;
+  invoiceNumber: string;
+  amount: number;
+  status: string;
+  dueDate: string;
+  paidDate?: string;
+  lineItems: { description: string; amount: number; quantity?: number }[];
+  property: string;
+  unit: string;
+  createdAt: string;
+  channel?: string;
+  reference?: string;
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   paid: { label: 'Paid', color: 'badge-success' },
@@ -117,16 +34,61 @@ export default function InvoicePage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const invoice = invoices[id] || invoices['1'];
 
-  if (!invoice) {
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadInvoice() {
+      try {
+        const response = await invoicesService.get(id);
+        const inv = response.data as Record<string, unknown>;
+        setInvoice({
+          id: (inv.id as string) ?? id,
+          invoiceNumber: (inv.invoiceNumber as string) ?? '',
+          amount: (inv.amount as number) ?? 0,
+          status: (inv.status as string) ?? 'pending',
+          dueDate: (inv.dueDate as string) ?? '',
+          paidDate: inv.paidDate as string | undefined,
+          lineItems: (inv.lineItems as InvoiceData['lineItems']) ?? [],
+          property: ((inv.property as Record<string, unknown>)?.name as string) ?? (inv.property as string) ?? '',
+          unit: ((inv.unit as Record<string, unknown>)?.unitNumber as string) ?? (inv.unit as string) ?? '',
+          createdAt: (inv.createdAt as string) ?? '',
+          channel: inv.channel as string | undefined,
+          reference: inv.reference as string | undefined,
+        });
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load invoice');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInvoice();
+  }, [id]);
+
+  if (loading) {
     return (
-      <div className="px-4 py-8 text-center">
-        <p className="text-gray-600">Invoice not found</p>
-        <button onClick={() => router.back()} className="btn-primary mt-4">
-          Go Back
-        </button>
-      </div>
+      <>
+        <PageHeader title="Invoice" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (loadError || !invoice) {
+    return (
+      <>
+        <PageHeader title="Invoice" showBack />
+        <div className="px-4 py-8 text-center">
+          <p className="text-gray-600">{loadError ?? 'Invoice not found'}</p>
+          <button onClick={() => router.back()} className="btn-primary mt-4">
+            Go Back
+          </button>
+        </div>
+      </>
     );
   }
 

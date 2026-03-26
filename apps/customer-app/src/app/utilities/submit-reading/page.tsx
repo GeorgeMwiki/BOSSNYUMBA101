@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Droplets, Zap, Camera } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { workOrdersService } from '@bossnyumba/api-client';
 
 const meterTypes = [
   {
@@ -39,8 +40,22 @@ export default function SubmitReadingPage() {
     if (!hasReading) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    router.push('/utilities?submitted=true');
+    try {
+      await workOrdersService.create({
+        title: 'Meter Reading Submission',
+        category: 'utilities',
+        description: Object.entries(readings)
+          .filter(([, v]) => v.trim() !== '')
+          .map(([type, value]) => `${type}: ${value}`)
+          .join(', '),
+        priority: 'low',
+      } as Record<string, unknown>);
+      router.push('/utilities?submitted=true');
+    } catch (err) {
+      console.error('Failed to submit reading:', err);
+      setIsSubmitting(false);
+      return;
+    }
   };
 
   const handlePhotoUpload = () => {

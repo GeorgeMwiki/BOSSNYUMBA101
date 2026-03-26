@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, Loader2, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
 import { api } from '../lib/api';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface MfaSetup {
   secret: string;
@@ -28,8 +29,56 @@ export function RegisterPage() {
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const registerMutation = useMutation<unknown, {
+    firstName: string; lastName: string; email: string; phone: string; password: string; companyName: string;
+  }>(
+    (client, variables) => client.post('/auth/register', variables),
+    {
+      onSuccess: () => setStep('verify'),
+      onError: (err) => setError(err.message || 'Registration failed. Please try again.'),
+    }
+  );
+
+  const verifyEmailMutation = useMutation<unknown, { email: string; code: string }>(
+    (client, variables) => client.post('/auth/verify-email', variables),
+    {
+      onSuccess: () => {
+        mfaSetupMutation.mutate({ email: formData.email });
+      },
+      onError: (err) => setError(err.message || 'Verification failed. Please try again.'),
+    }
+  );
+
+  const mfaSetupMutation = useMutation<MfaSetup, { email: string }>(
+    (client, variables) => client.post('/auth/mfa/setup', variables),
+    {
+      onSuccess: (data) => {
+        setMfaSetup(data);
+        setStep('mfa-setup');
+      },
+      onError: (err) => setError(err.message || 'MFA setup failed. Please try again.'),
+    }
+  );
+
+  const mfaVerifyMutation = useMutation<unknown, { email: string; code: string }>(
+    (client, variables) => client.post('/auth/mfa/verify', variables),
+    {
+      onSuccess: () => setStep('success'),
+      onError: (err) => setError(err.message || 'Invalid verification code. Please try again.'),
+    }
+  );
+
+  const copyBackupCodesMutation = useMutation<{ copied: boolean }, { codes: string }>(
+    (client, variables) => client.post('/auth/backup-codes/copy', { codes: variables.codes }),
+    {
+      onSuccess: () => setCopiedBackupCodes(true),
+      onSettled: () => setCopiedBackupCodes(false),
+    }
+  );
+
+  const loading = registerMutation.isLoading || verifyEmailMutation.isLoading || mfaSetupMutation.isLoading || mfaVerifyMutation.isLoading;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -52,7 +101,7 @@ export function RegisterPage() {
   const passwordReqs = validatePassword(formData.password);
   const isPasswordValid = Object.values(passwordReqs).every(Boolean);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -71,118 +120,35 @@ export function RegisterPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await api.post('/auth/register', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        companyName: formData.companyName,
-      });
-
-      if (response.success) {
-        setStep('verify');
-      } else {
-        // For development - proceed to next step
-        setStep('verify');
-      }
-    } catch (err) {
-      // For development - proceed to next step
-      setStep('verify');
-    } finally {
-      setLoading(false);
-    }
+    registerMutation.mutate({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      companyName: formData.companyName,
+    });
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
+  const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-
-    try {
-      const response = await api.post('/auth/verify-email', {
-        email: formData.email,
-        code: verificationCode,
-      });
-
-      if (response.success) {
-        await initiateMfaSetup();
-      } else {
-        await initiateMfaSetup();
-      }
-    } catch (err) {
-      await initiateMfaSetup();
-    } finally {
-      setLoading(false);
-    }
+    verifyEmailMutation.mutate({
+      email: formData.email,
+      code: verificationCode,
+    });
   };
 
-  const initiateMfaSetup = async () => {
-    setLoading(true);
-    try {
-      const response = await api.post('/auth/mfa/setup', { email: formData.email });
-
-      if (response.success && response.data) {
-        setMfaSetup(response.data as MfaSetup);
-        setStep('mfa-setup');
-      } else {
-        if (process.env.NODE_ENV !== 'production') {
-          const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-          setMfaSetup({
-            secret: devSecret,
-            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-            backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-          });
-          setStep('mfa-setup');
-        } else {
-          setError('MFA setup failed. Please try again.');
-        }
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-        setMfaSetup({
-          secret: devSecret,
-          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-          backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-        });
-        setStep('mfa-setup');
-      } else {
-        setError('MFA setup failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMfaVerify = async (e: React.FormEvent) => {
+  const handleMfaVerify = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-
-    try {
-      const response = await api.post('/auth/mfa/verify', { email: formData.email, code: mfaCode });
-      if (response.success) {
-        setStep('success');
-      } else {
-        if (mfaCode.length === 6) setStep('success');
-        else setError('Please enter a valid 6-digit code');
-      }
-    } catch (err) {
-      if (mfaCode.length === 6) setStep('success');
-      else setError('Please enter a valid 6-digit code');
-    } finally {
-      setLoading(false);
-    }
+    mfaVerifyMutation.mutate({ email: formData.email, code: mfaCode });
   };
 
   const copyBackupCodes = () => {
     if (mfaSetup) {
       navigator.clipboard.writeText(mfaSetup.backupCodes.join('\n'));
-      setCopiedBackupCodes(true);
-      setTimeout(() => setCopiedBackupCodes(false), 2000);
+      copyBackupCodesMutation.mutate({ codes: mfaSetup.backupCodes.join('\n') });
     }
   };
 

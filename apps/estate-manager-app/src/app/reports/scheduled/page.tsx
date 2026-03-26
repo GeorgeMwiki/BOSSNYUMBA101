@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ArrowLeft, Plus, Calendar, Mail, FileText, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { reportsService } from '@bossnyumba/api-client';
 
 type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
@@ -15,26 +17,6 @@ interface ScheduledReport {
   nextRun: string;
 }
 
-// Mock data - replace with API
-const scheduledReports: ScheduledReport[] = [
-  {
-    id: '1',
-    name: 'Weekly Occupancy Summary',
-    type: 'occupancy',
-    frequency: 'weekly',
-    recipients: ['manager@estate.com'],
-    nextRun: '2024-02-26',
-  },
-  {
-    id: '2',
-    name: 'Monthly Revenue Report',
-    type: 'revenue',
-    frequency: 'monthly',
-    recipients: ['manager@estate.com', 'accounting@estate.com'],
-    nextRun: '2024-03-01',
-  },
-];
-
 const frequencyLabels: Record<ScheduleFrequency, string> = {
   daily: 'Daily',
   weekly: 'Weekly',
@@ -42,6 +24,23 @@ const frequencyLabels: Record<ScheduleFrequency, string> = {
 };
 
 export default function ScheduledReportsPage() {
+  const { data: reportsData, isLoading } = useQuery({
+    queryKey: ['scheduled-reports'],
+    queryFn: async () => {
+      const response = await reportsService.list({ scheduled: true });
+      return response.data;
+    },
+  });
+
+  const scheduledReports: ScheduledReport[] = (reportsData ?? []).map((r: any) => ({
+    id: r.id,
+    name: r.name ?? r.title ?? '',
+    type: r.type ?? '',
+    frequency: (r.frequency ?? 'monthly') as ScheduleFrequency,
+    recipients: r.recipients ?? [],
+    nextRun: r.nextRun ?? r.nextRunAt ?? '',
+  }));
+
   return (
     <>
       <PageHeader

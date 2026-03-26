@@ -1,37 +1,71 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell, ChevronRight, Megaphone } from 'lucide-react';
+import { Bell, ChevronRight, Megaphone, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { notificationsService } from '@bossnyumba/api-client';
 
-const announcements = [
-  {
-    id: '1',
-    title: 'Water Shut-off Scheduled',
-    summary: 'Water will be shut off on Feb 20 from 8am to 12pm for pipe repairs.',
-    date: '2024-02-10',
-    priority: 'high',
-    read: false,
-  },
-  {
-    id: '2',
-    title: 'Elevator Maintenance',
-    summary: 'Elevator B will be under maintenance Feb 15–16. Use Elevator A.',
-    date: '2024-02-08',
-    priority: 'medium',
-    read: true,
-  },
-  {
-    id: '3',
-    title: 'New Security Hours',
-    summary: '24/7 security is now active. Report any concerns to the guard desk.',
-    date: '2024-02-01',
-    priority: 'info',
-    read: true,
-  },
-];
+interface Announcement {
+  id: string;
+  title: string;
+  summary: string;
+  date: string;
+  priority: string;
+  read: boolean;
+}
 
 export default function AnnouncementsPage() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadAnnouncements() {
+      try {
+        const response = await notificationsService.list({ category: ['announcement' as never] });
+        const items = (response.data as unknown as Record<string, unknown>[]) ?? [];
+        setAnnouncements(
+          items.map((n: Record<string, unknown>) => ({
+            id: (n.id as string) ?? '',
+            title: (n.title as string) ?? '',
+            summary: (n.summary as string) ?? (n.body as string) ?? '',
+            date: (n.date as string) ?? (n.createdAt as string) ?? '',
+            priority: (n.priority as string) ?? 'info',
+            read: !!(n.read ?? n.readAt),
+          }))
+        );
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load announcements');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAnnouncements();
+  }, []);
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="Announcements" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <>
+        <PageHeader title="Announcements" showBack />
+        <div className="px-4 py-8 text-center">
+          <p className="text-gray-600">{loadError}</p>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader title="Announcements" showBack />

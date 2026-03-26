@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
 import {
   Building2,
   FileText,
@@ -95,7 +97,6 @@ const plans = [
 export default function OnboardingWizard() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails>({
@@ -131,13 +132,29 @@ export default function OnboardingWizard() {
   const goNext = () => { if (validateStep(currentStep) && currentStep < steps.length - 1) setCurrentStep(currentStep + 1); };
   const goBack = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
+  const queryClient = useQueryClient();
+  const onboardMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/tenants', {
+        organization: orgDetails,
+        policy,
+        subscription,
+        admin,
+      });
+      if (!res.success) throw new Error(res.error || 'Failed to onboard tenant');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      setSubmitted(true);
+    },
+  });
+
   const handleSubmit = async () => {
-    setSubmitting(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 2000));
-    setSubmitting(false);
-    setSubmitted(true);
+    onboardMutation.mutate();
   };
+
+  const submitting = onboardMutation.isPending;
 
   const selectedPlan = plans.find((p) => p.id === subscription.plan)!;
   const price = subscription.billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice;

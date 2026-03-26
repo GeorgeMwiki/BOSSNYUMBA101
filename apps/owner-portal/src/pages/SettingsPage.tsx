@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Bell,
@@ -18,9 +18,11 @@ import {
   X,
   Building2,
   Key,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { formatDate } from '../lib/api';
+import { api, formatDate } from '../lib/api';
+import { useMutation } from '@bossnyumba/api-client';
 
 interface CoOwner {
   id: string;
@@ -39,41 +41,9 @@ export function SettingsPage() {
   const { user, tenant } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [coOwners, setCoOwners] = useState<CoOwner[]>([
-    {
-      id: '1',
-      email: user?.email || 'owner@example.com',
-      firstName: user?.firstName || 'John',
-      lastName: user?.lastName || 'Doe',
-      phone: '+255712345678',
-      role: 'OWNER',
-      status: 'ACTIVE',
-      lastLogin: new Date().toISOString(),
-      properties: ['Palm Gardens', 'Ocean View Apartments'],
-    },
-    {
-      id: '2',
-      email: 'sarah.coowner@example.com',
-      firstName: 'Sarah',
-      lastName: 'Wilson',
-      phone: '+255723456789',
-      role: 'CO_OWNER',
-      status: 'ACTIVE',
-      invitedAt: '2026-01-15T10:00:00Z',
-      lastLogin: '2026-02-10T14:30:00Z',
-      properties: ['Palm Gardens'],
-    },
-    {
-      id: '3',
-      email: 'david.viewer@example.com',
-      firstName: 'David',
-      lastName: 'Brown',
-      role: 'VIEWER',
-      status: 'PENDING',
-      invitedAt: '2026-02-08T09:00:00Z',
-      properties: ['Ocean View Apartments'],
-    },
-  ]);
+  const [coOwners, setCoOwners] = useState<CoOwner[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [properties, setProperties] = useState<string[]>([]);
 
   const [inviteForm, setInviteForm] = useState({
     email: '',
@@ -83,8 +53,30 @@ export function SettingsPage() {
     properties: [] as string[],
   });
 
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Load co-owners and properties from API
+  useEffect(() => {
+    const loadData = async () => {
+      setLoadingUsers(true);
+      try {
+        const [usersRes, propertiesRes] = await Promise.all([
+          api.get<CoOwner[]>('/owner/settings/users'),
+          api.get<{ id: string; name: string }[]>('/owner/properties'),
+        ]);
+        if (usersRes.success && usersRes.data) {
+          setCoOwners(usersRes.data);
+        }
+        if (propertiesRes.success && propertiesRes.data) {
+          setProperties(propertiesRes.data.map((p) => p.name));
+        }
+      } catch {
+        // Keep empty state on error
+      }
+      setLoadingUsers(false);
+    };
+    loadData();
+  }, []);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -94,39 +86,76 @@ export function SettingsPage() {
     { id: 'preferences', label: 'Preferences', icon: Globe },
   ];
 
-  const properties = ['Palm Gardens', 'Ocean View Apartments', 'Sunset Villas', 'Garden Estate'];
+  const saveProfileMutation = useMutation<unknown, { firstName?: string; lastName?: string; email?: string }>(
+    (client, variables) => client.patch('/owner/settings/profile', variables),
+    {
+      onSuccess: () => setNotification({ type: 'success', message: 'Settings saved successfully' }),
+      onError: (err) => setNotification({ type: 'error', message: err.message || 'Failed to save settings' }),
+    }
+  );
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    setNotification({ type: 'success', message: 'Settings saved successfully' });
-    setTimeout(() => setNotification(null), 3000);
+  const inviteUserMutation = useMutation<CoOwner, typeof inviteForm>(
+    (client, variables) => client.post('/owner/settings/users/invite', variables),
+    {
+      onSuccess: (data) => {
+        if (data) {
+          setCoOwners((prev) => [...prev, data]);
+        } else {
+          const newUser: CoOwner = {
+            id: Date.now().toString(),
+            ...inviteForm,
+            status: 'PENDING',
+            invitedAt: new Date().toISOString(),
+          };
+          setCoOwners((prev) => [...prev, newUser]);
+        }
+        setShowInviteModal(false);
+        setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
+        setNotification({ type: 'success', message: 'Invitation sent successfully' });
+      },
+      onError: (err) => setNotification({ type: 'error', message: err.message || 'Failed to send invitation' }),
+    }
+  );
+
+  const removeUserMutation = useMutation<unknown, string>(
+    (client, id) => client.delete(`/owner/settings/users/${id}`),
+    {
+      onSuccess: (_data, id) => {
+        setCoOwners((prev) => prev.filter((u) => u.id !== id));
+        setNotification({ type: 'success', message: 'User removed successfully' });
+      },
+      onError: (err) => setNotification({ type: 'error', message: err.message || 'Failed to remove user' }),
+    }
+  );
+
+  const resendInviteMutation = useMutation<unknown, string>(
+    (client, id) => client.post(`/owner/settings/users/${id}/resend-invite`, {}),
+    {
+      onSuccess: () => setNotification({ type: 'success', message: 'Invitation resent successfully' }),
+      onError: (err) => setNotification({ type: 'error', message: err.message || 'Failed to resend invitation' }),
+    }
+  );
+
+  const saving = saveProfileMutation.isLoading;
+
+  const handleSave = () => {
+    saveProfileMutation.mutate({
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+      email: user?.email,
+    });
   };
 
   const handleInviteUser = () => {
-    const newUser: CoOwner = {
-      id: Date.now().toString(),
-      ...inviteForm,
-      status: 'PENDING',
-      invitedAt: new Date().toISOString(),
-    };
-    setCoOwners([...coOwners, newUser]);
-    setShowInviteModal(false);
-    setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
-    setNotification({ type: 'success', message: 'Invitation sent successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    inviteUserMutation.mutate(inviteForm);
   };
 
   const handleRemoveUser = (id: string) => {
-    setCoOwners(coOwners.filter(u => u.id !== id));
-    setNotification({ type: 'success', message: 'User removed successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    removeUserMutation.mutate(id);
   };
 
   const handleResendInvite = (id: string) => {
-    setNotification({ type: 'success', message: 'Invitation resent successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    resendInviteMutation.mutate(id);
   };
 
   const getRoleColor = (role: string) => {
