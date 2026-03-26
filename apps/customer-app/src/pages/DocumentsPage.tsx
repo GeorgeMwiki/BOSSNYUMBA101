@@ -361,7 +361,12 @@ export default function DocumentsPage() {
                     <p className="text-sm text-gray-500">PDF • 890 KB</p>
                   </div>
                 </div>
-                <button className="btn-secondary text-sm">
+                <button onClick={async () => {
+                  const { getApiClient } = await import('@bossnyumba/api-client');
+                  const client = getApiClient();
+                  const res = await client.get<{ url: string }>(`/documents/${rule.id}/download`);
+                  if (res.data?.url) window.open(res.data.url, '_blank');
+                }} className="btn-secondary text-sm">
                   <Download className="w-4 h-4 mr-1" />
                   Download
                 </button>
@@ -410,7 +415,12 @@ export default function DocumentsPage() {
                 <Eye className="w-5 h-5 mr-2" />
                 View
               </Link>
-              <button className="btn-primary flex-1 py-4">
+              <button onClick={async () => {
+                const { getApiClient } = await import('@bossnyumba/api-client');
+                const client = getApiClient();
+                const res = await client.get<{ url: string }>(`/documents/${selectedDocument.id}/download`);
+                if (res.data?.url) window.open(res.data.url, '_blank');
+              }} className="btn-primary flex-1 py-4">
                 <Download className="w-5 h-5 mr-2" />
                 Download
               </button>

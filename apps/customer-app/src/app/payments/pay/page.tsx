@@ -231,7 +231,7 @@ export default function PayPage() {
         {cardNotice && (
           <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg flex items-start gap-3">
             <Info className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-primary-700">Card payments are coming soon. Please use M-Pesa or bank transfer for now.</p>
+            <p className="text-sm text-primary-700">Card payments are not yet available. Please use M-Pesa or bank transfer.</p>
           </div>
         )}
 

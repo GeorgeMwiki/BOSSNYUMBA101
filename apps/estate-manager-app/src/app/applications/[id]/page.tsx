@@ -211,10 +211,21 @@ export default function ApplicationDetailPage() {
 
         {/* Actions */}
         <div className="flex gap-3">
-          <button className="btn-secondary flex-1 flex items-center justify-center gap-2">
+          <button onClick={async () => {
+            const dest = prompt('Forward to (organization/user ID):');
+            if (!dest) return;
+            const client = (await import('@bossnyumba/api-client')).getApiClient();
+            await client.post(`/applications/${applicationId}/route`, { toOrganizationId: dest });
+            window.location.reload();
+          }} className="btn-secondary flex-1 flex items-center justify-center gap-2">
             <Send className="w-4 h-4" /> Forward
           </button>
-          <button className="btn-primary flex-1 flex items-center justify-center gap-2">
+          <button onClick={async () => {
+            if (!confirm('Approve this application?')) return;
+            const client = (await import('@bossnyumba/api-client')).getApiClient();
+            await client.post(`/applications/${applicationId}/approve`, {});
+            window.location.reload();
+          }} className="btn-primary flex-1 flex items-center justify-center gap-2">
             <CheckCircle className="w-4 h-4" /> Approve
           </button>
         </div>

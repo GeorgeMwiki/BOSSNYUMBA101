@@ -472,7 +472,7 @@ export default function WorkOrderDetail() {
                   <Phone className="w-4 h-4" />
                 </a>
               )}
-              <button className="btn-secondary p-2">
+              <button onClick={() => router.push(`/messaging/new?recipientId=${workOrder.customer.id}`)} className="btn-secondary p-2">
                 <MessageCircle className="w-4 h-4" />
               </button>
             </div>
@@ -773,7 +773,10 @@ export default function WorkOrderDetail() {
                 {signOffStep === 'manager' ? 'Complete Work Order' : 'Next'}
               </button>
             </div>
-            {signOffStep === 'tenant' && <button className="btn-secondary w-full text-sm">Send confirmation link to tenant</button>}
+            {signOffStep === 'tenant' && <button onClick={async () => {
+              const client = (await import('@bossnyumba/api-client')).getApiClient();
+              await client.post(`/work-orders/${workOrderId}/send-confirmation`, {});
+            }} className="btn-secondary w-full text-sm">Send confirmation link to tenant</button>}
           </div>
         </div>
       )}

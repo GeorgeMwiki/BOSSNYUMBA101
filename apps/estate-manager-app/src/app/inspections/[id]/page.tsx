@@ -509,7 +509,7 @@ export default function InspectionDetailPage() {
             <Link href={`/inspections/${id}/conduct`} className="btn-primary flex-1 flex items-center justify-center gap-2">
               <CheckCircle className="w-4 h-4" /> Start Inspection
             </Link>
-            <button className="btn-secondary">Reschedule</button>
+            <Link href={`/inspections/${id}/reschedule`} className="btn-secondary">Reschedule</Link>
           </div>
         )}
       </div>

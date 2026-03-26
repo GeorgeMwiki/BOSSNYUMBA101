@@ -313,7 +313,12 @@ export default function OnboardingESignPage() {
 
                   {/* Actions */}
                   <div className="p-4 border-t border-gray-100 flex gap-3">
-                    <button className="btn-secondary flex-1 text-sm">
+                    <button onClick={async () => {
+                      const { getApiClient } = await import('@bossnyumba/api-client');
+                      const client = getApiClient();
+                      const res = await client.get<{ url: string }>(`/documents/${doc.id}/view`);
+                      if (res.data?.url) window.open(res.data.url, '_blank');
+                    }} className="btn-secondary flex-1 text-sm">
                       <Eye className="w-4 h-4 mr-1" />
                       View Full Document
                     </button>

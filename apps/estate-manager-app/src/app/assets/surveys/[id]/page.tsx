@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ClipboardCheck, User, Calendar, Camera, Package, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { conditionSurveysService } from '@bossnyumba/api-client';
@@ -24,6 +24,7 @@ const CONDITION_COLORS: Record<string, string> = {
 };
 
 export default function SurveyDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const surveyId = params.id as string;
 
@@ -87,7 +88,7 @@ export default function SurveyDetailPage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
             <User className="w-4 h-4" /> Survey Team
           </h3>
-          <div className="text-sm text-gray-500">Lead surveyor and team details will display here</div>
+          <div className="text-sm text-gray-500">{(s?.leadSurveyorName as string) || 'No surveyor assigned yet'}</div>
         </div>
 
         {/* Estimated Repair Costs */}
@@ -108,16 +109,26 @@ export default function SurveyDetailPage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <Package className="w-4 h-4" /> Surveyed Assets
           </h3>
-          <div className="text-center py-6 text-gray-400 text-sm">
-            <Camera className="w-8 h-8 mx-auto mb-2" />
-            Survey items will appear here after conducting the survey
-          </div>
+          {(s?.items as unknown[])?.length ? (
+            <div className="text-sm text-gray-600">
+              {((s?.items as unknown[]) ?? []).length} assets surveyed
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-400 text-sm">
+              <Camera className="w-8 h-8 mx-auto mb-2" />
+              No survey items recorded yet
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <button className="btn-secondary flex-1">Export Report</button>
-          <button className="btn-primary flex-1">Conduct Survey</button>
+          <button onClick={async () => {
+            const client = (await import('@bossnyumba/api-client')).getApiClient();
+            const res = await client.get<{ url: string }>(`/condition-surveys/${surveyId}/export`);
+            if (res.data?.url) window.open(res.data.url, '_blank');
+          }} className="btn-secondary flex-1">Export Report</button>
+          <button onClick={() => router.push(`/assets/surveys/${surveyId}/conduct`)} className="btn-primary flex-1">Conduct Survey</button>
         </div>
       </div>
     </>
