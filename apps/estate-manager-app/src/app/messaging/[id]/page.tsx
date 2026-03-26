@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, User } from 'lucide-react';
+import { Send, User, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messagingService } from '@bossnyumba/api-client';
 
 interface Message {
@@ -18,6 +18,7 @@ interface Message {
 export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const id = params.id as string;
   const [newMessage, setNewMessage] = useState('');
 
@@ -37,6 +38,17 @@ export default function ConversationDetailPage() {
       return response.data;
     },
     enabled: !!id,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await messagingService.sendMessage(id, { content });
+      return response.data;
+    },
+    onSuccess: () => {
+      setNewMessage('');
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', id] });
+    },
   });
 
   const conversation = conversationRaw
@@ -69,9 +81,8 @@ export default function ConversationDetailPage() {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
-    // In real app: API call to send message
-    setNewMessage('');
+    if (!newMessage.trim() || sendMutation.isPending) return;
+    sendMutation.mutate(newMessage.trim());
   };
 
   return (
@@ -120,6 +131,11 @@ export default function ConversationDetailPage() {
 
         {/* Reply Input */}
         <div className="p-4 border-t border-gray-200 bg-white">
+          {sendMutation.isError && (
+            <p className="text-sm text-red-600 mb-2">
+              {(sendMutation.error as Error)?.message || 'Failed to send message'}
+            </p>
+          )}
           <form onSubmit={handleSend} className="flex gap-2">
             <input
               type="text"
@@ -131,9 +147,13 @@ export default function ConversationDetailPage() {
             <button
               type="submit"
               className="btn-primary"
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || sendMutation.isPending}
             >
-              <Send className="w-5 h-5" />
+              {sendMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </form>
         </div>

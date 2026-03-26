@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { notificationsService } from '@bossnyumba/api-client';
+import { Check, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface NotificationSetting {
@@ -26,6 +28,50 @@ export default function NotificationPreferencesPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<NotificationSetting[]>(defaultSettings);
 
+  const { data: preferences, isLoading } = useQuery({
+    queryKey: ['notification-preferences'],
+    queryFn: async () => {
+      const response = await notificationsService.getPreferences();
+      return response.data;
+    },
+  });
+
+  useEffect(() => {
+    if (preferences) {
+      setSettings((prev) =>
+        prev.map((s) => {
+          if (s.category === 'push') {
+            return { ...s, enabled: preferences.push ?? s.enabled };
+          }
+          if (s.category === 'email') {
+            return { ...s, enabled: preferences.email ?? s.enabled };
+          }
+          if (s.category === 'sms') {
+            return { ...s, enabled: preferences.sms ?? s.enabled };
+          }
+          return s;
+        })
+      );
+    }
+  }, [preferences]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (currentSettings: NotificationSetting[]) => {
+      const pushEnabled = currentSettings.filter((s) => s.category === 'push').some((s) => s.enabled);
+      const emailEnabled = currentSettings.filter((s) => s.category === 'email').some((s) => s.enabled);
+      const smsEnabled = currentSettings.filter((s) => s.category === 'sms').some((s) => s.enabled);
+      const response = await notificationsService.updatePreferences({
+        push: pushEnabled,
+        email: emailEnabled,
+        sms: smsEnabled,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push('/settings');
+    },
+  });
+
   const toggle = (id: string) => {
     setSettings((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s))
@@ -33,13 +79,23 @@ export default function NotificationPreferencesPage() {
   };
 
   const handleSave = () => {
-    // In real app: API call to save preferences
-    router.push('/settings');
+    saveMutation.mutate(settings);
   };
 
   const pushSettings = settings.filter((s) => s.category === 'push');
   const emailSettings = settings.filter((s) => s.category === 'email');
   const smsSettings = settings.filter((s) => s.category === 'sms');
+
+  if (isLoading) {
+    return (
+      <>
+        <PageHeader title="Notification Preferences" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -137,13 +193,27 @@ export default function NotificationPreferencesPage() {
           </section>
         )}
 
+        {saveMutation.isError && (
+          <p className="text-sm text-red-600">
+            {(saveMutation.error as Error)?.message || 'Failed to save preferences'}
+          </p>
+        )}
+
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
             Cancel
           </button>
-          <button onClick={handleSave} className="btn-primary flex-1 flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" />
-            Save Preferences
+          <button
+            onClick={handleSave}
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+            {saveMutation.isPending ? 'Saving...' : 'Save Preferences'}
           </button>
         </div>
       </div>

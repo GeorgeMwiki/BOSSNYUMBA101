@@ -1,25 +1,80 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Camera } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getApiClient } from '@bossnyumba/api-client';
+import { User, Camera, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+
+interface UserProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+}
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Manager',
-    email: 'john.manager@estate.com',
-    phone: '+254 700 123 456',
-    role: 'Estate Manager',
+  const [formData, setFormData] = useState<UserProfile>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    role: '',
+  });
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: async () => {
+      const response = await getApiClient().get<UserProfile>('/users/me');
+      return response.data;
+    },
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName ?? '',
+        lastName: profile.lastName ?? '',
+        email: profile.email ?? '',
+        phone: profile.phone ?? '',
+        role: profile.role ?? '',
+      });
+    }
+  }, [profile]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: UserProfile) => {
+      const response = await getApiClient().put<UserProfile>('/users/me', {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push('/settings');
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In real app: API call to update profile
-    router.push('/settings');
+    saveMutation.mutate(formData);
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <PageHeader title="Profile Settings" showBack />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -92,14 +147,25 @@ export default function ProfileSettingsPage() {
               disabled
             />
           </div>
+
+          {saveMutation.isError && (
+            <p className="text-sm text-red-600">
+              {(saveMutation.error as Error)?.message || 'Failed to save profile'}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
             Cancel
           </button>
-          <button type="submit" className="btn-primary flex-1">
-            Save Changes
+          <button
+            type="submit"
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>

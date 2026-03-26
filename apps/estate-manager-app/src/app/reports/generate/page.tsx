@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, FileText, Download } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { propertiesService, reportsService } from '@bossnyumba/api-client';
+import { Download, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections' | 'asset_register' | 'condition_survey' | 'contract_status' | 'collections';
@@ -33,10 +35,32 @@ export default function GenerateReportPage() {
     district: '',
   });
 
+  const { data: properties, isLoading: isLoadingProperties } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => {
+      const response = await propertiesService.list();
+      return response.data;
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const response = await reportsService.export(data.type, {
+        format: data.format as 'pdf' | 'csv',
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.downloadUrl) {
+        window.open(data.downloadUrl, '_blank');
+      }
+      router.push('/reports');
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In real app: API call to generate report
-    router.push('/reports');
+    generateMutation.mutate(formData);
   };
 
   return (
@@ -123,10 +147,14 @@ export default function GenerateReportPage() {
               className="input"
               value={formData.propertyId}
               onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
+              disabled={isLoadingProperties}
             >
               <option value="">All Properties</option>
-              <option value="1">Sunset Apartments</option>
-              <option value="2">Riverside Towers</option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -142,6 +170,12 @@ export default function GenerateReportPage() {
               <option value="excel">Excel</option>
             </select>
           </div>
+
+          {generateMutation.isError && (
+            <p className="text-sm text-red-600">
+              {(generateMutation.error as Error)?.message || 'Failed to generate report'}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -151,9 +185,14 @@ export default function GenerateReportPage() {
           <button
             type="submit"
             className="btn-primary flex-1 flex items-center justify-center gap-2"
+            disabled={generateMutation.isPending}
           >
-            <Download className="w-4 h-4" />
-            Generate Report
+            {generateMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {generateMutation.isPending ? 'Generating...' : 'Generate Report'}
           </button>
         </div>
       </form>
