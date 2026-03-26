@@ -12,6 +12,7 @@ import {
   Clock,
   Send,
   Filter,
+  RefreshCw,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -44,7 +45,7 @@ export default function CollectionsPage() {
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [page, setPage] = useState(1);
 
-  const { data: overdueData, isLoading: overdueLoading } = useQuery({
+  const { data: overdueData, isLoading: overdueLoading, isError: overdueError, refetch: refetchOverdue } = useQuery({
     queryKey: ['collections-overdue', { page, pageSize: 20, status: 'overdue' }],
     queryFn: () =>
       invoicesService.list({
@@ -89,7 +90,7 @@ export default function CollectionsPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto">
+      <div className="px-4 py-4 pb-24 space-y-4 max-w-4xl mx-auto">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-4">
@@ -155,12 +156,38 @@ export default function CollectionsPage() {
           </h3>
 
           {overdueLoading ? (
-            <div className="card p-8 text-center text-gray-500">Loading arrears data...</div>
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="card p-4 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="h-3 bg-gray-200 rounded w-1/4" />
+                    </div>
+                    <div className="h-5 w-16 bg-gray-200 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : overdueError ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load arrears data</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+              <button onClick={() => refetchOverdue()} className="btn-secondary text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Retry
+              </button>
+            </div>
           ) : overdueInvoices.length === 0 ? (
-            <div className="card p-8 text-center">
-              <DollarSign className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">No overdue invoices found</p>
-              <p className="text-sm text-gray-400 mt-1">All payments are up to date</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                <DollarSign className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No overdue invoices</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6">All payments are up to date. Great job!</p>
             </div>
           ) : (
             <div className="space-y-2">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, MapPin, ChevronRight, Landmark } from 'lucide-react';
+import { Plus, Search, MapPin, ChevronRight, Landmark, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { parcelsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,7 +13,7 @@ export default function ParcelsListPage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['parcels', { page, pageSize: 20, search: search || undefined, type: typeFilter || undefined, status: statusFilter || undefined }],
     queryFn: () => parcelsService.list({ page, pageSize: 20, search: search || undefined, type: typeFilter || undefined, status: statusFilter || undefined }),
     retry: false,
@@ -35,7 +35,7 @@ export default function ParcelsListPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto">
+      <div className="px-4 py-4 pb-24 space-y-4 max-w-4xl mx-auto">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
@@ -68,13 +68,39 @@ export default function ParcelsListPage() {
 
         {/* Parcels List */}
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-2/3" />
+                  </div>
+                  <div className="h-5 w-16 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load parcels</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+            <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
         ) : parcels.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Landmark className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No land parcels found</p>
-            <p className="text-sm text-gray-400 mt-1">Add your first land parcel to get started</p>
-            <Link href="/parcels/new" className="btn-primary mt-4 inline-block">Add Parcel</Link>
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <Landmark className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No land parcels yet</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Add your first land parcel to get started.</p>
+            <Link href="/parcels/new" className="btn-primary text-sm">Add Parcel</Link>
           </div>
         ) : (
           <div className="space-y-3">

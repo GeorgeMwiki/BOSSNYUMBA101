@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  AlertTriangle,
   FolderOpen,
   Edit3,
   History,
@@ -19,6 +20,7 @@ import {
   User,
   Calendar,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { api, formatDate, formatDateTime } from '../lib/api';
 
@@ -165,8 +167,64 @@ export function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-28" />
+            <div className="h-4 bg-gray-200 rounded w-52" />
+          </div>
+          <div className="h-10 bg-gray-200 rounded-lg w-40" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
+              <div className="h-8 w-8 bg-gray-200 rounded" />
+              <div className="h-4 bg-gray-200 rounded w-24" />
+              <div className="h-3 bg-gray-200 rounded w-20" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-1 h-10 bg-gray-200 rounded-lg" />
+          <div className="h-10 bg-gray-200 rounded-lg w-32" />
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex gap-8">
+            {[1,2,3,4,5,6].map(i => <div key={i} className="h-3 bg-gray-200 rounded w-16" />)}
+          </div>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100">
+              <div className="h-8 w-8 bg-gray-200 rounded" />
+              <div className="flex-1 space-y-1">
+                <div className="h-4 bg-gray-200 rounded w-48" />
+                <div className="h-3 bg-gray-200 rounded w-16" />
+              </div>
+              <div className="h-4 bg-gray-200 rounded w-28" />
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-5 bg-gray-200 rounded-full w-16" />
+              <div className="h-4 bg-gray-200 rounded w-12" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error && documents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Documents Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={() => loadData()}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     );
   }
@@ -350,9 +408,22 @@ export function DocumentsPage() {
       </div>
 
       {filteredDocs.length === 0 && (
-        <div className="text-center py-12">
-          <FolderOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No documents found</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-200">
+          <div className="p-3 bg-gray-100 rounded-full mb-3">
+            <FolderOpen className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 mb-1">No Documents Found</h3>
+          <p className="text-sm text-gray-500 max-w-sm">
+            {search || typeFilter !== 'all' || categoryFilter !== 'all'
+              ? 'Try adjusting your search or filters to find documents.'
+              : 'No documents have been uploaded yet. Upload a document to get started.'}
+          </p>
+          <button
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Document
+          </button>
         </div>
       )}
 

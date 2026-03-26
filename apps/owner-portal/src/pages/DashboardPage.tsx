@@ -166,21 +166,73 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-28" />
+            <div className="h-4 bg-gray-200 rounded w-56" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 bg-gray-200 rounded-lg w-24" />
+            <div className="h-10 bg-gray-200 rounded-lg w-32" />
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 flex items-center gap-4">
+          <div className="h-8 bg-gray-200 rounded w-16" />
+          <div className="h-10 bg-gray-200 rounded-lg w-36" />
+          <div className="h-10 bg-gray-200 rounded-lg w-64" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+                <div className="h-4 bg-gray-200 rounded w-24" />
+              </div>
+              <div className="h-7 bg-gray-200 rounded w-28" />
+              <div className="h-3 bg-gray-200 rounded w-32" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+            <div className="h-5 bg-gray-200 rounded w-32" />
+            <div className="h-64 bg-gray-100 rounded-lg" />
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+            <div className="h-5 bg-gray-200 rounded w-28" />
+            <div className="h-48 bg-gray-100 rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1,2].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+              <div className="h-5 bg-gray-200 rounded w-32" />
+              <div className="grid grid-cols-2 gap-4">
+                {[1,2,3,4].map(j => (
+                  <div key={j} className="h-20 bg-gray-100 rounded-lg" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">{error ?? 'Failed to load dashboard data'}</p>
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <div className="p-4 bg-amber-50 rounded-full">
+          <AlertCircle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Dashboard Unavailable</h2>
+        <p className="text-sm text-gray-500 max-w-md text-center">{error ?? 'Failed to load dashboard data. Please check your connection and try again.'}</p>
         <button
           onClick={handleRefresh}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
         >
+          <RefreshCw className="h-4 w-4" />
           Try Again
         </button>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, ChevronRight, Home, Loader2 } from 'lucide-react';
+import { FileText, ChevronRight, Home } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface LeaseData {
@@ -11,6 +11,29 @@ interface LeaseData {
   type: string;
   endDate: string;
   daysRemaining: number;
+}
+
+function LeaseSkeleton() {
+  return (
+    <section>
+      <h2 className="text-sm font-medium text-gray-400 mb-3">Current Lease</h2>
+      <div className="card p-4 animate-pulse">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 bg-surface-card rounded-lg flex-shrink-0" />
+            <div className="space-y-2 min-w-0 flex-1">
+              <div className="h-4 w-3/4 bg-surface-card rounded" />
+              <div className="h-3 w-1/2 bg-surface-card rounded" />
+            </div>
+          </div>
+          <div className="w-5 h-5 bg-surface-card rounded flex-shrink-0" />
+        </div>
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <div className="h-4 w-36 bg-surface-card rounded" />
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function LeaseSummary() {
@@ -43,40 +66,33 @@ export function LeaseSummary() {
   }, []);
 
   if (loading) {
-    return (
-      <section>
-        <h2 className="text-sm font-medium text-gray-500 mb-3">Current Lease</h2>
-        <div className="card p-4 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
-        </div>
-      </section>
-    );
+    return <LeaseSkeleton />;
   }
 
   if (!lease) return null;
 
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-500 mb-3">Current Lease</h2>
+      <h2 className="text-sm font-medium text-gray-400 mb-3">Current Lease</h2>
       <Link href="/lease">
         <div className="card p-4 active:scale-[0.99] transition-transform">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="p-2 bg-primary-50 rounded-lg flex-shrink-0">
-                <Home className="w-5 h-5 text-primary-600" />
+              <div className="p-2 bg-primary-500/20 rounded-lg flex-shrink-0">
+                <Home className="w-5 h-5 text-primary-400" />
               </div>
               <div className="min-w-0">
-                <div className="font-medium text-gray-900 truncate">
+                <div className="font-medium text-white truncate">
                   {lease.property} · {lease.unit}
                 </div>
-                <div className="text-sm text-gray-500 mt-0.5">
+                <div className="text-sm text-gray-400 mt-0.5">
                   {lease.type ? `${lease.type} · ` : ''}Ends in {lease.daysRemaining} days
                 </div>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-500 flex-shrink-0" />
           </div>
-          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-sm text-primary-600">
+          <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-sm text-primary-400">
             <FileText className="w-4 h-4" />
             <span>View full lease details</span>
           </div>

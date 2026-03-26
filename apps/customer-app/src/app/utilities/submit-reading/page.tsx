@@ -11,7 +11,7 @@ const meterTypes = [
     id: 'water',
     label: 'Water',
     icon: Droplets,
-    unit: 'm³',
+    unit: 'm\u00B3',
     lastReading: 245,
     placeholder: 'Enter current reading',
   },
@@ -66,8 +66,8 @@ export default function SubmitReadingPage() {
     <>
       <PageHeader title="Submit Meter Reading" showBack />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
-        <p className="text-sm text-gray-500 mb-4">
+      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-24">
+        <p className="text-sm text-gray-400 mb-4">
           Enter your current meter readings. Include a photo of the meter for
           verification if possible.
         </p>
@@ -77,7 +77,7 @@ export default function SubmitReadingPage() {
           return (
             <section key={meter.id}>
               <label className="label flex items-center gap-2">
-                <Icon className="w-4 h-4 text-primary-600" />
+                <Icon className="w-4 h-4 text-primary-400" />
                 {meter.label} ({meter.unit})
               </label>
               <div className="flex items-center gap-2">
@@ -92,11 +92,11 @@ export default function SubmitReadingPage() {
                   }
                   min={meter.lastReading}
                 />
-                <span className="text-sm text-gray-500 whitespace-nowrap">
+                <span className="text-sm text-gray-400 whitespace-nowrap">
                   {meter.unit}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Last reading: {meter.lastReading} {meter.unit}
               </p>
             </section>
@@ -105,17 +105,17 @@ export default function SubmitReadingPage() {
 
         <section>
           <label className="label flex items-center gap-2">
-            <Camera className="w-4 h-4 text-primary-600" />
+            <Camera className="w-4 h-4 text-primary-400" />
             Photo of meter (optional)
           </label>
           <div className="flex gap-2">
             {photo ? (
-              <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0" />
+              <div className="w-24 h-24 bg-surface-card rounded-lg flex-shrink-0" />
             ) : (
               <button
                 type="button"
                 onClick={handlePhotoUpload}
-                className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 flex-shrink-0"
+                className="w-24 h-24 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-400 flex-shrink-0 transition-colors"
               >
                 <Camera className="w-6 h-6" />
                 <span className="text-xs mt-1">Add</span>

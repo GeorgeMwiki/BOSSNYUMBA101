@@ -48,20 +48,63 @@ export default function AICockpit() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      <div className="animate-pulse space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 bg-gray-200 rounded w-28" />
+          <div className="h-4 bg-gray-200 rounded w-64" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+              <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+              <div className="h-7 bg-gray-200 rounded w-16 mt-4" />
+              <div className="h-3 bg-gray-200 rounded w-32" />
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+          <div className="h-5 bg-gray-200 rounded w-32" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="space-y-1">
+                <div className="h-3 bg-gray-200 rounded w-28" />
+                <div className="h-5 bg-gray-200 rounded w-16" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <div className="h-5 bg-gray-200 rounded w-44" />
+          </div>
+          {[1,2,3].map(i => (
+            <div key={i} className="flex items-center gap-6 px-6 py-4 border-b border-gray-100">
+              <div className="h-4 bg-gray-200 rounded w-28" />
+              <div className="h-4 bg-gray-200 rounded w-12" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
         <h2 className="text-lg font-semibold text-gray-900">AI Cockpit Unavailable</h2>
         <p className="text-sm text-gray-500 mt-1 max-w-md">
-          {error instanceof Error ? error.message : 'Unable to load AI governance data.'}
+          {error instanceof Error ? error.message : 'Unable to load AI governance data. Please check your connection and try again.'}
         </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     );
   }

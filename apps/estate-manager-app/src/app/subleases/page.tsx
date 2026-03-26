@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, AlertTriangle, ChevronRight, Eye, Shield, Clock } from 'lucide-react';
+import { Search, AlertTriangle, ChevronRight, Eye, Shield, Clock, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { subleaseAlertsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function SubleaseMonitoringPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sublease-alerts', { status: statusFilter || undefined }],
     queryFn: () => subleaseAlertsService.list({ status: statusFilter || undefined }),
     retry: false,
@@ -39,7 +39,7 @@ export default function SubleaseMonitoringPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto">
+      <div className="px-4 py-4 pb-24 space-y-4 max-w-4xl mx-auto">
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">
           <div className="card p-3 text-center">
@@ -81,12 +81,39 @@ export default function SubleaseMonitoringPage() {
 
         {/* Alerts List */}
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                  </div>
+                  <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load alerts</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+            <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
         ) : alerts.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Shield className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No sublease alerts</p>
-            <p className="text-sm text-gray-400 mt-1">All leases are compliant</p>
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <Shield className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No sublease alerts</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">All leases are compliant. No unauthorized sub-leasing detected.</p>
           </div>
         ) : (
           <div className="space-y-3">

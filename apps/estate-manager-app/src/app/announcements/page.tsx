@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Megaphone, ChevronRight, Calendar, Pin } from 'lucide-react';
+import { Plus, Megaphone, ChevronRight, Calendar, Pin, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsService } from '@bossnyumba/api-client';
@@ -29,7 +29,7 @@ const priorityConfig: Record<AnnouncementPriority, { label: string; color: strin
 export default function AnnouncementsPage() {
   const [filter, setFilter] = useState<string>('all');
 
-  const { data: announcementsData, isLoading } = useQuery({
+  const { data: announcementsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['announcements'],
     queryFn: async () => {
       const response = await notificationsService.list({ type: 'announcement' });
@@ -73,7 +73,7 @@ export default function AnnouncementsPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-4 pb-24 space-y-4">
         {/* Filter Tabs */}
         <div className="flex gap-2">
           {[
@@ -91,6 +91,35 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Announcements List */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                  <div className="w-5 h-5 bg-gray-200 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load announcements</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+            <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
+        ) : (
+        <>
         <div className="space-y-3">
           {sorted.map((announcement) => {
             const priority = priorityConfig[announcement.priority];
@@ -132,18 +161,22 @@ export default function AnnouncementsPage() {
         </div>
 
         {filteredAnnouncements.length === 0 && (
-          <div className="text-center py-12">
-            <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No announcements</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {filter === 'pinned' ? 'No pinned announcements' : 'Create an announcement to notify residents'}
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <Megaphone className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No announcements</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">
+              {filter === 'pinned' ? 'No pinned announcements found.' : 'Create an announcement to notify residents.'}
             </p>
             {filter !== 'pinned' && (
-              <Link href="/announcements/create" className="btn-primary mt-4 inline-block">
+              <Link href="/announcements/create" className="btn-primary text-sm">
                 Create Announcement
               </Link>
             )}
           </div>
+        )}
+        </>
         )}
       </div>
     </>

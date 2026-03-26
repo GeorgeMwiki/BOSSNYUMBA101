@@ -8,6 +8,8 @@ import {
   Phone,
   ArrowRight,
   MessageSquare,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { api, formatCurrency, formatDate } from '../../lib/api';
 
@@ -27,13 +29,19 @@ interface Tenant {
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     api.get<Tenant[]>('/tenants').then((res) => {
       if (res.success && res.data) {
         setTenants(res.data);
+      } else {
+        setError('Unable to load tenants data.');
       }
+      setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Unable to load tenants data.');
       setLoading(false);
     });
   }, []);
@@ -49,8 +57,53 @@ export default function TenantsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-24" />
+            <div className="h-4 bg-gray-200 rounded w-52" />
+          </div>
+          <div className="h-10 bg-gray-200 rounded-lg w-40" />
+        </div>
+        <div className="h-10 bg-gray-200 rounded-lg w-64" />
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex gap-8">
+            {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-3 bg-gray-200 rounded w-16" />)}
+          </div>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-gray-100">
+              <div className="h-10 w-10 bg-gray-200 rounded-full" />
+              <div className="h-4 bg-gray-200 rounded w-28" />
+              <div className="space-y-1">
+                <div className="h-4 bg-gray-200 rounded w-32" />
+                <div className="h-3 bg-gray-200 rounded w-20" />
+              </div>
+              <div className="h-4 bg-gray-200 rounded w-36" />
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-5 bg-gray-200 rounded-full w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error && tenants.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Tenants Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     );
   }

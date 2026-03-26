@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight, Home, Plus } from 'lucide-react';
+import { Search, ChevronRight, Home, Plus, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { unitsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -12,7 +12,7 @@ export default function UnitsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['units', { page, pageSize: 20, search: search || undefined, status: statusFilter || undefined }],
     queryFn: () => unitsService.list({ page, pageSize: 20, search: search || undefined, status: statusFilter || undefined }),
     retry: false,
@@ -37,7 +37,7 @@ export default function UnitsPage() {
         subtitle={`${pagination?.totalItems ?? units.length} units`}
       />
 
-      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto">
+      <div className="px-4 py-4 pb-24 space-y-4 max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -53,11 +53,38 @@ export default function UnitsPage() {
         </div>
 
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                  <div className="h-5 w-16 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load units</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+            <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
         ) : units.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Home className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No units found</p>
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <Home className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No units yet</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Units will appear here once added to a property.</p>
           </div>
         ) : (
           <div className="space-y-3">

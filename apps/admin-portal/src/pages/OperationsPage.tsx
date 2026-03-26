@@ -236,8 +236,60 @@ export function OperationsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-56" />
+            <div className="h-4 bg-gray-200 rounded w-72" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 bg-gray-200 rounded w-40" />
+            <div className="h-10 bg-gray-200 rounded-lg w-48" />
+            <div className="h-10 bg-gray-200 rounded-lg w-24" />
+          </div>
+        </div>
+        <div className="flex gap-6 border-b border-gray-200 pb-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-5 bg-gray-200 rounded w-28" />)}
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+                <div className="space-y-1">
+                  <div className="h-6 bg-gray-200 rounded w-16" />
+                  <div className="h-3 bg-gray-200 rounded w-24" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+          <div className="h-5 bg-gray-200 rounded w-48" />
+          <div className="h-64 bg-gray-100 rounded-lg" />
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <div className="p-4 border-b border-gray-200">
+            <div className="h-5 bg-gray-200 rounded w-28" />
+          </div>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-3 h-3 bg-gray-200 rounded-full" />
+                <div className="space-y-1">
+                  <div className="h-4 bg-gray-200 rounded w-32" />
+                  <div className="h-3 bg-gray-200 rounded w-40" />
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="h-4 bg-gray-200 rounded w-12" />
+                <div className="h-4 bg-gray-200 rounded w-12" />
+                <div className="h-4 bg-gray-200 rounded w-12" />
+                <div className="h-5 bg-gray-200 rounded-full w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -457,6 +509,15 @@ export function OperationsPage() {
             </select>
           </div>
 
+          {filteredExceptions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-200">
+              <div className="p-3 bg-green-100 rounded-full mb-3">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No Exceptions</h3>
+              <p className="text-sm text-gray-500 max-w-sm">All clear -- no exceptions match the current filters.</p>
+            </div>
+          )}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="divide-y divide-gray-200">
               {filteredExceptions.map((exception) => (
@@ -531,6 +592,15 @@ export function OperationsPage() {
             <h3 className="font-semibold text-gray-900">Stuck Workflows ({stuckWorkflows.length})</h3>
             <button className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
           </div>
+          {stuckWorkflows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="p-3 bg-green-100 rounded-full mb-3">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No Stuck Workflows</h3>
+              <p className="text-sm text-gray-500 max-w-sm">All workflows are running normally.</p>
+            </div>
+          ) : null}
           <div className="divide-y divide-gray-200">
             {stuckWorkflows.map((workflow) => (
               <div key={workflow.id} className="p-4 hover:bg-gray-50">

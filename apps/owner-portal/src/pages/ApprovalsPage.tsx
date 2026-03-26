@@ -5,9 +5,11 @@ import {
   X,
   Clock,
   AlertCircle,
+  AlertTriangle,
   User,
   Wrench,
   DollarSign,
+  RefreshCw,
 } from 'lucide-react';
 import { api, formatDate } from '../lib/api';
 
@@ -35,13 +37,19 @@ interface Approval {
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('PENDING');
 
   useEffect(() => {
     api.get<Approval[]>('/approvals').then((response) => {
       if (response.success && response.data) {
         setApprovals(response.data);
+      } else {
+        setError('Unable to load approvals data.');
       }
+      setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Unable to load approvals data.');
       setLoading(false);
     });
   }, []);
@@ -105,8 +113,54 @@ export function ApprovalsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-28" />
+            <div className="h-4 bg-gray-200 rounded w-52" />
+          </div>
+          <div className="h-8 bg-gray-200 rounded-full w-28" />
+        </div>
+        <div className="flex gap-2 border-b border-gray-200 pb-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-5 bg-gray-200 rounded w-20" />)}
+        </div>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex items-start gap-4">
+              <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="h-5 bg-gray-200 rounded w-40" />
+                  <div className="h-5 bg-gray-200 rounded-full w-16" />
+                </div>
+                <div className="h-3 bg-gray-200 rounded w-full" />
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="h-3 bg-gray-200 rounded w-32" />
+                  <div className="h-3 bg-gray-200 rounded w-24" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error && approvals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Approvals Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     );
   }
@@ -231,8 +285,18 @@ export function ApprovalsPage() {
       </div>
 
       {filteredApprovals.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No {filter === 'all' ? '' : filter.toLowerCase()} approvals found
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-200">
+          <div className="p-3 bg-green-100 rounded-full mb-3">
+            <CheckSquare className="h-8 w-8 text-green-500" />
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 mb-1">
+            {filter === 'PENDING' ? 'All Caught Up' : 'No Approvals Found'}
+          </h3>
+          <p className="text-sm text-gray-500 max-w-sm">
+            {filter === 'PENDING'
+              ? 'There are no pending approval requests at the moment.'
+              : `No ${filter === 'all' ? '' : filter.toLowerCase()} approvals to display.`}
+          </p>
         </div>
       )}
     </div>

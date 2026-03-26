@@ -33,7 +33,7 @@ const actions = [
 export function QuickActions() {
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+      <h2 className="text-sm font-medium text-gray-400 mb-3">Quick Actions</h2>
       <div className="grid grid-cols-4 gap-3">
         {actions.map((action) => {
           const Icon = action.icon;
@@ -46,7 +46,7 @@ export function QuickActions() {
               <div className={`${action.color} p-3 rounded-xl mb-2`}>
                 <Icon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xs text-gray-600 text-center">{action.label}</span>
+              <span className="text-xs text-gray-400 text-center">{action.label}</span>
             </Link>
           );
         })}

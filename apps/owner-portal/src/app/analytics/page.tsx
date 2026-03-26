@@ -7,6 +7,8 @@ import {
   TrendingUp,
   PieChart,
   ArrowRight,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -29,12 +31,18 @@ export default function AnalyticsPage() {
     noi: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/analytics/summary').then((res) => {
       if (res.success && res.data) {
         setStats(res.data as typeof stats);
+      } else {
+        setError('Unable to load analytics data.');
       }
+      setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Unable to load analytics data.');
       setLoading(false);
     });
   }, []);
@@ -50,8 +58,55 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-44" />
+            <div className="h-4 bg-gray-200 rounded w-52" />
+          </div>
+          <div className="flex gap-3">
+            {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-200 rounded-lg w-28" />)}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+                <div className="h-4 bg-gray-200 rounded w-28" />
+              </div>
+              <div className="h-7 bg-gray-200 rounded w-28" />
+              <div className="h-3 bg-gray-200 rounded w-24" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1,2].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+              <div className="h-5 bg-gray-200 rounded w-32" />
+              <div className="h-64 bg-gray-100 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="p-4 bg-amber-50 rounded-full mb-4">
+          <AlertTriangle className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Analytics Unavailable</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     );
   }

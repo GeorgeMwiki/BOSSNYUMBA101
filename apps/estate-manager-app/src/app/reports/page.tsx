@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home, Package, ClipboardCheck, Users, AlertTriangle } from 'lucide-react';
+import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home, Package, ClipboardCheck, Users, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { reportsService } from '@bossnyumba/api-client';
@@ -74,7 +74,7 @@ const reportTypes: ReportCard[] = [
 ];
 
 export default function ReportsDashboardPage() {
-  const { data: reportsData, isLoading } = useQuery({
+  const { data: reportsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['recent-reports'],
     queryFn: async () => {
       const response = await reportsService.list({ limit: 10 });
@@ -101,7 +101,7 @@ export default function ReportsDashboardPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-6">
+      <div className="px-4 py-4 pb-24 space-y-6">
         {/* Report Types */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Report Types</h2>
@@ -162,22 +162,56 @@ export default function ReportsDashboardPage() {
         {/* Recent Reports */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Recent Reports</h2>
-          <div className="card divide-y divide-gray-100">
-            {recentReports.map((report) => (
-              <div key={report.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">{report.name}</div>
-                    <div className="text-xs text-gray-500">
-                      Generated {new Date(report.generatedAt).toLocaleDateString()}
-                    </div>
+          {isLoading ? (
+            <div className="card divide-y divide-gray-100">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="p-4 animate-pulse flex items-center gap-3">
+                  <div className="w-5 h-5 bg-gray-200 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-1/4" />
                   </div>
                 </div>
-                <button className="text-sm text-primary-600">View</button>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
-            ))}
-          </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load reports</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+              <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Retry
+              </button>
+            </div>
+          ) : recentReports.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                <FileText className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No reports generated yet</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6">Generate your first report to see it here.</p>
+              <Link href="/reports/generate" className="btn-primary text-sm">Generate Report</Link>
+            </div>
+          ) : (
+            <div className="card divide-y divide-gray-100">
+              {recentReports.map((report) => (
+                <div key={report.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium text-sm">{report.name}</div>
+                      <div className="text-xs text-gray-500">
+                        Generated {new Date(report.generatedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <button className="text-sm text-primary-600">View</button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </>

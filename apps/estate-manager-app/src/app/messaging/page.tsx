@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, MessageCircle, ChevronRight, Clock } from 'lucide-react';
+import { Plus, Search, MessageCircle, ChevronRight, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { messagingService } from '@bossnyumba/api-client';
@@ -35,7 +35,7 @@ function formatTime(dateStr: string) {
 export default function MessagingPage() {
   const [search, setSearch] = useState('');
 
-  const { data: conversationsData, isLoading } = useQuery({
+  const { data: conversationsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
       const response = await messagingService.list();
@@ -74,7 +74,7 @@ export default function MessagingPage() {
         }
       />
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-4 pb-24 space-y-4">
         <div className="flex-1 relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -86,6 +86,33 @@ export default function MessagingPage() {
           />
         </div>
 
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-1/4" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                  </div>
+                  <div className="h-3 w-12 bg-gray-200 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Failed to load messages</h3>
+            <p className="text-sm text-gray-500 max-w-xs mb-6">Please check your connection and try again.</p>
+            <button onClick={() => refetch()} className="btn-secondary text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
+        ) : (
         <div className="space-y-3">
           {filteredConversations.map((conv) => (
             <Link key={conv.id} href={`/messaging/${conv.id}`}>
@@ -122,21 +149,24 @@ export default function MessagingPage() {
               </div>
             </Link>
           ))}
-        </div>
 
-        {filteredConversations.length === 0 && (
-          <div className="text-center py-12">
-            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No conversations</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {search ? 'No conversations match your search' : 'Start a new conversation'}
-            </p>
-            {!search && (
-              <Link href="/messaging/new" className="btn-primary mt-4 inline-block">
-                New Message
-              </Link>
-            )}
-          </div>
+          {filteredConversations.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                <MessageCircle className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No conversations</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6">
+                {search ? 'No conversations match your search.' : 'Start a new conversation to get in touch.'}
+              </p>
+              {!search && (
+                <Link href="/messaging/new" className="btn-primary text-sm">
+                  New Message
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
         )}
       </div>
     </>

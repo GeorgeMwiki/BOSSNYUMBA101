@@ -24,8 +24,8 @@ import {
   paymentsService,
 } from '@bossnyumba/api-client';
 
-function formatCurrency(amount: number, currency = 'KES') {
-  return new Intl.NumberFormat('en-KE', {
+function formatCurrency(amount: number, currency = 'TZS') {
+  return new Intl.NumberFormat('en-TZ', {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -33,7 +33,7 @@ function formatCurrency(amount: number, currency = 'KES') {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
+  return new Date(dateStr).toLocaleDateString('en-TZ', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -112,10 +112,55 @@ export default function DashboardPage() {
         showProfile
       />
 
-      <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
+      <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto pb-24">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <div className="space-y-6 animate-pulse">
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-32 mb-3" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="card p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                      <div className="space-y-2">
+                        <div className="h-6 bg-gray-200 rounded w-12" />
+                        <div className="h-3 bg-gray-200 rounded w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="card p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                      <div className="space-y-2">
+                        <div className="h-6 bg-gray-200 rounded w-12" />
+                        <div className="h-3 bg-gray-200 rounded w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="h-4 bg-gray-200 rounded w-28 mb-3" />
+              <div className="card divide-y divide-gray-100">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-3 flex justify-between items-center">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-24" />
+                      <div className="h-3 bg-gray-200 rounded w-16" />
+                    </div>
+                    <div className="h-5 bg-gray-200 rounded-full w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>

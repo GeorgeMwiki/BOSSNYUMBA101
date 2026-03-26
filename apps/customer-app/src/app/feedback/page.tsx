@@ -48,15 +48,15 @@ export default function FeedbackPage() {
     return (
       <>
         <PageHeader title="Submit Feedback" showBack />
-        <div className="px-4 py-4">
-          <div className="card p-6 bg-success-50 border-success-200 text-center">
-            <div className="w-12 h-12 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Send className="w-6 h-6 text-white" />
+        <div className="px-4 py-4 pb-24">
+          <div className="card p-6 text-center">
+            <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Send className="w-6 h-6 text-green-400" />
             </div>
-            <h3 className="font-semibold text-success-900">
+            <h3 className="font-semibold text-white">
               Thank you for your feedback!
             </h3>
-            <p className="text-sm text-success-700 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               We appreciate you taking the time to help us improve.
             </p>
             <div className="flex gap-3 mt-6 justify-center">
@@ -83,15 +83,15 @@ export default function FeedbackPage() {
         action={
           <Link
             href="/feedback/history"
-            className="p-2 rounded-lg hover:bg-gray-100 text-sm text-gray-600"
+            className="p-2 rounded-lg hover:bg-white/10 text-sm text-gray-400"
           >
             History
           </Link>
         }
       />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
-        <p className="text-sm text-gray-500">
+      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-24">
+        <p className="text-sm text-gray-400">
           Share your suggestions, report issues, or let us know what we&apos;re
           doing well.
         </p>
@@ -107,7 +107,7 @@ export default function FeedbackPage() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   formData.type === type.value
                     ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-surface-card text-gray-400 hover:bg-white/10'
                 }`}
               >
                 {type.label}

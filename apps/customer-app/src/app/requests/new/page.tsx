@@ -83,7 +83,7 @@ export default function NewRequestPage() {
     <>
       <PageHeader title="New Request" showBack />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-8">
+      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-24">
         {/* Category */}
         <section>
           <label className="label">What type of issue?</label>
@@ -117,7 +117,7 @@ export default function NewRequestPage() {
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                     formData.description === preset
                       ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-surface-card text-gray-400 hover:bg-white/10'
                   }`}
                 >
                   {preset}
@@ -148,11 +148,11 @@ export default function NewRequestPage() {
                   onClick={() => setFormData({ ...formData, location: loc.value })}
                   className={`card p-3 text-left transition-all ${
                     isSelected
-                      ? 'ring-2 ring-primary-500 bg-primary-50'
-                      : 'hover:bg-gray-50'
+                      ? 'ring-2 ring-primary-500 bg-primary-500/20'
+                      : 'hover:bg-white/5'
                   }`}
                 >
-                  <span className="font-medium text-sm">{loc.label}</span>
+                  <span className="font-medium text-sm text-white">{loc.label}</span>
                 </button>
               );
             })}
@@ -175,17 +175,17 @@ export default function NewRequestPage() {
             <input
               type="checkbox"
               id="permission"
-              className="mt-1 rounded border-gray-300"
+              className="mt-1 rounded border-white/20 bg-surface-card"
               checked={formData.permissionToEnter}
               onChange={(e) =>
                 setFormData({ ...formData, permissionToEnter: e.target.checked })
               }
             />
             <div>
-              <label htmlFor="permission" className="font-medium text-sm cursor-pointer">
+              <label htmlFor="permission" className="font-medium text-sm text-white cursor-pointer">
                 Permission to enter if I&apos;m not home
               </label>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Allow maintenance staff to enter your unit to address this issue
               </p>
             </div>
@@ -207,11 +207,11 @@ export default function NewRequestPage() {
                   }
                   className={`card p-3 w-full text-left transition-all ${
                     isSelected
-                      ? 'ring-2 ring-primary-500 bg-primary-50'
-                      : 'hover:bg-gray-50'
+                      ? 'ring-2 ring-primary-500 bg-primary-500/20'
+                      : 'hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-sm">{slot.label}</span>
+                  <span className="text-sm text-white">{slot.label}</span>
                 </button>
               );
             })}
@@ -220,12 +220,12 @@ export default function NewRequestPage() {
 
         {/* SLA Info */}
         {selectedPriority && (
-          <div className="bg-primary-50 rounded-lg p-4 flex items-start gap-3">
-            <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
+          <div className="bg-primary-500/10 border border-primary-500/20 rounded-lg p-4 flex items-start gap-3">
+            <Info className="w-5 h-5 text-primary-400 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-medium text-primary-900">Expected Response</p>
-              <p className="text-primary-700">
-                We aim to respond within <strong>{selectedPriority.sla}</strong>.
+              <p className="font-medium text-white">Expected Response</p>
+              <p className="text-gray-400">
+                We aim to respond within <strong className="text-white">{selectedPriority.sla}</strong>.
               </p>
             </div>
           </div>
