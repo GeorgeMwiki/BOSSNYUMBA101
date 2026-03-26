@@ -22,8 +22,25 @@ export default function EditProfilePage() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const updateProfileMutation = useMutation<
+    unknown,
+    { firstName: string; lastName: string; email: string; phone: string; emergencyContactName: string; emergencyContactPhone: string }
+  >(
+    (client, variables) => client.put('/customers/profile', variables),
+    {
+      onSuccess: () => {
+        setMessage({ type: 'success', text: 'Profile updated successfully' });
+        router.back();
+      },
+      onError: () => {
+        setMessage({ type: 'error', text: 'Failed to update profile' });
+      },
+    }
+  );
+
+  const saving = updateProfileMutation.isLoading;
 
   useEffect(() => {
     async function loadProfile() {
@@ -54,20 +71,10 @@ export default function EditProfilePage() {
     setMessage(null);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setMessage(null);
-
-    try {
-      await api.profile.update(formData);
-      setMessage({ type: 'success', text: 'Profile updated successfully' });
-      setTimeout(() => router.back(), 1500);
-    } catch {
-      setMessage({ type: 'error', text: 'Failed to update profile' });
-    } finally {
-      setSaving(false);
-    }
+    updateProfileMutation.mutate(formData);
   };
 
   if (loading) {
