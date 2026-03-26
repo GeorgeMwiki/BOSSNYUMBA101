@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Send, User, Building2, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useQuery } from '@tanstack/react-query';
-import { customersService } from '@bossnyumba/api-client';
+import { customersService, staffService } from '@bossnyumba/api-client';
 
 export default function NewConversationPage() {
   const router = useRouter();
@@ -27,6 +27,15 @@ export default function NewConversationPage() {
     },
   });
 
+  const { data: staffData } = useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => {
+      const response = await staffService.list({ isActive: true });
+      return response.data;
+    },
+    enabled: formData.recipientType === 'staff',
+  });
+
   const tenants = (customersData ?? []).map((c: any) => ({
     id: c.id,
     name: `${c.firstName} ${c.lastName}`,
@@ -34,10 +43,11 @@ export default function NewConversationPage() {
     property: c.propertyName ?? '',
   }));
 
-  const staff = [
-    { id: 'maintenance-team', name: 'Maintenance Team', role: 'Maintenance' },
-    { id: 'property-manager', name: 'Property Manager', role: 'Management' },
-  ];
+  const staff = (staffData ?? []).map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    role: s.role ?? 'Staff',
+  }));
 
   const recipients = formData.recipientType === 'tenant' ? tenants : staff;
   const filteredRecipients = recipients.filter((r) =>

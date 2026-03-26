@@ -68,3 +68,4 @@ export * from './services/assets';
 export * from './services/condition-surveys';
 export * from './services/subleases';
 export * from './services/financial-profiles';
+export * from './services/staff';
