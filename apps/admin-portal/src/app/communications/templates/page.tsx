@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText,
   Mail,
@@ -9,7 +9,10 @@ import {
   MoreVertical,
   Edit,
   Copy,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
+import { api } from '../../../lib/api';
 
 interface Template {
   id: string;
@@ -21,66 +24,87 @@ interface Template {
   usageCount: number;
 }
 
-const templates: Template[] = [
-  {
-    id: '1',
-    name: 'Rent Reminder',
-    type: 'email',
-    subject: 'Rent payment due - {{property}}',
-    category: 'Billing',
-    lastUpdated: '2025-01-15',
-    usageCount: 3420,
-  },
-  {
-    id: '2',
-    name: 'Payment Confirmation',
-    type: 'email',
-    subject: 'Payment received - {{amount}}',
-    category: 'Billing',
-    lastUpdated: '2025-01-10',
-    usageCount: 8900,
-  },
-  {
-    id: '3',
-    name: 'Welcome New Tenant',
-    type: 'email',
-    subject: 'Welcome to {{property}}',
-    category: 'Onboarding',
-    lastUpdated: '2025-01-05',
-    usageCount: 1240,
-  },
-  {
-    id: '4',
-    name: 'Maintenance Alert',
-    type: 'sms',
-    subject: 'Urgent: Maintenance scheduled',
-    category: 'Operations',
-    lastUpdated: '2025-01-12',
-    usageCount: 560,
-  },
-  {
-    id: '5',
-    name: 'Lease Renewal',
-    type: 'email',
-    subject: 'Your lease is expiring soon',
-    category: 'Leasing',
-    lastUpdated: '2024-12-20',
-    usageCount: 432,
-  },
-  {
-    id: '6',
-    name: 'OTP Verification',
-    type: 'sms',
-    subject: 'Your verification code: {{code}}',
-    category: 'Security',
-    lastUpdated: '2025-01-01',
-    usageCount: 15200,
-  },
-];
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="h-7 w-56 bg-gray-200 rounded" />
+          <div className="h-4 w-72 bg-gray-200 rounded mt-2" />
+        </div>
+        <div className="h-10 w-36 bg-gray-200 rounded-lg" />
+      </div>
+      <div className="flex gap-4">
+        <div className="flex-1 h-10 bg-gray-200 rounded-lg" />
+        <div className="w-32 h-10 bg-gray-200 rounded-lg" />
+        <div className="w-28 h-10 bg-gray-200 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+              <div className="flex gap-1">
+                <div className="w-8 h-8 bg-gray-200 rounded-lg" />
+                <div className="w-8 h-8 bg-gray-200 rounded-lg" />
+              </div>
+            </div>
+            <div className="h-5 w-32 bg-gray-200 rounded" />
+            <div className="h-4 w-48 bg-gray-200 rounded mt-2" />
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <div className="h-5 w-16 bg-gray-200 rounded" />
+              <div className="h-4 w-20 bg-gray-200 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function CommunicationsTemplatesPage() {
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const res = await api.get<Template[]>('/communications/templates');
+    if (res.success && res.data) {
+      setTemplates(res.data);
+    } else {
+      setError(res.error || 'Failed to load templates');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900">Failed to Load Templates</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
+        <button
+          onClick={fetchTemplates}
+          className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   const filteredTemplates = templates.filter((t) => {
     const matchesSearch =
@@ -135,58 +159,70 @@ export default function CommunicationsTemplatesPage() {
       </div>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTemplates.map((template) => (
-          <div
-            key={template.id}
-            className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`p-2 rounded-lg ${
-                  template.type === 'email' ? 'bg-blue-100' : 'bg-green-100'
-                }`}
-              >
-                {template.type === 'email' ? (
-                  <Mail className="h-5 w-5 text-blue-600" />
-                ) : (
-                  <MessageSquare className="h-5 w-5 text-green-600" />
-                )}
+      {filteredTemplates.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTemplates.map((template) => (
+            <div
+              key={template.id}
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className={`p-2 rounded-lg ${
+                    template.type === 'email' ? 'bg-blue-100' : 'bg-green-100'
+                  }`}
+                >
+                  {template.type === 'email' ? (
+                    <Mail className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <MessageSquare className="h-5 w-5 text-green-600" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <Edit className="h-4 w-4 text-gray-500" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <Copy className="h-4 w-4 text-gray-500" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <MoreVertical className="h-4 w-4 text-gray-500" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <Edit className="h-4 w-4 text-gray-500" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <Copy className="h-4 w-4 text-gray-500" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <MoreVertical className="h-4 w-4 text-gray-500" />
-                </button>
+              <h3 className="font-semibold text-gray-900">{template.name}</h3>
+              <p className="text-sm text-gray-500 mt-1 truncate">
+                {template.subject}
+              </p>
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                  {template.category}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {template.usageCount.toLocaleString()} uses
+                </span>
               </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Updated {new Date(template.lastUpdated).toLocaleDateString()}
+              </p>
             </div>
-            <h3 className="font-semibold text-gray-900">{template.name}</h3>
-            <p className="text-sm text-gray-500 mt-1 truncate">
-              {template.subject}
-            </p>
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-              <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                {template.category}
-              </span>
-              <span className="text-xs text-gray-500">
-                {template.usageCount.toLocaleString()} uses
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Updated {new Date(template.lastUpdated).toLocaleDateString()}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {filteredTemplates.length === 0 && (
+          ))}
+        </div>
+      ) : templates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <FileText className="h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900">No Templates Yet</h3>
+          <p className="text-sm text-gray-500 mt-1 max-w-md">
+            Create your first email or SMS template to get started with automated communications.
+          </p>
+          <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+            <Plus className="h-4 w-4" />
+            New Template
+          </button>
+        </div>
+      ) : (
         <div className="text-center py-12 text-gray-500">
-          No templates found
+          No templates match your search
         </div>
       )}
     </div>

@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Megaphone } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { propertiesService, getApiClient } from '@bossnyumba/api-client';
+import { Megaphone, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type Priority = 'normal' | 'important' | 'urgent';
@@ -19,11 +21,36 @@ export default function CreateAnnouncementPage() {
     isPinned: false,
   });
 
+  const { data: properties, isLoading: isLoadingProperties } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => {
+      const response = await propertiesService.list();
+      return response.data;
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const response = await getApiClient().post('/announcements', {
+        title: data.title,
+        content: data.content,
+        priority: data.priority,
+        propertyId: data.propertyId || undefined,
+        publishNow: data.publishNow,
+        expiresAt: data.expiresAt || undefined,
+        isPinned: data.isPinned,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push('/announcements');
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
-    // In real app: API call to create announcement
-    router.push('/announcements');
+    createMutation.mutate(formData);
   };
 
   return (
@@ -74,10 +101,14 @@ export default function CreateAnnouncementPage() {
               className="input"
               value={formData.propertyId}
               onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
+              disabled={isLoadingProperties}
             >
               <option value="">All Properties</option>
-              <option value="1">Sunset Apartments</option>
-              <option value="2">Riverside Towers</option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -101,6 +132,12 @@ export default function CreateAnnouncementPage() {
             />
             <label htmlFor="isPinned" className="text-sm">Pin to top</label>
           </div>
+
+          {createMutation.isError && (
+            <p className="text-sm text-red-600">
+              {(createMutation.error as Error)?.message || 'Failed to create announcement'}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -110,10 +147,14 @@ export default function CreateAnnouncementPage() {
           <button
             type="submit"
             className="btn-primary flex-1 flex items-center justify-center gap-2"
-            disabled={!formData.title || !formData.content}
+            disabled={!formData.title || !formData.content || createMutation.isPending}
           >
-            <Megaphone className="w-4 h-4" />
-            Publish Announcement
+            {createMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Megaphone className="w-4 h-4" />
+            )}
+            {createMutation.isPending ? 'Publishing...' : 'Publish Announcement'}
           </button>
         </div>
       </form>

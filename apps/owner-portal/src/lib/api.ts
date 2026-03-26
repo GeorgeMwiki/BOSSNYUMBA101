@@ -76,11 +76,17 @@ export const api = {
     }),
 
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+
+  put: <T>(endpoint: string, body?: unknown) =>
+    request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
 };
 
 // Utility functions for formatting
 const DEFAULT_LOCALE = 'en-TZ';
-const DEFAULT_CURRENCY = 'KES';
+const DEFAULT_CURRENCY = 'TZS';
 
 export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat(DEFAULT_LOCALE, {

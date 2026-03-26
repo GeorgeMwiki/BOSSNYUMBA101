@@ -71,7 +71,7 @@ export const api = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 
-export function formatCurrency(amount: number, currency = 'KES'): string {
+export function formatCurrency(amount: number, currency = 'TZS'): string {
   return new Intl.NumberFormat('en-TZ', {
     style: 'currency',
     currency,

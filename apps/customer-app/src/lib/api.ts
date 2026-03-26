@@ -116,6 +116,14 @@ export const api = {
     async getPaymentPlan(id: string) {
       return requireLiveData(() => ensureClient().get(`/payments/plans/${id}`));
     },
+
+    async initiateMpesa(data: { amount: number; phoneNumber: string }) {
+      return requireLiveData(() => ensureClient().post('/payments/mpesa/initiate', data));
+    },
+
+    async confirmBankTransfer(data: { amount: number; reference: string }) {
+      return requireLiveData(() => ensureClient().post('/payments/bank-transfer/confirm', data));
+    },
   },
 
   lease: {
