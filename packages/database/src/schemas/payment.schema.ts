@@ -58,6 +58,7 @@ export const paymentStatusEnum = pgEnum('payment_status', [
 
 export const paymentMethodEnum = pgEnum('payment_method', [
   'mpesa',
+  'gepg',
   'bank_transfer',
   'card',
   'cash',

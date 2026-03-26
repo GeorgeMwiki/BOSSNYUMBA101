@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home } from 'lucide-react';
+import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home, Package, ClipboardCheck, Users, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface ReportCard {
@@ -40,6 +40,34 @@ const reportTypes: ReportCard[] = [
     description: 'Inspection completion and conditions',
     icon: FileText,
     href: '/reports/generate?type=inspections',
+  },
+  {
+    id: 'asset_register',
+    title: 'Asset Register Report',
+    description: 'Occupied vs unoccupied assets by district/station',
+    icon: Package,
+    href: '/reports/generate?type=asset_register',
+  },
+  {
+    id: 'condition_survey',
+    title: 'Condition Survey Report',
+    description: 'Asset conditions, defects, and repair estimates',
+    icon: ClipboardCheck,
+    href: '/reports/generate?type=condition_survey',
+  },
+  {
+    id: 'contract_status',
+    title: 'Contract Status Report',
+    description: 'Valid, expired, and terminated lease contracts',
+    icon: Users,
+    href: '/reports/generate?type=contract_status',
+  },
+  {
+    id: 'collections',
+    title: 'Collections & Arrears Report',
+    description: 'Debt aging, arrears by district, recovery rates',
+    icon: AlertTriangle,
+    href: '/reports/generate?type=collections',
   },
 ];
 

@@ -22,6 +22,14 @@ export * from './occupancy.schema.js';
 export * from './cases.schema.js';
 export * from './communications.schema.js';
 
+// TRC-specific schemas
+export * from './trc-organization.schema.js';
+export * from './land-parcels.schema.js';
+export * from './applications.schema.js';
+export * from './asset-register.schema.js';
+export * from './financial-profiles.schema.js';
+export * from './sublease-monitoring.schema.js';
+
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';

@@ -5,13 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, FileText, Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
+type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections' | 'asset_register' | 'condition_survey' | 'contract_status' | 'collections';
 
 const reportTypes: Record<ReportType, { label: string; description: string }> = {
   occupancy: { label: 'Occupancy Report', description: 'Unit occupancy rates, vacancies, and trends' },
   revenue: { label: 'Revenue Report', description: 'Rent collection, payment history, and arrears' },
   maintenance: { label: 'Maintenance Report', description: 'Work orders, costs, and completion metrics' },
   inspections: { label: 'Inspections Report', description: 'Inspection completion and condition summaries' },
+  asset_register: { label: 'Asset Register Report', description: 'Occupied vs unoccupied assets by district and station' },
+  condition_survey: { label: 'Condition Survey Report', description: 'Asset conditions, defects found, and repair cost estimates' },
+  contract_status: { label: 'Contract Status Report', description: 'Valid, expired, and terminated lease contracts' },
+  collections: { label: 'Collections & Arrears Report', description: 'Debt aging buckets, arrears by district, recovery rates' },
 };
 
 export default function GenerateReportPage() {
@@ -25,6 +29,8 @@ export default function GenerateReportPage() {
     dateTo: new Date().toISOString().split('T')[0],
     format: 'pdf' as 'pdf' | 'csv' | 'excel',
     propertyId: '',
+    interval: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi_annual' | 'annual',
+    district: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -75,6 +81,41 @@ export default function GenerateReportPage() {
               />
             </div>
           </div>
+
+          {formData.type === 'revenue' && (
+            <div>
+              <label className="label">Report Interval</label>
+              <select
+                className="input"
+                value={formData.interval}
+                onChange={(e) => setFormData({ ...formData, interval: e.target.value as typeof formData.interval })}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="semi_annual">Semi-Annual</option>
+                <option value="annual">Annual</option>
+              </select>
+            </div>
+          )}
+
+          {['asset_register', 'condition_survey', 'contract_status', 'collections', 'revenue'].includes(formData.type) && (
+            <div>
+              <label className="label">District (optional)</label>
+              <select
+                className="input"
+                value={formData.district}
+                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+              >
+                <option value="">All Districts</option>
+                <option value="DAR">Dar es Salaam</option>
+                <option value="DOD">Dodoma</option>
+                <option value="TAB">Tabora</option>
+                <option value="TAN">Tanga</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="label">Property (optional)</label>
