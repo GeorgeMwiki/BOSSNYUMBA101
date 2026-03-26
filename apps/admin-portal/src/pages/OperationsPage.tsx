@@ -103,6 +103,8 @@ export function OperationsPage() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assigneeInput, setAssigneeInput] = useState('');
   const queryClient = useQueryClient();
 
   const { data: systemHealth = [], isLoading: loadingHealth } = useQuery({
@@ -573,10 +575,44 @@ export function OperationsPage() {
                       <button onClick={() => navigate('/operations/exceptions/' + exception.id)} className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
                         <Eye className="h-4 w-4" />
                       </button>
-                      {exception.status !== 'resolved' && (
-                        <button onClick={async () => { const assignee = prompt('Assign to user ID:'); if (!assignee) return; try { setNotification(null); await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assignee }); queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] }); setNotification({ type: 'success', message: 'Exception assigned successfully' }); } catch (err) { setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to assign exception' }); } }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+                      {exception.status !== 'resolved' && assigningId !== exception.id && (
+                        <button onClick={() => { setAssigningId(exception.id); setAssigneeInput(''); }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                           Assign
                         </button>
+                      )}
+                      {assigningId === exception.id && (
+                        <form
+                          className="flex items-center gap-2"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!assigneeInput.trim()) return;
+                            try {
+                              setNotification(null);
+                              await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assigneeInput.trim() });
+                              queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] });
+                              setNotification({ type: 'success', message: 'Exception assigned successfully' });
+                              setAssigningId(null);
+                              setAssigneeInput('');
+                            } catch (err) {
+                              setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to assign exception' });
+                            }
+                          }}
+                        >
+                          <input
+                            type="text"
+                            value={assigneeInput}
+                            onChange={(e) => setAssigneeInput(e.target.value)}
+                            placeholder="User ID"
+                            className="w-32 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                            autoFocus
+                          />
+                          <button type="submit" className="px-2 py-1 text-sm text-white bg-violet-600 rounded-lg hover:bg-violet-700">
+                            Save
+                          </button>
+                          <button type="button" onClick={() => { setAssigningId(null); setAssigneeInput(''); }} className="px-2 py-1 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                            Cancel
+                          </button>
+                        </form>
                       )}
                     </div>
                   </div>

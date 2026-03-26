@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@bossnyumba/design-system';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '../lib/api';
@@ -54,6 +55,7 @@ function LoadingSkeleton() {
 }
 
 export default function AdminPortalHome() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,13 +164,13 @@ export default function AdminPortalHome() {
               <CardDescription>Manage organizations on the platform</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/tenants/onboard')}>
                 Create New Tenant
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/tenants')}>
                 View All Tenants
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/billing')}>
                 Subscription Management
               </Button>
             </CardContent>
@@ -180,13 +182,13 @@ export default function AdminPortalHome() {
               <CardDescription>System administration tools</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/audit')}>
                 Audit Logs
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/operations')}>
                 System Health
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/integrations')}>
                 Feature Flags
               </Button>
             </CardContent>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -72,7 +72,8 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
+    setLoading(true);
     api
       .get<DashboardData>('/dashboard/admin')
       .then((response) => {
@@ -97,6 +98,10 @@ export function DashboardPage() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -152,7 +157,7 @@ export function DashboardPage() {
         <h2 className="text-lg font-semibold text-gray-900">Dashboard Unavailable</h2>
         <p className="text-sm text-gray-500 max-w-md text-center">{error ?? 'Live admin dashboard data is unavailable. Please check your connection and try again.'}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchStats()}
           className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <Activity className="h-4 w-4" />

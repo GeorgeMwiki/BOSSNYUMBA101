@@ -17,6 +17,7 @@ export function TenantsPage() {
     data: tenant,
     isLoading: loadingTenant,
     error: tenantError,
+    refetch: refetchTenant,
   } = useQuery({
     queryKey: ['admin-tenants-current'],
     queryFn: async () => {
@@ -31,6 +32,7 @@ export function TenantsPage() {
     data: subscription,
     isLoading: loadingSub,
     error: subError,
+    refetch: refetchSubscription,
   } = useQuery({
     queryKey: ['admin-tenants-subscription'],
     queryFn: async () => {
@@ -45,6 +47,7 @@ export function TenantsPage() {
     data: properties,
     isLoading: loadingProps,
     error: propsError,
+    refetch: refetchProperties,
   } = useQuery({
     queryKey: ['admin-tenants-properties'],
     queryFn: async () => {
@@ -117,7 +120,7 @@ export function TenantsPage() {
           {error instanceof Error ? error.message : 'Unable to load tenant directory. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchTenant(); refetchSubscription(); refetchProperties(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

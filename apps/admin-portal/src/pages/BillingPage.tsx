@@ -17,6 +17,7 @@ export function BillingPage() {
     data: invoices,
     isLoading: loadingInvoices,
     error: invoicesError,
+    refetch: refetchInvoices,
   } = useQuery({
     queryKey: ['admin-invoices'],
     queryFn: async () => {
@@ -31,6 +32,7 @@ export function BillingPage() {
     data: payments,
     isLoading: loadingPayments,
     error: paymentsError,
+    refetch: refetchPayments,
   } = useQuery({
     queryKey: ['admin-payments'],
     queryFn: async () => {
@@ -92,7 +94,7 @@ export function BillingPage() {
           {error instanceof Error ? error.message : 'Unable to load billing data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchInvoices(); refetchPayments(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

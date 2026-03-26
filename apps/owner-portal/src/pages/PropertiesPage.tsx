@@ -24,7 +24,9 @@ export function PropertiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  const fetchProperties = () => {
+    setLoading(true);
+    setError(null);
     api.get<Property[]>('/properties').then((response) => {
       if (response.success && response.data) {
         setProperties(response.data);
@@ -36,6 +38,10 @@ export function PropertiesPage() {
       setError(err instanceof Error ? err.message : 'Unable to load properties data.');
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchProperties();
   }, []);
 
   const filteredProperties = properties.filter((p) =>
@@ -86,7 +92,7 @@ export function PropertiesPage() {
         <h2 className="text-lg font-semibold text-gray-900">Properties Unavailable</h2>
         <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchProperties()}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
         >
           <RefreshCw className="h-4 w-4" />

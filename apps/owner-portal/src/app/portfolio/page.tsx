@@ -34,7 +34,9 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchPortfolio = () => {
+    setLoading(true);
+    setError(null);
     Promise.all([
       api.get<PortfolioSummary>('/portfolio/summary'),
       api.get<typeof properties>('/properties'),
@@ -50,6 +52,10 @@ export default function PortfolioPage() {
       setError(err instanceof Error ? err.message : 'Failed to load portfolio data.');
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchPortfolio();
   }, []);
 
   if (loading) {
@@ -71,7 +77,7 @@ export default function PortfolioPage() {
           <Building2 className="h-12 w-12 text-red-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">Failed to load portfolio</h3>
           <p className="text-gray-500 mb-4">{error}</p>
-          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          <button onClick={() => fetchPortfolio()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
             Try Again
           </button>
         </div>

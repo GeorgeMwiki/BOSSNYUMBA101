@@ -17,6 +17,7 @@ export default function AnalyticsPage() {
     data: financialReport,
     isLoading: loadingFinancial,
     error: financialError,
+    refetch: refetchFinancial,
   } = useQuery({
     queryKey: ['admin-analytics-financial'],
     queryFn: async () => {
@@ -31,6 +32,7 @@ export default function AnalyticsPage() {
     data: occupancy,
     isLoading: loadingOccupancy,
     error: occupancyError,
+    refetch: refetchOccupancy,
   } = useQuery({
     queryKey: ['admin-analytics-occupancy'],
     queryFn: async () => {
@@ -45,6 +47,7 @@ export default function AnalyticsPage() {
     data: customers,
     isLoading: loadingCustomers,
     error: customersError,
+    refetch: refetchCustomers,
   } = useQuery({
     queryKey: ['admin-analytics-customers'],
     queryFn: async () => {
@@ -101,7 +104,7 @@ export default function AnalyticsPage() {
           {error instanceof Error ? error.message : 'Unable to load analytics data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchFinancial(); refetchOccupancy(); refetchCustomers(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

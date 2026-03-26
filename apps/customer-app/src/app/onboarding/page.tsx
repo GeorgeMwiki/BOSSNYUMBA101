@@ -235,19 +235,8 @@ export default function OnboardingPage() {
               const isCurrent = step.status === 'current';
               const isUpcoming = step.status === 'upcoming';
 
-              return (
-                <Link
-                  key={step.id}
-                  href={isUpcoming ? '#' : step.href}
-                  className={`flex items-center gap-4 p-4 transition-colors ${
-                    isUpcoming
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onClick={(e) => {
-                    if (isUpcoming) e.preventDefault();
-                  }}
-                >
+              const stepContent = (
+                <>
                   {/* Step indicator */}
                   <div className="relative">
                     {isCompleted ? (
@@ -302,6 +291,23 @@ export default function OnboardingPage() {
                   {isCurrent && (
                     <ChevronRight className="w-5 h-5 text-primary-500" />
                   )}
+                </>
+              );
+
+              return isUpcoming ? (
+                <div
+                  key={step.id}
+                  className="flex items-center gap-4 p-4 transition-colors opacity-50 cursor-not-allowed"
+                >
+                  {stepContent}
+                </div>
+              ) : (
+                <Link
+                  key={step.id}
+                  href={step.href}
+                  className="flex items-center gap-4 p-4 transition-colors hover:bg-gray-50"
+                >
+                  {stepContent}
                 </Link>
               );
             })}

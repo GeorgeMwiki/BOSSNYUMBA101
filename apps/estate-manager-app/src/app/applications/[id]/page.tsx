@@ -23,6 +23,8 @@ export default function ApplicationDetailPage() {
   const applicationId = params.id as string;
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showForwardInput, setShowForwardInput] = useState(false);
+  const [forwardDest, setForwardDest] = useState('');
 
   const { data: application, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['application', applicationId],
@@ -221,19 +223,47 @@ export default function ApplicationDetailPage() {
           </div>
         )}
 
+        {showForwardInput && (
+          <div className="card p-4 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Forward to (organization/user ID)</label>
+            <input
+              type="text"
+              value={forwardDest}
+              onChange={(e) => setForwardDest(e.target.value)}
+              placeholder="Enter organization or user ID"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!forwardDest.trim()) return;
+                  try {
+                    setActionError(null);
+                    const client = (await import('@bossnyumba/api-client')).getApiClient();
+                    await client.post(`/applications/${applicationId}/route`, { toOrganizationId: forwardDest.trim() });
+                    queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
+                    setShowForwardInput(false);
+                    setForwardDest('');
+                  } catch (err) {
+                    setActionError(err instanceof Error ? err.message : 'Failed to forward application');
+                  }
+                }}
+                className="btn-primary text-sm flex-1"
+              >
+                Submit
+              </button>
+              <button
+                onClick={() => { setShowForwardInput(false); setForwardDest(''); }}
+                className="btn-secondary text-sm flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3">
-          <button onClick={async () => {
-            const dest = prompt('Forward to (organization/user ID):');
-            if (!dest) return;
-            try {
-              setActionError(null);
-              const client = (await import('@bossnyumba/api-client')).getApiClient();
-              await client.post(`/applications/${applicationId}/route`, { toOrganizationId: dest });
-              queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
-            } catch (err) {
-              setActionError(err instanceof Error ? err.message : 'Failed to forward application');
-            }
-          }} className="btn-secondary flex-1 flex items-center justify-center gap-2">
+          <button onClick={() => setShowForwardInput(true)} className="btn-secondary flex-1 flex items-center justify-center gap-2">
             <Send className="w-4 h-4" /> Forward
           </button>
           <button onClick={async () => {

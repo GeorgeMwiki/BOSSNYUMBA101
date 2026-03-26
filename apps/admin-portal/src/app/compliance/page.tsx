@@ -18,6 +18,7 @@ export default function CompliancePage() {
     data: documents,
     isLoading: loadingDocs,
     error: docsError,
+    refetch: refetchDocs,
   } = useQuery({
     queryKey: ['admin-compliance-overview-docs'],
     queryFn: async () => {
@@ -32,6 +33,7 @@ export default function CompliancePage() {
     data: tenant,
     isLoading: loadingTenants,
     error: tenantsError,
+    refetch: refetchTenant,
   } = useQuery({
     queryKey: ['admin-compliance-overview-tenant'],
     queryFn: async () => {
@@ -92,7 +94,7 @@ export default function CompliancePage() {
           {error instanceof Error ? error.message : 'Unable to load compliance data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchDocs(); refetchTenant(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

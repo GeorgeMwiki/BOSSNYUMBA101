@@ -38,9 +38,12 @@ export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('PENDING');
 
-  useEffect(() => {
+  const fetchApprovals = () => {
+    setLoading(true);
+    setError(null);
     api.get<Approval[]>('/approvals').then((response) => {
       if (response.success && response.data) {
         setApprovals(response.data);
@@ -52,35 +55,53 @@ export function ApprovalsPage() {
       setError(err instanceof Error ? err.message : 'Unable to load approvals data.');
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchApprovals();
   }, []);
 
   const handleApprove = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/approve`, {
-      decision: 'Approved',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'APPROVED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
+    setActionError(null);
+    try {
+      const response = await api.post(`/approvals/${id}/approve`, {
+        decision: 'Approved',
+      });
+      if (response.success) {
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, status: 'APPROVED', decidedAt: new Date().toISOString() }
+              : a
+          )
+        );
+      } else {
+        setActionError('Failed to approve request. Please try again.');
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to approve request. Please try again.');
     }
   };
 
   const handleReject = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/reject`, {
-      decision: 'Rejected',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'REJECTED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
+    setActionError(null);
+    try {
+      const response = await api.post(`/approvals/${id}/reject`, {
+        decision: 'Rejected',
+      });
+      if (response.success) {
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, status: 'REJECTED', decidedAt: new Date().toISOString() }
+              : a
+          )
+        );
+      } else {
+        setActionError('Failed to reject request. Please try again.');
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reject request. Please try again.');
     }
   };
 
@@ -155,7 +176,7 @@ export function ApprovalsPage() {
         <h2 className="text-lg font-semibold text-gray-900">Approvals Unavailable</h2>
         <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchApprovals()}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
         >
           <RefreshCw className="h-4 w-4" />
@@ -167,6 +188,17 @@ export function ApprovalsPage() {
 
   return (
     <div className="space-y-6">
+      {actionError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700">{actionError}</p>
+          </div>
+          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Approvals</h1>

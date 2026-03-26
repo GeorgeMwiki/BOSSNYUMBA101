@@ -23,6 +23,7 @@ export function UsersPage() {
     data: users,
     isLoading,
     error,
+    refetch: refetchUsers,
   } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -81,7 +82,7 @@ export function UsersPage() {
           {error instanceof Error ? error.message : 'Unable to load user data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => refetchUsers()}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

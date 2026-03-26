@@ -25,6 +25,12 @@ export default function VendorsList() {
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {vendorsQuery.isLoading && <div className="card p-4 text-sm text-gray-500">Loading vendors...</div>}
         {vendorsQuery.error && <div className="card p-4 text-sm text-danger-600">{(vendorsQuery.error as Error).message}</div>}
+        {!vendorsQuery.isLoading && !vendorsQuery.error && vendors.length === 0 && (
+          <div className="card p-8 text-center">
+            <p className="text-gray-500 font-medium">No vendors found</p>
+            <p className="text-sm text-gray-400 mt-1">Vendors will appear here once added.</p>
+          </div>
+        )}
         {vendors.map((vendor: any) => (
           <Link key={vendor.id} href={`/vendors/${vendor.id}`} className="card block p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">

@@ -19,6 +19,7 @@ export default function AICockpit() {
     data: maintenanceReport,
     isLoading: loadingMaintenance,
     error: maintenanceError,
+    refetch: refetchMaintenance,
   } = useQuery({
     queryKey: ['admin-ai-cockpit-maintenance'],
     queryFn: async () => {
@@ -33,6 +34,7 @@ export default function AICockpit() {
     data: slaMetrics,
     isLoading: loadingSLA,
     error: slaError,
+    refetch: refetchSLA,
   } = useQuery({
     queryKey: ['admin-ai-cockpit-sla'],
     queryFn: async () => {
@@ -99,7 +101,7 @@ export default function AICockpit() {
           {error instanceof Error ? error.message : 'Unable to load AI governance data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchMaintenance(); refetchSLA(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

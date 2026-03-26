@@ -32,7 +32,9 @@ export default function TenantsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  const fetchTenants = () => {
+    setLoading(true);
+    setError(null);
     api.get<Tenant[]>('/tenants').then((res) => {
       if (res.success && res.data) {
         setTenants(res.data);
@@ -44,6 +46,10 @@ export default function TenantsPage() {
       setError(err instanceof Error ? err.message : 'Unable to load tenants data.');
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchTenants();
   }, []);
 
   const filtered = tenants.filter(
@@ -98,7 +104,7 @@ export default function TenantsPage() {
         <h2 className="text-lg font-semibold text-gray-900">Tenants Unavailable</h2>
         <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchTenants()}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
         >
           <RefreshCw className="h-4 w-4" />

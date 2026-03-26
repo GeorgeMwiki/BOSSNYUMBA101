@@ -24,6 +24,7 @@ export default function CommunicationsPage() {
     data: messages,
     isLoading: loadingMessages,
     error: messagesError,
+    refetch: refetchMessages,
   } = useQuery({
     queryKey: ['admin-comms-messages'],
     queryFn: async () => {
@@ -38,6 +39,7 @@ export default function CommunicationsPage() {
     data: notifications,
     isLoading: loadingNotif,
     error: notifError,
+    refetch: refetchNotifications,
   } = useQuery({
     queryKey: ['admin-comms-notifications'],
     queryFn: async () => {
@@ -111,7 +113,7 @@ export default function CommunicationsPage() {
           {error instanceof Error ? error.message : 'Unable to load communications data. Please check your connection and try again.'}
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => { refetchMessages(); refetchNotifications(); }}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700"
         >
           <RefreshCw className="h-4 w-4" />

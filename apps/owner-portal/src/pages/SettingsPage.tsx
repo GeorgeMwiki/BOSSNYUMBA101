@@ -64,6 +64,9 @@ export function SettingsPage() {
   });
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
 
   // Sync profile form when user data loads
   useEffect(() => {
@@ -349,29 +352,25 @@ export function SettingsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <button onClick={async () => {
-                    const form = document.querySelectorAll('input[type="password"]');
-                    const current = (form[0] as HTMLInputElement)?.value;
-                    const newPw = (form[1] as HTMLInputElement)?.value;
-                    const confirm = (form[2] as HTMLInputElement)?.value;
-                    if (!current || !newPw || !confirm) { setNotification({ type: 'error', message: 'Please fill all password fields' }); return; }
-                    if (newPw !== confirm) { setNotification({ type: 'error', message: 'Passwords do not match' }); return; }
+                    if (!currentPw || !newPw || !confirmPw) { setNotification({ type: 'error', message: 'Please fill all password fields' }); return; }
+                    if (newPw !== confirmPw) { setNotification({ type: 'error', message: 'Passwords do not match' }); return; }
                     try {
-                      await api.put('/users/me/password', { currentPassword: current, newPassword: newPw });
+                      await api.put('/users/me/password', { currentPassword: currentPw, newPassword: newPw });
                       setNotification({ type: 'success', message: 'Password updated successfully' });
-                      (form[0] as HTMLInputElement).value = '';
-                      (form[1] as HTMLInputElement).value = '';
-                      (form[2] as HTMLInputElement).value = '';
+                      setCurrentPw('');
+                      setNewPw('');
+                      setConfirmPw('');
                     } catch (err) { setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update password' }); }
                   }} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                     Update Password

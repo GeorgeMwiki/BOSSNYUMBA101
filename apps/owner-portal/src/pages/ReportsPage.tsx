@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
   CheckCircle,
@@ -85,6 +85,13 @@ export function ReportsPage() {
   }, []);
 
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const exportTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (exportTimeoutRef.current) clearTimeout(exportTimeoutRef.current);
+    };
+  }, []);
 
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -94,7 +101,8 @@ export function ReportsPage() {
       const response = await api.get(`/reports/export/${type}`);
       if (response.success) {
         setExportMessage('Export initiated. Download link will be available shortly.');
-        setTimeout(() => setExportMessage(null), 5000);
+        if (exportTimeoutRef.current) clearTimeout(exportTimeoutRef.current);
+        exportTimeoutRef.current = setTimeout(() => setExportMessage(null), 5000);
       } else {
         setExportError(response.error?.message || 'Failed to export report. Please try again.');
       }

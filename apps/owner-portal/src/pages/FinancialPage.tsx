@@ -136,6 +136,7 @@ export function FinancialPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetail | null>(null);
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -338,7 +339,7 @@ export function FinancialPage() {
           </button>
           <div className="relative">
             <button
-              onClick={() => document.getElementById('export-menu')?.classList.toggle('hidden')}
+              onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={exporting}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
@@ -346,14 +347,16 @@ export function FinancialPage() {
               Export
               <ChevronDown className="h-4 w-4" />
             </button>
-            <div id="export-menu" className="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-              <button onClick={() => { handleExport('pdf'); document.getElementById('export-menu')?.classList.add('hidden'); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Export as PDF
-              </button>
-              <button onClick={() => { handleExport('excel'); document.getElementById('export-menu')?.classList.add('hidden'); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Export as Excel
-              </button>
-            </div>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <button onClick={() => { handleExport('pdf'); setShowExportMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Export as PDF
+                </button>
+                <button onClick={() => { handleExport('excel'); setShowExportMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Export as Excel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

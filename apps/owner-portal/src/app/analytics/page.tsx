@@ -33,7 +33,9 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAnalytics = () => {
+    setLoading(true);
+    setError(null);
     api.get('/analytics/summary').then((res) => {
       if (res.success && res.data) {
         setStats(res.data as typeof stats);
@@ -45,6 +47,10 @@ export default function AnalyticsPage() {
       setError(err instanceof Error ? err.message : 'Unable to load analytics data.');
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
   }, []);
 
   const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; expenses?: number }>>([]);
@@ -104,7 +110,7 @@ export default function AnalyticsPage() {
         <h2 className="text-lg font-semibold text-gray-900">Analytics Unavailable</h2>
         <p className="text-sm text-gray-500 mt-1 max-w-md">{error}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchAnalytics()}
           className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
         >
           <RefreshCw className="h-4 w-4" />
