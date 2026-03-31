@@ -21,40 +21,151 @@ import {
   Shield,
   Wallet,
   Briefcase,
+  Activity,
+  HeadphonesIcon,
+  Mail,
+  Brain,
+  Plug,
+  ShieldCheck,
+  ClipboardList,
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, canAccessModule } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolio', href: '/portfolio', icon: PieChart },
-  { name: 'Properties', href: '/properties', icon: Building2 },
-  { name: 'Analytics', href: '/analytics', icon: LineChart },
-  { name: 'Tenants', href: '/tenants', icon: Users },
-  { name: 'Vendors', href: '/vendors', icon: Briefcase },
-  { name: 'Budgets', href: '/budgets', icon: Wallet },
-  { name: 'Compliance', href: '/compliance', icon: Shield },
-  { name: 'Financial', href: '/financial', icon: DollarSign },
-  { name: 'Maintenance', href: '/maintenance', icon: Wrench },
-  { name: 'Documents', href: '/documents', icon: FileText },
-  { name: 'Approvals', href: '/approvals', icon: CheckSquare },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Messages', href: '/messages', icon: MessageSquare },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  module?: string;
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const navigationSections: NavSection[] = [
+  {
+    label: 'OVERVIEW',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard' },
+      { name: 'Portfolio', href: '/portfolio', icon: PieChart, module: 'portfolio' },
+      { name: 'Properties', href: '/properties', icon: Building2, module: 'properties' },
+    ],
+  },
+  {
+    label: 'OPERATIONS',
+    items: [
+      { name: 'Maintenance', href: '/maintenance', icon: Wrench, module: 'maintenance' },
+      { name: 'Work Orders', href: '/operations', icon: Activity, module: 'operations' },
+      { name: 'Approvals', href: '/approvals', icon: CheckSquare, module: 'approvals' },
+    ],
+  },
+  {
+    label: 'PEOPLE',
+    items: [
+      { name: 'Tenants', href: '/tenants', icon: Users, module: 'tenants' },
+      { name: 'Vendors', href: '/vendors', icon: Briefcase, module: 'vendors' },
+      { name: 'Users & Staff', href: '/users', icon: Shield, module: 'users' },
+      { name: 'Roles & Permissions', href: '/roles', icon: ClipboardList, module: 'roles' },
+    ],
+  },
+  {
+    label: 'FINANCE',
+    items: [
+      { name: 'Financial', href: '/financial', icon: DollarSign, module: 'financial' },
+      { name: 'Budgets', href: '/budgets', icon: Wallet, module: 'budgets' },
+    ],
+  },
+  {
+    label: 'COMMUNICATIONS',
+    items: [
+      { name: 'Messages', href: '/messages', icon: MessageSquare, module: 'messages' },
+      { name: 'Communications Hub', href: '/communications', icon: Mail, module: 'communications' },
+    ],
+  },
+  {
+    label: 'ANALYTICS & REPORTS',
+    items: [
+      { name: 'Analytics', href: '/analytics', icon: LineChart, module: 'analytics' },
+      { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reports' },
+      { name: 'AI Cockpit', href: '/ai', icon: Brain, module: 'ai' },
+    ],
+  },
+  {
+    label: 'COMPLIANCE',
+    items: [
+      { name: 'Compliance', href: '/compliance', icon: ShieldCheck, module: 'compliance' },
+      { name: 'Documents', href: '/documents', icon: FileText, module: 'documents' },
+    ],
+  },
+  {
+    label: 'ADMINISTRATION',
+    items: [
+      { name: 'Configuration', href: '/configuration', icon: Settings, module: 'configuration' },
+      { name: 'Integrations', href: '/integrations', icon: Plug, module: 'integrations' },
+      { name: 'Audit Log', href: '/audit', icon: ClipboardList, module: 'audit' },
+      { name: 'Support', href: '/support', icon: HeadphonesIcon, module: 'support' },
+    ],
+  },
 ];
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, tenant, logout } = useAuth();
+  const { user, tenant, role, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Filter navigation sections based on role
+  const filteredSections = navigationSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        !item.module || canAccessModule(role, item.module)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const renderNavItems = (items: NavItem[], closeSidebar?: boolean) =>
+    items.map((item) => {
+      const isActive = location.pathname === item.href ||
+        (item.href !== '/dashboard' && location.pathname.startsWith(item.href + '/'));
+      return (
+        <Link
+          key={item.name}
+          to={item.href}
+          onClick={closeSidebar ? () => setSidebarOpen(false) : undefined}
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isActive
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <item.icon className="h-5 w-5" />
+          {item.name}
+        </Link>
+      );
+    });
+
+  const renderSections = (closeSidebar?: boolean) =>
+    filteredSections.map((section) => (
+      <div key={section.label} className="mb-4">
+        <p className="px-3 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          {section.label}
+        </p>
+        <div className="space-y-0.5">
+          {renderNavItems(section.items, closeSidebar)}
+        </div>
+      </div>
+    ));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,25 +193,8 @@ export function Layout({ children }: LayoutProps) {
               <X className="h-6 w-6 text-gray-500" />
             </button>
           </div>
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-2 py-4 overflow-y-auto">
+            {renderSections(true)}
           </nav>
         </div>
       </div>
@@ -115,24 +209,8 @@ export function Layout({ children }: LayoutProps) {
               <p className="text-xs text-gray-500">Owner Portal</p>
             </div>
           </div>
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-2 py-4 overflow-y-auto">
+            {renderSections()}
           </nav>
           <div className="border-t border-gray-200 p-4">
             <Link

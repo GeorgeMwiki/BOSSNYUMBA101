@@ -1,6 +1,75 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 
+// Owner Portal Role Hierarchy
+export const ROLES = {
+  OWNER: 'OWNER',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  ADMIN_1: 'ADMIN_TIER_1',
+  ADMIN_2: 'ADMIN_TIER_2',
+  ADMIN_3: 'ADMIN_TIER_3',
+  ADMIN_4: 'ADMIN_TIER_4',
+} as const;
+
+export type OwnerPortalRole = typeof ROLES[keyof typeof ROLES];
+
+// Role hierarchy level (lower number = more access)
+const ROLE_HIERARCHY: Record<string, number> = {
+  [ROLES.OWNER]: 0,
+  [ROLES.SUPER_ADMIN]: 1,
+  [ROLES.ADMIN_1]: 2,
+  [ROLES.ADMIN_2]: 3,
+  [ROLES.ADMIN_3]: 4,
+  [ROLES.ADMIN_4]: 5,
+};
+
+export function hasMinimumRole(userRole: string | null, requiredRole: string): boolean {
+  if (!userRole) return false;
+  const userLevel = ROLE_HIERARCHY[userRole] ?? 999;
+  const requiredLevel = ROLE_HIERARCHY[requiredRole] ?? 0;
+  return userLevel <= requiredLevel;
+}
+
+export function canAccessModule(userRole: string | null, module: string): boolean {
+  if (!userRole) return false;
+  const level = ROLE_HIERARCHY[userRole] ?? 999;
+
+  // Modules available at each tier
+  const moduleAccess: Record<string, number> = {
+    // Owner & Super Admin only (level <= 1)
+    'users': 1,
+    'roles': 1,
+    'configuration': 1,
+    'audit': 1,
+    'integrations': 1,
+    // Admin Tier 1+ (level <= 2)
+    'financial': 2,
+    'budgets': 2,
+    'reports': 2,
+    'ai': 2,
+    // Admin Tier 2+ (level <= 3)
+    'properties': 3,
+    'tenants': 3,
+    'maintenance': 3,
+    'communications': 3,
+    'operations': 3,
+    'support': 3,
+    'compliance': 3,
+    'vendors': 3,
+    // Admin Tier 3+ (read-only + maintenance requests) (level <= 4)
+    'dashboard': 5,
+    'portfolio': 5,
+    'analytics': 5,
+    'messages': 5,
+    'documents': 5,
+    'approvals': 5,
+    'settings': 5,
+  };
+
+  const requiredLevel = moduleAccess[module] ?? 1;
+  return level <= requiredLevel;
+}
+
 interface User {
   id: string;
   email: string;

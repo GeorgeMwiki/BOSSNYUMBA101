@@ -1,0 +1,866 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  Server,
+  Database,
+  Cpu,
+  HardDrive,
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Play,
+  Pause,
+  RotateCcw,
+  Eye,
+  X,
+  ChevronRight,
+  Bot,
+  Brain,
+  MessageSquare,
+  FileText,
+  Users,
+  Building2,
+  Filter,
+  Search,
+  Download,
+  Settings,
+} from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
+
+interface SystemHealth {
+  service: string;
+  status: 'healthy' | 'degraded' | 'down';
+  latency: number;
+  uptime: number;
+  lastCheck: string;
+  errorRate: number;
+}
+
+interface ExceptionItem {
+  id: string;
+  type: string;
+  tenant: string;
+  description: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'investigating' | 'resolved';
+  createdAt: string;
+  assignee?: string;
+  workflowId?: string;
+}
+
+interface WorkflowItem {
+  id: string;
+  type: string;
+  tenant: string;
+  description: string;
+  status: 'stuck' | 'pending_approval' | 'error' | 'timeout';
+  step: string;
+  stuckSince: string;
+  retries: number;
+}
+
+interface AIDecision {
+  id: string;
+  type: string;
+  tenant: string;
+  input: string;
+  decision: string;
+  confidence: number;
+  reasoning: string;
+  timestamp: string;
+  overridden: boolean;
+}
+
+const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
+
+export default function OperationsPage() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('health');
+  const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowItem | null>(null);
+  const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assigneeInput, setAssigneeInput] = useState('');
+  const queryClient = useQueryClient();
+
+  const { data: systemHealth = [], isLoading: loadingHealth } = useQuery({
+    queryKey: ['system-health'],
+    queryFn: async () => {
+      const res = await api.get<SystemHealth[]>('/system/health');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load system health');
+      return res.data;
+    },
+    refetchInterval: 30_000,
+  });
+
+  const { data: exceptions = [], isLoading: loadingExceptions } = useQuery({
+    queryKey: ['operations-exceptions'],
+    queryFn: async () => {
+      const res = await api.get<ExceptionItem[]>('/operations/exceptions');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load exceptions');
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+
+  const { data: stuckWorkflows = [], isLoading: loadingWorkflows } = useQuery({
+    queryKey: ['operations-workflows'],
+    queryFn: async () => {
+      const res = await api.get<WorkflowItem[]>('/operations/workflows/stuck');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load workflows');
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+
+  const { data: aiDecisions = [], isLoading: loadingAI } = useQuery({
+    queryKey: ['ai-decisions'],
+    queryFn: async () => {
+      const res = await api.get<AIDecision[]>('/ai/decisions');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load AI decisions');
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+
+  const { data: healthMetrics = [] } = useQuery({
+    queryKey: ['health-metrics'],
+    queryFn: async () => {
+      const res = await api.get<any[]>('/system/health/metrics');
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to load health metrics');
+      return res.data;
+    },
+    staleTime: 30_000,
+  });
+
+  const loading = loadingHealth || loadingExceptions || loadingWorkflows || loadingAI;
+
+  const retryWorkflowMutation = useMutation({
+    mutationFn: async (workflowId: string) => {
+      const res = await api.post(`/operations/workflows/${workflowId}/retry`, {});
+      if (!res.success) throw new Error(res.error || 'Failed to retry workflow');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations-workflows'] });
+    },
+  });
+
+  const cancelWorkflowMutation = useMutation({
+    mutationFn: async (workflowId: string) => {
+      const res = await api.post(`/operations/workflows/${workflowId}/cancel`, {});
+      if (!res.success) throw new Error(res.error || 'Failed to cancel workflow');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations-workflows'] });
+    },
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'text-green-600 bg-green-100';
+      case 'degraded': return 'text-amber-600 bg-amber-100';
+      case 'down': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'text-red-700 bg-red-100 border-red-200';
+      case 'high': return 'text-orange-700 bg-orange-100 border-orange-200';
+      case 'medium': return 'text-amber-700 bg-amber-100 border-amber-200';
+      case 'low': return 'text-blue-700 bg-blue-100 border-blue-200';
+      default: return 'text-gray-700 bg-gray-100 border-gray-200';
+    }
+  };
+
+  const getWorkflowStatusColor = (status: string) => {
+    switch (status) {
+      case 'stuck': return 'text-red-700 bg-red-100';
+      case 'pending_approval': return 'text-amber-700 bg-amber-100';
+      case 'error': return 'text-orange-700 bg-orange-100';
+      case 'timeout': return 'text-purple-700 bg-purple-100';
+      default: return 'text-gray-700 bg-gray-100';
+    }
+  };
+
+  const handleRetryWorkflow = (workflow: WorkflowItem) => {
+    retryWorkflowMutation.mutate(workflow.id, {
+      onSuccess: () => setNotification({ type: 'success', message: `Workflow ${workflow.id} retry initiated` }),
+      onError: (err) => setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Retry failed' }),
+    });
+  };
+
+  const handleCancelWorkflow = (workflow: WorkflowItem) => {
+    cancelWorkflowMutation.mutate(workflow.id, {
+      onSuccess: () => setNotification({ type: 'success', message: `Workflow ${workflow.id} cancelled` }),
+      onError: (err) => setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Cancel failed' }),
+    });
+  };
+
+  const filteredExceptions = exceptions.filter(e => {
+    const matchesPriority = filterPriority === 'all' || e.priority === filterPriority;
+    const matchesSearch = e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.tenant.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesPriority && matchesSearch;
+  });
+
+  const tabs = [
+    { id: 'health', name: 'System Health', icon: Activity },
+    { id: 'exceptions', name: 'Exception Queue', icon: AlertTriangle, count: exceptions.filter(e => e.status !== 'resolved').length },
+    { id: 'workflows', name: 'Stuck Workflows', icon: Clock, count: stuckWorkflows.length },
+    { id: 'ai', name: 'AI Decisions', icon: Brain },
+  ];
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 bg-gray-200 rounded w-56" />
+            <div className="h-4 bg-gray-200 rounded w-72" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 bg-gray-200 rounded w-40" />
+            <div className="h-10 bg-gray-200 rounded-lg w-48" />
+            <div className="h-10 bg-gray-200 rounded-lg w-24" />
+          </div>
+        </div>
+        <div className="flex gap-6 border-b border-gray-200 pb-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-5 bg-gray-200 rounded w-28" />)}
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-gray-200 rounded-lg" />
+                <div className="space-y-1">
+                  <div className="h-6 bg-gray-200 rounded w-16" />
+                  <div className="h-3 bg-gray-200 rounded w-24" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+          <div className="h-5 bg-gray-200 rounded w-48" />
+          <div className="h-64 bg-gray-100 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Operations Control Tower</h1>
+          <p className="text-sm text-gray-500 mt-1">Monitor system health and manage exceptions</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Last updated: {new Date().toLocaleTimeString()}
+          </span>
+          <a href="/operations/control-tower" className="flex items-center gap-2 px-3 py-2 text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 text-sm font-medium">
+            <Eye className="h-4 w-4" />
+            Enhanced Control Tower
+          </a>
+          <button onClick={() => { queryClient.invalidateQueries({ queryKey: ['system-health'] }); queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] }); queryClient.invalidateQueries({ queryKey: ['operations-workflows'] }); queryClient.invalidateQueries({ queryKey: ['ai-decisions'] }); queryClient.invalidateQueries({ queryKey: ['health-metrics'] }); }} className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Notification */}
+      {notification && (
+        <div className={`p-4 rounded-lg flex items-center justify-between ${
+          notification.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            )}
+            <span className={notification.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+              {notification.message}
+            </span>
+          </div>
+          <button onClick={() => setNotification(null)}>
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="flex gap-6">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-violet-600 text-violet-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.name}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* System Health Tab */}
+      {activeTab === 'health' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Server className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {systemHealth.filter(s => s.status === 'healthy').length}/{systemHealth.length}
+                  </p>
+                  <p className="text-sm text-gray-500">Services Healthy</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Zap className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? Math.round(systemHealth.reduce((sum, s) => sum + s.latency, 0) / systemHealth.length) : 0}ms</p>
+                  <p className="text-sm text-gray-500">Avg Latency</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? (Math.round(systemHealth.reduce((sum, s) => sum + s.uptime, 0) / systemHealth.length * 100) / 100).toFixed(2) : 0}%</p>
+                  <p className="text-sm text-gray-500">Avg Uptime</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{systemHealth.length > 0 ? (Math.round(systemHealth.reduce((sum, s) => sum + s.errorRate, 0) / systemHealth.length * 100) / 100).toFixed(2) : 0}%</p>
+                  <p className="text-sm text-gray-500">Error Rate</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Request Volume & Errors (24h)</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={healthMetrics}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis yAxisId="left" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" fontSize={12} />
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }} />
+                  <Area yAxisId="left" type="monotone" dataKey="requests" name="Requests" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
+                  <Area yAxisId="right" type="monotone" dataKey="errors" name="Errors" stroke="#EF4444" fill="#EF4444" fillOpacity={0.3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Service Status</h3>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {systemHealth.map((service) => (
+                <div key={service.service} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-3 h-3 rounded-full ${
+                      service.status === 'healthy' ? 'bg-green-500' :
+                      service.status === 'degraded' ? 'bg-amber-500' : 'bg-red-500'
+                    }`} />
+                    <div>
+                      <p className="font-medium text-gray-900">{service.service}</p>
+                      <p className="text-xs text-gray-500">Last check: {new Date(service.lastCheck).toLocaleTimeString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">{service.latency}ms</p>
+                      <p className="text-xs text-gray-500">Latency</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">{service.uptime}%</p>
+                      <p className="text-xs text-gray-500">Uptime</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-medium ${service.errorRate > 1 ? 'text-red-600' : 'text-gray-900'}`}>
+                        {service.errorRate}%
+                      </p>
+                      <p className="text-xs text-gray-500">Error Rate</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(service.status)}`}>
+                      {service.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exceptions Tab */}
+      {activeTab === 'exceptions' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search exceptions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="all">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+
+          {filteredExceptions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-200">
+              <div className="p-3 bg-green-100 rounded-full mb-3">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No Exceptions</h3>
+              <p className="text-sm text-gray-500 max-w-sm">All clear -- no exceptions match the current filters.</p>
+            </div>
+          )}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="divide-y divide-gray-200">
+              {filteredExceptions.map((exception) => (
+                <div key={exception.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        exception.priority === 'critical' ? 'bg-red-100' :
+                        exception.priority === 'high' ? 'bg-orange-100' :
+                        exception.priority === 'medium' ? 'bg-amber-100' : 'bg-blue-100'
+                      }`}>
+                        <AlertTriangle className={`h-5 w-5 ${
+                          exception.priority === 'critical' ? 'text-red-600' :
+                          exception.priority === 'high' ? 'text-orange-600' :
+                          exception.priority === 'medium' ? 'text-amber-600' : 'text-blue-600'
+                        }`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900">{exception.type}</span>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${getPriorityColor(exception.priority)}`}>
+                            {exception.priority.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            exception.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                            exception.status === 'investigating' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {exception.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{exception.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {exception.tenant}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(exception.createdAt).toLocaleString()}
+                          </span>
+                          {exception.assignee && (
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {exception.assignee}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => navigate('/operations/exceptions/' + exception.id)} className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      {exception.status !== 'resolved' && assigningId !== exception.id && (
+                        <button onClick={() => { setAssigningId(exception.id); setAssigneeInput(''); }} className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
+                          Assign
+                        </button>
+                      )}
+                      {assigningId === exception.id && (
+                        <form
+                          className="flex items-center gap-2"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!assigneeInput.trim()) return;
+                            try {
+                              setNotification(null);
+                              await api.post('/operations/exceptions/' + exception.id + '/assign', { assigneeId: assigneeInput.trim() });
+                              queryClient.invalidateQueries({ queryKey: ['operations-exceptions'] });
+                              setNotification({ type: 'success', message: 'Exception assigned successfully' });
+                              setAssigningId(null);
+                              setAssigneeInput('');
+                            } catch (err) {
+                              setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Failed to assign exception' });
+                            }
+                          }}
+                        >
+                          <input
+                            type="text"
+                            value={assigneeInput}
+                            onChange={(e) => setAssigneeInput(e.target.value)}
+                            placeholder="User ID"
+                            className="w-32 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                            autoFocus
+                          />
+                          <button type="submit" className="px-2 py-1 text-sm text-white bg-violet-600 rounded-lg hover:bg-violet-700">
+                            Save
+                          </button>
+                          <button type="button" onClick={() => { setAssigningId(null); setAssigneeInput(''); }} className="px-2 py-1 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                            Cancel
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stuck Workflows Tab */}
+      {activeTab === 'workflows' && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Stuck Workflows ({stuckWorkflows.length})</h3>
+            <button onClick={() => setActiveTab('workflows')} className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
+          </div>
+          {stuckWorkflows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="p-3 bg-green-100 rounded-full mb-3">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No Stuck Workflows</h3>
+              <p className="text-sm text-gray-500 max-w-sm">All workflows are running normally.</p>
+            </div>
+          ) : null}
+          <div className="divide-y divide-gray-200">
+            {stuckWorkflows.map((workflow) => (
+              <div key={workflow.id} className="p-4 hover:bg-gray-50">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-2 rounded-lg ${
+                      workflow.status === 'stuck' ? 'bg-red-100' :
+                      workflow.status === 'error' ? 'bg-orange-100' :
+                      workflow.status === 'timeout' ? 'bg-purple-100' : 'bg-amber-100'
+                    }`}>
+                      <Clock className={`h-5 w-5 ${
+                        workflow.status === 'stuck' ? 'text-red-600' :
+                        workflow.status === 'error' ? 'text-orange-600' :
+                        workflow.status === 'timeout' ? 'text-purple-600' : 'text-amber-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-900">{workflow.type}</span>
+                        <span className="text-sm text-gray-500">({workflow.id})</span>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getWorkflowStatusColor(workflow.status)}`}>
+                          {workflow.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{workflow.description}</p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {workflow.tenant}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Settings className="h-3 w-3" />
+                          Step: {workflow.step}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Stuck since: {new Date(workflow.stuckSince).toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <RefreshCw className="h-3 w-3" />
+                          {workflow.retries} retries
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedWorkflow(workflow)}
+                      className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
+                      title="View Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRetryWorkflow(workflow)}
+                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                      title="Retry"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleCancelWorkflow(workflow)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Cancel"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AI Decisions Tab */}
+      {activeTab === 'ai' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Recent AI Decisions</h3>
+              <button onClick={async () => { const res = await api.get<{ url: string }>('/operations/ai-decisions/export'); if (res.data?.url) window.open(res.data.url, '_blank'); }} className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
+                <Download className="h-4 w-4" />
+                Export Log
+              </button>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {aiDecisions.map((decision) => (
+                <div key={decision.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-violet-100 rounded-lg">
+                        <Brain className="h-5 w-5 text-violet-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900">{decision.type}</span>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            decision.confidence >= 0.9 ? 'bg-green-100 text-green-700' :
+                            decision.confidence >= 0.7 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {(decision.confidence * 100).toFixed(0)}% confidence
+                          </span>
+                          {decision.overridden && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                              Overridden
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="text-gray-500">Input:</span> {decision.input}
+                        </p>
+                        <p className="text-sm text-gray-900 mb-1">
+                          <span className="text-gray-500">Decision:</span> <span className="font-medium">{decision.decision}</span>
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {decision.tenant}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(decision.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedDecision(decision)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Reasoning
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Decision Detail Modal */}
+      {selectedDecision && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedDecision(null)} />
+            <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-violet-100 rounded-lg">
+                    <Brain className="h-5 w-5 text-violet-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">AI Decision Details</h3>
+                </div>
+                <button onClick={() => setSelectedDecision(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Decision Type</label>
+                    <p className="font-medium text-gray-900">{selectedDecision.type}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Tenant</label>
+                    <p className="font-medium text-gray-900">{selectedDecision.tenant}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Timestamp</label>
+                    <p className="font-medium text-gray-900">{new Date(selectedDecision.timestamp).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Confidence</label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                        <div
+                          className={`h-2 rounded-full ${
+                            selectedDecision.confidence >= 0.9 ? 'bg-green-500' :
+                            selectedDecision.confidence >= 0.7 ? 'bg-amber-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${selectedDecision.confidence * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-medium text-gray-900">{(selectedDecision.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">Input Context</label>
+                  <p className="mt-1 p-3 bg-gray-50 rounded-lg text-gray-700">{selectedDecision.input}</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">AI Decision</label>
+                  <p className="mt-1 p-3 bg-violet-50 rounded-lg text-violet-900 font-medium">{selectedDecision.decision}</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase">Reasoning</label>
+                  <p className="mt-1 p-3 bg-gray-50 rounded-lg text-gray-700">{selectedDecision.reasoning}</p>
+                </div>
+
+                {selectedDecision.overridden && (
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-purple-800">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="font-medium">This decision was manually overridden</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+                <button
+                  onClick={() => setSelectedDecision(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                >
+                  Close
+                </button>
+                {!selectedDecision.overridden && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.post(`/ai/decisions/${selectedDecision.id}/override`, {});
+                        if (res.success) {
+                          queryClient.invalidateQueries({ queryKey: ['ai-decisions'] });
+                          setSelectedDecision(null);
+                          setNotification({ type: 'success', message: `Decision ${selectedDecision.id} overridden successfully` });
+                        } else {
+                          setNotification({ type: 'error', message: res.error || 'Failed to override decision' });
+                        }
+                      } catch {
+                        setNotification({ type: 'error', message: 'Failed to override decision' });
+                      }
+                    }}
+                    className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700"
+                  >
+                    Override Decision
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

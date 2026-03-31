@@ -18,11 +18,7 @@ const API_BASE = getApiBase();
 interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
+  error?: string;
   pagination?: {
     page: number;
     pageSize: number;
@@ -45,19 +41,29 @@ async function request<T>(
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (response.status === 401) {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+      return {
+        success: false,
+        error: data.error?.message || data.message || 'Request failed',
+      };
+    }
+
+    return { success: true, data: data.data, pagination: data.pagination };
+  } catch (error) {
+    return { success: false, error: 'Network error' };
   }
-
-  const data = await response.json();
-  return data;
 }
 
 export const api = {

@@ -3,11 +3,6 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Building2,
-  Users,
-  Shield,
-  Activity,
-  HeadphonesIcon,
-  BarChart3,
   Settings,
   FileText,
   Server,
@@ -15,30 +10,15 @@ import {
   Bell,
   Search,
   BarChart2,
-  Mail,
-  ShieldCheck,
   LineChart,
-  Plug,
-  Brain,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Tenants', href: '/tenants', icon: Building2 },
-  { name: 'Users', href: '/users', icon: Users },
-  { name: 'Roles & Permissions', href: '/roles', icon: Shield },
+  { name: 'Organizations', href: '/tenants', icon: Building2 },
   { name: 'Platform', href: '/platform', icon: BarChart2 },
-  { name: 'Communications', href: '/communications', icon: Mail },
-  { name: 'Compliance', href: '/compliance', icon: ShieldCheck },
   { name: 'Analytics', href: '/analytics', icon: LineChart },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
-  { name: 'Operations', href: '/operations', icon: Activity },
-  { name: 'Support', href: '/support', icon: HeadphonesIcon },
-  { name: 'AI Cockpit', href: '/ai', icon: Brain },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Configuration', href: '/configuration', icon: Settings },
-  { name: 'Audit Log', href: '/audit', icon: FileText },
   { name: 'System Health', href: '/system', icon: Server },
 ];
 
@@ -51,17 +31,9 @@ export function Layout() {
     const current = navigation.find((item) => item.href === location.pathname);
     if (current) return current.name;
     if (location.pathname.startsWith('/tenants/onboard')) return 'Tenant Onboarding';
-    if (location.pathname.startsWith('/roles/permissions')) return 'Permission Matrix';
-    if (location.pathname.startsWith('/roles/approvals')) return 'Approval Matrix';
-    if (location.pathname.startsWith('/operations/control-tower')) return 'Control Tower';
-    if (location.pathname.startsWith('/support/timeline')) return 'Customer Timeline';
-    if (location.pathname.startsWith('/support/escalation')) return 'Case Escalation';
     if (location.pathname.startsWith('/platform')) return 'Platform';
-    if (location.pathname.startsWith('/communications')) return 'Communications';
-    if (location.pathname.startsWith('/compliance')) return 'Compliance';
     if (location.pathname.startsWith('/analytics')) return 'Analytics';
-    if (location.pathname.startsWith('/integrations')) return 'Integrations';
-    return 'Admin Portal';
+    return 'Karbone Admin';
   };
 
   return (
@@ -71,11 +43,11 @@ export function Layout() {
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-violet-600 rounded-lg flex items-center justify-center">
-              <Shield className="h-6 w-6" />
+              <Settings className="h-6 w-6" />
             </div>
             <div>
               <h1 className="font-bold text-lg">BOSSNYUMBA</h1>
-              <p className="text-xs text-slate-400">Internal Admin</p>
+              <p className="text-xs text-slate-400">Karbone Admin</p>
             </div>
           </div>
         </div>
