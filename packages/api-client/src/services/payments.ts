@@ -39,6 +39,27 @@ export interface ProcessPaymentRequest {
   phoneNumber?: string; // For M-Pesa
 }
 
+/**
+ * Simplified payment creation payload used by the customer app
+ * payments form (amount + method + optional reference).
+ */
+export interface CustomerCreatePaymentInput {
+  tenantId: string;
+  amount: number;
+  currency?: string;
+  method: 'mpesa' | 'card' | 'bank';
+  reference?: string;
+  leaseId?: string;
+  description?: string;
+  phoneNumber?: string;
+}
+
+export interface ListPaymentsInput {
+  tenantId: string;
+  limit?: number;
+  page?: number;
+}
+
 export const paymentsService = {
   /**
    * List payment intents with optional filters
@@ -126,6 +147,43 @@ export const paymentsService = {
   > {
     return getApiClient().get('/payments/balance');
   },
+
+  /**
+   * Customer-app oriented payment creation used by PaymentsPage.
+   * Posts to `/api/payments` with a normalized shape.
+   */
+  async createPayment(
+    input: CustomerCreatePaymentInput
+  ): Promise<ApiResponse<PaymentIntent>> {
+    const body = {
+      tenantId: input.tenantId,
+      amount: {
+        amount: input.amount,
+        currency: input.currency ?? 'KES',
+      },
+      method: input.method,
+      reference: input.reference,
+      leaseId: input.leaseId,
+      description: input.description,
+      phoneNumber: input.phoneNumber,
+    };
+    return getApiClient().post<PaymentIntent>('/api/payments', body);
+  },
+
+  /**
+   * Customer-app oriented payment listing used by PaymentsPage.
+   * Returns the most recent payments for the given tenant.
+   */
+  async listPayments(
+    input: ListPaymentsInput
+  ): Promise<ApiResponse<PaymentIntent[]>> {
+    const params: Record<string, string> = {
+      tenantId: input.tenantId,
+      limit: String(input.limit ?? 20),
+      page: String(input.page ?? 1),
+    };
+    return getApiClient().get<PaymentIntent[]>('/api/payments', { params });
+  },
 };
 
 export const paymentMethodsService = {
@@ -199,4 +257,13 @@ export const statementsService = {
   async markViewed(id: StatementId): Promise<ApiResponse<Statement>> {
     return getApiClient().post<Statement>(`/statements/${id}/viewed`, {});
   },
+};
+
+/**
+ * Namespaced alias used by customer-app surfaces that expect
+ * `payments.createPayment(...)` and `payments.listPayments(...)`.
+ */
+export const payments = {
+  createPayment: paymentsService.createPayment,
+  listPayments: paymentsService.listPayments,
 };
