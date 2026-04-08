@@ -41,6 +41,8 @@ All values in `.env.example` are **placeholders**. Use your own keys and secrets
    - Optional: `NEXT_PUBLIC_EMERGENCY_PRIMARY_PHONE`, `NEXT_PUBLIC_EMERGENCY_MAINTENANCE_PHONE`, `NEXT_PUBLIC_EMERGENCY_SECURITY_PHONE` for support page.
 5. **AI**
    - Set at least one of: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `DEEPSEEK_API_KEY` (and optional `AI_PROVIDER`) for full intelligence.
+   - **`DEEPSEEK_ENABLED`** — global kill-switch for DeepSeek (default: `true`). Set to `false`, `0`, `no`, or `off` to disable everywhere.
+   - **DeepSeek is DISABLED for TZ/KE tenants at code level** regardless of `DEEPSEEK_ENABLED` or `DEEPSEEK_API_KEY`. The country-based gate lives in [`packages/ai-copilot/src/llm-provider-gate.ts`](../packages/ai-copilot/src/llm-provider-gate.ts) (`DEEPSEEK_BLOCKED_COUNTRIES = ['TZ', 'KE']`). This enforces PII data-sovereignty rules for Tanzania and Kenya tenants. Do not bypass this gate without an updated DPA + legal sign-off.
 6. **Per-app**
    - Admin/Owner/Customer/Estate-Manager URLs and `NEXT_PUBLIC_*` should match your deployed URLs.
 

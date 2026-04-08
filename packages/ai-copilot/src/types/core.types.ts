@@ -122,6 +122,18 @@ export interface AITenantContext {
   tenantId: string;
   tenantName: string;
   environment: 'production' | 'staging' | 'development';
+  /**
+   * ISO-3166 alpha-2 country code of the tenant (e.g. "TZ", "KE", "US").
+   *
+   * Used by the LLM provider gate (see
+   * `packages/ai-copilot/src/llm-provider-gate.ts`) to enforce PII
+   * data-sovereignty rules. DeepSeek is blocked for tenants in "TZ" or
+   * "KE". Other providers are unaffected.
+   *
+   * Optional for backwards compatibility: when absent, no country-based
+   * gating is applied.
+   */
+  country?: string;
   /** Tenant-specific AI configuration overrides */
   aiConfig?: {
     /** Enabled copilot domains */
@@ -264,6 +276,9 @@ export const AITenantContextSchema = z.object({
   tenantId: z.string().min(1),
   tenantName: z.string().min(1),
   environment: z.enum(['production', 'staging', 'development']),
+  // ISO-3166 alpha-2 country code (e.g. "TZ", "KE", "US"). Used by the
+  // LLM provider gate to enforce PII data-sovereignty rules.
+  country: z.string().length(2).optional(),
   aiConfig: z.object({
     enabledDomains: z.array(CopilotDomainSchema).optional(),
     autoApprovalThreshold: ConfidenceLevelSchema.optional(),
