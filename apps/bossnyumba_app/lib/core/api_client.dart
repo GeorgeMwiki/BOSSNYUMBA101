@@ -9,17 +9,30 @@ class ApiClient {
   String? _token;
   final String baseUrl = ApiConfig.baseUrl;
 
+  /// Integration point for the multi-tenant org switcher.
+  ///
+  /// `OrgProvider` sets this getter on construction so every request can
+  /// pick up the currently active tenant id without introducing a hard
+  /// import dependency on the provider package here. This keeps the
+  /// bearer-token interceptor (parallel agent) and the tenant header
+  /// concerns cleanly separated.
+  String? Function()? activeOrgIdProvider;
+
   ApiClient() {
     _instance ??= this;
   }
 
   void setToken(String? token) => _token = token;
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (_token != null) 'Authorization': 'Bearer $_token',
-      };
+  Map<String, String> get _headers {
+    final orgId = activeOrgIdProvider?.call();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (_token != null) 'Authorization': 'Bearer $_token',
+      if (orgId != null && orgId.isNotEmpty) 'X-Active-Org': orgId,
+    };
+  }
 
   Future<ApiResponse<T>> get<T>(
     String path, {
