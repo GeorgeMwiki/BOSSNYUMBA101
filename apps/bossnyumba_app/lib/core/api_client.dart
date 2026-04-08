@@ -2,11 +2,21 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
+/// Signature for a callback that returns the current access token, or null.
+typedef TokenProvider = String? Function();
+
 class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient();
 
+  /// Legacy single-token slot — kept so callers that still use `setToken`
+  /// don't break, but [tokenProvider] wins when set.
   String? _token;
+
+  /// Injected by [AuthProvider] so the client always reads the latest token
+  /// (including after a refresh) for every outgoing request.
+  TokenProvider? tokenProvider;
+
   final String baseUrl = ApiConfig.baseUrl;
 
   ApiClient() {
@@ -15,11 +25,16 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (_token != null) 'Authorization': 'Bearer $_token',
-      };
+  String? get _currentToken => tokenProvider?.call() ?? _token;
+
+  Map<String, String> get _headers {
+    final token = _currentToken;
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   Future<ApiResponse<T>> get<T>(
     String path, {

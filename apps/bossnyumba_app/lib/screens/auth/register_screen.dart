@@ -35,19 +35,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _loading = true;
     });
     try {
-      final ok = await context.read<AuthProvider>().register(
+      await context.read<AuthProvider>().register(
             _emailController.text.trim(),
             _passwordController.text,
             _firstNameController.text.trim(),
             _lastNameController.text.trim(),
           );
       if (!mounted) return;
-      if (!ok) {
-        setState(() {
-          _error = 'Registration failed';
-          _loading = false;
-        });
-      }
+      setState(() {
+        _loading = false;
+      });
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
