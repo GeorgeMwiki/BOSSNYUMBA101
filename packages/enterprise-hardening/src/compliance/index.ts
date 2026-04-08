@@ -10,3 +10,4 @@
 export * from './soc2-controls';
 export * from './privacy-controls';
 export * from './data-retention';
+export * from './subprocessors';
