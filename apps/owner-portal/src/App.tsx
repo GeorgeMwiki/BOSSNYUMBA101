@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -35,24 +36,6 @@ import BudgetsPage from './app/budgets/page';
 import PropertyBudgetPage from './app/budgets/[propertyId]/page';
 import BudgetForecastsPage from './app/budgets/forecasts/page';
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-}
-
 function App() {
   return (
     <AuthProvider>
@@ -61,7 +44,7 @@ function App() {
         <Route
           path="/*"
           element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -99,7 +82,7 @@ function App() {
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           }
         />
       </Routes>
