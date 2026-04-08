@@ -7,7 +7,11 @@ import { defineConfig, devices } from '@playwright/test';
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests',
+  // Tests live in two trees: `./tests` (functional E2E) and `./a11y`
+  // (WCAG 2.1 AA axe-core scans via @axe-core/playwright). Both are picked up
+  // here so a single `playwright test` invocation runs functional + a11y checks.
+  testDir: './',
+  testMatch: ['tests/**/*.spec.ts', 'a11y/**/*.spec.ts', 'tests/**/*.setup.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -47,10 +51,12 @@ export default defineConfig({
   
   /* Configure projects for different portals */
   projects: [
-    /* Setup project for authentication state */
+    /* Setup project for authentication state.
+     * Scoped to `tests/` so it won't accidentally pick up `a11y/axe.setup.ts`
+     * (which is a helper module, not a Playwright setup file). */
     {
       name: 'setup',
-      testMatch: /.*\.setup\.ts/,
+      testMatch: /tests\/.*\.setup\.ts/,
     },
     
     /* Estate Manager Portal */
