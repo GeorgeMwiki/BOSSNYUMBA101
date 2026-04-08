@@ -64,3 +64,5 @@ export * from './services/messaging';
 export * from './services/scheduling';
 export * from './services/sla';
 export * from './services/kpis';
+export * from './services/chat';
+export * from './services/onboarding';
