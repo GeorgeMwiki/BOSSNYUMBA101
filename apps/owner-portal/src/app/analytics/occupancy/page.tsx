@@ -17,36 +17,79 @@ import { api, formatPercentage } from '../../../lib/api';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
+interface OccupancyMeta {
+  rate: number;
+  totalUnits: number;
+  occupiedUnits: number;
+  vacantUnits: number;
+}
+
+interface Property {
+  id: string;
+  name: string;
+}
+
 export default function OccupancyPage() {
   const [trendData, setTrendData] = useState<Array<{ month: string; rate: number }>>([]);
+  const [meta, setMeta] = useState<OccupancyMeta | null>(null);
+  const [byProperty, setByProperty] = useState<Array<{ name: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<typeof trendData>('/analytics/occupancy').then((res) => {
-      if (res.success && res.data) {
-        setTrendData(res.data);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const run = async () => {
+      try {
+        const trendRes = await api.get<
+          Array<{ month: string; rate: number }>
+        >('/analytics/occupancy');
+
+        if (cancelled) return;
+
+        if (trendRes.success && trendRes.data) {
+          setTrendData(trendRes.data);
+          const responseMeta = (trendRes as { meta?: OccupancyMeta }).meta;
+          if (responseMeta) setMeta(responseMeta);
+        } else {
+          setTrendData([]);
+          setError(trendRes.error?.message ?? 'Live occupancy KPIs are unavailable.');
+        }
+
+        // Fetch per-property breakdown using the properties list + per-property KPI calls.
+        const propsRes = await api.get<Property[]>('/properties');
+        if (propsRes.success && propsRes.data) {
+          const perProperty = await Promise.all(
+            propsRes.data.map(async (property) => {
+              const res = await api.get<OccupancyMeta>(
+                `/analytics/kpis/occupancy?propertyId=${encodeURIComponent(property.id)}`
+              );
+              return {
+                name: property.name,
+                value: res.success && res.data ? res.data.rate : 0,
+              };
+            })
+          );
+          if (!cancelled) setByProperty(perProperty.filter((p) => p.value > 0));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Live occupancy KPIs are unavailable.');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const displayData = trendData.length
-    ? trendData
-    : [
-        { month: 'Aug', rate: 85 },
-        { month: 'Sep', rate: 87 },
-        { month: 'Oct', rate: 89 },
-        { month: 'Nov', rate: 92 },
-        { month: 'Dec', rate: 91 },
-        { month: 'Jan', rate: 93 },
-        { month: 'Feb', rate: 91 },
-      ];
-
-  const byProperty = [
-    { name: 'Property A', value: 92 },
-    { name: 'Property B', value: 88 },
-    { name: 'Property C', value: 95 },
-  ];
+  const displayData = trendData;
 
   if (loading) {
     return (
@@ -68,6 +111,12 @@ export default function OccupancyPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -77,7 +126,7 @@ export default function OccupancyPage() {
             <span className="text-sm font-medium text-gray-500">Current Rate</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(displayData[displayData.length - 1]?.rate || 91)}
+            {meta ? formatPercentage(meta.rate) : '—'}
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -87,7 +136,9 @@ export default function OccupancyPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">Vacant Units</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">12</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">
+            {meta ? meta.vacantUnits : '—'}
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -96,7 +147,9 @@ export default function OccupancyPage() {
             </div>
             <span className="text-sm font-medium text-gray-500">Occupied Units</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">128</p>
+          <p className="mt-3 text-2xl font-semibold text-gray-900">
+            {meta ? meta.occupiedUnits : '—'}
+          </p>
         </div>
       </div>
 

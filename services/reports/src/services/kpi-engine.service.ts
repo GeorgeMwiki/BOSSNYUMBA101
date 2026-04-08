@@ -167,10 +167,15 @@ export interface KPIAlert {
 }
 
 // ============================================================================
-// Data Provider Interface
+// Data Provider Interface (KPIEngine internal)
 // ============================================================================
 
-export interface IKPIDataProvider {
+/**
+ * Low-level provider used by the KPIEngine to compute full KPI objects
+ * from raw numeric bundles. See also the simpler `IKPIDataProvider` in
+ * kpi-data-provider.ts which is what owner-portal HTTP routes consume.
+ */
+export interface IKPIEngineDataProvider {
   getFinancialData(tenantId: TenantId, period: KPIPeriod, propertyIds?: PropertyId[]): Promise<RawFinancialData>;
   getCollectionData(tenantId: TenantId, period: KPIPeriod, propertyIds?: PropertyId[]): Promise<RawCollectionData>;
   getOccupancyData(tenantId: TenantId, period: KPIPeriod, propertyIds?: PropertyId[]): Promise<RawOccupancyData>;
@@ -179,6 +184,9 @@ export interface IKPIDataProvider {
   getVendorData(tenantId: TenantId, period: KPIPeriod): Promise<RawVendorData>;
   getPropertyList(tenantId: TenantId): Promise<Array<{ id: PropertyId; name: string; units: number }>>;
 }
+
+/** @deprecated Use IKPIEngineDataProvider for the engine or IKPIDataProvider from kpi-data-provider.ts for HTTP routes. */
+export type IKPIDataProviderLegacy = IKPIEngineDataProvider;
 
 export interface RawFinancialData {
   current: {
@@ -346,7 +354,7 @@ export interface RawVendorData {
 // ============================================================================
 
 export class KPIEngine {
-  constructor(private readonly dataProvider: IKPIDataProvider) {}
+  constructor(private readonly dataProvider: IKPIEngineDataProvider) {}
 
   /**
    * Calculate all portfolio-level KPIs
