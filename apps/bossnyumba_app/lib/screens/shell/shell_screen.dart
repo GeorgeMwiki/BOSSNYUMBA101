@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/org_switcher.dart';
 
 class ShellScreen extends StatelessWidget {
   final Widget child;
@@ -49,7 +50,46 @@ class ShellScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final navItems = _navItems(context);
+    final auth = context.watch<AuthProvider>();
     return Scaffold(
+      // The drawer surfaces the full-width OrgSwitcher (non-compact) so users
+      // can discover tenant switching from anywhere in the shell. Individual
+      // screen AppBars may also mount the compact switcher as an action.
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(
+                'Organization',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              const OrgSwitcher(compact: false),
+              const Divider(height: 32),
+              if (auth.session != null) ...[
+                Text(
+                  auth.session!.displayName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  auth.session!.email,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Sign out'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await auth.logout();
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
       body: child,
       bottomNavigationBar: navItems.length > 1
           ? NavigationBar(
