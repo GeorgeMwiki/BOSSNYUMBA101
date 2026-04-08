@@ -378,6 +378,21 @@ export interface Invoice {
   readonly createdBy: string;
   readonly updatedAt: Date;
   readonly updatedBy: string;
+  // -------------------------------------------------------------------------
+  // Fiscal-authority submission (KE eTIMS / TZ TRA)
+  // -------------------------------------------------------------------------
+  /** Status of fiscal-authority submission for this invoice. */
+  readonly taxSubmissionStatus?: TaxSubmissionStatus;
+  /** KRA-issued receipt number when eTIMS submission succeeds. */
+  readonly kraReceiptNo?: string;
+  /** KRA-issued QR/verification URL printed on the customer-facing invoice. */
+  readonly kraQrUrl?: string;
+  /** KRA-issued internal invoice number (distinct from our local invoiceNumber). */
+  readonly kraInvoiceNumber?: string;
+  /** Timestamp of last successful tax submission. */
+  readonly taxSubmittedAt?: Date;
+  /** Last submission error message (when status is FAILED). */
+  readonly taxSubmissionError?: string;
 }
 
 /**
@@ -385,6 +400,13 @@ export interface Invoice {
  */
 export interface CreateInvoiceRequest {
   readonly tenantId: TenantId;
+  /**
+   * ISO-3166 alpha-2 country code of the tenant. Used to drive
+   * fiscal-authority routing (KE -> KRA eTIMS, TZ -> TRA, etc.).
+   * Optional for backward compatibility — when missing, no tax
+   * authority submission is attempted.
+   */
+  readonly tenantCountry?: string;
   readonly type: InvoiceType;
   readonly customerId: CustomerId;
   readonly customerName: string;

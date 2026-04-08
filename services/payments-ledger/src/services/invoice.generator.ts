@@ -49,6 +49,54 @@ const DEFAULT_NUMBER_CONFIG: InvoiceNumberConfig = {
 };
 
 /**
+ * Result returned by a successful KRA eTIMS submission. Mirrors the
+ * shape exposed by `@bossnyumba/tax-compliance/kra-etims` so callers can
+ * inject either a real or a mock client without coupling to the package.
+ */
+export interface KraEtimsSubmissionResult {
+  invoiceNumber: string;
+  qrUrl: string;
+  signedAt: Date;
+  kraReceiptNo: string;
+}
+
+/**
+ * Minimal port for the KRA eTIMS OSCU client. The concrete implementation
+ * lives in `services/tax-compliance/src/kra-etims/client.ts` and is wired
+ * in by the composition root. Defining a port here keeps payments-ledger
+ * independent of the tax-compliance package at type level.
+ */
+export interface KraEtimsClientPort {
+  submitInvoice(invoice: {
+    tenantId: TenantId;
+    invoiceNumber: string;
+    customerName: string;
+    lineItems: ReadonlyArray<{
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      totalAmount: number;
+    }>;
+    totalAmount: number;
+    currency: string;
+    issueDate: Date;
+  }): Promise<KraEtimsSubmissionResult>;
+}
+
+/**
+ * Optional retry-job enqueuer used when eTIMS submission fails — the
+ * invoice is left in PENDING_TAX_SUBMISSION status and a retry is queued.
+ */
+export interface TaxSubmissionRetryQueue {
+  enqueue(job: {
+    invoiceId: InvoiceId;
+    tenantId: TenantId;
+    reason: string;
+    attemptedAt: Date;
+  }): Promise<void>;
+}
+
+/**
  * Invoice generator dependencies
  */
 export interface InvoiceGeneratorDeps {
@@ -60,6 +108,51 @@ export interface InvoiceGeneratorDeps {
     info: (message: string, context?: Record<string, unknown>) => void;
     error: (message: string, context?: Record<string, unknown>) => void;
   };
+  /**
+   * Optional KRA eTIMS client. When present, KE-tenant invoices that
+   * trigger eTIMS will be submitted before being marked authoritative.
+   * Omit to disable fiscal-authority routing entirely (useful for tests
+   * and for tenants outside KE).
+   */
+  kraEtimsClient?: KraEtimsClientPort;
+  /**
+   * Optional retry queue for failed tax submissions. When present, a
+   * failed submission leaves the invoice in PENDING_TAX_SUBMISSION
+   * status and enqueues a retry job. When absent, a failure throws.
+   */
+  taxRetryQueue?: TaxSubmissionRetryQueue;
+  /**
+   * Lookup the tenant country (ISO-3166 alpha-2) for the given tenant.
+   * Used to drive fiscal routing when CreateInvoiceRequest.tenantCountry
+   * is not supplied. Optional — when missing the request value is used
+   * as-is and no lookup is performed.
+   */
+  getTenantCountry?: (tenantId: TenantId) => Promise<string | undefined>;
+}
+
+/**
+ * Invoice types that trigger KE eTIMS submission. Residential rent in
+ * Kenya is currently exempt; commercial rent + service-style line items
+ * are in scope.
+ */
+const KE_ETIMS_TRIGGERING_TYPES: ReadonlySet<InvoiceType> = new Set([
+  'RENT',
+  'UTILITY',
+  'MAINTENANCE',
+  'OTHER',
+]);
+
+/**
+ * Returns true when an invoice must be posted to KRA eTIMS before being
+ * marked authoritative.
+ */
+export function shouldSubmitToEtims(
+  tenantCountry: string | undefined,
+  invoiceType: InvoiceType,
+): boolean {
+  if (!tenantCountry) return false;
+  if (tenantCountry.trim().toUpperCase() !== 'KE') return false;
+  return KE_ETIMS_TRIGGERING_TYPES.has(invoiceType);
 }
 
 /**
@@ -182,9 +275,24 @@ export class InvoiceGenerator {
   }
 
   /**
-   * Issue an invoice (change from DRAFT to ISSUED)
+   * Issue an invoice (change from DRAFT to ISSUED).
+   *
+   * For Kenya (KE) tenants this routes through KRA eTIMS BEFORE marking
+   * the invoice authoritative. On eTIMS success, the receipt fields are
+   * persisted and the invoice transitions DRAFT -> ISSUED. On eTIMS
+   * failure, the invoice transitions DRAFT -> PENDING_TAX_SUBMISSION
+   * and a retry job is enqueued (when a retry queue is configured).
+   *
+   * @param invoiceId       Invoice to issue.
+   * @param tenantId        Owning tenant.
+   * @param tenantCountry   Optional ISO-3166 alpha-2 override; if omitted
+   *                        the deps.getTenantCountry lookup is used.
    */
-  async issueInvoice(invoiceId: InvoiceId, tenantId: TenantId): Promise<Invoice> {
+  async issueInvoice(
+    invoiceId: InvoiceId,
+    tenantId: TenantId,
+    tenantCountry?: string,
+  ): Promise<Invoice> {
     const invoice = await this.deps.getInvoice(invoiceId, tenantId);
     if (!invoice) {
       throw new Error(`Invoice ${invoiceId} not found`);
@@ -194,13 +302,93 @@ export class InvoiceGenerator {
       throw new Error(`Invoice ${invoiceId} is not in DRAFT status`);
     }
 
-    const updatedInvoice: Invoice = {
-      ...invoice,
-      status: 'ISSUED',
-      updatedAt: new Date(),
-    };
+    // Resolve country: explicit override > deps lookup > undefined.
+    const country =
+      tenantCountry ??
+      (this.deps.getTenantCountry ? await this.deps.getTenantCountry(tenantId) : undefined);
 
-    return this.deps.updateInvoice(updatedInvoice);
+    // Fast path: no eTIMS routing needed.
+    if (!shouldSubmitToEtims(country, invoice.type) || !this.deps.kraEtimsClient) {
+      const updatedInvoice: Invoice = {
+        ...invoice,
+        status: 'ISSUED',
+        taxSubmissionStatus: 'NOT_REQUIRED',
+        updatedAt: new Date(),
+      };
+      return this.deps.updateInvoice(updatedInvoice);
+    }
+
+    // KE eTIMS routing: submit BEFORE marking authoritative.
+    this.deps.logger.info('invoice.issueInvoice: submitting to KRA eTIMS', {
+      invoiceId,
+      tenantId,
+      country,
+      type: invoice.type,
+    });
+
+    try {
+      const result = await this.deps.kraEtimsClient.submitInvoice({
+        tenantId,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        lineItems: invoice.lineItems.map((li) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice.amount,
+          totalAmount: li.totalAmount.amount,
+        })),
+        totalAmount: invoice.totalAmount.amount,
+        currency: invoice.currency,
+        issueDate: invoice.issueDate,
+      });
+
+      const updatedInvoice: Invoice = {
+        ...invoice,
+        status: 'ISSUED',
+        taxSubmissionStatus: 'SUBMITTED',
+        kraReceiptNo: result.kraReceiptNo,
+        kraQrUrl: result.qrUrl,
+        kraInvoiceNumber: result.invoiceNumber,
+        taxSubmittedAt: result.signedAt,
+        updatedAt: new Date(),
+      };
+
+      this.deps.logger.info('invoice.issueInvoice: KRA eTIMS submission accepted', {
+        invoiceId,
+        kraReceiptNo: result.kraReceiptNo,
+      });
+
+      return this.deps.updateInvoice(updatedInvoice);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.deps.logger.error('invoice.issueInvoice: KRA eTIMS submission failed', {
+        invoiceId,
+        tenantId,
+        error: errorMessage,
+      });
+
+      const pendingInvoice: Invoice = {
+        ...invoice,
+        status: 'PENDING_TAX_SUBMISSION',
+        taxSubmissionStatus: 'FAILED',
+        taxSubmissionError: errorMessage,
+        updatedAt: new Date(),
+      };
+      const saved = await this.deps.updateInvoice(pendingInvoice);
+
+      // Enqueue retry if a queue is wired; otherwise re-throw to surface
+      // the failure to the caller.
+      if (this.deps.taxRetryQueue) {
+        await this.deps.taxRetryQueue.enqueue({
+          invoiceId,
+          tenantId,
+          reason: errorMessage,
+          attemptedAt: new Date(),
+        });
+        return saved;
+      }
+      throw err;
+    }
   }
 
   /**
