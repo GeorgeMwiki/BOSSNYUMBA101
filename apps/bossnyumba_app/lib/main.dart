@@ -4,13 +4,17 @@ import 'app.dart';
 import 'core/auth_provider.dart';
 import 'core/api_client.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final api = ApiClient();
+  // Construct with autoRestore disabled so we can await the restore explicitly
+  // before the first frame / router decision.
+  final auth = AuthProvider(api: api, autoRestore: false);
+  await auth.restoreSession();
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider(api: api)),
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
         Provider<ApiClient>.value(value: api),
       ],
       child: const BossNyumbaApp(),
