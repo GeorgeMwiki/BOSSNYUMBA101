@@ -17,38 +17,56 @@ import { api, formatCurrency } from '../../../lib/api';
 
 const COLORS = ['#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#10B981'];
 
+interface ExpensesMeta {
+  trend: Array<{ month: string; maintenance: number; utilities: number; admin: number }>;
+  byCategory: Array<{ name: string; value: number }>;
+  totalExpenses: number;
+}
+
 export default function ExpensesPage() {
-  const [data, setData] = useState<Array<{ month: string; maintenance: number; utilities: number; admin: number }>>([]);
+  const [chartData, setChartData] = useState<
+    Array<{ month: string; maintenance: number; utilities: number; admin: number }>
+  >([]);
+  const [byCategory, setByCategory] = useState<Array<{ name: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<typeof data>('/analytics/expenses').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    api
+      .get<Array<{ month: string; maintenance: number; utilities: number; admin: number }>>(
+        '/analytics/expenses'
+      )
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data) {
+          setChartData(res.data);
+          const meta = (res as { meta?: ExpensesMeta }).meta;
+          if (meta) setByCategory(meta.byCategory);
+        } else {
+          setChartData([]);
+          setByCategory([]);
+          setError(res.error?.message ?? 'Live expense KPIs are unavailable.');
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Live expense KPIs are unavailable.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', maintenance: 450000, utilities: 320000, admin: 180000 },
-        { month: 'Sep', maintenance: 520000, utilities: 310000, admin: 190000 },
-        { month: 'Oct', maintenance: 480000, utilities: 340000, admin: 175000 },
-        { month: 'Nov', maintenance: 550000, utilities: 330000, admin: 200000 },
-        { month: 'Dec', maintenance: 420000, utilities: 360000, admin: 210000 },
-        { month: 'Jan', maintenance: 490000, utilities: 350000, admin: 195000 },
-        { month: 'Feb', maintenance: 510000, utilities: 340000, admin: 205000 },
-      ];
-
-  const byCategory = [
-    { name: 'Maintenance', value: 510000 },
-    { name: 'Utilities', value: 340000 },
-    { name: 'Admin', value: 205000 },
-    { name: 'Insurance', value: 120000 },
-    { name: 'Other', value: 180000 },
-  ];
+  // Latest period snapshot for stat cards.
+  const latest = chartData[chartData.length - 1];
 
   if (loading) {
     return (
@@ -70,6 +88,12 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -79,9 +103,9 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Maintenance</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(510000)}
+            {latest ? formatCurrency(latest.maintenance) : '—'}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">latest period</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -91,9 +115,9 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Utilities</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(340000)}
+            {latest ? formatCurrency(latest.utilities) : '—'}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">latest period</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -103,9 +127,9 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Admin</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(205000)}
+            {latest ? formatCurrency(latest.admin) : '—'}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">latest period</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -115,9 +139,12 @@ export default function ExpensesPage() {
             <span className="text-sm font-medium text-gray-500">Insurance</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(120000)}
+            {(() => {
+              const insurance = byCategory.find((c) => c.name === 'Insurance');
+              return insurance ? formatCurrency(insurance.value) : '—';
+            })()}
           </p>
-          <p className="text-sm text-gray-500">monthly</p>
+          <p className="text-sm text-gray-500">period total</p>
         </div>
       </div>
 

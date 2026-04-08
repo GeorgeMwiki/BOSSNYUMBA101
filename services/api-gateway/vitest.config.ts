@@ -8,6 +8,10 @@ export default defineConfig({
         __dirname,
         '../../packages/domain-models/src/index.ts'
       ),
+      '@bossnyumba/database': path.resolve(
+        __dirname,
+        '../../packages/database/src/index.ts'
+      ),
     },
   },
   test: {

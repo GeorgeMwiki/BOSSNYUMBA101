@@ -17,37 +17,53 @@ import { api, formatCurrency } from '../../../lib/api';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 
+interface RevenueMeta {
+  trend: Array<{ month: string; rent: number; other: number }>;
+  bySource: Array<{ name: string; value: number }>;
+  totalRevenue: number;
+}
+
 export default function RevenuePage() {
-  const [data, setData] = useState<Array<{ month: string; rent: number; other: number }>>([]);
+  const [chartData, setChartData] = useState<
+    Array<{ month: string; rent: number; other: number }>
+  >([]);
+  const [bySource, setBySource] = useState<Array<{ name: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<typeof data>('/analytics/revenue').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    api
+      .get<Array<{ month: string; rent: number; other: number }>>('/analytics/revenue')
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data) {
+          setChartData(res.data);
+          const meta = (res as { meta?: RevenueMeta }).meta;
+          if (meta) {
+            setBySource(meta.bySource);
+          }
+        } else {
+          setChartData([]);
+          setBySource([]);
+          setError(res.error?.message ?? 'Live revenue KPIs are unavailable.');
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Live revenue KPIs are unavailable.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const chartData = data.length
-    ? data
-    : [
-        { month: 'Aug', rent: 7800000, other: 400000 },
-        { month: 'Sep', rent: 8200000, other: 450000 },
-        { month: 'Oct', rent: 8500000, other: 500000 },
-        { month: 'Nov', rent: 8800000, other: 480000 },
-        { month: 'Dec', rent: 9200000, other: 520000 },
-        { month: 'Jan', rent: 9100000, other: 420000 },
-        { month: 'Feb', rent: 9400000, other: 500000 },
-      ];
-
-  const bySource = [
-    { name: 'Rent', value: 9400000 },
-    { name: 'Parking', value: 280000 },
-    { name: 'Utilities', value: 420000 },
-    { name: 'Other', value: 500000 },
-  ];
 
   if (loading) {
     return (
@@ -69,6 +85,12 @@ export default function RevenuePage() {
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -78,7 +100,11 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Total Revenue</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length)}
+            {chartData.length > 0
+              ? formatCurrency(
+                  chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length
+                )
+              : '—'}
           </p>
           <p className="text-sm text-gray-500">avg monthly</p>
         </div>
@@ -90,9 +116,11 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Rent Revenue</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.rent || 9400000)}
+            {chartData.length > 0
+              ? formatCurrency(chartData[chartData.length - 1]?.rent ?? 0)
+              : '—'}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">latest period</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
@@ -102,9 +130,11 @@ export default function RevenuePage() {
             <span className="text-sm font-medium text-gray-500">Other Income</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatCurrency(chartData[chartData.length - 1]?.other || 500000)}
+            {chartData.length > 0
+              ? formatCurrency(chartData[chartData.length - 1]?.other ?? 0)
+              : '—'}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">latest period</p>
         </div>
       </div>
 

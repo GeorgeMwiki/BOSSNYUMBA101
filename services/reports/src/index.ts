@@ -113,8 +113,29 @@ export {
   type PropertyKPIsDetail,
   type KPIBenchmark,
   type KPIAlert,
-  type IKPIDataProvider,
+  type IKPIEngineDataProvider,
+  type IKPIDataProviderLegacy,
 } from './services/kpi-engine.service.js';
+
+// ============================================================================
+// KPI Data Provider (simple accessors for HTTP routes / owner-portal)
+// ============================================================================
+export {
+  MockKPIDataProvider,
+  buildMonthBuckets,
+  lastNMonthsPeriod,
+  type IKPIDataProvider,
+  type OccupancyRateResult,
+  type RentCollectionRateResult,
+  type ArrearsAgingBucket,
+  type ArrearsAgingResult,
+  type MaintenanceTicketsMetricsResult,
+  type RevenueBreakdownPoint,
+  type RevenueBreakdownResult,
+  type ExpenseBreakdownPoint,
+  type ExpenseBreakdownResult,
+  type PortfolioSummaryResult,
+} from './services/kpi-data-provider.js';
 
 // ============================================================================
 // Morning Briefing Service
