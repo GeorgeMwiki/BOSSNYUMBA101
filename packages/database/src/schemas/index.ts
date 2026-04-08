@@ -15,6 +15,7 @@ export * from './messaging.schema.js';
 export * from './scheduling.schema.js';
 export * from './utilities.schema.js';
 export * from './compliance.schema.js';
+export * from './subprocessors.schema.js';
 export * from './intelligence.schema.js';
 export * from './ledger.schema.js';
 export * from './documents.schema.js';
