@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'core/auth_provider.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'router.dart';
 
 class BossNyumbaApp extends StatelessWidget {
@@ -13,6 +15,16 @@ class BossNyumbaApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'BOSSNYUMBA',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('sw'),
+      ],
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.dark(

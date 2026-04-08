@@ -1,0 +1,627 @@
+{
+  "@@locale": "en",
+  "@@author": "BOSSNYUMBA i18n team",
+  "@@last_modified": "2026-04-08",
+
+  "appTitle": "BOSSNYUMBA",
+  "@appTitle": {
+    "description": "The application name, shown on splash and app bars"
+  },
+  "appTagline": "Property management made simple",
+  "@appTagline": {
+    "description": "Short marketing line shown on splash / login"
+  },
+
+  "loginTitle": "Sign in",
+  "@loginTitle": {
+    "description": "Login screen title"
+  },
+  "loginButton": "Login",
+  "@loginButton": {
+    "description": "Primary CTA on the login screen"
+  },
+  "logoutButton": "Sign out",
+  "@logoutButton": {
+    "description": "Menu item or button that logs the user out"
+  },
+  "registerTitle": "Create account",
+  "@registerTitle": {
+    "description": "Register / sign-up screen title"
+  },
+  "registerButton": "Register",
+  "@registerButton": {
+    "description": "Primary CTA on the register screen"
+  },
+  "emailLabel": "Email",
+  "@emailLabel": {
+    "description": "Label for the email input"
+  },
+  "emailHint": "you@example.com",
+  "@emailHint": {
+    "description": "Placeholder for the email field"
+  },
+  "passwordLabel": "Password",
+  "@passwordLabel": {
+    "description": "Label for the password input"
+  },
+  "passwordHint": "Enter your password",
+  "@passwordHint": {
+    "description": "Placeholder for the password field"
+  },
+  "confirmPasswordLabel": "Confirm password",
+  "@confirmPasswordLabel": {
+    "description": "Label for the confirm-password input on register"
+  },
+  "forgotPassword": "Forgot password?",
+  "@forgotPassword": {
+    "description": "Link on login screen to recover password"
+  },
+  "rememberMe": "Remember me",
+  "@rememberMe": {
+    "description": "Checkbox label on login screen"
+  },
+  "dontHaveAccount": "Don't have an account?",
+  "@dontHaveAccount": {
+    "description": "Sign-up nudge on login screen"
+  },
+  "alreadyHaveAccount": "Already have an account?",
+  "@alreadyHaveAccount": {
+    "description": "Sign-in nudge on register screen"
+  },
+  "firstNameLabel": "First name",
+  "@firstNameLabel": {"description": "Label for the first name input"},
+  "lastNameLabel": "Last name",
+  "@lastNameLabel": {"description": "Label for the last name input"},
+  "phoneLabel": "Phone",
+  "@phoneLabel": {"description": "Label for the phone number input"},
+
+  "validationRequired": "This field is required",
+  "@validationRequired": {"description": "Generic required-field validation error"},
+  "validationInvalidEmail": "Please enter a valid email address",
+  "@validationInvalidEmail": {"description": "Email format validation error"},
+  "validationPasswordTooShort": "Password must be at least 8 characters",
+  "@validationPasswordTooShort": {"description": "Password length validation error"},
+  "validationPasswordMismatch": "Passwords do not match",
+  "@validationPasswordMismatch": {"description": "Password confirmation mismatch error"},
+
+  "navHome": "Home",
+  "@navHome": {"description": "Bottom nav label for the home tab"},
+  "navPay": "Pay",
+  "@navPay": {"description": "Bottom nav label for the payments tab"},
+  "navRequests": "Requests",
+  "@navRequests": {"description": "Bottom nav label for the maintenance requests tab"},
+  "navProfile": "Profile",
+  "@navProfile": {"description": "Bottom nav label for the profile tab"},
+  "navDashboard": "Dashboard",
+  "@navDashboard": {"description": "Bottom nav label for the manager dashboard tab"},
+  "navWorkOrders": "Work Orders",
+  "@navWorkOrders": {"description": "Bottom nav label for work orders"},
+  "navInspections": "Inspections",
+  "@navInspections": {"description": "Bottom nav label for inspections"},
+  "navPortfolio": "Portfolio",
+  "@navPortfolio": {"description": "Bottom nav label for the owner portfolio tab"},
+  "navAdmin": "Admin",
+  "@navAdmin": {"description": "Bottom nav label for the admin panel"},
+
+  "menuPayments": "Payments",
+  "@menuPayments": {"description": "Menu item for payments"},
+  "menuMaintenance": "Maintenance",
+  "@menuMaintenance": {"description": "Menu item for maintenance"},
+  "menuDocuments": "Documents",
+  "@menuDocuments": {"description": "Menu item for documents"},
+  "menuSettings": "Settings",
+  "@menuSettings": {"description": "Menu item for settings"},
+  "menuNotifications": "Notifications",
+  "@menuNotifications": {"description": "Menu item for notifications"},
+  "menuMessages": "Messages",
+  "@menuMessages": {"description": "Menu item for messages"},
+  "menuHelp": "Help",
+  "@menuHelp": {"description": "Menu item for help / support"},
+  "menuAbout": "About",
+  "@menuAbout": {"description": "Menu item for about screen"},
+  "menuLanguage": "Language",
+  "@menuLanguage": {"description": "Language picker label"},
+
+  "actionSubmit": "Submit",
+  "@actionSubmit": {"description": "Generic submit button"},
+  "actionCancel": "Cancel",
+  "@actionCancel": {"description": "Generic cancel button"},
+  "actionSave": "Save",
+  "@actionSave": {"description": "Generic save button"},
+  "actionDelete": "Delete",
+  "@actionDelete": {"description": "Generic delete button"},
+  "actionConfirm": "Confirm",
+  "@actionConfirm": {"description": "Generic confirm button"},
+  "actionEdit": "Edit",
+  "@actionEdit": {"description": "Generic edit button"},
+  "actionClose": "Close",
+  "@actionClose": {"description": "Generic close button"},
+  "actionRetry": "Retry",
+  "@actionRetry": {"description": "Retry a failed action"},
+  "actionBack": "Back",
+  "@actionBack": {"description": "Navigate back"},
+  "actionNext": "Next",
+  "@actionNext": {"description": "Navigate to next step"},
+  "actionContinue": "Continue",
+  "@actionContinue": {"description": "Continue to next step"},
+  "actionDone": "Done",
+  "@actionDone": {"description": "Mark as done / finish"},
+  "actionSearch": "Search",
+  "@actionSearch": {"description": "Search button"},
+  "actionFilter": "Filter",
+  "@actionFilter": {"description": "Filter button"},
+  "actionRefresh": "Refresh",
+  "@actionRefresh": {"description": "Refresh button"},
+  "actionViewAll": "View all",
+  "@actionViewAll": {"description": "View all items"},
+  "actionSeeMore": "See more",
+  "@actionSeeMore": {"description": "Expand / see more"},
+  "actionAdd": "Add",
+  "@actionAdd": {"description": "Add new item"},
+  "actionUpload": "Upload",
+  "@actionUpload": {"description": "Upload a file"},
+  "actionDownload": "Download",
+  "@actionDownload": {"description": "Download a file"},
+
+  "stateLoading": "Loading...",
+  "@stateLoading": {"description": "Generic loading indicator text"},
+  "stateEmpty": "Nothing to show yet",
+  "@stateEmpty": {"description": "Generic empty-state text"},
+  "stateError": "Something went wrong",
+  "@stateError": {"description": "Generic error state header"},
+  "stateFailedToLoad": "Failed to load",
+  "@stateFailedToLoad": {"description": "Shown when a network request fails"},
+  "stateUnknownError": "Unknown error",
+  "@stateUnknownError": {"description": "Fallback error message"},
+  "stateNoInternet": "No internet connection",
+  "@stateNoInternet": {"description": "Shown when the device is offline"},
+  "stateSaving": "Saving...",
+  "@stateSaving": {"description": "Shown while saving data"},
+  "stateSaved": "Saved",
+  "@stateSaved": {"description": "Shown after a successful save"},
+
+  "welcomeUser": "Welcome, {name}",
+  "@welcomeUser": {
+    "description": "Greeting on the home screen",
+    "placeholders": {
+      "name": {"type": "String", "example": "Jane"}
+    }
+  },
+  "welcomeResident": "Welcome, Resident",
+  "@welcomeResident": {"description": "Default greeting when the resident name is unknown"},
+  "welcomeManager": "Welcome, Manager",
+  "@welcomeManager": {"description": "Default greeting on the manager dashboard"},
+  "welcomeOwner": "Welcome, Owner",
+  "@welcomeOwner": {"description": "Default greeting on the owner portfolio"},
+  "welcomeAdmin": "Welcome, Admin",
+  "@welcomeAdmin": {"description": "Default greeting on the admin home"},
+  "communityFeed": "Your community feed",
+  "@communityFeed": {"description": "Home screen subtitle above the feed"},
+  "feedTitle": "Feed",
+  "@feedTitle": {"description": "Section title for the community feed"},
+
+  "payRentTitle": "Pay rent",
+  "@payRentTitle": {"description": "Home screen card title - pay rent"},
+  "payRentSubtitle": "{amount} due",
+  "@payRentSubtitle": {
+    "description": "Home card subtitle showing the amount owed",
+    "placeholders": {
+      "amount": {"type": "String", "example": "KES 45,000"}
+    }
+  },
+  "messagesCardTitle": "Messages",
+  "@messagesCardTitle": {"description": "Home card title - messages"},
+  "messagesCardSubtitle": "Chat with estate manager & groups",
+  "@messagesCardSubtitle": {"description": "Home card subtitle - messages"},
+
+  "paymentsTitle": "Payments",
+  "@paymentsTitle": {"description": "Payments screen title"},
+  "paymentsEmpty": "No invoices yet",
+  "@paymentsEmpty": {"description": "Empty state on the payments screen"},
+  "paymentsInvoiceFallback": "Invoice",
+  "@paymentsInvoiceFallback": {"description": "Fallback title when an invoice description is missing"},
+  "paymentsStatusPending": "Pending",
+  "@paymentsStatusPending": {"description": "Invoice status label - pending"},
+  "paymentsStatusPaid": "Paid",
+  "@paymentsStatusPaid": {"description": "Invoice status label - paid"},
+  "paymentsStatusOverdue": "Overdue",
+  "@paymentsStatusOverdue": {"description": "Invoice status label - overdue"},
+  "paymentsStatusCancelled": "Cancelled",
+  "@paymentsStatusCancelled": {"description": "Invoice status label - cancelled"},
+  "paymentsAmountDueLabel": "Amount due",
+  "@paymentsAmountDueLabel": {"description": "Label shown next to a due amount"},
+  "paymentsDueDateLabel": "Due date",
+  "@paymentsDueDateLabel": {"description": "Label for the due date"},
+  "paymentsPayNow": "Pay now",
+  "@paymentsPayNow": {"description": "Primary payment CTA"},
+  "paymentsMethodMpesa": "M-Pesa",
+  "@paymentsMethodMpesa": {"description": "Payment method - M-Pesa"},
+  "paymentsMethodBankTransfer": "Bank transfer",
+  "@paymentsMethodBankTransfer": {"description": "Payment method - bank transfer"},
+  "paymentsMethodCard": "Card",
+  "@paymentsMethodCard": {"description": "Payment method - card"},
+  "paymentsReceiptTitle": "Payment receipt",
+  "@paymentsReceiptTitle": {"description": "Receipt screen title"},
+
+  "maintenanceTitle": "Maintenance Requests",
+  "@maintenanceTitle": {"description": "Maintenance screen title"},
+  "maintenanceEmpty": "No requests yet",
+  "@maintenanceEmpty": {"description": "Empty state on the maintenance screen"},
+  "maintenanceNewRequest": "New request",
+  "@maintenanceNewRequest": {"description": "Button to create a new maintenance request"},
+  "maintenanceNewRequestPlaceholder": "New maintenance request form (placeholder)",
+  "@maintenanceNewRequestPlaceholder": {"description": "Placeholder text in the new-request bottom sheet"},
+  "maintenanceRequestFallback": "Request",
+  "@maintenanceRequestFallback": {"description": "Fallback title when a request has no title"},
+  "maintenancePriorityLow": "Low",
+  "@maintenancePriorityLow": {"description": "Priority label - low"},
+  "maintenancePriorityMedium": "Medium",
+  "@maintenancePriorityMedium": {"description": "Priority label - medium"},
+  "maintenancePriorityHigh": "High",
+  "@maintenancePriorityHigh": {"description": "Priority label - high"},
+  "maintenancePriorityUrgent": "Urgent",
+  "@maintenancePriorityUrgent": {"description": "Priority label - urgent"},
+  "maintenanceStatusPending": "Pending",
+  "@maintenanceStatusPending": {"description": "Work order status - pending"},
+  "maintenanceStatusInProgress": "In progress",
+  "@maintenanceStatusInProgress": {"description": "Work order status - in progress"},
+  "maintenanceStatusCompleted": "Completed",
+  "@maintenanceStatusCompleted": {"description": "Work order status - completed"},
+  "maintenanceStatusCancelled": "Cancelled",
+  "@maintenanceStatusCancelled": {"description": "Work order status - cancelled"},
+  "maintenanceCategoryPlumbing": "Plumbing",
+  "@maintenanceCategoryPlumbing": {"description": "Category - plumbing"},
+  "maintenanceCategoryElectrical": "Electrical",
+  "@maintenanceCategoryElectrical": {"description": "Category - electrical"},
+  "maintenanceCategoryAppliance": "Appliance",
+  "@maintenanceCategoryAppliance": {"description": "Category - appliance"},
+  "maintenanceCategoryStructural": "Structural",
+  "@maintenanceCategoryStructural": {"description": "Category - structural"},
+  "maintenanceCategoryOther": "Other",
+  "@maintenanceCategoryOther": {"description": "Category - other"},
+  "maintenanceDescriptionLabel": "Describe the issue",
+  "@maintenanceDescriptionLabel": {"description": "Label for the issue description field"},
+  "maintenanceAttachPhotos": "Attach photos",
+  "@maintenanceAttachPhotos": {"description": "Button to attach photos to a request"},
+
+  "workOrdersTitle": "Work Orders",
+  "@workOrdersTitle": {"description": "Work orders screen title"},
+  "workOrdersEmpty": "No work orders",
+  "@workOrdersEmpty": {"description": "Empty state on the work orders screen"},
+  "workOrderFallback": "Work Order",
+  "@workOrderFallback": {"description": "Fallback title for a work order with no title"},
+
+  "inspectionsTitle": "Inspections",
+  "@inspectionsTitle": {"description": "Inspections screen title"},
+  "inspectionsEmpty": "No inspections",
+  "@inspectionsEmpty": {"description": "Empty state on the inspections screen"},
+  "inspectionFallback": "Inspection",
+  "@inspectionFallback": {"description": "Fallback title for an inspection"},
+  "inspectionTypeMoveIn": "Move-in inspection",
+  "@inspectionTypeMoveIn": {"description": "Inspection type - move in"},
+  "inspectionTypeMoveOut": "Move-out inspection",
+  "@inspectionTypeMoveOut": {"description": "Inspection type - move out"},
+  "inspectionTypeRoutine": "Routine inspection",
+  "@inspectionTypeRoutine": {"description": "Inspection type - routine"},
+
+  "leaseTitle": "Lease",
+  "@leaseTitle": {"description": "Lease screen title"},
+  "leaseEmpty": "No active lease",
+  "@leaseEmpty": {"description": "Empty state on the lease screen"},
+  "leaseUnitFallback": "Unit",
+  "@leaseUnitFallback": {"description": "Fallback when a lease has no unit id"},
+  "leaseStatusActive": "Active",
+  "@leaseStatusActive": {"description": "Lease status - active"},
+  "leaseStatusPending": "Pending",
+  "@leaseStatusPending": {"description": "Lease status - pending"},
+  "leaseStatusExpired": "Expired",
+  "@leaseStatusExpired": {"description": "Lease status - expired"},
+  "leaseStatusTerminated": "Terminated",
+  "@leaseStatusTerminated": {"description": "Lease status - terminated"},
+  "leaseStartDate": "Start date",
+  "@leaseStartDate": {"description": "Lease start date label"},
+  "leaseEndDate": "End date",
+  "@leaseEndDate": {"description": "Lease end date label"},
+  "leaseMonthlyRent": "Monthly rent",
+  "@leaseMonthlyRent": {"description": "Monthly rent label"},
+  "leaseDeposit": "Deposit",
+  "@leaseDeposit": {"description": "Deposit label"},
+  "leaseDownloadAgreement": "Download agreement",
+  "@leaseDownloadAgreement": {"description": "Button to download the lease PDF"},
+
+  "profileTitle": "Profile",
+  "@profileTitle": {"description": "Profile screen title"},
+  "profileEditButton": "Edit profile",
+  "@profileEditButton": {"description": "Button to edit the profile"},
+  "profilePersonalInfo": "Personal information",
+  "@profilePersonalInfo": {"description": "Section header on the profile screen"},
+  "profilePreferences": "Preferences",
+  "@profilePreferences": {"description": "Section header on the profile screen"},
+  "profileSecurity": "Security",
+  "@profileSecurity": {"description": "Section header on the profile screen"},
+  "profileChangePassword": "Change password",
+  "@profileChangePassword": {"description": "Menu item to change password"},
+
+  "ownerPortfolioTitle": "Portfolio",
+  "@ownerPortfolioTitle": {"description": "Owner portfolio screen title"},
+  "ownerNoProperties": "No properties yet",
+  "@ownerNoProperties": {"description": "Empty state on the owner portfolio"},
+  "ownerUnableToLoad": "Unable to load portfolio",
+  "@ownerUnableToLoad": {"description": "Error when the owner portfolio fails to load"},
+  "ownerPropertyFallback": "Property",
+  "@ownerPropertyFallback": {"description": "Fallback when a property has no name"},
+  "ownerUnitsCountOne": "1 unit",
+  "@ownerUnitsCountOne": {"description": "Singular unit count label"},
+  "ownerUnitsCountOther": "{count} units",
+  "@ownerUnitsCountOther": {
+    "description": "Plural unit count label",
+    "placeholders": {
+      "count": {"type": "int", "example": "12"}
+    }
+  },
+  "ownerPropertiesCountOne": "1 property",
+  "@ownerPropertiesCountOne": {"description": "Singular property count"},
+  "ownerPropertiesCountOther": "{count} properties",
+  "@ownerPropertiesCountOther": {
+    "description": "Plural property count",
+    "placeholders": {
+      "count": {"type": "int", "example": "5"}
+    }
+  },
+
+  "managerQuickActionWorkOrders": "Work Orders",
+  "@managerQuickActionWorkOrders": {"description": "Quick action on manager home"},
+  "managerQuickActionInspections": "Inspections",
+  "@managerQuickActionInspections": {"description": "Quick action on manager home"},
+  "managerQuickActionOccupancy": "Occupancy",
+  "@managerQuickActionOccupancy": {"description": "Quick action on manager home"},
+  "managerQuickActionCollections": "Collections",
+  "@managerQuickActionCollections": {"description": "Quick action on manager home"},
+
+  "adminTitle": "Admin",
+  "@adminTitle": {"description": "Admin screen title"},
+  "adminTenants": "Tenants",
+  "@adminTenants": {"description": "Admin quick action - tenants"},
+  "adminUsersRoles": "Users & Roles",
+  "@adminUsersRoles": {"description": "Admin quick action - users and roles"},
+  "adminSupport": "Support",
+  "@adminSupport": {"description": "Admin quick action - support"},
+  "adminPlatformSettings": "Platform Settings",
+  "@adminPlatformSettings": {"description": "Admin quick action - platform settings"},
+
+  "documentsTitle": "Documents",
+  "@documentsTitle": {"description": "Documents screen title"},
+  "documentsEmpty": "No documents yet",
+  "@documentsEmpty": {"description": "Empty state on the documents screen"},
+  "documentsUpload": "Upload document",
+  "@documentsUpload": {"description": "Button to upload a document"},
+  "documentsCategoryIdentity": "Identity Documents",
+  "@documentsCategoryIdentity": {"description": "Document category - identity"},
+  "documentsCategoryAddress": "Proof of Address",
+  "@documentsCategoryAddress": {"description": "Document category - proof of address"},
+  "documentsCategoryFinancial": "Financial Documents",
+  "@documentsCategoryFinancial": {"description": "Document category - financial"},
+  "documentsCategoryEmployment": "Employment Verification",
+  "@documentsCategoryEmployment": {"description": "Document category - employment"},
+  "documentsCategoryIncome": "Income Verification",
+  "@documentsCategoryIncome": {"description": "Document category - income"},
+  "documentsCategoryLease": "Lease Documents",
+  "@documentsCategoryLease": {"description": "Document category - lease"},
+  "documentsCategoryInspection": "Inspection Reports",
+  "@documentsCategoryInspection": {"description": "Document category - inspection reports"},
+  "documentsCategoryPayment": "Payment Records",
+  "@documentsCategoryPayment": {"description": "Document category - payment records"},
+  "documentsCategoryGuarantor": "Guarantor Documents",
+  "@documentsCategoryGuarantor": {"description": "Document category - guarantor"},
+  "documentsCategoryBackground": "Background Checks",
+  "@documentsCategoryBackground": {"description": "Document category - background checks"},
+  "documentsCategoryImmigration": "Immigration Documents",
+  "@documentsCategoryImmigration": {"description": "Document category - immigration"},
+  "documentsTypeNationalId": "National ID",
+  "@documentsTypeNationalId": {"description": "Document type - national ID"},
+  "documentsTypePassport": "Passport",
+  "@documentsTypePassport": {"description": "Document type - passport"},
+  "documentsTypeDriversLicense": "Driver's license",
+  "@documentsTypeDriversLicense": {"description": "Document type - driver's license"},
+  "documentsTypeUtilityBill": "Utility bill",
+  "@documentsTypeUtilityBill": {"description": "Document type - utility bill"},
+  "documentsTypeBankStatement": "Bank statement",
+  "@documentsTypeBankStatement": {"description": "Document type - bank statement"},
+  "documentsTypeEmploymentLetter": "Employment letter",
+  "@documentsTypeEmploymentLetter": {"description": "Document type - employment letter"},
+  "documentsTypePayslip": "Payslip",
+  "@documentsTypePayslip": {"description": "Document type - payslip"},
+  "documentsTypeLeaseAgreement": "Lease agreement",
+  "@documentsTypeLeaseAgreement": {"description": "Document type - lease agreement"},
+  "documentsTypeReceipt": "Receipt",
+  "@documentsTypeReceipt": {"description": "Document type - receipt"},
+  "documentsTypeInvoice": "Invoice",
+  "@documentsTypeInvoice": {"description": "Document type - invoice"},
+  "documentsValidationCustomerIdRequired": "Customer ID is required",
+  "@documentsValidationCustomerIdRequired": {"description": "Validation error for missing customer ID"},
+  "documentsValidationDocumentIdRequired": "Document ID is required",
+  "@documentsValidationDocumentIdRequired": {"description": "Validation error for missing document ID"},
+  "documentsValidationAtLeastOneRequired": "At least one document required",
+  "@documentsValidationAtLeastOneRequired": {"description": "Validation error when no documents are selected"},
+  "documentsValidationTitleRequired": "Title is required",
+  "@documentsValidationTitleRequired": {"description": "Validation error for missing title"},
+  "documentsValidationReasonRequired": "Reason is required",
+  "@documentsValidationReasonRequired": {"description": "Validation error for missing reason"},
+  "documentsValidationNotesRequired": "Notes required",
+  "@documentsValidationNotesRequired": {"description": "Validation error for missing notes"},
+  "documentsEvidencePackTitle": "Evidence Pack",
+  "@documentsEvidencePackTitle": {"description": "Evidence pack title"},
+  "documentsSubmittedTo": "Submitted to",
+  "@documentsSubmittedTo": {"description": "Label showing who a document was submitted to"},
+  "documentsLegalDepartment": "Legal Department",
+  "@documentsLegalDepartment": {"description": "Default recipient for evidence packs"},
+
+  "notificationRentDueSubject": "Rent Due Reminder",
+  "@notificationRentDueSubject": {"description": "Email subject for rent_due notification"},
+  "notificationRentDueBody": "Your rent payment of {amount} is due on {dueDate}.",
+  "@notificationRentDueBody": {
+    "description": "Email body for rent_due notification",
+    "placeholders": {
+      "amount": {"type": "String", "example": "KES 45,000"},
+      "dueDate": {"type": "String", "example": "2026-05-01"}
+    }
+  },
+  "notificationRentDueSms": "Rent due: {amount} on {dueDate}. Pay on time to avoid late fees.",
+  "@notificationRentDueSms": {
+    "description": "SMS body for rent_due notification",
+    "placeholders": {
+      "amount": {"type": "String"},
+      "dueDate": {"type": "String"}
+    }
+  },
+  "notificationRentOverdueSubject": "Rent Overdue Notice",
+  "@notificationRentOverdueSubject": {"description": "Email subject for rent_overdue notification"},
+  "notificationRentOverdueBody": "Your rent payment of {amount} is {days} days overdue. Please pay immediately to avoid late fees.",
+  "@notificationRentOverdueBody": {
+    "description": "Email body for rent_overdue notification",
+    "placeholders": {
+      "amount": {"type": "String"},
+      "days": {"type": "String"}
+    }
+  },
+  "notificationRentOverdueSms": "URGENT: Rent {amount} is {days} days overdue. Please pay now.",
+  "@notificationRentOverdueSms": {
+    "description": "SMS body for rent_overdue notification",
+    "placeholders": {
+      "amount": {"type": "String"},
+      "days": {"type": "String"}
+    }
+  },
+  "notificationPaymentReceivedSubject": "Payment Received",
+  "@notificationPaymentReceivedSubject": {"description": "Email subject for payment_received notification"},
+  "notificationPaymentReceivedBody": "We received your payment of {amount}. Thank you for your payment.",
+  "@notificationPaymentReceivedBody": {
+    "description": "Email body for payment_received notification",
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "notificationPaymentReceivedSms": "Payment of {amount} received. Thank you!",
+  "@notificationPaymentReceivedSms": {
+    "description": "SMS body for payment_received notification",
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "notificationMaintenanceUpdateSubject": "Maintenance Update",
+  "@notificationMaintenanceUpdateSubject": {"description": "Email subject for maintenance_update notification"},
+  "notificationMaintenanceUpdateBody": "Your maintenance request #{workOrderNumber} has been updated: {status}.",
+  "@notificationMaintenanceUpdateBody": {
+    "description": "Email body for maintenance_update notification",
+    "placeholders": {
+      "workOrderNumber": {"type": "String"},
+      "status": {"type": "String"}
+    }
+  },
+  "notificationMaintenanceUpdateSms": "Maintenance #{workOrderNumber}: {status}",
+  "@notificationMaintenanceUpdateSms": {
+    "description": "SMS body for maintenance_update notification",
+    "placeholders": {
+      "workOrderNumber": {"type": "String"},
+      "status": {"type": "String"}
+    }
+  },
+  "notificationLeaseExpiringSubject": "Lease Expiring Soon",
+  "@notificationLeaseExpiringSubject": {"description": "Email subject for lease_expiring notification"},
+  "notificationLeaseExpiringBody": "Your lease will expire on {expiryDate}. Please contact us about renewal options.",
+  "@notificationLeaseExpiringBody": {
+    "description": "Email body for lease_expiring notification",
+    "placeholders": {
+      "expiryDate": {"type": "String"}
+    }
+  },
+  "notificationLeaseExpiringSms": "Lease expires {expiryDate}. Contact us for renewal.",
+  "@notificationLeaseExpiringSms": {
+    "description": "SMS body for lease_expiring notification",
+    "placeholders": {
+      "expiryDate": {"type": "String"}
+    }
+  },
+  "notificationWelcomeSubject": "Welcome to BOSSNYUMBA",
+  "@notificationWelcomeSubject": {"description": "Email subject for welcome notification"},
+  "notificationWelcomeBody": "Hi {name}, welcome to BOSSNYUMBA! We're excited to have you. Your property management dashboard is ready.",
+  "@notificationWelcomeBody": {
+    "description": "Email body for welcome notification",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "notificationWelcomeSms": "Welcome to BOSSNYUMBA! Your dashboard is ready.",
+  "@notificationWelcomeSms": {"description": "SMS body for welcome notification"},
+
+  "notificationNewMessageSubject": "New message",
+  "@notificationNewMessageSubject": {"description": "Email subject when a new chat message arrives"},
+  "notificationNewMessageBody": "{sender} sent you a new message.",
+  "@notificationNewMessageBody": {
+    "description": "Email body for new message notification",
+    "placeholders": {
+      "sender": {"type": "String"}
+    }
+  },
+  "notificationInspectionScheduledSubject": "Inspection Scheduled",
+  "@notificationInspectionScheduledSubject": {"description": "Email subject when an inspection is scheduled"},
+  "notificationInspectionScheduledBody": "An inspection has been scheduled for {date} at {time}.",
+  "@notificationInspectionScheduledBody": {
+    "description": "Email body for inspection scheduled notification",
+    "placeholders": {
+      "date": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "notificationDocumentApprovedSubject": "Document approved",
+  "@notificationDocumentApprovedSubject": {"description": "Email subject when a document is approved"},
+  "notificationDocumentApprovedBody": "Your document \"{title}\" has been approved.",
+  "@notificationDocumentApprovedBody": {
+    "description": "Email body for document approved notification",
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "notificationDocumentRejectedSubject": "Document rejected",
+  "@notificationDocumentRejectedSubject": {"description": "Email subject when a document is rejected"},
+  "notificationDocumentRejectedBody": "Your document \"{title}\" was rejected. Reason: {reason}.",
+  "@notificationDocumentRejectedBody": {
+    "description": "Email body for document rejected notification",
+    "placeholders": {
+      "title": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+
+  "notificationsEmpty": "You're all caught up",
+  "@notificationsEmpty": {"description": "Empty state on the notifications list"},
+  "notificationsMarkAllRead": "Mark all as read",
+  "@notificationsMarkAllRead": {"description": "Button to mark all notifications as read"},
+
+  "errorGeneric": "An unexpected error occurred. Please try again.",
+  "@errorGeneric": {"description": "Fallback user-facing error message"},
+  "errorNetwork": "Please check your internet connection and try again.",
+  "@errorNetwork": {"description": "Network error"},
+  "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "@errorSessionExpired": {"description": "Shown when the auth session expires"},
+  "errorUnauthorized": "You don't have permission to perform this action.",
+  "@errorUnauthorized": {"description": "Shown on 401/403"},
+  "errorNotFound": "The requested item could not be found.",
+  "@errorNotFound": {"description": "Shown on 404"},
+  "errorServer": "The server is having trouble. Please try again shortly.",
+  "@errorServer": {"description": "Shown on 5xx"},
+
+  "confirmDeleteTitle": "Delete this item?",
+  "@confirmDeleteTitle": {"description": "Confirmation dialog title for deletion"},
+  "confirmDeleteMessage": "This action cannot be undone.",
+  "@confirmDeleteMessage": {"description": "Confirmation dialog body for deletion"},
+  "confirmLogoutTitle": "Sign out?",
+  "@confirmLogoutTitle": {"description": "Confirmation dialog title for logout"},
+  "confirmLogoutMessage": "You'll need to sign in again next time.",
+  "@confirmLogoutMessage": {"description": "Confirmation dialog body for logout"},
+
+  "languageEnglish": "English",
+  "@languageEnglish": {"description": "Language name in English"},
+  "languageSwahili": "Swahili",
+  "@languageSwahili": {"description": "Language name in English for Swahili"}
+}

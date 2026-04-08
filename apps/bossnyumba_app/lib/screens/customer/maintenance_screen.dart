@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/work_orders_service.dart';
 import '../../core/api_client.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -13,8 +14,9 @@ class MaintenanceScreen extends StatefulWidget {
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Maintenance Requests')),
+      appBar: AppBar(title: Text(l10n.maintenanceTitle)),
       body: FutureBuilder<ApiResponse<List<dynamic>>>(
         future: WorkOrdersService().listMine(),
         builder: (context, snap) {
@@ -28,11 +30,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                 children: [
                   Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  Text(snap.data?.error ?? snap.error?.toString() ?? 'Failed to load'),
+                  Text(snap.data?.error ?? snap.error?.toString() ?? l10n.stateFailedToLoad),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => setState(() {}),
-                    child: const Text('Retry'),
+                    child: Text(l10n.actionRetry),
                   ),
                 ],
               ),
@@ -46,12 +48,12 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                 children: [
                   Icon(Icons.build, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  const Text('No requests yet'),
+                  Text(l10n.maintenanceEmpty),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: () => _showNewRequest(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('New request'),
+                    label: Text(l10n.maintenanceNewRequest),
                   ),
                 ],
               ),
@@ -64,7 +66,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               final wo = items[i] as Map<String, dynamic>;
               return Card(
                 child: ListTile(
-                  title: Text(wo['title'] ?? 'Request'),
+                  title: Text(wo['title'] ?? l10n.maintenanceRequestFallback),
                   subtitle: Text('${wo['status'] ?? 'PENDING'} • ${wo['priority'] ?? ''}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {},
@@ -77,7 +79,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showNewRequest(context),
         icon: const Icon(Icons.add),
-        label: const Text('New request'),
+        label: Text(l10n.maintenanceNewRequest),
       ),
     );
   }
@@ -96,9 +98,10 @@ class _NewRequestSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(24),
-      child: Text('New maintenance request form (placeholder)'),
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(l10n.maintenanceNewRequestPlaceholder),
     );
   }
 }

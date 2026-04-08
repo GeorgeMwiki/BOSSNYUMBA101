@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class ShellScreen extends StatelessWidget {
   final Widget child;
@@ -10,37 +11,38 @@ class ShellScreen extends StatelessWidget {
 
   List<_NavItem> _navItems(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
     if (auth.isCustomer) {
       return [
-        _NavItem(icon: Icons.home, label: 'Home', path: '/'),
-        _NavItem(icon: Icons.credit_card, label: 'Pay', path: '/payments'),
-        _NavItem(icon: Icons.build, label: 'Requests', path: '/maintenance'),
-        _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
+        _NavItem(icon: Icons.home, label: l10n.navHome, path: '/'),
+        _NavItem(icon: Icons.credit_card, label: l10n.navPay, path: '/payments'),
+        _NavItem(icon: Icons.build, label: l10n.navRequests, path: '/maintenance'),
+        _NavItem(icon: Icons.person, label: l10n.navProfile, path: '/profile'),
       ];
     }
     if (auth.isEstateManager) {
       return [
-        _NavItem(icon: Icons.dashboard, label: 'Dashboard', path: '/'),
-        _NavItem(icon: Icons.assignment, label: 'Work Orders', path: '/work-orders'),
-        _NavItem(icon: Icons.checklist, label: 'Inspections', path: '/inspections'),
-        _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
+        _NavItem(icon: Icons.dashboard, label: l10n.navDashboard, path: '/'),
+        _NavItem(icon: Icons.assignment, label: l10n.navWorkOrders, path: '/work-orders'),
+        _NavItem(icon: Icons.checklist, label: l10n.navInspections, path: '/inspections'),
+        _NavItem(icon: Icons.person, label: l10n.navProfile, path: '/profile'),
       ];
     }
     if (auth.isOwner) {
       return [
-        _NavItem(icon: Icons.apartment, label: 'Portfolio', path: '/owner'),
-        _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
+        _NavItem(icon: Icons.apartment, label: l10n.navPortfolio, path: '/owner'),
+        _NavItem(icon: Icons.person, label: l10n.navProfile, path: '/profile'),
       ];
     }
     if (auth.isAdmin) {
       return [
-        _NavItem(icon: Icons.admin_panel_settings, label: 'Admin', path: '/admin'),
-        _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
+        _NavItem(icon: Icons.admin_panel_settings, label: l10n.navAdmin, path: '/admin'),
+        _NavItem(icon: Icons.person, label: l10n.navProfile, path: '/profile'),
       ];
     }
     return [
-      _NavItem(icon: Icons.home, label: 'Home', path: '/'),
-      _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
+      _NavItem(icon: Icons.home, label: l10n.navHome, path: '/'),
+      _NavItem(icon: Icons.person, label: l10n.navProfile, path: '/profile'),
     ];
   }
 

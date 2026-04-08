@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/invoices_service.dart';
 import '../../core/api_client.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -13,8 +14,9 @@ class PaymentsScreen extends StatefulWidget {
 class _PaymentsScreenState extends State<PaymentsScreen> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Payments')),
+      appBar: AppBar(title: Text(l10n.paymentsTitle)),
       body: FutureBuilder<ApiResponse<List<dynamic>>>(
         future: InvoicesService().listMine(),
         builder: (context, snap) {
@@ -28,11 +30,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 children: [
                   Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  Text(snap.data?.error ?? snap.error?.toString() ?? 'Failed to load'),
+                  Text(snap.data?.error ?? snap.error?.toString() ?? l10n.stateFailedToLoad),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => setState(() {}),
-                    child: const Text('Retry'),
+                    child: Text(l10n.actionRetry),
                   ),
                 ],
               ),
@@ -46,7 +48,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 children: [
                   Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  const Text('No invoices yet'),
+                  Text(l10n.paymentsEmpty),
                 ],
               ),
             );
@@ -60,7 +62,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               final status = inv['status'] ?? 'PENDING';
               return Card(
                 child: ListTile(
-                  title: Text('${inv['description'] ?? 'Invoice'}'),
+                  title: Text('${inv['description'] ?? l10n.paymentsInvoiceFallback}'),
                   subtitle: Text(
                     '$amount ${inv['currency'] ?? 'KES'} • $status',
                   ),
