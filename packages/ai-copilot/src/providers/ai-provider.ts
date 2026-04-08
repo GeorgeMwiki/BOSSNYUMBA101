@@ -7,6 +7,11 @@
 
 import { AIResult, AIError, aiOk, aiErr, ModelId, asModelId } from '../types/core.types.js';
 import { CompiledPrompt } from '../types/prompt.types.js';
+import {
+  isProviderAllowedForTenant,
+  ProviderBlockedByCountryError,
+  type LLMProvider,
+} from '../llm-provider-gate.js';
 
 /**
  * AI completion request
@@ -421,7 +426,18 @@ export class MockAIProvider implements AIProvider {
 }
 
 /**
- * Provider registry for managing multiple providers
+ * Provider registry for managing multiple providers.
+ *
+ * Country-aware gating (Week 0 legal emergency, PII sovereignty):
+ *   - `get()` / `getForModel()` accept an optional `tenantCountry`.
+ *   - If an explicit `providerId` is requested that is blocked for the
+ *     tenant's country, a `ProviderBlockedByCountryError` is thrown so
+ *     callers cannot silently bypass the policy.
+ *   - If no explicit provider is requested (lookup by model / default),
+ *     the registry falls back to the next allowed provider and skips
+ *     any that are blocked by the gate.
+ *
+ * See `packages/ai-copilot/src/llm-provider-gate.ts`.
  */
 export class AIProviderRegistry {
   private providers: Map<string, AIProvider> = new Map();
@@ -434,21 +450,66 @@ export class AIProviderRegistry {
     }
   }
 
-  get(providerId?: string): AIProvider | null {
+  /**
+   * Resolve a provider by id (or fall back to the default).
+   *
+   * @param providerId     Explicit provider id to look up. If omitted, the
+   *                       registry returns the default provider.
+   * @param tenantCountry  Optional ISO-3166 alpha-2 code of the tenant. When
+   *                       provided, the provider gate is consulted:
+   *                         - Explicit id blocked => throws
+   *                           `ProviderBlockedByCountryError`.
+   *                         - Default lookup lands on a blocked provider =>
+   *                           the next allowed provider (if any) is returned.
+   */
+  get(providerId?: string, tenantCountry?: string): AIProvider | null {
     if (providerId) {
-      return this.providers.get(providerId) ?? null;
+      const provider = this.providers.get(providerId) ?? null;
+      if (provider && tenantCountry !== undefined) {
+        // Explicit request: hard-fail if blocked so that the policy
+        // violation surfaces to the caller (no silent fallback).
+        if (!isProviderAllowedForTenant(provider.providerId as LLMProvider, tenantCountry)) {
+          throw new ProviderBlockedByCountryError(
+            provider.providerId as LLMProvider,
+            tenantCountry,
+          );
+        }
+      }
+      return provider;
     }
     if (this.defaultProviderId) {
-      return this.providers.get(this.defaultProviderId) ?? null;
+      const defaultProvider = this.providers.get(this.defaultProviderId) ?? null;
+      if (
+        defaultProvider &&
+        tenantCountry !== undefined &&
+        !isProviderAllowedForTenant(defaultProvider.providerId as LLMProvider, tenantCountry)
+      ) {
+        // Default is blocked for this country: fall back to the next
+        // allowed provider in the registry.
+        return this.findAllowedProvider(tenantCountry);
+      }
+      return defaultProvider;
     }
     return null;
   }
 
-  getForModel(modelId: string): AIProvider | null {
+  /**
+   * Resolve a provider that supports a specific model id.
+   *
+   * @param modelId        Model identifier (e.g. 'gpt-4-turbo').
+   * @param tenantCountry  Optional tenant country; when set, providers
+   *                       blocked by the gate are skipped.
+   */
+  getForModel(modelId: string, tenantCountry?: string): AIProvider | null {
     for (const provider of this.providers.values()) {
-      if (provider.supportsModel(modelId)) {
-        return provider;
+      if (!provider.supportsModel(modelId)) continue;
+      if (
+        tenantCountry !== undefined &&
+        !isProviderAllowedForTenant(provider.providerId as LLMProvider, tenantCountry)
+      ) {
+        continue;
       }
+      return provider;
     }
     return null;
   }
@@ -456,4 +517,21 @@ export class AIProviderRegistry {
   list(): AIProvider[] {
     return Array.from(this.providers.values());
   }
+
+  /**
+   * Return the first registered provider that is allowed for the given
+   * tenant country, or `null` if none qualify.
+   */
+  private findAllowedProvider(tenantCountry: string): AIProvider | null {
+    for (const provider of this.providers.values()) {
+      if (isProviderAllowedForTenant(provider.providerId as LLMProvider, tenantCountry)) {
+        return provider;
+      }
+    }
+    return null;
+  }
 }
+
+// Re-export so downstream callers that only import from `./providers`
+// can catch `ProviderBlockedByCountryError` without deep-importing.
+export { ProviderBlockedByCountryError } from '../llm-provider-gate.js';
