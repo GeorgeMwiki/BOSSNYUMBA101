@@ -62,3 +62,5 @@ export * from './services/feedback';
 export * from './services/messaging';
 export * from './services/scheduling';
 export * from './services/sla';
+export * from './services/chat';
+export * from './services/onboarding';

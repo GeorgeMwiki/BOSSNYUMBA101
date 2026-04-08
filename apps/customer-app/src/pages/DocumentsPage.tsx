@@ -1,470 +1,308 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Download,
+  Upload,
+  AlertCircle,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  Calendar,
-  Clock,
-  Home,
-  Shield,
-  AlertTriangle,
-  Volume2,
-  Car,
-  Users,
-  Trash2,
-  Dog,
-  Cigarette,
-  CheckCircle,
+  Loader2,
 } from 'lucide-react';
+import {
+  documents as documentsApi,
+  type Document as ApiDocument,
+} from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '../contexts/AuthContext';
 
-interface Document {
-  id: string;
-  name: string;
-  category: 'lease' | 'payment' | 'inspection' | 'other';
-  date: string;
-  type: 'pdf';
-  size?: string;
-  status?: 'active' | 'expired' | 'pending';
-}
-
-interface HouseRule {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  color: string;
-  items: string[];
-}
-
-const documents: Document[] = [
-  {
-    id: '1',
-    name: 'Lease Agreement',
-    category: 'lease',
-    date: '2023-05-28',
-    type: 'pdf',
-    size: '2.4 MB',
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Move-in Inspection Report',
-    category: 'inspection',
-    date: '2023-06-01',
-    type: 'pdf',
-    size: '4.1 MB',
-  },
-  {
-    id: '3',
-    name: 'February 2024 Statement',
-    category: 'payment',
-    date: '2024-02-01',
-    type: 'pdf',
-    size: '156 KB',
-  },
-  {
-    id: '4',
-    name: 'January 2024 Statement',
-    category: 'payment',
-    date: '2024-01-01',
-    type: 'pdf',
-    size: '148 KB',
-  },
-  {
-    id: '5',
-    name: 'House Rules',
-    category: 'lease',
-    date: '2023-05-28',
-    type: 'pdf',
-    size: '890 KB',
-  },
+const CATEGORY_OPTIONS = [
+  { value: 'LEASE', label: 'Lease' },
+  { value: 'ID_DOCUMENT', label: 'ID Document' },
+  { value: 'INVOICE', label: 'Invoice' },
+  { value: 'RECEIPT', label: 'Receipt' },
+  { value: 'CONTRACT', label: 'Contract' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-const HOUSE_RULES: HouseRule[] = [
-  {
-    id: 'quiet',
-    title: 'Quiet Hours',
-    icon: Volume2,
-    color: 'bg-purple-50 text-purple-600',
-    items: [
-      'Quiet hours are observed from 10:00 PM to 7:00 AM daily',
-      'Keep noise levels reasonable during all hours',
-      'Use headphones for music/TV after 10:00 PM',
-      'Notify neighbors in advance of any gatherings',
-    ],
-  },
-  {
-    id: 'common',
-    title: 'Common Areas',
-    icon: Users,
-    color: 'bg-blue-50 text-blue-600',
-    items: [
-      'Gym hours: 5:00 AM to 11:00 PM',
-      'Pool hours: 7:00 AM to 10:00 PM',
-      'Guests must be accompanied in all common areas',
-      'Clean up after yourself in shared spaces',
-      'Report any damage or issues immediately',
-    ],
-  },
-  {
-    id: 'parking',
-    title: 'Parking',
-    icon: Car,
-    color: 'bg-green-50 text-green-600',
-    items: [
-      'Each unit is assigned one parking space',
-      'Guest parking available in designated areas only',
-      'No vehicle repairs in parking areas',
-      'Keep your parking space clean',
-      'Unauthorized vehicles may be towed',
-    ],
-  },
-  {
-    id: 'waste',
-    title: 'Waste Disposal',
-    icon: Trash2,
-    color: 'bg-amber-50 text-amber-600',
-    items: [
-      'Use designated bins for recycling and general waste',
-      'Large items require special pickup - contact management',
-      'No dumping in common areas',
-      'Garbage chute hours: 7:00 AM to 10:00 PM',
-    ],
-  },
-  {
-    id: 'pets',
-    title: 'Pet Policy',
-    icon: Dog,
-    color: 'bg-pink-50 text-pink-600',
-    items: [
-      'Pets must be registered with management',
-      'Maximum 2 pets per unit',
-      'Dogs must be leashed in common areas',
-      'Clean up after your pets immediately',
-      'Aggressive breeds may require additional approval',
-    ],
-  },
-  {
-    id: 'smoking',
-    title: 'Smoking Policy',
-    icon: Cigarette,
-    color: 'bg-red-50 text-red-600',
-    items: [
-      'Smoking is prohibited inside all buildings',
-      'Designated smoking areas are available outside',
-      'Keep 25 feet from building entrances',
-      'Dispose of cigarette butts properly',
-    ],
-  },
-];
+interface UploadProgress {
+  percent: number;
+  filename: string;
+}
 
-const categoryConfig = {
-  lease: { label: 'Lease', color: 'bg-primary-50 text-primary-600' },
-  payment: { label: 'Payment', color: 'bg-green-50 text-green-600' },
-  inspection: { label: 'Inspection', color: 'bg-purple-50 text-purple-600' },
-  other: { label: 'Other', color: 'bg-gray-100 text-gray-600' },
-};
-
+/**
+ * DocumentsPage — lists tenant-scoped documents, supports multipart
+ * upload with progress reporting, and fetches signed download URLs
+ * on demand.
+ */
 export default function DocumentsPage() {
-  const [activeTab, setActiveTab] = useState<'documents' | 'rules'>('documents');
-  const [expandedRule, setExpandedRule] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-
-  const leaseDocuments = documents.filter((d) => d.category === 'lease' || d.category === 'inspection');
-  const paymentDocuments = documents.filter((d) => d.category === 'payment');
-
-  const toggleRule = (ruleId: string) => {
-    setExpandedRule(expandedRule === ruleId ? null : ruleId);
+  const auth = useAuth() as unknown as {
+    user: { id?: string } | null;
+    token: string | null;
+    tenantId?: string;
   };
+  const tenantId =
+    auth.tenantId ??
+    (typeof window !== 'undefined'
+      ? window.localStorage.getItem('customer_tenant_id') ?? ''
+      : '');
+
+  const [docs, setDocs] = useState<ApiDocument[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('OTHER');
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchDocs = useCallback(async () => {
+    if (!tenantId) {
+      setError('Missing tenant context. Please sign in again.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await documentsApi.listDocuments({ tenantId });
+      setDocs(response.data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load documents');
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    void fetchDocs();
+  }, [fetchDocs]);
+
+  const handleFileSelected = useCallback(
+    async (file: File) => {
+      setUploadError(null);
+      if (!file) {
+        setUploadError('Please choose a file');
+        return;
+      }
+      if (!selectedCategory) {
+        setUploadError('Please choose a category');
+        return;
+      }
+      setUploadProgress({ percent: 0, filename: file.name });
+      try {
+        const response = await documentsApi.uploadDocument({
+          file,
+          category: selectedCategory,
+          filename: file.name,
+          onProgress: ({ percent }) =>
+            setUploadProgress({ percent, filename: file.name }),
+        });
+        if (response.data) {
+          setDocs((prev) => [response.data, ...prev]);
+        }
+        setUploadProgress(null);
+      } catch (err) {
+        setUploadError(
+          err instanceof Error ? err.message : 'Failed to upload document'
+        );
+        setUploadProgress(null);
+      }
+    },
+    [selectedCategory]
+  );
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void handleFileSelected(file);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDownload = useCallback(async (docId: string) => {
+    setDownloadingId(docId);
+    try {
+      const response = await documentsApi.getDownloadUrl(docId);
+      const url = response.data?.url;
+      if (url && typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch download URL'
+      );
+    } finally {
+      setDownloadingId(null);
+    }
+  }, []);
 
   return (
     <>
       <PageHeader title="Documents" showBack />
 
       <div className="px-4 py-4 space-y-6 pb-24">
-        {/* Tabs */}
-        <div className="flex bg-gray-100 rounded-xl p-1">
+        {/* Upload form */}
+        <section
+          aria-labelledby="upload-heading"
+          className="card p-4 space-y-3"
+        >
+          <h2 id="upload-heading" className="text-sm font-medium text-gray-700">
+            Upload a document
+          </h2>
+          <label className="block">
+            <span className="text-xs text-gray-500">Category</span>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              aria-label="Document category"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileInputChange}
+            data-testid="documents-file-input"
+          />
           <button
-            onClick={() => setActiveTab('documents')}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'documents'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500'
-            }`}
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!!uploadProgress}
+            className="w-full h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-primary-500 transition-colors"
           >
-            My Documents
+            <Upload className="w-5 h-5 mb-1" />
+            <span className="text-sm font-medium">Choose file</span>
           </button>
-          <button
-            onClick={() => setActiveTab('rules')}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'rules'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500'
-            }`}
+
+          {uploadProgress && (
+            <div
+              className="space-y-1"
+              role="progressbar"
+              aria-valuenow={uploadProgress.percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Uploading ${uploadProgress.filename}`}
+            >
+              <div className="flex justify-between text-xs text-gray-500">
+                <span className="truncate">{uploadProgress.filename}</span>
+                <span>{uploadProgress.percent}%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary-600 transition-all"
+                  style={{ width: `${uploadProgress.percent}%` }}
+                  data-testid="upload-progress-bar"
+                />
+              </div>
+            </div>
+          )}
+
+          {uploadError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 text-sm text-danger-700"
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <p>{uploadError}</p>
+            </div>
+          )}
+        </section>
+
+        {/* Documents list */}
+        <section aria-labelledby="documents-heading" className="space-y-3">
+          <h2
+            id="documents-heading"
+            className="text-sm font-medium text-gray-500"
           >
-            House Rules
-          </button>
-        </div>
+            Your documents
+          </h2>
 
-        {activeTab === 'documents' && (
-          <>
-            {/* Lease Summary Card */}
-            <div className="card overflow-hidden">
-              <div className="p-4 bg-gradient-to-br from-primary-600 to-primary-700 text-white">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Home className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Active Lease</h3>
-                    <p className="text-sm opacity-90">Unit A-204 • Sunset Apartments</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="opacity-75 mb-0.5">Start Date</div>
-                    <div className="font-medium">June 1, 2023</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">End Date</div>
-                    <div className="font-medium">May 31, 2024</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">Monthly Rent</div>
-                    <div className="font-medium">KES 40,000</div>
-                  </div>
-                  <div>
-                    <div className="opacity-75 mb-0.5">Status</div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="font-medium">Active</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex border-t border-gray-100">
-                <Link
-                  href="/lease"
-                  className="flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium text-primary-600 hover:bg-gray-50 transition-colors"
+          {loading && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="text-center text-sm text-gray-500 py-8"
+            >
+              Loading documents...
+            </div>
+          )}
+
+          {!loading && error && (
+            <div
+              role="alert"
+              className="card p-4 flex items-start gap-3 bg-danger-50 border-danger-100"
+            >
+              <AlertCircle className="w-5 h-5 text-danger-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-danger-900 mb-1">Error</h3>
+                <p className="text-sm text-danger-800">{error}</p>
+                <button
+                  onClick={() => void fetchDocs()}
+                  className="text-sm text-danger-700 underline mt-2"
                 >
-                  <Eye className="w-4 h-4" />
-                  View Lease
-                </Link>
-                <div className="w-px bg-gray-100" />
-                <Link
-                  href="/lease/renewal"
-                  className="flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium text-primary-600 hover:bg-gray-50 transition-colors"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Renewal Info
-                </Link>
-              </div>
-            </div>
-
-            {/* Lease Documents */}
-            <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Lease Documents</h2>
-              <div className="card divide-y divide-gray-100">
-                {leaseDocuments.map((doc) => (
-                  <DocumentRow key={doc.id} document={doc} onSelect={setSelectedDocument} />
-                ))}
-              </div>
-            </section>
-
-            {/* Payment Statements */}
-            <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Payment Statements</h2>
-              <div className="card divide-y divide-gray-100">
-                {paymentDocuments.map((doc) => (
-                  <DocumentRow key={doc.id} document={doc} onSelect={setSelectedDocument} />
-                ))}
-              </div>
-              <Link
-                href="/payments/history"
-                className="block text-center text-sm text-primary-600 py-4"
-              >
-                View All Statements →
-              </Link>
-            </section>
-          </>
-        )}
-
-        {activeTab === 'rules' && (
-          <>
-            {/* Important Notice */}
-            <div className="card p-4 bg-warning-50 border-warning-100">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-warning-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-medium text-warning-900 mb-1">Important</h3>
-                  <p className="text-sm text-warning-800">
-                    Violation of house rules may result in warnings, fines, or lease termination.
-                    Please review all rules carefully.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Rules Accordion */}
-            <div className="space-y-3">
-              {HOUSE_RULES.map((rule) => {
-                const Icon = rule.icon;
-                const isExpanded = expandedRule === rule.id;
-
-                return (
-                  <div key={rule.id} className="card overflow-hidden">
-                    <button
-                      onClick={() => toggleRule(rule.id)}
-                      className="w-full p-4 flex items-center gap-3 text-left"
-                    >
-                      <div className={`p-2 rounded-lg ${rule.color}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <span className="flex-1 font-medium">{rule.title}</span>
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
-                      )}
-                    </button>
-
-                    {isExpanded && (
-                      <div className="px-4 pb-4 pt-0">
-                        <div className="border-t border-gray-100 pt-4">
-                          <ul className="space-y-3">
-                            {rule.items.map((item, idx) => (
-                              <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
-                                <CheckCircle className="w-4 h-4 text-success-500 flex-shrink-0 mt-0.5" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Download Full Rules */}
-            <div className="card p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <FileText className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Complete House Rules</h3>
-                    <p className="text-sm text-gray-500">PDF • 890 KB</p>
-                  </div>
-                </div>
-                <button className="btn-secondary text-sm">
-                  <Download className="w-4 h-4 mr-1" />
-                  Download
+                  Try again
                 </button>
               </div>
             </div>
-          </>
-        )}
-      </div>
+          )}
 
-      {/* Document Viewer Modal */}
-      {selectedDocument && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
-          <div className="bg-white w-full max-w-lg rounded-t-2xl p-4 space-y-4 animate-slide-up safe-area-bottom">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{selectedDocument.name}</h3>
-              <button
-                onClick={() => setSelectedDocument(null)}
-                className="p-2 text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
+          {!loading && !error && docs.length === 0 && (
+            <div className="card p-6 text-center text-sm text-gray-500">
+              No documents yet. Upload one above to get started.
             </div>
+          )}
 
-            <div className="card p-4 flex items-center gap-4">
-              <div className="p-3 bg-gray-100 rounded-xl">
-                <FileText className="w-8 h-8 text-gray-600" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-medium">{selectedDocument.name}</h4>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                  <span>{categoryConfig[selectedDocument.category].label}</span>
-                  <span>•</span>
-                  <span>{selectedDocument.size}</span>
-                  <span>•</span>
-                  <span>{new Date(selectedDocument.date).toLocaleDateString()}</span>
+          {!loading && !error && docs.length > 0 && (
+            <div
+              className="card divide-y divide-gray-100"
+              data-testid="documents-list"
+            >
+              {docs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-3 p-4"
+                >
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <FileText className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {doc.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {doc.type}
+                      {doc.size ? ` • ${Math.round(doc.size / 1024)} KB` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDownload(doc.id)}
+                    disabled={downloadingId === doc.id}
+                    className="btn-secondary text-sm flex items-center"
+                    aria-label={`Download ${doc.name}`}
+                  >
+                    {downloadingId === doc.id ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 mr-1" />
+                    )}
+                    Download
+                  </button>
+                  <ChevronRight className="w-5 h-5 text-gray-300" />
                 </div>
-              </div>
+              ))}
             </div>
-
-            <div className="flex gap-3">
-              <Link
-                href={`/documents/${selectedDocument.id}`}
-                className="btn-secondary flex-1 py-4"
-                onClick={() => setSelectedDocument(null)}
-              >
-                <Eye className="w-5 h-5 mr-2" />
-                View
-              </Link>
-              <button className="btn-primary flex-1 py-4">
-                <Download className="w-5 h-5 mr-2" />
-                Download
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes slide-up {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-      `}</style>
+          )}
+        </section>
+      </div>
     </>
-  );
-}
-
-function DocumentRow({
-  document,
-  onSelect,
-}: {
-  document: Document;
-  onSelect: (doc: Document) => void;
-}) {
-  const category = categoryConfig[document.category];
-
-  return (
-    <button
-      onClick={() => onSelect(document)}
-      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
-    >
-      <div className="p-2 bg-gray-100 rounded-lg">
-        <FileText className="w-5 h-5 text-gray-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm truncate">{document.name}</div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={`text-xs px-2 py-0.5 rounded-full ${category.color}`}>
-            {category.label}
-          </span>
-          <span className="text-xs text-gray-400">
-            {new Date(document.date).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
-      <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-    </button>
   );
 }
