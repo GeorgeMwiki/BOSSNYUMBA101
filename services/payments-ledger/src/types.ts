@@ -274,8 +274,27 @@ export interface Statement {
 // Invoice Types
 // =============================================================================
 
-export type InvoiceStatus = 'DRAFT' | 'ISSUED' | 'SENT' | 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'CANCELLED' | 'VOIDED';
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'PENDING_TAX_SUBMISSION'
+  | 'ISSUED'
+  | 'SENT'
+  | 'PAID'
+  | 'PARTIALLY_PAID'
+  | 'OVERDUE'
+  | 'CANCELLED'
+  | 'VOIDED';
 export type InvoiceType = 'RENT' | 'DEPOSIT' | 'UTILITY' | 'MAINTENANCE' | 'LATE_FEE' | 'OTHER';
+
+/**
+ * Status of fiscal-authority tax submission (e.g. KRA eTIMS in Kenya).
+ *
+ * - NOT_REQUIRED: invoice does not trigger eTIMS (wrong country, non-commercial, etc.)
+ * - PENDING: awaiting submission or retry
+ * - SUBMITTED: accepted by fiscal authority; receipt fields populated
+ * - FAILED: submission attempted but rejected; a retry job has been enqueued
+ */
+export type TaxSubmissionStatus = 'NOT_REQUIRED' | 'PENDING' | 'SUBMITTED' | 'FAILED';
 
 /**
  * Invoice line item
@@ -359,6 +378,21 @@ export interface Invoice {
   readonly createdBy: string;
   readonly updatedAt: Date;
   readonly updatedBy: string;
+  // -------------------------------------------------------------------------
+  // Fiscal-authority submission (KE eTIMS / TZ TRA)
+  // -------------------------------------------------------------------------
+  /** Status of fiscal-authority submission for this invoice. */
+  readonly taxSubmissionStatus?: TaxSubmissionStatus;
+  /** KRA-issued receipt number when eTIMS submission succeeds. */
+  readonly kraReceiptNo?: string;
+  /** KRA-issued QR/verification URL printed on the customer-facing invoice. */
+  readonly kraQrUrl?: string;
+  /** KRA-issued internal invoice number (distinct from our local invoiceNumber). */
+  readonly kraInvoiceNumber?: string;
+  /** Timestamp of last successful tax submission. */
+  readonly taxSubmittedAt?: Date;
+  /** Last submission error message (when status is FAILED). */
+  readonly taxSubmissionError?: string;
 }
 
 /**
@@ -366,6 +400,13 @@ export interface Invoice {
  */
 export interface CreateInvoiceRequest {
   readonly tenantId: TenantId;
+  /**
+   * ISO-3166 alpha-2 country code of the tenant. Used to drive
+   * fiscal-authority routing (KE -> KRA eTIMS, TZ -> TRA, etc.).
+   * Optional for backward compatibility — when missing, no tax
+   * authority submission is attempted.
+   */
+  readonly tenantCountry?: string;
   readonly type: InvoiceType;
   readonly customerId: CustomerId;
   readonly customerName: string;
