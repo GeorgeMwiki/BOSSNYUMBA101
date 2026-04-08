@@ -40,6 +40,9 @@ npm-debug.log*
 # Cache
 .cache/
 
+# Claude Code agent worktrees (runtime state)
+.claude/worktrees/
+
 # Terraform
 *.tfstate
 *.tfstate.*
