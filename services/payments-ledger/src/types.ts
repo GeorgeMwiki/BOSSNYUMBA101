@@ -274,8 +274,27 @@ export interface Statement {
 // Invoice Types
 // =============================================================================
 
-export type InvoiceStatus = 'DRAFT' | 'ISSUED' | 'SENT' | 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'CANCELLED' | 'VOIDED';
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'PENDING_TAX_SUBMISSION'
+  | 'ISSUED'
+  | 'SENT'
+  | 'PAID'
+  | 'PARTIALLY_PAID'
+  | 'OVERDUE'
+  | 'CANCELLED'
+  | 'VOIDED';
 export type InvoiceType = 'RENT' | 'DEPOSIT' | 'UTILITY' | 'MAINTENANCE' | 'LATE_FEE' | 'OTHER';
+
+/**
+ * Status of fiscal-authority tax submission (e.g. KRA eTIMS in Kenya).
+ *
+ * - NOT_REQUIRED: invoice does not trigger eTIMS (wrong country, non-commercial, etc.)
+ * - PENDING: awaiting submission or retry
+ * - SUBMITTED: accepted by fiscal authority; receipt fields populated
+ * - FAILED: submission attempted but rejected; a retry job has been enqueued
+ */
+export type TaxSubmissionStatus = 'NOT_REQUIRED' | 'PENDING' | 'SUBMITTED' | 'FAILED';
 
 /**
  * Invoice line item
