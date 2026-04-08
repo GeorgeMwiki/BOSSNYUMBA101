@@ -14,6 +14,7 @@ import type {
   SoftDeletable,
   TenantScoped,
 } from '../common/types.js';
+import type { Region, FiscalAuthority } from '../region/region.js';
 
 /** Organization status */
 export const OrganizationStatus = {
@@ -80,6 +81,28 @@ export interface Organization extends EntityMetadata, SoftDeletable, TenantScope
   readonly description: string | null;
   /** Custom metadata for integrations */
   readonly metadata: Record<string, unknown>;
+  /**
+   * Fiscal country (ISO-3166 alpha-2 region) for tax authority routing.
+   * This is the country whose tax authority receives invoices from this
+   * org — it is INDEPENDENT of the residence/region of any individual
+   * tenant who rents from this org.
+   *
+   * - `KE` -> KRA eTIMS OSCU + eRITS MRI
+   * - `TZ` -> TRA VAT + WHT
+   * - `OTHER` -> no fiscal authority routing
+   *
+   * Optional for backward compatibility — pre-existing org records
+   * have no fiscalCountry until an admin sets it. Without a value, the
+   * payments-ledger will not post to any fiscal authority.
+   */
+  readonly fiscalCountry?: Region;
+  /**
+   * Resolved fiscal authority for this org. Should always equal
+   * `fiscalAuthorityForRegion(fiscalCountry)`. Stored denormalized so
+   * downstream services can read it without re-importing the region
+   * helper.
+   */
+  readonly fiscalAuthority?: FiscalAuthority;
 }
 
 /** Input for creating an organization */

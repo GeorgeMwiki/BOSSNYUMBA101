@@ -8,15 +8,19 @@ export * from './common/types';
 export * from './common/money';
 export * from './common/enums';
 
+// Region & language
+export * from './region/region';
+
 // Tenant/Organization
 export * from './tenant/tenant';
 export * from './tenant/organization';
 
-// Identity (Users, Roles, Sessions, Policies)
+// Identity (Users, Roles, Sessions, Policies, Cross-tenant Memberships)
 export * from './identity/user';
 export * from './identity/role';
 export * from './identity/session';
 export * from './identity/policy';
+export * from './identity/membership';
 
 // Audit
 export * from './audit/audit-event';

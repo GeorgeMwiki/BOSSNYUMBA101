@@ -15,6 +15,7 @@ import type {
   TenantScoped,
   ISOTimestamp,
 } from '../common/types.js';
+import type { Region, Language } from '../region/region.js';
 
 /** User status lifecycle */
 export const UserStatus = {
@@ -152,6 +153,23 @@ export interface User extends EntityMetadata, SoftDeletable, TenantScoped {
   readonly externalIdpId: string | null;
   /** External identity provider user ID (for SSO) */
   readonly externalUserId: string | null;
+  /**
+   * User-selected region (TZ / KE / OTHER). Captured at signup and
+   * editable in settings. Drives PII subprocessor gating, Privacy
+   * Policy / Terms-of-Service rendering, and the default UI language.
+   *
+   * Optional for backward compatibility — pre-existing user records
+   * have no region until the next interactive session prompts them.
+   *
+   * SEE: `packages/enterprise-hardening/src/compliance/region-policy.ts`
+   * for the full mapping of region to policy bundle.
+   */
+  readonly region?: Region;
+  /**
+   * User-selected interface language. Defaults to the result of
+   * `defaultLanguageForRegion(region)` if absent.
+   */
+  readonly language?: Language;
 }
 
 /** Input for creating a new user */
