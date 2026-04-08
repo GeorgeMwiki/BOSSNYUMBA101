@@ -65,10 +65,35 @@ export interface LoginResult {
   message?: string;
 }
 
+/**
+ * Cross-tenant membership entry returned by `/auth/me`. Mirrors the
+ * `MembershipBundle` shape from `@bossnyumba/domain-models`. The customer-
+ * app + estate-manager-app are multi-org: a single user identity can be
+ * a tenant in N different landlord orgs (or a manager serving N owners).
+ */
+export interface OrgMembership {
+  /** Stable id from the membership row (or 'primary' for the user's home tenant). */
+  id: string;
+  /** The landlord/property-management-company tenant id. */
+  tenantId: string;
+  /** Optional pin to a specific org within the tenant. */
+  organizationId: string | null;
+  /** Role inside this membership's tenant. */
+  role: string;
+  /** Human-readable label shown in the org switcher. */
+  displayLabel: string | null;
+  /** True if this is the user's primary/home tenant. */
+  isPrimary: boolean;
+}
+
 interface AuthContextType {
   // Canonical shape required by parallel agents.
   user: CustomerUser | null;
   token: string | null;
+  /**
+   * The currently active tenant id for API scoping. Equals the active
+   * membership's tenantId if multi-org, else the user's primary tenant.
+   */
   tenantId: string | null;
 
   // State flags.
@@ -80,6 +105,20 @@ interface AuthContextType {
   // Derived claims for convenience.
   role: string | null;
   permissions: string[];
+
+  // Cross-tenant membership state (foundation: multi-owner customer/manager).
+  /** All memberships for the current user (primary + cross-tenant). */
+  memberships: OrgMembership[];
+  /** The currently selected membership's tenant id. Drives X-Active-Org. */
+  activeOrgId: string | null;
+  /** Switch the active membership. Persists to localStorage. */
+  setActiveOrg: (membershipIdOrTenantId: string) => void;
+
+  // Region + language (foundation: drives policy + i18n).
+  /** User's selected region (TZ / KE / OTHER). */
+  region: 'TZ' | 'KE' | 'OTHER' | null;
+  /** User's selected UI language. */
+  language: 'en' | 'sw' | null;
 
   // Actions (new canonical API).
   login: (email: string, password: string) => Promise<LoginResult>;
@@ -105,6 +144,8 @@ export const AUTH_TOKEN_KEY = AUTH_TOKEN_KEY_CONST;
 // Legacy keys kept in sync so `lib/api.ts` / other consumers still read them.
 const LEGACY_TOKEN_KEY = 'customer_token';
 const LEGACY_USER_KEY = 'customer_user';
+/** Persisted active membership id so the org switcher survives reload. */
+const ACTIVE_ORG_KEY = 'bossnyumba:auth:activeOrgId';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -188,10 +229,14 @@ interface LoginResponseBody {
 interface MeResponseBody {
   success: boolean;
   data?: {
-    user: CustomerUser;
+    user: CustomerUser & {
+      region?: 'TZ' | 'KE' | 'OTHER';
+      language?: 'en' | 'sw';
+    };
     tenant?: TenantInfo;
     role?: string;
     permissions?: string[];
+    memberships?: OrgMembership[];
   };
   error?: { code?: string; message?: string };
 }
@@ -213,6 +258,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Cross-tenant membership + region/language state.
+  const [memberships, setMemberships] = useState<OrgMembership[]>([]);
+  const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
+  const [region, setRegion] = useState<'TZ' | 'KE' | 'OTHER' | null>(null);
+  const [language, setLanguage] = useState<'en' | 'sw' | null>(null);
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearState = useCallback(() => {
@@ -221,7 +271,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTenant(null);
     setRole(null);
     setPermissions([]);
+    setMemberships([]);
+    setActiveOrgIdState(null);
+    setRegion(null);
+    setLanguage(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(ACTIVE_ORG_KEY);
+    }
   }, []);
+
+  /**
+   * Switch the active membership. Accepts either the membership row id or
+   * the tenant id (resolves to the matching membership). Persists to
+   * localStorage so subsequent reloads pick up the same active org.
+   */
+  const setActiveOrg = useCallback(
+    (membershipIdOrTenantId: string) => {
+      const match = memberships.find(
+        (m) => m.id === membershipIdOrTenantId || m.tenantId === membershipIdOrTenantId,
+      );
+      const nextId = match ? match.tenantId : membershipIdOrTenantId;
+      setActiveOrgIdState(nextId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(ACTIVE_ORG_KEY, nextId);
+      }
+    },
+    [memberships],
+  );
 
   const logout = useCallback(() => {
     clearTokenFromStorage();
@@ -253,7 +329,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const applyToken = useCallback(
-    (nextToken: string, nextUser: CustomerUser | null, nextTenant?: TenantInfo | null, nextRole?: string | null, nextPerms?: string[] | null) => {
+    (
+      nextToken: string,
+      nextUser: CustomerUser | null,
+      nextTenant?: TenantInfo | null,
+      nextRole?: string | null,
+      nextPerms?: string[] | null,
+      nextMemberships?: OrgMembership[] | null,
+      nextRegion?: 'TZ' | 'KE' | 'OTHER' | null,
+      nextLanguage?: 'en' | 'sw' | null,
+    ) => {
       const claims = decodeJwt(nextToken);
       const tenantFromClaims = claims?.tenantId ? { id: claims.tenantId } : null;
       const mergedTenant = nextTenant ?? tenantFromClaims;
@@ -263,6 +348,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTenant(mergedTenant);
       setRole(nextRole ?? claims?.role ?? null);
       setPermissions(nextPerms ?? claims?.permissions ?? []);
+      // Memberships: backend sends `memberships`. If absent, synthesize a
+      // single primary entry from the user's home tenant so the org
+      // switcher always has at least one entry.
+      const resolvedMemberships: OrgMembership[] =
+        nextMemberships && nextMemberships.length > 0
+          ? nextMemberships
+          : mergedTenant
+          ? [
+              {
+                id: 'primary',
+                tenantId: mergedTenant.id,
+                organizationId: null,
+                role: nextRole ?? claims?.role ?? 'CUSTOMER',
+                displayLabel: mergedTenant.name ?? null,
+                isPrimary: true,
+              },
+            ]
+          : [];
+      setMemberships(resolvedMemberships);
+      // Pick active org: prefer persisted choice if it matches a current
+      // membership, else the primary, else the first.
+      let nextActive: string | null = null;
+      if (typeof window !== 'undefined') {
+        const persisted = localStorage.getItem(ACTIVE_ORG_KEY);
+        if (
+          persisted &&
+          resolvedMemberships.some((m) => m.tenantId === persisted)
+        ) {
+          nextActive = persisted;
+        }
+      }
+      if (!nextActive && resolvedMemberships.length > 0) {
+        nextActive =
+          resolvedMemberships.find((m) => m.isPrimary)?.tenantId ??
+          resolvedMemberships[0].tenantId;
+      }
+      setActiveOrgIdState(nextActive);
+      if (nextActive && typeof window !== 'undefined') {
+        localStorage.setItem(ACTIVE_ORG_KEY, nextActive);
+      }
+      // Region + language come from the user record on /auth/me.
+      if (nextRegion !== undefined) setRegion(nextRegion);
+      if (nextLanguage !== undefined) setLanguage(nextLanguage);
       scheduleExpiry(nextToken);
     },
     [scheduleExpiry]
@@ -384,7 +512,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             body.data.user,
             body.data.tenant ?? null,
             body.data.role ?? null,
-            body.data.permissions ?? []
+            body.data.permissions ?? [],
+            body.data.memberships ?? null,
+            body.data.user?.region ?? null,
+            body.data.user?.language ?? null,
           );
         }
       } catch {
@@ -422,12 +553,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       token,
-      tenantId: tenant?.id ?? null,
+      // tenantId derives from the active membership when present, else
+      // falls back to the user's primary tenant. This is what consumers
+      // (api-client, server X-Active-Org header) should read.
+      tenantId: activeOrgId ?? tenant?.id ?? null,
       isAuthenticated: !!token && !!user,
       isLoading,
       loading: isLoading,
       role,
       permissions,
+      memberships,
+      activeOrgId,
+      setActiveOrg,
+      region,
+      language,
       login,
       logout,
       refreshToken,
@@ -442,6 +581,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       role,
       permissions,
+      memberships,
+      activeOrgId,
+      setActiveOrg,
+      region,
+      language,
       login,
       logout,
       refreshToken,
