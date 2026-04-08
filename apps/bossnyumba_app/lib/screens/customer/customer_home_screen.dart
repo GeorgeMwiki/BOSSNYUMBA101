@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/stories_bar.dart';
 import '../../widgets/feed_card.dart';
 
@@ -12,10 +13,11 @@ class CustomerHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final session = auth.session;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('BOSSNYUMBA'),
+        title: Text(l10n.appTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -27,12 +29,14 @@ class CustomerHomeScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           Text(
-            'Welcome, ${session?.firstName ?? "Resident"}',
+            session?.firstName != null
+                ? l10n.welcomeUser(session!.firstName)
+                : l10n.welcomeResident,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            'Your community feed',
+            l10n.communityFeed,
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
           const SizedBox(height: 16),
@@ -40,20 +44,20 @@ class CustomerHomeScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _SpotifyCard(
             icon: Icons.credit_card,
-            title: 'Pay rent',
-            subtitle: 'KES 45,000 due',
+            title: l10n.payRentTitle,
+            subtitle: l10n.payRentSubtitle('KES 45,000'),
             onTap: () => context.go('/payments'),
           ),
           const SizedBox(height: 24),
-          Text('Feed', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text(l10n.feedTitle, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const FeedCard(author: 'Sunrise Apartments', content: 'Pool maintenance completed. Enjoy!', likes: 12, comments: 3),
           const FeedCard(author: 'Estate Manager', content: 'New parking bays now available in Block B.', likes: 8, comments: 1),
           const SizedBox(height: 24),
           _SpotifyCard(
             icon: Icons.chat_bubble_outline,
-            title: 'Messages',
-            subtitle: 'Chat with estate manager & groups',
+            title: l10n.messagesCardTitle,
+            subtitle: l10n.messagesCardSubtitle,
             onTap: () {},
           ),
         ],
