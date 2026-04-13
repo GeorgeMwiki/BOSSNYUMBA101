@@ -34,6 +34,8 @@ import TenantCommunicationsPage from './app/tenants/communications/page';
 import BudgetsPage from './app/budgets/page';
 import PropertyBudgetPage from './app/budgets/[propertyId]/page';
 import BudgetForecastsPage from './app/budgets/forecasts/page';
+import { RegisterPage } from './pages/RegisterPage';
+import { InvitePage } from './pages/InvitePage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -58,6 +60,8 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/invite" element={<InvitePage />} />
         <Route
           path="/*"
           element={

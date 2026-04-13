@@ -33,7 +33,7 @@ interface AuthContextType {
   sessionTimeoutMinutes: number;
   lastActivity: Date | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: (reason?: string) => void;
   refreshSession: () => void;
   setSessionTimeout: (minutes: number) => void;
 }
@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
   
-  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const logout = useCallback((reason?: string) => {
     localStorage.removeItem('token');
@@ -190,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, resetSessionTimeout]);
 
   const login = async (email: string, password: string) => {

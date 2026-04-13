@@ -128,7 +128,7 @@ export function RegisterPage() {
         setMfaSetup(response.data as MfaSetup);
         setStep('mfa-setup');
       } else {
-        if (process.env.NODE_ENV !== 'production') {
+        if (!import.meta.env.PROD) {
           const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
           setMfaSetup({
             secret: devSecret,
@@ -141,7 +141,7 @@ export function RegisterPage() {
         }
       }
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!import.meta.env.PROD) {
         const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
         setMfaSetup({
           secret: devSecret,

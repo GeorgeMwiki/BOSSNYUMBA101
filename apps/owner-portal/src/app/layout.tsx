@@ -1,22 +1,14 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: 'BOSSNYUMBA Owner Portal',
-  description: 'Property owner portal for managing your investments',
-};
+/**
+ * NOTE: This file is a placeholder retained for structural compatibility.
+ * The owner-portal is a Vite SPA; the actual layout lives in
+ * src/components/Layout.tsx and is wrapped by the router in src/App.tsx.
+ */
+import React from 'react';
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
-  );
+  return <>{children}</>;
 }
