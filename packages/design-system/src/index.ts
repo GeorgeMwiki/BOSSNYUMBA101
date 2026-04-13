@@ -218,13 +218,14 @@ export * from './components/Empty';
 export * from './components/Header';
 
 // Stat
-export * from './components/Stat';
+export { Stat, type StatProps, StatGrid, type StatGridProps } from './components/Stat';
 
 // ============================================================================
 // Layout Components
 // ============================================================================
 
 export * from './components/layout/Container';
+export { PageHeader as LayoutPageHeader, type PageHeaderProps as LayoutPageHeaderProps } from './components/layout/PageHeader';
 
 // ============================================================================
 // Form Components
@@ -236,6 +237,5 @@ export * from './components/form/FormField';
 // Data Display Components
 // ============================================================================
 
-export * from './components/data/DataTable';
-export * from './components/data/StatCard';
-export * from './components/data/EmptyState';
+export { DataTable, type DataTableProps } from './components/data/DataTable';
+export { EmptyState, type EmptyStateProps } from './components/data/EmptyState';
