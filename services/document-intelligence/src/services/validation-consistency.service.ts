@@ -867,3 +867,32 @@ export class ValidationConsistencyService {
     return ok(results);
   }
 }
+
+// ============================================================================
+// Mock External Verification Provider (for testing / development)
+// ============================================================================
+
+export class MockExternalVerificationProvider implements IExternalVerificationProvider {
+  async verifyIdNumber(params: {
+    idType: string;
+    idNumber: string;
+    fullName: string;
+    dateOfBirth?: string;
+    country: string;
+  }): Promise<{
+    verified: boolean;
+    confidence: number;
+    details: string;
+    matchedFields: string[];
+    mismatchedFields: string[];
+  }> {
+    // Mock: always returns a positive verification with high confidence
+    return {
+      verified: true,
+      confidence: 0.95,
+      details: `Mock verification for ${params.idType} ${params.idNumber}`,
+      matchedFields: ['fullName', 'idNumber'],
+      mismatchedFields: [],
+    };
+  }
+}

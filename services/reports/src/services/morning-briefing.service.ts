@@ -5,13 +5,15 @@
  * with AI-powered insights and actionable items.
  */
 
-import type { TenantId, PropertyId, UserId } from '../types/index.js';
-import type {
+import type { TenantId, PropertyId } from '../types/index.js';
+import {
   KPIEngine,
-  PortfolioSummaryKPIs,
-  KPIAlert,
-  KPIPeriod,
+  type KPIAlert,
+  type KPIPeriod,
 } from './kpi-engine.service.js';
+
+/** User identifier (string alias used locally when domain-models is not a dependency) */
+type UserId = string;
 
 // ============================================================================
 // Types
