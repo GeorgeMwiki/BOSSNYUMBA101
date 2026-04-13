@@ -30,7 +30,7 @@ export { DocumentCollectionService, MockImageQualityAnalyzer } from './services/
 export { OCRExtractionService, MockOCRProvider } from './services/ocr-extraction.service.js';
 export { FraudDetectionService, MockImageAnalyzer } from './services/fraud-detection.service.js';
 export { ValidationConsistencyService, MockExternalVerificationProvider } from './services/validation-consistency.service.js';
-export { EvidencePackService, MockPDFGenerator } from './services/evidence-pack.service.js';
+export { EvidencePackBuilderService, MockPDFGenerator } from './services/evidence-pack-builder.service.js';
 export { ExpiryTrackingService } from './services/expiry-tracking.service.js';
 
 // ============================================================================

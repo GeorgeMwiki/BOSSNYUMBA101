@@ -565,7 +565,6 @@ export class AuditPackBuilderService {
             );
 
             doc.storedReportId = stored.id;
-            doc.url = stored.url;
             doc.size = typeof content === 'string' ? content.length : content.length;
             doc.generatedAt = new Date();
 
