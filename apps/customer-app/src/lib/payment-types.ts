@@ -12,3 +12,28 @@ export interface Payment {
   reference?: string;
   channel?: string;
 }
+
+export interface PaymentRecord {
+  id: string;
+  paymentNumber?: string;
+  description?: string;
+  amount: number;
+  currency: string;
+  status: string;
+  completedAt?: string;
+  createdAt?: string;
+}
+
+export interface BalanceBreakdown {
+  description: string;
+  amount: number;
+  currency: string;
+}
+
+export interface PaymentBalance {
+  totalDue: {
+    amount: number;
+    currency: string;
+  };
+  breakdown?: BalanceBreakdown[];
+}
