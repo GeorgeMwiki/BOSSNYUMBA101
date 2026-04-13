@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../logger.js';
 import { MetaWhatsAppClient } from './meta-client.js';
 import { ConversationOrchestrator, TenantLookup, SessionStore } from './conversation-orchestrator.js';
@@ -324,8 +325,6 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
     tenant: Awaited<ReturnType<TenantLookup['findByPhone']>>,
     senderName?: string
   ): ConversationSession {
-    const { v4: uuidv4 } = require('uuid');
-    
     return {
       id: uuidv4(),
       tenantId: tenant?.tenantId || '',

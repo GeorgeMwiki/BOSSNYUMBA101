@@ -170,6 +170,16 @@ export {
 } from './services/template-management.service.js';
 
 // ============================================================================
+// Device Registration Service (POST /notifications/devices)
+// ============================================================================
+export {
+  deviceRegistrationService,
+  type DeviceRegistration,
+  type RegisterDeviceInput,
+  type DevicePlatform,
+} from './services/device-registration.service.js';
+
+// ============================================================================
 // Preferences Service
 // ============================================================================
 export { preferencesService } from './preferences/service.js';

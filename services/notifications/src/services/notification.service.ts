@@ -26,10 +26,10 @@ import { createLogger } from '../logger.js';
 
 const logger = createLogger('notification-service');
 
-function getProvider(channel: NotificationChannel) {
+function getProvider(channel: NotificationChannel, tenantId: TenantId) {
   const providers = providerRegistry[channel];
   if (!providers?.length) throw new Error(`No providers for channel: ${channel}`);
-  const configured = providers.find((p) => p.isConfigured);
+  const configured = providers.find((p) => p.isConfigured(tenantId));
   const p = configured ?? providers[0];
   if (!p) throw new Error(`Unknown channel: ${channel}`);
   return p;
