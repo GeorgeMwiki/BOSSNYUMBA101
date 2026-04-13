@@ -262,8 +262,8 @@ export class ValidationConsistencyService {
       for (let i = 0; i < names.length - 1; i++) {
         for (let j = i + 1; j < names.length; j++) {
           const matchResult = matchNames(
-            names[i].name,
-            names[j].name,
+            names[i]!.name,
+            names[j]!.name,
             this.config.nameMatchThreshold
           );
 
@@ -274,10 +274,10 @@ export class ValidationConsistencyService {
             status,
             score: matchResult.similarity,
             details: matchResult.details,
-            sourceDocuments: [names[i].source, names[j].source],
+            sourceDocuments: [names[i]!.source, names[j]!.source],
             sourceFields: ['full_name'],
-            expectedValue: names[i].name,
-            actualValue: names[j].name,
+            expectedValue: names[i]!.name,
+            actualValue: names[j]!.name,
             discrepancy: matchResult.isMatch ? null : `Similarity: ${(matchResult.similarity * 100).toFixed(1)}%`,
           });
         }
@@ -405,10 +405,10 @@ export class ValidationConsistencyService {
       }));
 
       // Simple comparison - in production, use proper address matching
-      const firstAddress = normalizedAddresses[0].normalized;
+      const firstAddress = normalizedAddresses[0]!.normalized;
       const allMatch = normalizedAddresses.every(a =>
-        a.normalized.includes(firstAddress.split(' ')[0]) ||
-        firstAddress.includes(a.normalized.split(' ')[0])
+        a.normalized.includes(firstAddress.split(' ')[0] ?? '') ||
+        firstAddress.includes(a.normalized.split(' ')[0] ?? '')
       );
 
       checks.push({
@@ -421,7 +421,7 @@ export class ValidationConsistencyService {
         sourceDocuments: addresses.map(a => a.source),
         sourceFields: ['address'],
         expectedValue: addresses[0]?.address ?? null,
-        actualValue: addresses.length > 1 ? addresses[1].address : null,
+        actualValue: addresses.length > 1 ? addresses[1]!.address : null,
         discrepancy: allMatch ? null : 'Address variations detected',
       });
     }

@@ -20,8 +20,9 @@ export interface GCSBucketLike {
 }
 
 export interface GCSFileLike {
-  save(data: Buffer | string, options?: { metadata?: { contentType?: string } }): Promise<void>;
+  save(data: Buffer | string, options?: { contentType?: string }): Promise<void>;
   getSignedUrl(config: { action: string; expires: number }): Promise<[string]>;
+  download(): Promise<[Buffer]>;
   delete(): Promise<void>;
   exists(): Promise<[boolean]>;
 }
@@ -58,11 +59,8 @@ export class GCSStorageProvider implements StorageProvider {
     const file = bucket.file(gcsKey);
 
     await file.save(content, {
-      metadata: {
-        contentType: input.contentType,
-        metadata: input.metadata ? { ...input.metadata } : undefined,
-      },
-    });
+      contentType: input.contentType,
+    } as Record<string, unknown>);
 
     const url = `https://storage.googleapis.com/${this.bucket}/${gcsKey}`;
     return { key: input.key, url };
@@ -98,6 +96,14 @@ export class GCSStorageProvider implements StorageProvider {
     } catch {
       return false;
     }
+  }
+
+  async download(tenantId: TenantId, key: string): Promise<Buffer> {
+    const gcsKey = this.getGCSKey(tenantId, key);
+    const bucket = this.gcs.bucket(this.bucket);
+    const file = bucket.file(gcsKey);
+    const [content] = await file.download();
+    return content;
   }
 
   getBaseUrl(tenantId: TenantId): string {

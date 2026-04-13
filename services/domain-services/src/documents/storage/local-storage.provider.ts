@@ -68,6 +68,11 @@ export class LocalStorageProvider implements StorageProvider {
     return fs.existsSync(fullPath);
   }
 
+  async download(tenantId: TenantId, key: string): Promise<Buffer> {
+    const fullPath = this.getFullPath(tenantId, key);
+    return fs.readFileSync(fullPath);
+  }
+
   getBaseUrl(tenantId: TenantId): string {
     return `/documents/${tenantId}`;
   }

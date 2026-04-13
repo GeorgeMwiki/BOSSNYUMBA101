@@ -14,6 +14,7 @@ import type {
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
 import {
+  Money,
   type Lease,
   type LeaseId,
   type LeaseStatus,
@@ -26,7 +27,6 @@ import {
   type EmergencyContact,
   type PropertyId,
   type UnitId,
-  type Money,
   createLease,
   activateLease,
   terminateLease,
@@ -1182,8 +1182,8 @@ export class LeaseService {
       tenantId,
       totalDeposit,
       deductions,
-      totalDeductions: { amount: totalDeductionAmount, currency },
-      refundAmount: { amount: refundAmount, currency },
+      totalDeductions: new Money(totalDeductionAmount, currency),
+      refundAmount: new Money(refundAmount, currency),
       dispositionDate: now,
       processedBy,
       refundMethod: null,

@@ -117,7 +117,7 @@ export class InMemorySchedulingRepository implements SchedulingRepository {
       if (eventEnd < from || eventStart > to) return false;
       const isParticipant =
         e.createdBy === userId ||
-        e.attendees.some((a) => a.userId === userId || a.customerId === userId);
+        e.attendees.some((a) => a.userId === userId || (a.customerId as string) === (userId as string));
       return isParticipant;
     });
   }

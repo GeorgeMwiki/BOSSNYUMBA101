@@ -22,9 +22,11 @@ import {
   CaseSeveritySchema,
   CaseStatus,
   CaseStatusSchema,
+} from '../common/enums';
+import {
   CurrencyCode,
   CurrencyCodeSchema,
-} from '../common/enums';
+} from '../common/types';
 
 // ============================================================================
 // Type Aliases
@@ -509,7 +511,7 @@ export function isSlaBreached(caseItem: Case): { response: boolean; resolution: 
      caseItem.slaDetails.resolutionDeadline &&
      now > new Date(caseItem.slaDetails.resolutionDeadline));
   
-  return { response: responseBreached, resolution: resolutionBreached };
+  return { response: Boolean(responseBreached), resolution: Boolean(resolutionBreached) };
 }
 
 export function generateCaseNumber(

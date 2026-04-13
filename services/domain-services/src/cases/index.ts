@@ -377,7 +377,7 @@ export class CaseService {
     if (noticeIdx < 0) return err({ code: CaseServiceError.NOTICE_NOT_FOUND, message: 'Notice not found' });
 
     const now = new Date().toISOString() as ISOTimestamp;
-    const sentNotice: CaseNotice = { ...caseEntity.notices[noticeIdx], sentAt: now, sentVia: input.channels };
+    const sentNotice: CaseNotice = { ...caseEntity.notices[noticeIdx]!, sentAt: now, sentVia: input.channels };
     const notices = [...caseEntity.notices];
     notices[noticeIdx] = sentNotice;
 

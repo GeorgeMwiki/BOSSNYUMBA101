@@ -25,4 +25,4 @@ export type {
   UpdateOrganizationInput,
 } from '@bossnyumba/domain-models';
 
-export { TenantStatus, SubscriptionTier, OrganizationType, OrganizationStatus } from '@bossnyumba/domain-models';
+export type { TenantStatus, SubscriptionTier, OrganizationType, OrganizationStatus } from '@bossnyumba/domain-models';

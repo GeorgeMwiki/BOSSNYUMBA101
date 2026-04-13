@@ -21,6 +21,7 @@ export type FraudRiskScoreId = Brand<string, 'FraudRiskScoreId'>;
 export type EvidencePackId = Brand<string, 'EvidencePackId'>;
 export type ExpiryTrackerId = Brand<string, 'ExpiryTrackerId'>;
 export type ValidationResultId = Brand<string, 'ValidationResultId'>;
+export type OcrExtractionId = Brand<string, 'OcrExtractionId'>;
 
 export function asTenantId(id: string): TenantId { return id as TenantId; }
 export function asUserId(id: string): UserId { return id as UserId; }

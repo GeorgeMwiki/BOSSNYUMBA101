@@ -417,7 +417,7 @@ export class ReportService {
       });
 
       const openingBalance = transactions.length > 0
-        ? { amount: transactions[0].balance.amount - (transactions[0].debit?.amount ?? 0) + (transactions[0].credit?.amount ?? 0), currency }
+        ? { amount: transactions[0]!.balance.amount - (transactions[0]!.debit?.amount ?? 0) + (transactions[0]!.credit?.amount ?? 0), currency }
         : { amount: 0, currency };
 
       const statement: CustomerStatement = {

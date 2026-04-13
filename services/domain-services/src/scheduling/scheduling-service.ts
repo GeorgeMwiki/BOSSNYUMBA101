@@ -496,7 +496,7 @@ export class SchedulingService {
     }
 
     const workingHours =
-      (await this.workingHoursRepo.getForUser(participants[0], tenantId)) ??
+      (await this.workingHoursRepo.getForUser(participants[0]!, tenantId)) ??
       DEFAULT_WORKING_HOURS;
 
     const allSlots: TimeSlot[] = [];
@@ -781,7 +781,11 @@ export class SchedulingService {
     const key = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][
       dayOfWeek
     ] as keyof typeof wh;
-    return wh[key] ?? null;
+    const val = wh[key];
+    if (val && typeof val === 'object' && 'start' in val && 'end' in val) {
+      return val as { start: string; end: string };
+    }
+    return null;
   }
 
   private generateSlots(

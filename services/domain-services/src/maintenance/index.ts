@@ -626,7 +626,7 @@ export class MaintenanceService {
     }));
 
     scoredVendors.sort((a, b) => b.score - a.score);
-    const bestVendor = scoredVendors[0].vendor;
+    const bestVendor = scoredVendors[0]!.vendor;
 
     return this.assign(workOrderId, tenantId, {
       vendorId: bestVendor.id,
@@ -1137,7 +1137,7 @@ export class MaintenanceService {
 
     if (workOrder.customerRating) {
       const currentTotal = vendor.performanceMetrics.averageRating * vendor.performanceMetrics.completedJobs;
-      newMetrics.averageRating = (currentTotal + workOrder.customerRating) / newMetrics.completedJobs;
+      (newMetrics as { averageRating: number }).averageRating = (currentTotal + workOrder.customerRating) / newMetrics.completedJobs;
     }
 
     const updatedVendor: VendorEntity = {

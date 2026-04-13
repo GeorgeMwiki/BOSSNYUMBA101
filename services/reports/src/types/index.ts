@@ -5,6 +5,7 @@
 export type TenantId = string;
 export type PropertyId = string;
 export type CustomerId = string;
+export type UserId = string;
 
 export interface DateRange {
   start: Date;

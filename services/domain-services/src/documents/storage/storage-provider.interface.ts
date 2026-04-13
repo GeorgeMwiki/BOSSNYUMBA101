@@ -41,6 +41,9 @@ export interface StorageProvider {
   /** Check if a file exists */
   exists(tenantId: TenantId, key: string): Promise<boolean>;
 
+  /** Download file content by key */
+  download(tenantId: TenantId, key: string): Promise<Buffer>;
+
   /** Get the base URL for the storage (e.g. bucket URL) */
   getBaseUrl(tenantId: TenantId): string;
 }

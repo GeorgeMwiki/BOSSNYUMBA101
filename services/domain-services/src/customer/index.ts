@@ -227,7 +227,7 @@ export class CustomerService {
     const now = new Date().toISOString();
     const verifiedCustomer: Customer = {
       ...customer, status: 'active', kycVerified: true, kycVerifiedAt: now,
-      metadata: { ...customer.metadata, kycDocumentType: input.documentType, kycDocumentNumber: input.documentNumber },
+      ...(({ metadata: { ...(customer as unknown as Record<string, unknown>).metadata as Record<string, unknown> | undefined, kycDocumentType: input.documentType, kycDocumentNumber: input.documentNumber } }) as unknown as Partial<Customer>),
       updatedAt: now, updatedBy: verifiedBy,
     };
     const saved = await this.customerRepo.update(verifiedCustomer);
