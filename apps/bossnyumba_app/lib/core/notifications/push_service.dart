@@ -1,283 +1,241 @@
+// Push notifications service for the owner mobile companion.
+//
+// This service is designed to wrap `firebase_messaging` when that dependency
+// is available. Because the dependency is NOT yet listed in pubspec.yaml
+// (see app report), we expose a minimal, dependency-free surface that uses
+// a `RemoteMessage` shim. When `firebase_messaging` is added, swap the
+// `RemoteMessage` typedef to `firebase_messaging.RemoteMessage` and
+// replace the stubbed `_FirebasePlatform` bindings — the public API of
+// [PushService] is deliberately stable.
+//
+// iOS note: APNs entitlements + APNs key upload to Firebase console are
+// still required at the native level before this service will actually
+// deliver remote pushes on iOS builds.
+
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api_client.dart';
 
-// NOTE ON EXTERNAL DEPS:
-// This service is architected to wrap `firebase_messaging`, but that package
-// is intentionally NOT yet declared in `pubspec.yaml` (see agent report). To
-// let the rest of the app compile and be unit-testable today, we define a
-// lightweight [RemoteMessage] value type that mirrors the FCM shape
-// (`messageId`, `data`, `notification`). When `firebase_messaging` is added
-// later, swap the imports in [_FirebaseMessagingAdapter] without touching
-// callers of [PushService].
-//
-// Any call into a yet-to-be-wired FCM method is guarded with try/catch so the
-// app boots cleanly on devices where native plumbing is absent (e.g. unit
-// tests, web, or a dev build that hasn't set up GoogleService-Info.plist).
-
-/// In-app representation of an FCM payload. Mirrors the subset of fields we
-/// care about from `firebase_messaging.RemoteMessage`.
-@immutable
+/// Minimal, platform-agnostic representation of a remote push message.
+///
+/// Mirrors the shape of `firebase_messaging`'s `RemoteMessage` so swapping
+/// to the real dep is a near-noop on callers.
 class RemoteMessage {
   final String? messageId;
-  final DateTime? sentTime;
-  final Map<String, dynamic> data;
   final RemoteNotification? notification;
+  final Map<String, dynamic> data;
+  final DateTime? sentTime;
 
   const RemoteMessage({
     this.messageId,
-    this.sentTime,
-    this.data = const {},
     this.notification,
+    this.data = const {},
+    this.sentTime,
   });
 
-  factory RemoteMessage.fromJson(Map<String, dynamic> json) {
-    final notifRaw = json['notification'];
-    return RemoteMessage(
-      messageId: json['messageId'] as String?,
-      sentTime: json['sentTime'] is String
-          ? DateTime.tryParse(json['sentTime'] as String)
-          : null,
-      data: (json['data'] as Map?)?.cast<String, dynamic>() ?? const {},
-      notification: notifRaw is Map
-          ? RemoteNotification(
-              title: notifRaw['title'] as String?,
-              body: notifRaw['body'] as String?,
-            )
-          : null,
-    );
-  }
-
   Map<String, dynamic> toJson() => {
-        if (messageId != null) 'messageId': messageId,
-        if (sentTime != null) 'sentTime': sentTime!.toIso8601String(),
+        'messageId': messageId,
+        'title': notification?.title,
+        'body': notification?.body,
         'data': data,
-        if (notification != null)
-          'notification': {
-            'title': notification!.title,
-            'body': notification!.body,
-          },
+        'sentTime': sentTime?.toIso8601String(),
       };
+
+  factory RemoteMessage.fromJson(Map<String, dynamic> json) => RemoteMessage(
+        messageId: json['messageId'] as String?,
+        notification: (json['title'] != null || json['body'] != null)
+            ? RemoteNotification(
+                title: json['title'] as String?,
+                body: json['body'] as String?,
+              )
+            : null,
+        data: Map<String, dynamic>.from(json['data'] as Map? ?? const {}),
+        sentTime: json['sentTime'] != null
+            ? DateTime.tryParse(json['sentTime'] as String)
+            : null,
+      );
 }
 
-@immutable
 class RemoteNotification {
   final String? title;
   final String? body;
   const RemoteNotification({this.title, this.body});
 }
 
-/// Top-level background handler. Must be a top-level or static function so
-/// the Flutter engine can re-invoke it in an isolate when the app is backgrounded.
-/// When `firebase_messaging` is wired up, register this via
-/// `FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage)` inside
-/// `main.dart` (a parallel task).
+/// Top-level background message handler. Must be a top-level (or static)
+/// function when migrated to the real `firebase_messaging` plugin, since
+/// it is invoked in a separate isolate.
 Future<void> handleBackgroundMessage(RemoteMessage message) async {
-  // Persist to local cache so the inbox is warm the moment the user opens
-  // the app, even before the network fetch completes.
   try {
     final prefs = await SharedPreferences.getInstance();
-    const key = 'bn_notifications_inbox_cache_v1';
-    final existing = prefs.getString(key);
-    final List<dynamic> list = existing == null
-        ? <dynamic>[]
-        : (jsonDecode(existing) as List<dynamic>);
-    list.insert(0, message.toJson());
-    // Keep the cache bounded — mobile companion only cares about recent.
-    if (list.length > 100) list.removeRange(100, list.length);
-    await prefs.setString(key, jsonEncode(list));
-    await prefs.setInt('bn_notifications_badge',
-        (prefs.getInt('bn_notifications_badge') ?? 0) + 1);
-  } catch (e) {
-    debugPrint('handleBackgroundMessage cache failed: $e');
+    final raw = prefs.getStringList('push_inbox_offline') ?? <String>[];
+    raw.insert(0, jsonEncode(message.toJson()));
+    // Cap offline queue to the latest 200 entries.
+    if (raw.length > 200) {
+      raw.removeRange(200, raw.length);
+    }
+    await prefs.setStringList('push_inbox_offline', raw);
+
+    final badge = (prefs.getInt('push_inbox_badge') ?? 0) + 1;
+    await prefs.setInt('push_inbox_badge', badge);
+  } catch (_) {
+    // Background isolate — swallow to keep handler robust.
   }
 }
 
-/// Service abstraction over FCM. Consumers shouldn't import
-/// `firebase_messaging` directly — go through here so swapping to another
-/// transport (APNs direct, OneSignal, etc.) is a single-file change.
+/// Service abstraction over FCM. Safe to instantiate when
+/// `firebase_messaging` is not yet wired — calls simply no-op with
+/// debug-friendly logging instead of crashing the app.
 class PushService {
-  static PushService? _instance;
-  static PushService get instance => _instance ??= PushService(ApiClient.instance);
+  PushService({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
   final ApiClient _api;
-  final StreamController<RemoteMessage> _foregroundController =
+  final StreamController<RemoteMessage> _foreground =
       StreamController<RemoteMessage>.broadcast();
 
   String? _token;
   bool _initialized = false;
+  String? _registeredUserId;
 
-  PushService(this._api);
+  /// The last known FCM token, if any.
+  String? get token => _token;
 
-  /// Expose the raw platform messaging adapter for tests to inject a fake.
-  @visibleForTesting
-  PushMessagingAdapter? adapterOverride;
+  /// Whether [initialize] has successfully completed once.
+  bool get isInitialized => _initialized;
 
-  PushMessagingAdapter get _adapter =>
-      adapterOverride ?? _FirebaseMessagingAdapter();
+  /// Stream of messages that arrive while the app is in the foreground.
+  Stream<RemoteMessage> get foregroundMessages => _foreground.stream;
 
-  /// Latest resolved FCM registration token. Null until [initialize] succeeds.
-  String? get fcmToken => _token;
+  /// Request notification permissions, acquire an FCM token, register it
+  /// with the backend, and begin listening for foreground messages.
+  ///
+  /// Safe to call multiple times — subsequent calls are no-ops.
+  Future<void> initialize({required String userId, String platform = 'unknown'}) async {
+    if (_initialized && _registeredUserId == userId) return;
 
-  /// Incoming messages while the app is in the foreground.
-  Stream<RemoteMessage> get foregroundMessages => _foregroundController.stream;
-
-  /// Request notification permission, fetch the FCM token, and register it
-  /// with the backend. Safe to call multiple times — second and later calls
-  /// refresh the token and re-register only if it changed.
-  Future<void> initialize({required String userId, String? platform}) async {
     try {
-      final granted = await _adapter.requestPermission();
-      if (!granted) {
-        debugPrint('Push permission denied — running without notifications');
-        return;
-      }
-      final token = await _adapter.getToken();
-      if (token == null || token.isEmpty) {
-        debugPrint('FCM returned a null/empty token');
-        return;
-      }
-      if (_token == token && _initialized) return;
-      _token = token;
+      // Permission + token acquisition would normally be done via
+      // `FirebaseMessaging.instance.requestPermission()` and
+      // `FirebaseMessaging.instance.getToken()`. Kept as a stub here so
+      // code compiles without the dep.
+      _token ??= await _fetchTokenFromPlatform();
 
-      _adapter.onForegroundMessage.listen(_foregroundController.add);
+      if (_token != null) {
+        await _registerWithBackend(
+          token: _token!,
+          userId: userId,
+          platform: platform,
+        );
+      }
 
-      await _api.post<Map<String, dynamic>>(
-        '/api/v1/devices/register',
-        body: {
-          'token': token,
-          'platform': platform ?? defaultTargetPlatform.name,
-          'userId': userId,
-        },
-      );
       _initialized = true;
+      _registeredUserId = userId;
     } catch (e) {
-      // Never crash the app if push init fails — the user should still be
-      // able to use the companion for read-only views.
-      debugPrint('PushService.initialize failed: $e');
+      // Silently disable — mobile companion still works via polling.
+      _initialized = false;
     }
   }
 
-  /// Unregister the current device token from the backend. Called on logout
-  /// so the user stops receiving push for a device they're no longer on.
+  /// Push a message through the foreground stream. Normally called by
+  /// the `FirebaseMessaging.onMessage` listener — exposed for tests and
+  /// for the future wiring layer.
+  void dispatchForeground(RemoteMessage message) {
+    if (_foreground.isClosed) return;
+    _foreground.add(message);
+  }
+
+  /// Tear down the token registration on logout.
   Future<void> unregister() async {
-    final t = _token;
-    _token = null;
-    _initialized = false;
-    if (t == null || t.isEmpty) return;
     try {
-      await _api.post<Map<String, dynamic>>(
-        '/api/v1/devices/unregister',
-        body: {'token': t},
-      );
-      await _adapter.deleteToken();
-    } catch (e) {
-      debugPrint('PushService.unregister failed: $e');
+      if (_token != null) {
+        await _api.post<dynamic>(
+          '/devices/unregister',
+          body: {'token': _token},
+        );
+      }
+    } catch (_) {
+      // Best-effort.
+    } finally {
+      _token = null;
+      _initialized = false;
+      _registeredUserId = null;
     }
   }
 
-  /// Extract a deep-link route from an incoming [RemoteMessage].
-  ///
-  /// Contract with the backend push payload:
-  /// - `data.type`            — one of `notification|approval|invoice|work_order|tenant`
-  /// - `data.id`              — resource id
-  /// - `data.notificationId`  — fallback id (always present on Owner-targeted pushes)
-  ///
-  /// Falls back to `/owner/notifications` when nothing matches so the inbox
-  /// always receives the tap — but ideally owners land directly on the detail
-  /// screen (mobile companion = "stay informed while commuting" UX).
-  static String deepLinkFor(RemoteMessage message) {
-    final data = message.data;
-    final type = (data['type'] ?? data['category'])?.toString();
-    final id = (data['id'] ??
-            data['resourceId'] ??
-            data['notificationId'])
-        ?.toString();
+  /// Dispose the underlying stream. Should be called when the app is
+  /// shutting down (rarely relevant for a mobile runtime).
+  Future<void> dispose() async {
+    await _foreground.close();
+  }
 
-    if (id == null || id.isEmpty) return '/owner/notifications';
+  /// Parse a deep link from a push payload. Returns a route path suitable
+  /// for `context.go(...)` or `null` if no deep link can be inferred.
+  ///
+  /// Payload contract (backend-side):
+  ///   data: {
+  ///     "type": "invoice|work_order|approval|tenant|notification",
+  ///     "id": "<entity id>",
+  ///     "notificationId": "<optional server-side notification id>"
+  ///   }
+  String? parseDeepLink(RemoteMessage message) {
+    final data = message.data;
+    if (data.isEmpty) return null;
+    final type = (data['type'] ?? data['category'])?.toString().toLowerCase();
+    final id = (data['id'] ?? data['entityId'])?.toString();
+    final notificationId = data['notificationId']?.toString();
 
     switch (type) {
-      case 'approval':
-      case 'approval_request':
-        return '/owner/approvals/$id';
       case 'invoice':
-      case 'invoice_overdue':
-        return '/owner/invoices/$id';
+      case 'invoice_approval':
+        if (id != null) return '/owner/approvals/$id';
+        break;
       case 'work_order':
-      case 'work_order_urgent':
-        return '/owner/work-orders/$id';
+        if (id != null) return '/owner/work-orders/$id';
+        break;
       case 'tenant':
-      case 'tenant_alert':
-        return '/owner/tenants/$id';
-      case 'payment':
-        return '/owner/payments/$id';
+        if (id != null) return '/owner/tenants/$id';
+        break;
+      case 'approval':
+        if (id != null) return '/owner/approvals/$id';
+        break;
       case 'notification':
       default:
-        return '/owner/notifications/$id';
+        if (notificationId != null) {
+          return '/owner/notifications/$notificationId';
+        }
+        if (id != null) return '/owner/notifications/$id';
     }
-  }
 
-  Future<void> dispose() async {
-    await _foregroundController.close();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Adapter layer
-// ---------------------------------------------------------------------------
-
-/// Thin interface abstracting the platform messaging layer so tests can
-/// inject a fake without pulling in `firebase_messaging`.
-abstract class PushMessagingAdapter {
-  Future<bool> requestPermission();
-  Future<String?> getToken();
-  Future<void> deleteToken();
-  Stream<RemoteMessage> get onForegroundMessage;
-}
-
-/// Production adapter. Will delegate to `firebase_messaging` once that
-/// dependency lands in `pubspec.yaml`. Today every method is a safe no-op so
-/// the app still boots on devices that haven't been configured.
-class _FirebaseMessagingAdapter implements PushMessagingAdapter {
-  final StreamController<RemoteMessage> _controller =
-      StreamController<RemoteMessage>.broadcast();
-
-  @override
-  Future<bool> requestPermission() async {
-    try {
-      // TODO(push): swap to:
-      //   final settings = await FirebaseMessaging.instance.requestPermission();
-      //   return settings.authorizationStatus == AuthorizationStatus.authorized;
-      return false;
-    } catch (_) {
-      return false;
+    if (notificationId != null) {
+      return '/owner/notifications/$notificationId';
     }
+    return null;
   }
 
-  @override
-  Future<String?> getToken() async {
-    try {
-      // TODO(push): return FirebaseMessaging.instance.getToken();
-      return null;
-    } catch (_) {
-      return null;
-    }
+  // ----- internals --------------------------------------------------------
+
+  Future<String?> _fetchTokenFromPlatform() async {
+    // When `firebase_messaging` is available:
+    //   return FirebaseMessaging.instance.getToken();
+    // For now we return null so the rest of the pipeline degrades cleanly.
+    return null;
   }
 
-  @override
-  Future<void> deleteToken() async {
-    try {
-      // TODO(push): await FirebaseMessaging.instance.deleteToken();
-    } catch (_) {}
-  }
-
-  @override
-  Stream<RemoteMessage> get onForegroundMessage {
-    // TODO(push): bridge FirebaseMessaging.onMessage into this stream.
-    return _controller.stream;
+  Future<void> _registerWithBackend({
+    required String token,
+    required String userId,
+    required String platform,
+  }) async {
+    await _api.post<dynamic>(
+      '/devices/register',
+      body: {
+        'token': token,
+        'platform': platform,
+        'userId': userId,
+      },
+    );
   }
 }
