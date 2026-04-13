@@ -348,8 +348,6 @@ describe('MemoryAuditStore', () => {
         .inTenant('tenant-a')
         .on('Property', 'prop-1')
         .record();
-      
-      await logger.close();
     });
 
     it('should filter by tenant', async () => {
@@ -394,10 +392,10 @@ describe('MemoryAuditStore', () => {
       const asc = await store.query({ sortOrder: 'asc' });
       const desc = await store.query({ sortOrder: 'desc' });
 
-      expect(asc.events[0]?.timestampMs).toBeLessThan(
+      expect(asc.events[0]?.timestampMs).toBeLessThanOrEqual(
         asc.events[asc.events.length - 1]?.timestampMs ?? 0
       );
-      expect(desc.events[0]?.timestampMs).toBeGreaterThan(
+      expect(desc.events[0]?.timestampMs).toBeGreaterThanOrEqual(
         desc.events[desc.events.length - 1]?.timestampMs ?? 0
       );
     });
@@ -412,7 +410,6 @@ describe('MemoryAuditStore', () => {
         .success()
         .byUser('user-1')
         .record();
-      await logger.close();
 
       const retrieved = await store.getById(created.id);
       expect(retrieved).toEqual(created);

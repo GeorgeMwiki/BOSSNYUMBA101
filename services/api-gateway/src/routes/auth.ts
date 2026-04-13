@@ -8,6 +8,13 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
+import {
+  DEMO_USERS,
+  DEMO_TENANT,
+  DEMO_TENANT_USERS,
+  PLATFORM_ADMIN_USERS,
+  getPlatformAdminRoles,
+} from '../data/mock-data';
 
 const app = new Hono();
 
@@ -154,38 +161,108 @@ async function buildMePayload(auth: any) {
   };
 }
 
+function mockLogin(email: string, password: string) {
+  // Check platform admin users
+  const platformRoles = getPlatformAdminRoles();
+  const platformUser = PLATFORM_ADMIN_USERS.find((u) => u.email === email);
+  if (platformUser && password === 'demo123') {
+    const role = platformRoles[email] || UserRole.ADMIN;
+    return {
+      user: platformUser,
+      tenantId: 'platform',
+      tenantName: 'BOSSNYUMBA Platform',
+      role,
+      permissions: ['*'],
+    };
+  }
+
+  // Check tenant users
+  const demoUser = DEMO_USERS.find((u) => u.email === email);
+  if (demoUser && password === 'demo123') {
+    const tenantUser = DEMO_TENANT_USERS.find((tu) => tu.userId === demoUser.id);
+    return {
+      user: demoUser,
+      tenantId: DEMO_TENANT.id,
+      tenantName: DEMO_TENANT.name,
+      role: tenantUser?.role ?? UserRole.TENANT_ADMIN,
+      permissions: tenantUser?.permissions ?? ['*'],
+    };
+  }
+
+  return null;
+}
+
 app.post('/login', async (c) => {
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid request body' } }, 400);
+  }
+  if (!body || !body.email) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Email is required' } }, 400);
+  }
+  if (typeof body.email !== 'string' || !body.email.includes('@')) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } }, 400);
+  }
+
   const db = getDatabaseClient();
-  if (!db) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'AUTH_NOT_CONFIGURED',
-          message: 'Authentication requires a live database connection.',
+  if (db) {
+    // Live database path
+    const record = await resolveAuthUser(body.email);
+    if (!record?.passwordHash) {
+      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+    }
+
+    const valid = await bcrypt.compare(body.password, record.passwordHash);
+    if (!valid) {
+      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+    }
+
+    const token = generateToken({
+      userId: record.id,
+      tenantId: record.tenantId,
+      role: record.role,
+      permissions: record.permissions,
+      propertyAccess: record.propertyAccess,
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: record.id,
+          email: record.email,
+          firstName: record.firstName,
+          lastName: record.lastName,
+          avatarUrl: record.avatarUrl,
         },
+        tenant: {
+          id: record.tenantId,
+          name: record.tenantName,
+          slug: record.tenantSlug,
+        },
+        role: record.role,
+        permissions: record.permissions,
+        properties: record.propertyAccess,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       },
-      503
-    );
+    });
   }
 
-  const body = await c.req.json();
-  const record = await resolveAuthUser(body.email);
-  if (!record?.passwordHash) {
-    return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
-  }
-
-  const valid = await bcrypt.compare(body.password, record.passwordHash);
-  if (!valid) {
+  // Mock data fallback
+  const result = mockLogin(body.email, body.password);
+  if (!result) {
     return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
   }
 
   const token = generateToken({
-    userId: record.id,
-    tenantId: record.tenantId,
-    role: record.role,
-    permissions: record.permissions,
-    propertyAccess: record.propertyAccess,
+    userId: result.user.id,
+    tenantId: result.tenantId,
+    role: result.role,
+    permissions: result.permissions,
+    propertyAccess: ['*'],
   });
 
   return c.json({
@@ -193,20 +270,18 @@ app.post('/login', async (c) => {
     data: {
       token,
       user: {
-        id: record.id,
-        email: record.email,
-        firstName: record.firstName,
-        lastName: record.lastName,
-        avatarUrl: record.avatarUrl,
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        tenantId: result.tenantId,
       },
       tenant: {
-        id: record.tenantId,
-        name: record.tenantName,
-        slug: record.tenantSlug,
+        id: result.tenantId,
+        name: result.tenantName,
       },
-      role: record.role,
-      permissions: record.permissions,
-      properties: record.propertyAccess,
+      role: result.role,
+      permissions: result.permissions,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
   });
@@ -236,12 +311,63 @@ app.post('/refresh', authMiddleware, async (c) => {
 });
 
 app.post('/logout', (_c) => {
-  return _c.json({ success: true, data: { loggedOut: true } });
+  return _c.json({ success: true, data: { message: 'Logged out successfully' } });
 });
 
-app.post('/register', (c) =>
-  c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Self-registration is not enabled.' } }, 503)
-);
+let mockUserCounter = 100;
+
+app.post('/register', async (c) => {
+  const db = getDatabaseClient();
+  if (db) {
+    return c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Self-registration is not enabled.' } }, 503);
+  }
+
+  // Mock data fallback for register
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid request body' } }, 400);
+  }
+  if (!body.email || !body.password || !body.firstName || !body.lastName) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Missing required fields' } }, 400);
+  }
+  if (body.password.length < 8) {
+    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Password must be at least 8 characters' } }, 400);
+  }
+
+  // Check for duplicate email
+  const existing = DEMO_USERS.find((u) => u.email === body.email) ||
+    PLATFORM_ADMIN_USERS.find((u) => u.email === body.email);
+  if (existing) {
+    return c.json({ success: false, error: { code: 'CONFLICT', message: 'Email already registered' } }, 409);
+  }
+
+  mockUserCounter++;
+  const userId = `user-mock-${mockUserCounter}`;
+  const token = generateToken({
+    userId,
+    tenantId: DEMO_TENANT.id,
+    role: UserRole.RESIDENT,
+    permissions: [],
+    propertyAccess: ['*'],
+  });
+
+  return c.json({
+    success: true,
+    data: {
+      token,
+      user: {
+        id: userId,
+        email: body.email,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        role: 'RESIDENT',
+      },
+      tenant: { id: DEMO_TENANT.id, name: DEMO_TENANT.name },
+    },
+  }, 201);
+});
 app.post('/change-password', (c) =>
   c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password change is not enabled.' } }, 503)
 );

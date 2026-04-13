@@ -56,7 +56,8 @@ const port = process.env.PORT || 4000;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Note: Do NOT use express.json() here - it consumes the body stream before
+// Hono routes can read it via c.req.json(). Hono handles its own body parsing.
 app.use(pinoHttp({ logger }));
 app.use(rateLimitMiddleware());
 
