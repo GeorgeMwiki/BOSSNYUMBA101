@@ -25,7 +25,7 @@ class FeedCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF282828),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
