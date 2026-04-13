@@ -3,6 +3,10 @@
  *
  * Core domain services for the BOSSNYUMBA platform.
  * Implements business logic and data persistence with tenant isolation.
+ *
+ * NOTE: Some sub-modules have overlapping export names. To avoid TS2308
+ * ambiguous re-export errors, conflicting modules are not re-exported here.
+ * Import directly from the sub-module path instead (e.g., './cases/index.js').
  */
 
 // Common infrastructure
@@ -21,13 +25,13 @@ export * from './property/index.js';
 export * from './customer/index.js';
 
 // Lease services - create, renew, terminate, getActive
-export * from './lease/index.js';
+// NOTE: CustomerCreatedEvent/CustomerRepository conflicts with customer - import from './lease/index.js' directly
 
 // Invoice services - generate, send, getOutstanding
 export * from './invoice/index.js';
 
 // Payment services
-export * from './payment/index.js';
+// NOTE: Invoice/RecordPaymentInput conflicts with invoice module - import from './payment/index.js' directly
 
 // Maintenance services - createRequest, dispatch, complete
 export * from './maintenance/index.js';
@@ -42,7 +46,7 @@ export * from './report/index.js';
 export * from './feedback/index.js';
 
 // Inspection services
-export * from './inspections/index.js';
+// NOTE: ConditionRating conflicts with lease - import from './inspections/index.js' directly
 
 // Scheduling services
 export * from './scheduling/index.js';
@@ -54,16 +58,16 @@ export * from './approvals/index.js';
 export * from './utilities/index.js';
 
 // Audit logging services
-export * from './audit/index.js';
+// NOTE: AuditService/DateRange conflicts - import from './audit/index.js' directly
 
 // Messaging/Chat services
 export * from './messaging/index.js';
 
 // Compliance/Legal services
-export * from './compliance/index.js';
+// NOTE: CaseStatus/NoticeType/CustomerId conflicts - import from './compliance/index.js' directly
 
 // Case management services
-export * from './cases/index.js';
+// NOTE: CaseStatus/NoticeType/CustomerId conflicts - import from './cases/index.js' directly
 
 // Vendor management services
-export * from './vendor/index.js';
+// NOTE: VendorContact/VendorStatus conflicts with maintenance - import from './vendor/index.js' directly

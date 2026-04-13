@@ -5,6 +5,9 @@
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 
+/** Utility type to remove readonly modifiers */
+export type Mutable<T> = { -readonly [P in keyof T]: T[P] };
+
 /** Brand type for type-safe IDs */
 export type Brand<T, B> = T & { __brand: B };
 

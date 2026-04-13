@@ -244,7 +244,7 @@ export function successResponse<T>(c: Context, data: T, status: 200 | 201 = 200)
 export function validationErrorHook(
   result: { success: boolean; error?: z.ZodError },
   c: Context
-) {
+): Response | undefined {
   if (!result.success && result.error) {
     return c.json(
       {
@@ -258,6 +258,7 @@ export function validationErrorHook(
       400
     );
   }
+  return undefined;
 }
 
 // ============================================================================

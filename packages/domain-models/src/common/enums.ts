@@ -278,19 +278,7 @@ export const InvoiceType = {
 export type InvoiceType = (typeof InvoiceType)[keyof typeof InvoiceType];
 export const InvoiceTypeSchema = z.enum(['rent', 'deposit', 'utilities', 'maintenance', 'late_fee', 'other']);
 
-export const PaymentStatus = {
-  PENDING: 'pending',
-  PROCESSING: 'processing',
-  COMPLETED: 'completed',
-  FAILED: 'failed',
-  CANCELLED: 'cancelled',
-  REFUNDED: 'refunded',
-  PARTIALLY_REFUNDED: 'partially_refunded',
-} as const;
-export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
-export const PaymentStatusSchema = z.enum([
-  'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'partially_refunded'
-]);
+// PaymentStatus and PaymentStatusSchema are defined in ./types.ts to avoid duplicate exports
 
 export const PaymentMethod = {
   MPESA: 'mpesa',
@@ -879,13 +867,4 @@ export const AuditEventTypeSchema = z.enum([
 // Currency
 // ============================================================================
 
-export const CurrencyCode = {
-  KES: 'KES',
-  TZS: 'TZS',
-  UGX: 'UGX',
-  USD: 'USD',
-  EUR: 'EUR',
-  GBP: 'GBP',
-} as const;
-export type CurrencyCode = (typeof CurrencyCode)[keyof typeof CurrencyCode];
-export const CurrencyCodeSchema = z.enum(['KES', 'TZS', 'UGX', 'USD', 'EUR', 'GBP']);
+// CurrencyCode and CurrencyCodeSchema are defined in ./types.ts to avoid duplicate exports

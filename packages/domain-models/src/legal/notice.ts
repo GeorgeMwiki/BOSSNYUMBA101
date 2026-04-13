@@ -20,9 +20,11 @@ import {
   NoticeTypeSchema,
   NoticeStatus,
   NoticeStatusSchema,
+} from '../common/enums';
+import {
   CurrencyCode,
   CurrencyCodeSchema,
-} from '../common/enums';
+} from '../common/types';
 
 // ============================================================================
 // Type Aliases

@@ -14,6 +14,7 @@ import {
   CurrencyCodeSchema,
   asCustomerId,
   asLeaseId,
+  Mutable,
 } from '../common/types';
 
 export { asCustomerId, asLeaseId };
@@ -81,7 +82,7 @@ export interface PaymentIntent extends Omit<PaymentIntentData, 'amount' | 'platf
  * Payment Intent aggregate with business logic
  */
 export class PaymentIntentAggregate {
-  private data: PaymentIntent;
+  private data: Mutable<PaymentIntent>;
   private events: PaymentIntentEvent[] = [];
 
   constructor(data: PaymentIntent) {

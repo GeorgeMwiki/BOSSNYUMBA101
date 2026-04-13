@@ -25,7 +25,9 @@
     "baseUrl": ".",
     "paths": {
       "@bossnyumba/domain-models": ["../../packages/domain-models/src"]
-    }
+    },
+    "types": ["node"],
+    "ignoreDeprecations": "5.0"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

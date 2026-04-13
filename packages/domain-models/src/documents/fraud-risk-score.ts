@@ -231,11 +231,13 @@ function getHighestSeverityIndicator(
     low: 1,
   };
 
+  const first = indicators[0];
+  if (!first) return null;
   return indicators.reduce((highest, current) => {
     const currentSeverity = severityOrder[current.severity] ?? 0;
     const highestSeverity = severityOrder[highest.severity] ?? 0;
     return currentSeverity > highestSeverity ? current : highest;
-  }, indicators[0]);
+  }, first);
 }
 
 /** Get risk level display color */

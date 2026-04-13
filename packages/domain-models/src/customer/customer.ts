@@ -6,7 +6,7 @@
 import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 import type { CustomerId } from '../payments/payment-intent';
 
-export { CustomerId } from '../payments/payment-intent';
+export type { CustomerId } from '../payments/payment-intent';
 export { asCustomerId } from '../payments/payment-intent';
 
 /** Customer status */

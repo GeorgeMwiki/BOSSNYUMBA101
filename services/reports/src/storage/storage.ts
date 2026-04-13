@@ -11,6 +11,7 @@ export interface StoredReport {
   reportType: ReportType;
   format: ReportFormat;
   filename: string;
+  url: string;
   size: number;
   generatedAt: Date;
   params: Record<string, unknown>;
@@ -72,6 +73,7 @@ export class InMemoryReportStorage implements IReportStorage {
       reportType,
       format,
       filename,
+      url: `/reports/${id}/${filename}`,
       size: buffer.length,
       generatedAt: new Date(),
       params,

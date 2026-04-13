@@ -13,7 +13,8 @@ import {
   PropertyId,
   TenantScopedEntity,
   CurrencyCodeSchema,
-  CurrencyCode
+  CurrencyCode,
+  Mutable
 } from '../common/types';
 import { Money } from '../common/money';
 
@@ -63,7 +64,7 @@ export interface Account extends AccountData, TenantScopedEntity {
  * Account aggregate with business logic
  */
 export class AccountAggregate {
-  private data: Account;
+  private data: Mutable<Account>;
 
   constructor(data: Account) {
     this.data = { ...data };

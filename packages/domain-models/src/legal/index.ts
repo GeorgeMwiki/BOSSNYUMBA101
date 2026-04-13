@@ -4,7 +4,78 @@
  */
 
 export * from './case';
-export * from './timeline-event';
-export * from './evidence-attachment';
-export * from './notice';
-export * from './notice-service-receipt';
+// Selective re-exports to avoid CaseId conflicts
+export {
+  type TimelineEvent,
+  type TimelineEventData,
+  TimelineEventSchema,
+  type TimelineEventId,
+  type AttachmentRef,
+  AttachmentRefSchema,
+  asTimelineEventId,
+  createTimelineEvent,
+  createCaseCreatedEvent,
+  createEscalationEvent,
+  createStatusChangedEvent,
+  createSystemEvent,
+} from './timeline-event';
+export {
+  type EvidenceAttachment,
+  type EvidenceAttachmentData,
+  EvidenceAttachmentSchema,
+  type EvidenceMetadata,
+  EvidenceMetadataSchema,
+  type EvidenceVerification,
+  EvidenceVerificationSchema,
+  createEvidenceAttachment,
+  verifyEvidence,
+  addRelevanceNotes,
+  recordAccess,
+  softDeleteEvidence,
+  isImageEvidence,
+  isAudioEvidence,
+  isVideoEvidence,
+  isVerified as isEvidenceVerified,
+  getFileExtension as getEvidenceFileExtension,
+} from './evidence-attachment';
+export {
+  type Notice,
+  type NoticeData,
+  NoticeSchema,
+  type NoticeAttachment,
+  NoticeAttachmentSchema,
+  createNotice,
+  approveNotice,
+  rejectNotice,
+  scheduleNotice,
+  sendNotice,
+  setDocumentUrl,
+  voidNotice,
+  canBeSent,
+  generateNoticeNumber,
+  isComplianceDeadlinePassed,
+  recordAcknowledgment,
+  markDelivered as markNoticeDelivered,
+  isExpired as isNoticeExpired,
+} from './notice';
+// NoticeServiceReceiptId/NoticeId conflict handled by selective export
+export {
+  type NoticeServiceReceipt,
+  type NoticeServiceReceiptData,
+  NoticeServiceReceiptSchema,
+  type DeliveryProof,
+  DeliveryProofSchema,
+  type GpsCoordinates,
+  GpsCoordinatesSchema,
+  createNoticeServiceReceipt,
+  recordPhysicalDelivery,
+  recordElectronicDelivery,
+  recordPostedDelivery,
+  recordDeliveryFailure,
+  recordReadReceipt,
+  setTrackingInfo,
+  verifyReceipt,
+  hasGpsVerification,
+  hasReadConfirmation,
+  isSuccessfulDelivery,
+} from './notice-service-receipt';

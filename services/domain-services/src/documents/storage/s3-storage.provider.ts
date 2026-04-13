@@ -17,6 +17,7 @@ export interface S3ClientLike {
   }): Promise<{ ETag?: string }>;
   deleteObject(params: { Bucket: string; Key: string }): Promise<void>;
   headObject(params: { Bucket: string; Key: string }): Promise<unknown>;
+  getObject(params: { Bucket: string; Key: string }): Promise<{ Body?: { transformToByteArray(): Promise<Uint8Array> } }>;
   getSignedUrl?(operation: string, params: Record<string, unknown>, expiresIn: number): Promise<string>;
 }
 
@@ -94,6 +95,14 @@ export class S3StorageProvider implements StorageProvider {
     } catch {
       return false;
     }
+  }
+
+  async download(tenantId: TenantId, key: string): Promise<Buffer> {
+    const s3Key = this.getS3Key(tenantId, key);
+    const response = await this.s3.getObject({ Bucket: this.bucket, Key: s3Key });
+    const body = response.Body;
+    if (!body) throw new Error('Empty response body');
+    return Buffer.from(await (body as { transformToByteArray(): Promise<Uint8Array> }).transformToByteArray());
   }
 
   getBaseUrl(tenantId: TenantId): string {

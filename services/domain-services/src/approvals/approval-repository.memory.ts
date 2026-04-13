@@ -59,20 +59,17 @@ export class MemoryApprovalRequestRepository implements ApprovalRequestRepositor
 
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const page = pagination?.page ?? 1;
-    const pageSize = pagination?.pageSize ?? 20;
+    const limit = pagination?.limit ?? 20;
+    const offset = pagination?.offset ?? 0;
     const total = items.length;
-    const start = (page - 1) * pageSize;
-    const data = items.slice(start, start + pageSize);
+    const data = items.slice(offset, offset + limit);
 
     return {
-      data,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      items: data,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total,
     };
   }
 

@@ -274,7 +274,7 @@ export class TenantService {
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
     return this.updateTenant(
       tenantId,
-      { status: TenantStatus.SUSPENDED },
+      { status: 'suspended' as TenantStatus },
       suspendedBy,
       correlationId
     );
@@ -290,7 +290,7 @@ export class TenantService {
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
     return this.updateTenant(
       tenantId,
-      { status: TenantStatus.ACTIVE },
+      { status: 'active' as TenantStatus },
       activatedBy,
       correlationId
     );
@@ -346,7 +346,7 @@ export class TenantService {
     }
     
     // Check if tenant is active/pending before allowing plan changes
-    if (existing.status !== TenantStatus.ACTIVE && existing.status !== 'pending_setup') {
+    if (existing.status !== 'active' as TenantStatus && existing.status !== 'pending_setup') {
       return err({
         code: TenantServiceError.TENANT_NOT_FOUND,
         message: `Cannot change subscription while tenant is ${existing.status}`,
@@ -406,7 +406,7 @@ export class TenantService {
       });
     }
     
-    const existingPolicies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
+    const existingPolicies = ((existing as unknown as Record<string, unknown>).config as Record<string, unknown> | undefined)?.policyConstitution ?? {};
     const mergedPolicies = { ...existingPolicies as Record<string, unknown>, ...policies };
     
     return this.configureTenant(
@@ -431,7 +431,7 @@ export class TenantService {
       });
     }
     
-    const policies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
+    const policies = ((existing as unknown as Record<string, unknown>).config as Record<string, unknown> | undefined)?.policyConstitution ?? {};
     return ok(policies as Record<string, unknown>);
   }
   
@@ -448,7 +448,7 @@ export class TenantService {
       professional: { maxProperties: 50, maxUnits: 500, maxUsers: 25 },
       enterprise: { maxProperties: -1, maxUnits: -1, maxUsers: -1 }, // unlimited
     };
-    return limits[tier] ?? limits.starter;
+    return limits[tier] ?? limits['starter']!;
   }
   
   /**
@@ -480,16 +480,16 @@ export class TenantService {
     // Merge existing config with new config
     const mergedConfig: TenantConfig = {
       ...DEFAULT_TENANT_CONFIG,
-      ...existing.config,
+      ...((existing as unknown as Record<string, unknown>).config as Record<string, unknown> ?? {}),
       ...config,
     };
-    
+
     const tenant = await this.uow.tenants.update(
       tenantId,
-      { config: mergedConfig },
+      { config: mergedConfig } as unknown as Partial<UpdateTenantInput>,
       updatedBy
     );
-    
+
     // Publish config updated event
     const event: TenantUpdatedEvent = {
       eventId: generateEventId(),
@@ -501,7 +501,7 @@ export class TenantService {
       metadata: {},
       payload: {
         changes: {
-          config: { old: existing.config, new: mergedConfig },
+          config: { old: (existing as unknown as Record<string, unknown>).config, new: mergedConfig },
         },
       },
     };

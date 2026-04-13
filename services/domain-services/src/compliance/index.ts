@@ -1078,7 +1078,7 @@ export class ComplianceService {
       id: `evt_${Date.now()}_rmv`,
       event: 'evidence_removed',
       timestamp: now,
-      details: `Evidence document removed: ${removedDoc.description}`,
+      details: `Evidence document removed: ${removedDoc?.description ?? 'unknown'}`,
       userId: removedBy,
       metadata: { documentId },
     };

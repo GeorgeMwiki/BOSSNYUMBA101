@@ -3,7 +3,7 @@
  * Handles approval requests for maintenance costs, lease exceptions, refunds, discounts
  */
 
-import type { TenantId, UserId, Result } from '@bossnyumba/domain-models';
+import type { TenantId, UserId, Result, PaginationParams, PaginatedResult } from '@bossnyumba/domain-models';
 import { ok, err } from '@bossnyumba/domain-models';
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
@@ -360,8 +360,8 @@ export class ApprovalService {
   async getApprovalHistory(
     tenantId: TenantId,
     filters: ApprovalHistoryFilters,
-    pagination?: { page?: number; pageSize?: number }
-  ): Promise<Result<{ data: readonly ApprovalRequest[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }, ApprovalServiceErrorResult>> {
+    pagination?: PaginationParams
+  ): Promise<Result<PaginatedResult<ApprovalRequest>, ApprovalServiceErrorResult>> {
     const result = await this.requestRepo.findHistory(tenantId, filters, pagination);
     return ok(result);
   }

@@ -13,6 +13,7 @@ import type {
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
 import {
+  Money,
   type Property,
   type PropertyId,
   type PropertyType,
@@ -23,7 +24,6 @@ import {
   type UnitId,
   type UnitType,
   type UnitStatus,
-  type Money,
   type Block,
   type BlockId,
   type BlockStatus,
@@ -571,14 +571,14 @@ export class PropertyService {
       occupiedUnits: counts.occupied,
       vacantUnits: counts.vacant,
       occupancyRate,
-      potentialMonthlyRevenue: {
-        amount: potentialMonthlyRevenue,
-        currency: units.items[0]?.monthlyRent.currency ?? 'KES',
-      },
-      actualMonthlyRevenue: {
-        amount: actualMonthlyRevenue,
-        currency: units.items[0]?.monthlyRent.currency ?? 'KES',
-      },
+      potentialMonthlyRevenue: new Money(
+        potentialMonthlyRevenue,
+        units.items[0]?.monthlyRent.currency ?? 'KES',
+      ),
+      actualMonthlyRevenue: new Money(
+        actualMonthlyRevenue,
+        units.items[0]?.monthlyRent.currency ?? 'KES',
+      ),
       revenueEfficiency: potentialMonthlyRevenue > 0 
         ? Math.round((actualMonthlyRevenue / potentialMonthlyRevenue) * 100)
         : 0,

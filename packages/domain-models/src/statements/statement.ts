@@ -17,7 +17,8 @@ import {
   LedgerEntryType,
   TenantScopedEntity,
   CurrencyCodeSchema,
-  CurrencyCode
+  CurrencyCode,
+  Mutable
 } from '../common/types';
 import { Money, MoneySchema } from '../common/money';
 
@@ -147,7 +148,7 @@ export interface Statement extends Omit<StatementData,
  * Statement aggregate with business logic
  */
 export class StatementAggregate {
-  private data: Statement;
+  private data: Mutable<Statement>;
 
   constructor(data: Statement) {
     this.data = { ...data };
