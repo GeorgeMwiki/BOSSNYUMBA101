@@ -10,6 +10,7 @@ import {
   initializeApiClient,
   getApiClient,
 } from '@bossnyumba/api-client';
+import type { PaymentBalance, PaymentRecord } from './payment-types';
 
 function getApiBaseUrl(): string {
   const url =
@@ -83,20 +84,20 @@ async function requireLiveData<T>(request: () => Promise<{ data: T }>): Promise<
 
 export const api = {
   payments: {
-    async getBalance() {
-      return requireLiveData(() => ensureClient().get('/payments/balance'));
+    async getBalance(): Promise<PaymentBalance> {
+      return requireLiveData<PaymentBalance>(() => ensureClient().get('/payments/balance'));
     },
 
-    async getHistory(page = 1, limit = 20) {
-      return requireLiveData(() =>
+    async getHistory(page = 1, limit = 20): Promise<PaymentRecord[]> {
+      return requireLiveData<PaymentRecord[]>(() =>
         ensureClient().get('/payments/history', {
           params: { page, limit },
         })
       );
     },
 
-    async getPending() {
-      return requireLiveData(() => ensureClient().get('/payments/pending'));
+    async getPending(): Promise<PaymentRecord[]> {
+      return requireLiveData<PaymentRecord[]>(() => ensureClient().get('/payments/pending'));
     },
 
     async requestPaymentPlan(data: {
