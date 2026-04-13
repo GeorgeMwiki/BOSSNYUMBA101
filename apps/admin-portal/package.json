@@ -11,8 +11,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/design-system": "*",
-    "@bossnyumba/domain-models": "*",
+    "@bossnyumba/design-system": "workspace:*",
+    "@bossnyumba/domain-models": "workspace:*",
     "@tanstack/react-query": "^5.24.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.312.0",

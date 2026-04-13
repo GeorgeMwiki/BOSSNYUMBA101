@@ -1,22 +1,13 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: 'BOSSNYUMBA Admin Portal',
-  description: 'Internal administration portal for BOSSNYUMBA platform',
-};
+/**
+ * NOTE: This file is an unused artifact from when admin-portal was a Next.js app.
+ * The admin-portal is now a Vite SPA — the real entry point is src/main.tsx.
+ * Keeping this file only for reference; it is NOT imported anywhere.
+ */
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
-  );
+  return <>{children}</>;
 }
