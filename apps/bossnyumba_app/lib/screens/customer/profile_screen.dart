@@ -21,9 +21,11 @@ class ProfileScreen extends StatelessWidget {
               leading: CircleAvatar(
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 child: Text(
-                  (session.firstName + session.lastName)
-                      .substring(0, 1)
-                      .toUpperCase(),
+                  (session.firstName + session.lastName).isNotEmpty
+                      ? (session.firstName + session.lastName)
+                          .substring(0, 1)
+                          .toUpperCase()
+                      : '?',
                 ),
               ),
               title: Text(session.displayName),

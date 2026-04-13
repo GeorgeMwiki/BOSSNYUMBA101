@@ -110,10 +110,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => role.isAdmin;
   bool get isAccountant => role.isAccountant;
 
-  AuthProvider() {
-    _init();
-  }
-
   Future<void> _init() async {
     final token = await _storage.read(key: 'access_token');
     if (token != null) {
