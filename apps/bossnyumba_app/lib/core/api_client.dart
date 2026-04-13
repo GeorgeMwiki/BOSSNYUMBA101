@@ -25,12 +25,14 @@ class ApiClient {
     String path, {
     Map<String, String>? queryParams,
   }) async {
-    final uri = Uri.parse('$baseUrl$path')
-        .replace(queryParameters: queryParams);
+    var uri = Uri.parse('$baseUrl$path');
+    if (queryParams != null && queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
+    }
     try {
       final resp = await http
           .get(uri, headers: _headers)
-          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
       return _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
@@ -46,7 +48,7 @@ class ApiClient {
             headers: _headers,
             body: body != null ? jsonEncode(body) : null,
           )
-          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
       return _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
@@ -62,7 +64,7 @@ class ApiClient {
             headers: _headers,
             body: body != null ? jsonEncode(body) : null,
           )
-          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
       return _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
