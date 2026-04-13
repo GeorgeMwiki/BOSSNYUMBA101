@@ -3,13 +3,10 @@
  * Logical grouping of units within a property (e.g., "Block A", "Building 1")
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, BlockId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 
-export type BlockId = Brand<string, 'BlockId'>;
-
-export function asBlockId(id: string): BlockId {
-  return id as BlockId;
-}
+// Re-export branded ID from canonical source to avoid duplicate export conflicts
+export { type BlockId, asBlockId } from '../common/types';
 
 /** Block status */
 export type BlockStatus = 'active' | 'inactive' | 'under_construction' | 'under_renovation' | 'demolished';

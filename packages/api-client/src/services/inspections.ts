@@ -83,7 +83,7 @@ export const inspectionsService = {
       params.dateTo = filters.dateTo;
     }
 
-    return getApiClient().get<Inspection[]>('/inspections', params);
+    return getApiClient().get<Inspection[]>('/inspections', { params });
   },
 
   /**
@@ -160,7 +160,7 @@ export const inspectionsService = {
     if (status?.length) {
       params.status = status.join(',');
     }
-    return getApiClient().get<Inspection[]>('/inspections/my-inspections', params);
+    return getApiClient().get<Inspection[]>('/inspections/my-inspections', { params });
   },
 
   /**

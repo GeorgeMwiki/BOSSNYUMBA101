@@ -82,7 +82,7 @@ export const feedbackService = {
       dateFrom: params?.dateFrom,
       dateTo: params?.dateTo,
     });
-    return getApiClient().get<Feedback[]>('/feedback', searchParams) as Promise<
+    return getApiClient().get<Feedback[]>('/feedback', { params: searchParams }) as Promise<
       ApiResponse<Feedback[]> & { pagination?: PaginationInfo }
     >;
   },
@@ -126,7 +126,7 @@ export const feedbackService = {
       pageSize: params?.pageSize,
       status: params?.status,
     });
-    return getApiClient().get<Feedback[]>('/feedback/my', searchParams) as Promise<
+    return getApiClient().get<Feedback[]>('/feedback/my', { params: searchParams }) as Promise<
       ApiResponse<Feedback[]> & { pagination?: PaginationInfo }
     >;
   },

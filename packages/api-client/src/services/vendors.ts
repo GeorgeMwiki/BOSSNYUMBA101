@@ -72,7 +72,7 @@ export const vendorsService = {
       available: params?.available,
       search: params?.search,
     });
-    return getApiClient().get<Vendor[]>('/vendors', searchParams) as Promise<
+    return getApiClient().get<Vendor[]>('/vendors', { params: searchParams }) as Promise<
       ApiResponse<Vendor[]> & { pagination?: PaginationInfo }
     >;
   },
@@ -81,7 +81,7 @@ export const vendorsService = {
    * Get available vendors for a category
    */
   async getAvailable(category: VendorCategory): Promise<ApiResponse<Vendor[]>> {
-    return getApiClient().get<Vendor[]>('/vendors/available', { category });
+    return getApiClient().get<Vendor[]>('/vendors/available', { params: { category } });
   },
 
   /**

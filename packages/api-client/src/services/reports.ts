@@ -107,7 +107,7 @@ export const reportsService = {
     const searchParams: Record<string, string> = {};
     if (params?.startDate) searchParams.startDate = params.startDate;
     if (params?.endDate) searchParams.endDate = params.endDate;
-    return getApiClient().get<FinancialReport>('/reports/financial', searchParams);
+    return getApiClient().get<FinancialReport>('/reports/financial', { params: searchParams });
   },
 
   /**
@@ -132,7 +132,7 @@ export const reportsService = {
   }): Promise<ApiResponse<StatementReport>> {
     const searchParams: Record<string, string> = {};
     if (params?.period) searchParams.period = params.period;
-    return getApiClient().get<StatementReport>('/reports/statements', searchParams);
+    return getApiClient().get<StatementReport>('/reports/statements', { params: searchParams });
   },
 
   /**

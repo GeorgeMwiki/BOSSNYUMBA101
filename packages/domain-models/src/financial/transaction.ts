@@ -61,7 +61,7 @@ export const TransactionCategorySchema = z.enum([
 ]);
 export type TransactionCategory = z.infer<typeof TransactionCategorySchema>;
 
-export const PaymentMethodTypeSchema = z.enum([
+export const TransactionPaymentMethodSchema = z.enum([
   'mpesa',
   'mpesa_paybill',
   'mpesa_stk',
@@ -72,7 +72,7 @@ export const PaymentMethodTypeSchema = z.enum([
   'mobile_money',
   'wallet',
 ]);
-export type PaymentMethodType = z.infer<typeof PaymentMethodTypeSchema>;
+export type TransactionPaymentMethod = z.infer<typeof TransactionPaymentMethodSchema>;
 
 export const TransactionSchema = z.object({
   id: z.string(),
@@ -105,7 +105,7 @@ export const TransactionSchema = z.object({
   exchangeRate: z.number().default(1),
   
   // Payment method
-  paymentMethodType: PaymentMethodTypeSchema.optional(),
+  paymentMethodType: TransactionPaymentMethodSchema.optional(),
   paymentMethodDetails: z.record(z.string(), z.unknown()).default({}),
   
   // Provider details
@@ -177,7 +177,7 @@ export interface Transaction extends EntityMetadata {
   readonly currency: string;
   readonly exchangeRate: number;
   
-  readonly paymentMethodType: PaymentMethodType | null;
+  readonly paymentMethodType: TransactionPaymentMethod | null;
   readonly paymentMethodDetails: Record<string, unknown>;
   
   readonly providerName: string | null;
@@ -232,7 +232,7 @@ export function createTransaction(
     debitAccountId?: AccountId;
     creditAccountId?: AccountId;
     fee?: number;
-    paymentMethodType?: PaymentMethodType;
+    paymentMethodType?: TransactionPaymentMethod;
     paymentMethodDetails?: Record<string, unknown>;
     providerName?: string;
     externalRef?: string;

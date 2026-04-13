@@ -78,7 +78,7 @@ export const documentsService = {
       relatedEntityType: params?.relatedEntityType,
       relatedEntityId: params?.relatedEntityId,
     });
-    return getApiClient().get<Document[]>('/documents', searchParams) as Promise<
+    return getApiClient().get<Document[]>('/documents', { params: searchParams }) as Promise<
       ApiResponse<Document[]> & { pagination?: PaginationInfo }
     >;
   },

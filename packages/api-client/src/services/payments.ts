@@ -6,8 +6,8 @@ import { getApiClient, ApiResponse } from '../client';
 import type {
   PaymentIntent,
   PaymentIntentId,
-  PaymentIntentStatus,
-  PaymentType,
+  PaymentStatus,
+  PaymentIntentType,
   PaymentChannel,
   PaymentMethod,
   PaymentMethodId,
@@ -16,8 +16,8 @@ import type {
 } from '@bossnyumba/domain-models';
 
 export interface PaymentFilters {
-  status?: PaymentIntentStatus[];
-  type?: PaymentType[];
+  status?: PaymentStatus[];
+  type?: PaymentIntentType[];
   channel?: PaymentChannel[];
   customerId?: string;
   leaseId?: string;
@@ -28,7 +28,7 @@ export interface PaymentFilters {
 export interface CreatePaymentRequest {
   leaseId?: string;
   amount: { amount: number; currency: string };
-  paymentType: PaymentType;
+  paymentType: PaymentIntentType;
   description: string;
   dueDate?: string;
 }
@@ -71,7 +71,7 @@ export const paymentsService = {
       params.dateTo = filters.dateTo;
     }
 
-    return getApiClient().get<PaymentIntent[]>('/payments', params);
+    return getApiClient().get<PaymentIntent[]>('/payments', { params });
   },
 
   /**
@@ -110,8 +110,7 @@ export const paymentsService = {
    */
   async getHistory(page = 1, limit = 20): Promise<ApiResponse<PaymentIntent[]>> {
     return getApiClient().get<PaymentIntent[]>('/payments/history', {
-      page: String(page),
-      limit: String(limit),
+      params: { page: String(page), limit: String(limit) },
     });
   },
 
@@ -121,7 +120,7 @@ export const paymentsService = {
   async getBalance(): Promise<
     ApiResponse<{
       totalDue: { amount: number; currency: string };
-      breakdown: Array<{ type: PaymentType; amount: { amount: number; currency: string } }>;
+      breakdown: Array<{ type: PaymentIntentType; amount: { amount: number; currency: string } }>;
     }>
   > {
     return getApiClient().get('/payments/balance');
@@ -174,8 +173,7 @@ export const statementsService = {
    */
   async list(page = 1, limit = 12): Promise<ApiResponse<Statement[]>> {
     return getApiClient().get<Statement[]>('/statements', {
-      page: String(page),
-      limit: String(limit),
+      params: { page: String(page), limit: String(limit) },
     });
   },
 

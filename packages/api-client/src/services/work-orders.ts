@@ -85,7 +85,7 @@ export const workOrdersService = {
       params.slaBreached = String(filters.slaBreached);
     }
 
-    return getApiClient().get<WorkOrder[]>('/work-orders', params);
+    return getApiClient().get<WorkOrder[]>('/work-orders', { params });
   },
 
   /**
@@ -199,7 +199,7 @@ export const workOrdersService = {
     if (status?.length) {
       params.status = status.join(',');
     }
-    return getApiClient().get<WorkOrder[]>('/work-orders/my-tasks', params);
+    return getApiClient().get<WorkOrder[]>('/work-orders/my-tasks', { params });
   },
 
   /**
@@ -210,6 +210,6 @@ export const workOrdersService = {
     if (status?.length) {
       params.status = status.join(',');
     }
-    return getApiClient().get<WorkOrder[]>('/work-orders/my-requests', params);
+    return getApiClient().get<WorkOrder[]>('/work-orders/my-requests', { params });
   },
 };

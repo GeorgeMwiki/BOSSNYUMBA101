@@ -73,7 +73,7 @@ export const messagingService = {
       pageSize: params?.pageSize,
       unreadOnly: params?.unreadOnly,
     });
-    return getApiClient().get<Conversation[]>('/messaging/conversations', searchParams) as Promise<
+    return getApiClient().get<Conversation[]>('/messaging/conversations', { params: searchParams }) as Promise<
       ApiResponse<Conversation[]> & { pagination?: PaginationInfo }
     >;
   },
@@ -109,7 +109,7 @@ export const messagingService = {
     });
     return getApiClient().get<Message[]>(
       `/messaging/conversations/${conversationId}/messages`,
-      searchParams
+      { params: searchParams }
     ) as Promise<ApiResponse<Message[]> & { pagination?: PaginationInfo }>;
   },
 

@@ -3,14 +3,11 @@
  * Installment payment plans for customers
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, PaymentPlanId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 import type { Money } from '../common/money';
 
-export type PaymentPlanId = Brand<string, 'PaymentPlanId'>;
-
-export function asPaymentPlanId(id: string): PaymentPlanId {
-  return id as PaymentPlanId;
-}
+// Re-export branded ID from canonical source to avoid duplicate export conflicts
+export { type PaymentPlanId, asPaymentPlanId } from '../common/types';
 
 /** Payment plan status */
 export type PaymentPlanStatus = 

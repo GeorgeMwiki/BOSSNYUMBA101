@@ -104,7 +104,7 @@ export const slaService = {
     if (propertyId) {
       params.propertyId = propertyId;
     }
-    return getApiClient().get<SLAMetrics>('/sla/metrics', params);
+    return getApiClient().get<SLAMetrics>('/sla/metrics', { params });
   },
 
   /**
@@ -122,7 +122,7 @@ export const slaService = {
     if (propertyId) {
       params.propertyId = propertyId;
     }
-    return getApiClient().get<SLABreachReport[]>('/sla/breaches', params);
+    return getApiClient().get<SLABreachReport[]>('/sla/breaches', { params });
   },
 
   /**
@@ -133,7 +133,7 @@ export const slaService = {
     if (propertyId) {
       params.propertyId = propertyId;
     }
-    return getApiClient().get<SLAHealthCheck>('/sla/health', params);
+    return getApiClient().get<SLAHealthCheck>('/sla/health', { params });
   },
 
   /**
