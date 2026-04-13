@@ -71,6 +71,36 @@ GoRouter createGoRouter(AuthProvider auth) {
           GoRoute(
             path: '/owner',
             builder: (_, __) => const OwnerHomeScreen(),
+            routes: [
+              GoRoute(
+                path: 'approvals',
+                builder: (_, __) => const _ComingSoonScreen(
+                  title: 'Approvals',
+                  subtitle: 'Queue of items awaiting your decision.',
+                ),
+              ),
+              GoRoute(
+                path: 'search',
+                builder: (_, __) => const _ComingSoonScreen(
+                  title: 'Search',
+                  subtitle: 'Find properties, tenants, leases and invoices.',
+                ),
+              ),
+              GoRoute(
+                path: 'ai',
+                builder: (_, __) => const _ComingSoonScreen(
+                  title: 'AI Assistant',
+                  subtitle: 'Ask questions about your portfolio.',
+                ),
+              ),
+              GoRoute(
+                path: 'notifications/:id',
+                builder: (_, state) => _ComingSoonScreen(
+                  title: 'Notification',
+                  subtitle: 'Detail for #${state.pathParameters['id']}',
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/admin',
@@ -80,6 +110,52 @@ GoRouter createGoRouter(AuthProvider auth) {
       ),
     ],
   );
+}
+
+class _ComingSoonScreen extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _ComingSoonScreen({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.construction,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 16),
+              Text(title,
+                  style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color:
+                          Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Coming soon',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class RoleAwareHomeScreen extends StatelessWidget {
