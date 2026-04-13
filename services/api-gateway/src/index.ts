@@ -13,6 +13,7 @@ import pinoHttp from 'pino-http';
 import { handle } from '@hono/node-server/vercel';
 import { Hono } from 'hono';
 import { authRouter } from './routes/auth';
+import { authEnhancedRouter } from './routes/auth-enhanced';
 import { tenantsRouter } from './routes/tenants.hono';
 import { usersRouter } from './routes/users.hono';
 import { propertiesRouter } from './routes/properties';
@@ -34,21 +35,16 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
-import { analyticsRouter } from './routes/analytics.hono';
-import { membershipsRouter } from './routes/memberships.hono';
-import { activeOrgMiddleware } from './middleware/active-org.middleware';
+import { approvalsRouter } from './routes/approvals';
+import { maintenanceRouter } from './routes/maintenance.hono';
+import { documentsEnhancedRouter, evidencePacksRouter } from './routes/modules/documents.routes';
+import { maintenanceRequestsRouter } from './routes/modules/maintenance.routes';
+import { invoicesRouter as moduleInvoicesRouter, paymentsRouter as modulePaymentsRouter, reconciliationRouter, statementsRouter } from './routes/modules/payments.routes';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
-import { analyticsRouter } from './routes/analytics.hono';
-import { membershipsRouter } from './routes/memberships.hono';
-import { searchRouter } from './routes/search';
-import { aiRouter } from './routes/ai';
-import { messagesRouter } from './routes/messages';
-import { approvalsRouter } from './routes/approvals';
-import { devicesRouter } from './routes/devices';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -76,6 +72,7 @@ app.get('/health', (_req, res) => {
 // API v1 - Hono routes
 const api = new Hono();
 api.route('/auth', authRouter);
+api.route('/auth-enhanced', authEnhancedRouter);
 api.route('/tenants', tenantsRouter);
 api.route('/users', usersRouter);
 api.route('/properties', propertiesRouter);
@@ -97,16 +94,15 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
-api.route('/analytics', analyticsRouter);
-api.route('/memberships', membershipsRouter);
-<<<<<<< HEAD
-=======
-api.route('/search', searchRouter);
-api.route('/ai', aiRouter);
-api.route('/messages', messagesRouter);
 api.route('/approvals', approvalsRouter);
-api.route('/devices', devicesRouter);
->>>>>>> worktree-agent-a01ef617
+api.route('/maintenance', maintenanceRouter);
+api.route('/documents-enhanced', documentsEnhancedRouter);
+api.route('/evidence-packs', evidencePacksRouter);
+api.route('/maintenance-requests', maintenanceRequestsRouter);
+api.route('/module-invoices', moduleInvoicesRouter);
+api.route('/module-payments', modulePaymentsRouter);
+api.route('/reconciliation', reconciliationRouter);
+api.route('/statements', statementsRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -119,10 +115,12 @@ app.get('/api/v1', (_req, res) => {
     version: '1.0.0',
     endpoints: [
       '/api/v1/auth',
+      '/api/v1/auth-enhanced',
       '/api/v1/tenants',
       '/api/v1/users',
       '/api/v1/properties',
       '/api/v1/units',
+      '/api/v1/customers',
       '/api/v1/leases',
       '/api/v1/invoices',
       '/api/v1/payments',
@@ -139,16 +137,19 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
-      '/api/v1/analytics',
-<<<<<<< HEAD
-=======
-      '/api/v1/memberships',
-      '/api/v1/search',
-      '/api/v1/ai',
-      '/api/v1/messages',
       '/api/v1/approvals',
-      '/api/v1/devices',
->>>>>>> worktree-agent-a01ef617
+      '/api/v1/maintenance',
+      '/api/v1/documents-enhanced',
+      '/api/v1/evidence-packs',
+      '/api/v1/maintenance-requests',
+      '/api/v1/module-invoices',
+      '/api/v1/module-payments',
+      '/api/v1/reconciliation',
+      '/api/v1/statements',
+      '/api/v1/customer',
+      '/api/v1/owner',
+      '/api/v1/manager',
+      '/api/v1/admin',
     ],
   });
 });
