@@ -15,7 +15,12 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["./src/*"],
+      "@bossnyumba/design-system": ["../../packages/design-system/src/index.ts"],
+      "@bossnyumba/domain-models": ["../../packages/domain-models/src/index.ts"],
+      "@bossnyumba/api-client": ["../../packages/api-client/src/index.ts"]
+    },
     "types": ["node", "vite/client"]
   },
   "include": ["src"],
