@@ -51,19 +51,22 @@ export async function trigger(
   let failed = 0;
 
   for (const sub of subs) {
-    let lastError: string | undefined;
+    let succeeded = false;
     for (let attempt = 0; attempt < retries; attempt++) {
       if (attempt > 0) {
         await sleep(RETRY_DELAY_MS * attempt);
       }
       const result = await deliver(sub.url, event, sub.secret);
       if (result.success) {
-        delivered++;
+        succeeded = true;
         break;
       }
-      lastError = result.error;
     }
-    if (lastError) failed++;
+    if (succeeded) {
+      delivered++;
+    } else {
+      failed++;
+    }
   }
 
   return { delivered, failed };
