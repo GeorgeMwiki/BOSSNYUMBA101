@@ -26,6 +26,9 @@ export * from './communications.schema.js';
 // Cross-tenant memberships
 export * from './cross-tenant-memberships.schema.js';
 
+// Jurisdiction configuration (global-first, database-driven)
+export * from './jurisdiction-config.schema.js';
+
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';

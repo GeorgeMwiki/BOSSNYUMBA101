@@ -515,3 +515,9 @@ export * from './intelligence/index';
 // Notifications
 // ============================================================================
 export * from './notifications/notification';
+
+// ============================================================================
+// Jurisdiction (global-first, config-driven, NOT hardcoded)
+// ============================================================================
+export * from './jurisdiction/jurisdiction';
+export { loadSeedJurisdictions, TANZANIA, KENYA, NIGERIA, SOUTH_AFRICA } from './jurisdiction/seeds';
