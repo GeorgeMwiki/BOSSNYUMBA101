@@ -255,5 +255,12 @@
   "confirmLogoutMessage": "Utahitaji kuingia tena wakati ujao.",
 
   "languageEnglish": "Kiingereza",
-  "languageSwahili": "Kiswahili"
+  "languageSwahili": "Kiswahili",
+
+  "regionPickerTitle": "Uko wapi?",
+  "regionPickerSubtitle": "Hii itatusaidia kuonyesha sera, lugha, na sheria za kodi zinazofaa eneo lako.",
+  "regionTanzania": "Tanzania",
+  "regionKenya": "Kenya",
+  "regionOther": "Nyingine",
+  "regionPickerContinue": "Endelea"
 }

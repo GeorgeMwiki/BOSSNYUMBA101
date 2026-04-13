@@ -623,5 +623,18 @@
   "languageEnglish": "English",
   "@languageEnglish": {"description": "Language name in English"},
   "languageSwahili": "Swahili",
-  "@languageSwahili": {"description": "Language name in English for Swahili"}
+  "@languageSwahili": {"description": "Language name in English for Swahili"},
+
+  "regionPickerTitle": "Where are you?",
+  "@regionPickerTitle": {"description": "Region picker screen title"},
+  "regionPickerSubtitle": "This helps us show the right policies, language, and tax rules for your region.",
+  "@regionPickerSubtitle": {"description": "Region picker screen explanation"},
+  "regionTanzania": "Tanzania",
+  "@regionTanzania": {"description": "Tanzania region option"},
+  "regionKenya": "Kenya",
+  "@regionKenya": {"description": "Kenya region option"},
+  "regionOther": "Other",
+  "@regionOther": {"description": "Other/global region option"},
+  "regionPickerContinue": "Continue",
+  "@regionPickerContinue": {"description": "Region picker continue button"}
 }
