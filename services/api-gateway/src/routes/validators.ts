@@ -329,4 +329,3 @@ export const availableVendorsQuerySchema = z.object({
   category: workOrderCategorySchema,
   propertyId: z.string().optional(),
 });
-// @ts-nocheck

@@ -1,8 +1,9 @@
 import { createMiddleware } from 'hono/factory';
 
 export function liveDataRequired(feature: string) {
-  return createMiddleware(async (c) => {
+  return createMiddleware(async (c, next) => {
     if (process.env.NODE_ENV === 'test') {
+      await next();
       return;
     }
 

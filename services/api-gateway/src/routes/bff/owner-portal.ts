@@ -672,4 +672,46 @@ app.post('/documents/:id/sign', async (c) => {
   return c.json({ success: true, data: { id: row.id, signedAt: metadata.signedAt } });
 });
 
+// TODO: wire to real data source (portfolio map view for mobile)
+app.get('/portfolio', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const scope = await getOwnerScope(auth, repos);
+  const properties = scope.properties.map((property) => ({
+    id: property.id,
+    name: property.name,
+    type: property.type,
+    status: property.status,
+    addressLine1: property.addressLine1,
+    city: property.city,
+    country: property.country,
+    latitude: property.latitude ? Number(property.latitude) : null,
+    longitude: property.longitude ? Number(property.longitude) : null,
+    totalUnits: property.totalUnits ?? 0,
+    occupiedUnits: property.occupiedUnits ?? 0,
+  }));
+
+  return c.json({
+    success: true,
+    data: {
+      properties,
+      totalProperties: properties.length,
+      totalUnits: properties.reduce((sum, p) => sum + (p.totalUnits || 0), 0),
+      occupiedUnits: properties.reduce((sum, p) => sum + (p.occupiedUnits || 0), 0),
+    },
+  });
+});
+
+// TODO: wire to real data source (owner agenda / upcoming items)
+app.get('/agenda', async (c) => {
+  return c.json({
+    success: true,
+    data: {
+      today: [],
+      upcoming: [],
+      overdue: [],
+    },
+  });
+});
+
 export const ownerPortalRouter = app;
