@@ -6,20 +6,36 @@ import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
+interface BalanceData {
+  totalDue: { amount: number; currency: string };
+  breakdown?: { description: string; amount: number }[];
+}
+
+interface PaymentRecord {
+  id: string;
+  description?: string;
+  paymentNumber?: string;
+  status: string;
+  amount: number;
+  currency: string;
+  completedAt?: string;
+  createdAt?: string;
+}
+
 export default function PaymentsPage() {
   const balanceQuery = useQuery({
     queryKey: ['customer-payments-balance'],
-    queryFn: () => api.payments.getBalance(),
+    queryFn: () => api.payments.getBalance() as Promise<BalanceData>,
   });
 
   const pendingQuery = useQuery({
     queryKey: ['customer-payments-pending'],
-    queryFn: () => api.payments.getPending(),
+    queryFn: () => api.payments.getPending() as Promise<PaymentRecord[]>,
   });
 
   const historyQuery = useQuery({
     queryKey: ['customer-payments-history-preview'],
-    queryFn: () => api.payments.getHistory(1, 5),
+    queryFn: () => api.payments.getHistory(1, 5) as Promise<PaymentRecord[]>,
   });
 
   const error = balanceQuery.error || pendingQuery.error || historyQuery.error;
@@ -70,7 +86,7 @@ export default function PaymentsPage() {
             {pending.length === 0 ? (
               <div className="text-sm text-gray-400">No pending payments.</div>
             ) : (
-              pending.map((payment: any) => (
+              pending.map((payment) => (
                 <div key={payment.id} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
                   <div>
                     <div className="font-medium text-white">{payment.description || payment.paymentNumber}</div>
@@ -96,7 +112,7 @@ export default function PaymentsPage() {
             {history.length === 0 ? (
               <div className="text-sm text-gray-400">No payment history yet.</div>
             ) : (
-              history.map((payment: any) => (
+              history.map((payment) => (
                 <Link
                   key={payment.id}
                   href="/payments/history"

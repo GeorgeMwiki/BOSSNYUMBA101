@@ -4,10 +4,21 @@ import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
+interface PaymentRecord {
+  id: string;
+  description?: string;
+  paymentNumber?: string;
+  status: string;
+  amount: number;
+  currency: string;
+  completedAt?: string;
+  createdAt?: string;
+}
+
 export default function PaymentHistoryPage() {
   const historyQuery = useQuery({
     queryKey: ['customer-payments-history'],
-    queryFn: () => api.payments.getHistory(1, 50),
+    queryFn: () => api.payments.getHistory(1, 50) as Promise<PaymentRecord[]>,
   });
 
   return (
@@ -21,7 +32,7 @@ export default function PaymentHistoryPage() {
             {(historyQuery.error as Error).message}
           </div>
         )}
-        {(historyQuery.data ?? []).map((payment: any) => (
+        {(historyQuery.data ?? []).map((payment) => (
           <div key={payment.id} className="card p-4">
             <div className="flex items-center justify-between">
               <div>

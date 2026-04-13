@@ -1,7 +1,7 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Download } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const documents: Record<string, { name: string; date: string }> = {
@@ -12,7 +12,6 @@ const documents: Record<string, { name: string; date: string }> = {
 
 export default function LeaseDocumentPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
   const doc = documents[id];
 

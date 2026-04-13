@@ -113,9 +113,9 @@ export default function SubmitReadingPage() {
           type="submit"
           className="btn-primary w-full py-3"
           disabled={
-            !readings.water?.trim() &&
-            !readings.electricity?.trim() &&
-            isSubmitting
+            isSubmitting ||
+            (!readings.water?.trim() &&
+            !readings.electricity?.trim())
           }
         >
           {isSubmitting ? 'Submitting...' : 'Submit Readings'}

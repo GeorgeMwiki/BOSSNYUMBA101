@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, CreditCard, FileText } from 'lucide-react';
+import { Download, CreditCard, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 // Mock invoice data - would come from API
