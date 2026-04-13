@@ -541,7 +541,7 @@ export function useInfiniteQuery<TData>(
   const fetchNextPage = useCallback(async () => {
     if (pages.length === 0) return;
 
-    const lastPage = pages[pages.length - 1];
+    const lastPage = pages[pages.length - 1]!;
     const nextPageParam = getNextPageParam(lastPage, pages);
 
     if (nextPageParam !== undefined) {
@@ -566,7 +566,7 @@ export function useInfiniteQuery<TData>(
 
   const hasNextPage = useMemo(() => {
     if (pages.length === 0) return false;
-    const lastPage = pages[pages.length - 1];
+    const lastPage = pages[pages.length - 1]!;
     return getNextPageParam(lastPage, pages) !== undefined;
   }, [pages, getNextPageParam]);
 

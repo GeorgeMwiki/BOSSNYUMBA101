@@ -4,7 +4,13 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "types": ["node"],
+    "strict": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitReturns": false,
+    "noImplicitOverride": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -11,8 +11,8 @@ import type {
   SessionId,
   OrganizationId,
   RoleId,
-} from '@bossnyumba/domain-models';
-import type { AccessTokenClaims } from '@bossnyumba/domain-models';
+} from '@bossnyumba/domain-models/dist/common/types';
+import type { AccessTokenClaims } from '@bossnyumba/domain-models/dist/identity/session';
 
 /** Authentication status */
 export const AuthStatus = {

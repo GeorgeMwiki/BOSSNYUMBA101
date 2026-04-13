@@ -77,11 +77,14 @@ export interface PaymentIntent extends Omit<PaymentIntentData, 'amount' | 'platf
   refundedAmount?: Money;
 }
 
+/** Mutable version of PaymentIntent for use within the aggregate */
+type MutablePaymentIntent = { -readonly [K in keyof PaymentIntent]: PaymentIntent[K] };
+
 /**
  * Payment Intent aggregate with business logic
  */
 export class PaymentIntentAggregate {
-  private data: PaymentIntent;
+  private data: MutablePaymentIntent;
   private events: PaymentIntentEvent[] = [];
 
   constructor(data: PaymentIntent) {

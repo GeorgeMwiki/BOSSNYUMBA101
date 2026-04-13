@@ -431,7 +431,7 @@ export class WebhookManager {
         errorMessage: attempt.errorMessage,
         latencyMs: attempt.latencyMs,
       }],
-      completedAt: [DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED].includes(status)
+      completedAt: ([DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED] as DeliveryStatus[]).includes(status)
         ? new Date().toISOString()
         : undefined,
     };

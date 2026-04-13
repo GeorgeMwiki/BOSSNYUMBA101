@@ -5,12 +5,14 @@
     "rootDir": "./src",
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
       "@/*": [
         "./src/*"
       ]
     },
     "skipLibCheck": true,
+    "exactOptionalPropertyTypes": false,
     "types": [
       "node",
       "react",

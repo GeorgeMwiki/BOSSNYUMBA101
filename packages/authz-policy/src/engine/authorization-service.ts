@@ -5,23 +5,25 @@
  * with ABAC policy evaluation for comprehensive access control.
  */
 
-import type {
-  TenantId,
-  UserId,
-  OrganizationId,
-} from '@bossnyumba/domain-models';
 import {
-  type User,
-  type AuthorizationRequest,
-  type AuthorizationDecision,
-  type SubjectAttributes,
-  type ResourceAttributes,
-  type ContextAttributes,
-  type ActionAttributes,
+  type TenantId,
+  type UserId,
+  type OrganizationId,
   asTenantId,
   asOrganizationId,
   asUserId,
-} from '@bossnyumba/domain-models';
+} from '@bossnyumba/domain-models/dist/common/types';
+import type {
+  User,
+} from '@bossnyumba/domain-models/dist/identity/user';
+import type {
+  AuthorizationRequest,
+  AuthorizationDecision,
+  SubjectAttributes,
+  ResourceAttributes,
+  ContextAttributes,
+  ActionAttributes,
+} from '@bossnyumba/domain-models/dist/identity/policy';
 import { PermissionResolver, type RoleResolver, type ResolvedPermissions } from './permission-resolver.js';
 import { PolicyEvaluator, type PolicyStore } from './policy-evaluator.js';
 
@@ -258,11 +260,11 @@ export class AuthorizationService {
       userId: user.id,
       tenantId: user.tenantId,
       userType: user.type,
-      roleIds: user.roleAssignments.map((a: { roleId: string; organizationId: string; expiresAt?: string }) => a.roleId),
+      roleIds: user.roleAssignments.map((a) => a.roleId),
       organizationIds: Array.from(
         new Set([
           user.primaryOrganizationId,
-          ...user.roleAssignments.map((a: { roleId: string; organizationId: string; expiresAt?: string }) => a.organizationId),
+          ...user.roleAssignments.map((a) => a.organizationId),
         ])
       ),
       primaryOrganizationId: user.primaryOrganizationId,

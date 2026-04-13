@@ -6,8 +6,8 @@ import { getApiClient, ApiResponse } from '../client';
 import type {
   PaymentIntent,
   PaymentIntentId,
-  PaymentIntentStatus,
-  PaymentType,
+  PaymentStatus,
+  PaymentIntentType,
   PaymentChannel,
   PaymentMethod,
   PaymentMethodId,
@@ -15,8 +15,11 @@ import type {
   StatementId,
 } from '@bossnyumba/domain-models';
 
+/** Payment type alias used in API layer */
+export type PaymentType = PaymentIntentType;
+
 export interface PaymentFilters {
-  status?: PaymentIntentStatus[];
+  status?: PaymentStatus[];
   type?: PaymentType[];
   channel?: PaymentChannel[];
   customerId?: string;
@@ -110,8 +113,7 @@ export const paymentsService = {
    */
   async getHistory(page = 1, limit = 20): Promise<ApiResponse<PaymentIntent[]>> {
     return getApiClient().get<PaymentIntent[]>('/payments/history', {
-      page: String(page),
-      limit: String(limit),
+      params: { page: String(page), limit: String(limit) },
     });
   },
 
@@ -174,8 +176,7 @@ export const statementsService = {
    */
   async list(page = 1, limit = 12): Promise<ApiResponse<Statement[]>> {
     return getApiClient().get<Statement[]>('/statements', {
-      page: String(page),
-      limit: String(limit),
+      params: { page: String(page), limit: String(limit) },
     });
   },
 

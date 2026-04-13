@@ -128,12 +128,13 @@ export class InvoiceRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const typedStatus = status as typeof invoices.status.enumValues[number];
     const rows = await this.db
       .select()
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, typedStatus),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
@@ -146,7 +147,7 @@ export class InvoiceRepository {
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, typedStatus),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
@@ -268,17 +269,18 @@ export class PaymentRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const typedStatus = status as typeof payments.status.enumValues[number];
     const rows = await this.db
       .select()
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)))
+      .where(and(eq(payments.status, typedStatus), eq(payments.tenantId, tenantId)))
       .orderBy(desc(payments.createdAt))
       .limit(limit)
       .offset(offset);
     const [{ total }] = await this.db
       .select({ total: count() })
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)));
+      .where(and(eq(payments.status, typedStatus), eq(payments.tenantId, tenantId)));
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 

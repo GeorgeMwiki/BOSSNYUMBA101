@@ -9,7 +9,12 @@ import type {
   TenantId,
   PolicyId,
   OrganizationId,
-} from '@bossnyumba/domain-models';
+} from '@bossnyumba/domain-models/dist/common/types';
+
+/**
+ * Import policy types directly from the identity/policy module to avoid
+ * barrel-file `export *` issues with merged const+type declarations in TS 5.x.
+ */
 import {
   type Policy,
   type PolicyRule,
@@ -22,11 +27,13 @@ import {
   type ResourceAttributes,
   type ContextAttributes,
   type ActionAttributes,
-  PolicyEffect,
-  PolicyStatus,
-  ConditionOperator,
-  AttributeSource,
-} from '@bossnyumba/domain-models';
+  type PolicyEffect,
+  type ConditionOperator,
+  type AttributeSource,
+  PolicyEffect as PolicyEffectValue,
+  ConditionOperator as ConditionOperatorValue,
+  AttributeSource as AttributeSourceValue,
+} from '@bossnyumba/domain-models/dist/identity/policy';
 
 /** Policy store interface for dependency injection */
 export interface PolicyStore {
@@ -96,24 +103,24 @@ export class PolicyEvaluator {
       }
       
       // First matching policy with DENY effect wins immediately
-      if (result.matched && result.effect === PolicyEffect.DENY) {
+      if (result.matched && result.effect === PolicyEffectValue.DENY) {
         decidingPolicy = policy;
         decidingRuleIndex = result.ruleIndex;
-        decision = PolicyEffect.DENY;
+        decision = PolicyEffectValue.DENY;
         break;
       }
       
       // Track first ALLOW decision
-      if (result.matched && result.effect === PolicyEffect.ALLOW && !decidingPolicy) {
+      if (result.matched && result.effect === PolicyEffectValue.ALLOW && !decidingPolicy) {
         decidingPolicy = policy;
         decidingRuleIndex = result.ruleIndex;
-        decision = PolicyEffect.ALLOW;
+        decision = PolicyEffectValue.ALLOW;
         // Continue checking for DENY policies
       }
     }
     
     const totalTime = performance.now() - startTime;
-    const allowed = decision === PolicyEffect.ALLOW || 
+    const allowed = decision === PolicyEffectValue.ALLOW || 
                     (decision === null && this.config.defaultDecision);
     
     return {
@@ -239,16 +246,16 @@ export class PolicyEvaluator {
     let obj: Record<string, unknown>;
     
     switch (source) {
-      case AttributeSource.SUBJECT:
+      case AttributeSourceValue.SUBJECT:
         obj = request.subject as unknown as Record<string, unknown>;
         break;
-      case AttributeSource.RESOURCE:
+      case AttributeSourceValue.RESOURCE:
         obj = request.resource as unknown as Record<string, unknown>;
         break;
-      case AttributeSource.CONTEXT:
+      case AttributeSourceValue.CONTEXT:
         obj = request.context as unknown as Record<string, unknown>;
         break;
-      case AttributeSource.ACTION:
+      case AttributeSourceValue.ACTION:
         obj = request.action as unknown as Record<string, unknown>;
         break;
       default:
@@ -300,37 +307,37 @@ export class PolicyEvaluator {
     comparisonValue: unknown
   ): boolean {
     switch (operator) {
-      case ConditionOperator.EQUALS:
+      case ConditionOperatorValue.EQUALS:
         return sourceValue === comparisonValue;
         
-      case ConditionOperator.NOT_EQUALS:
+      case ConditionOperatorValue.NOT_EQUALS:
         return sourceValue !== comparisonValue;
         
-      case ConditionOperator.GREATER_THAN:
+      case ConditionOperatorValue.GREATER_THAN:
         return Number(sourceValue) > Number(comparisonValue);
         
-      case ConditionOperator.GREATER_THAN_OR_EQUALS:
+      case ConditionOperatorValue.GREATER_THAN_OR_EQUALS:
         return Number(sourceValue) >= Number(comparisonValue);
         
-      case ConditionOperator.LESS_THAN:
+      case ConditionOperatorValue.LESS_THAN:
         return Number(sourceValue) < Number(comparisonValue);
         
-      case ConditionOperator.LESS_THAN_OR_EQUALS:
+      case ConditionOperatorValue.LESS_THAN_OR_EQUALS:
         return Number(sourceValue) <= Number(comparisonValue);
         
-      case ConditionOperator.IN:
+      case ConditionOperatorValue.IN:
         if (Array.isArray(comparisonValue)) {
           return comparisonValue.includes(sourceValue);
         }
         return false;
         
-      case ConditionOperator.NOT_IN:
+      case ConditionOperatorValue.NOT_IN:
         if (Array.isArray(comparisonValue)) {
           return !comparisonValue.includes(sourceValue);
         }
         return true;
         
-      case ConditionOperator.CONTAINS:
+      case ConditionOperatorValue.CONTAINS:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           return sourceValue.includes(comparisonValue);
         }
@@ -339,7 +346,7 @@ export class PolicyEvaluator {
         }
         return false;
         
-      case ConditionOperator.NOT_CONTAINS:
+      case ConditionOperatorValue.NOT_CONTAINS:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           return !sourceValue.includes(comparisonValue);
         }
@@ -348,19 +355,19 @@ export class PolicyEvaluator {
         }
         return true;
         
-      case ConditionOperator.STARTS_WITH:
+      case ConditionOperatorValue.STARTS_WITH:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           return sourceValue.startsWith(comparisonValue);
         }
         return false;
         
-      case ConditionOperator.ENDS_WITH:
+      case ConditionOperatorValue.ENDS_WITH:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           return sourceValue.endsWith(comparisonValue);
         }
         return false;
         
-      case ConditionOperator.MATCHES:
+      case ConditionOperatorValue.MATCHES:
         if (typeof sourceValue === 'string' && typeof comparisonValue === 'string') {
           try {
             return new RegExp(comparisonValue).test(sourceValue);
@@ -370,14 +377,14 @@ export class PolicyEvaluator {
         }
         return false;
         
-      case ConditionOperator.EXISTS:
+      case ConditionOperatorValue.EXISTS:
         return comparisonValue ? sourceValue !== undefined : sourceValue === undefined;
         
-      case ConditionOperator.IS_OWNER:
+      case ConditionOperatorValue.IS_OWNER:
         // Special operator: check if subject is owner of resource
         return sourceValue === comparisonValue;
         
-      case ConditionOperator.IN_ORG_HIERARCHY:
+      case ConditionOperatorValue.IN_ORG_HIERARCHY:
         // Special operator: check if org is in hierarchy
         // This would typically require looking up org paths
         if (Array.isArray(sourceValue) && typeof comparisonValue === 'string') {
@@ -463,6 +470,6 @@ export class PolicyEvaluator {
         : 'No policies allowed access; default deny';
     }
     
-    return `${effect === PolicyEffect.ALLOW ? 'Allowed' : 'Denied'} by policy "${policy.name}"`;
+    return `${effect === PolicyEffectValue.ALLOW ? 'Allowed' : 'Denied'} by policy "${policy.name}"`;
   }
 }
