@@ -29,7 +29,6 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '8'
   AWS_REGION: eu-west-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
   ENVIRONMENT: production
@@ -164,7 +163,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [payments, notifications, reports]
+        service: [payments, payments-ledger, notifications, reports, document-intelligence, domain-services, webhooks]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

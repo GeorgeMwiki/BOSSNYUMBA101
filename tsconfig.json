@@ -26,7 +26,8 @@
   "files": [],
   "references": [
     { "path": "packages/domain-models" },
-    { "path": "services/payments-ledger" }
+    { "path": "packages/enterprise-hardening" },
+    { "path": "services/document-intelligence" }
   ],
   "exclude": ["node_modules", "**/dist/**"]
 }

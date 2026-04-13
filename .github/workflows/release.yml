@@ -16,7 +16,6 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '8'
   REGISTRY: ghcr.io
 
 jobs:
@@ -98,10 +97,9 @@ jobs:
 
       - name: Build and push
         uses: docker/build-push-action@v5
-        if: hashFiles(format('services/{0}/Dockerfile', matrix.service)) != ''
         with:
           context: .
-          file: services/${{ matrix.service }}/Dockerfile
+          file: docker/Dockerfile.api
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

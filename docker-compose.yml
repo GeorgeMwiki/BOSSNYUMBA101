@@ -154,6 +154,83 @@ services:
     depends_on:
       - api-gateway
 
+  payments-ledger:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: payments-ledger
+    container_name: bossnyumba-payments-ledger
+    restart: unless-stopped
+    ports:
+      - "4001:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  webhooks:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: webhooks
+    container_name: bossnyumba-webhooks
+    restart: unless-stopped
+    ports:
+      - "4002:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  document-intelligence:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: document-intelligence
+    container_name: bossnyumba-document-intelligence
+    restart: unless-stopped
+    ports:
+      - "4003:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  domain-services:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: domain-services
+    container_name: bossnyumba-domain-services
+    restart: unless-stopped
+    ports:
+      - "4004:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
