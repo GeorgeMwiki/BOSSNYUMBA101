@@ -10,13 +10,26 @@ import type {
   TenantId,
   RoleId,
   OrganizationId,
-} from '@bossnyumba/domain-models';
-import {
-  type Role,
-  type User,
-  type UserRoleAssignment,
-  permissionMatches,
-} from '@bossnyumba/domain-models';
+} from '@bossnyumba/domain-models/dist/common/types';
+import type {
+  Role,
+} from '@bossnyumba/domain-models/dist/identity/role';
+import type {
+  User,
+  UserRoleAssignment,
+} from '@bossnyumba/domain-models/dist/identity/user';
+
+/** Check if a permission pattern matches a required permission */
+function permissionMatches(pattern: string, required: string): boolean {
+  if (pattern === '*') return true;
+  if (pattern === required) return true;
+  // Support wildcard suffix matching like 'property:*'
+  if (pattern.endsWith(':*')) {
+    const prefix = pattern.slice(0, -1);
+    return required.startsWith(prefix);
+  }
+  return false;
+}
 
 /** Resolved permissions for a user */
 export interface ResolvedPermissions {
@@ -177,7 +190,7 @@ export class PermissionResolver {
    * Compute permissions by resolving all roles and their inheritance.
    */
   private async computePermissions(user: User): Promise<ResolvedPermissions> {
-    const roleIds = user.roleAssignments.map((a: { roleId: string; organizationId: string; expiresAt?: string }) => a.roleId);
+    const roleIds = user.roleAssignments.map((a) => a.roleId);
     const roles = await this.roleResolver.getRolesByIds(roleIds, user.tenantId);
     
     // Build a map of roles by ID for quick lookup

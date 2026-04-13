@@ -63,8 +63,15 @@ export interface Account extends AccountData, TenantScopedEntity {
 /**
  * Account aggregate with business logic
  */
+/** Mutable version of Account for use within the aggregate */
+type MutableAccount = { -readonly [K in keyof Account]: Account[K] };
+
 export class AccountAggregate {
+<<<<<<< HEAD
   private data: Mutable<Account>;
+=======
+  private data: MutableAccount;
+>>>>>>> worktree-agent-a793f70a
 
   constructor(data: Account) {
     this.data = { ...data };

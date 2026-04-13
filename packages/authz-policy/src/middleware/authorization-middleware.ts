@@ -8,8 +8,10 @@
 import type {
   TenantId,
   UserId,
+} from '@bossnyumba/domain-models/dist/common/types';
+import type {
   User,
-} from '@bossnyumba/domain-models';
+} from '@bossnyumba/domain-models/dist/identity/user';
 import {
   type AuthContext,
   type AuthenticatedUser,

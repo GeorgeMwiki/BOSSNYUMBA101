@@ -46,10 +46,10 @@ export class MessagingRepository {
     const conditions = [eq(conversations.tenantId, tenantId)];
 
     if (options?.type) {
-      conditions.push(eq(conversations.type, options.type));
+      conditions.push(eq(conversations.type, options.type as typeof conversations.type.enumValues[number]));
     }
     if (options?.status) {
-      conditions.push(eq(conversations.status, options.status));
+      conditions.push(eq(conversations.status, options.status as typeof conversations.status.enumValues[number]));
     }
 
     const rows = await this.db

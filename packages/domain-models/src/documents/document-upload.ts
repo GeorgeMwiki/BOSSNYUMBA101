@@ -443,5 +443,9 @@ export function isPdf(doc: DocumentUpload): boolean {
 
 export function getFileExtension(doc: DocumentUpload): string {
   const parts = doc.fileName.split('.');
+<<<<<<< HEAD
   return parts.length > 1 ? (parts[parts.length - 1]?.toLowerCase() ?? '') : '';
+=======
+  return parts.length > 1 ? (parts[parts.length - 1] ?? '').toLowerCase() : '';
+>>>>>>> worktree-agent-a793f70a
 }

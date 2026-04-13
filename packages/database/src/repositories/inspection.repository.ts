@@ -77,7 +77,7 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
@@ -87,7 +87,7 @@ export class InspectionRepository {
           isNull(inspections.deletedAt)
         )
       );
-    return buildPaginatedResult(rows, total, { limit, offset });
+    return buildPaginatedResult(rows, countResult?.total ?? 0, { limit, offset });
   }
 
   async findByDateRange(
@@ -111,7 +111,7 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
@@ -122,16 +122,17 @@ export class InspectionRepository {
           lte(inspections.scheduledDate, endDate)
         )
       );
-    return buildPaginatedResult(rows, total, { limit, offset });
+    return buildPaginatedResult(rows, countResult?.total ?? 0, { limit, offset });
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const typedStatus = status as typeof inspections.status.enumValues[number];
     const rows = await this.db
       .select()
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, typedStatus),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
@@ -139,17 +140,17 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, typedStatus),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
       );
-    return buildPaginatedResult(rows, total, { limit, offset });
+    return buildPaginatedResult(rows, countResult?.total ?? 0, { limit, offset });
   }
 
   async addItem(data: typeof inspectionItems.$inferInsert) {

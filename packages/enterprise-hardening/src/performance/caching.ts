@@ -452,18 +452,18 @@ export class TenantCacheManager<T = unknown> extends CacheManager<T> {
     super({ ...config, tenantIsolation: true }, l2Store);
   }
 
-  async get(key: string, options?: CacheGetOptions): Promise<T | null> {
+  override async get(key: string, options?: CacheGetOptions): Promise<T | null> {
     return super.get(this.tenantKey(key), options);
   }
 
-  async set(key: string, value: T, options?: CacheSetOptions): Promise<void> {
+  override async set(key: string, value: T, options?: CacheSetOptions): Promise<void> {
     return super.set(this.tenantKey(key), value, {
       ...options,
       tags: [...(options?.tags ?? []), `tenant:${this.tenantId}`],
     });
   }
 
-  async delete(key: string): Promise<boolean> {
+  override async delete(key: string): Promise<boolean> {
     return super.delete(this.tenantKey(key));
   }
 

@@ -407,7 +407,14 @@ export class SOC2ComplianceManager {
    */
   generateComplianceReport(): {
     generatedAt: string;
-    summary: ReturnType<typeof this.getComplianceSummary>;
+    summary: {
+      totalControls: number;
+      compliant: number;
+      nonCompliant: number;
+      partiallyCompliant: number;
+      notAssessed: number;
+      compliancePercentage: number;
+    };
     controlDetails: Array<{
       control: SOC2ControlDefinition;
       assessment?: ControlAssessment;

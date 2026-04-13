@@ -401,7 +401,7 @@ export class WorkflowEngine {
         body?: unknown;
       };
       
-      const response = await fetch(this.interpolate(config.url, context), {
+      const response = await fetch(String(this.interpolate(config.url, context)), {
         method: config.method,
         headers: config.headers,
         body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,
@@ -573,7 +573,7 @@ export class WorkflowEngine {
         const result = await this.executeAction(action, execution, workflow);
         
         // Update execution with result
-        const actionResults = [...execution.actionResults, result];
+        const actionResults: typeof execution.actionResults = [...execution.actionResults, result];
         execution = {
           ...execution,
           actionResults,
@@ -754,8 +754,8 @@ export class WorkflowEngine {
     const match = interpolated.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*(.+)$/);
     if (match) {
       const [, left, op, right] = match;
-      const leftVal = left.trim();
-      const rightVal = right.trim().replace(/^["']|["']$/g, '');
+      const leftVal = left!.trim();
+      const rightVal = right!.trim().replace(/^["']|["']$/g, '');
       
       switch (op) {
         case '==': return leftVal === rightVal;

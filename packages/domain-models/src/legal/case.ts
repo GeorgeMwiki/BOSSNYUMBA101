@@ -501,17 +501,22 @@ export function isSlaBreached(caseItem: Case): { response: boolean; resolution: 
   if (!caseItem.slaDetails) return { response: false, resolution: false };
   
   const now = new Date();
-  const responseBreached = caseItem.slaDetails.responseBreached || 
-    (!caseItem.slaDetails.firstResponseAt && 
-     caseItem.slaDetails.responseDeadline && 
+  const responseBreached = caseItem.slaDetails.responseBreached ||
+    (!caseItem.slaDetails.firstResponseAt &&
+     !!caseItem.slaDetails.responseDeadline &&
      now > new Date(caseItem.slaDetails.responseDeadline));
-  
+
   const resolutionBreached = caseItem.slaDetails.resolutionBreached ||
     (!caseItem.resolvedAt &&
-     caseItem.slaDetails.resolutionDeadline &&
+     !!caseItem.slaDetails.resolutionDeadline &&
      now > new Date(caseItem.slaDetails.resolutionDeadline));
+<<<<<<< HEAD
   
   return { response: Boolean(responseBreached), resolution: Boolean(resolutionBreached) };
+=======
+
+  return { response: responseBreached, resolution: resolutionBreached };
+>>>>>>> worktree-agent-a793f70a
 }
 
 export function generateCaseNumber(

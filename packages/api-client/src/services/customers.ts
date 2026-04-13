@@ -109,8 +109,7 @@ export const customersService = {
     pageSize = 20
   ): Promise<ApiResponse<unknown[]> & { pagination?: PaginationInfo }> {
     return getApiClient().get<unknown[]>(`/customers/${id}/leases`, {
-      page: String(page),
-      pageSize: String(pageSize),
+      params: { page: String(page), pageSize: String(pageSize) },
     }) as Promise<ApiResponse<unknown[]> & { pagination?: PaginationInfo }>;
   },
 };

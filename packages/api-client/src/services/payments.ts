@@ -15,9 +15,16 @@ import type {
   StatementId,
 } from '@bossnyumba/domain-models';
 
+/** Payment type alias used in API layer */
+export type PaymentType = PaymentIntentType;
+
 export interface PaymentFilters {
   status?: PaymentStatus[];
+<<<<<<< HEAD
   type?: PaymentIntentType[];
+=======
+  type?: PaymentType[];
+>>>>>>> worktree-agent-a793f70a
   channel?: PaymentChannel[];
   customerId?: string;
   leaseId?: string;

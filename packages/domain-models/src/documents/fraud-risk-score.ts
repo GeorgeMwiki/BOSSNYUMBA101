@@ -231,8 +231,12 @@ function getHighestSeverityIndicator(
     low: 1,
   };
 
+<<<<<<< HEAD
   const first = indicators[0];
   if (!first) return null;
+=======
+  const first = indicators[0]!;
+>>>>>>> worktree-agent-a793f70a
   return indicators.reduce((highest, current) => {
     const currentSeverity = severityOrder[current.severity] ?? 0;
     const highestSeverity = severityOrder[highest.severity] ?? 0;

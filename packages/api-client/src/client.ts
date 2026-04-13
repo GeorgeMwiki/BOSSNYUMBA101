@@ -420,7 +420,7 @@ export class ApiClient {
       const error = errorData.error ?? errorData;
       throw new ApiClientError(error.code || 'UNKNOWN_ERROR', error.message || 'Request failed', {
         status: response.status,
-        details: error.details,
+        details: 'details' in error ? error.details : undefined,
         requestId: response.headers.get('X-Request-ID') || undefined,
       });
     }

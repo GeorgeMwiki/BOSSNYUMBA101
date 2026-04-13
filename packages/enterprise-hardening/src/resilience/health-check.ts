@@ -289,7 +289,7 @@ export class HealthCheckManager {
     checks: readonly HealthCheckDefinition[]
   ): Promise<HealthResponse> {
     const results: HealthCheckResult[] = [];
-    let overallStatus = HealthStatus.HEALTHY;
+    let overallStatus: HealthStatus = HealthStatus.HEALTHY;
 
     for (const check of checks) {
       const state = this.checkStates.get(check.name)!;
@@ -303,7 +303,7 @@ export class HealthCheckManager {
       }
 
       // Update overall status
-      const result = results[results.length - 1];
+      const result = results[results.length - 1]!;
       if (check.critical) {
         if (result.status === HealthStatus.UNHEALTHY) {
           overallStatus = HealthStatus.UNHEALTHY;

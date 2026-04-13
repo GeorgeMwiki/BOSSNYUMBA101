@@ -36,7 +36,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -45,6 +45,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -90,7 +91,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -100,6 +101,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -117,7 +119,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -127,6 +129,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -144,7 +147,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -154,6 +157,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -171,7 +175,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -181,16 +185,18 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const typedStatus = status as typeof workOrders.status.enumValues[number];
     const rows = await this.db
       .select()
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, typedStatus),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -198,26 +204,28 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, typedStatus),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async findByPriority(priority: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const typedPriority = priority as typeof workOrders.priority.enumValues[number];
     const rows = await this.db
       .select()
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, typedPriority),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -225,16 +233,17 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, typedPriority),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -325,7 +334,7 @@ export class VendorRepository {
       .orderBy(desc(vendors.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const [countResult] = await this.db
       .select({ total: count() })
       .from(vendors)
       .where(
@@ -334,6 +343,7 @@ export class VendorRepository {
           isNull(vendors.deletedAt)
         )
       );
+    const total = countResult?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 

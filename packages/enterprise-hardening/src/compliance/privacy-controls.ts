@@ -292,7 +292,7 @@ export class PrivacyManager {
     const updated: DataSubjectRequest = {
       ...request,
       status,
-      completedAt: [DSRStatus.COMPLETED, DSRStatus.REJECTED, DSRStatus.PARTIALLY_COMPLETED].includes(status)
+      completedAt: ([DSRStatus.COMPLETED, DSRStatus.REJECTED, DSRStatus.PARTIALLY_COMPLETED] as DSRStatus[]).includes(status)
         ? new Date().toISOString()
         : undefined,
       rejectionReason: rejectionReason ?? request.rejectionReason,
@@ -312,7 +312,7 @@ export class PrivacyManager {
     const cutoffIso = cutoff.toISOString();
 
     return Array.from(this.dsrRequests.values()).filter(r =>
-      [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS].includes(r.status) &&
+      ([DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS] as DSRStatus[]).includes(r.status) &&
       r.deadlineAt <= cutoffIso
     );
   }
@@ -423,7 +423,7 @@ export class PrivacyManager {
 
       // Overdue
       if (
-        [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS].includes(request.status) &&
+        ([DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS] as DSRStatus[]).includes(request.status) &&
         request.deadlineAt < now
       ) {
         overdueCount++;

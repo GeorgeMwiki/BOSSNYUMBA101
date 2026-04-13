@@ -69,7 +69,7 @@ export class UtilitiesRepository {
       conditions.push(eq(utilityAccounts.unitId, options.unitId));
     }
     if (options?.utilityType) {
-      conditions.push(eq(utilityAccounts.utilityType, options.utilityType));
+      conditions.push(eq(utilityAccounts.utilityType, options.utilityType as typeof utilityAccounts.utilityType.enumValues[number]));
     }
 
     const rows = await this.db
@@ -133,7 +133,7 @@ export class UtilitiesRepository {
     const conditions = [eq(utilityBills.accountId, accountId)];
 
     if (options?.status) {
-      conditions.push(eq(utilityBills.status, options.status));
+      conditions.push(eq(utilityBills.status, options.status as typeof utilityBills.status.enumValues[number]));
     }
 
     return this.db
@@ -154,7 +154,7 @@ export class UtilitiesRepository {
     const [row] = await this.db
       .update(utilityBills)
       .set({
-        status,
+        status: status as typeof utilityBills.status.enumValues[number],
         paidAt: status === 'paid' ? paidAt ?? new Date() : undefined,
         updatedAt: new Date(),
       })
