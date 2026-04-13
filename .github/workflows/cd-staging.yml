@@ -23,7 +23,6 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '8'
   AWS_REGION: eu-west-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
   ENVIRONMENT: staging
@@ -42,8 +41,12 @@ jobs:
       owner-portal: ${{ steps.filter.outputs.owner-portal }}
       admin-portal: ${{ steps.filter.outputs.admin-portal }}
       payments: ${{ steps.filter.outputs.payments }}
+      payments-ledger: ${{ steps.filter.outputs.payments-ledger }}
       notifications: ${{ steps.filter.outputs.notifications }}
       reports: ${{ steps.filter.outputs.reports }}
+      document-intelligence: ${{ steps.filter.outputs.document-intelligence }}
+      domain-services: ${{ steps.filter.outputs.domain-services }}
+      webhooks: ${{ steps.filter.outputs.webhooks }}
       infrastructure: ${{ steps.filter.outputs.infrastructure }}
     steps:
       - name: Checkout
@@ -73,11 +76,23 @@ jobs:
             payments:
               - 'services/payments/**'
               - 'packages/**'
+            payments-ledger:
+              - 'services/payments-ledger/**'
+              - 'packages/**'
             notifications:
               - 'services/notifications/**'
               - 'packages/**'
             reports:
               - 'services/reports/**'
+              - 'packages/**'
+            document-intelligence:
+              - 'services/document-intelligence/**'
+              - 'packages/**'
+            domain-services:
+              - 'services/domain-services/**'
+              - 'packages/**'
+            webhooks:
+              - 'services/webhooks/**'
               - 'packages/**'
             infrastructure:
               - 'infrastructure/**'
