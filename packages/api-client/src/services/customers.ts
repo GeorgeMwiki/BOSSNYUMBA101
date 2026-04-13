@@ -82,7 +82,7 @@ export const customersService = {
       status: params?.status,
     });
 
-    return getApiClient().get<CustomerWithLease[]>('/customers', searchParams) as Promise<
+    return getApiClient().get<CustomerWithLease[]>('/customers', { params: searchParams }) as Promise<
       ApiResponse<CustomerWithLease[]> & { pagination?: PaginationInfo }
     >;
   },

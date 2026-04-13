@@ -3,15 +3,12 @@
  * Represents a rentable unit within a property
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, UnitId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 import type { Money } from '../common/money';
 import type { PropertyId } from './property';
 
-export type UnitId = Brand<string, 'UnitId'>;
-
-export function asUnitId(id: string): UnitId {
-  return id as UnitId;
-}
+// Re-export branded ID from canonical source to avoid duplicate export conflicts
+export { type UnitId, asUnitId } from '../common/types';
 
 /** Unit type */
 export type UnitType =

@@ -83,7 +83,7 @@ export const unitsService = {
       sortOrder: params?.sortOrder,
     });
 
-    return getApiClient().get<Unit[]>('/units', searchParams) as Promise<
+    return getApiClient().get<Unit[]>('/units', { params: searchParams }) as Promise<
       ApiResponse<Unit[]> & { pagination?: PaginationInfo }
     >;
   },

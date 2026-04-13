@@ -3,10 +3,14 @@
  * Shared domain models for the BOSSNYUMBA platform
  */
 
-// Common types, utilities, and enums
+// Common types and utilities
 export * from './common/types';
 export * from './common/money';
-export * from './common/enums';
+// NOTE: './common/enums' is intentionally NOT re-exported here.
+// It duplicates symbols already exported by domain-specific modules
+// (e.g., UserStatus from identity/user.ts, PaymentStatus from common/types.ts,
+//  WorkOrderStatus from maintenance/work-order.ts, etc.).
+// Import directly from '@bossnyumba/domain-models/common/enums' if needed.
 
 // Region & language
 export * from './region/region';
@@ -38,7 +42,17 @@ export * from './lease/lease';
 export * from './lease/occupancy';
 
 // Payments
-export * from './payments/payment-intent';
+// Selectively export from payment-intent to avoid duplicate CustomerId/LeaseId exports
+export {
+  type PaymentChannel,
+  PaymentIntentTypeSchema,
+  type PaymentIntentType,
+  PaymentIntentSchema,
+  type PaymentIntentData,
+  type PaymentIntent,
+  PaymentIntentAggregate,
+  type PaymentIntentEvent,
+} from './payments/payment-intent';
 export * from './payments/payment-method';
 
 // Financial

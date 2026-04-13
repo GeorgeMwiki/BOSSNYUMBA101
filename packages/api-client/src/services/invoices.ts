@@ -121,7 +121,7 @@ export const invoicesService = {
       dateFrom: params?.dateFrom,
       dateTo: params?.dateTo,
     });
-    return getApiClient().get<Invoice[]>('/invoices', searchParams) as Promise<
+    return getApiClient().get<Invoice[]>('/invoices', { params: searchParams }) as Promise<
       ApiResponse<Invoice[]> & { pagination?: PaginationInfo }
     >;
   },
@@ -136,7 +136,7 @@ export const invoicesService = {
       page: params?.page,
       pageSize: params?.pageSize,
     });
-    return getApiClient().get<Invoice[]>('/invoices/overdue', searchParams) as Promise<
+    return getApiClient().get<Invoice[]>('/invoices/overdue', { params: searchParams }) as Promise<
       ApiResponse<Invoice[]> & { pagination?: PaginationInfo }
     >;
   },

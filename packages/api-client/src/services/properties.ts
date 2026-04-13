@@ -87,7 +87,7 @@ export const propertiesService = {
       sortOrder: params?.sortOrder,
     });
 
-    return getApiClient().get<Property[]>('/properties', searchParams) as Promise<
+    return getApiClient().get<Property[]>('/properties', { params: searchParams }) as Promise<
       ApiResponse<Property[]> & { pagination?: PaginationInfo }
     >;
   },

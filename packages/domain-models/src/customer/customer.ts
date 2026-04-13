@@ -3,11 +3,8 @@
  * Represents a tenant/renter in the system
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
-import type { CustomerId } from '../payments/payment-intent';
-
-export { CustomerId } from '../payments/payment-intent';
-export { asCustomerId } from '../payments/payment-intent';
+import type { TenantId, UserId, CustomerId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+// CustomerId and asCustomerId are exported from common/types barrel — no re-export needed
 
 /** Customer status */
 export type CustomerStatus = 'active' | 'inactive' | 'pending_verification' | 'blacklisted';

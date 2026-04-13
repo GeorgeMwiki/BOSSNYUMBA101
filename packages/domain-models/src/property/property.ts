@@ -3,18 +3,10 @@
  * Represents a physical property in the system
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, PropertyId, OwnerId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 
-export type PropertyId = Brand<string, 'PropertyId'>;
-export type OwnerId = Brand<string, 'OwnerId'>;
-
-export function asPropertyId(id: string): PropertyId {
-  return id as PropertyId;
-}
-
-export function asOwnerId(id: string): OwnerId {
-  return id as OwnerId;
-}
+// Re-export branded IDs from canonical source to avoid duplicate export conflicts
+export { type PropertyId, asPropertyId, type OwnerId, asOwnerId } from '../common/types';
 
 /** Property type */
 export type PropertyType =

@@ -3,15 +3,12 @@
  * External service providers for maintenance
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, VendorId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
 import type { Money } from '../common/money';
 import type { WorkOrderCategory } from './work-order';
 
-export type VendorId = Brand<string, 'VendorId'>;
-
-export function asVendorId(id: string): VendorId {
-  return id as VendorId;
-}
+// Re-export branded ID from canonical source to avoid duplicate export conflicts
+export { type VendorId, asVendorId } from '../common/types';
 
 /** Vendor status */
 export type VendorStatus = 'active' | 'inactive' | 'pending_approval' | 'suspended';

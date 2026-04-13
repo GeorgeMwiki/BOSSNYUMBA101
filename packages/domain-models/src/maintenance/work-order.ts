@@ -3,21 +3,14 @@
  * Core maintenance request and work order management with SLA tracking
  */
 
-import type { Brand, TenantId, UserId, EntityMetadata, ISOTimestamp } from '../common/types';
+import type { TenantId, UserId, EntityMetadata, ISOTimestamp, WorkOrderId, VendorId } from '../common/types';
 import type { Money } from '../common/money';
 import type { CustomerId } from '../payments/payment-intent';
 import type { PropertyId } from '../property/property';
 import type { UnitId } from '../property/unit';
 
-export type WorkOrderId = Brand<string, 'WorkOrderId'>;
-export type VendorId = Brand<string, 'VendorId'>;
-
-export function asWorkOrderId(id: string): WorkOrderId {
-  return id as WorkOrderId;
-}
-
-export function asVendorId(id: string): VendorId {
-  return id as VendorId;
+// Re-export branded IDs from canonical source to avoid duplicate export conflicts
+export { type WorkOrderId, asWorkOrderId, type VendorId, asVendorId } from '../common/types';
 }
 
 /** Work order priority */

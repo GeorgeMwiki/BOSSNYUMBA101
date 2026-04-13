@@ -54,7 +54,7 @@ export const notificationsService = {
       params.read = String(filters.read);
     }
 
-    return getApiClient().get<Notification[]>('/notifications', params);
+    return getApiClient().get<Notification[]>('/notifications', { params });
   },
 
   /**
