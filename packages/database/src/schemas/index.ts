@@ -23,6 +23,9 @@ export * from './occupancy.schema.js';
 export * from './cases.schema.js';
 export * from './communications.schema.js';
 
+// Cross-tenant memberships
+export * from './cross-tenant-memberships.schema.js';
+
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';
