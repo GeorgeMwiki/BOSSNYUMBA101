@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@bossnyumba/domain-models': path.resolve(__dirname, 'packages/domain-models/src/index.ts'),
+      '@bossnyumba/database': path.resolve(__dirname, 'packages/database/src/index.ts'),
     },
   },
   test: {
