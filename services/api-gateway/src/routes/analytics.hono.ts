@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // @ts-nocheck
 
 /**
@@ -23,10 +24,16 @@
  *   - startDate     - ISO date string, defaults to first day of 6 months ago
  *   - endDate       - ISO date string, defaults to today
  *   - months        - convenience for (now - N months ... now) if start/end absent
+=======
+/**
+ * Analytics API routes - stub endpoints
+ * Returns placeholder responses so the mobile app does not crash on 404s.
+>>>>>>> worktree-agent-a01ef617
  */
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
+<<<<<<< HEAD
 import { databaseMiddleware } from '../middleware/database';
 import {
   SQLKPIDataProvider,
@@ -200,6 +207,39 @@ app.get('/kpis/:metric', async (c) => {
       500
     );
   }
+=======
+
+const app = new Hono();
+app.use('*', authMiddleware);
+
+// TODO: wire to real analytics data source
+app.get('/overview', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      revenue: { current: 0, previous: 0, change: 0 },
+      occupancy: { rate: 0, change: 0 },
+      collections: { rate: 0, change: 0 },
+      maintenance: { open: 0, completed: 0, avgResolutionHours: 0 },
+    },
+  });
+});
+
+// TODO: wire to real analytics data source
+app.get('/revenue', (c) => {
+  return c.json({
+    success: true,
+    data: { trend: [], summary: { total: 0, projected: 0 } },
+  });
+});
+
+// TODO: wire to real analytics data source
+app.get('/occupancy', (c) => {
+  return c.json({
+    success: true,
+    data: { trend: [], byProperty: [] },
+  });
+>>>>>>> worktree-agent-a01ef617
 });
 
 export const analyticsRouter = app;

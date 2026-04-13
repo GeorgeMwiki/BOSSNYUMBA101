@@ -42,6 +42,13 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+import { analyticsRouter } from './routes/analytics.hono';
+import { membershipsRouter } from './routes/memberships.hono';
+import { searchRouter } from './routes/search';
+import { aiRouter } from './routes/ai';
+import { messagesRouter } from './routes/messages';
+import { approvalsRouter } from './routes/approvals';
+import { devicesRouter } from './routes/devices';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -92,6 +99,14 @@ api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
 api.route('/analytics', analyticsRouter);
 api.route('/memberships', membershipsRouter);
+<<<<<<< HEAD
+=======
+api.route('/search', searchRouter);
+api.route('/ai', aiRouter);
+api.route('/messages', messagesRouter);
+api.route('/approvals', approvalsRouter);
+api.route('/devices', devicesRouter);
+>>>>>>> worktree-agent-a01ef617
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -125,6 +140,15 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/messaging',
       '/api/v1/cases',
       '/api/v1/analytics',
+<<<<<<< HEAD
+=======
+      '/api/v1/memberships',
+      '/api/v1/search',
+      '/api/v1/ai',
+      '/api/v1/messages',
+      '/api/v1/approvals',
+      '/api/v1/devices',
+>>>>>>> worktree-agent-a01ef617
     ],
   });
 });
