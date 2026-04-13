@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Bell, Search, Menu, X } from 'lucide-react';
-import { cn } from '../utils/cn';
+import { cn } from '../lib/utils';
 import { Avatar } from './Avatar';
 import { Dropdown, DropdownItem } from './Dropdown';
 
