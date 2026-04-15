@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { PriorityBadge } from '@/components/maintenance';
+import { PriorityBadge, SLATimer } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 
 const priorities = [
@@ -79,9 +79,23 @@ export default function WorkOrderTriage() {
   const wo = woData?.data as Record<string, unknown> | undefined;
   const unit = wo?.unit as Record<string, unknown> | undefined;
   const property = wo?.property as Record<string, unknown> | undefined;
+  const woSla = wo?.sla as Record<string, unknown> | undefined;
+
+  const responseMinutesRemaining =
+    woSla?.responseDueAt && !woSla.respondedAt
+      ? Math.round(
+          (new Date(String(woSla.responseDueAt)).getTime() - Date.now()) / 60000
+        )
+      : null;
+  const resolutionMinutesRemaining =
+    woSla?.resolutionDueAt && !woSla.resolvedAt
+      ? Math.round(
+          (new Date(String(woSla.resolutionDueAt)).getTime() - Date.now()) / 60000
+        )
+      : null;
 
   // Set initial values from API data
-  useMemo(() => {
+  useEffect(() => {
     if (wo && !priority) {
       setPriority(String(wo.priority ?? 'MEDIUM'));
       setCategory(String(wo.category ?? 'GENERAL'));
@@ -160,6 +174,31 @@ export default function WorkOrderTriage() {
           {wo?.description && (
             <p className="text-sm text-gray-600 mt-2">{String(wo.description)}</p>
           )}
+
+          {(responseMinutesRemaining !== null || resolutionMinutesRemaining !== null) && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-xs">
+              {responseMinutesRemaining !== null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Response</span>
+                  <SLATimer
+                    minutesRemaining={responseMinutesRemaining}
+                    type="response"
+                    breached={responseMinutesRemaining < 0}
+                  />
+                </div>
+              )}
+              {resolutionMinutesRemaining !== null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Resolution</span>
+                  <SLATimer
+                    minutesRemaining={resolutionMinutesRemaining}
+                    type="resolution"
+                    breached={resolutionMinutesRemaining < 0}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -220,15 +259,18 @@ export default function WorkOrderTriage() {
             </div>
 
             {assigneeType === 'technician' && (
-              <select
-                className="input"
-                value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
-              >
-                <option value="">Select technician</option>
-                <option value="tech-1">James Mwangi</option>
-                <option value="tech-2">Peter Ochieng</option>
-              </select>
+              <div className="space-y-2">
+                <input
+                  className="input"
+                  placeholder="Enter technician user ID"
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Assign an in-house technician by their user ID. For external
+                  crews, switch to Vendor above.
+                </p>
+              </div>
             )}
 
             {assigneeType === 'vendor' && (

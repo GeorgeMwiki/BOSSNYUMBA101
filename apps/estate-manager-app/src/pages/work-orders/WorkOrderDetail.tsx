@@ -758,28 +758,41 @@ export default function WorkOrderDetail() {
             </div>
 
             <div className="p-5 space-y-6">
+              {uploadError && (
+                <div className="p-2 bg-danger-50 text-danger-600 rounded-lg text-xs">
+                  {uploadError}
+                </div>
+              )}
               <div>
                 <label className="label">Before Photos</label>
                 <div className="flex gap-2 flex-wrap">
-                  {beforePhotos.map((_, index) => (
+                  {beforePhotos.map((url, index) => (
                     <div key={index} className="relative">
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" /></div>
-                      <button onClick={() => removePhoto('before', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                        <img src={url} alt="Before" className="w-full h-full object-cover" />
+                      </div>
+                      <button type="button" onClick={() => removePhoto('before', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
-                  <button onClick={() => addPhoto('before')} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"><Plus className="w-6 h-6" /></button>
+                  <button type="button" onClick={() => addPhoto('before')} disabled={uploadingPhoto !== null} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 disabled:opacity-50">
+                    {uploadingPhoto === 'before' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-6 h-6" />}
+                  </button>
                 </div>
               </div>
               <div>
                 <label className="label">After Photos <span className="text-danger-500">*</span></label>
                 <div className="flex gap-2 flex-wrap">
-                  {afterPhotos.map((_, index) => (
+                  {afterPhotos.map((url, index) => (
                     <div key={index} className="relative">
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" /></div>
-                      <button onClick={() => removePhoto('after', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                        <img src={url} alt="After" className="w-full h-full object-cover" />
+                      </div>
+                      <button type="button" onClick={() => removePhoto('after', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
-                  <button onClick={() => addPhoto('after')} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"><Plus className="w-6 h-6" /></button>
+                  <button type="button" onClick={() => addPhoto('after')} disabled={uploadingPhoto !== null} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 disabled:opacity-50">
+                    {uploadingPhoto === 'after' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-6 h-6" />}
+                  </button>
                 </div>
                 {afterPhotos.length === 0 && <p className="text-xs text-danger-500 mt-1">At least one after photo is required</p>}
               </div>
@@ -866,25 +879,61 @@ export default function WorkOrderDetail() {
               {signOffStep === 'tenant' && <p className="text-sm text-gray-600">Please ask the tenant to confirm they are satisfied with the work.</p>}
               {signOffStep === 'manager' && <p className="text-sm text-gray-600">Review the completion evidence and approve the work order closure.</p>}
             </div>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 h-32 flex items-center justify-center">
-              {signatureDrawn ? (
-                <div className="text-center">
-                  <CheckCircle className="w-12 h-12 text-success-500 mx-auto mb-2" />
-                  <span className="text-sm text-success-600">Signature captured</span>
-                </div>
-              ) : (
-                <button onClick={() => setSignatureDrawn(true)} className="text-sm text-gray-500">Tap to sign</button>
-              )}
+            <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-white">
+              <canvas
+                ref={signatureCanvasRef}
+                width={400}
+                height={150}
+                className="w-full touch-none"
+                onMouseDown={startDrawingSig}
+                onMouseMove={drawSig}
+                onMouseUp={stopDrawingSig}
+                onMouseLeave={stopDrawingSig}
+                onTouchStart={startDrawingSig}
+                onTouchMove={drawSig}
+                onTouchEnd={stopDrawingSig}
+              />
             </div>
+            <p className="text-xs text-gray-500 text-center">
+              Sign above using your finger or mouse
+            </p>
             <div className="flex gap-3">
+              <button type="button" onClick={clearSigCanvas} className="btn-secondary flex-1 py-3">
+                Clear
+              </button>
               {signOffStep !== 'technician' && (
-                <button onClick={() => { if (signOffStep === 'tenant') setSignOffStep('technician'); if (signOffStep === 'manager') setSignOffStep('tenant'); setSignatureDrawn(false); }} className="btn-secondary flex-1 py-3">Back</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (signOffStep === 'tenant') setSignOffStep('technician');
+                    if (signOffStep === 'manager') setSignOffStep('tenant');
+                    clearSigCanvas();
+                  }}
+                  className="btn-secondary flex-1 py-3"
+                >
+                  Back
+                </button>
               )}
-              <button onClick={handleSignOff} disabled={!signatureDrawn} className="btn-primary flex-1 py-3 disabled:opacity-50">
-                {signOffStep === 'manager' ? 'Complete Work Order' : 'Next'}
+              <button
+                type="button"
+                onClick={handleSignOff}
+                disabled={signOffMutation.isPending}
+                className="btn-primary flex-1 py-3 disabled:opacity-50"
+              >
+                {signOffMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : signOffStep === 'manager' ? (
+                  'Complete Work Order'
+                ) : (
+                  'Next'
+                )}
               </button>
             </div>
-            {signOffStep === 'tenant' && <button className="btn-secondary w-full text-sm">Send confirmation link to tenant</button>}
+            {signOffMutation.isError && (
+              <p className="text-xs text-danger-600">
+                {(signOffMutation.error as Error).message}
+              </p>
+            )}
           </div>
         </div>
       )}
