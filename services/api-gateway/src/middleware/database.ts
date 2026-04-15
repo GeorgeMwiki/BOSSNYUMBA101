@@ -202,3 +202,23 @@ export function buildPaginationResponse(
     hasPreviousPage: page > 1,
   };
 }
+
+/**
+ * Return the shared, lazily-initialised `Repositories` container (or null
+ * when running in mock mode). Callers outside the Hono pipeline can use this
+ * to access real repositories without going through middleware.
+ */
+export function getRepositoriesInstance(): Repositories | null {
+  return getRepositories();
+}
+
+/**
+ * Build a tenant-scoped facade over the shared repositories. Convenience
+ * wrapper around `buildScopedRepos` for call sites that only have the auth
+ * context handy (not a Hono `Context`).
+ */
+export async function scopedReposFor(tenantId: string) {
+  // Late import to keep circular dependencies in check.
+  const { buildScopedRepos } = await import('../adapters/scoped-repos.js');
+  return buildScopedRepos(getRepositories(), tenantId);
+}

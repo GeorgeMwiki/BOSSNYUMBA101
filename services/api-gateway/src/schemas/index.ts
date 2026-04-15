@@ -1,7 +1,6 @@
-// @ts-nocheck
 /**
  * Validation Schemas
- * 
+ *
  * Centralized Zod schemas for request validation across the BOSSNYUMBA API Gateway.
  * Provides reusable validators for common data types and patterns.
  */
@@ -465,6 +464,114 @@ export function trimmedString(min = 1, max = 255) {
 // Type Exports
 // ============================================================================
 
+// ============================================================================
+// Authentication Schemas
+// ============================================================================
+
+/**
+ * Login payload.
+ *
+ * Accepts raw email (we do not enforce the strict password schema here; the
+ * stored hash is the source of truth and clients may legitimately have
+ * passwords that predate policy tightening).
+ */
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required').max(256),
+  rememberMe: z.boolean().optional().default(false),
+});
+
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(10).max(2048).optional(),
+});
+
+export const mfaChallengeSchema = z.object({
+  email: emailSchema,
+  channel: z.enum(['email', 'sms', 'totp']).optional().default('email'),
+});
+
+export const mfaVerifySchema = z.object({
+  challengeId: z.string().min(8).max(128),
+  code: z.string().regex(/^\d{4,8}$/, 'Code must be 4-8 digits'),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(256),
+  newPassword: passwordSchema,
+});
+
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(8).max(512),
+  newPassword: passwordSchema,
+});
+
+// ============================================================================
+// Generic list / detail request schemas
+// ============================================================================
+
+/**
+ * Shared list query parameters (page, pageSize, sort, search).
+ */
+export const listQuerySchema = paginationSchema.merge(sortSchema).extend({
+  search: z.string().max(200).optional(),
+  status: z.string().max(50).optional(),
+  propertyId: uuidSchema.optional(),
+  unitId: uuidSchema.optional(),
+  customerId: uuidSchema.optional(),
+  type: z.string().max(50).optional(),
+  category: z.string().max(50).optional(),
+});
+
+/**
+ * ID params schema — reusable for /:id routes.
+ */
+export const idParamSchema = z.object({
+  id: uuidSchema,
+});
+
+// ============================================================================
+// Tenant / Property / Unit / Lease update variants
+// ============================================================================
+
+export const updatePropertySchema = createPropertySchema.partial();
+export const updateUnitSchema = createUnitSchema.partial();
+export const updateCustomerSchema = createCustomerSchema.partial();
+export const updateLeaseSchema = z
+  .object({
+    type: z.enum(['fixed_term', 'month_to_month', 'commercial']).optional(),
+    startDate: dateStringSchema.optional(),
+    endDate: dateStringSchema.optional(),
+    rentAmount: moneySchema.optional(),
+    depositAmount: moneySchema.optional(),
+    paymentDueDay: z.number().int().min(1).max(28).optional(),
+    gracePeriodDays: z.number().int().min(0).max(30).optional(),
+    lateFeeType: z.enum(['fixed', 'percentage']).optional(),
+    lateFeeValue: z.number().positive().optional(),
+    status: z
+      .enum(['draft', 'active', 'expired', 'terminated', 'cancelled'])
+      .optional(),
+    terms: z.string().max(10000).optional(),
+    specialConditions: z.array(z.string()).optional(),
+  })
+  .partial();
+
+export const updateTenantSchema = z
+  .object({
+    name: z.string().min(2).max(200).optional(),
+    contactEmail: emailSchema.optional(),
+    contactPhone: phoneNumberSchema.optional(),
+    settings: z.record(z.unknown()).optional(),
+  })
+  .partial();
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
 export type Pagination = z.infer<typeof paginationSchema>;
 export type DateRange = z.infer<typeof dateRangeSchema>;
 export type Address = z.infer<typeof addressSchema>;
@@ -479,4 +586,17 @@ export type InitiatePayment = z.infer<typeof initiatePaymentSchema>;
 export type CreateInvoice = z.infer<typeof createInvoiceSchema>;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
 export type Feedback = z.infer<typeof feedbackSchema>;
-// @ts-nocheck
+export type LoginInput = z.infer<typeof loginSchema>;
+export type RefreshInput = z.infer<typeof refreshSchema>;
+export type MfaChallengeInput = z.infer<typeof mfaChallengeSchema>;
+export type MfaVerifyInput = z.infer<typeof mfaVerifySchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type UpdateProperty = z.infer<typeof updatePropertySchema>;
+export type UpdateUnit = z.infer<typeof updateUnitSchema>;
+export type UpdateCustomer = z.infer<typeof updateCustomerSchema>;
+export type UpdateLease = z.infer<typeof updateLeaseSchema>;
+export type UpdateTenant = z.infer<typeof updateTenantSchema>;
+export type ListQuery = z.infer<typeof listQuerySchema>;
+export type IdParam = z.infer<typeof idParamSchema>;

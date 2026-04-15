@@ -3,15 +3,17 @@
  * Tenant Context Middleware - BOSSNYUMBA
  *
  * Sets up tenant context for multi-tenant requests:
- * - Tenant ID extraction and validation
- * - Tenant settings caching
- * - Tenant isolation enforcement
- * - Request scoping
+ * - Tenant ID extraction and validation (from JWT, header, or slug)
+ * - Tenant config loading from the real database via TenantRepository
+ * - Tenant settings caching (in-memory, TTL-bounded)
+ * - Tenant isolation enforcement and feature/limit gating
  */
 
 import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import type { AuthContext } from './auth.middleware';
+import { TenantRepository } from '@bossnyumba/database';
+import { getDatabaseClient } from './database';
 
 // ============================================================================
 // Types
@@ -173,28 +175,66 @@ const DEFAULT_TENANT_LIMITS: TenantLimits = {
 };
 
 // ============================================================================
-// Tenant Loader (Mock - Replace with Database in Production)
+// Tenant Loader — backed by TenantRepository (@bossnyumba/database)
 // ============================================================================
 
+function mapDbStatusToTenantStatus(status: unknown): TenantStatus {
+  const v = String(status || '').toLowerCase();
+  if (v === 'active') return 'active';
+  if (v === 'suspended') return 'suspended';
+  if (v === 'trial' || v === 'trialing') return 'trial';
+  if (v === 'cancelled' || v === 'canceled') return 'cancelled';
+  return 'pending';
+}
+
+function rowToTenantConfig(row: Record<string, any>): TenantConfig {
+  const settings = (row.settings && typeof row.settings === 'object' ? row.settings : {}) as Record<string, any>;
+  const merged: TenantSettings = {
+    ...DEFAULT_TENANT_SETTINGS,
+    ...(settings.settings || settings || {}),
+  } as TenantSettings;
+
+  const features: TenantFeatures = {
+    ...DEFAULT_TENANT_FEATURES,
+    maxProperties: Number(row.maxProperties ?? DEFAULT_TENANT_FEATURES.maxProperties),
+    maxUnits: Number(row.maxUnits ?? DEFAULT_TENANT_FEATURES.maxUnits),
+    maxUsers: Number(row.maxUsers ?? DEFAULT_TENANT_FEATURES.maxUsers),
+    ...(settings.features || {}),
+  };
+
+  const limits: TenantLimits = {
+    ...DEFAULT_TENANT_LIMITS,
+    ...(settings.limits || {}),
+  };
+
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    status: mapDbStatusToTenantStatus(row.status),
+    settings: merged,
+    features,
+    limits,
+    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt || Date.now()),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt || Date.now()),
+  };
+}
+
 async function loadTenantFromDatabase(tenantId: string): Promise<TenantConfig | null> {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return null;
+  const db = getDatabaseClient();
+  if (!db) return null;
 
   try {
-    const apiBase = process.env.TENANT_SERVICE_URL || process.env.API_URL || '';
-    if (!apiBase) return null;
+    const repo = new TenantRepository(db);
+    // Accept both ID and slug lookups. IDs are typically UUIDs; slugs contain
+    // hyphens/letters. We try ID first, then slug as fallback.
+    const byId = await repo.findById(tenantId as any);
+    if (byId) return rowToTenantConfig(byId);
 
-    const res = await fetch(`${apiBase}/internal/tenants/${tenantId}`, {
-      headers: {
-        'X-API-Key': process.env.INTERNAL_API_KEY || '',
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(3000),
-    });
+    const bySlug = await repo.findBySlug(tenantId);
+    if (bySlug) return rowToTenantConfig(bySlug);
 
-    if (!res.ok) return null;
-    const data = await res.json() as { data?: TenantConfig };
-    return data.data || null;
+    return null;
   } catch {
     return null;
   }
@@ -210,10 +250,12 @@ async function loadTenantConfig(tenantId: string): Promise<TenantConfig | null> 
     return fromDb;
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
     return null;
   }
 
+  // Development fallback: synthesise a config so local workflows without a
+  // seeded database still function. Never reached in production or test.
   const config: TenantConfig = {
     id: tenantId,
     name: `Tenant ${tenantId}`,
