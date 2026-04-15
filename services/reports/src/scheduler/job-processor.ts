@@ -8,6 +8,17 @@ import type { ReportFormat } from '../reports/report-types.js';
 import type { IReportStorage } from '../storage/storage.js';
 import type { IDeliveryService } from '../storage/delivery.js';
 import { getReportSubject } from '../storage/delivery.js';
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+
+const jobLogger = new ObsLogger({
+  service: {
+    name: 'reports-scheduler',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
 
 export interface ScheduledJobData {
   scheduleId: string;
@@ -107,7 +118,9 @@ export function createReportJobProcessor(
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Report job ${job?.id} failed:`, err);
+    jobLogger.error(`Report job ${job?.id} failed`, err instanceof Error ? err : undefined, {
+      jobId: job?.id,
+    });
   });
 
   return worker;

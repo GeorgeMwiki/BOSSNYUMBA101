@@ -22,6 +22,17 @@ import type { ReportListFilters } from './storage/storage.js';
 import { ReportScheduler } from './scheduler/scheduler.js';
 import type { ScheduleConfig } from './scheduler/scheduler.js';
 import type { StoredReport } from './storage/storage.js';
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+
+const rgLogger = new ObsLogger({
+  service: {
+    name: 'reports',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
 
 /** Error codes for report generation failures */
 export type ReportGenerationErrorCode =
@@ -88,6 +99,8 @@ export class ReportGenerationService {
         'INVALID_PARAMS'
       );
     }
+
+    rgLogger.info('Report generation started', { reportType, format, tenantId });
 
     try {
       const reportParams = this.normalizeParams(params);
