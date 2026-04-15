@@ -379,13 +379,42 @@ export const WorkflowTemplates: WorkflowTemplate[] = [
 /**
  * Workflow Engine
  */
+/**
+ * Signature for a registered custom script. Scripts are looked up by name
+ * from the script registry and executed in-process; there is no dynamic
+ * evaluation of untrusted code.
+ */
+export type CustomScriptFn = (
+  params: Record<string, unknown>,
+  context: ExecutionContext
+) => Promise<Record<string, unknown>> | Record<string, unknown>;
+
 export class WorkflowEngine {
   private workflows: Map<string, WorkflowDefinition> = new Map();
   private executions: Map<string, WorkflowExecution> = new Map();
   private actionHandlers: Map<ActionType, (action: WorkflowAction, context: ExecutionContext) => Promise<Record<string, unknown>>> = new Map();
+  private customScripts: Map<string, CustomScriptFn> = new Map();
 
   constructor() {
     this.registerDefaultHandlers();
+  }
+
+  /**
+   * Register a named custom script function.
+   *
+   * Custom scripts are the only mechanism for running workflow-embedded
+   * business logic. Dynamic evaluation (eval, new Function, etc.) is
+   * explicitly disallowed for security reasons.
+   */
+  registerScript(name: string, fn: CustomScriptFn): void {
+    this.customScripts.set(name, fn);
+  }
+
+  /**
+   * Unregister a previously registered script.
+   */
+  unregisterScript(name: string): void {
+    this.customScripts.delete(name);
   }
 
   /**
@@ -430,11 +459,25 @@ export class WorkflowEngine {
       return { branch: action.nextActions?.[0] ?? null };
     });
 
-    // Custom script handler (placeholder - would integrate with actual script engine)
+    // Custom script handler — executes a named function from the registry.
+    // Dynamic code evaluation is intentionally not supported.
     this.actionHandlers.set(ActionType.CUSTOM_SCRIPT, async (action, context) => {
-      const { script, params } = action.config as { script: string; params: Record<string, unknown> };
-      // In real implementation, this would execute the script
-      return { script, params: this.interpolate(params, context) };
+      const { script, params } = action.config as {
+        script: string;
+        params?: Record<string, unknown>;
+      };
+      const fn = this.customScripts.get(script);
+      if (!fn) {
+        throw new Error(
+          `Custom script "${script}" is not registered. Call workflowEngine.registerScript(...) at startup.`
+        );
+      }
+      const interpolatedParams = this.interpolate(
+        params ?? {},
+        context
+      ) as Record<string, unknown>;
+      const result = await fn(interpolatedParams, context);
+      return { script, output: result };
     });
   }
 

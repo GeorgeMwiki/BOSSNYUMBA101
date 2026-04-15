@@ -148,6 +148,41 @@ export {
   type Budget,
 } from './performance';
 
+// Security exports
+export {
+  Bulkhead,
+  BulkheadRejectedError,
+  InMemoryIdempotencyStore,
+  beginIdempotent,
+  recordIdempotentResponse,
+  signRequest,
+  verifyRequest,
+  InMemoryReplayStore,
+  SIGNATURE_HEADERS,
+  issueCsrfToken,
+  verifyCsrfToken,
+  CSRF_PROTECTED_METHODS,
+  buildSecurityHeaders,
+  redact,
+  redactString,
+  type BulkheadConfig,
+  type IdempotencyStore,
+  type IdempotencyRecord,
+  type IdempotencyConfig,
+  type IdempotencyRequest,
+  type IdempotencyOutcome,
+  type SignRequestInput,
+  type SignedRequest,
+  type VerifyRequestInput,
+  type VerifyOptions,
+  type VerifyResult,
+  type ReplayStore,
+  type CsrfConfig,
+  type CsrfTokenPair,
+  type SecurityHeadersConfig,
+  type RedactionConfig,
+} from './security';
+
 // Enterprise exports
 export {
   // Webhooks
