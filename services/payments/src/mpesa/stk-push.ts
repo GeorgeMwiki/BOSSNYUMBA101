@@ -1,4 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import { createPublicKey, publicEncrypt, constants as cryptoConstants } from 'node:crypto';
+import { z } from 'zod';
 
 export interface MpesaConfig {
   consumerKey: string;
@@ -7,14 +9,44 @@ export interface MpesaConfig {
   shortcode: string;
   callbackUrl: string;
   environment: 'sandbox' | 'production';
+  /**
+   * Daraja "security credential" is the base64 PKCS#1.5-encrypted initiator
+   * password. Either provide it pre-encrypted, or provide the initiator name
+   * and plaintext password together with the Safaricom-issued public
+   * certificate so this class can encrypt it on demand.
+   */
+  securityCredential?: string;
+  initiatorName?: string;
+  initiatorPassword?: string;
+  /** PEM-encoded Safaricom public certificate (sandbox or production). */
+  publicCertificatePem?: string;
 }
 
-export interface StkPushRequest {
-  phoneNumber: string;
-  amount: number;
-  accountReference: string;
-  transactionDesc?: string;
-}
+/** zod schema for a validated STK Push input. */
+export const StkPushRequestSchema = z.object({
+  phoneNumber: z
+    .string()
+    .min(9)
+    .max(15)
+    .regex(/^[+\d\s()-]+$/, 'phoneNumber must contain only digits, spaces, "+", "-" or "()"'),
+  amount: z
+    .number()
+    .finite()
+    .positive()
+    .int({ message: 'M-Pesa STK amounts are whole KES shillings' })
+    .max(150000, 'Safaricom STK Push caps a single transaction at KES 150,000'),
+  accountReference: z
+    .string()
+    .min(1, 'accountReference is required')
+    .max(12, 'accountReference must be <= 12 characters'),
+  transactionDesc: z
+    .string()
+    .min(1)
+    .max(13, 'transactionDesc must be <= 13 characters')
+    .optional(),
+});
+
+export type StkPushRequest = z.infer<typeof StkPushRequestSchema>;
 
 export interface StkPushResponse {
   MerchantRequestID: string;
@@ -54,6 +86,10 @@ export class MpesaStkPush {
       shortcode: config?.shortcode || process.env.MPESA_SHORTCODE || '',
       callbackUrl: config?.callbackUrl || process.env.MPESA_CALLBACK_URL || '',
       environment: (config?.environment || process.env.MPESA_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production',
+      securityCredential: config?.securityCredential || process.env.MPESA_SECURITY_CREDENTIAL,
+      initiatorName: config?.initiatorName || process.env.MPESA_INITIATOR_NAME,
+      initiatorPassword: config?.initiatorPassword || process.env.MPESA_INITIATOR_PASSWORD,
+      publicCertificatePem: config?.publicCertificatePem || process.env.MPESA_PUBLIC_CERT_PEM,
     };
 
     const baseURL = this.config.environment === 'production' ? PRODUCTION_URL : SANDBOX_URL;
@@ -124,40 +160,60 @@ export class MpesaStkPush {
   }
 
   /**
-   * Initiate STK Push payment request
+   * Initiate STK Push payment request.
+   *
+   * Input is validated via `StkPushRequestSchema` before any network call.
+   * The returned `CheckoutRequestID` is the idempotency key the caller should
+   * persist and use when polling `queryStkPushStatus` or matching callbacks.
    */
   async initiateStkPush(request: StkPushRequest): Promise<StkPushResponse> {
+    const parsed = StkPushRequestSchema.parse(request);
+    this.assertConfigured();
+
     const accessToken = await this.getAccessToken();
     const { password, timestamp } = this.generatePassword();
-    const phoneNumber = this.formatPhoneNumber(request.phoneNumber);
+    const phoneNumber = this.formatPhoneNumber(parsed.phoneNumber);
 
     const payload = {
       BusinessShortCode: this.config.shortcode,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(request.amount),
+      Amount: Math.round(parsed.amount),
       PartyA: phoneNumber,
       PartyB: this.config.shortcode,
       PhoneNumber: phoneNumber,
       CallBackURL: this.config.callbackUrl,
-      AccountReference: request.accountReference.slice(0, 12), // Max 12 chars
-      TransactionDesc: request.transactionDesc?.slice(0, 13) || 'Payment', // Max 13 chars
+      AccountReference: parsed.accountReference, // already validated <= 12
+      TransactionDesc: parsed.transactionDesc ?? 'Payment',
     };
 
-    const response = await this.client.post<StkPushResponse>('/mpesa/stkpush/v1/processrequest', payload, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    return response.data;
+    try {
+      const response = await this.client.post<StkPushResponse>(
+        '/mpesa/stkpush/v1/processrequest',
+        payload,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!response.data?.CheckoutRequestID) {
+        throw new Error(
+          `M-Pesa STK Push returned unexpected response: ${JSON.stringify(response.data)}`
+        );
+      }
+      return response.data;
+    } catch (error) {
+      throw wrapDarajaError('stkpush', error);
+    }
   }
 
   /**
    * Query STK Push transaction status
    */
   async queryStkPushStatus(request: StkQueryRequest): Promise<StkQueryResponse> {
+    if (!request.checkoutRequestId) {
+      throw new Error('checkoutRequestId is required');
+    }
+    this.assertConfigured();
+
     const accessToken = await this.getAccessToken();
     const { password, timestamp } = this.generatePassword();
 
@@ -168,13 +224,56 @@ export class MpesaStkPush {
       CheckoutRequestID: request.checkoutRequestId,
     };
 
-    const response = await this.client.post<StkQueryResponse>('/mpesa/stkpushquery/v1/query', payload, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    try {
+      const response = await this.client.post<StkQueryResponse>(
+        '/mpesa/stkpushquery/v1/query',
+        payload,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      return response.data;
+    } catch (error) {
+      throw wrapDarajaError('stkpushquery', error);
+    }
+  }
 
-    return response.data;
+  /**
+   * Compute the Daraja "security credential" expected by B2C / reversal /
+   * account-balance endpoints. If a pre-computed credential is configured on
+   * the client it is returned as-is, otherwise the initiator password is
+   * RSA/PKCS1 v1.5 encrypted with the Safaricom public certificate and the
+   * result is base64-encoded (matching the Java sample Safaricom publishes).
+   */
+  getSecurityCredential(): string {
+    if (this.config.securityCredential) {
+      return this.config.securityCredential;
+    }
+    const { initiatorPassword, publicCertificatePem } = this.config;
+    if (!initiatorPassword || !publicCertificatePem) {
+      throw new Error(
+        'M-Pesa security credential cannot be derived: provide either `securityCredential` directly, or both `initiatorPassword` and `publicCertificatePem`.'
+      );
+    }
+    const publicKey = createPublicKey({ key: publicCertificatePem, format: 'pem' });
+    const encrypted = publicEncrypt(
+      { key: publicKey, padding: cryptoConstants.RSA_PKCS1_PADDING },
+      Buffer.from(initiatorPassword, 'utf8')
+    );
+    return encrypted.toString('base64');
+  }
+
+  /**
+   * Assert the minimum configuration necessary to talk to Daraja is in place.
+   */
+  private assertConfigured(): void {
+    const missing: string[] = [];
+    if (!this.config.consumerKey) missing.push('consumerKey');
+    if (!this.config.consumerSecret) missing.push('consumerSecret');
+    if (!this.config.passkey) missing.push('passkey');
+    if (!this.config.shortcode) missing.push('shortcode');
+    if (!this.config.callbackUrl) missing.push('callbackUrl');
+    if (missing.length > 0) {
+      throw new Error(`M-Pesa client missing required config: ${missing.join(', ')}`);
+    }
   }
 
   /**
@@ -189,7 +288,8 @@ export class MpesaStkPush {
     return this.initiateStkPush({
       phoneNumber,
       amount,
-      accountReference: invoiceId,
+      // Daraja caps account reference at 12 characters; truncate defensively.
+      accountReference: invoiceId.slice(0, 12),
       transactionDesc: propertyName ? `Rent-${propertyName}`.slice(0, 13) : 'RentPayment',
     });
   }
@@ -218,3 +318,39 @@ export class MpesaStkPush {
 }
 
 export const mpesaStkPush = new MpesaStkPush();
+
+/**
+ * Normalize Daraja HTTP errors into a single Error with a useful message.
+ * Daraja returns JSON bodies like `{ errorCode, errorMessage, requestId }`.
+ */
+export class DarajaError extends Error {
+  constructor(
+    message: string,
+    public readonly endpoint: string,
+    public readonly httpStatus?: number,
+    public readonly errorCode?: string,
+    public readonly requestId?: string
+  ) {
+    super(message);
+    this.name = 'DarajaError';
+  }
+}
+
+function wrapDarajaError(endpoint: string, error: unknown): DarajaError {
+  if ((error as AxiosError)?.isAxiosError) {
+    const axErr = error as AxiosError<{ errorCode?: string; errorMessage?: string; requestId?: string }>;
+    const data = axErr.response?.data;
+    const message = data?.errorMessage || axErr.message || 'M-Pesa request failed';
+    return new DarajaError(
+      `Daraja ${endpoint} failed: ${message}`,
+      endpoint,
+      axErr.response?.status,
+      data?.errorCode,
+      data?.requestId
+    );
+  }
+  if (error instanceof Error) {
+    return new DarajaError(`Daraja ${endpoint} failed: ${error.message}`, endpoint);
+  }
+  return new DarajaError(`Daraja ${endpoint} failed: ${String(error)}`, endpoint);
+}

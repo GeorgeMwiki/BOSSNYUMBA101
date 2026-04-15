@@ -61,12 +61,56 @@ export interface OwnerDisbursementInfo {
   nextScheduledDate?: Date;
 }
 
+/**
+ * Owner compliance/risk profile used by the eligibility gate. Implementations
+ * typically pull this from the identity/KYC service and cache it per-tenant.
+ */
+export interface OwnerProfile {
+  ownerId: OwnerId;
+  kycStatus: 'verified' | 'pending' | 'rejected' | 'expired';
+  payoutDestination: string | null; // e.g. acct_xxx or bank account reference
+  holds: readonly string[]; // non-empty => owner has an active hold
+  minimumPayoutMinor?: number; // optional per-owner minimum (overrides default)
+}
+
+export interface IOwnerProfileProvider {
+  getOwnerProfile(tenantId: TenantId, ownerId: OwnerId): Promise<OwnerProfile | null>;
+}
+
+/**
+ * Eligibility decision returned by `checkEligibility`. `reason` is populated
+ * on failure and is safe to surface to operators/owners.
+ */
+export interface EligibilityDecision {
+  eligible: boolean;
+  reason?: string;
+  profile?: OwnerProfile;
+}
+
+/** Retry policy for transient provider errors. */
+export interface DisbursementRetryPolicy {
+  maxAttempts: number;
+  initialDelayMs: number;
+  backoffFactor: number;
+}
+
+const DEFAULT_RETRY_POLICY: DisbursementRetryPolicy = {
+  maxAttempts: 3,
+  initialDelayMs: 500,
+  backoffFactor: 2,
+};
+
+/** Minimum payout in minor units (KES 100). */
+export const DEFAULT_MIN_PAYOUT_MINOR = 10_000;
+
 export interface DisbursementServiceDeps {
   accountRepository: IAccountRepository;
   ledgerService: LedgerService;
   eventPublisher: IEventPublisher;
   logger: ILogger;
   disbursementRepository?: IDisbursementRepository;
+  ownerProfileProvider?: IOwnerProfileProvider;
+  retryPolicy?: DisbursementRetryPolicy;
 }
 
 /**
@@ -82,6 +126,8 @@ export class DisbursementService {
   private ledgerService: LedgerService;
   private eventPublisher: IEventPublisher;
   private logger: ILogger;
+  private ownerProfileProvider: IOwnerProfileProvider | null;
+  private retryPolicy: DisbursementRetryPolicy;
 
   constructor(deps: DisbursementServiceDeps) {
     this.accountRepository = deps.accountRepository;
@@ -89,6 +135,51 @@ export class DisbursementService {
     this.ledgerService = deps.ledgerService;
     this.eventPublisher = deps.eventPublisher;
     this.logger = deps.logger;
+    this.ownerProfileProvider = deps.ownerProfileProvider ?? null;
+    this.retryPolicy = deps.retryPolicy ?? DEFAULT_RETRY_POLICY;
+  }
+
+  /**
+   * Evaluate whether a given owner is eligible for disbursement right now.
+   * Checks KYC status, active holds, payout destination, and minimum
+   * threshold. Returns a structured decision for logging/auditing.
+   */
+  async checkEligibility(
+    tenantId: TenantId,
+    ownerId: OwnerId,
+    availableBalanceMinor: number,
+    globalMinPayoutMinor: number = DEFAULT_MIN_PAYOUT_MINOR
+  ): Promise<EligibilityDecision> {
+    if (!this.ownerProfileProvider) {
+      // Without an owner-profile provider we can only check the threshold.
+      if (availableBalanceMinor < globalMinPayoutMinor) {
+        return { eligible: false, reason: 'Balance below minimum payout threshold' };
+      }
+      return { eligible: true };
+    }
+
+    const profile = await this.ownerProfileProvider.getOwnerProfile(tenantId, ownerId);
+    if (!profile) {
+      return { eligible: false, reason: 'Owner profile not found' };
+    }
+    if (profile.kycStatus !== 'verified') {
+      return { eligible: false, reason: `KYC status is ${profile.kycStatus}`, profile };
+    }
+    if (profile.holds.length > 0) {
+      return { eligible: false, reason: `Owner has active holds: ${profile.holds.join(', ')}`, profile };
+    }
+    if (!profile.payoutDestination) {
+      return { eligible: false, reason: 'Owner has no payout destination configured', profile };
+    }
+    const threshold = profile.minimumPayoutMinor ?? globalMinPayoutMinor;
+    if (availableBalanceMinor < threshold) {
+      return {
+        eligible: false,
+        reason: `Balance ${availableBalanceMinor} below owner threshold ${threshold}`,
+        profile,
+      };
+    }
+    return { eligible: true, profile };
   }
 
   /**
@@ -370,39 +461,88 @@ export class DisbursementService {
   }
 
   /**
-   * Process scheduled disbursements for all eligible owners
+   * Process scheduled disbursements for all eligible owners.
+   *
+   * Flow:
+   *   1. Load owners with positive balances above `minBalance`.
+   *   2. For each, run `checkEligibility` (KYC, holds, threshold, destination).
+   *   3. Skip the ineligible and record the reason.
+   *   4. Batch per-payee: at most one in-flight disbursement per owner to
+   *      avoid concurrent transfers draining the same operating account.
+   *   5. Attempt `processDisbursement`; transient provider errors are
+   *      retried per `retryPolicy` with exponential backoff.
+   *   6. Ledger entries (debit platform holding / credit owner operating
+   *      via `JournalTemplates.ownerDisbursement`) are posted by
+   *      `processDisbursement` so this orchestrator only coordinates.
    */
   async processScheduledDisbursements(
     tenantId: TenantId,
-    minBalance: number = 1000
+    minBalance: number = DEFAULT_MIN_PAYOUT_MINOR
   ): Promise<{
     processed: number;
     succeeded: number;
     failed: number;
+    skipped: number;
+    skippedReasons: Array<{ ownerId: OwnerId; reason: string }>;
     results: DisbursementResult[];
   }> {
     const eligibleOwners = await this.getEligibleOwners(tenantId, minBalance);
-    
+
+    // Batch by payee (dedupe in case the repository returns duplicates for
+    // multi-property owners). A single owner is processed at most once per run.
+    const seenPayees = new Set<string>();
+    const batch: Array<{ ownerId: OwnerId; balance: Money }> = [];
+    for (const owner of eligibleOwners) {
+      if (!seenPayees.has(owner.ownerId)) {
+        seenPayees.add(owner.ownerId);
+        batch.push(owner);
+      }
+    }
+
     let processed = 0;
     let succeeded = 0;
     let failed = 0;
+    let skipped = 0;
+    const skippedReasons: Array<{ ownerId: OwnerId; reason: string }> = [];
     const results: DisbursementResult[] = [];
 
-    for (const owner of eligibleOwners) {
-      processed++;
-      
-      try {
-        // Get owner's connected account (would come from owner profile in real impl)
-        const destination = `acct_${owner.ownerId}`; // Placeholder
-        
-        const result = await this.processDisbursement({
+    for (const owner of batch) {
+      // Eligibility gate
+      const eligibility = await this.checkEligibility(
+        tenantId,
+        owner.ownerId,
+        owner.balance.amountMinorUnits,
+        minBalance
+      );
+      if (!eligibility.eligible) {
+        skipped++;
+        skippedReasons.push({
+          ownerId: owner.ownerId,
+          reason: eligibility.reason ?? 'ineligible',
+        });
+        this.logger.info('Scheduled disbursement skipped', {
           tenantId,
           ownerId: owner.ownerId,
-          destination
+          reason: eligibility.reason,
         });
+        continue;
+      }
 
+      processed++;
+      const destination = eligibility.profile?.payoutDestination ?? `acct_${owner.ownerId}`;
+
+      try {
+        const result = await this.attemptWithRetry(
+          () =>
+            this.processDisbursement({
+              tenantId,
+              ownerId: owner.ownerId,
+              destination,
+              idempotencyKey: `sched_${tenantId}_${owner.ownerId}_${new Date().toISOString().slice(0, 10)}`,
+            }),
+          this.retryPolicy
+        );
         results.push(result);
-        
         if (result.status !== 'FAILED') {
           succeeded++;
         } else {
@@ -410,9 +550,9 @@ export class DisbursementService {
         }
       } catch (error) {
         failed++;
-        this.logger.error('Scheduled disbursement failed', {
+        this.logger.error('Scheduled disbursement failed after retries', {
           ownerId: owner.ownerId,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -421,10 +561,43 @@ export class DisbursementService {
       tenantId,
       processed,
       succeeded,
-      failed
+      failed,
+      skipped,
     });
 
-    return { processed, succeeded, failed, results };
+    return { processed, succeeded, failed, skipped, skippedReasons, results };
+  }
+
+  /**
+   * Retry a thunk with exponential backoff. Only transient errors are
+   * retried; a `FAILED` `DisbursementResult` (non-throw) is returned to the
+   * caller unchanged — it represents a deterministic failure.
+   */
+  private async attemptWithRetry<T>(
+    thunk: () => Promise<T>,
+    policy: DisbursementRetryPolicy
+  ): Promise<T> {
+    let lastError: unknown;
+    let delay = policy.initialDelayMs;
+    for (let attempt = 1; attempt <= policy.maxAttempts; attempt++) {
+      try {
+        return await thunk();
+      } catch (error) {
+        lastError = error;
+        if (!isTransientError(error) || attempt === policy.maxAttempts) {
+          throw error;
+        }
+        this.logger.warn('Disbursement transient error, retrying', {
+          attempt,
+          nextDelayMs: delay,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        await sleep(delay);
+        delay = Math.min(delay * policy.backoffFactor, 30_000);
+      }
+    }
+    // Unreachable but satisfies the type-checker.
+    throw lastError instanceof Error ? lastError : new Error('Retry loop exited without result');
   }
 
   /**
@@ -801,4 +974,47 @@ export interface DisbursementBreakdownItem {
   amount: Money;
   propertyId?: PropertyId;
   unitId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Heuristic classification of provider/network errors into "transient" (safe
+ * to retry) vs "deterministic". We check a small set of well-known codes and
+ * HTTP status families; unknown errors are treated as deterministic so that a
+ * broken contract does not drain funds via repeated attempts.
+ */
+function isTransientError(error: unknown): boolean {
+  if (!error) return false;
+  const asAny = error as {
+    code?: string;
+    status?: number;
+    statusCode?: number;
+    response?: { status?: number };
+    message?: string;
+  };
+  const code = asAny.code ?? '';
+  const status = asAny.status ?? asAny.statusCode ?? asAny.response?.status ?? 0;
+
+  // Network-level errors that are almost always safe to retry.
+  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'EAI_AGAIN', 'ENETUNREACH'].includes(code)) {
+    return true;
+  }
+
+  // 408 Request Timeout, 425 Too Early, 429 Too Many Requests, 5xx.
+  if (status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600)) {
+    return true;
+  }
+
+  const message = (asAny.message ?? '').toLowerCase();
+  if (message.includes('timeout') || message.includes('temporarily unavailable')) {
+    return true;
+  }
+  return false;
 }
