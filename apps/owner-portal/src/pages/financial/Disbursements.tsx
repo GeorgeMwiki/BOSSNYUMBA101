@@ -31,6 +31,7 @@ import {
   Legend,
 } from 'recharts';
 import { api, formatCurrency, formatDate, formatDateTime } from '../../lib/api';
+import { disbursementsApi, type PayoutScheduleItem } from '../../lib/api/index';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface DisbursementBreakdown {
@@ -77,10 +78,25 @@ export function DisbursementsPage() {
   const [propertyFilter, setPropertyFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<PayoutScheduleItem[]>([]);
 
   useEffect(() => {
     loadData();
+    loadSchedule();
   }, []);
+
+  const loadSchedule = async () => {
+    try {
+      const response = await disbursementsApi.schedule();
+      if (response.success && response.data) {
+        setSchedule(response.data.items ?? []);
+      } else {
+        setSchedule([]);
+      }
+    } catch {
+      setSchedule([]);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -109,14 +125,29 @@ export function DisbursementsPage() {
   const handleDownloadStatement = async (disbursement: Disbursement) => {
     setDownloading(disbursement.id);
     try {
-      const response = await api.get(`/owner/disbursements/${disbursement.id}/statement`);
-      if (!response.success) {
+      if (disbursement.statementUrl) {
+        window.open(disbursement.statementUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const response = await api.get<{ downloadUrl: string; expiresAt?: string }>(
+        `/owner/disbursements/${disbursement.id}/statement`
+      );
+      if (!response.success || !response.data?.downloadUrl) {
         throw new Error(response.error?.message || 'Statement download is unavailable.');
       }
+      window.open(response.data.downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Statement download is unavailable.');
     } finally {
       setDownloading(null);
+    }
+  };
+
+  const handleViewFullReport = (disbursement: Disbursement) => {
+    if (disbursement.property?.id) {
+      navigate(`/properties/${disbursement.property.id}`);
+    } else {
+      navigate('/reports');
     }
   };
 
@@ -272,6 +303,53 @@ export function DisbursementsPage() {
           <p className="text-2xl font-bold text-blue-700">
             {formatCurrency(stats.pendingAmount)}
           </p>
+        </div>
+      )}
+
+      {/* Payout Schedule */}
+      {schedule.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Payout Schedule</h3>
+            <p className="text-sm text-gray-500">Upcoming scheduled owner payouts</p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {schedule.map((item) => (
+              <div
+                key={item.id}
+                className="p-4 flex flex-wrap items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {item.property?.name ?? 'Portfolio'} · {item.period}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Scheduled for {formatDate(item.dueDate)}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-sm text-gray-500">Net</div>
+                    <div className="text-base font-semibold text-gray-900">
+                      {formatCurrency(item.netAmount)}
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(
+                      item.status
+                    )}`}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -554,7 +632,10 @@ export function DisbursementsPage() {
                       Download Statement
                     </button>
                   )}
-                  <button className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium">
+                  <button
+                    onClick={() => handleViewFullReport(disbursement)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+                  >
                     <Eye className="h-4 w-4" />
                     View Full Report
                   </button>
