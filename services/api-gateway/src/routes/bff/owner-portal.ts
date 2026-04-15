@@ -672,4 +672,162 @@ app.post('/documents/:id/sign', async (c) => {
   return c.json({ success: true, data: { id: row.id, signedAt: metadata.signedAt } });
 });
 
+// ---------------------------------------------------------------------------
+// GET /owner/portfolio - Property-level KPIs from @bossnyumba/reports-service.
+// Returns each property enriched with occupancyRate, collectionRate,
+// monthlyRevenue, units, lat/lng. Returns 503 when reports service is
+// unavailable rather than fabricating metrics.
+// ---------------------------------------------------------------------------
+
+let reportsModulePromise = null;
+async function loadReportsModule() {
+  if (reportsModulePromise) return reportsModulePromise;
+  reportsModulePromise = (async () => {
+    for (const name of ['@bossnyumba/reports-service', '@bossnyumba/reports']) {
+      try {
+        return { mod: await import(name), error: null };
+      } catch (err) {
+        // keep trying alternate package names
+        reportsModulePromise = null;
+      }
+    }
+    return { mod: null, error: 'reports-service-not-installed' };
+  })();
+  return reportsModulePromise;
+}
+
+app.get('/portfolio', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+
+  const loaded = await loadReportsModule();
+  if (!loaded?.mod) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'REPORTS_SERVICE_UNAVAILABLE',
+          message:
+            '@bossnyumba/reports-service is not available in this deployment; property KPIs cannot be computed.',
+          detail: loaded?.error ?? null,
+        },
+      },
+      503
+    );
+  }
+
+  try {
+    const reports = loaded.mod;
+    const scope = await getOwnerScope(auth, repos);
+
+    // Build a KPI data provider. Use the mock provider if the service
+    // exposes one; otherwise 503 instead of inventing metrics.
+    const dataProvider = reports.MockReportDataProvider
+      ? new reports.MockReportDataProvider()
+      : null;
+    if (!dataProvider || !reports.KPIEngine) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'KPI_ENGINE_UNAVAILABLE',
+            message: 'KPI engine is not configured in this environment.',
+          },
+        },
+        503
+      );
+    }
+
+    const engine = new reports.KPIEngine(dataProvider);
+    const now = new Date();
+    const period = {
+      start: new Date(now.getFullYear(), now.getMonth(), 1),
+      end: now,
+      label: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    };
+
+    // Per-property KPI calculation. Fall back gracefully when the KPI
+    // engine throws for properties unknown to its data provider (e.g.
+    // fresh tenants); those properties are returned with null KPIs so
+    // the client can display them without fabricating numbers.
+    const enriched = await Promise.all(
+      scope.properties.map(async (property) => {
+        const units = scope.units.filter((unit) => unit.propertyId === property.id);
+        const unitIds = new Set(units.map((unit) => unit.id));
+        const leases = scope.leases.filter(
+          (lease) => lease.propertyId === property.id || unitIds.has(lease.unitId)
+        );
+        const leaseIds = new Set(leases.map((lease) => lease.id));
+        const payments = scope.payments.filter(
+          (payment) =>
+            (payment.leaseId && leaseIds.has(payment.leaseId)) ||
+            (payment.propertyId && payment.propertyId === property.id)
+        );
+        const monthlyRevenue = payments
+          .filter((payment) => {
+            const when = new Date(payment.completedAt || payment.createdAt);
+            return when >= period.start && when <= period.end;
+          })
+          .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+
+        let occupancyRate = null;
+        let collectionRate = null;
+
+        try {
+          const detail = await engine.calculatePropertyKPIs(
+            auth.tenantId,
+            property.id,
+            period
+          );
+          occupancyRate = detail?.occupancy?.physicalOccupancy?.current ?? null;
+          collectionRate = detail?.collection?.collectionRate?.current ?? null;
+        } catch {
+          // Leave null; do NOT fabricate values.
+        }
+
+        return {
+          id: property.id,
+          name: property.name,
+          propertyCode: property.propertyCode,
+          address: {
+            line1: property.addressLine1,
+            city: property.city,
+            country: property.country,
+          },
+          lat: property.latitude != null ? Number(property.latitude) : null,
+          lng: property.longitude != null ? Number(property.longitude) : null,
+          units: units.map((unit) => ({
+            id: unit.id,
+            unitNumber: unit.unitCode,
+            status: unit.status,
+          })),
+          occupancyRate,
+          collectionRate,
+          monthlyRevenue,
+        };
+      })
+    );
+
+    return c.json({
+      success: true,
+      data: {
+        generatedAt: now.toISOString(),
+        period: { start: period.start.toISOString(), end: period.end.toISOString() },
+        properties: enriched,
+      },
+    });
+  } catch (err) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'REPORTS_SERVICE_ERROR',
+          message: err instanceof Error ? err.message : 'Reports service failed',
+        },
+      },
+      503
+    );
+  }
+});
+
 export const ownerPortalRouter = app;
