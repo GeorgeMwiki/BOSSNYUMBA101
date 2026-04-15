@@ -114,7 +114,8 @@ export default function MaintenancePage() {
   const [priority, setPriority] = useState<Priority>('medium');
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openTickets = tickets.filter((t) => t.status !== 'completed');

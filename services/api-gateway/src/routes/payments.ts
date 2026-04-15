@@ -139,6 +139,40 @@ app.post('/:id/process', async (c) => {
   return c.json({ success: true, data: mapPaymentRow(row) });
 });
 
+// TODO: wire to real store — payment plans (instalment agreements).
+// The customer app's payments screen lists available plans and lets a
+// tenant start a new plan. Scaffold returns an empty collection.
+app.get('/plans', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+app.post('/plans', async (c) => {
+  const auth = c.get('auth');
+  const body = await c.req.json().catch(() => ({}));
+  return c.json(
+    {
+      success: true,
+      data: {
+        id: `plan-${Date.now()}`,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        ...body,
+      },
+    },
+    201
+  );
+});
+
+app.get('/plans/:id', (c) => {
+  const id = c.req.param('id');
+  return c.json({
+    success: true,
+    data: { id, status: 'pending', instalments: [] },
+  });
+});
+
 app.post('/:id/confirm', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
