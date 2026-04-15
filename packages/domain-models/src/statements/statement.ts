@@ -143,14 +143,16 @@ export interface Statement extends Omit<StatementData,
   summaries: StatementSummary[];
 }
 
+type MutableStatement = { -readonly [K in keyof Statement]: Statement[K] };
+
 /**
  * Statement aggregate with business logic
  */
 export class StatementAggregate {
-  private data: Statement;
+  private data: MutableStatement;
 
   constructor(data: Statement) {
-    this.data = { ...data };
+    this.data = { ...data } as MutableStatement;
   }
 
   get id(): StatementId {

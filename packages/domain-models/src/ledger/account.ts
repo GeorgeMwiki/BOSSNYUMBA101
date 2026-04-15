@@ -59,14 +59,16 @@ export interface Account extends AccountData, TenantScopedEntity {
   propertyId?: PropertyId;
 }
 
+type MutableAccount = { -readonly [K in keyof Account]: Account[K] };
+
 /**
  * Account aggregate with business logic
  */
 export class AccountAggregate {
-  private data: Account;
+  private data: MutableAccount;
 
   constructor(data: Account) {
-    this.data = { ...data };
+    this.data = { ...data } as MutableAccount;
   }
 
   get id(): AccountId {

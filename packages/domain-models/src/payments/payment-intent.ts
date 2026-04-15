@@ -8,13 +8,26 @@ import {
   CustomerId,
   PaymentIntentId,
   LeaseId,
-  PaymentStatus,
-  PaymentStatusSchema,
   TenantScopedEntity,
   CurrencyCodeSchema,
   asCustomerId,
   asLeaseId,
 } from '../common/types';
+
+// Payment-intent uses a wider, upper-case status vocabulary (REQUIRES_ACTION,
+// PARTIALLY_REFUNDED) that is distinct from the simpler `PaymentStatus` enum
+// in `common/enums`. Declared locally to keep the two namespaces independent.
+export const PaymentIntentStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'REQUIRES_ACTION',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+]);
+export type PaymentIntentStatus = z.infer<typeof PaymentIntentStatusSchema>;
 
 export { asCustomerId, asLeaseId };
 export type { CustomerId, LeaseId };
@@ -42,7 +55,7 @@ export const PaymentIntentSchema = z.object({
   customerId: z.string(),
   leaseId: z.string().optional(),
   type: PaymentIntentTypeSchema,
-  status: PaymentStatusSchema,
+  status: PaymentIntentStatusSchema,
   amount: MoneySchema,
   platformFee: MoneySchema.optional(),
   netAmount: MoneySchema.optional(),
@@ -77,15 +90,17 @@ export interface PaymentIntent extends Omit<PaymentIntentData, 'amount' | 'platf
   refundedAmount?: Money;
 }
 
+type MutablePaymentIntent = { -readonly [K in keyof PaymentIntent]: PaymentIntent[K] };
+
 /**
  * Payment Intent aggregate with business logic
  */
 export class PaymentIntentAggregate {
-  private data: PaymentIntent;
+  private data: MutablePaymentIntent;
   private events: PaymentIntentEvent[] = [];
 
   constructor(data: PaymentIntent) {
-    this.data = { ...data };
+    this.data = { ...data } as MutablePaymentIntent;
   }
 
   get id(): PaymentIntentId {
@@ -96,7 +111,7 @@ export class PaymentIntentAggregate {
     return this.data.tenantId;
   }
 
-  get status(): PaymentStatus {
+  get status(): PaymentIntentStatus {
     return this.data.status;
   }
 
@@ -270,7 +285,7 @@ export class PaymentIntentAggregate {
     return { ...this.data };
   }
 
-  private assertStatus(allowedStatuses: PaymentStatus[]): void {
+  private assertStatus(allowedStatuses: PaymentIntentStatus[]): void {
     if (!allowedStatuses.includes(this.data.status)) {
       throw new Error(
         `Cannot perform operation: payment is in ${this.data.status} status. ` +

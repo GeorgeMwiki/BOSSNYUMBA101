@@ -1,13 +1,38 @@
 /**
  * Legal domain models
  *
- * `case.ts` owns the canonical CaseId. `evidence-attachment.ts`,
- * `notice.ts`, and `notice-service-receipt.ts` re-declare brand types
- * (CaseId / NoticeId) as a convenience for type checking, so we re-export
- * each module's symbols selectively to avoid `TS2308` ambiguity.
+ * `common/types` is the canonical source for `CaseId`, `NoticeId`,
+ * `NoticeServiceReceiptId`, `EvidenceAttachmentId`, `DocumentUploadId`, and
+ * their `as*Id` constructors. Sub-modules redeclare those Brand types as a
+ * local convenience, but we re-export them ONLY from common/types here so
+ * downstream consumers see one canonical name (no TS2308 ambiguity).
  */
 
-export * from './case';
+// ---- Cases ----------------------------------------------------------------
+// Note: assignCase / resolveCase intentionally re-exported under legal-specific
+// aliases to disambiguate from the financial/arrears-case versions.
+export {
+  CaseSchema,
+  SlaDetailsSchema,
+  type Case,
+  type CaseData,
+  type SlaDetails,
+  createCase,
+  getSeverityResponseHours,
+  getSeverityResolutionHours,
+  assignCase as assignLegalCase,
+  resolveCase as resolveLegalCase,
+  recordFirstResponse,
+  escalateCase,
+  updateCaseStatus,
+  closeCase,
+  recordSatisfaction,
+  withdrawCase,
+  isSlaBreached,
+  generateCaseNumber,
+} from './case';
+
+// ---- Timeline events ------------------------------------------------------
 export {
   AttachmentRefSchema,
   TimelineEventSchema,
@@ -23,62 +48,58 @@ export {
   createSystemEvent,
 } from './timeline-event';
 
+// ---- Evidence attachments -------------------------------------------------
 export {
   EvidenceAttachmentSchema,
   EvidenceVerificationSchema,
   EvidenceMetadataSchema,
   type EvidenceAttachment,
   type EvidenceAttachmentData,
-  type EvidenceAttachmentId,
   type EvidenceVerification,
   type EvidenceMetadata,
-  type DocumentUploadId,
-  asEvidenceAttachmentId,
   createEvidenceAttachment,
   verifyEvidence,
   recordAccess,
   addRelevanceNotes,
   softDeleteEvidence,
-  isVerified,
-  getFileExtension,
+  isVerified as isEvidenceVerified,
+  getFileExtension as getEvidenceFileExtension,
   isImageEvidence,
   isVideoEvidence,
   isAudioEvidence,
 } from './evidence-attachment';
 
+// ---- Notices --------------------------------------------------------------
 export {
   NoticeAttachmentSchema,
   NoticeSchema,
   type Notice,
   type NoticeAttachment,
   type NoticeData,
-  type NoticeId,
-  asNoticeId,
   createNotice,
   approveNotice,
   rejectNotice,
   scheduleNotice,
   sendNotice,
-  markDelivered,
+  markDelivered as markNoticeDelivered,
   recordAcknowledgment,
   voidNotice,
   setDocumentUrl,
-  isExpired,
+  isExpired as isNoticeExpired,
   isComplianceDeadlinePassed,
   canBeSent,
   generateNoticeNumber,
 } from './notice';
 
+// ---- Notice service receipts ---------------------------------------------
 export {
   GpsCoordinatesSchema,
   DeliveryProofSchema,
   NoticeServiceReceiptSchema,
   type NoticeServiceReceipt,
   type NoticeServiceReceiptData,
-  type NoticeServiceReceiptId,
   type GpsCoordinates,
   type DeliveryProof,
-  asNoticeServiceReceiptId,
   createNoticeServiceReceipt,
   recordPhysicalDelivery,
   recordElectronicDelivery,

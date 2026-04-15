@@ -222,7 +222,8 @@ export function isRejected(fraudScore: FraudRiskScore): boolean {
 function getHighestSeverityIndicator(
   indicators: readonly FraudIndicator[]
 ): FraudIndicator | null {
-  if (indicators.length === 0) return null;
+  const first = indicators[0];
+  if (!first) return null;
 
   const severityOrder: Record<string, number> = {
     critical: 4,
@@ -231,11 +232,11 @@ function getHighestSeverityIndicator(
     low: 1,
   };
 
-  return indicators.reduce((highest, current) => {
+  return indicators.reduce<FraudIndicator>((highest, current) => {
     const currentSeverity = severityOrder[current.severity] ?? 0;
     const highestSeverity = severityOrder[highest.severity] ?? 0;
     return currentSeverity > highestSeverity ? current : highest;
-  }, indicators[0]);
+  }, first);
 }
 
 /** Get risk level display color */

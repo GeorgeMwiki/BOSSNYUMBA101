@@ -318,20 +318,22 @@ export function createId(): string {
 // Zod Schemas for ledger, statements, payments
 // ============================================================================
 
-export const CurrencyCodeSchema = z.enum(['KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX']);
-export type CurrencyCode = z.infer<typeof CurrencyCodeSchema>;
+// CurrencyCodeSchema, CurrencyCode, PaymentStatusSchema, and PaymentStatus
+// are canonical in `./enums.ts`; we keep them visible from common/types via
+// re-export so the many consumers that already import from `common/types`
+// don't have to be touched.
+export {
+  CurrencyCodeSchema,
+  CurrencyCode,
+  PaymentStatusSchema,
+  PaymentStatus,
+} from './enums';
 
 export const StatementPeriodTypeSchema = z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'CUSTOM']);
 export type StatementPeriodType = z.infer<typeof StatementPeriodTypeSchema>;
 
 export const StatementStatusSchema = z.enum(['DRAFT', 'GENERATED', 'SENT', 'VIEWED']);
 export type StatementStatus = z.infer<typeof StatementStatusSchema>;
-
-export const PaymentStatusSchema = z.enum([
-  'PENDING', 'PROCESSING', 'REQUIRES_ACTION', 'SUCCEEDED', 'FAILED',
-  'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'
-]);
-export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
 
 export const AccountTypeSchema = z.enum([
   'CUSTOMER_LIABILITY', 'CUSTOMER_DEPOSIT', 'OWNER_OPERATING', 'OWNER_RESERVE',
