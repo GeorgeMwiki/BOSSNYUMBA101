@@ -290,7 +290,7 @@ export function SupportPage() {
                         {msg.isInternal && (
                           <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">Internal</span>
                         )}
-                        <span className="text-xs text-gray-400">{formatDateTime(msg.timestamp)}</span>
+                        <span className="text-xs text-gray-400">{formatDateTime(msg.timestamp ?? msg.createdAt)}</span>
                       </div>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.message}</p>
                     </div>

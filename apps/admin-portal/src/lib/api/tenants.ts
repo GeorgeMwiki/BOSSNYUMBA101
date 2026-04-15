@@ -46,6 +46,7 @@ export interface TenantOnboardingPayload {
 
 export interface TenantOnboardingResult {
   tenantId: string;
+  tenantName: string;
   adminUserId: string;
   subscriptionId: string;
   inviteSent: boolean;

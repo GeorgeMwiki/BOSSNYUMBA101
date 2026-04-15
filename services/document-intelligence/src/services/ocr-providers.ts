@@ -509,7 +509,7 @@ export class TesseractOCRProvider implements IOCRProvider {
 
   private parseTsv(tsv: string): { rawText: string; fields: ExtractedField[]; confidence: number } {
     const lines = tsv.split(/\r?\n/).filter(Boolean);
-    if (lines.length <= 1) return { rawText: '', fields: [], confidence: 0 };
+    if (lines.length <= 1 || !lines[0]) return { rawText: '', fields: [], confidence: 0 };
     const header = lines[0].split('\t');
     const idx = (name: string) => header.indexOf(name);
     const iText = idx('text');

@@ -98,10 +98,14 @@ export const paginationSchema = z.object({
 /**
  * Date range filter
  */
+// Base object schema (mergeable). Use `dateRangeSchemaRefined` when you need
+// the start <= end refinement at validation time.
 export const dateRangeSchema = z.object({
   startDate: isoDateSchema.optional(),
   endDate: isoDateSchema.optional(),
-}).refine(
+});
+
+export const dateRangeSchemaRefined = dateRangeSchema.refine(
   (data) => {
     if (data.startDate && data.endDate) {
       return new Date(data.startDate) <= new Date(data.endDate);

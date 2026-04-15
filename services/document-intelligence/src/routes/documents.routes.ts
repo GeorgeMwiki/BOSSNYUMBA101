@@ -281,7 +281,7 @@ export interface DocumentIntelligenceRoutesDeps {
 }
 
 export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRoutesDeps) {
-  const app = new Hono();
+  const app = new Hono<{ Variables: { requestId: string } }>();
 
   // ============================================================================
   // Observability: health, readiness, metrics, request IDs
