@@ -221,15 +221,13 @@ export default function WorkOrderTriage() {
             </div>
 
             {assigneeType === 'technician' && (
-              <select
+              <input
+                type="text"
                 className="input"
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
-              >
-                <option value="">Select technician</option>
-                <option value="tech-1">James Mwangi</option>
-                <option value="tech-2">Peter Ochieng</option>
-              </select>
+                placeholder="Technician user ID"
+              />
             )}
 
             {assigneeType === 'vendor' && (

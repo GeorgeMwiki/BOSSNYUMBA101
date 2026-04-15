@@ -40,6 +40,18 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+import { adminRouter } from './routes/admin';
+import { aiRouter } from './routes/ai';
+import { supportRouter } from './routes/support';
+import { platformRouter } from './routes/platform';
+import { analyticsRouter } from './routes/analytics';
+import { complianceRouter } from './routes/compliance';
+import { portfolioRouter } from './routes/portfolio';
+import { budgetsRouter } from './routes/budgets';
+import { invitationsRouter } from './routes/invitations';
+import { approvalsRouter } from './routes/approvals';
+import { requestsRouter } from './routes/requests';
+import { systemRouter } from './routes/system';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
