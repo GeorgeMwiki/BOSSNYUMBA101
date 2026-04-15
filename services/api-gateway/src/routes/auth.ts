@@ -416,10 +416,6 @@ app.post('/login', async (c) => {
     role: record.role,
     permissions: record.permissions,
     propertyAccess: record.propertyAccess,
-    // Default active org on login is the user's home tenant. Callers can
-    // switch later via POST /auth/switch-org or per-request via the
-    // X-Active-Org header (validated by hono-auth.ts).
-    activeOrgId: record.tenantId,
   });
 
   const deviceId = readDeviceId(c);
@@ -440,8 +436,9 @@ app.post('/login', async (c) => {
       role: record.role,
       permissions: record.permissions,
       properties: record.propertyAccess,
+      memberships,
       activeOrgId: record.tenantId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: access.expiresAt,
     },
   });
 });
@@ -449,111 +446,62 @@ app.post('/login', async (c) => {
 app.get('/me', authMiddleware, async (c) => {
   const auth = c.get('auth');
 
-app.post('/refresh', authMiddleware, async (c) => {
-  const auth = c.get('auth');
-  // Preserve the home tenant in the JWT's `tenantId` claim so refresh
-  // does not silently elevate a session into whatever org happened to be
-  // active when the refresh fired. The active org rides along on its
-  // own claim and continues to scope the next request.
-  const token = generateToken({
-    userId: auth.userId,
-    tenantId: auth.homeTenantId ?? auth.tenantId,
-    role: auth.role,
-    permissions: auth.permissions,
-    propertyAccess: auth.propertyAccess,
-    activeOrgId: auth.activeOrgId ?? auth.tenantId,
-  });
-  return c.json({
-    success: true,
-    data: {
-      token,
-      activeOrgId: auth.activeOrgId ?? auth.tenantId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    },
-  });
-});
+  // Honor X-Active-Org header: if the caller provides it and it resolves to a
+  // tenant the user is a member of, hydrate against that tenant.
+  const requestedOrg = c.req.header('x-active-org') || c.req.header('X-Active-Org');
 
-/**
- * POST /auth/switch-org
- * Body: { tenantId | orgId: string }
- *
- * Re-issues the JWT with `activeOrgId = targetOrg`. The caller must have
- * an `active` membership in the target tenant (or it must be their home
- * tenant). Authorisation is checked here in the route — the per-request
- * `X-Active-Org` validation in hono-auth.ts is a separate layer.
- */
-app.post('/switch-org', authMiddleware, async (c) => {
-  const auth = c.get('auth');
-  let body: { tenantId?: string; orgId?: string } = {};
-  try {
-    body = await c.req.json();
-  } catch {
-    body = {};
+  const db = getDatabaseClient();
+  if (!db) {
+    return c.json({
+      success: true,
+      data: {
+        user: {
+          id: auth.userId,
+          tenantId: auth.tenantId,
+        },
+        role: auth.role,
+        permissions: auth.permissions,
+        properties: auth.propertyAccess,
+        memberships: [],
+        activeOrgId: auth.tenantId,
+      },
+    });
   }
-  const targetId = ((body.tenantId || body.orgId || '') as string).trim();
-  if (!targetId) {
+
+  const primary = await resolveUserForTenant(auth.userId, auth.tenantId);
+  if (!primary) {
     return c.json(
-      { success: false, error: { code: 'VALIDATION_ERROR', message: 'tenantId is required.' } },
-      400
+      {
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'Authenticated user no longer exists.' },
+      },
+      404
     );
   }
 
-  const homeTenantId = auth.homeTenantId ?? auth.tenantId;
+  const memberships = await resolveMembershipsForEmail(primary.email);
 
-  if (targetId !== homeTenantId) {
-    const db = getDatabaseClient();
-    if (!db) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTH_NOT_CONFIGURED',
-            message: 'Org switching requires a live database connection.',
-          },
-        },
-        503
-      );
-    }
-    const rows = await db
-      .select({ id: memberships.id })
-      .from(memberships)
-      .where(
-        and(
-          eq(memberships.userId, auth.userId),
-          eq(memberships.tenantId, targetId),
-          eq(memberships.status, 'active'),
-        ),
-      )
-      .limit(1);
-    if (rows.length === 0) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_ACTIVE_ORG',
-            message: 'You do not have an active membership in the requested organization.',
-          },
-        },
-        403
-      );
+  let active = primary;
+  let activeOrgId = auth.tenantId;
+  if (requestedOrg && memberships.some((m) => m.tenantId === requestedOrg)) {
+    const match = memberships.find((m) => m.tenantId === requestedOrg)!;
+    const switched = await resolveUserForTenant(match.userId, match.tenantId);
+    if (switched) {
+      active = switched;
+      activeOrgId = match.tenantId;
     }
   }
-
-  const token = generateToken({
-    userId: auth.userId,
-    tenantId: homeTenantId,
-    role: auth.role,
-    permissions: auth.permissions,
-    propertyAccess: auth.propertyAccess,
-    activeOrgId: targetId,
-  });
 
   return c.json({
     success: true,
     data: {
-      token,
-      activeOrgId: targetId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      user: buildUserPayload(active),
+      tenant: buildTenantPayload(active),
+      role: active.role,
+      permissions: active.permissions,
+      properties: active.propertyAccess,
+      memberships,
+      activeOrgId,
     },
   });
 });
@@ -620,7 +568,10 @@ app.post('/refresh', async (c) => {
   // Unknown token: opaque 401, no chain to revoke.
   if (!row) {
     return c.json(
-      { success: false, error: { code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid.' } },
+      {
+        success: false,
+        error: { code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid.' },
+      },
       401
     );
   }
@@ -635,7 +586,8 @@ app.post('/refresh', async (c) => {
         success: false,
         error: {
           code: 'REFRESH_TOKEN_REUSED',
-          message: 'Refresh token has already been used. All sessions for this user have been revoked.',
+          message:
+            'Refresh token has already been used. All sessions for this user have been revoked.',
         },
       },
       401
@@ -645,7 +597,10 @@ app.post('/refresh', async (c) => {
   // Revoked (logout / admin / earlier compromise) but never rotated.
   if (row.revokedAt) {
     return c.json(
-      { success: false, error: { code: 'REFRESH_TOKEN_REVOKED', message: 'Refresh token has been revoked.' } },
+      {
+        success: false,
+        error: { code: 'REFRESH_TOKEN_REVOKED', message: 'Refresh token has been revoked.' },
+      },
       401
     );
   }
@@ -653,7 +608,10 @@ app.post('/refresh', async (c) => {
   // Expired.
   if (new Date(row.expiresAt).getTime() <= now) {
     return c.json(
-      { success: false, error: { code: 'REFRESH_TOKEN_EXPIRED', message: 'Refresh token has expired.' } },
+      {
+        success: false,
+        error: { code: 'REFRESH_TOKEN_EXPIRED', message: 'Refresh token has expired.' },
+      },
       401
     );
   }
@@ -798,9 +756,8 @@ app.post('/switch-org', authMiddleware, async (c) => {
 /**
  * POST /logout
  *
- * Revokes the refresh token presented in the body. If `allDevices=true` (or
- * if the token's row has a deviceId and `device=true`), revokes every active
- * refresh token belonging to the same user / device chain.
+ * Revokes the refresh token presented in the body. If `allDevices=true`,
+ * revokes every active refresh token belonging to the same user.
  */
 app.post('/logout', async (c) => {
   let body: { refreshToken?: string; allDevices?: boolean } = {};
