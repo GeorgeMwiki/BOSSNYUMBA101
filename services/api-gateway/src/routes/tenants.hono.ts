@@ -132,17 +132,18 @@ app.post('/', async (c) => {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can create tenants.' } }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const row = await repos.tenants.create({
-    id: crypto.randomUUID(),
-    name: String(body.name ?? ''),
-    slug: String(body.slug ?? ''),
-    primaryEmail: body.ownerEmail ?? body.contactEmail,
-    primaryPhone: body.contactPhone,
-    subscriptionTier: body.plan ?? 'starter',
-    status: 'pending',
-    createdBy: auth.userId,
-    updatedBy: auth.userId,
-  });
+  const row = await repos.tenants.create(
+    {
+      id: crypto.randomUUID(),
+      name: String(body.name ?? ''),
+      slug: String(body.slug ?? ''),
+      primaryEmail: (body.ownerEmail ?? body.contactEmail) as string | undefined,
+      primaryPhone: body.contactPhone as string | undefined,
+      subscriptionTier: (body.plan ?? 'starter') as string,
+      status: 'pending' as any,
+    } as any,
+    auth.userId
+  );
   return c.json({ success: true, data: mapTenant(row) }, 201);
 });
 
@@ -163,7 +164,7 @@ app.patch('/:id', async (c) => {
   if (auth.role !== 'SUPER_ADMIN' && c.req.param('id') !== auth.tenantId) {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Tenant access denied.' } }, 403);
   }
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, any>;
   const tenant = await repos.tenants.update(
     c.req.param('id'),
     {
@@ -174,7 +175,6 @@ app.patch('/:id', async (c) => {
     },
     auth.userId
   );
-  if (!tenant) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
   return c.json({ success: true, data: mapTenant(tenant) });
 });
 
@@ -189,10 +189,9 @@ app.post('/:id/suspend', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
   const tenant = await repos.tenants.update(
     c.req.param('id'),
-    { status: 'suspended', updatedBy: auth.userId },
+    { status: 'suspended' as any, updatedBy: auth.userId },
     auth.userId
   );
-  if (!tenant) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
   return c.json({
     success: true,
     data: { ...mapTenant(tenant), suspensionReason: body.reason ?? null },

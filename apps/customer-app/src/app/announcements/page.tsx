@@ -4,32 +4,18 @@ import Link from 'next/link';
 import { Bell, ChevronRight, Megaphone } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const announcements = [
-  {
-    id: '1',
-    title: 'Water Shut-off Scheduled',
-    summary: 'Water will be shut off on Feb 20 from 8am to 12pm for pipe repairs.',
-    date: '2024-02-10',
-    priority: 'high',
-    read: false,
-  },
-  {
-    id: '2',
-    title: 'Elevator Maintenance',
-    summary: 'Elevator B will be under maintenance Feb 15–16. Use Elevator A.',
-    date: '2024-02-08',
-    priority: 'medium',
-    read: true,
-  },
-  {
-    id: '3',
-    title: 'New Security Hours',
-    summary: '24/7 security is now active. Report any concerns to the guard desk.',
-    date: '2024-02-01',
-    priority: 'info',
-    read: true,
-  },
-];
+interface Announcement {
+  id: string;
+  title: string;
+  summary: string;
+  date: string;
+  priority: 'high' | 'medium' | 'info';
+  read: boolean;
+}
+
+// Announcements are gated on a live announcements API. Until wired,
+// render the empty state rather than seeded mock entries.
+const announcements: Announcement[] = [];
 
 export default function AnnouncementsPage() {
   return (

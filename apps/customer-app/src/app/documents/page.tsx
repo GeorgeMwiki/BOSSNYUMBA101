@@ -1,39 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Download, ChevronRight } from 'lucide-react';
+import { FileText, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const documents = [
-  {
-    id: '1',
-    name: 'Lease Agreement',
-    category: 'Lease',
-    date: '2023-05-28',
-    type: 'pdf',
-  },
-  {
-    id: '2',
-    name: 'Move-in Inspection Report',
-    category: 'Lease',
-    date: '2023-06-01',
-    type: 'pdf',
-  },
-  {
-    id: '3',
-    name: 'February 2024 Statement',
-    category: 'Payment',
-    date: '2024-02-01',
-    type: 'pdf',
-  },
-  {
-    id: '4',
-    name: 'House Rules',
-    category: 'Lease',
-    date: '2023-05-28',
-    type: 'pdf',
-  },
-];
+interface DocumentListItem {
+  id: string;
+  name: string;
+  category: string;
+  date: string;
+  type: string;
+}
+
+// Document list is gated on the live documents API. Until wired,
+// render the empty state rather than seeded entries.
+const documents: DocumentListItem[] = [];
 
 export default function DocumentsPage() {
   return (

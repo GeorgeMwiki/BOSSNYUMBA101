@@ -4,11 +4,16 @@ import Link from 'next/link';
 import { FileText, Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const documents = [
-  { id: '1', name: 'Lease Agreement', date: '2023-05-28', type: 'pdf' },
-  { id: '2', name: 'Move-in Inspection Report', date: '2023-06-01', type: 'pdf' },
-  { id: '3', name: 'House Rules', date: '2023-05-28', type: 'pdf' },
-];
+interface LeaseDocument {
+  id: string;
+  name: string;
+  date: string;
+  type: string;
+}
+
+// Lease documents are gated on the live lease document API. Until wired,
+// render the empty state rather than seeded entries.
+const documents: LeaseDocument[] = [];
 
 export default function LeaseDocumentsPage() {
   return (
@@ -19,6 +24,15 @@ export default function LeaseDocumentsPage() {
         <p className="text-sm text-gray-500 mb-4">
           Download your lease-related documents below.
         </p>
+        {documents.length === 0 && (
+          <div className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-medium text-gray-900">No documents yet</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Lease documents will appear here once available
+            </p>
+          </div>
+        )}
         <div className="card divide-y divide-gray-100">
           {documents.map((doc) => (
             <Link
