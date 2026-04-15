@@ -46,12 +46,30 @@ export default function SupportPage() {
   const emergencyContacts = getEmergencyContacts();
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedback.trim()) return;
-    setSubmitted(true);
-    setFeedback('');
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await fetch('/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'support', message: feedback }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback (${response.status})`);
+      }
+      setSubmitted(true);
+      setFeedback('');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
