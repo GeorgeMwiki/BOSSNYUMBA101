@@ -406,7 +406,7 @@ export class TenantService {
       });
     }
     
-    const existingPolicies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
+    const existingPolicies = ((existing as unknown as { config: unknown }).config as Record<string, unknown>)?.policyConstitution ?? {};
     const mergedPolicies = { ...existingPolicies as Record<string, unknown>, ...policies };
     
     return this.configureTenant(
@@ -431,7 +431,7 @@ export class TenantService {
       });
     }
     
-    const policies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
+    const policies = ((existing as unknown as { config: unknown }).config as Record<string, unknown>)?.policyConstitution ?? {};
     return ok(policies as Record<string, unknown>);
   }
   
@@ -480,13 +480,13 @@ export class TenantService {
     // Merge existing config with new config
     const mergedConfig: TenantConfig = {
       ...DEFAULT_TENANT_CONFIG,
-      ...existing.config,
+      ...(existing as unknown as { config: unknown }).config,
       ...config,
     };
     
     const tenant = await this.uow.tenants.update(
       tenantId,
-      { config: mergedConfig },
+      { config: mergedConfig } as unknown as Parameters<typeof this.uow.tenants.update>[1],
       updatedBy
     );
     
@@ -501,7 +501,7 @@ export class TenantService {
       metadata: {},
       payload: {
         changes: {
-          config: { old: existing.config, new: mergedConfig },
+          config: { old: (existing as unknown as { config: unknown }).config, new: mergedConfig },
         },
       },
     };
