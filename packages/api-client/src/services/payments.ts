@@ -20,11 +20,7 @@ export type PaymentType = PaymentIntentType;
 
 export interface PaymentFilters {
   status?: PaymentStatus[];
-<<<<<<< HEAD
-  type?: PaymentIntentType[];
-=======
   type?: PaymentType[];
->>>>>>> worktree-agent-a793f70a
   channel?: PaymentChannel[];
   customerId?: string;
   leaseId?: string;
