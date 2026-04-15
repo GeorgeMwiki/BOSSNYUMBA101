@@ -96,11 +96,16 @@ export class ApiClientError extends Error {
 // API Client Class
 // ============================================================================
 
+export type ActiveOrgIdProvider = () => string | null | undefined;
+export type TokenProvider = () => string | null | undefined;
+
 export class ApiClient {
   private config: ApiClientConfig;
   private accessToken?: string;
   private refreshToken?: string;
   private refreshPromise?: Promise<TokenPair>;
+  private activeOrgIdProvider?: ActiveOrgIdProvider;
+  private tokenProvider?: TokenProvider;
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
   private errorInterceptors: ErrorInterceptor[] = [];
@@ -151,7 +156,31 @@ export class ApiClient {
   }
 
   hasValidToken(): boolean {
-    return Boolean(this.accessToken);
+    return Boolean(this.accessToken) || Boolean(this.tokenProvider?.());
+  }
+
+  /**
+   * Register a provider callback that returns the current active organisation
+   * ID for multi-org apps. When set, every outgoing request will include the
+   * `X-Active-Org` header with the returned value (non-null only).
+   *
+   * Mirrors Flutter's `ApiClient.activeOrgIdProvider`.
+   *
+   * Pass `null`/`undefined` (or a provider that returns null) to opt out.
+   */
+  setActiveOrgProvider(fn: ActiveOrgIdProvider | null | undefined): void {
+    this.activeOrgIdProvider = fn ?? undefined;
+  }
+
+  /**
+   * Register a provider callback that returns the current bearer token.
+   * When set, the provider takes precedence over the statically configured
+   * `accessToken` and is invoked on every request — this lets React auth
+   * contexts keep the client in sync without manually calling
+   * `setAccessToken` on every render.
+   */
+  setTokenProvider(fn: TokenProvider | null | undefined): void {
+    this.tokenProvider = fn ?? undefined;
   }
 
   // =========================================================================
@@ -349,8 +378,23 @@ export class ApiClient {
       headers['X-Tenant-ID'] = this.config.tenantId;
     }
 
-    if (!skipAuth && this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    // Bearer token: the provider (if registered) takes precedence over the
+    // statically stored accessToken so React auth contexts can keep the
+    // client in sync without repeatedly calling setAccessToken.
+    if (!skipAuth) {
+      const providedToken = this.tokenProvider?.();
+      const token = providedToken || this.accessToken;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    // Multi-org: include X-Active-Org when a provider is registered and
+    // returns a non-null value. Single-tenant portals simply never register
+    // a provider, so this header is never emitted for them.
+    const activeOrgId = this.activeOrgIdProvider?.();
+    if (activeOrgId) {
+      headers['X-Active-Org'] = activeOrgId;
     }
 
     // Add custom headers
