@@ -144,8 +144,18 @@ export {
   type AuditDocument,
   type AuditPackConfig,
   type AuditPackTemplate,
+  type AuditPackBuilderOptions,
   type IAuditPackDataProvider,
 } from './services/audit-pack-builder.service.js';
+
+// ============================================================================
+// Observability helpers (health, readiness, metrics)
+// ============================================================================
+export {
+  createReportServiceObservability,
+  type ReportServiceHealth,
+  type ReportServiceMetrics,
+} from './observability.js';
 
 // ============================================================================
 // Analytics Service

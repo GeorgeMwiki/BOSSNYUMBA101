@@ -1060,18 +1060,331 @@ export function getTemplate(
 }
 
 /**
- * Render template with variable substitution
+ * Render template with variable substitution.
+ *
+ * Supports both positional (`{{1}}`, `{{2}}`) and named (`{{var}}`)
+ * placeholders. Meta-approved templates use positional substitution
+ * while our in-app copy uses named substitution; this function handles
+ * both. Unknown placeholders are left intact so a template editor can
+ * surface them to the operator.
  */
 export function renderTemplate(
   template: string,
-  variables: Record<string, string | number>
+  variables: Record<string, string | number> | Array<string | number>
 ): string {
   let result = template;
+  if (Array.isArray(variables)) {
+    variables.forEach((value, index) => {
+      const pattern = new RegExp(`\\{\\{\\s*${index + 1}\\s*\\}\\}`, 'g');
+      result = result.replace(pattern, String(value));
+    });
+    return result;
+  }
   for (const [key, value] of Object.entries(variables)) {
-    const placeholder = new RegExp(`{{${key}}}`, 'g');
-    result = result.replace(placeholder, String(value));
+    const placeholder = new RegExp(`\\{\\{\\s*${escapeRegex(key)}\\s*\\}\\}`, 'g');
+    result = result.replace(placeholder, value === undefined || value === null ? '' : String(value));
   }
   return result;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ============================================================================
+// Meta Business-Approved Template Registry (Module F.3)
+// ============================================================================
+
+/**
+ * Template approval lifecycle as returned by the Meta Cloud API. Only
+ * `APPROVED` templates may be used to initiate a conversation outside
+ * of the 24-hour customer-service window.
+ *
+ * See: https://developers.facebook.com/docs/whatsapp/message-templates/
+ */
+export type WhatsAppTemplateApprovalState =
+  | 'APPROVED'
+  | 'PENDING'
+  | 'REJECTED'
+  | 'PAUSED'
+  | 'DISABLED'
+  | 'IN_APPEAL'
+  | 'PENDING_DELETION';
+
+export type WhatsAppTemplateCategory =
+  | 'AUTHENTICATION'
+  | 'MARKETING'
+  | 'UTILITY';
+
+export type WhatsAppTemplateComponentType =
+  | 'HEADER'
+  | 'BODY'
+  | 'FOOTER'
+  | 'BUTTONS';
+
+export interface WhatsAppTemplateVariable {
+  /** 1-indexed position matching `{{1}}`, `{{2}}` inside the template body. */
+  position: number;
+  name: string;
+  description?: string;
+  example?: string;
+  required?: boolean;
+}
+
+export interface WhatsAppTemplateComponent {
+  type: WhatsAppTemplateComponentType;
+  /** Sub-format for the HEADER component (TEXT, IMAGE, DOCUMENT, VIDEO, LOCATION). */
+  format?: 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO' | 'LOCATION';
+  text?: string;
+  variables?: WhatsAppTemplateVariable[];
+}
+
+/**
+ * A Meta-registered template. `metaTemplateId` is the asset ID returned
+ * by the Cloud API once the template is submitted for review. `name`
+ * (template_name) and `language` (BCP-47 with Meta fallbacks, e.g.
+ * `en`, `sw`) are what we actually send on the wire.
+ */
+export interface WhatsAppTemplateDefinition {
+  /** Logical key used by application code to reference the template. */
+  key: string;
+  /** Canonical template name registered with Meta (snake_case). */
+  name: string;
+  /** Meta language code, e.g. `en`, `sw`. */
+  language: 'en' | 'sw';
+  /** Asset ID returned by the Meta API after submission. */
+  metaTemplateId?: string;
+  category: WhatsAppTemplateCategory;
+  approvalState: WhatsAppTemplateApprovalState;
+  /** Optional reason provided by Meta when approvalState is REJECTED or PAUSED. */
+  approvalRejectionReason?: string;
+  approvalUpdatedAt?: string;
+  components: WhatsAppTemplateComponent[];
+  /** Positional variables required when rendering the template body. */
+  variables: WhatsAppTemplateVariable[];
+  /** Documentation for support/ops consumers. */
+  description?: string;
+}
+
+/**
+ * Default template catalogue. Approval state and Meta template IDs are
+ * environment-specific and should be provided via configuration in
+ * production, but we ship a conservative default set so the service
+ * comes up even before ops have finalised template registration.
+ *
+ * The catalogue is intentionally minimal: only those messages we need
+ * to initiate outside the 24h session (rent reminders, receipts,
+ * emergency notifications) need registered templates. Free-form
+ * in-session replies use the interactive/text-message APIs instead.
+ */
+export const DEFAULT_META_TEMPLATES: readonly WhatsAppTemplateDefinition[] = [
+  {
+    key: 'rent_reminder_en',
+    name: 'rent_reminder',
+    language: 'en',
+    category: 'UTILITY',
+    approvalState: 'PENDING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Hello {{1}}, your rent of {{2}} is due on {{3}}. Reply PAY to receive payment options.',
+      },
+    ],
+    variables: [
+      { position: 1, name: 'tenantName', example: 'Jane Wangui', required: true },
+      { position: 2, name: 'amount', example: 'KES 25,000', required: true },
+      { position: 3, name: 'dueDate', example: '5 May 2026', required: true },
+    ],
+    description: 'Rolling monthly rent reminder. Dispatched 3 days before due date.',
+  },
+  {
+    key: 'rent_reminder_sw',
+    name: 'rent_reminder',
+    language: 'sw',
+    category: 'UTILITY',
+    approvalState: 'PENDING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Habari {{1}}, kodi yako ya {{2}} inahitajika tarehe {{3}}. Jibu PAY kupata njia za malipo.',
+      },
+    ],
+    variables: [
+      { position: 1, name: 'tenantName', example: 'Jane Wangui', required: true },
+      { position: 2, name: 'amount', example: 'KES 25,000', required: true },
+      { position: 3, name: 'dueDate', example: '5 Mei 2026', required: true },
+    ],
+    description: 'Kiswahili variant of rent_reminder.',
+  },
+  {
+    key: 'payment_confirmation_en',
+    name: 'payment_confirmation',
+    language: 'en',
+    category: 'UTILITY',
+    approvalState: 'PENDING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Thank you {{1}}, we have received your payment of {{2}} on {{3}}. Receipt: {{4}}.',
+      },
+    ],
+    variables: [
+      { position: 1, name: 'tenantName', example: 'Jane Wangui', required: true },
+      { position: 2, name: 'amount', example: 'KES 25,000', required: true },
+      { position: 3, name: 'paidAt', example: '1 May 2026', required: true },
+      { position: 4, name: 'receiptNumber', example: 'RCPT-000123', required: true },
+    ],
+    description: 'Payment confirmation receipt. Dispatched after successful settlement.',
+  },
+  {
+    key: 'payment_confirmation_sw',
+    name: 'payment_confirmation',
+    language: 'sw',
+    category: 'UTILITY',
+    approvalState: 'PENDING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Asante {{1}}, tumepokea malipo yako ya {{2}} tarehe {{3}}. Risiti: {{4}}.',
+      },
+    ],
+    variables: [
+      { position: 1, name: 'tenantName', example: 'Jane Wangui', required: true },
+      { position: 2, name: 'amount', example: 'KES 25,000', required: true },
+      { position: 3, name: 'paidAt', example: '1 Mei 2026', required: true },
+      { position: 4, name: 'receiptNumber', example: 'RCPT-000123', required: true },
+    ],
+    description: 'Kiswahili variant of payment_confirmation.',
+  },
+  {
+    key: 'emergency_ack_en',
+    name: 'emergency_acknowledgement',
+    language: 'en',
+    category: 'UTILITY',
+    approvalState: 'PENDING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'We received your emergency report at {{1}}. Reference: {{2}}. Help is on the way.',
+      },
+    ],
+    variables: [
+      { position: 1, name: 'timestamp', required: true },
+      { position: 2, name: 'caseId', required: true },
+    ],
+  },
+];
+
+/**
+ * In-memory template registry. Callers (typically the service
+ * composition root) should seed with Meta-returned IDs and approval
+ * state at startup, then update via `updateApprovalState` as webhooks
+ * from Meta arrive.
+ */
+export class WhatsAppTemplateRegistry {
+  private readonly byKey = new Map<string, WhatsAppTemplateDefinition>();
+
+  constructor(seed: readonly WhatsAppTemplateDefinition[] = DEFAULT_META_TEMPLATES) {
+    for (const t of seed) this.byKey.set(t.key, { ...t });
+  }
+
+  list(): WhatsAppTemplateDefinition[] {
+    return Array.from(this.byKey.values());
+  }
+
+  get(key: string): WhatsAppTemplateDefinition | undefined {
+    return this.byKey.get(key);
+  }
+
+  /**
+   * Resolve a template by name + language. Returns `undefined` if no
+   * template matches, in which case the caller should not attempt to
+   * send and should fall back to a free-form session message (if the
+   * recipient is still within the 24h window).
+   */
+  resolve(name: string, language: 'en' | 'sw'): WhatsAppTemplateDefinition | undefined {
+    for (const t of this.byKey.values()) {
+      if (t.name === name && t.language === language) return t;
+    }
+    return undefined;
+  }
+
+  upsert(template: WhatsAppTemplateDefinition): void {
+    this.byKey.set(template.key, { ...template });
+  }
+
+  /**
+   * Update approval state from a Meta webhook. Downstream senders should
+   * check `isSendable()` before dispatching.
+   */
+  updateApprovalState(
+    key: string,
+    approvalState: WhatsAppTemplateApprovalState,
+    options?: { rejectionReason?: string; metaTemplateId?: string; updatedAt?: string },
+  ): WhatsAppTemplateDefinition | undefined {
+    const existing = this.byKey.get(key);
+    if (!existing) return undefined;
+    const next: WhatsAppTemplateDefinition = {
+      ...existing,
+      approvalState,
+      approvalRejectionReason:
+        approvalState === 'REJECTED' || approvalState === 'PAUSED'
+          ? options?.rejectionReason ?? existing.approvalRejectionReason
+          : undefined,
+      metaTemplateId: options?.metaTemplateId ?? existing.metaTemplateId,
+      approvalUpdatedAt: options?.updatedAt ?? new Date().toISOString(),
+    };
+    this.byKey.set(key, next);
+    return next;
+  }
+
+  /** A template is sendable iff Meta has APPROVED it and it is not PAUSED. */
+  isSendable(key: string): boolean {
+    const t = this.byKey.get(key);
+    return !!t && t.approvalState === 'APPROVED';
+  }
+}
+
+/**
+ * Build the `components` payload expected by the Meta Cloud API for a
+ * given registered template, applying variable substitution.
+ *
+ * Throws if the template is not sendable or required variables are
+ * missing; this is deliberately strict so production does not silently
+ * drop variables and ship broken messages.
+ */
+export function buildMetaTemplatePayload(
+  template: WhatsAppTemplateDefinition,
+  values: Record<string, string | number>,
+): { name: string; language: { code: string }; components: unknown[] } {
+  if (template.approvalState !== 'APPROVED') {
+    throw new Error(
+      `WhatsApp template '${template.key}' is not sendable (approvalState=${template.approvalState})`,
+    );
+  }
+
+  const bodyComponent = template.components.find((c) => c.type === 'BODY');
+  if (!bodyComponent) {
+    throw new Error(`WhatsApp template '${template.key}' is missing a BODY component`);
+  }
+
+  const parameters = [...template.variables]
+    .sort((a, b) => a.position - b.position)
+    .map((variable) => {
+      const value = values[variable.name];
+      if ((value === undefined || value === null) && variable.required !== false) {
+        throw new Error(
+          `WhatsApp template '${template.key}' missing required variable '${variable.name}'`,
+        );
+      }
+      return { type: 'text', text: String(value ?? '') };
+    });
+
+  return {
+    name: template.name,
+    language: { code: template.language },
+    components: [{ type: 'body', parameters }],
+  };
 }
 
 /**

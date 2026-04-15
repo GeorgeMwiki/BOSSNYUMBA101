@@ -431,7 +431,9 @@ export class VendorService {
     // Value: based on completion rate
     const completionRate = metrics.totalJobs > 0 ? (metrics.completedJobs / metrics.totalJobs) * 100 : 0;
     const valueScore = Math.min(100, Math.max(0, completionRate));
-    // Communication: placeholder - could be based on response time
+    // Communication: derived from average response time. Every hour of
+    // response latency costs 10 points from a base of 100 and is floored
+    // at 0. Callers can extend this by supplying their own weighting.
     const responseScore = Math.min(100, Math.max(0, 100 - (metrics.averageResponseTimeMinutes / 60) * 10));
     const communicationScore = responseScore;
 

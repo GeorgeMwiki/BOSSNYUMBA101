@@ -86,6 +86,17 @@ export {
   getEmergencyKeywords,
   detectLanguage,
 
+  // Meta template registry (approval state, real template IDs)
+  DEFAULT_META_TEMPLATES,
+  WhatsAppTemplateRegistry,
+  buildMetaTemplatePayload,
+  type WhatsAppTemplateApprovalState,
+  type WhatsAppTemplateCategory,
+  type WhatsAppTemplateComponent,
+  type WhatsAppTemplateComponentType,
+  type WhatsAppTemplateDefinition,
+  type WhatsAppTemplateVariable,
+
   // Types
   type SupportedLanguage,
   type ConversationState,
@@ -197,6 +208,16 @@ export type { TemplateData, RenderedTemplate as ResolvedTemplate } from './templ
 // ============================================================================
 export { addToQueue as enqueueNotification, addBulkToQueue as enqueueBulkNotifications } from './queue/producer.js';
 export { createNotificationWorker as startNotificationConsumer, stopNotificationConsumer } from './queue/consumer.js';
+
+// ============================================================================
+// Observability helpers (health, ready, metrics)
+// ============================================================================
+export {
+  createNotificationsObservability,
+  type NotificationsHealth,
+  type NotificationsObservability,
+  type NotificationsObservabilityOptions,
+} from './observability.js';
 
 // ============================================================================
 // Types

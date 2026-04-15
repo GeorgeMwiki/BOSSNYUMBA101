@@ -172,6 +172,8 @@ export const OCRProviderSchema = z.enum([
   'aws_textract',
   'google_vision',
   'azure_form_recognizer',
+  'tesseract',
+  'composite',
   'mock',
 ]);
 export type OCRProvider = z.infer<typeof OCRProviderSchema>;

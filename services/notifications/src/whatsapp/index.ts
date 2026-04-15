@@ -210,4 +210,15 @@ export {
   renderTemplate,
   getEmergencyKeywords,
   detectLanguage,
+
+  // Meta template registry (approval state, real Meta IDs)
+  DEFAULT_META_TEMPLATES,
+  WhatsAppTemplateRegistry,
+  buildMetaTemplatePayload,
+  type WhatsAppTemplateApprovalState,
+  type WhatsAppTemplateCategory,
+  type WhatsAppTemplateComponent,
+  type WhatsAppTemplateComponentType,
+  type WhatsAppTemplateDefinition,
+  type WhatsAppTemplateVariable,
 } from './templates.js';

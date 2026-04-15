@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../logger.js';
 import { MetaWhatsAppClient } from './meta-client.js';
 import { ConversationOrchestrator, TenantLookup, SessionStore } from './conversation-orchestrator.js';
@@ -322,10 +323,8 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
   function createNewSession(
     phoneNumber: string,
     tenant: Awaited<ReturnType<TenantLookup['findByPhone']>>,
-    senderName?: string
+    _senderName?: string
   ): ConversationSession {
-    const { v4: uuidv4 } = require('uuid');
-    
     return {
       id: uuidv4(),
       tenantId: tenant?.tenantId || '',
@@ -367,14 +366,62 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
   // ============================================================================
 
   /**
-   * Health check endpoint
+   * Health check endpoint - liveness probe.
+   * Returns 200 whenever the process is running.
    */
-  router.get('/health', (req: Request, res: Response): void => {
+  router.get('/health', (_req: Request, res: Response): void => {
     res.json({
       status: 'ok',
       service: 'whatsapp-webhook',
       timestamp: new Date().toISOString(),
     });
+  });
+
+  /**
+   * Readiness probe. Returns 503 until the critical downstream
+   * services have been wired in. K8s will hold traffic off the pod
+   * until this returns 200.
+   */
+  router.get('/ready', (_req: Request, res: Response): void => {
+    const dependencies = {
+      whatsappClient: Boolean(whatsappClient),
+      tenantLookup: Boolean(tenantLookup),
+      sessionStore: Boolean(sessionStore),
+      workOrderService: Boolean(workOrderService),
+      feedbackService: Boolean(feedbackService),
+      emergencyService: Boolean(emergencyService),
+    };
+    const ready = Object.values(dependencies).every(Boolean);
+    res.status(ready ? 200 : 503).json({
+      status: ready ? 'ok' : 'degraded',
+      service: 'whatsapp-webhook',
+      dependencies,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /**
+   * Prometheus metrics in text exposition format.
+   */
+  router.get('/metrics', (_req: Request, res: Response): void => {
+    const uptime = process.uptime();
+    const mem = process.memoryUsage();
+    res
+      .type('text/plain; version=0.0.4')
+      .send(
+        [
+          '# HELP whatsapp_webhook_uptime_seconds Process uptime in seconds',
+          '# TYPE whatsapp_webhook_uptime_seconds gauge',
+          `whatsapp_webhook_uptime_seconds ${uptime.toFixed(3)}`,
+          '# HELP whatsapp_webhook_memory_rss_bytes Resident set size',
+          '# TYPE whatsapp_webhook_memory_rss_bytes gauge',
+          `whatsapp_webhook_memory_rss_bytes ${mem.rss}`,
+          '# HELP whatsapp_webhook_memory_heap_used_bytes Heap used',
+          '# TYPE whatsapp_webhook_memory_heap_used_bytes gauge',
+          `whatsapp_webhook_memory_heap_used_bytes ${mem.heapUsed}`,
+          '',
+        ].join('\n'),
+      );
   });
 
   /**
