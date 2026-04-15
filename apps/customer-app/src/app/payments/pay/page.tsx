@@ -13,7 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { CURRENT_BALANCE } from '@/lib/payments-data';
+import { CURRENT_BALANCE, CARD_PAYMENT_ENABLED } from '@/lib/payments-data';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
 
@@ -27,7 +27,7 @@ interface PaymentOption {
   popular?: boolean;
 }
 
-const paymentOptions: PaymentOption[] = [
+const basePaymentOptions: PaymentOption[] = [
   {
     id: 'mpesa',
     name: 'M-Pesa',
@@ -45,15 +45,21 @@ const paymentOptions: PaymentOption[] = [
     processingTime: '1-2 business days',
     fee: 'Bank fees may apply',
   },
-  {
-    id: 'card',
-    name: 'Card Payment',
-    description: 'Visa, Mastercard accepted',
-    icon: CreditCard,
-    processingTime: 'Instant',
-    fee: '2.5% processing fee',
-  },
 ];
+
+const paymentOptions: PaymentOption[] = CARD_PAYMENT_ENABLED
+  ? [
+      ...basePaymentOptions,
+      {
+        id: 'card',
+        name: 'Card Payment',
+        description: 'Visa, Mastercard accepted',
+        icon: CreditCard,
+        processingTime: 'Instant',
+        fee: '2.5% processing fee',
+      },
+    ]
+  : basePaymentOptions;
 
 export default function PayPage() {
   const router = useRouter();
@@ -69,14 +75,13 @@ export default function PayPage() {
 
   const handleContinue = () => {
     if (!selectedMethod) return;
-    
+
     if (selectedMethod === 'mpesa') {
       router.push(`/payments/mpesa?amount=${paymentAmount}`);
     } else if (selectedMethod === 'bank') {
       router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
-    } else {
-      // Card payment - would implement card form
-      alert('Card payments coming soon!');
+    } else if (selectedMethod === 'card' && CARD_PAYMENT_ENABLED) {
+      router.push(`/payments/card?amount=${paymentAmount}`);
     }
   };
 
