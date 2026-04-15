@@ -51,6 +51,41 @@
       "types": "./dist/identity/session.d.ts",
       "import": "./dist/identity/session.mjs",
       "require": "./dist/identity/session.js"
+    },
+    "./maintenance/work-order": {
+      "types": "./dist/maintenance/work-order.d.ts",
+      "import": "./dist/maintenance/work-order.mjs",
+      "require": "./dist/maintenance/work-order.js"
+    },
+    "./property/property": {
+      "types": "./dist/property/property.d.ts",
+      "import": "./dist/property/property.mjs",
+      "require": "./dist/property/property.js"
+    },
+    "./property/unit": {
+      "types": "./dist/property/unit.d.ts",
+      "import": "./dist/property/unit.mjs",
+      "require": "./dist/property/unit.js"
+    },
+    "./lease/lease": {
+      "types": "./dist/lease/lease.d.ts",
+      "import": "./dist/lease/lease.mjs",
+      "require": "./dist/lease/lease.js"
+    },
+    "./tenant/tenant": {
+      "types": "./dist/tenant/tenant.d.ts",
+      "import": "./dist/tenant/tenant.mjs",
+      "require": "./dist/tenant/tenant.js"
+    },
+    "./customer/customer": {
+      "types": "./dist/customer/customer.d.ts",
+      "import": "./dist/customer/customer.mjs",
+      "require": "./dist/customer/customer.js"
+    },
+    "./common/money": {
+      "types": "./dist/common/money.d.ts",
+      "import": "./dist/common/money.mjs",
+      "require": "./dist/common/money.js"
     }
   },
   "files": [

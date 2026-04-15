@@ -13,13 +13,15 @@ import type {
   Result,
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
+import type {
+  WorkOrderPriority,
+  WorkOrderStatus,
+  WorkOrderCategory,
+  WorkOrderSource,
+} from '@bossnyumba/domain-models/maintenance/work-order';
 import {
   type WorkOrder,
   type WorkOrderId,
-  type WorkOrderPriority,
-  type WorkOrderStatus,
-  type WorkOrderCategory,
-  type WorkOrderSource,
   type WorkOrderAttachment,
   type SLAConfig,
   type Vendor,
@@ -1129,16 +1131,20 @@ export class MaintenanceService {
     if (!vendor) return;
 
     // In production, this would calculate proper averages
+    const baseCompleted = vendor.performanceMetrics.completedJobs + 1;
+    let averageRating = vendor.performanceMetrics.averageRating;
+    if (workOrder.customerRating) {
+      const currentTotal =
+        vendor.performanceMetrics.averageRating * vendor.performanceMetrics.completedJobs;
+      averageRating = (currentTotal + workOrder.customerRating) / baseCompleted;
+    }
+
     const newMetrics: VendorPerformanceMetrics = {
       ...vendor.performanceMetrics,
       totalJobs: vendor.performanceMetrics.totalJobs + 1,
-      completedJobs: vendor.performanceMetrics.completedJobs + 1,
+      completedJobs: baseCompleted,
+      averageRating,
     };
-
-    if (workOrder.customerRating) {
-      const currentTotal = vendor.performanceMetrics.averageRating * vendor.performanceMetrics.completedJobs;
-      newMetrics.averageRating = (currentTotal + workOrder.customerRating) / newMetrics.completedJobs;
-    }
 
     const updatedVendor: VendorEntity = {
       ...vendor,
