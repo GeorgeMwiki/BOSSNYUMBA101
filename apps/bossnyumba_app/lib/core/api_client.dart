@@ -21,6 +21,12 @@ class ApiClient {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
+  /// Headers suitable for multipart requests (no Content-Type; http sets it).
+  Map<String, String> authHeaders() => {
+        'Accept': 'application/json',
+        if (_token != null) 'Authorization': 'Bearer $_token',
+      };
+
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, String>? queryParams,

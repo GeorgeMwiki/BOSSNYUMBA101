@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Star, ThumbsUp, ThumbsDown, CheckCircle, Send, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { maintenanceService } from '@bossnyumba/api-client';
+import '@/lib/api';
 
 const feedbackCategories = [
   { id: 'quality', label: 'Work Quality', description: 'Was the issue properly fixed?' },
@@ -46,13 +48,27 @@ export default function MaintenanceFeedbackPage() {
     );
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleSubmit = async () => {
     if (overallRating === 0) return;
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log({ ticketId, overallRating, categoryRatings, selectedTags, comment, wouldRecommend });
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+    setSubmitError(null);
+    try {
+      await maintenanceService.rate(ticketId, {
+        rating: overallRating,
+        feedback: comment.trim() || undefined,
+        tags: selectedTags.length ? selectedTags : undefined,
+        wouldRecommend: wouldRecommend ?? undefined,
+        categoryRatings:
+          Object.keys(categoryRatings).length > 0 ? categoryRatings : undefined,
+      });
+      setIsSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -169,6 +185,9 @@ export default function MaintenanceFeedbackPage() {
 
       {overallRating > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+          {submitError && (
+            <div className="mb-3 text-sm text-red-600 text-center">{submitError}</div>
+          )}
           <button onClick={handleSubmit} disabled={isSubmitting} className="btn-primary w-full py-4 text-base font-semibold flex items-center justify-center gap-2">
             {isSubmitting ? (
               <>

@@ -53,6 +53,7 @@ export * from './services/leases';
 export * from './services/invoices';
 export * from './services/payments';
 export * from './services/work-orders';
+export * from './services/maintenance';
 export * from './services/vendors';
 export * from './services/inspections';
 export * from './services/documents';
