@@ -1,8 +1,12 @@
 /**
- * Notification queue producer - add jobs to BullMQ queue
+ * Notification queue producer - add jobs to BullMQ queue.
+ *
+ * Uses the shared @bossnyumba/queue package for Redis connection handling
+ * and default job options so the behaviour stays consistent with every
+ * other BullMQ producer in the platform.
  */
 
-import { Queue } from 'bullmq';
+import { createQueue, QueueNames, type Queue } from '@bossnyumba/queue';
 import type { NotificationRecipient } from '../types/index.js';
 import type { NotificationChannel, NotificationTemplateId } from '../types/index.js';
 
@@ -15,63 +19,31 @@ export interface NotificationJobData {
 }
 
 export interface QueueOptions {
-  connection?: { host: string; port: number; password?: string };
+  redisUrl?: string;
   queueName?: string;
-}
-
-const DEFAULT_QUEUE_NAME = 'notifications';
-
-function getDefaultConnection(): { host: string; port: number; password?: string } {
-  const url = process.env['REDIS_URL'];
-  if (url) {
-    try {
-      const u = new URL(url);
-      return {
-        host: u.hostname,
-        port: parseInt(u.port ?? '6379', 10),
-        password: u.password || undefined,
-      };
-    } catch {
-      // invalid URL
-    }
-  }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('REDIS_URL is required in production for the notification queue');
-  }
-  return { host: 'localhost', port: 6379 };
 }
 
 let queueInstance: Queue<NotificationJobData> | null = null;
 
 /**
- * Get or create the notification queue
+ * Get or create the notification queue. Cached so repeated calls share a
+ * single Redis connection.
  */
 export function getNotificationQueue(options?: QueueOptions): Queue<NotificationJobData> {
   if (queueInstance) {
     return queueInstance;
   }
 
-  const connection = options?.connection ?? getDefaultConnection();
-  const queueName = options?.queueName ?? DEFAULT_QUEUE_NAME;
-
-  queueInstance = new Queue<NotificationJobData>(queueName, {
-    connection,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 1000,
-      },
-      removeOnComplete: { count: 1000 },
-      removeOnFail: { count: 5000 },
-    },
-  });
+  queueInstance = createQueue<NotificationJobData>(
+    options?.queueName ?? QueueNames.Notifications,
+    options?.redisUrl
+  );
 
   return queueInstance;
 }
 
 /**
- * Add a notification to the queue
+ * Add a notification to the queue.
  */
 export async function addToQueue(
   data: NotificationJobData,
@@ -86,7 +58,7 @@ export async function addToQueue(
 }
 
 /**
- * Add bulk notifications to the queue
+ * Add bulk notifications to the queue.
  */
 export async function addBulkToQueue(
   items: NotificationJobData[],
