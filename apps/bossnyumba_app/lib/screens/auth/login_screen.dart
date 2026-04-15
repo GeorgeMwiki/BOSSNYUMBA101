@@ -31,23 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
     });
     try {
-      await context.read<AuthProvider>().login(
+      // login() returns `null` on success, or the server's error message.
+      final err = await context.read<AuthProvider>().login(
             _emailController.text.trim(),
             _passwordController.text,
           );
       if (!mounted) return;
-      // On success, go_router's redirect() will push the user off /login
-      // via the refreshListenable hook. We only need to unset the local
-      // loading flag in case the route guard hasn't fired yet.
-      setState(() {
-        _loading = false;
-      });
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _loading = false;
-      });
+      if (err != null) {
+        setState(() {
+          _error = err;
+          _loading = false;
+        });
+      }
+      // Success: GoRouter's refreshListenable on AuthProvider will redirect.
     } catch (e) {
       if (!mounted) return;
       setState(() {

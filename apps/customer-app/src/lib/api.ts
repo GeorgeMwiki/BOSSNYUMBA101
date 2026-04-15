@@ -48,13 +48,36 @@ function ensureClient() {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('customer_token');
           localStorage.removeItem('customer_user');
+          localStorage.removeItem('customer_active_org');
           window.location.href = '/auth/login';
         }
       },
     });
   }
 
-  return getApiClient();
+  const client = getApiClient();
+  // Re-sync the Bearer token + X-Active-Org header on every use so that the
+  // singleton reflects the latest AuthContext state (login, org switch, logout).
+  if (typeof window !== 'undefined') {
+    const latestToken = localStorage.getItem('customer_token');
+    const activeOrg = localStorage.getItem('customer_active_org');
+    if (latestToken) {
+      client.setAccessToken(latestToken);
+    } else {
+      client.clearTokens();
+    }
+    // buildHeaders() merges `config.headers` into every request, so stamping it
+    // here is enough to flow X-Active-Org through the whole surface.
+    const cfg = (client as unknown as { config: { headers?: Record<string, string> } }).config;
+    cfg.headers = { ...(cfg.headers ?? {}) };
+    if (activeOrg) {
+      cfg.headers['X-Active-Org'] = activeOrg;
+    } else {
+      delete cfg.headers['X-Active-Org'];
+    }
+  }
+
+  return client;
 }
 
 function normalizeError(error: unknown): Error {

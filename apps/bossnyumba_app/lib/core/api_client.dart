@@ -12,11 +12,7 @@ class ApiClient {
   /// Legacy single-token slot — kept so callers that still use `setToken`
   /// don't break, but [tokenProvider] wins when set.
   String? _token;
-
-  /// Injected by [AuthProvider] so the client always reads the latest token
-  /// (including after a refresh) for every outgoing request.
-  TokenProvider? tokenProvider;
-
+  String? _activeOrgId;
   final String baseUrl = ApiConfig.baseUrl;
 
   /// Integration point for the multi-tenant org switcher.
@@ -34,20 +30,18 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
-  /// Returns the current token, preferring [tokenProvider] (live read from
-  /// AuthProvider) over the legacy [_token] slot.
-  String? get _currentToken => tokenProvider?.call() ?? _token;
+  /// Sets the active organization id to be sent as `X-Active-Org` on every
+  /// subsequent request. Pass `null` to clear (e.g. on logout).
+  void setActiveOrg(String? tenantId) => _activeOrgId = tenantId;
 
-  Map<String, String> get _headers {
-    final token = _currentToken;
-    final orgId = activeOrgIdProvider?.call();
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      if (orgId != null && orgId.isNotEmpty) 'X-Active-Org': orgId,
-    };
-  }
+  String? get activeOrg => _activeOrgId;
+
+  Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (_token != null) 'Authorization': 'Bearer $_token',
+        if (_activeOrgId != null) 'X-Active-Org': _activeOrgId!,
+      };
 
   Future<ApiResponse<T>> get<T>(
     String path, {

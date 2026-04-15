@@ -5,95 +5,44 @@ import { hasApiClient, getApiClient } from '@bossnyumba/api-client';
 
 export interface CustomerUser {
   id: string;
-  email?: string;
   phone?: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
   avatarUrl?: string;
 }
 
-export interface TenantInfo {
+export interface Tenant {
   id: string;
-  name?: string;
-  slug?: string;
+  name: string;
+  slug: string;
 }
 
-export interface DecodedJwt {
-  userId?: string;
-  sub?: string;
-  tenantId?: string;
-  role?: string;
-  permissions?: string[];
-  propertyAccess?: string[];
-  email?: string;
-  exp?: number;
-  iat?: number;
-}
-
-export interface LoginResult {
-  success: boolean;
-  message?: string;
-}
-
-/**
- * Cross-tenant membership entry returned by `/auth/me`. Mirrors the
- * `MembershipBundle` shape from `@bossnyumba/domain-models`. The customer-
- * app + estate-manager-app are multi-org: a single user identity can be
- * a tenant in N different landlord orgs (or a manager serving N owners).
- */
-export interface OrgMembership {
-  /** Stable id from the membership row (or 'primary' for the user's home tenant). */
-  id: string;
-  /** The landlord/property-management-company tenant id. */
+export interface Membership {
+  userId: string;
   tenantId: string;
-  /** Optional pin to a specific org within the tenant. */
-  organizationId: string | null;
-  /** Role inside this membership's tenant. */
+  tenantName: string;
+  tenantSlug: string;
+  tenantStatus?: string;
   role: string;
-  /** Human-readable label shown in the org switcher. */
-  displayLabel: string | null;
-  /** True if this is the user's primary/home tenant. */
-  isPrimary: boolean;
+  permissions: string[];
 }
 
 interface AuthContextType {
   // Canonical shape required by parallel agents.
   user: CustomerUser | null;
+  tenant: Tenant | null;
   token: string | null;
-  activeOrgId: string | null;
-  setActiveOrg: (orgId: string | null) => void;
-  loading: boolean;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  /** @deprecated use `isLoading`. */
-  loading: boolean;
-
-  // Derived claims for convenience.
   role: string | null;
   permissions: string[];
-
-  // Cross-tenant membership state (foundation: multi-owner customer/manager).
-  /** All memberships for the current user (primary + cross-tenant). */
-  memberships: OrgMembership[];
-  /** The currently selected membership's tenant id. Drives X-Active-Org. */
+  memberships: Membership[];
   activeOrgId: string | null;
-  /** Switch the active membership. Persists to localStorage. */
-  setActiveOrg: (membershipIdOrTenantId: string) => void;
-
-  // Region + language (foundation: drives policy + i18n).
-  /** User's selected region (TZ / KE / OTHER). */
-  region: 'TZ' | 'KE' | 'OTHER' | null;
-  /** User's selected UI language. */
-  language: 'en' | 'sw' | null;
-
-  // Actions (new canonical API).
-  login: (email: string, password: string) => Promise<LoginResult>;
-  logout: () => void;
-  refreshToken: () => Promise<boolean>;
-
-  // Back-compat OTP helpers — existing login/otp/register pages import these.
-  loginWithPhone: (phone: string) => Promise<LoginResult>;
-  verifyOtp: (phone: string, otp: string) => Promise<LoginResult>;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  setActiveOrg: (tenantId: string) => Promise<void>;
+  loginWithPhone: (phone: string) => Promise<{ success: boolean; message?: string }>;
+  verifyOtp: (phone: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: {
     phone: string;
     firstName: string;
@@ -104,145 +53,157 @@ interface AuthContextType {
 
 const CUSTOMER_TOKEN_KEY = 'customer_token';
 const CUSTOMER_USER_KEY = 'customer_user';
-const CUSTOMER_ACTIVE_ORG_KEY = 'customer_active_org_id';
+const ACTIVE_ORG_KEY = 'customer_active_org';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function getApiBaseUrl(): string {
-  if (typeof process !== 'undefined') {
-    const url = process.env.NEXT_PUBLIC_API_URL?.trim();
-    if (url) {
-      const base = url.replace(/\/$/, '');
-      return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
-    }
-  }
-  return 'http://localhost:4000/api/v1';
+  const raw =
+    (typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : process.env.API_URL) ??
+    'http://localhost:4000';
+  const trimmed = raw.trim().replace(/\/$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 }
 
-/** Decode a JWT payload without verifying — the server is the source of truth. */
-export const decodeJwt = decodeJwtUtil;
-
-export const isTokenExpired = isTokenExpiredUtil;
-
-function writeTokenToStorage(token: string, user: CustomerUser | null) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-  localStorage.setItem(LEGACY_TOKEN_KEY, token);
-  if (user) localStorage.setItem(LEGACY_USER_KEY, JSON.stringify(user));
-}
-
-function clearTokenFromStorage() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
-  localStorage.removeItem(LEGACY_USER_KEY);
-}
-
-function readTokenFromStorage(): string | null {
-  if (typeof window === 'undefined') return null;
-  return (
-    localStorage.getItem(AUTH_TOKEN_KEY) ??
-    localStorage.getItem(LEGACY_TOKEN_KEY) ??
-    null
-  );
-}
-
-async function apiJson<T>(
+async function apiCall<T>(
   path: string,
-  init: RequestInit & { token?: string | null } = {}
-): Promise<{ ok: boolean; status: number; body: T | undefined }> {
-  const { token, headers, ...rest } = init;
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...rest,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
+  init: RequestInit & { token?: string | null; activeOrgId?: string | null } = {}
+): Promise<{ success: boolean; data?: T; error?: { code?: string; message?: string } }> {
+  const base = getApiBaseUrl();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  if (init.token) headers['Authorization'] = `Bearer ${init.token}`;
+  if (init.activeOrgId) headers['X-Active-Org'] = init.activeOrgId;
+
+  const res = await fetch(`${base}${path}`, {
+    method: init.method ?? 'GET',
+    body: init.body,
+    headers,
   });
-  let body: T | undefined;
+  let payload: any = null;
   try {
-    body = (await response.json()) as T;
+    payload = await res.json();
   } catch {
-    body = undefined;
+    payload = { success: res.ok };
   }
-  return { ok: response.ok, status: response.status, body };
-}
-
-interface LoginResponseBody {
-  success: boolean;
-  data?: {
-    token: string;
-    user: CustomerUser;
-    tenant?: TenantInfo;
-    role?: string;
-    permissions?: string[];
-  };
-  error?: { code?: string; message?: string };
-}
-
-interface MeResponseBody {
-  success: boolean;
-  data?: {
-    user: CustomerUser & {
-      region?: 'TZ' | 'KE' | 'OTHER';
-      language?: 'en' | 'sw';
+  if (!res.ok && !payload?.error) {
+    payload = {
+      success: false,
+      error: { code: 'HTTP_ERROR', message: res.statusText || 'Request failed' },
     };
-    tenant?: TenantInfo;
-    role?: string;
-    permissions?: string[];
-    memberships?: OrgMembership[];
-  };
-  error?: { code?: string; message?: string };
+  }
+  return payload;
 }
-
-interface RefreshResponseBody {
-  success: boolean;
-  data?: { token: string; expiresAt?: string };
-  error?: { code?: string; message?: string };
-}
-
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomerUser | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Keep refs so the provider callbacks registered on the ApiClient always
-  // read the latest values without needing to re-register on every render.
-  const tokenRef = useRef<string | null>(null);
-  const activeOrgIdRef = useRef<string | null>(null);
-  tokenRef.current = token;
-  activeOrgIdRef.current = activeOrgId;
+  const applySession = useCallback((data: any) => {
+    setUser(data.user ?? null);
+    setTenant(data.tenant ?? null);
+    setRole(data.role ?? null);
+    setPermissions(data.permissions || []);
+    setMemberships(data.memberships || []);
+    const nextOrgId = data.activeOrgId ?? data.tenant?.id ?? null;
+    setActiveOrgId(nextOrgId);
+    if (typeof window !== 'undefined') {
+      if (nextOrgId) localStorage.setItem(ACTIVE_ORG_KEY, nextOrgId);
+      if (data.user) localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(data.user));
+    }
+  }, []);
 
+  // Hydrate on mount: if we have a stored token, call /auth/me.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedToken = localStorage.getItem(CUSTOMER_TOKEN_KEY);
-    const storedUser = localStorage.getItem(CUSTOMER_USER_KEY);
-    const storedOrg = localStorage.getItem(CUSTOMER_ACTIVE_ORG_KEY);
+    const storedOrg = localStorage.getItem(ACTIVE_ORG_KEY);
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
+    if (!storedToken) {
+      setLoading(false);
+      return;
+    }
+
+    setToken(storedToken);
+    setActiveOrgId(storedOrg);
+
+    (async () => {
+      const res = await apiCall<any>('/auth/me', {
+        token: storedToken,
+        activeOrgId: storedOrg,
+      });
+      if (res.success && res.data) {
+        applySession(res.data);
+      } else {
         localStorage.removeItem(CUSTOMER_TOKEN_KEY);
         localStorage.removeItem(CUSTOMER_USER_KEY);
+        localStorage.removeItem(ACTIVE_ORG_KEY);
+        setToken(null);
+        setUser(null);
+        setActiveOrgId(null);
       }
-    }
-    if (storedOrg) {
-      setActiveOrgIdState(storedOrg);
-    }
-    setLoading(false);
-  }, []);
+      setLoading(false);
+    })();
+  }, [applySession]);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await apiCall<any>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      });
+      if (!res.success || !res.data) {
+        // Surface server error verbatim.
+        throw new Error(res.error?.message || 'Login failed');
+      }
+      const data = res.data;
+      const newToken: string | undefined = data.token;
+      if (!newToken) throw new Error('Login response missing token');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CUSTOMER_TOKEN_KEY, newToken);
+      }
+      setToken(newToken);
+      applySession(data);
+    },
+    [applySession]
+  );
+
+  const setActiveOrg = useCallback(
+    async (tenantId: string) => {
+      if (!tenantId || !token) return;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(ACTIVE_ORG_KEY, tenantId);
+      }
+      setActiveOrgId(tenantId);
+      const res = await apiCall<any>('/auth/switch-org', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId }),
+        token,
+        activeOrgId: tenantId,
+      });
+      if (!res.success || !res.data) {
+        throw new Error(res.error?.message || 'Failed to switch organization');
+      }
+      const data = res.data;
+      if (data.token) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(CUSTOMER_TOKEN_KEY, data.token);
+        }
+        setToken(data.token);
+      }
+      applySession(data);
+    },
+    [token, applySession]
+  );
 
   // Wire the auth state into the shared ApiClient so every outgoing request
   // picks up the current bearer token + X-Active-Org header automatically.
@@ -291,13 +252,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (normalized.length < 9) {
       return { success: false, message: 'Please enter a valid phone number' };
     }
+
+    // TODO: wire to live provider (e.g. POST /auth/otp/request). Until then we
+    // hard-fail so the UI does not pretend to send an OTP.
     return {
       success: false,
       message: 'Resident OTP authentication is not wired to a live provider in this build.',
     };
   }, []);
 
-  const verifyOtp = useCallback(async (_phone: string, _otp: string): Promise<LoginResult> => {
+  const verifyOtp = useCallback(async (phone: string, otp: string) => {
+    void phone;
+    void otp;
+    // TODO: wire to live provider (e.g. POST /auth/otp/verify).
     return {
       success: false,
       message: 'Resident OTP verification is not wired to a live provider in this build.',
@@ -305,12 +272,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (_data: {
-      phone: string;
-      firstName: string;
-      lastName: string;
-      email?: string;
-    }): Promise<LoginResult> => {
+    async (data: { phone: string; firstName: string; lastName: string; email?: string }) => {
+      void data;
+      // TODO: wire to POST /auth/register once self-registration is enabled on
+      // the gateway (currently returns LIVE_DATA_NOT_IMPLEMENTED).
       return {
         success: false,
         message: 'Resident self-registration is not wired to a live provider in this build.',
@@ -322,21 +287,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-    setActiveOrgIdState(null);
-    localStorage.removeItem(CUSTOMER_TOKEN_KEY);
-    localStorage.removeItem(CUSTOMER_USER_KEY);
-    localStorage.removeItem(CUSTOMER_ACTIVE_ORG_KEY);
+    setTenant(null);
+    setRole(null);
+    setPermissions([]);
+    setMemberships([]);
+    setActiveOrgId(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+      localStorage.removeItem(CUSTOMER_USER_KEY);
+      localStorage.removeItem(ACTIVE_ORG_KEY);
+    }
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        tenant,
         token,
+        role,
+        permissions,
+        memberships,
         activeOrgId,
-        setActiveOrg,
         loading,
         isAuthenticated: !!token,
+        login,
+        setActiveOrg,
         loginWithPhone,
         verifyOtp,
         register,
