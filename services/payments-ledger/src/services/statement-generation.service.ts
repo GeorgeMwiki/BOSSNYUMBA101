@@ -343,7 +343,7 @@ export class StatementGenerationService {
         });
       }
     } catch {
-      this.logger?.warn?.({ statementId: request.statementId }, 'Failed to send statement email notification');
+      this.logger?.warn?.('Failed to send statement email notification', { statementId: request.statementId });
     }
 
     // Publish event
@@ -462,7 +462,7 @@ export class StatementGenerationService {
 
     const periodLabel = `${this.formatDate(statement.periodStart)} – ${this.formatDate(statement.periodEnd)}`;
     const lineRows = statement.lineItems
-      .map(item => {
+      .map((item: any) => {
         const label = ENTRY_TYPE_LABELS[item.type] || item.type;
         const debit = item.debit ? this.formatMoney(item.debit) : '';
         const credit = item.credit ? this.formatMoney(item.credit) : '';
@@ -478,7 +478,7 @@ export class StatementGenerationService {
       .join('\n');
 
     const summaryRows = statement.summaries
-      .map(s => `<tr><td>${s.label}</td><td class="text-right">${this.formatMoney(s.amount)}</td><td class="text-right">${s.percentage != null ? s.percentage.toFixed(1) + '%' : ''}</td></tr>`)
+      .map((s: any) => `<tr><td>${s.label}</td><td class="text-right">${this.formatMoney(s.amount)}</td><td class="text-right">${s.percentage != null ? s.percentage.toFixed(1) + '%' : ''}</td></tr>`)
       .join('\n');
 
     return `<!DOCTYPE html>
@@ -564,7 +564,7 @@ export class StatementGenerationService {
     }
 
     const headers = ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'];
-    const rows = statement.lineItems.map(item => [
+    const rows = statement.lineItems.map((item: any) => [
       this.formatDate(item.date),
       item.type,
       `"${(item.description || '').replace(/"/g, '""')}"`,
@@ -586,7 +586,7 @@ export class StatementGenerationService {
       ...rows,
       [], // blank line
       ['Category', 'Amount', 'Percentage'],
-      ...statement.summaries.map(s => [
+      ...statement.summaries.map((s: any) => [
         s.label,
         (s.amount.amountMinorUnits / 100).toFixed(2),
         s.percentage != null ? s.percentage.toFixed(1) + '%' : ''

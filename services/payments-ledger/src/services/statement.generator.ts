@@ -9,7 +9,7 @@
  * - PDF rendering support
  */
 import { v4 as uuidv4 } from 'uuid';
-import { Money, CurrencyCode, LedgerEntryType } from '@bossnyumba/domain-models';
+import { Money, CurrencyCode } from '@bossnyumba/domain-models';
 import {
   Statement,
   StatementId,
@@ -18,6 +18,7 @@ import {
   StatementType,
   StatementPeriodType,
   StatementStatus,
+  LedgerEntryType,
   MoneyData,
   TenantId,
   OwnerId,

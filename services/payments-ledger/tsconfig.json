@@ -23,12 +23,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": ["node", "jest"],
-    "baseUrl": ".",
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "paths": {
-      "@bossnyumba/domain-models": ["../../packages/domain-models/src"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

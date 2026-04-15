@@ -877,7 +877,7 @@ app.get('/api/v1/statements/:id', async (req: Request, res: Response, next: Next
       totalDebits: statement.totalDebits.toData(),
       totalCredits: statement.totalCredits.toData(),
       netChange: statement.netChange.toData(),
-      lineItems: statement.lineItems.map(item => ({
+      lineItems: statement.lineItems.map((item: any) => ({
         date: item.date,
         type: item.type,
         description: item.description,
@@ -886,7 +886,7 @@ app.get('/api/v1/statements/:id', async (req: Request, res: Response, next: Next
         credit: item.credit?.toData(),
         balance: item.balance.toData()
       })),
-      summaries: statement.summaries.map(s => ({
+      summaries: statement.summaries.map((s: any) => ({
         label: s.label,
         amount: s.amount.toData(),
         percentage: s.percentage

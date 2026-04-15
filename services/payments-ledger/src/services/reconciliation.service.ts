@@ -586,7 +586,7 @@ export class ReconciliationService {
       // ---- Description / name fuzzy matching ----
       if (txn.description && payment.description) {
         const txnWords = txn.description.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        const payWords = payment.description.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const payWords = payment.description.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
         const overlap = txnWords.filter(w => payWords.includes(w)).length;
         if (overlap > 0) {
           score += Math.min(overlap * 5, 10);
