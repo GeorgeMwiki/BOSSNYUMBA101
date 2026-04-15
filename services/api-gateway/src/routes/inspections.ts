@@ -218,6 +218,23 @@ app.put(
   }
 );
 
+// POST alias — estate-manager-app submits the completion payload as POST
+// with the full inspection data (areas, meter readings, signature).
+// TODO: wire to real store — currently echoes the payload back.
+app.post('/:id/complete', zValidator('param', idParamSchema), async (c) => {
+  const { id } = c.req.valid('param');
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json({
+    success: true,
+    data: {
+      id,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      payload: body,
+    },
+  });
+});
+
 // POST /inspections/:id/sign - Sign inspection
 app.post(
   '/:id/sign',
