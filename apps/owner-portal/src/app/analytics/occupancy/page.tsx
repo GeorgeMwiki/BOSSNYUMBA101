@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Home, Users } from 'lucide-react';
+import { ArrowLeft, Home, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -9,52 +9,63 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
 import { api, formatPercentage } from '../../../lib/api';
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
+/**
+ * Occupancy analytics subpage.
+ *
+ * Fetches `/api/v1/analytics/occupancy` for the trend line and derives the
+ * current snapshot from `/analytics/summary`. Mock fallback data has been
+ * removed — when live data is unavailable we show the error+retry state.
+ */
+
+type TrendPoint = { month: string; rate: number };
+interface Summary {
+  occupancy: { value: number; previous: number; delta: number | null };
+}
+
+function SkeletonBlock({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-gray-200 ${className}`} />;
+}
 
 export default function OccupancyPage() {
-  const [trendData, setTrendData] = useState<Array<{ month: string; rate: number }>>([]);
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.get<typeof trendData>('/analytics/occupancy').then((res) => {
-      if (res.success && res.data) {
-        setTrendData(res.data);
+  const fetchAll = useCallback(async () => {
+    setError(null);
+    try {
+      const [trendRes, summaryRes] = await Promise.all([
+        api.get<TrendPoint[]>('/analytics/occupancy'),
+        api.get<Summary>('/analytics/summary'),
+      ]);
+      if (!trendRes.success) {
+        throw new Error(trendRes.error?.message || 'Failed to load occupancy trend');
       }
+      setTrend(trendRes.data ?? []);
+      setSummary(summaryRes.success && summaryRes.data ? summaryRes.data : null);
+    } catch (err) {
+      setTrend([]);
+      setSummary(null);
+      setError(err instanceof Error ? err.message : 'Failed to load occupancy data');
+    } finally {
       setLoading(false);
-    });
+      setRefreshing(false);
+    }
   }, []);
 
-  const displayData = trendData.length
-    ? trendData
-    : [
-        { month: 'Aug', rate: 85 },
-        { month: 'Sep', rate: 87 },
-        { month: 'Oct', rate: 89 },
-        { month: 'Nov', rate: 92 },
-        { month: 'Dec', rate: 91 },
-        { month: 'Jan', rate: 93 },
-        { month: 'Feb', rate: 91 },
-      ];
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const byProperty = [
-    { name: 'Property A', value: 92 },
-    { name: 'Property B', value: 88 },
-    { name: 'Property C', value: 95 },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAll();
+  };
 
   return (
     <div className="space-y-6">
@@ -62,99 +73,113 @@ export default function OccupancyPage() {
         <Link to="/analytics" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Occupancy Trends</h1>
           <p className="text-gray-500">Track occupancy rates across your portfolio</p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Home className="h-5 w-5 text-blue-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500">Current Rate</span>
-          </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">
-            {formatPercentage(displayData[displayData.length - 1]?.rate || 91)}
-          </p>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-5 w-5 text-green-600" />
-            </div>
-            <span className="text-sm font-medium text-gray-500">Vacant Units</span>
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm text-red-700">{error}</p>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">12</p>
+          <button
+            onClick={handleRefresh}
+            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+          >
+            Retry
+          </button>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Home className="h-5 w-5 text-purple-600" />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Home className="h-5 w-5 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">Current Rate</span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {formatPercentage(summary?.occupancy.value ?? trend[trend.length - 1]?.rate ?? 0)}
+              </p>
+              {summary?.occupancy.delta !== null && summary?.occupancy.delta !== undefined && (
+                <p className="text-sm text-gray-500">
+                  {summary.occupancy.delta >= 0 ? '+' : ''}
+                  {summary.occupancy.delta.toFixed(1)}pts vs last month
+                </p>
+              )}
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupied Units</span>
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <span className="text-sm font-medium text-gray-500">Highest Month</span>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {formatPercentage(
+                  trend.length ? Math.max(...trend.map((point) => point.rate)) : 0,
+                )}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <span className="text-sm font-medium text-gray-500">Lowest Month</span>
+              <p className="mt-3 text-2xl font-semibold text-gray-900">
+                {formatPercentage(
+                  trend.length ? Math.min(...trend.map((point) => point.rate)) : 0,
+                )}
+              </p>
+            </div>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-gray-900">128</p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Trend</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={displayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  domain={[80, 100]}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  formatter={(value: number) => [`${value}%`, 'Occupancy']}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="rate"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  dot={{ fill: '#3B82F6' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Trend</h3>
+            <div className="h-80">
+              {trend.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-gray-500 border border-dashed rounded-lg">
+                  No occupancy history yet.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
+                    <YAxis
+                      stroke="#9CA3AF"
+                      fontSize={12}
+                      domain={[0, 100]}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value}%`, 'Occupancy']}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="rate"
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      dot={{ fill: '#3B82F6' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">By Property</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={byProperty}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {byProperty.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value}%`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

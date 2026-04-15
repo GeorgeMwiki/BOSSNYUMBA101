@@ -26,6 +26,7 @@ import { vendorsRouter } from './routes/vendors.hono';
 import { notificationsRouter } from './routes/notifications';
 import { reportsHonoRouter } from './routes/reports.hono';
 import { dashboardRouter } from './routes/dashboard.hono';
+import { analyticsRouter } from './routes/analytics.hono';
 import { onboardingRouter } from './routes/onboarding';
 import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
@@ -79,6 +80,7 @@ api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
 api.route('/reports', reportsHonoRouter);
 api.route('/dashboard', dashboardRouter);
+api.route('/analytics', analyticsRouter);
 api.route('/onboarding', onboardingRouter);
 api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);
@@ -111,6 +113,7 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/notifications',
       '/api/v1/reports',
       '/api/v1/dashboard',
+      '/api/v1/analytics',
       '/api/v1/onboarding',
       '/api/v1/feedback',
       '/api/v1/complaints',
