@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Info } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
+import { Info, Send } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   CategorySelector,
@@ -11,6 +13,8 @@ import {
   PRIORITIES,
   type PhotoPreview,
 } from '@/components/requests';
+import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 const LOCATIONS = [
   { value: 'kitchen', label: 'Kitchen' },
@@ -35,14 +39,25 @@ const QUICK_DESCRIPTIONS: Record<string, string[]> = {
   electrical: ['Outlet not working', 'Light switch broken', 'Flickering lights', 'Power outage', 'Circuit tripped'],
   hvac: ['AC not cooling', 'Heater not working', 'Strange noise', 'No air flow'],
   appliances: ['Fridge not cooling', 'Stove not heating', 'Washer leaking', 'Dishwasher broken'],
-  structural: ['Door won\'t close', 'Window stuck', 'Crack in wall', 'Floor damage'],
+  structural: ["Door won't close", 'Window stuck', 'Crack in wall', 'Floor damage'],
   pest_control: ['Ants', 'Cockroaches', 'Rodents', 'Mosquitoes'],
   security: ['Lock broken', 'Key stuck', 'Intercom not working'],
   general: ['Other issue'],
 };
 
+const schema = z.object({
+  category: z.string().min(1, 'Category is required'),
+  priority: z.string().min(1, 'Priority is required'),
+  description: z.string().min(10, 'Please describe the issue (min 10 characters)'),
+  location: z.string().optional(),
+  permissionToEnter: z.boolean(),
+  preferredSlot: z.string().optional(),
+});
+
 export default function NewRequestPage() {
   const router = useRouter();
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     category: '',
     priority: 'normal',
@@ -52,16 +67,51 @@ export default function NewRequestPage() {
     preferredSlot: '',
   });
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const parsed = schema.parse(formData);
+      const attachments = photos.map((p, i) => ({
+        type: 'image',
+        url: p.url,
+        filename: p.file?.name ?? `photo-${i + 1}.jpg`,
+      }));
+      return api.workOrders.create({
+        title:
+          parsed.description.length > 60
+            ? `${parsed.description.slice(0, 57)}...`
+            : parsed.description,
+        description: parsed.description,
+        category: parsed.category,
+        priority: parsed.priority,
+        location: parsed.location || undefined,
+        preferredTimeSlot: parsed.preferredSlot || undefined,
+        permissionToEnter: parsed.permissionToEnter,
+        attachments: attachments.length ? attachments : undefined,
+      });
+    },
+    onSuccess: (wo) => {
+      toast.success('Request submitted');
+      queryClient.invalidateQueries({ queryKey: ['work-orders'] });
+      router.push(`/maintenance/${wo.id}`);
+    },
+    onError: (err: unknown) => {
+      if (err instanceof z.ZodError) {
+        setFieldError(err.issues[0]?.message ?? 'Please check your input');
+        return;
+      }
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to submit request',
+        'Submission failed'
+      );
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/requests?submitted=true');
+    setFieldError(null);
+    mutation.mutate();
   };
 
   const selectedPriority = PRIORITIES.find((p) => p.value === formData.priority);
@@ -69,9 +119,7 @@ export default function NewRequestPage() {
   return (
     <>
       <PageHeader title="New Request" showBack />
-
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-8">
-        {/* Category */}
+      <form onSubmit={handleSubmit} className="space-y-6 px-4 py-4 pb-8">
         <section>
           <label className="label">What type of issue?</label>
           <CategorySelector
@@ -80,7 +128,6 @@ export default function NewRequestPage() {
           />
         </section>
 
-        {/* Priority */}
         <section>
           <label className="label">How urgent is this?</label>
           <PrioritySelector
@@ -89,19 +136,18 @@ export default function NewRequestPage() {
           />
         </section>
 
-        {/* Problem Description */}
         <section>
           <label className="label" htmlFor="description">
             Describe the problem
           </label>
           {formData.category && QUICK_DESCRIPTIONS[formData.category] && (
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="mb-3 flex flex-wrap gap-2">
               {QUICK_DESCRIPTIONS[formData.category].map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => setFormData({ ...formData, description: preset })}
-                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                  className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
                     formData.description === preset
                       ? 'bg-primary-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -117,12 +163,13 @@ export default function NewRequestPage() {
             className="input min-h-[100px]"
             placeholder="e.g., Water is dripping from under the kitchen sink..."
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             required
           />
         </section>
 
-        {/* Location in Unit */}
         <section>
           <label className="label">Where in the unit?</label>
           <div className="grid grid-cols-2 gap-2">
@@ -132,31 +179,27 @@ export default function NewRequestPage() {
                 <button
                   key={loc.value}
                   type="button"
-                  onClick={() => setFormData({ ...formData, location: loc.value })}
+                  onClick={() =>
+                    setFormData({ ...formData, location: loc.value })
+                  }
                   className={`card p-3 text-left transition-all ${
                     isSelected
                       ? 'ring-2 ring-primary-500 bg-primary-50'
                       : 'hover:bg-gray-50'
                   }`}
                 >
-                  <span className="font-medium text-sm">{loc.label}</span>
+                  <span className="text-sm font-medium">{loc.label}</span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* Photo Upload */}
         <section>
           <label className="label">Photos (optional but helpful)</label>
-          <PhotoCapture
-            photos={photos}
-            onChange={setPhotos}
-            maxPhotos={5}
-          />
+          <PhotoCapture photos={photos} onChange={setPhotos} maxPhotos={5} />
         </section>
 
-        {/* Permission to Enter */}
         <section className="card p-4">
           <div className="flex items-start gap-3">
             <input
@@ -165,21 +208,26 @@ export default function NewRequestPage() {
               className="mt-1 rounded border-gray-300"
               checked={formData.permissionToEnter}
               onChange={(e) =>
-                setFormData({ ...formData, permissionToEnter: e.target.checked })
+                setFormData({
+                  ...formData,
+                  permissionToEnter: e.target.checked,
+                })
               }
             />
             <div>
-              <label htmlFor="permission" className="font-medium text-sm cursor-pointer">
+              <label
+                htmlFor="permission"
+                className="cursor-pointer text-sm font-medium"
+              >
                 Permission to enter if I&apos;m not home
               </label>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-1 text-xs text-gray-500">
                 Allow maintenance staff to enter your unit to address this issue
               </p>
             </div>
           </div>
         </section>
 
-        {/* Preferred Time Slots */}
         <section>
           <label className="label">Preferred time (optional)</label>
           <div className="space-y-2">
@@ -192,7 +240,7 @@ export default function NewRequestPage() {
                   onClick={() =>
                     setFormData({ ...formData, preferredSlot: slot.value })
                   }
-                  className={`card p-3 w-full text-left transition-all ${
+                  className={`card w-full p-3 text-left transition-all ${
                     isSelected
                       ? 'ring-2 ring-primary-500 bg-primary-50'
                       : 'hover:bg-gray-50'
@@ -205,10 +253,9 @@ export default function NewRequestPage() {
           </div>
         </section>
 
-        {/* SLA Info */}
         {selectedPriority && (
-          <div className="bg-primary-50 rounded-lg p-4 flex items-start gap-3">
-            <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
+          <div className="flex items-start gap-3 rounded-lg bg-primary-50 p-4">
+            <Info className="h-5 w-5 flex-shrink-0 text-primary-600" />
             <div className="text-sm">
               <p className="font-medium text-primary-900">Expected Response</p>
               <p className="text-primary-700">
@@ -218,13 +265,25 @@ export default function NewRequestPage() {
           </div>
         )}
 
-        {/* Submit */}
+        {fieldError && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {fieldError}
+          </div>
+        )}
+
         <button
           type="submit"
-          className="btn-primary w-full py-3"
-          disabled={!formData.category || !formData.description || isSubmitting}
+          className="btn-primary flex w-full items-center justify-center gap-2 py-3"
+          disabled={!formData.category || !formData.description || mutation.isPending}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+          {mutation.isPending ? (
+            'Submitting...'
+          ) : (
+            <>
+              <Send className="h-4 w-4" />
+              Submit Request
+            </>
+          )}
         </button>
       </form>
     </>

@@ -1,228 +1,217 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, CreditCard, FileText } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  CreditCard,
+  Download,
+  FileText,
+  Loader2,
+} from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { api, type InvoiceRecord } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
-// Mock invoice data - would come from API
-const invoices: Record<
-  string,
-  {
-    id: string;
-    invoiceNumber: string;
-    amount: number;
-    status: string;
-    dueDate: string;
-    paidDate?: string;
-    lineItems: { description: string; amount: number; quantity?: number }[];
-    property: string;
-    unit: string;
-    createdAt: string;
-    channel?: string;
-    reference?: string;
-  }
-> = {
-  '1': {
-    id: '1',
-    invoiceNumber: 'INV-2024-0301',
-    amount: 45000,
-    status: 'pending',
-    dueDate: '2024-03-01',
-    lineItems: [
-      { description: 'Monthly Rent - March 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2024-02-15',
-  },
-  '2': {
-    id: '2',
-    invoiceNumber: 'INV-2024-0201',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-02-01',
-    paidDate: '2024-01-28',
-    channel: 'M-Pesa',
-    reference: 'MPESA-ABC123XYZ',
-    lineItems: [
-      { description: 'Monthly Rent - February 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2024-01-15',
-  },
-  '3': {
-    id: '3',
-    invoiceNumber: 'INV-2024-0101',
-    amount: 45000,
-    status: 'paid',
-    dueDate: '2024-01-01',
-    paidDate: '2023-12-30',
-    channel: 'M-Pesa',
-    reference: 'MPESA-DEF456UVW',
-    lineItems: [
-      { description: 'Monthly Rent - January 2024', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-12-15',
-  },
-  '4': {
-    id: '4',
-    invoiceNumber: 'INV-2023-0601',
-    amount: 90000,
-    status: 'paid',
-    dueDate: '2023-06-01',
-    paidDate: '2023-05-28',
-    channel: 'Bank Transfer',
-    reference: 'BANK-GHI789RST',
-    lineItems: [{ description: 'Security Deposit', amount: 90000, quantity: 1 }],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-05-20',
-  },
-  '5': {
-    id: '5',
-    invoiceNumber: 'INV-2023-1201',
-    amount: 45000,
-    status: 'failed',
-    dueDate: '2023-12-01',
-    lineItems: [
-      { description: 'Monthly Rent - December 2023', amount: 40000, quantity: 1 },
-      { description: 'Service Charge', amount: 3000, quantity: 1 },
-      { description: 'Water Bill', amount: 2000, quantity: 1 },
-    ],
-    property: 'Sunset Apartments',
-    unit: 'A-204',
-    createdAt: '2023-11-15',
-  },
-};
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  paid: { label: 'Paid', color: 'badge-success' },
-  pending: { label: 'Pending', color: 'badge-warning' },
-  overdue: { label: 'Overdue', color: 'badge-danger' },
-  failed: { label: 'Failed', color: 'badge-danger' },
-  processing: { label: 'Processing', color: 'badge-info' },
+const statusConfig: Record<string, { label: string; tone: string }> = {
+  paid: { label: 'Paid', tone: 'bg-emerald-500/20 text-emerald-200' },
+  pending: { label: 'Pending', tone: 'bg-amber-500/20 text-amber-200' },
+  overdue: { label: 'Overdue', tone: 'bg-red-500/20 text-red-200' },
+  failed: { label: 'Failed', tone: 'bg-red-500/20 text-red-200' },
+  processing: { label: 'Processing', tone: 'bg-blue-500/20 text-blue-200' },
 };
 
 export default function InvoicePage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const id = params.id as string;
-  const invoice = invoices[id] || invoices['1'];
 
-  if (!invoice) {
+  const query = useQuery<InvoiceRecord>({
+    queryKey: ['invoice', id],
+    queryFn: () => api.invoices.get(id),
+    enabled: !!id,
+  });
+
+  const download = useMutation({
+    mutationFn: () => api.invoices.downloadPdfUrl(id),
+    onSuccess: (result) => {
+      if (result.downloadUrl) {
+        window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error('Download link unavailable');
+      }
+    },
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? err.message : 'Could not generate download link',
+        'Download failed'
+      ),
+  });
+
+  if (query.isLoading) {
     return (
-      <div className="px-4 py-8 text-center">
-        <p className="text-gray-600">Invoice not found</p>
-        <button onClick={() => router.back()} className="btn-primary mt-4">
-          Go Back
-        </button>
-      </div>
+      <>
+        <PageHeader title="Invoice" showBack />
+        <div className="flex items-center justify-center gap-2 px-4 py-16 text-gray-400">
+          <Loader2 className="h-5 w-5 animate-spin" /> Loading invoice...
+        </div>
+      </>
     );
   }
 
-  const status = statusConfig[invoice.status] || statusConfig.pending;
-  const canPay = invoice.status === 'pending' || invoice.status === 'overdue' || invoice.status === 'failed';
+  if (query.error || !query.data) {
+    return (
+      <>
+        <PageHeader title="Invoice" showBack />
+        <div className="space-y-3 px-4 py-4">
+          <div className="card border-red-500/30 bg-red-500/10 p-4 text-red-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5" />
+              <div>
+                <p className="font-medium">Invoice not found</p>
+                <p className="text-sm">
+                  {(query.error as Error | undefined)?.message ?? 'This invoice is unavailable.'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="btn-primary w-full"
+          >
+            Go Back
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  const invoice = query.data;
+  const status =
+    statusConfig[invoice.status.toLowerCase()] ??
+    { label: invoice.status, tone: 'bg-white/10 text-gray-200' };
+  const canPay = ['pending', 'overdue', 'failed'].includes(invoice.status.toLowerCase());
+  const currency = invoice.currency ?? 'KES';
 
   return (
     <>
       <PageHeader title="Invoice" showBack />
 
-      <div className="px-4 py-4 space-y-6 pb-24">
-        {/* Invoice Header */}
+      <div className="space-y-6 px-4 py-4 pb-24">
         <div className="card p-5">
-          <div className="flex items-start justify-between mb-4">
+          <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs text-gray-500">{invoice.invoiceNumber}</div>
-              <h2 className="text-lg font-semibold mt-1">{invoice.property}</h2>
-              <div className="text-sm text-gray-500">{invoice.unit}</div>
+              <div className="text-xs text-gray-400">
+                {invoice.invoiceNumber ?? `#${invoice.id.slice(0, 8)}`}
+              </div>
+              {invoice.propertyName && (
+                <h2 className="mt-1 text-lg font-semibold text-white">
+                  {invoice.propertyName}
+                </h2>
+              )}
+              {invoice.unitNumber && (
+                <div className="text-sm text-gray-400">{invoice.unitNumber}</div>
+              )}
             </div>
-            <span className={status.color}>{status.label}</span>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${status.tone}`}
+            >
+              {status.label}
+            </span>
           </div>
-          <div className="text-2xl font-bold text-primary-600">
-            KES {invoice.amount.toLocaleString()}
+          <div className="text-2xl font-bold text-primary-300">
+            {currency} {invoice.amount.toLocaleString()}
+          </div>
+          <div className="mt-1 text-xs text-gray-400">
+            Due {new Date(invoice.dueDate).toLocaleDateString()}
           </div>
         </div>
 
-        {/* Line Items */}
-        <section className="card">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-medium flex items-center gap-2">
-              <FileText className="w-4 h-4" />
+        {invoice.lineItems && invoice.lineItems.length > 0 && (
+          <section className="card">
+            <div className="flex items-center gap-2 border-b border-white/10 p-4 font-medium text-white">
+              <FileText className="h-4 w-4" />
               Invoice Details
-            </h3>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {invoice.lineItems.map((item, index) => (
-              <div key={index} className="p-4 flex justify-between">
-                <div>
-                  <div className="font-medium">{item.description}</div>
-                  {item.quantity && item.quantity > 1 && (
-                    <div className="text-sm text-gray-500">Qty: {item.quantity}</div>
-                  )}
-                </div>
-                <div className="font-medium">KES {item.amount.toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-          <div className="p-4 bg-gray-50 border-t border-gray-100">
-            <div className="flex justify-between font-semibold">
-              <span>Total</span>
-              <span>KES {invoice.amount.toLocaleString()}</span>
             </div>
-          </div>
-        </section>
+            <div className="divide-y divide-white/10">
+              {invoice.lineItems.map((item, index) => (
+                <div key={index} className="flex justify-between p-4">
+                  <div>
+                    <div className="font-medium text-white">{item.description}</div>
+                    {item.quantity && item.quantity > 1 && (
+                      <div className="text-sm text-gray-400">Qty: {item.quantity}</div>
+                    )}
+                  </div>
+                  <div className="font-medium text-white">
+                    {currency} {item.amount.toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/10 bg-white/5 p-4">
+              <div className="flex justify-between font-semibold text-white">
+                <span>Total</span>
+                <span>
+                  {currency} {invoice.amount.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
 
-        {/* Payment Info for paid invoices */}
-        {invoice.status === 'paid' && invoice.paidDate && (
+        {invoice.status.toLowerCase() === 'paid' && invoice.paidDate && (
           <div className="card p-4">
-            <h3 className="font-medium mb-3">Payment Information</h3>
+            <h3 className="mb-3 font-medium text-white">Payment Information</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Paid on</span>
-                <span>{new Date(invoice.paidDate).toLocaleDateString()}</span>
+                <span className="text-gray-400">Paid on</span>
+                <span className="text-white">
+                  {new Date(invoice.paidDate).toLocaleDateString()}
+                </span>
               </div>
               {invoice.channel && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Method</span>
-                  <span>{invoice.channel}</span>
+                  <span className="text-gray-400">Method</span>
+                  <span className="text-white">{invoice.channel}</span>
                 </div>
               )}
               {invoice.reference && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Reference</span>
-                  <span className="font-mono text-xs">{invoice.reference}</span>
+                  <span className="text-gray-400">Reference</span>
+                  <span className="font-mono text-xs text-white">{invoice.reference}</span>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Actions */}
         <div className="space-y-3">
           {canPay && (
             <Link href={`/payments/pay?amount=${invoice.amount}`}>
-              <button className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Pay this Invoice
+              <button
+                type="button"
+                className="btn-primary flex w-full items-center justify-center gap-2 py-4 text-lg"
+              >
+                <CreditCard className="h-5 w-5" />
+                Pay this invoice
               </button>
             </Link>
           )}
           <button
-            onClick={() => window.print()}
-            className="btn-secondary w-full py-4 flex items-center justify-center gap-2"
+            type="button"
+            onClick={() => download.mutate()}
+            disabled={download.isPending}
+            className="btn-secondary flex w-full items-center justify-center gap-2 py-4"
           >
-            <Download className="w-5 h-5" />
-            Download PDF
+            {download.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Download className="h-5 w-5" />
+            )}
+            {download.isPending ? 'Preparing download...' : 'Download PDF'}
           </button>
         </div>
       </div>
