@@ -132,4 +132,42 @@ app.delete('/:id', async (c) => {
   return c.json({ success: true, data: { message: 'Work order deleted' } });
 });
 
+// TODO: wire to real store — persist customer feedback on a completed work
+// order. The customer app posts here after the technician closes a ticket.
+app.post('/:id/feedback', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const body = (await c.req.json().catch(() => ({}))) as {
+    overallRating?: number;
+    categoryRatings?: Record<string, number>;
+    tags?: string[];
+    comment?: string;
+    wouldRecommend?: boolean;
+  };
+  if (!body.overallRating || body.overallRating < 1 || body.overallRating > 5) {
+    return c.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'overallRating is required (1-5).' } },
+      400
+    );
+  }
+  return c.json(
+    {
+      success: true,
+      data: {
+        id: `feedback-${Date.now()}`,
+        workOrderId: id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        overallRating: body.overallRating,
+        categoryRatings: body.categoryRatings ?? {},
+        tags: body.tags ?? [],
+        comment: body.comment,
+        wouldRecommend: body.wouldRecommend,
+        createdAt: new Date().toISOString(),
+      },
+    },
+    201
+  );
+});
+
 export const workOrdersRouter = app;
