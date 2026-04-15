@@ -25,3 +25,8 @@ export * from './communications.schema.js';
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';
+
+// Multi-tenancy, Global Jurisdiction, and Compliance
+export * from './cross-tenant-memberships.schema.js';
+export * from './jurisdiction-config.schema.js';
+export * from './subprocessors.schema.js';
