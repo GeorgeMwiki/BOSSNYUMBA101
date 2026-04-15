@@ -5,13 +5,17 @@ import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 import '../../core/api_client.dart';
 
-/// Owner glance dashboard — the mobile companion home.
+/// Owner home screen showing four headline KPI cards:
+///   * Collection rate
+///   * Occupancy
+///   * Arrears total
+///   * Open tickets
 ///
-/// Designed for 30-second decisions during a commute:
-///  * KPIs above the fold (2x2 grid) hitting `/analytics/summary`
-///  * Today's agenda + recent alerts below the fold
-///  * Pull-to-refresh re-fetches everything
-///  * Refetches automatically when the active org (tenantId) changes
+/// Each card shows a current value, a period-over-period delta, uses a
+/// skeleton while loading, and shows an error state with a retry button.
+///
+/// Pull-to-refresh triggers a re-fetch. The screen also watches [AuthProvider]
+/// so switching the active organisation (tenantId) re-fetches automatically.
 class OwnerHomeScreen extends StatefulWidget {
   const OwnerHomeScreen({super.key});
 
@@ -19,63 +23,124 @@ class OwnerHomeScreen extends StatefulWidget {
   State<OwnerHomeScreen> createState() => _OwnerHomeScreenState();
 }
 
-class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
-  Future<ApiResponse<Map<String, dynamic>>>? _summary;
-  Future<ApiResponse<Map<String, dynamic>>>? _agenda;
-  Future<ApiResponse<Map<String, dynamic>>>? _alerts;
-  Future<ApiResponse<Map<String, dynamic>>>? _approvals;
+class _KpiSnapshot {
+  final double collectionRate;
+  final double? collectionRateDelta;
+  final double occupancy;
+  final double? occupancyDelta;
+  final num arrears;
+  final num? arrearsDelta;
+  final int openTickets;
+  final int? openTicketsDelta;
 
+  _KpiSnapshot({
+    required this.collectionRate,
+    required this.collectionRateDelta,
+    required this.occupancy,
+    required this.occupancyDelta,
+    required this.arrears,
+    required this.arrearsDelta,
+    required this.openTickets,
+    required this.openTicketsDelta,
+  });
+
+  factory _KpiSnapshot.fromSummary(
+    Map<String, dynamic> summary,
+    Map<String, dynamic> maintenance,
+  ) {
+    Map<String, dynamic> kpi(String key) {
+      final raw = summary[key];
+      if (raw is Map<String, dynamic>) return raw;
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      return <String, dynamic>{};
+    }
+
+    final collection = kpi('collectionRate');
+    final occupancy = kpi('occupancy');
+    final arrears = kpi('arrears');
+
+    return _KpiSnapshot(
+      collectionRate: (collection['value'] as num?)?.toDouble() ?? 0,
+      collectionRateDelta: (collection['delta'] as num?)?.toDouble(),
+      occupancy: (occupancy['value'] as num?)?.toDouble() ?? 0,
+      occupancyDelta: (occupancy['delta'] as num?)?.toDouble(),
+      arrears: (arrears['value'] as num?) ?? 0,
+      arrearsDelta: arrears['delta'] as num?,
+      openTickets: (maintenance['open'] as num?)?.toInt() ?? 0,
+      openTicketsDelta: maintenance['delta'] is num
+          ? (maintenance['delta'] as num).toInt()
+          : null,
+    );
+  }
+}
+
+class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
+  _KpiSnapshot? _snapshot;
+  String? _error;
+  bool _loading = true;
   String? _lastTenantId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final auth = context.read<AuthProvider>();
-    final tenantId = auth.session?.tenantId;
-    if (_lastTenantId != null && tenantId != _lastTenantId) {
-      // Active org changed — refetch everything.
-      _loadAll();
+    final tenantId = context.read<AuthProvider>().session?.tenantId;
+    if (_lastTenantId != null && _lastTenantId != tenantId) {
+      // Active organisation switched — refresh.
+      _load();
     }
     _lastTenantId = tenantId;
   }
 
-  void _loadAll() {
+  Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
-      _summary = ApiClient.instance.get<Map<String, dynamic>>('/analytics/summary');
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      _agenda = ApiClient.instance
-          .get<Map<String, dynamic>>('/owner/agenda', queryParams: {'date': today});
-      _alerts = ApiClient.instance.get<Map<String, dynamic>>(
-        '/notifications',
-        queryParams: {'limit': '5', 'unread': 'true'},
-      );
-      _approvals = ApiClient.instance.get<Map<String, dynamic>>(
-        '/approvals',
-        queryParams: {'status': 'pending', 'limit': '1'},
-      );
+      _loading = true;
+      _error = null;
     });
-  }
 
-  Future<void> _refresh() async {
-    _loadAll();
-    await Future.wait([
-      _summary!,
-      _agenda!,
-      _alerts!,
-      _approvals!,
-    ]);
-  }
+    final api = ApiClient.instance;
+    try {
+      final results = await Future.wait([
+        api.get<Map<String, dynamic>>('/analytics/summary'),
+        api.get<Map<String, dynamic>>('/analytics/maintenance'),
+        // occupancy + arrears are available for deep-drill screens; we don't
+        // need their payload for the 4 headline cards but we warm the cache.
+        api.get<dynamic>('/analytics/occupancy'),
+        api.get<Map<String, dynamic>>('/analytics/arrears'),
+      ]);
+      final summary = results[0];
+      final maintenance = results[1];
 
-  String _greeting(int hour) {
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+      if (!summary.isOk) {
+        throw Exception(summary.error ?? 'Failed to load KPI summary');
+      }
+      if (!maintenance.isOk) {
+        throw Exception(maintenance.error ?? 'Failed to load maintenance KPIs');
+      }
+
+      final summaryData = (summary.data ?? <String, dynamic>{}) as Map<String, dynamic>;
+      final maintenanceData =
+          (maintenance.data ?? <String, dynamic>{}) as Map<String, dynamic>;
+
+      if (!mounted) return;
+      setState(() {
+        _snapshot = _KpiSnapshot.fromSummary(summaryData, maintenanceData);
+        _loading = false;
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() {
+        _snapshot = null;
+        _error = err.toString();
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -85,260 +150,215 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
     final greetLine =
         '${_greeting(DateTime.now().hour)}, ${session?.firstName.isNotEmpty == true ? session!.firstName : 'Owner'}';
 
+    // Active-org change detection (in case provider rebuilds before
+    // didChangeDependencies fires).
+    if (_lastTenantId != null && _lastTenantId != session?.tenantId && !_loading) {
+      _lastTenantId = session?.tenantId;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Boss Dashboard'),
-        actions: const [
-          _OrgSwitcherCompact(),
-          SizedBox(width: 8),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Portfolio')),
       body: RefreshIndicator(
-        onRefresh: _refresh,
+        onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.all(16),
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                greetLine,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome, ${session?.firstName ?? "Owner"}',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
+                    if (session?.tenantName != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        session!.tenantName!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-            _KpiGrid(future: _summary, onRetry: _loadAll),
-            const SizedBox(height: 20),
-            _ApprovalsBadge(future: _approvals),
-            const SizedBox(height: 20),
-            _SectionHeader(title: "Today's agenda"),
-            const SizedBox(height: 8),
-            _AgendaSection(future: _agenda, onRetry: _loadAll),
-            const SizedBox(height: 24),
-            _SectionHeader(title: 'Recent alerts'),
-            const SizedBox(height: 8),
-            _AlertsSection(future: _alerts, onRetry: _loadAll),
+            const SizedBox(height: 16),
+            _buildKpiGrid(context),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildKpiGrid(BuildContext context) {
+    if (_loading) {
+      return _KpiGrid(
+        children: List.generate(4, (_) => const _KpiSkeleton()),
+      );
+    }
+    if (_error != null) {
+      return _KpiErrorCard(message: _error!, onRetry: _load);
+    }
+    final snap = _snapshot;
+    if (snap == null) {
+      return _KpiErrorCard(
+        message: 'No KPI data available for this organisation yet.',
+        onRetry: _load,
+      );
+    }
+    return _KpiGrid(
+      children: [
+        _KpiCard(
+          label: 'Collection Rate',
+          icon: Icons.bar_chart,
+          iconColor: Colors.teal,
+          value: '${snap.collectionRate.toStringAsFixed(1)}%',
+          deltaLabel: _formatDelta(snap.collectionRateDelta, unit: _DeltaUnit.percent),
+          deltaPositive: (snap.collectionRateDelta ?? 0) >= 0,
+        ),
+        _KpiCard(
+          label: 'Occupancy',
+          icon: Icons.home,
+          iconColor: Colors.blue,
+          value: '${snap.occupancy.toStringAsFixed(1)}%',
+          deltaLabel: _formatDelta(snap.occupancyDelta, unit: _DeltaUnit.percent),
+          deltaPositive: (snap.occupancyDelta ?? 0) >= 0,
+        ),
+        _KpiCard(
+          label: 'Arrears Total',
+          icon: Icons.attach_money,
+          iconColor: Colors.orange,
+          value: _formatCurrency(snap.arrears),
+          deltaLabel: _formatDelta(snap.arrearsDelta, unit: _DeltaUnit.currency),
+          // Falling arrears is good (positive), rising arrears is bad.
+          deltaPositive: (snap.arrearsDelta ?? 0) <= 0,
+        ),
+        _KpiCard(
+          label: 'Open Tickets',
+          icon: Icons.build,
+          iconColor: Colors.purple,
+          value: '${snap.openTickets}',
+          deltaLabel: _formatDelta(snap.openTicketsDelta, unit: _DeltaUnit.count),
+          // Fewer tickets is good.
+          deltaPositive: (snap.openTicketsDelta ?? 0) <= 0,
+        ),
+      ],
+    );
+  }
 }
 
-// ---------------------------------------------------------------------------
-// KPI grid
-// ---------------------------------------------------------------------------
+enum _DeltaUnit { percent, currency, count }
+
+String _formatCurrency(num amount) {
+  final value = amount.round();
+  final formatted = value.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+        (match) => '${match[1]},',
+      );
+  return 'KES $formatted';
+}
+
+String _formatDelta(num? delta, {required _DeltaUnit unit}) {
+  if (delta == null) return 'no prior period';
+  final sign = delta >= 0 ? '+' : '';
+  switch (unit) {
+    case _DeltaUnit.percent:
+      return '$sign${delta.toStringAsFixed(1)}pts vs last month';
+    case _DeltaUnit.currency:
+      final prefix = delta >= 0 ? '+' : '-';
+      return '$prefix${_formatCurrency(delta.abs())} vs last month';
+    case _DeltaUnit.count:
+      return '$sign${delta.toInt()} vs last month';
+  }
+}
 
 class _KpiGrid extends StatelessWidget {
-  final Future<ApiResponse<Map<String, dynamic>>>? future;
-  final VoidCallback onRetry;
-  const _KpiGrid({required this.future, required this.onRetry});
+  final List<Widget> children;
+  const _KpiGrid({required this.children});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ApiResponse<Map<String, dynamic>>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const _KpiSkeletonGrid();
-        }
-        if (!snap.hasData || !(snap.data?.isOk ?? false)) {
-          return _ErrorCard(
-            message: snap.data?.error ?? 'Unable to load KPIs',
-            onRetry: onRetry,
-          );
-        }
-        final data = snap.data!.data ?? const {};
-
-        final collection = _asDouble(data['collectionRate']);
-        final collectionDelta = _asDouble(data['collectionRateDelta']);
-        final occupancy = _asDouble(data['occupancyRate']);
-        final occupancyDelta = _asDouble(data['occupancyRateDelta']);
-        final arrears = _asDouble(data['arrearsTotal']);
-        final openTickets = _asInt(data['openTickets']);
-        final criticalTickets = _asInt(data['criticalTickets']);
-
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 640 ? 4 : 2;
         return GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.4,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.35,
-          children: [
-            _KpiCard(
-              key: const Key('kpi-collection'),
-              label: 'Collection rate',
-              value: collection != null ? '${collection.toStringAsFixed(0)}%' : '--',
-              delta: collectionDelta,
-              deltaSuffix: 'pp',
-            ),
-            _KpiCard(
-              key: const Key('kpi-occupancy'),
-              label: 'Occupancy',
-              value: occupancy != null ? '${occupancy.toStringAsFixed(0)}%' : '--',
-              delta: occupancyDelta,
-              deltaSuffix: 'pp',
-            ),
-            _KpiCard(
-              key: const Key('kpi-arrears'),
-              label: 'Arrears',
-              value: arrears != null ? _formatKes(arrears) : 'KES --',
-              // Arrears going down is good — we don't surface a delta here to
-              // keep the card scannable.
-            ),
-            _KpiCard(
-              key: const Key('kpi-tickets'),
-              label: 'Open tickets',
-              value: openTickets != null ? '$openTickets' : '--',
-              badgeCount: criticalTickets ?? 0,
-            ),
-          ],
+          children: children,
         );
       },
     );
-  }
-
-  static double? _asDouble(Object? v) {
-    if (v == null) return null;
-    if (v is num) return v.toDouble();
-    return double.tryParse(v.toString());
-  }
-
-  static int? _asInt(Object? v) {
-    if (v == null) return null;
-    if (v is int) return v;
-    if (v is num) return v.toInt();
-    return int.tryParse(v.toString());
-  }
-
-  static String _formatKes(double v) {
-    final f = NumberFormat.decimalPattern('en_US');
-    return 'KES ${f.format(v.round())}';
   }
 }
 
 class _KpiCard extends StatelessWidget {
   final String label;
+  final IconData icon;
+  final Color iconColor;
   final String value;
-  final double? delta;
-  final String deltaSuffix;
-  final int badgeCount;
+  final String deltaLabel;
+  final bool deltaPositive;
 
   const _KpiCard({
-    super.key,
     required this.label,
+    required this.icon,
+    required this.iconColor,
     required this.value,
-    this.delta,
-    this.deltaSuffix = '',
-    this.badgeCount = 0,
+    required this.deltaLabel,
+    required this.deltaPositive,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hasDelta = delta != null;
-    final isUp = hasDelta && delta! >= 0;
-    final deltaColor = isUp ? Colors.greenAccent : theme.colorScheme.error;
-
+    final deltaColor = deltaPositive ? Colors.green[700] : Colors.red[700];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Icon(icon, size: 18, color: iconColor),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
+                    style: Theme.of(context).textTheme.labelMedium,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (badgeCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$badgeCount',
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
               ],
             ),
-            const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            Text(
+              value,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
-            if (hasDelta)
-              Row(
-                children: [
-                  Icon(
-                    isUp ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                    color: deltaColor,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${delta!.abs().toStringAsFixed(1)}$deltaSuffix',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: deltaColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'vs last month',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.55),
-                    ),
-                  ),
-                ],
-              )
-            else
-              const SizedBox(height: 14),
+            Text(
+              deltaLabel,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: deltaColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _KpiSkeletonGrid extends StatelessWidget {
-  const _KpiSkeletonGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.35,
-      children: const [
-        _KpiSkeleton(),
-        _KpiSkeleton(),
-        _KpiSkeleton(),
-        _KpiSkeleton(),
-      ],
     );
   }
 }
@@ -348,357 +368,44 @@ class _KpiSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.surfaceContainerHighest;
     return Card(
-      key: const Key('kpi-skeleton'),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              height: 10,
-              width: 80,
-              decoration: BoxDecoration(
-                color: base.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            Container(
-              height: 26,
-              width: 100,
-              decoration: BoxDecoration(
-                color: base.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            Container(
-              height: 10,
-              width: 60,
-              decoration: BoxDecoration(
-                color: base.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
+            _bar(width: 80, height: 10),
+            _bar(width: 120, height: 18),
+            _bar(width: 140, height: 10),
           ],
         ),
       ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Agenda & alerts sections
-// ---------------------------------------------------------------------------
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-    );
-  }
-}
-
-class _AgendaSection extends StatelessWidget {
-  final Future<ApiResponse<Map<String, dynamic>>>? future;
-  final VoidCallback onRetry;
-  const _AgendaSection({required this.future, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ApiResponse<Map<String, dynamic>>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const _ListSkeleton(rows: 2);
-        }
-        if (!snap.hasData || !(snap.data?.isOk ?? false)) {
-          return _ErrorCard(
-            message: snap.data?.error ?? 'Unable to load agenda',
-            onRetry: onRetry,
-          );
-        }
-        final data = snap.data!.data ?? const {};
-        final items = _extractList(data);
-        if (items.isEmpty) {
-          return Card(
-            key: const Key('agenda-empty'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Row(
-                children: [
-                  Icon(Icons.event_available,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                  const SizedBox(width: 12),
-                  const Text('No scheduled events today'),
-                ],
-              ),
-            ),
-          );
-        }
-        return Column(
-          children: items.map((e) {
-            final m = e as Map<String, dynamic>;
-            final title = (m['title'] ?? m['name'] ?? 'Event').toString();
-            final subtitle = (m['subtitle'] ?? m['time'] ?? m['type'] ?? '').toString();
-            final type = (m['type'] ?? '').toString().toLowerCase();
-            return Card(
-              child: ListTile(
-                minVerticalPadding: 12,
-                leading: Icon(_iconForAgenda(type)),
-                title: Text(title),
-                subtitle: subtitle.isEmpty ? null : Text(subtitle),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  IconData _iconForAgenda(String type) {
-    switch (type) {
-      case 'lease_start':
-      case 'lease_end':
-      case 'lease':
-        return Icons.description;
-      case 'inspection':
-        return Icons.checklist;
-      case 'vendor':
-      case 'vendor_visit':
-        return Icons.build;
-      default:
-        return Icons.event;
-    }
-  }
-}
-
-class _AlertsSection extends StatelessWidget {
-  final Future<ApiResponse<Map<String, dynamic>>>? future;
-  final VoidCallback onRetry;
-  const _AlertsSection({required this.future, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ApiResponse<Map<String, dynamic>>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const _ListSkeleton(rows: 3);
-        }
-        if (!snap.hasData || !(snap.data?.isOk ?? false)) {
-          return _ErrorCard(
-            message: snap.data?.error ?? 'Unable to load alerts',
-            onRetry: onRetry,
-          );
-        }
-        final data = snap.data!.data ?? const {};
-        final items = _extractList(data);
-        if (items.isEmpty) {
-          return Card(
-            key: const Key('alerts-empty'),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Text('You are all caught up.'),
-            ),
-          );
-        }
-        return Column(
-          children: items.map((e) {
-            final m = e as Map<String, dynamic>;
-            final id = (m['id'] ?? '').toString();
-            final title = (m['title'] ?? 'Notification').toString();
-            final body = (m['body'] ?? m['message'] ?? '').toString();
-            return Card(
-              child: InkWell(
-                onTap: id.isEmpty
-                    ? null
-                    : () => context.go('/owner/notifications/$id'),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 56),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.notifications_active_outlined),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600)),
-                              if (body.isNotEmpty)
-                                Text(
-                                  body,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-}
-
-class _ApprovalsBadge extends StatelessWidget {
-  final Future<ApiResponse<Map<String, dynamic>>>? future;
-  const _ApprovalsBadge({required this.future});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ApiResponse<Map<String, dynamic>>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done ||
-            !snap.hasData ||
-            !(snap.data?.isOk ?? false)) {
-          return const SizedBox.shrink();
-        }
-        final data = snap.data!.data ?? const {};
-        final count = _extractCount(data);
-        if (count <= 0) return const SizedBox.shrink();
-        return Card(
-          key: const Key('approvals-badge'),
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
-          child: InkWell(
-            onTap: () => context.go('/owner/approvals'),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.priority_high),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Action needed — $count pending approval${count == 1 ? '' : 's'}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  int _extractCount(Map<String, dynamic> data) {
-    final total = data['total'] ?? data['count'];
-    if (total is num) return total.toInt();
-    if (total is String) return int.tryParse(total) ?? 0;
-    final items = _extractList(data);
-    return items.length;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
-List<dynamic> _extractList(Map<String, dynamic> data) {
-  for (final k in const ['items', 'results', 'data']) {
-    final v = data[k];
-    if (v is List) return v;
-  }
-  return const [];
-}
-
-class _ListSkeleton extends StatelessWidget {
-  final int rows;
-  const _ListSkeleton({this.rows = 3});
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Theme.of(context).colorScheme.surfaceContainerHighest;
-    return Column(
-      children: List.generate(
-        rows,
-        (_) => Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: base.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 12,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: base.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        height: 10,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          color: base.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Widget _bar({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
 }
 
-class _ErrorCard extends StatelessWidget {
+class _KpiErrorCard extends StatelessWidget {
   final String message;
-  final VoidCallback onRetry;
-  const _ErrorCard({required this.message, required this.onRetry});
+  final Future<void> Function() onRetry;
+
+  const _KpiErrorCard({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      key: const Key('error-card'),
+      color: Colors.red[50],
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -706,69 +413,28 @@ class _ErrorCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.error_outline,
-                    color: Theme.of(context).colorScheme.error),
+                Icon(Icons.error_outline, color: Colors.red[700]),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
+                Text(
+                  'Unable to load KPIs',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(color: Colors.red[800]),
                 ),
               ],
             ),
             const SizedBox(height: 8),
+            Text(message, style: TextStyle(color: Colors.red[700])),
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: SizedBox(
-                height: 44,
-                child: TextButton.icon(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
+              child: FilledButton.icon(
+                onPressed: () => onRetry(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact placeholder for the cross-cutting org switcher until
-/// `lib/widgets/org_switcher.dart` lands from the parallel agent.
-///
-/// Shows the current tenant name + a down-caret icon in the AppBar.
-class _OrgSwitcherCompact extends StatelessWidget {
-  const _OrgSwitcherCompact();
-
-  @override
-  Widget build(BuildContext context) {
-    final session = context.watch<AuthProvider>().session;
-    final name = session?.tenantName ?? 'Org';
-    return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Org switcher coming soon')),
-        );
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                name,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, size: 20),
           ],
         ),
       ),

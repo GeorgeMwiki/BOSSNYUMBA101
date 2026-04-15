@@ -59,6 +59,7 @@ export * from './services/inspections';
 export * from './services/documents';
 export * from './services/notifications';
 export * from './services/reports';
+export * from './services/kpis';
 export * from './services/feedback';
 export * from './services/messaging';
 export * from './services/scheduling';

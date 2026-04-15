@@ -1,18 +1,41 @@
 /**
- * KPIs / Analytics API Service
+ * KPIs API Service
  *
- * Typed client for the /analytics/* KPI endpoints exposed by the api-gateway.
- * The concrete SQL implementation (SQLKPIDataProvider) lives in
- * services/api-gateway/src/services/sql-kpi-data-provider.ts.
+ * Thin client over `/api/v1/analytics/*` exposed by the api-gateway.
+ * Backs the owner dashboard KPI cards on both the owner-portal (web) and
+ * the bossnyumba_app Flutter-equivalent TS consumers.
  */
 
-import { getApiClient, ApiResponse } from '../client';
+import { getApiClient, type ApiResponse } from '../client';
 
-export interface KPIPortfolioSummary {
-  occupancy: number;
-  revenue: number;
-  expenses: number;
-  noi: number;
+export type KpiUnit = 'percent' | 'currency' | 'count';
+
+export interface KpiValue<T extends number = number> {
+  /** Current-period value */
+  value: T;
+  /** Previous-period value (same length window) */
+  previous: T;
+  /** value - previous, null when previous is undefined / incomparable */
+  delta: number | null;
+  /** How this value should be rendered */
+  unit: KpiUnit;
+  /** For revenue only */
+  changePercent?: number;
+}
+
+export interface KpiSummary {
+  collectionRate: KpiValue;
+  occupancy: KpiValue;
+  arrears: KpiValue;
+  openTickets: KpiValue;
+  revenue: KpiValue;
+  meta: {
+    generatedAt: string;
+    periodStart: string;
+    periodEnd: string;
+    previousPeriodStart: string;
+    previousPeriodEnd: string;
+  };
 }
 
 export interface OccupancyTrendPoint {
@@ -20,152 +43,95 @@ export interface OccupancyTrendPoint {
   rate: number;
 }
 
-export interface OccupancyRateMeta {
-  rate: number;
-  totalUnits: number;
-  occupiedUnits: number;
-  vacantUnits: number;
-  trend: OccupancyTrendPoint[];
-}
-
-export interface RentCollectionRate {
-  rate: number;
-  totalBilled: number;
-  totalCollected: number;
-  totalOutstanding: number;
-}
-
-export type ArrearsAgingBucketKey = 'current' | '1-30' | '31-60' | '61-90' | '90+';
-
-export interface ArrearsAgingBucket {
-  bucket: ArrearsAgingBucketKey;
-  amount: number;
-  count: number;
-}
-
-export interface ArrearsAging {
-  buckets: ArrearsAgingBucket[];
-  totalOutstanding: number;
-}
-
-export interface MaintenanceTicketsMetrics {
-  total: number;
-  open: number;
-  inProgress: number;
-  completed: number;
-  avgResolutionHours: number;
-  totalCost: number;
-}
-
-export interface RevenueBreakdownPoint {
+export interface RevenueTrendPoint {
   month: string;
   rent: number;
   other: number;
 }
 
-export interface RevenueBreakdown {
-  trend: RevenueBreakdownPoint[];
-  bySource: Array<{ name: string; value: number }>;
-  totalRevenue: number;
-}
-
-export interface ExpenseBreakdownPoint {
+export interface ExpenseTrendPoint {
   month: string;
   maintenance: number;
   utilities: number;
   admin: number;
 }
 
-export interface ExpenseBreakdown {
-  trend: ExpenseBreakdownPoint[];
-  byCategory: Array<{ name: string; value: number }>;
-  totalExpenses: number;
+export interface ArrearsBucket {
+  bucket: string;
+  amount: number;
 }
 
-export interface KPIQueryParams {
-  propertyId?: string | string[];
-  startDate?: string;
-  endDate?: string;
-  months?: number;
+export interface ArrearsReport {
+  total: number;
+  current: number;
+  buckets: ArrearsBucket[];
 }
 
-function buildParams(
-  params?: KPIQueryParams
-): Record<string, string | number | boolean | string[] | undefined> {
-  if (!params) return {};
-  const out: Record<string, string | number | boolean | string[] | undefined> = {};
-  if (params.propertyId !== undefined) out.propertyId = params.propertyId;
-  if (params.startDate) out.startDate = params.startDate;
-  if (params.endDate) out.endDate = params.endDate;
-  if (params.months !== undefined) out.months = String(params.months);
-  return out;
+export interface MaintenanceKpis {
+  open: number;
+  inProgress: number;
+  pendingApprovals: number;
+  completedThisMonth: number;
+  completedPrevMonth: number;
+  totalCostThisMonth: number;
+  delta: number | null;
+}
+
+export interface KpiQueryParams {
+  propertyId?: string;
+  /** Optional organisation / tenant override – the server uses the JWT tenantId by default. */
+  orgId?: string;
+}
+
+function buildSearchParams(params?: KpiQueryParams): Record<string, string> | undefined {
+  if (!params) return undefined;
+  const out: Record<string, string> = {};
+  if (params.propertyId) out.propertyId = params.propertyId;
+  if (params.orgId) out.orgId = params.orgId;
+  return Object.keys(out).length ? out : undefined;
 }
 
 export const kpisService = {
-  getPortfolioSummary(
-    params?: KPIQueryParams
-  ): Promise<ApiResponse<KPIPortfolioSummary>> {
-    return getApiClient().get<KPIPortfolioSummary>('/analytics/summary', {
-      params: buildParams(params),
-    });
+  /** 4 headline owner KPIs with period-over-period deltas. */
+  async getSummary(params?: KpiQueryParams): Promise<ApiResponse<KpiSummary>> {
+    return getApiClient().get<KpiSummary>('/analytics/summary', buildSearchParams(params));
   },
 
-  getOccupancy(params?: KPIQueryParams): Promise<ApiResponse<OccupancyTrendPoint[]>> {
-    return getApiClient().get<OccupancyTrendPoint[]>('/analytics/occupancy', {
-      params: buildParams(params),
-    });
+  async getOccupancyTrend(
+    params?: KpiQueryParams,
+  ): Promise<ApiResponse<OccupancyTrendPoint[]>> {
+    return getApiClient().get<OccupancyTrendPoint[]>(
+      '/analytics/occupancy',
+      buildSearchParams(params),
+    );
   },
 
-  getRevenue(params?: KPIQueryParams): Promise<ApiResponse<RevenueBreakdownPoint[]>> {
-    return getApiClient().get<RevenueBreakdownPoint[]>('/analytics/revenue', {
-      params: buildParams(params),
-    });
+  async getRevenueTrend(
+    params?: KpiQueryParams,
+  ): Promise<ApiResponse<RevenueTrendPoint[]>> {
+    return getApiClient().get<RevenueTrendPoint[]>(
+      '/analytics/revenue',
+      buildSearchParams(params),
+    );
   },
 
-  getExpenses(
-    params?: KPIQueryParams
-  ): Promise<ApiResponse<ExpenseBreakdownPoint[]>> {
-    return getApiClient().get<ExpenseBreakdownPoint[]>('/analytics/expenses', {
-      params: buildParams(params),
-    });
+  async getExpenseTrend(
+    params?: KpiQueryParams,
+  ): Promise<ApiResponse<ExpenseTrendPoint[]>> {
+    return getApiClient().get<ExpenseTrendPoint[]>(
+      '/analytics/expenses',
+      buildSearchParams(params),
+    );
   },
 
-  getCollection(params?: KPIQueryParams): Promise<ApiResponse<RentCollectionRate>> {
-    return getApiClient().get<RentCollectionRate>('/analytics/collection', {
-      params: buildParams(params),
-    });
+  async getArrears(params?: KpiQueryParams): Promise<ApiResponse<ArrearsReport>> {
+    return getApiClient().get<ArrearsReport>('/analytics/arrears', buildSearchParams(params));
   },
 
-  getArrears(params?: KPIQueryParams): Promise<ApiResponse<ArrearsAging>> {
-    return getApiClient().get<ArrearsAging>('/analytics/arrears', {
-      params: buildParams(params),
-    });
-  },
-
-  getMaintenance(
-    params?: KPIQueryParams
-  ): Promise<ApiResponse<MaintenanceTicketsMetrics>> {
-    return getApiClient().get<MaintenanceTicketsMetrics>('/analytics/maintenance', {
-      params: buildParams(params),
-    });
-  },
-
-  /**
-   * Generic dispatch against /analytics/kpis/:metric - returns the raw payload.
-   */
-  getMetric<T = unknown>(
-    metric:
-      | 'summary'
-      | 'occupancy'
-      | 'collection'
-      | 'arrears'
-      | 'maintenance'
-      | 'revenue'
-      | 'expenses',
-    params?: KPIQueryParams
-  ): Promise<ApiResponse<T>> {
-    return getApiClient().get<T>(`/analytics/kpis/${encodeURIComponent(metric)}`, {
-      params: buildParams(params),
-    });
+  async getMaintenance(params?: KpiQueryParams): Promise<ApiResponse<MaintenanceKpis>> {
+    return getApiClient().get<MaintenanceKpis>(
+      '/analytics/maintenance',
+      buildSearchParams(params),
+    );
   },
 };
