@@ -115,3 +115,6 @@ export * from './cross-tenant-memberships.schema.js';
 
 // Jurisdiction configuration (global-first, database-driven)
 export * from './jurisdiction-config.schema.js';
+
+// Subprocessor registry (DPA gates, kill-switches)
+export * from './subprocessors.schema.js';
