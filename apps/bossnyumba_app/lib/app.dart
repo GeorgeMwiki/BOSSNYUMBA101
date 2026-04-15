@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/auth_provider.dart';
+import 'core/notifications/notifications_bootstrap.dart';
 import 'router.dart';
 
 class BossNyumbaApp extends StatelessWidget {
@@ -43,6 +44,11 @@ class BossNyumbaApp extends StatelessWidget {
         ),
       ),
       routerConfig: router,
+      // Wrap the navigator so push init + OrgProvider sync react to auth
+      // changes everywhere in the app.
+      builder: (context, child) => NotificationsBootstrap(
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

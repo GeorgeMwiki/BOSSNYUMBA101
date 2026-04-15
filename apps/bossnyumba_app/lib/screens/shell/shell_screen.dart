@@ -28,7 +28,10 @@ class ShellScreen extends StatelessWidget {
     }
     if (auth.isOwner) {
       return [
-        _NavItem(icon: Icons.apartment, label: 'Portfolio', path: '/owner'),
+        _NavItem(icon: Icons.home, label: 'Home', path: '/owner'),
+        _NavItem(icon: Icons.approval, label: 'Approvals', path: '/owner/approvals'),
+        _NavItem(icon: Icons.search, label: 'Search', path: '/owner/search'),
+        _NavItem(icon: Icons.auto_awesome, label: 'AI', path: '/owner/ai'),
         _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
       ];
     }
@@ -67,12 +70,20 @@ class ShellScreen extends StatelessWidget {
 
   int _selectedIndex(BuildContext context, List<_NavItem> items) {
     final loc = GoRouterState.of(context).matchedLocation;
+    // Pick the longest-prefix match so `/owner/approvals` selects the
+    // Approvals tab rather than the Home (`/owner`) tab.
+    int bestIdx = 0;
+    int bestLen = -1;
     for (var i = 0; i < items.length; i++) {
-      if (loc == items[i].path || (items[i].path != '/' && loc.startsWith(items[i].path))) {
-        return i;
+      final p = items[i].path;
+      final matches = loc == p ||
+          (p != '/' && (loc == p || loc.startsWith('$p/')));
+      if (matches && p.length > bestLen) {
+        bestIdx = i;
+        bestLen = p.length;
       }
     }
-    return 0;
+    return bestIdx;
   }
 }
 
