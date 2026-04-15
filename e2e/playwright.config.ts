@@ -17,42 +17,48 @@ export default defineConfig({
     ['list'],
     ...(process.env.CI ? [['github'] as const] : []),
   ],
-  
+
+  /* Global setup creates a test tenant + users; teardown removes them. */
+  globalSetup: './global-setup.ts',
+  globalTeardown: './global-teardown.ts',
+
   /* Global timeout for each test */
   timeout: 60000,
-  
+
   /* Expect timeout */
   expect: {
     timeout: 10000,
   },
-  
+
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:3003',
+    /* Capture trace on first retry (never on successful runs; full evidence on flakes). */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10000,
     navigationTimeout: 15000,
-    
+
     /* Viewport size */
     viewport: { width: 1280, height: 720 },
-    
+
     /* Ignore HTTPS errors */
     ignoreHTTPSErrors: true,
-    
+
     /* Locale and timezone */
     locale: 'en-KE',
     timezoneId: 'Africa/Nairobi',
   },
-  
-  /* Configure projects for different portals */
+
+  /* Configure projects for different portals. Each project declares its own baseURL
+   * so tests pinned with test.use({ project: '<name>' }) resolve URLs correctly. */
   projects: [
     /* Setup project for authentication state */
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
     },
-    
+
     /* Estate Manager Portal */
     {
       name: 'estate-manager',
@@ -60,9 +66,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         baseURL: process.env.ESTATE_MANAGER_URL ?? 'http://localhost:3003',
       },
-      // dependencies: ['setup'],
     },
-    
+
     /* Customer Mobile App / PWA */
     {
       name: 'customer-app',
@@ -71,7 +76,7 @@ export default defineConfig({
         baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
       },
     },
-    
+
     /* Customer App - Mobile viewport */
     {
       name: 'customer-app-mobile',
@@ -80,7 +85,7 @@ export default defineConfig({
         baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
       },
     },
-    
+
     /* Owner Portal */
     {
       name: 'owner-portal',
@@ -89,7 +94,7 @@ export default defineConfig({
         baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
       },
     },
-    
+
     /* Admin Portal (Internal) */
     {
       name: 'admin-portal',
@@ -99,32 +104,4 @@ export default defineConfig({
       },
     },
   ],
-  
-  /* Run local dev servers before starting tests */
-  // webServer: [
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/estate-manager dev',
-  //     url: 'http://localhost:3003',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/customer-app dev',
-  //     url: 'http://localhost:3002',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/owner-portal dev',
-  //     url: 'http://localhost:3000',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/admin-portal dev',
-  //     url: 'http://localhost:3001',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  // ],
 });
