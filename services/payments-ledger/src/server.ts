@@ -175,7 +175,6 @@ obsLogger.info('Observability initialized for payments-ledger', {
 // multi-replica deploys), else by an in-process Map (single-replica / dev).
 // See ./idempotency for implementation and failure-mode semantics.
 // -----------------------------------------------------------------------------
-const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const idempotencyStore = createIdempotencyStore();
 
 if (
@@ -475,7 +474,7 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
       await idempotencyStore.set(
         `${data.tenantId}:${idempotencyKey}`,
         { status: 201, body },
-        IDEMPOTENCY_TTL_MS
+        24 * 60 * 60 * 1000
       );
     }
 

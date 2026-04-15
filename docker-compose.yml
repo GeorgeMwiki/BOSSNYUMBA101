@@ -80,6 +80,8 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set — copy .env.example to .env}
+      NOTIFICATIONS_SERVICE_URL: ${NOTIFICATIONS_SERVICE_URL:-http://notifications:4100}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,6 +89,41 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Notifications service (HTTP surface proxied by api-gateway at
+  # /api/v1/notifications -> http://notifications:4100).
+  # TODO: add services/notifications/Dockerfile (or wire docker/Dockerfile.service
+  #       for the notifications workspace) so this entry can be built & run.
+  # Until then, run the service directly via `pnpm --filter notifications-service dev`.
+  # ---------------------------------------------------------------------------
+  notifications:
+    # TODO: uncomment once a Dockerfile exists for this service.
+    # build:
+    #   context: .
+    #   dockerfile: services/notifications/Dockerfile
+    image: bossnyumba-notifications:local
+    container_name: bossnyumba-notifications
+    restart: unless-stopped
+    profiles:
+      - notifications  # opt-in until image is buildable
+    ports:
+      - "4100:4100"
+    environment:
+      NODE_ENV: development
+      PORT: 4100
+      REDIS_URL: redis://redis:6379
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4100/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   estate-manager:
     build:
