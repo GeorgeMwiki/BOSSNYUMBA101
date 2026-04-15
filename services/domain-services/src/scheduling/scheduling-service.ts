@@ -778,10 +778,20 @@ export class SchedulingService {
     wh: WorkingHours,
     dayOfWeek: number
   ): { start: string; end: string } | null {
-    const key = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][
-      dayOfWeek
-    ] as keyof typeof wh;
-    return wh[key] ?? null;
+    const dayKeys = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ] as const;
+    const key = dayKeys[dayOfWeek];
+    if (!key) return null;
+    const day = wh[key];
+    // day is DaySchedule | null; exclude the timezone string field at the type level
+    return day ?? null;
   }
 
   private generateSlots(
