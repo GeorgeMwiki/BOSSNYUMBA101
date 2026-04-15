@@ -21,6 +21,9 @@ playwright-report/
 *.swp
 *.swo
 
+# Claude Code worktrees (used by parallel sub-agents)
+.claude/worktrees/
+
 # OS
 .DS_Store
 Thumbs.db
