@@ -16,6 +16,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { useToast } from '@/components/Toast';
 
 interface InspectionRoom {
   id: string;
@@ -103,6 +104,7 @@ const INITIAL_METER_READINGS: MeterReading[] = [
 
 export default function OnboardingInspectionPage() {
   const router = useRouter();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Phase: 'rooms' | 'meters' | 'signoff'
@@ -248,17 +250,26 @@ export default function OnboardingInspectionPage() {
         meterReadings: meterData,
         signature: signature || undefined,
       });
-    } catch {
-      // Continue even if API fails
+
+      const savedProgress = JSON.parse(
+        localStorage.getItem('onboarding_progress') || '{}'
+      );
+      savedProgress.inspection = 'completed';
+      localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
+      localStorage.setItem(
+        'inspection_data',
+        JSON.stringify({ rooms, meterReadings: meterData })
+      );
+
+      toast.success('Inspection submitted');
+      router.push('/onboarding/e-sign');
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to submit inspection';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Save progress
-    const savedProgress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
-    savedProgress.inspection = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
-    localStorage.setItem('inspection_data', JSON.stringify({ rooms, meterReadings: meterData }));
-
-    router.push('/onboarding/e-sign');
   };
 
   const isLastRoom = currentRoomIndex === rooms.length - 1;

@@ -3,17 +3,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, User, Mail, ArrowRight } from 'lucide-react';
+import { Phone, User, Mail, IdCard, Ticket, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/Toast';
+
+const PHONE_PATTERN = /^(\+?254|0)?7\d{8}$/;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const toast = useToast();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     phone: '',
     firstName: '',
     lastName: '',
     email: '',
+    nationalId: '',
+    inviteCode: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,23 +27,52 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!PHONE_PATTERN.test(formData.phone.replace(/\s/g, ''))) {
+      const msg = 'Enter a valid Kenyan mobile number (e.g. 07XXXXXXXX)';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (formData.nationalId && formData.nationalId.replace(/\D/g, '').length < 6) {
+      const msg = 'Please enter a valid national ID number';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const result = await register({
         phone: formData.phone,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email || undefined,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim() || undefined,
+        nationalId: formData.nationalId.trim() || undefined,
+        inviteCode: formData.inviteCode.trim() || undefined,
       });
 
       if (result.success) {
-        router.push(`/auth/otp?phone=${encodeURIComponent(formData.phone)}&mode=register`);
+        if (result.requiresOtp) {
+          toast.success('Account created — verify your phone to finish.');
+          router.push(
+            `/auth/otp?phone=${encodeURIComponent(formData.phone)}&mode=register`
+          );
+        } else {
+          toast.success('Welcome to BOSSNYUMBA');
+          router.replace('/');
+        }
       } else {
-        setError(result.message ?? 'Something went wrong');
+        const msg = result.message ?? 'Something went wrong';
+        setError(msg);
+        toast.error(msg);
       }
     } catch {
-      setError('Something went wrong. Please try again.');
+      const msg = 'Something went wrong. Please try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -48,7 +83,10 @@ export default function RegisterPage() {
       <div className="flex-1 px-6 py-8 max-w-md mx-auto w-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-2">Register to manage your tenancy</p>
+          <p className="text-gray-500 mt-2">
+            Register to manage your tenancy. Tenants joining an existing
+            property can enter an invite code below.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -62,10 +100,13 @@ export default function RegisterPage() {
                 id="firstName"
                 type="text"
                 value={formData.firstName}
-                onChange={(e) => setFormData((p) => ({ ...p, firstName: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, firstName: e.target.value }))
+                }
                 placeholder="John"
                 className="input pl-12"
                 required
+                autoComplete="given-name"
               />
             </div>
           </div>
@@ -80,10 +121,13 @@ export default function RegisterPage() {
                 id="lastName"
                 type="text"
                 value={formData.lastName}
-                onChange={(e) => setFormData((p) => ({ ...p, lastName: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, lastName: e.target.value }))
+                }
                 placeholder="Kamau"
                 className="input pl-12"
                 required
+                autoComplete="family-name"
               />
             </div>
           </div>
@@ -98,7 +142,9 @@ export default function RegisterPage() {
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, phone: e.target.value }))
+                }
                 placeholder="+254 7XX XXX XXX"
                 className="input pl-12"
                 required
@@ -117,7 +163,9 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, email: e.target.value }))
+                }
                 placeholder="john@example.com"
                 className="input pl-12"
                 autoComplete="email"
@@ -125,8 +173,57 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          <div>
+            <label htmlFor="nationalId" className="label">
+              National ID <span className="text-gray-400">(required for KYC)</span>
+            </label>
+            <div className="relative">
+              <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                id="nationalId"
+                type="text"
+                inputMode="numeric"
+                value={formData.nationalId}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, nationalId: e.target.value }))
+                }
+                placeholder="12345678"
+                className="input pl-12"
+                autoComplete="off"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              We use this to verify your identity and generate tenancy documents.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="inviteCode" className="label">
+              Invite Code <span className="text-gray-400">(optional)</span>
+            </label>
+            <div className="relative">
+              <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                id="inviteCode"
+                type="text"
+                value={formData.inviteCode}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    inviteCode: e.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="e.g. PROP-4829"
+                className="input pl-12 uppercase"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
           {error && (
-            <div className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">{error}</div>
+            <div className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">
+              {error}
+            </div>
           )}
 
           <button

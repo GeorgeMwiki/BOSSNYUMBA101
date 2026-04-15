@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Star, Loader2, Send, ThumbsUp } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 
 interface ServiceRatingProps {
   onSubmit: (score: number, comment: string) => Promise<void>;
@@ -19,12 +20,14 @@ const QUICK_FEEDBACK = [
 ];
 
 export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRatingProps) {
+  const toast = useToast();
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleFeedback = (feedback: string) => {
     setSelectedFeedback((prev) =>
@@ -36,20 +39,28 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
 
   const handleSubmit = async () => {
     if (rating === 0) return;
-    
+
     setSubmitting(true);
+    setError('');
     const fullComment = [
       ...selectedFeedback,
       comment.trim(),
     ].filter(Boolean).join('. ');
-    
-    await onSubmit(rating, fullComment);
-    setShowThankYou(true);
-    
-    // Auto close after showing thank you
-    setTimeout(() => {
-      onClose();
-    }, 2000);
+
+    try {
+      await onSubmit(rating, fullComment);
+      toast.success('Thanks for rating the service');
+      setShowThankYou(true);
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to submit rating';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getRatingLabel = (score: number) => {
@@ -167,6 +178,12 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
+          </div>
+        )}
+
+        {error && (
+          <div className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">
+            {error}
           </div>
         )}
 

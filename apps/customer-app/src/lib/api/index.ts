@@ -664,6 +664,103 @@ export const api = {
       return unwrap(() => ensureClient().post('/inspections', data));
     },
   },
+
+  auth: {
+    async requestOtp(phone: string) {
+      return unwrap(() =>
+        ensureClient().post('/auth/login/otp/request', { phone })
+      );
+    },
+    async verifyOtp(phone: string, otp: string) {
+      return unwrap(() =>
+        ensureClient().post('/auth/login/otp/verify', { phone, otp })
+      );
+    },
+    async loginWithPassword(identifier: string, password: string) {
+      return unwrap(() =>
+        ensureClient().post('/auth/login', { identifier, password })
+      );
+    },
+    async register(data: {
+      phone: string;
+      firstName: string;
+      lastName: string;
+      email?: string;
+      nationalId?: string;
+      inviteCode?: string;
+    }) {
+      return unwrap(() => ensureClient().post('/auth/register', data));
+    },
+  },
+
+  support: {
+    async listTickets() {
+      return unwrap(() => ensureClient().get('/support/tickets'));
+    },
+    async createTicket(data: {
+      subject: string;
+      description: string;
+      category?: string;
+      priority?: string;
+    }) {
+      return unwrap(() => ensureClient().post('/support/tickets', data));
+    },
+    async getTicket(id: string) {
+      return unwrap(() => ensureClient().get(`/support/tickets/${id}`));
+    },
+    async replyToTicket(id: string, message: string) {
+      return unwrap(() =>
+        ensureClient().post(`/support/tickets/${id}/replies`, { message })
+      );
+    },
+  },
+
+  emergencies: {
+    async report(data: {
+      type: string;
+      description: string;
+      location: string;
+      canBeReached: boolean;
+      photos?: string[];
+    }) {
+      return unwrap(() =>
+        ensureClient().post('/emergencies/report', data)
+      );
+    },
+  },
+
+  maintenance: {
+    async list(status?: string) {
+      return unwrap(() =>
+        ensureClient().get('/work-orders', {
+          params: status ? { status } : undefined,
+        })
+      );
+    },
+    async get(id: string) {
+      return unwrap(() => ensureClient().get(`/work-orders/${id}`));
+    },
+    async create(data: {
+      category: string;
+      title: string;
+      description: string;
+      priority: string;
+      location?: string;
+      photos?: string[];
+      permissionToEnter?: boolean;
+      preferredSlot?: string;
+    }) {
+      return unwrap(() => ensureClient().post('/work-orders', data));
+    },
+    async submitFeedback(
+      id: string,
+      data: { rating: number; comment?: string; photos?: string[] }
+    ) {
+      return unwrap(() =>
+        ensureClient().post(`/work-orders/${id}/feedback`, data)
+      );
+    },
+  },
 };
 
 export type CustomerApi = typeof api;

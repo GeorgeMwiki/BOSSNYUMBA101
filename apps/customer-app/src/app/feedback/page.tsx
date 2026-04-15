@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Send, MessageSquare, ChevronRight } from 'lucide-react';
+import { Send, Star } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useToast } from '@/components/Toast';
+import { api } from '@/lib/api';
 
 const feedbackTypes = [
   { value: 'suggestion', label: 'Suggestion' },
@@ -14,24 +15,40 @@ const feedbackTypes = [
 ];
 
 export default function FeedbackPage() {
-  const router = useRouter();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     type: '',
     subject: '',
     message: '',
+    rating: 0,
   });
   const [submitted, setSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.message.trim()) return;
+    setError('');
+    setSubmitting(true);
 
-    setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setSubmitted(true);
-    setIsSubmitting(false);
-    setFormData({ type: '', subject: '', message: '' });
+    try {
+      await api.feedback.submit({
+        type: formData.type || 'other',
+        subject: formData.subject.trim() || undefined,
+        message: formData.message.trim(),
+        rating: formData.rating > 0 ? formData.rating : undefined,
+      });
+      toast.success('Feedback submitted. Thank you!');
+      setSubmitted(true);
+      setFormData({ type: '', subject: '', message: '', rating: 0 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to submit feedback';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -107,6 +124,35 @@ export default function FeedbackPage() {
         </section>
 
         <section>
+          <label className="label">Overall rating (optional)</label>
+          <div className="flex items-center gap-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    rating: formData.rating === star ? 0 : star,
+                  })
+                }
+                className={`p-1 transition-colors ${
+                  star <= formData.rating
+                    ? 'text-amber-500'
+                    : 'text-gray-300 hover:text-amber-300'
+                }`}
+              >
+                <Star
+                  className={`w-8 h-8 ${
+                    star <= formData.rating ? 'fill-current' : ''
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section>
           <label className="label" htmlFor="subject">
             Subject (optional)
           </label>
@@ -138,13 +184,19 @@ export default function FeedbackPage() {
           />
         </section>
 
+        {error && (
+          <div className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">
+            {error}
+          </div>
+        )}
+
         <button
           type="submit"
           className="btn-primary w-full py-3 flex items-center justify-center gap-2"
-          disabled={!formData.message.trim() || isSubmitting}
+          disabled={!formData.message.trim() || submitting}
         >
           <Send className="w-5 h-5" />
-          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+          {submitting ? 'Submitting...' : 'Submit Feedback'}
         </button>
       </form>
     </>

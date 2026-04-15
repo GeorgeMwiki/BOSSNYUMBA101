@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/Toast';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -12,10 +13,10 @@ const RESEND_COOLDOWN = 60;
 export default function OTPVerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const { verifyOtp, loginWithPhone, isAuthenticated } = useAuth();
 
   const phoneParam = searchParams.get('phone') ?? '';
-  const isRegister = searchParams.get('mode') === 'register';
 
   const [otp, setOtp] = useState('');
   const [phone, setPhone] = useState(phoneParam);
@@ -65,12 +66,17 @@ export default function OTPVerifyPage() {
     try {
       const result = await verifyOtp(phone, otp);
       if (result.success) {
+        toast.success('Signed in successfully');
         router.replace('/');
       } else {
-        setError(result.message ?? 'Invalid code. Please try again.');
+        const msg = result.message ?? 'Invalid code. Please try again.';
+        setError(msg);
+        toast.error(msg);
       }
     } catch {
-      setError('Something went wrong. Please try again.');
+      const msg = 'Something went wrong. Please try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -82,9 +88,12 @@ export default function OTPVerifyPage() {
     setError('');
     const result = await loginWithPhone(phone);
     if (result.success) {
+      toast.success('New code sent');
       startResendCooldown();
     } else {
-      setError(result.message ?? 'Failed to resend. Try again.');
+      const msg = result.message ?? 'Failed to resend. Try again.';
+      setError(msg);
+      toast.error(msg);
     }
   };
 
