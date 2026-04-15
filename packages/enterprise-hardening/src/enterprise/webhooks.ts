@@ -420,20 +420,21 @@ export class WebhookManager {
     status: DeliveryStatus,
     attempt: Omit<DeliveryAttempt, 'timestamp' | 'attemptNumber'> & { attemptNumber?: number }
   ): WebhookDelivery {
+    const newAttempt: DeliveryAttempt = {
+      attemptNumber: attempt.attemptNumber ?? delivery.attempts.length + 1,
+      timestamp: new Date().toISOString(),
+      ...(attempt.statusCode !== undefined && { statusCode: attempt.statusCode }),
+      ...(attempt.responseBody !== undefined && { responseBody: attempt.responseBody }),
+      ...(attempt.errorMessage !== undefined && { errorMessage: attempt.errorMessage }),
+      latencyMs: attempt.latencyMs,
+    };
+    const terminalStatuses: readonly DeliveryStatus[] = [DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED];
+    const completedAt = terminalStatuses.includes(status) ? new Date().toISOString() : undefined;
     const updated: WebhookDelivery = {
       ...delivery,
       status,
-      attempts: [...delivery.attempts, { 
-        attemptNumber: attempt.attemptNumber ?? delivery.attempts.length + 1,
-        timestamp: new Date().toISOString(),
-        statusCode: attempt.statusCode,
-        responseBody: attempt.responseBody,
-        errorMessage: attempt.errorMessage,
-        latencyMs: attempt.latencyMs,
-      }],
-      completedAt: [DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED].includes(status)
-        ? new Date().toISOString()
-        : undefined,
+      attempts: [...delivery.attempts, newAttempt],
+      ...(completedAt !== undefined && { completedAt }),
     };
     this.deliveries.set(delivery.id, updated);
     return updated;
@@ -479,6 +480,9 @@ export class WebhookManager {
     const lastSuccess = successful.sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))[0];
     const lastFailure = failed.sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))[0];
 
+    const lastDeliveryAt = sortedByTime[0]?.createdAt;
+    const lastSuccessAt = lastSuccess?.completedAt;
+    const lastFailureAt = lastFailure?.completedAt;
     return {
       endpointId,
       totalDeliveries: deliveries.length,
@@ -486,9 +490,9 @@ export class WebhookManager {
       failedDeliveries: failed.length,
       avgLatencyMs: avgLatency,
       successRate: deliveries.length > 0 ? Math.round((successful.length / deliveries.length) * 100) / 100 : 0,
-      lastDeliveryAt: sortedByTime[0]?.createdAt,
-      lastSuccessAt: lastSuccess?.completedAt,
-      lastFailureAt: lastFailure?.completedAt,
+      ...(lastDeliveryAt !== undefined && { lastDeliveryAt }),
+      ...(lastSuccessAt !== undefined && { lastSuccessAt }),
+      ...(lastFailureAt !== undefined && { lastFailureAt }),
     };
   }
 }

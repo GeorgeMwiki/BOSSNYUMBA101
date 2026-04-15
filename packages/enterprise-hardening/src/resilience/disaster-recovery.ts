@@ -368,7 +368,7 @@ export class DisasterRecoveryManager {
     if (plan) {
       this.recoveryPlans.set(plan.id, {
         ...plan,
-        lastTested: updated.completedAt,
+        ...(updated.completedAt !== undefined && { lastTested: updated.completedAt }),
         testResult: results.stepsFailed === 0 ? 'pass' : 'fail',
       });
     }
@@ -490,6 +490,8 @@ export class DisasterRecoveryManager {
       overallStatus = 'non_compliant';
     }
 
+    const lastDrillDate = lastDrill?.completedAt;
+    const lastFailover = this.failoverHistory[this.failoverHistory.length - 1];
     return {
       overallStatus,
       regions: regionMetrics,
@@ -499,14 +501,14 @@ export class DisasterRecoveryManager {
         expiredBackups,
       },
       drillCompliance: {
-        lastDrillDate: lastDrill?.completedAt,
-        daysSinceLastDrill,
+        ...(lastDrillDate !== undefined && { lastDrillDate }),
+        ...(daysSinceLastDrill !== undefined && { daysSinceLastDrill }),
         requiredDrillFrequencyDays,
         compliant: drillCompliant,
       },
       failoverHistory: {
         last30Days: recentFailovers.length,
-        lastFailover: this.failoverHistory[this.failoverHistory.length - 1],
+        ...(lastFailover !== undefined && { lastFailover }),
       },
     };
   }

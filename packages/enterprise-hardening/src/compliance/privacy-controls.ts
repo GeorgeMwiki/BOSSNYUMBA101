@@ -289,13 +289,14 @@ export class PrivacyManager {
     const request = this.dsrRequests.get(requestId);
     if (!request) return null;
 
+    const completedStatuses: readonly DSRStatus[] = [DSRStatus.COMPLETED, DSRStatus.REJECTED, DSRStatus.PARTIALLY_COMPLETED];
+    const completedAt = completedStatuses.includes(status) ? new Date().toISOString() : undefined;
+    const resolvedRejectionReason = rejectionReason ?? request.rejectionReason;
     const updated: DataSubjectRequest = {
       ...request,
       status,
-      completedAt: [DSRStatus.COMPLETED, DSRStatus.REJECTED, DSRStatus.PARTIALLY_COMPLETED].includes(status)
-        ? new Date().toISOString()
-        : undefined,
-      rejectionReason: rejectionReason ?? request.rejectionReason,
+      ...(completedAt !== undefined && { completedAt }),
+      ...(resolvedRejectionReason !== undefined && { rejectionReason: resolvedRejectionReason }),
       notes: note ? [...request.notes, note] : request.notes,
     };
 
@@ -311,8 +312,9 @@ export class PrivacyManager {
     cutoff.setDate(cutoff.getDate() + withinDays);
     const cutoffIso = cutoff.toISOString();
 
+    const openStatuses: readonly DSRStatus[] = [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS];
     return Array.from(this.dsrRequests.values()).filter(r =>
-      [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS].includes(r.status) &&
+      openStatuses.includes(r.status) &&
       r.deadlineAt <= cutoffIso
     );
   }
@@ -422,8 +424,9 @@ export class PrivacyManager {
       }
 
       // Overdue
+      const overdueStatuses: readonly DSRStatus[] = [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS];
       if (
-        [DSRStatus.PENDING, DSRStatus.IDENTITY_VERIFICATION, DSRStatus.IN_PROGRESS].includes(request.status) &&
+        overdueStatuses.includes(request.status) &&
         request.deadlineAt < now
       ) {
         overdueCount++;

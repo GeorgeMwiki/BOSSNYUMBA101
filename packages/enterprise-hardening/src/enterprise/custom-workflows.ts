@@ -430,11 +430,12 @@ export class WorkflowEngine {
         body?: unknown;
       };
       
-      const response = await fetch(this.interpolate(config.url, context), {
+      const init: RequestInit = {
         method: config.method,
-        headers: config.headers,
-        body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,
-      });
+        ...(config.headers !== undefined && { headers: config.headers }),
+        ...(config.body !== undefined && { body: JSON.stringify(this.interpolate(config.body, context)) }),
+      };
+      const response = await fetch(this.interpolate(config.url, context) as string, init);
       
       return {
         statusCode: response.status,
@@ -596,38 +597,43 @@ export class WorkflowEngine {
    * Execute a workflow
    */
   private async executeWorkflow(executionId: string): Promise<void> {
-    let execution = this.executions.get(executionId);
-    if (!execution) return;
+    const initial = this.executions.get(executionId);
+    if (!initial) return;
 
-    const workflow = this.workflows.get(execution.workflowId);
+    const workflow = this.workflows.get(initial.workflowId);
     if (!workflow) return;
 
     // Update status to running
-    execution = { ...execution, status: ExecutionStatus.RUNNING };
+    let execution: WorkflowExecution = { ...initial, status: ExecutionStatus.RUNNING };
     this.executions.set(executionId, execution);
 
     try {
-      let currentActionId = execution.currentActionId;
+      let currentActionId: string | undefined = execution.currentActionId;
 
       while (currentActionId) {
         const action = workflow.actions.find(a => a.id === currentActionId);
         if (!action) break;
 
         const result = await this.executeAction(action, execution, workflow);
-        
+
         // Update execution with result
-        const actionResults = [...execution.actionResults, result];
+        const actionResults: readonly ActionResult[] = [...(execution.actionResults ?? []), result];
+        const nextActionId: string | undefined = result.status === 'completed' ? undefined : currentActionId;
         execution = {
           ...execution,
           actionResults,
-          currentActionId: result.status === 'completed' ? undefined : currentActionId,
+          ...(nextActionId !== undefined && { currentActionId: nextActionId }),
         };
         this.executions.set(executionId, execution);
 
         if (result.status !== 'completed') {
           // Action failed or is waiting
           if (result.status === 'failed') {
-            execution = { ...execution, status: ExecutionStatus.FAILED, error: result.error };
+            execution = {
+              ...execution,
+              status: ExecutionStatus.FAILED,
+              ...(result.error !== undefined && { error: result.error }),
+            };
             this.executions.set(executionId, execution);
             return;
           }
@@ -797,8 +803,8 @@ export class WorkflowEngine {
     const match = interpolated.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*(.+)$/);
     if (match) {
       const [, left, op, right] = match;
-      const leftVal = left.trim();
-      const rightVal = right.trim().replace(/^["']|["']$/g, '');
+      const leftVal = (left ?? '').trim();
+      const rightVal = (right ?? '').trim().replace(/^["']|["']$/g, '');
       
       switch (op) {
         case '==': return leftVal === rightVal;

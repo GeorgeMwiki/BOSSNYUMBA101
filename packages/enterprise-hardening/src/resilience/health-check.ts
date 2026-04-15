@@ -207,10 +207,10 @@ export class HealthCheckManager {
         name: check.name,
         type: check.type,
         status: state.lastStatus,
-        message: result.message,
+        ...(result.message !== undefined && { message: result.message }),
         duration,
         timestamp: new Date().toISOString(),
-        details: result.details,
+        ...(result.details !== undefined && { details: result.details }),
       };
 
       state.lastCheck = Date.now();
@@ -291,11 +291,11 @@ export class HealthCheckManager {
     checks: readonly HealthCheckDefinition[]
   ): Promise<HealthResponse> {
     const results: HealthCheckResult[] = [];
-    let overallStatus = HealthStatus.HEALTHY;
+    let overallStatus: HealthStatus = HealthStatus.HEALTHY;
 
     for (const check of checks) {
       const state = this.checkStates.get(check.name)!;
-      
+
       // Use cached result if recent enough
       if (state.lastResult && Date.now() - state.lastCheck < check.intervalMs / 2) {
         results.push(state.lastResult);
@@ -306,6 +306,7 @@ export class HealthCheckManager {
 
       // Update overall status
       const result = results[results.length - 1];
+      if (!result) continue;
       if (check.critical) {
         if (result.status === HealthStatus.UNHEALTHY) {
           overallStatus = HealthStatus.UNHEALTHY;
@@ -324,10 +325,10 @@ export class HealthCheckManager {
       timestamp: new Date().toISOString(),
       checks: results,
       details: {
-        environment: this.config.environment,
-        region: this.config.region,
-        instanceId: this.config.instanceId,
-        commitSha: this.config.commitSha,
+        ...(this.config.environment !== undefined && { environment: this.config.environment }),
+        ...(this.config.region !== undefined && { region: this.config.region }),
+        ...(this.config.instanceId !== undefined && { instanceId: this.config.instanceId }),
+        ...(this.config.commitSha !== undefined && { commitSha: this.config.commitSha }),
       },
     };
   }

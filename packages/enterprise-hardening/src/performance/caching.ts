@@ -393,6 +393,14 @@ export class CacheManager<T = unknown> {
 
     const l1TotalRequests = this.stats.l1Hits + this.stats.l1Misses;
 
+    const l1Stats = this.l1Cache ? {
+      hits: this.stats.l1Hits,
+      misses: this.stats.l1Misses,
+      hitRate: l1TotalRequests > 0
+        ? Math.round((this.stats.l1Hits / l1TotalRequests) * 100) / 100
+        : 0,
+      size: 0, // Would need to calculate
+    } : undefined;
     return {
       hits: this.stats.hits,
       misses: this.stats.misses,
@@ -401,14 +409,7 @@ export class CacheManager<T = unknown> {
       size: 0, // Would need to calculate from store
       maxSize: this.config.maxSize,
       avgLoadTime: Math.round(avgLoadTime),
-      l1Stats: this.l1Cache ? {
-        hits: this.stats.l1Hits,
-        misses: this.stats.l1Misses,
-        hitRate: l1TotalRequests > 0 
-          ? Math.round((this.stats.l1Hits / l1TotalRequests) * 100) / 100 
-          : 0,
-        size: 0, // Would need to calculate
-      } : undefined,
+      ...(l1Stats !== undefined && { l1Stats }),
     };
   }
 
@@ -417,12 +418,16 @@ export class CacheManager<T = unknown> {
    */
   async warm(entries: Array<{ key: string; value: T; ttl?: number; tags?: string[] }>): Promise<number> {
     let warmed = 0;
-    
+
     for (const entry of entries) {
-      await this.set(entry.key, entry.value, { ttl: entry.ttl, tags: entry.tags });
+      const opts: CacheSetOptions = {
+        ...(entry.ttl !== undefined && { ttl: entry.ttl }),
+        ...(entry.tags !== undefined && { tags: entry.tags }),
+      };
+      await this.set(entry.key, entry.value, opts);
       warmed++;
     }
-    
+
     return warmed;
   }
 

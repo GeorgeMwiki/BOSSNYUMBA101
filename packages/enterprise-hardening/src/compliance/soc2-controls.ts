@@ -407,18 +407,21 @@ export class SOC2ComplianceManager {
    */
   generateComplianceReport(): {
     generatedAt: string;
-    summary: ReturnType<typeof this.getComplianceSummary>;
+    summary: ReturnType<SOC2ComplianceManager['getComplianceSummary']>;
     controlDetails: Array<{
       control: SOC2ControlDefinition;
       assessment?: ControlAssessment;
       evidenceCount: number;
     }>;
   } {
-    const controlDetails = Object.values(this.controlRegistry).map(control => ({
-      control,
-      assessment: this.assessments.get(control.id),
-      evidenceCount: this.evidence.get(control.id)?.length ?? 0,
-    }));
+    const controlDetails = Object.values(this.controlRegistry).map(control => {
+      const assessment = this.assessments.get(control.id);
+      return {
+        control,
+        ...(assessment !== undefined && { assessment }),
+        evidenceCount: this.evidence.get(control.id)?.length ?? 0,
+      };
+    });
 
     return {
       generatedAt: new Date().toISOString(),

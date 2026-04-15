@@ -332,7 +332,7 @@ export class ResourceMonitorManager {
         a => a.resourceType === resourceType && !a.resolvedAt
       );
       
-      let status = ResourceStatus.HEALTHY;
+      let status: ResourceStatus = ResourceStatus.HEALTHY;
       if (alerts.some(a => a.status === ResourceStatus.CRITICAL)) {
         status = ResourceStatus.CRITICAL;
       } else if (alerts.length > 0) {

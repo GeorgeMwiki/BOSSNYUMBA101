@@ -460,7 +460,7 @@ export class DataRetentionManager {
       archiveAt.setDate(archiveAt.getDate() + policy.archiveAfterDays);
     }
 
-    return { archiveAt, deleteAt };
+    return { ...(archiveAt !== undefined && { archiveAt }), deleteAt };
   }
 
   /**

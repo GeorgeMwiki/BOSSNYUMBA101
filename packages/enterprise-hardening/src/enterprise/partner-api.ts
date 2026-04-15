@@ -373,16 +373,16 @@ export class PartnerApiManager {
     const apiKey: ApiKey = {
       id: crypto.randomUUID(),
       applicationId,
-      tenantId: options?.tenantId,
+      ...(options?.tenantId !== undefined && { tenantId: options.tenantId }),
       keyPrefix,
       keyHash,
       name,
       scopes: validScopes,
       status: ApiKeyStatus.ACTIVE,
-      expiresAt: options?.expiresAt,
+      ...(options?.expiresAt !== undefined && { expiresAt: options.expiresAt }),
       usageCount: 0,
       createdAt: new Date().toISOString(),
-      ipAllowlist: options?.ipAllowlist,
+      ...(options?.ipAllowlist !== undefined && { ipAllowlist: options.ipAllowlist }),
       rateLimit: tierLimits,
     };
 
@@ -448,9 +448,9 @@ export class PartnerApiManager {
       oldKey.name,
       [...oldKey.scopes],
       {
-        expiresAt: oldKey.expiresAt,
-        ipAllowlist: oldKey.ipAllowlist ? [...oldKey.ipAllowlist] : undefined,
-        tenantId: oldKey.tenantId,
+        ...(oldKey.expiresAt !== undefined && { expiresAt: oldKey.expiresAt }),
+        ...(oldKey.ipAllowlist !== undefined && { ipAllowlist: [...oldKey.ipAllowlist] }),
+        ...(oldKey.tenantId !== undefined && { tenantId: oldKey.tenantId }),
       }
     );
 
