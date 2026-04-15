@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { Plus, ChevronRight, Zap } from 'lucide-react';
+import { Plus, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface UtilityReading {
@@ -112,6 +112,9 @@ export default function UtilitiesPage() {
           <h3 className="text-sm font-medium text-gray-500 mb-3">
             Recent Bills
           </h3>
+          {recentBills.length === 0 && (
+            <div className="card p-4 text-sm text-gray-500">No utility bills yet.</div>
+          )}
           <div className="card divide-y divide-gray-100">
             {recentBills.map((bill) => (
               <div
