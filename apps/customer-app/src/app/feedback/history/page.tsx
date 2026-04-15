@@ -4,32 +4,18 @@ import Link from 'next/link';
 import { MessageSquare, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const feedbackHistory = [
-  {
-    id: '1',
-    type: 'suggestion',
-    subject: 'Gym reopening',
-    preview: 'Would be great if the gym could reopen soon...',
-    date: '2024-02-12',
-    status: 'acknowledged',
-  },
-  {
-    id: '2',
-    type: 'complaint',
-    subject: 'Water pressure',
-    preview: 'Water pressure has been low in the mornings...',
-    date: '2024-02-08',
-    status: 'in_review',
-  },
-  {
-    id: '3',
-    type: 'compliment',
-    subject: 'Maintenance team',
-    preview: 'The maintenance team was very professional...',
-    date: '2024-02-01',
-    status: 'resolved',
-  },
-];
+interface FeedbackHistoryItem {
+  id: string;
+  type: 'suggestion' | 'complaint' | 'compliment' | 'other';
+  subject: string;
+  preview: string;
+  date: string;
+  status: 'acknowledged' | 'in_review' | 'resolved';
+}
+
+// Feedback history is gated on the live feedback API. Until wired,
+// render the empty state rather than seeded entries.
+const feedbackHistory: FeedbackHistoryItem[] = [];
 
 const typeLabels: Record<string, string> = {
   suggestion: 'Suggestion',
