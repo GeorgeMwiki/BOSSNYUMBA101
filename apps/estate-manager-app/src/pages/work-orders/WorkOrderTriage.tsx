@@ -15,7 +15,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge } from '@/components/maintenance';
-import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
+import { workOrdersService, vendorsService, type VendorCategory } from '@bossnyumba/api-client';
+import type { WorkOrderId, WorkOrderPriority, WorkOrderCategory } from '@bossnyumba/domain-models';
 
 const priorities = [
   { value: 'EMERGENCY', label: 'Emergency' },

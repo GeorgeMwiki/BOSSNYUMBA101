@@ -35,15 +35,31 @@ interface Approval {
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('PENDING');
 
   useEffect(() => {
-    api.get<Approval[]>('/approvals').then((response) => {
-      if (response.success && response.data) {
-        setApprovals(response.data);
-      }
-      setLoading(false);
-    });
+    let cancelled = false;
+    api
+      .get<Approval[]>('/approvals')
+      .then((response) => {
+        if (cancelled) return;
+        if (response.success && response.data) {
+          setApprovals(response.data);
+          setError(null);
+        } else {
+          setError(response.error?.message || 'Unable to load approvals');
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load approvals');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleApprove = async (id: string) => {

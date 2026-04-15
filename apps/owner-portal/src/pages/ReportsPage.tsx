@@ -71,16 +71,27 @@ export function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
       api.get<FinancialReport>('/reports/financial'),
       api.get<OccupancyReport>('/reports/occupancy'),
       api.get<MaintenanceReport>('/reports/maintenance'),
-    ]).then(([finRes, occRes, maintRes]) => {
-      if (finRes.success && finRes.data) setFinancial(finRes.data);
-      if (occRes.success && occRes.data) setOccupancy(occRes.data);
-      if (maintRes.success && maintRes.data) setMaintenance(maintRes.data);
-      setLoading(false);
-    });
+    ])
+      .then(([finRes, occRes, maintRes]) => {
+        if (cancelled) return;
+        if (finRes.success && finRes.data) setFinancial(finRes.data);
+        if (occRes.success && occRes.data) setOccupancy(occRes.data);
+        if (maintRes.success && maintRes.data) setMaintenance(maintRes.data);
+      })
+      .catch(() => {
+        // Individual reports remain null; UI will show empty states.
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleExport = async (type: string) => {

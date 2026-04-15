@@ -21,11 +21,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const triggerMock = vi.fn();
 
-vi.mock('../../../../../webhooks/src/webhook-service', () => ({
-  trigger: triggerMock,
-}));
-// The real relative path from this test file to webhook-service.
-vi.mock('../../../../webhooks/src/webhook-service', () => ({
+// vi.mock paths must match the specifier used *inside the module under test*.
+// payment-events.ts imports '../../../webhooks/src/webhook-service' relative
+// to services/api-gateway/src/events/payment-events.ts.
+vi.mock('../../../webhooks/src/webhook-service', () => ({
   trigger: triggerMock,
 }));
 
