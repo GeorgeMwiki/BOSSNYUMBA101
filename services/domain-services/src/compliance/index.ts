@@ -1456,3 +1456,648 @@ export class MemoryNoticeStore implements NoticeStore {
     noticeMap.clear();
   }
 }
+
+// ============================================================================
+// KYC / AML
+// ============================================================================
+
+/**
+ * Customer KYC lifecycle. The allowed transitions are:
+ *
+ *   not_started -> in_progress
+ *   in_progress -> documents_required | pending_review | rejected
+ *   documents_required -> in_progress
+ *   pending_review -> verified | rejected | documents_required
+ *   verified -> expired | suspended
+ *   expired -> in_progress
+ *   suspended -> in_progress
+ *   rejected -> in_progress  (allows re-submission)
+ */
+export type KycStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'documents_required'
+  | 'pending_review'
+  | 'verified'
+  | 'rejected'
+  | 'expired'
+  | 'suspended';
+
+/**
+ * AML screening outcome. `hit` means the subject matches a sanctions/PEP list
+ * and must be manually reviewed before the business relationship continues.
+ */
+export type AmlRiskLevel = 'low' | 'medium' | 'high' | 'prohibited';
+export type AmlScreeningStatus = 'clear' | 'hit' | 'pending' | 'error';
+
+export type KycDocumentType =
+  | 'national_id'
+  | 'passport'
+  | 'drivers_license'
+  | 'proof_of_address'
+  | 'selfie'
+  | 'business_registration'
+  | 'tax_pin';
+
+export type KycDocumentStatus =
+  | 'pending'
+  | 'verified'
+  | 'rejected'
+  | 'expired';
+
+export interface KycDocument {
+  readonly id: string;
+  readonly subjectId: string;
+  readonly type: KycDocumentType;
+  readonly status: KycDocumentStatus;
+  readonly documentUploadId: string;
+  readonly issuedAt: string | null;
+  readonly expiresAt: string | null;
+  readonly verifiedAt: string | null;
+  readonly verifiedBy: UserId | null;
+  readonly rejectionReason: string | null;
+}
+
+export interface AmlScreeningResult {
+  readonly status: AmlScreeningStatus;
+  readonly risk: AmlRiskLevel;
+  readonly listsMatched: readonly string[]; // e.g. ['OFAC_SDN', 'UN_CONSOLIDATED']
+  readonly screenedAt: string;
+  readonly notes: string | null;
+}
+
+export interface KycProfile {
+  readonly id: string;
+  readonly tenantId: TenantId;
+  readonly subjectId: string; // customerId, ownerId, or userId
+  readonly subjectType: 'customer' | 'owner' | 'user' | 'vendor';
+  readonly status: KycStatus;
+  readonly riskLevel: AmlRiskLevel;
+  readonly documents: readonly KycDocument[];
+  readonly amlLatest: AmlScreeningResult | null;
+  readonly verifiedAt: string | null;
+  readonly verifiedBy: UserId | null;
+  readonly expiresAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface KycAuditEvent {
+  readonly id: string;
+  readonly tenantId: TenantId;
+  readonly profileId: string;
+  readonly subjectId: string;
+  readonly event:
+    | 'kyc.started'
+    | 'kyc.document.uploaded'
+    | 'kyc.document.verified'
+    | 'kyc.document.rejected'
+    | 'kyc.status.changed'
+    | 'kyc.aml.screened'
+    | 'kyc.verified'
+    | 'kyc.rejected'
+    | 'kyc.expired'
+    | 'kyc.suspended'
+    | 'kyc.reinstated';
+  readonly previousStatus: KycStatus | null;
+  readonly newStatus: KycStatus | null;
+  readonly actor: UserId | 'system';
+  readonly details: Readonly<Record<string, unknown>>;
+  readonly createdAt: string;
+}
+
+export interface KycProfileStore {
+  findById(id: string, tenantId: TenantId): Promise<KycProfile | null>;
+  findBySubject(subjectId: string, tenantId: TenantId): Promise<KycProfile | null>;
+  create(profile: KycProfile): Promise<KycProfile>;
+  update(profile: KycProfile): Promise<KycProfile>;
+}
+
+export interface KycAuditStore {
+  append(event: KycAuditEvent): Promise<void>;
+  listForProfile(profileId: string, tenantId: TenantId): Promise<readonly KycAuditEvent[]>;
+}
+
+export interface AmlScreeningProvider {
+  screen(
+    subjectId: string,
+    fullName: string,
+    dateOfBirth?: string,
+    country?: string
+  ): Promise<AmlScreeningResult>;
+}
+
+export interface KycComplianceEventBase extends DomainEvent {
+  readonly payload: Record<string, unknown>;
+}
+
+export interface KycStatusChangedEvent extends KycComplianceEventBase {
+  readonly eventType: 'KycStatusChanged';
+  readonly payload: {
+    readonly profileId: string;
+    readonly subjectId: string;
+    readonly previousStatus: KycStatus;
+    readonly newStatus: KycStatus;
+  };
+}
+
+export interface KycVerifiedEvent extends KycComplianceEventBase {
+  readonly eventType: 'KycVerified';
+  readonly payload: {
+    readonly profileId: string;
+    readonly subjectId: string;
+    readonly verifiedBy: UserId;
+    readonly expiresAt: string | null;
+  };
+}
+
+export interface AmlHitEvent extends KycComplianceEventBase {
+  readonly eventType: 'AmlHit';
+  readonly payload: {
+    readonly profileId: string;
+    readonly subjectId: string;
+    readonly risk: AmlRiskLevel;
+    readonly listsMatched: readonly string[];
+  };
+}
+
+export const KycServiceError = {
+  PROFILE_NOT_FOUND: 'PROFILE_NOT_FOUND',
+  INVALID_STATUS_TRANSITION: 'INVALID_KYC_STATUS_TRANSITION',
+  DOCUMENT_NOT_FOUND: 'KYC_DOCUMENT_NOT_FOUND',
+  INSUFFICIENT_DOCUMENTS: 'KYC_INSUFFICIENT_DOCUMENTS',
+  AML_PROHIBITED: 'AML_PROHIBITED_MATCH',
+} as const;
+
+export type KycServiceErrorCode =
+  (typeof KycServiceError)[keyof typeof KycServiceError];
+
+export interface KycServiceErrorResult {
+  code: KycServiceErrorCode;
+  message: string;
+}
+
+/** Valid KYC status transitions. */
+const KYC_TRANSITIONS: Record<KycStatus, readonly KycStatus[]> = {
+  not_started: ['in_progress'],
+  in_progress: ['documents_required', 'pending_review', 'rejected'],
+  documents_required: ['in_progress', 'rejected'],
+  pending_review: ['verified', 'rejected', 'documents_required'],
+  verified: ['expired', 'suspended'],
+  expired: ['in_progress'],
+  suspended: ['in_progress', 'rejected'],
+  rejected: ['in_progress'],
+};
+
+export function isValidKycTransition(from: KycStatus, to: KycStatus): boolean {
+  return KYC_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+/** Minimum document requirements per subject type. */
+const REQUIRED_DOCUMENTS: Record<KycProfile['subjectType'], readonly KycDocumentType[]> = {
+  customer: ['national_id', 'proof_of_address'],
+  owner: ['national_id', 'proof_of_address', 'tax_pin'],
+  user: ['national_id'],
+  vendor: ['business_registration', 'tax_pin'],
+};
+
+/**
+ * KycService implements the KYC/AML state machine, document-verification
+ * gating, and emits an immutable audit log for every transition.
+ */
+export class KycService {
+  constructor(
+    private readonly profileStore: KycProfileStore,
+    private readonly auditStore: KycAuditStore,
+    private readonly eventBus: EventBus,
+    private readonly amlProvider?: AmlScreeningProvider
+  ) {}
+
+  /** Open a new KYC profile in the `in_progress` state. */
+  async startKyc(
+    tenantId: TenantId,
+    subjectId: string,
+    subjectType: KycProfile['subjectType'],
+    actor: UserId
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const existing = await this.profileStore.findBySubject(subjectId, tenantId);
+    if (existing) return ok(existing);
+
+    const now = new Date().toISOString();
+    const profile: KycProfile = {
+      id: `kyc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      tenantId,
+      subjectId,
+      subjectType,
+      status: 'in_progress',
+      riskLevel: 'low',
+      documents: [],
+      amlLatest: null,
+      verifiedAt: null,
+      verifiedBy: null,
+      expiresAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const saved = await this.profileStore.create(profile);
+    await this.recordAudit(saved, 'kyc.started', null, 'in_progress', actor, {});
+    return ok(saved);
+  }
+
+  /** Upload a KYC document (binds to an already-uploaded documents service record). */
+  async addDocument(
+    profileId: string,
+    tenantId: TenantId,
+    document: Omit<KycDocument, 'id' | 'status' | 'verifiedAt' | 'verifiedBy' | 'rejectionReason'>,
+    actor: UserId
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    const kycDoc: KycDocument = {
+      id: `kyd_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      ...document,
+      status: 'pending',
+      verifiedAt: null,
+      verifiedBy: null,
+      rejectionReason: null,
+    };
+    const updated: KycProfile = {
+      ...profile,
+      documents: [...profile.documents, kycDoc],
+      updatedAt: new Date().toISOString(),
+    };
+    const saved = await this.profileStore.update(updated);
+    await this.recordAudit(saved, 'kyc.document.uploaded', profile.status, profile.status, actor, {
+      documentId: kycDoc.id,
+      documentType: kycDoc.type,
+    });
+    return ok(saved);
+  }
+
+  /** Mark a specific document as verified or rejected. */
+  async decideDocument(
+    profileId: string,
+    tenantId: TenantId,
+    documentId: string,
+    decision: 'verified' | 'rejected',
+    actor: UserId,
+    rejectionReason?: string
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    const target = profile.documents.find((d) => d.id === documentId);
+    if (!target) {
+      return err({ code: KycServiceError.DOCUMENT_NOT_FOUND, message: 'Document not found' });
+    }
+    const now = new Date().toISOString();
+    const nextDocs: KycDocument[] = profile.documents.map((d) =>
+      d.id === documentId
+        ? {
+            ...d,
+            status: decision,
+            verifiedAt: decision === 'verified' ? now : null,
+            verifiedBy: decision === 'verified' ? actor : null,
+            rejectionReason: decision === 'rejected' ? rejectionReason ?? 'Document rejected' : null,
+          }
+        : d
+    );
+    const updated: KycProfile = { ...profile, documents: nextDocs, updatedAt: now };
+    const saved = await this.profileStore.update(updated);
+    await this.recordAudit(
+      saved,
+      decision === 'verified' ? 'kyc.document.verified' : 'kyc.document.rejected',
+      profile.status,
+      profile.status,
+      actor,
+      { documentId, rejectionReason: rejectionReason ?? null }
+    );
+    return ok(saved);
+  }
+
+  /**
+   * Submit a profile for review. Gated by: required documents present and
+   * all verified, and a clean AML screening (pending/clear with risk <
+   * prohibited).
+   */
+  async submitForReview(
+    profileId: string,
+    tenantId: TenantId,
+    actor: UserId,
+    screeningContext?: { fullName: string; dateOfBirth?: string; country?: string }
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+
+    const required = REQUIRED_DOCUMENTS[profile.subjectType];
+    const verifiedTypes = new Set(
+      profile.documents.filter((d) => d.status === 'verified').map((d) => d.type)
+    );
+    const missing = required.filter((t) => !verifiedTypes.has(t));
+    if (missing.length > 0) {
+      return err({
+        code: KycServiceError.INSUFFICIENT_DOCUMENTS,
+        message: `Missing verified documents: ${missing.join(', ')}`,
+      });
+    }
+
+    let amlLatest = profile.amlLatest;
+    if (this.amlProvider && screeningContext) {
+      amlLatest = await this.amlProvider.screen(
+        profile.subjectId,
+        screeningContext.fullName,
+        screeningContext.dateOfBirth,
+        screeningContext.country
+      );
+      await this.recordAudit(profile, 'kyc.aml.screened', profile.status, profile.status, actor, {
+        risk: amlLatest.risk,
+        status: amlLatest.status,
+        listsMatched: amlLatest.listsMatched,
+      });
+      if (amlLatest.status === 'hit' && amlLatest.risk === 'prohibited') {
+        await this.eventBus.publish(
+          createEventEnvelope(
+            {
+              eventId: generateEventId(),
+              eventType: 'AmlHit',
+              timestamp: new Date().toISOString(),
+              tenantId,
+              correlationId: profile.id,
+              causationId: null,
+              metadata: {},
+              payload: {
+                profileId: profile.id,
+                subjectId: profile.subjectId,
+                risk: amlLatest.risk,
+                listsMatched: amlLatest.listsMatched,
+              },
+            } satisfies AmlHitEvent,
+            profile.id,
+            'KycProfile'
+          )
+        );
+        return err({
+          code: KycServiceError.AML_PROHIBITED,
+          message: `AML screening returned a prohibited match on lists: ${amlLatest.listsMatched.join(', ')}`,
+        });
+      }
+    }
+
+    return this.transition(profile, 'pending_review', actor, { amlLatest });
+  }
+
+  /** Approve KYC after review. Optionally set an expiry for re-verification. */
+  async verify(
+    profileId: string,
+    tenantId: TenantId,
+    actor: UserId,
+    expiresAt?: string
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    const transitioned = await this.transition(profile, 'verified', actor, {
+      verifiedAt: new Date().toISOString(),
+      verifiedBy: actor,
+      expiresAt: expiresAt ?? null,
+    });
+    if (transitioned.ok) {
+      await this.eventBus.publish(
+        createEventEnvelope(
+          {
+            eventId: generateEventId(),
+            eventType: 'KycVerified',
+            timestamp: new Date().toISOString(),
+            tenantId,
+            correlationId: profile.id,
+            causationId: null,
+            metadata: {},
+            payload: {
+              profileId: profile.id,
+              subjectId: profile.subjectId,
+              verifiedBy: actor,
+              expiresAt: expiresAt ?? null,
+            },
+          } satisfies KycVerifiedEvent,
+          profile.id,
+          'KycProfile'
+        )
+      );
+    }
+    return transitioned;
+  }
+
+  /** Reject KYC; supplies a human-readable reason for audit + customer feedback. */
+  async reject(
+    profileId: string,
+    tenantId: TenantId,
+    actor: UserId,
+    reason: string
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    return this.transition(profile, 'rejected', actor, {}, { reason });
+  }
+
+  /** Suspend a previously verified profile (e.g. fraud alert). */
+  async suspend(
+    profileId: string,
+    tenantId: TenantId,
+    actor: UserId,
+    reason: string
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    return this.transition(profile, 'suspended', actor, {}, { reason });
+  }
+
+  /** Mark a profile as expired, typically on the `expiresAt` boundary. */
+  async markExpired(
+    profileId: string,
+    tenantId: TenantId
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    const profile = await this.profileStore.findById(profileId, tenantId);
+    if (!profile) {
+      return err({ code: KycServiceError.PROFILE_NOT_FOUND, message: 'KYC profile not found' });
+    }
+    return this.transition(profile, 'expired', 'system', {});
+  }
+
+  /**
+   * Is the subject cleared to transact? This is the gate that downstream
+   * services (payments, disbursements, onboarding) should call.
+   */
+  async isCleared(tenantId: TenantId, subjectId: string): Promise<boolean> {
+    const profile = await this.profileStore.findBySubject(subjectId, tenantId);
+    if (!profile) return false;
+    if (profile.status !== 'verified') return false;
+    if (profile.riskLevel === 'prohibited') return false;
+    if (profile.expiresAt && new Date(profile.expiresAt) <= new Date()) return false;
+    return true;
+  }
+
+  /** Full audit log for a profile. */
+  async getAuditTrail(
+    profileId: string,
+    tenantId: TenantId
+  ): Promise<readonly KycAuditEvent[]> {
+    return this.auditStore.listForProfile(profileId, tenantId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Internals
+  // -------------------------------------------------------------------------
+
+  private async transition(
+    profile: KycProfile,
+    next: KycStatus,
+    actor: UserId | 'system',
+    patch: Partial<KycProfile>,
+    auditDetails: Record<string, unknown> = {}
+  ): Promise<Result<KycProfile, KycServiceErrorResult>> {
+    if (!isValidKycTransition(profile.status, next)) {
+      return err({
+        code: KycServiceError.INVALID_STATUS_TRANSITION,
+        message: `Invalid KYC status transition: ${profile.status} -> ${next}`,
+      });
+    }
+    const riskLevel = patch.riskLevel ?? profile.riskLevel;
+    const updated: KycProfile = {
+      ...profile,
+      ...patch,
+      status: next,
+      riskLevel,
+      updatedAt: new Date().toISOString(),
+    };
+    const saved = await this.profileStore.update(updated);
+    const eventKey =
+      next === 'verified'
+        ? 'kyc.verified'
+        : next === 'rejected'
+        ? 'kyc.rejected'
+        : next === 'suspended'
+        ? 'kyc.suspended'
+        : next === 'expired'
+        ? 'kyc.expired'
+        : next === 'in_progress' && profile.status === 'suspended'
+        ? 'kyc.reinstated'
+        : 'kyc.status.changed';
+    await this.recordAudit(saved, eventKey, profile.status, next, actor, auditDetails);
+
+    await this.eventBus.publish(
+      createEventEnvelope(
+        {
+          eventId: generateEventId(),
+          eventType: 'KycStatusChanged',
+          timestamp: new Date().toISOString(),
+          tenantId: saved.tenantId,
+          correlationId: saved.id,
+          causationId: null,
+          metadata: {},
+          payload: {
+            profileId: saved.id,
+            subjectId: saved.subjectId,
+            previousStatus: profile.status,
+            newStatus: next,
+          },
+        } satisfies KycStatusChangedEvent,
+        saved.id,
+        'KycProfile'
+      )
+    );
+    return ok(saved);
+  }
+
+  private async recordAudit(
+    profile: KycProfile,
+    event: KycAuditEvent['event'],
+    previousStatus: KycStatus | null,
+    newStatus: KycStatus | null,
+    actor: UserId | 'system',
+    details: Record<string, unknown>
+  ): Promise<void> {
+    const entry: KycAuditEvent = {
+      id: `kya_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      tenantId: profile.tenantId,
+      profileId: profile.id,
+      subjectId: profile.subjectId,
+      event,
+      previousStatus,
+      newStatus,
+      actor,
+      details,
+      createdAt: new Date().toISOString(),
+    };
+    await this.auditStore.append(entry);
+  }
+}
+
+// ---- In-memory KYC stores (useful for tests + local dev) -------------------
+
+const kycProfileMap = new Map<string, KycProfile>();
+const kycProfileBySubject = new Map<string, string>(); // subjectKey -> profileId
+const kycAuditMap = new Map<string, KycAuditEvent[]>(); // profileId -> events
+
+function kycProfileKey(id: string, tenantId: TenantId): string {
+  return `${tenantId}:${id}`;
+}
+
+function kycSubjectKey(subjectId: string, tenantId: TenantId): string {
+  return `${tenantId}:${subjectId}`;
+}
+
+export class MemoryKycProfileStore implements KycProfileStore {
+  async findById(id: string, tenantId: TenantId): Promise<KycProfile | null> {
+    return kycProfileMap.get(kycProfileKey(id, tenantId)) ?? null;
+  }
+
+  async findBySubject(subjectId: string, tenantId: TenantId): Promise<KycProfile | null> {
+    const id = kycProfileBySubject.get(kycSubjectKey(subjectId, tenantId));
+    if (!id) return null;
+    return kycProfileMap.get(kycProfileKey(id, tenantId)) ?? null;
+  }
+
+  async create(profile: KycProfile): Promise<KycProfile> {
+    kycProfileMap.set(kycProfileKey(profile.id, profile.tenantId), profile);
+    kycProfileBySubject.set(kycSubjectKey(profile.subjectId, profile.tenantId), profile.id);
+    return profile;
+  }
+
+  async update(profile: KycProfile): Promise<KycProfile> {
+    kycProfileMap.set(kycProfileKey(profile.id, profile.tenantId), profile);
+    return profile;
+  }
+
+  clear(): void {
+    kycProfileMap.clear();
+    kycProfileBySubject.clear();
+  }
+}
+
+export class MemoryKycAuditStore implements KycAuditStore {
+  async append(event: KycAuditEvent): Promise<void> {
+    const existing = kycAuditMap.get(event.profileId) ?? [];
+    existing.push(event);
+    kycAuditMap.set(event.profileId, existing);
+  }
+
+  async listForProfile(profileId: string, _tenantId: TenantId): Promise<readonly KycAuditEvent[]> {
+    return [...(kycAuditMap.get(profileId) ?? [])].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }
+
+  clear(): void {
+    kycAuditMap.clear();
+  }
+}
