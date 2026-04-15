@@ -48,14 +48,29 @@ export default function ReportEmergencyPage() {
     canBeReached: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.type) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push('/emergencies?reported=true');
+    setSubmitError(null);
+    try {
+      const response = await fetch('/api/v1/emergencies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to report emergency (${response.status})`);
+      }
+      router.push('/emergencies?reported=true');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to report emergency');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

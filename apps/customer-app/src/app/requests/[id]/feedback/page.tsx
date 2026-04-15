@@ -145,6 +145,12 @@ export default function FeedbackPage() {
           )}
         </section>
 
+        {submitError && (
+          <div className="card border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+            {submitError}
+          </div>
+        )}
+
         {/* Submit */}
         <button
           type="submit"

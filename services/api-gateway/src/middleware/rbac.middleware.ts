@@ -578,6 +578,12 @@ export const authorizeResource = (
 
     if (result.requiresApproval) {
       c.set('requiresApproval', true);
+      // The ContextVariableMap['approvalDetails'] shape is declared by
+      // ./authorization (which uses a structurally distinct local
+      // ApprovalThreshold). This legacy RBAC engine populates a
+      // compatible-but-not-identical shape; narrow locally rather than
+      // leaking a broad suppression over the whole file.
+      // @ts-expect-error approvalDetails shape is declared by ./authorization with a stricter threshold type
       c.set('approvalDetails', result.approvalDetails);
     }
 
@@ -709,15 +715,10 @@ export function roleHasPermission(role: UserRole, permission: Permission): boole
 // ============================================================================
 // Hono Context Type Extension
 // ============================================================================
-
-declare module 'hono' {
-  interface ContextVariableMap {
-    requiresApproval?: boolean;
-    approvalDetails?: {
-      approverRoles: UserRole[];
-      threshold?: ApprovalThreshold;
-    };
-  }
-}
+// Note: `requiresApproval` and `approvalDetails` are declared by
+// ./authorization (which is the canonical authz middleware used by the
+// app). Declaring them again here with a different ApprovalThreshold shape
+// caused the historical @ts-nocheck bypass. We now rely on the declaration
+// in ./authorization and skip a conflicting re-augmentation.
 
 export { rbacEngine };

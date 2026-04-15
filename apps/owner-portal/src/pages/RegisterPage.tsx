@@ -126,30 +126,10 @@ export function RegisterPage() {
         setMfaSetup(response.data as MfaSetup);
         setStep('mfa-setup');
       } else {
-        if (process.env.NODE_ENV !== 'production') {
-          const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-          setMfaSetup({
-            secret: devSecret,
-            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-            backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-          });
-          setStep('mfa-setup');
-        } else {
-          setError('MFA setup failed. Please try again.');
-        }
+        setError(response.error?.message || 'MFA setup failed. Please try again.');
       }
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-        setMfaSetup({
-          secret: devSecret,
-          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-          backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-        });
-        setStep('mfa-setup');
-      } else {
-        setError('MFA setup failed. Please try again.');
-      }
+      setError(err instanceof Error ? err.message : 'MFA setup failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -165,12 +145,10 @@ export function RegisterPage() {
       if (response.success) {
         setStep('success');
       } else {
-        if (mfaCode.length === 6) setStep('success');
-        else setError('Please enter a valid 6-digit code');
+        setError(response.error?.message || 'Invalid verification code. Please try again.');
       }
     } catch (err) {
-      if (mfaCode.length === 6) setStep('success');
-      else setError('Please enter a valid 6-digit code');
+      setError(err instanceof Error ? err.message : 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
