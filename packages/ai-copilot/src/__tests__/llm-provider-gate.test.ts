@@ -1,84 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { createLLMProviderGate } from '../providers/llm-provider-gate.js';
-import { MockAIProvider } from '../providers/ai-provider.js';
-import { suggestedPrompts, type PortfolioContext } from '../copilots/portfolio-chat-copilot.js';
+import {
+  resolveChatProvider,
+  getJurisdictionPolicy,
+  MockChatProvider,
+} from '../providers/index.js';
 
-function mockProvider(id: string) {
-  const p = new MockAIProvider();
-  (p as unknown as { providerId: string }).providerId = id;
-  return p;
-}
-
-describe('LLMProviderGate', () => {
-  it('blocks DeepSeek for TZ tenants and falls through to Anthropic', () => {
-    const anthropic = mockProvider('anthropic') as unknown as ReturnType<
-      typeof mockProvider
-    >;
-    const deepseek = mockProvider('deepseek');
-    const gate = createLLMProviderGate({
-      // We cast through unknown because the gate expects AnthropicProvider
-      // specifically, but for this test we only verify selection logic.
-      anthropic: anthropic as unknown as never,
-      deepseek,
+describe('llm-provider-gate', () => {
+  it('falls back to MockChatProvider when no keys are set', () => {
+    const { provider, degraded, reason } = resolveChatProvider({
+      jurisdiction: 'KE',
+      env: {},
     });
-    const result = gate.pick('TZ');
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.decision.providerId).toBe('anthropic');
-      expect(result.decision.jurisdiction).toBe('TZ');
-    }
+    expect(provider).toBeInstanceOf(MockChatProvider);
+    expect(degraded).toBe(true);
+    expect(reason).toContain('AI disabled');
   });
 
-  it('blocks DeepSeek for KE tenants', () => {
-    const gate = createLLMProviderGate({});
-    expect(gate.isAllowed('deepseek', 'KE')).toBe(false);
-    expect(gate.isAllowed('anthropic', 'KE')).toBe(true);
+  it('prefers Anthropic when ANTHROPIC_API_KEY is present', () => {
+    const { provider, degraded } = resolveChatProvider({
+      jurisdiction: 'KE',
+      env: { ANTHROPIC_API_KEY: 'sk-test-anthropic-123' },
+    });
+    expect(provider.providerId).toBe('anthropic');
+    expect(degraded).toBe(false);
   });
 
-  it('allows DeepSeek for GLOBAL jurisdiction', () => {
-    const gate = createLLMProviderGate({});
-    expect(gate.isAllowed('deepseek', 'GLOBAL')).toBe(true);
+  it('blocks DeepSeek for GB jurisdiction even if requested', () => {
+    const { provider, policy } = resolveChatProvider({
+      jurisdiction: 'GB',
+      requested: 'deepseek',
+      env: {
+        DEEPSEEK_API_KEY: 'sk-ds',
+        ANTHROPIC_API_KEY: 'sk-anth',
+      },
+    });
+    expect(policy.blockedProviders).toContain('deepseek');
+    expect(provider.providerId).toBe('anthropic');
   });
 
-  it('returns error when no allowed provider is registered', () => {
-    const gate = createLLMProviderGate({});
-    const result = gate.pick('KE');
-    expect(result.ok).toBe(false);
-    if (result.ok !== true) {
-      expect(result.error.code).toBe('NO_ALLOWED_PROVIDER');
-    }
-  });
-});
-
-describe('suggestedPrompts', () => {
-  const base: PortfolioContext = {
-    orgId: 'o1',
-    jurisdiction: 'KE',
-    properties: [],
-    arrears: [],
-    occupancyRate: 1,
-    totalTenants: 0,
-  };
-
-  it('includes arrears prompt when any tenant is behind', () => {
-    const ctx: PortfolioContext = {
-      ...base,
-      arrears: [
-        {
-          tenantName: 'Alice',
-          unitLabel: 'A1',
-          amountOutstanding: 50_000,
-          daysOverdue: 10,
-          currency: 'KES',
-        },
-      ],
-    };
-    const prompts = suggestedPrompts(ctx);
-    expect(prompts).toContain("Who's behind on rent?");
+  it('falls back to mock when only DeepSeek is available in a blocking jurisdiction', () => {
+    const { provider, degraded, reason } = resolveChatProvider({
+      jurisdiction: 'GB',
+      env: { DEEPSEEK_API_KEY: 'sk-ds' },
+    });
+    expect(provider).toBeInstanceOf(MockChatProvider);
+    expect(degraded).toBe(true);
+    expect(reason).toContain('No permitted provider');
   });
 
-  it('omits arrears prompt when all tenants are current', () => {
-    const prompts = suggestedPrompts(base);
-    expect(prompts).not.toContain("Who's behind on rent?");
+  it('resolves unknown jurisdiction to conservative default', () => {
+    const policy = getJurisdictionPolicy('ZZ');
+    expect(policy.blockedProviders).toContain('deepseek');
   });
 });

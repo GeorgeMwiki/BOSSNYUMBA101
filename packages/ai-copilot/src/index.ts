@@ -88,47 +88,42 @@ export type {
   ModelInfo,
 } from './providers/ai-provider.js';
 
-// Anthropic provider + jurisdiction gate
-export { AnthropicProvider } from './providers/anthropic-provider.js';
-export type {
-  AnthropicProviderConfig,
-  StreamChunk,
-} from './providers/anthropic-provider.js';
-
+// Chat providers (conversation-style LLM calls)
 export {
-  DEFAULT_JURISDICTION_POLICIES,
-  getJurisdictionPolicy,
-} from './providers/jurisdiction-config.js';
-export type {
-  Jurisdiction,
-  ProviderId,
-  JurisdictionPolicy,
-} from './providers/jurisdiction-config.js';
+  AnthropicChatProvider,
+  OpenAIChatProvider,
+  DeepSeekChatProvider,
+  MockChatProvider,
+} from './providers/chat-provider.js';
 
-export {
-  LLMProviderGate,
-  createLLMProviderGate,
-} from './providers/llm-provider-gate.js';
 export type {
-  LLMProviderGateConfig,
-  ProviderDecision,
-  ProviderGateError,
-} from './providers/llm-provider-gate.js';
-
-// Portfolio chat copilot (owner AI tab)
-export {
-  PortfolioChatCopilot,
-  createPortfolioChatCopilot,
-  suggestedPrompts,
-} from './copilots/portfolio-chat-copilot.js';
-export type {
+  ChatProvider,
   ChatMessage,
-  PortfolioContext,
-  PortfolioChatRequest,
-  PortfolioChatResponse,
-  TenantArrearsSnapshot,
-  PropertySnapshot,
-} from './copilots/portfolio-chat-copilot.js';
+  ChatRole,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ChatStreamChunk,
+  ChatCompletionUsage,
+  AnthropicChatConfig,
+  OpenAIChatConfig,
+  DeepSeekChatConfig,
+} from './providers/chat-provider.js';
+
+// LLM Provider Gate (jurisdiction-aware routing)
+export {
+  resolveChatProvider,
+  getJurisdictionPolicy,
+  JURISDICTION_POLICIES,
+  DEFAULT_JURISDICTION,
+} from './providers/llm-provider-gate.js';
+
+export type {
+  JurisdictionPolicy,
+  ProviderId,
+  LLMGateEnv,
+  ResolveOptions,
+  ResolvedProvider,
+} from './providers/llm-provider-gate.js';
 
 // Services
 export {
