@@ -88,6 +88,30 @@ export type {
   ModelInfo,
 } from './providers/ai-provider.js';
 
+export {
+  AnthropicProvider,
+  ANTHROPIC_MODEL_CATALOG,
+} from './providers/anthropic-provider.js';
+
+export type {
+  AnthropicProviderConfig,
+  AnthropicClientLike,
+  AnthropicClientFactory,
+  AnthropicMessagesAPI,
+  AnthropicMessagesCreateParams,
+  AnthropicMessageResponse,
+} from './providers/anthropic-provider.js';
+
+export {
+  ModelTask,
+  DEFAULT_MODEL_DEFAULTS,
+  modelForTask,
+} from './providers/model-defaults.js';
+
+export type {
+  ModelDefaults,
+} from './providers/model-defaults.js';
+
 // Services
 export {
   BaseCopilot,
