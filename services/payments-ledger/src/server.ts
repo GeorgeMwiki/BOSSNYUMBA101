@@ -169,6 +169,36 @@ obsLogger.info('Observability initialized for payments-ledger', {
  * Build an AuthzUser from request headers.
  * Upstream api-gateway is expected to propagate user context; fall back to anonymous.
  */
+// -----------------------------------------------------------------------------
+// Idempotency cache (in-process). For multi-replica deployments, back this
+// with Redis — see IDEMPOTENCY_STORE env (not yet implemented, falls back
+// to in-memory with a production warning).
+// -----------------------------------------------------------------------------
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface IdempotentEntry {
+  status: number;
+  body: unknown;
+  expiresAt: number;
+}
+
+const idempotencyCache = new Map<string, IdempotentEntry>();
+
+// Best-effort pruning: every 10 minutes drop expired entries so the Map
+// doesn't grow without bound under high throughput.
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of idempotencyCache) {
+    if (v.expiresAt < now) idempotencyCache.delete(k);
+  }
+}, 10 * 60 * 1000).unref?.();
+
+if (process.env.NODE_ENV === 'production' && !process.env.IDEMPOTENCY_STORE) {
+  obsLogger.warn(
+    'Idempotency cache is in-process. Set IDEMPOTENCY_STORE=redis for multi-replica safety.'
+  );
+}
+
 function getAuthzUser(req: Request): AuthzUser {
   const userId = (req.headers['x-user-id'] as string) || 'anonymous';
   const rolesHeader = (req.headers['x-user-roles'] as string) || '';
@@ -399,6 +429,28 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
     }
 
     const data = validation.data;
+
+    // Idempotency: a repeat request with the same key for the same tenant
+    // returns the cached prior response instead of creating a duplicate
+    // payment intent. Missing key is allowed but logged as a best-practice
+    // warning — mobile clients should always supply one.
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (!idempotencyKey) {
+      obsLogger.warn('Payment create received without idempotencyKey', {
+        tenantId: data.tenantId,
+        customerId: data.customerId,
+      });
+    } else {
+      const cached = idempotencyCache.get(`${data.tenantId}:${idempotencyKey}`);
+      if (cached) {
+        obsLogger.info('Returning cached idempotent payment response', {
+          tenantId: data.tenantId,
+          idempotencyKey,
+        });
+        return res.status(cached.status).json(cached.body);
+      }
+    }
+
     const tenantId = asTenantId(data.tenantId);
     const tenant = getTenantAggregate(tenantId);
 
@@ -423,14 +475,23 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
     };
 
     const result = await paymentOrchestrationService.createPayment(request, tenant);
-
-    res.status(201).json({
+    const body = {
       paymentIntentId: result.paymentIntentId,
       status: result.status,
       clientSecret: result.clientSecret,
       redirectUrl: result.redirectUrl,
-      instructions: result.instructions
-    });
+      instructions: result.instructions,
+    };
+
+    if (idempotencyKey) {
+      idempotencyCache.set(`${data.tenantId}:${idempotencyKey}`, {
+        status: 201,
+        body,
+        expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
+      });
+    }
+
+    res.status(201).json(body);
   } catch (error) {
     next(error);
   }

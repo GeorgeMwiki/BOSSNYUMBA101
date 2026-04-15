@@ -6,10 +6,8 @@ function getApiBase(): string {
       : `${configured.replace(/\/$/, '')}/api/v1`;
   }
 
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:4000/api/v1';
-  }
-
+  // Fall back to same-origin /api/v1. Prod deployments serve the gateway
+  // behind the same reverse proxy; local dev should set VITE_API_URL.
   return '/api/v1';
 }
 

@@ -100,31 +100,38 @@ export default defineConfig({
     },
   ],
   
-  /* Run local dev servers before starting tests */
-  // webServer: [
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/estate-manager dev',
-  //     url: 'http://localhost:3003',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/customer-app dev',
-  //     url: 'http://localhost:3002',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/owner-portal dev',
-  //     url: 'http://localhost:3000',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/admin-portal dev',
-  //     url: 'http://localhost:3001',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  // ],
+  /**
+   * Auto-start local dev servers for e2e. Skipped when env URLs are provided
+   * (CI or staging-deployed runs) — Playwright treats missing webServer as a
+   * no-op if `reuseExistingServer` is true and the port already responds.
+   * Opt out entirely by setting E2E_SKIP_WEBSERVER=1.
+   */
+  webServer: process.env.E2E_SKIP_WEBSERVER
+    ? undefined
+    : [
+        {
+          command: 'pnpm --filter @bossnyumba/estate-manager-app dev',
+          url: process.env.ESTATE_MANAGER_URL ?? 'http://localhost:3003',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120000,
+        },
+        {
+          command: 'pnpm --filter @bossnyumba/customer-app dev',
+          url: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120000,
+        },
+        {
+          command: 'pnpm --filter @bossnyumba/owner-portal dev',
+          url: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120000,
+        },
+        {
+          command: 'pnpm --filter @bossnyumba/admin-portal dev',
+          url: process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3001',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120000,
+        },
+      ],
 });
