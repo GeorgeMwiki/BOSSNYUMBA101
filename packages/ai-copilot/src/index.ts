@@ -88,6 +88,48 @@ export type {
   ModelInfo,
 } from './providers/ai-provider.js';
 
+// Anthropic provider + jurisdiction gate
+export { AnthropicProvider } from './providers/anthropic-provider.js';
+export type {
+  AnthropicProviderConfig,
+  StreamChunk,
+} from './providers/anthropic-provider.js';
+
+export {
+  DEFAULT_JURISDICTION_POLICIES,
+  getJurisdictionPolicy,
+} from './providers/jurisdiction-config.js';
+export type {
+  Jurisdiction,
+  ProviderId,
+  JurisdictionPolicy,
+} from './providers/jurisdiction-config.js';
+
+export {
+  LLMProviderGate,
+  createLLMProviderGate,
+} from './providers/llm-provider-gate.js';
+export type {
+  LLMProviderGateConfig,
+  ProviderDecision,
+  ProviderGateError,
+} from './providers/llm-provider-gate.js';
+
+// Portfolio chat copilot (owner AI tab)
+export {
+  PortfolioChatCopilot,
+  createPortfolioChatCopilot,
+  suggestedPrompts,
+} from './copilots/portfolio-chat-copilot.js';
+export type {
+  ChatMessage,
+  PortfolioContext,
+  PortfolioChatRequest,
+  PortfolioChatResponse,
+  TenantArrearsSnapshot,
+  PropertySnapshot,
+} from './copilots/portfolio-chat-copilot.js';
+
 // Services
 export {
   BaseCopilot,

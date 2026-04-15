@@ -31,9 +31,7 @@ class ShellScreen extends StatelessWidget {
     }
     if (auth.isOwner) {
       return [
-        _NavItem(icon: Icons.home, label: 'Home', path: '/owner'),
-        _NavItem(icon: Icons.approval, label: 'Approvals', path: '/owner/approvals'),
-        _NavItem(icon: Icons.search, label: 'Search', path: '/owner/search'),
+        _NavItem(icon: Icons.apartment, label: 'Portfolio', path: '/owner'),
         _NavItem(icon: Icons.auto_awesome, label: 'AI', path: '/owner/ai'),
         _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
       ];

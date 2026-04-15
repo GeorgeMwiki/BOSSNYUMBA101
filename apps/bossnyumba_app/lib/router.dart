@@ -17,19 +17,6 @@ import 'screens/manager/work_orders_screen.dart';
 import 'screens/manager/inspections_screen.dart';
 import 'screens/owner/owner_home_screen.dart';
 import 'screens/owner/owner_ai_screen.dart';
-import 'screens/owner/owner_approvals_screen.dart';
-import 'screens/owner/approval_detail_screen.dart';
-import 'screens/owner/owner_search_screen.dart';
-import 'screens/owner/owner_tenant_detail_screen.dart';
-import 'screens/owner/owner_property_detail_screen.dart';
-import 'screens/owner/owner_unit_detail_screen.dart';
-import 'screens/owner/notifications_inbox_screen.dart';
-import 'screens/owner/notification_detail_screen.dart';
-import 'screens/owner/portfolio_map_screen.dart';
-import 'screens/owner/quick_report_screen.dart';
-import 'screens/owner/document_viewer_screen.dart';
-import 'screens/owner/morning_briefing_screen.dart';
-import 'screens/owner/tenant_messages_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 
 /// Refresh-notifier that rebuilds the router when the onboarded flag flips
@@ -155,78 +142,9 @@ GoRouter createGoRouter(AuthProvider auth) {
             ],
           ),
           GoRoute(
-            path: '/owner/approvals',
-            builder: (_, __) => const OwnerApprovalsScreen(),
-          ),
-          GoRoute(
             path: '/owner/ai',
             builder: (_, __) => const OwnerAiScreen(),
           ),
-          GoRoute(
-            path: '/owner/approvals',
-            builder: (_, __) => const OwnerApprovalsScreen(),
-          ),
-          GoRoute(
-            path: '/owner/approvals/:id',
-            builder: (_, state) => ApprovalDetailScreen(
-              approvalId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/search',
-            builder: (_, __) => const OwnerSearchScreen(),
-          ),
-          GoRoute(
-            path: '/owner/tenants/:id',
-            builder: (_, state) => OwnerTenantDetailScreen(
-              tenantId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/properties/:id',
-            builder: (_, state) => OwnerPropertyDetailScreen(
-              propertyId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/units/:id',
-            builder: (_, state) => OwnerUnitDetailScreen(
-              unitId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/notifications',
-            builder: (_, __) => const NotificationsInboxScreen(),
-          ),
-          GoRoute(
-            path: '/owner/notifications/:id',
-            builder: (_, state) => NotificationDetailScreen(
-              notificationId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/map',
-            builder: (_, __) => const PortfolioMapScreen(),
-          ),
-          GoRoute(
-            path: '/owner/quick-report',
-            builder: (_, __) => const QuickReportScreen(),
-          ),
-          GoRoute(
-            path: '/owner/documents/:id',
-            builder: (_, state) => DocumentViewerScreen(
-              documentId: state.pathParameters['id'] ?? '',
-            ),
-          ),
-          GoRoute(
-            path: '/owner/briefing',
-            builder: (_, __) => const MorningBriefingScreen(),
-          ),
-          GoRoute(
-            path: '/owner/messages',
-            builder: (_, __) => const TenantMessagesScreen(),
-          ),
-          // ---------------------------------------------------------------
           GoRoute(
             path: '/admin',
             builder: (_, __) => const AdminHomeScreen(),

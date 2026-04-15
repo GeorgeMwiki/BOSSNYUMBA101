@@ -147,6 +147,9 @@ export const storage = () => ({
  */
 export const ai = () => ({
   openaiApiKey: getConfig().OPENAI_API_KEY,
+  anthropicApiKey: getConfig().ANTHROPIC_API_KEY,
+  deepseekApiKey: getConfig().DEEPSEEK_API_KEY,
+  provider: getConfig().AI_PROVIDER,
 });
 
 /**
