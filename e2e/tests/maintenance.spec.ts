@@ -24,10 +24,17 @@ test.describe('Estate Manager - Maintenance / Work Orders', () => {
     await page.goto('/work-orders/new');
     await page.waitForSelector('select', { timeout: 10000 });
 
-    await page.locator('select').first().selectOption({ index: 1 });
-    await page.waitForTimeout(300);
-    await page.locator('select').nth(1).selectOption({ index: 1 });
-    await page.locator('select').nth(2).selectOption('plumbing');
+    const [propertySelect, unitSelect, categorySelect] = [
+      page.locator('select').nth(0),
+      page.locator('select').nth(1),
+      page.locator('select').nth(2),
+    ];
+
+    await propertySelect.selectOption({ index: 1 });
+    // Unit options depend on the selected property - wait for them to render.
+    await expect(unitSelect.locator('option').nth(1)).toBeAttached({ timeout: 5000 });
+    await unitSelect.selectOption({ index: 1 });
+    await categorySelect.selectOption('plumbing');
     await page.getByRole('button', { name: /medium/i }).click();
     await page.getByPlaceholder(/brief description/i).fill(testData.workOrder.title());
 

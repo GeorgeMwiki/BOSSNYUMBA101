@@ -35,12 +35,13 @@ test.describe('Customer App - M-Pesa Payment', () => {
 
   test('should complete M-Pesa flow (simulated)', async ({ page }) => {
     await page.goto('/payments/mpesa');
-    await page.waitForSelector('button:has-text("Pay KES")', { timeout: 10000 });
     const payButton = page.getByRole('button', { name: /pay kes/i });
+    await expect(payButton).toBeVisible({ timeout: 10000 });
     await payButton.click();
-    await page.waitForTimeout(5000);
-    const hasSuccess = await page.getByText(/payment successful|success/i).isVisible().catch(() => false);
-    const hasFailed = await page.getByText(/payment failed|try again/i).isVisible().catch(() => false);
-    expect(hasSuccess || hasFailed).toBeTruthy();
+
+    // Await either a success or a failure state explicitly rather than sleeping.
+    const success = page.getByText(/payment successful|success/i);
+    const failed = page.getByText(/payment failed|try again/i);
+    await expect(success.or(failed)).toBeVisible({ timeout: 30000 });
   });
 });

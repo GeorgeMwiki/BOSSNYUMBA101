@@ -45,7 +45,9 @@ test.describe('Estate Manager - Leases', () => {
     await leasesPage.goto();
     await leasesPage.expectLoaded();
     await leasesPage.filterByStatus('active');
-    await page.waitForTimeout(500);
+    // The filter is applied immediately via URL query or state; wait for any
+    // pending navigation/fetch to settle, then assert the page is still valid.
+    await page.waitForLoadState('networkidle');
     await leasesPage.expectLoaded();
   });
 });

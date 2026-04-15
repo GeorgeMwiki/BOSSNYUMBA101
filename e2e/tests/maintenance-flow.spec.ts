@@ -137,10 +137,11 @@ test.describe('Maintenance Request Creation', () => {
       
       // Select property
       await page.locator('select').first().selectOption({ index: 1 });
-      await page.waitForTimeout(300);
-      
-      // Select unit
-      await page.locator('select').nth(1).selectOption({ index: 1 });
+
+      // Wait for cascading unit select to populate rather than sleeping.
+      const unitSelect = page.locator('select').nth(1);
+      await expect(unitSelect.locator('option').nth(1)).toBeAttached({ timeout: 5000 });
+      await unitSelect.selectOption({ index: 1 });
       
       // Select category
       await page.locator('select').nth(2).selectOption('electrical');

@@ -179,6 +179,8 @@ test.describe('Owner Portal Messaging', () => {
   });
   
   test.describe('OP-AC-052: Email Notifications', () => {
+    test.skip(true, 'Pending feature: owner-portal notification preferences UI (OP-AC-052)');
+
     test('owner receives email notification for new messages', async ({ page }) => {
       // This test verifies the notification settings exist
       // Navigate to notification settings

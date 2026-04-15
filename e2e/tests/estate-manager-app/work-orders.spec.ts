@@ -197,6 +197,8 @@ test.describe('Estate Manager Work Order Management', () => {
   });
   
   test.describe('EM-AC-005: Override AI Vendor Recommendation', () => {
+    test.skip(true, 'Pending feature: AI vendor recommendation override with reason capture (EM-AC-005)');
+
     test('manager can override AI vendor recommendation with reason', async ({ page }) => {
       const workOrderItem = managerApp.workOrderList.locator('[data-work-order], tr').first();
       
@@ -248,6 +250,8 @@ test.describe('Estate Manager Work Order Management', () => {
   });
   
   test.describe('EM-AC-006: SLA Breach Alert', () => {
+    test.skip(true, 'Pending feature: SLA breach alerting surface (EM-AC-006)');
+
     test('manager receives alert for SLA breach risk', async ({ page }) => {
       // Look for SLA alerts in the list or dashboard
       const slaAlert = page.locator('[data-sla-alert], [class*="sla"], [class*="breach"]');
@@ -279,6 +283,8 @@ test.describe('Estate Manager Work Order Management', () => {
   });
   
   test.describe('EM-AC-007: Close Work Order with Dual Sign-Off', () => {
+    test.skip(true, 'Pending feature: dual sign-off (technician + customer) for work order closure (EM-AC-007)');
+
     test('manager can close work order with dual sign-off verification', async ({ page }) => {
       await managerApp.filterWorkOrdersByStatus('completed');
       

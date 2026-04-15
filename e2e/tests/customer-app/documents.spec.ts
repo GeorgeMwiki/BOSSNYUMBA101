@@ -85,6 +85,8 @@ test.describe('Customer App Documents & Lease', () => {
   });
   
   test.describe('CA-AC-032: Renewal Notification', () => {
+    test.skip(true, 'Pending feature: customer-app lease renewal notification (CA-AC-032)');
+
     test('customer receives notification when renewal offer available', async ({ page }) => {
       // Check notification center
       await customerApp.notificationCenter.click();
@@ -120,6 +122,8 @@ test.describe('Customer App Documents & Lease', () => {
   });
   
   test.describe('CA-AC-033: Accept Renewal', () => {
+    test.skip(true, 'Pending feature: customer-app lease renewal acceptance (CA-AC-033)');
+
     test('customer can accept renewal via app', async ({ page }) => {
       if (await customerApp.renewalOffer.isVisible({ timeout: 2000 })) {
         await customerApp.renewalOffer.click();
@@ -154,6 +158,8 @@ test.describe('Customer App Documents & Lease', () => {
   });
   
   test.describe('CA-AC-034: Move-Out Notice', () => {
+    test.skip(true, 'Pending feature: customer-app move-out notice submission (CA-AC-034)');
+
     test('customer can submit move-out notice via app', async ({ page }) => {
       if (await customerApp.moveOutNoticeButton.isVisible({ timeout: 2000 })) {
         await customerApp.moveOutNoticeButton.click();

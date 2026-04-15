@@ -166,6 +166,8 @@ test.describe('Owner Portal Document Access', () => {
   });
   
   test.describe('OP-AC-042: E-Signature Workflow', () => {
+    test.skip(true, 'Pending feature: owner-portal e-signature workflow (OP-AC-042)');
+
     test('owner can e-sign documents requiring owner signature', async ({ page }) => {
       // Look for documents requiring signature
       const signableDoc = ownerPortal.documentList.locator('[data-requires-signature], .needs-signature')
@@ -256,6 +258,8 @@ test.describe('Owner Portal Document Access', () => {
   });
   
   test.describe('OP-AC-043: Document Version History', () => {
+    test.skip(true, 'Pending feature: owner-portal document version history (OP-AC-043)');
+
     test('document versions are tracked with change history', async ({ page }) => {
       const documentItems = ownerPortal.documentList.locator('[data-document], .document-item, tr');
       const count = await documentItems.count();

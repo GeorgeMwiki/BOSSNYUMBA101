@@ -6,16 +6,14 @@
  * mode (no API endpoint), this is a no-op.
  */
 
-import { request } from '@playwright/test';
+import { request, type FullConfig } from '@playwright/test';
 import { readFile, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const STATE_FILE = join(__dirname, '.playwright', 'e2e-state.json');
-
-export default async function globalTeardown(): Promise<void> {
+export default async function globalTeardown(config: FullConfig): Promise<void> {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL;
+  const STATE_FILE = resolve(config.rootDir, '.playwright', 'e2e-state.json');
+
   let raw: string;
   try {
     raw = await readFile(STATE_FILE, 'utf-8');

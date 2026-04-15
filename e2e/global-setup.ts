@@ -15,12 +15,11 @@
 
 import { request, type FullConfig } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const STATE_DIR = join(__dirname, '.playwright');
-const STATE_FILE = join(STATE_DIR, 'e2e-state.json');
+function stateFile(config: FullConfig): string {
+  return resolve(config.rootDir, '.playwright', 'e2e-state.json');
+}
 
 interface E2EState {
   tenantId?: string;
@@ -29,7 +28,7 @@ interface E2EState {
   seedAvailable: boolean;
 }
 
-export default async function globalSetup(_config: FullConfig): Promise<void> {
+export default async function globalSetup(config: FullConfig): Promise<void> {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL;
   const state: E2EState = {
     userIds: [],
@@ -37,7 +36,8 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     seedAvailable: false,
   };
 
-  await mkdir(STATE_DIR, { recursive: true });
+  const STATE_FILE = stateFile(config);
+  await mkdir(resolve(STATE_FILE, '..'), { recursive: true });
 
   if (!apiBase) {
     // eslint-disable-next-line no-console
