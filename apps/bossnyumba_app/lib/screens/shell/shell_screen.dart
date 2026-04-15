@@ -31,8 +31,10 @@ class ShellScreen extends StatelessWidget {
     }
     if (auth.isOwner) {
       return [
-        _NavItem(icon: Icons.apartment, label: 'Portfolio', path: '/owner'),
-        _NavItem(icon: Icons.fact_check, label: 'Approvals', path: '/owner/approvals'),
+        _NavItem(icon: Icons.home, label: 'Home', path: '/owner'),
+        _NavItem(icon: Icons.approval, label: 'Approvals', path: '/owner/approvals'),
+        _NavItem(icon: Icons.search, label: 'Search', path: '/owner/search'),
+        _NavItem(icon: Icons.auto_awesome, label: 'AI', path: '/owner/ai'),
         _NavItem(icon: Icons.person, label: 'Profile', path: '/profile'),
       ];
     }
@@ -110,18 +112,20 @@ class ShellScreen extends StatelessWidget {
 
   int _selectedIndex(BuildContext context, List<_NavItem> items) {
     final loc = GoRouterState.of(context).matchedLocation;
-    // Prefer the longest matching prefix so '/owner/approvals' beats '/owner'.
-    int best = 0;
+    // Pick the longest-prefix match so `/owner/approvals` selects the
+    // Approvals tab rather than the Home (`/owner`) tab.
+    int bestIdx = 0;
     int bestLen = -1;
     for (var i = 0; i < items.length; i++) {
       final p = items[i].path;
-      final isMatch = loc == p || (p != '/' && loc.startsWith(p));
-      if (isMatch && p.length > bestLen) {
-        best = i;
+      final matches = loc == p ||
+          (p != '/' && (loc == p || loc.startsWith('$p/')));
+      if (matches && p.length > bestLen) {
+        bestIdx = i;
         bestLen = p.length;
       }
     }
-    return best;
+    return bestIdx;
   }
 }
 

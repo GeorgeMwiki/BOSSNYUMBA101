@@ -1,28 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
-import 'core/auth_provider.dart';
 import 'core/api_client.dart';
+import 'core/auth_provider.dart';
+import 'core/cache/owner_cache.dart';
 import 'core/org_provider.dart';
+import 'router.dart' show onboardingListenable;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Singletons that must be ready before the first frame.
+  await OwnerCache.instance.init();
+  // Prime the onboarded flag so the router's first redirect pass sees it.
+  await onboardingListenable.refresh();
+
   final api = ApiClient();
-  // Construct with autoRestore disabled so we can await the restore explicitly
-  // before the first frame / router decision.
-  final auth = AuthProvider(api: api, autoRestore: false);
+  final auth = AuthProvider(api: api);
+  final orgs = OrgProvider();
+
+  // Restore any persisted session before building the router so the initial
+  // redirect logic can see the real authenticated state.
   await auth.restoreSession();
+  if (auth.isAuthenticated) {
+    await orgs.setAvailableOrgs(auth.memberships);
+  }
+
   runApp(
     MultiProvider(
       providers: [
-        // AuthProvider was constructed above with autoRestore disabled and
-        // restoreSession() awaited, so the router has correct auth state on
-        // the very first frame.
-        ChangeNotifierProvider<AuthProvider>.value(value: auth),
-        // OrgProvider wires itself into ApiClient via activeOrgIdProvider so
-        // every request picks up the `X-Active-Org` header automatically.
-        ChangeNotifierProvider(create: (_) => OrgProvider(api: api)),
         Provider<ApiClient>.value(value: api),
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ChangeNotifierProvider<OrgProvider>.value(value: orgs),
+        Provider<OwnerCache>.value(value: OwnerCache.instance),
       ],
       child: const BossNyumbaApp(),
     ),
