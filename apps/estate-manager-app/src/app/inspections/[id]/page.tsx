@@ -123,7 +123,7 @@ export default function InspectionDetailPage() {
   const { data: moveInData } = useQuery({
     queryKey: ['inspections', 'moveIn', inspection?.unitId],
     queryFn: () => inspectionsService.list(
-      { unitId: inspection!.unitId, type: ['MOVE_IN'] },
+      { unitId: inspection!.unitId, type: ['move_in'] },
       1,
       1
     ),

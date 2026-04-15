@@ -31,12 +31,17 @@ export default function PropertyBudgetPage() {
 
   useEffect(() => {
     if (propertyId) {
-      api.get<PropertyBudget>(`/budgets/${propertyId}`).then((res) => {
-        if (res.success && res.data) {
-          setBudget(res.data);
-        }
-        setLoading(false);
-      });
+      api
+        .get<PropertyBudget>(`/budgets/${propertyId}`)
+        .then((res) => {
+          if (res.success && res.data) {
+            setBudget(res.data);
+          }
+        })
+        .catch(() => {
+          // Fall back to sample data rendered below
+        })
+        .finally(() => setLoading(false));
     }
   }, [propertyId]);
 

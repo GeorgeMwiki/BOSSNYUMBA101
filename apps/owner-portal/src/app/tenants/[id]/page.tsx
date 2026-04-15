@@ -36,12 +36,17 @@ export default function TenantDetailPage() {
 
   useEffect(() => {
     if (id) {
-      api.get<TenantDetail>(`/tenants/${id}`).then((res) => {
-        if (res.success && res.data) {
-          setTenant(res.data);
-        }
-        setLoading(false);
-      });
+      api
+        .get<TenantDetail>(`/tenants/${id}`)
+        .then((res) => {
+          if (res.success && res.data) {
+            setTenant(res.data);
+          }
+        })
+        .catch(() => {
+          // Fall back to sample data rendered below
+        })
+        .finally(() => setLoading(false));
     }
   }, [id]);
 

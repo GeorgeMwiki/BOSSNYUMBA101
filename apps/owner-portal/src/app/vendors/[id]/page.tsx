@@ -31,12 +31,17 @@ export default function VendorDetailPage() {
 
   useEffect(() => {
     if (id) {
-      api.get<VendorDetail>(`/vendors/${id}`).then((res) => {
-        if (res.success && res.data) {
-          setVendor(res.data);
-        }
-        setLoading(false);
-      });
+      api
+        .get<VendorDetail>(`/vendors/${id}`)
+        .then((res) => {
+          if (res.success && res.data) {
+            setVendor(res.data);
+          }
+        })
+        .catch(() => {
+          // Fall back to sample data rendered below
+        })
+        .finally(() => setLoading(false));
     }
   }, [id]);
 

@@ -2,9 +2,9 @@
  * Unit tests for the webhook-service public API.
  *
  * Mocks:
- *   - ./delivery.js — `deliver` is replaced with a vi.fn so no HTTP happens.
- *   - @bossnyumba/authz-policy — `rbacEngine.checkPermission` is replaced so we
- *     can assert the allow/deny branch in subscribeWithAuthz.
+ *   - ./delivery.js        — `deliver` replaced so nothing hits the network.
+ *   - @bossnyumba/authz-policy — `rbacEngine.checkPermission` replaced so we
+ *     can exercise the allow/deny branches in subscribeWithAuthz.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -13,15 +13,12 @@ import type { User as AuthzUser } from '@bossnyumba/authz-policy';
 const deliverMock = vi.fn();
 const checkPermissionMock = vi.fn();
 
-vi.mock('../delivery.js', () => ({
-  deliver: deliverMock,
-}));
-
+vi.mock('../delivery.js', () => ({ deliver: deliverMock }));
 vi.mock('@bossnyumba/authz-policy', () => ({
   rbacEngine: { checkPermission: checkPermissionMock },
 }));
 
-// Import after mocks so the module picks them up.
+// Import AFTER vi.mock so the mocks are in place at module-load time.
 import {
   subscribe,
   subscribeWithAuthz,
@@ -30,11 +27,18 @@ import {
   trigger,
 } from '../webhook-service.js';
 
-const adminUser: AuthzUser = {
-  id: 'u1',
-  roles: ['super-admin'],
-  tenantId: 't1',
-};
+const adminUser: AuthzUser = { id: 'u1', roles: ['super-admin'], tenantId: 't1' };
+
+const makeEvent = (
+  overrides: Partial<Parameters<typeof trigger>[0]> = {}
+): Parameters<typeof trigger>[0] => ({
+  id: 'e',
+  type: 'payment.created',
+  tenantId: 'tenant-T',
+  payload: {},
+  timestamp: new Date().toISOString(),
+  ...overrides,
+});
 
 beforeEach(() => {
   deliverMock.mockReset();
@@ -42,7 +46,7 @@ beforeEach(() => {
 });
 
 describe('subscribe + getSubscriptions', () => {
-  it('subscribe persists and getSubscriptions retrieves by tenantId', async () => {
+  it('persists a subscription and retrieves it by tenantId', async () => {
     const s = await subscribe('https://hook.example/a', ['payment.created'], 'tenant-x');
     const list = await getSubscriptions('tenant-x');
     expect(list.some((x) => x.id === s.id)).toBe(true);
@@ -51,11 +55,11 @@ describe('subscribe + getSubscriptions', () => {
 });
 
 describe('subscribeWithAuthz', () => {
-  it('allows when rbacEngine says allowed', async () => {
+  it('allows when rbacEngine allows', async () => {
     checkPermissionMock.mockReturnValue({ allowed: true });
     const sub = await subscribeWithAuthz(
       adminUser,
-      'https://hook.example/allowed',
+      'https://hook.example/ok',
       ['payment.created'],
       'tenant-allow'
     );
@@ -69,10 +73,10 @@ describe('subscribeWithAuthz', () => {
     await unsubscribe(sub.id);
   });
 
-  it('denies when rbacEngine says denied', async () => {
+  it('denies and throws when rbacEngine denies', async () => {
     checkPermissionMock.mockReturnValue({ allowed: false, reason: 'nope' });
     await expect(
-      subscribeWithAuthz(adminUser, 'https://hook.example/denied', ['payment.created'], 'tenant-deny')
+      subscribeWithAuthz(adminUser, 'https://hook.example/x', ['payment.created'], 'tenant-deny')
     ).rejects.toThrow('nope');
   });
 });
@@ -81,19 +85,11 @@ describe('trigger', () => {
   it('fans out only to subscriptions matching tenantId AND event.type', async () => {
     const s1 = await subscribe('https://hook.example/m1', ['payment.created'], 'tenant-T');
     const s2 = await subscribe('https://hook.example/m2', ['payment.failed'], 'tenant-T');
-    const s3 = await subscribe('https://hook.example/m3', ['payment.created'], 'other-tenant');
-
+    const s3 = await subscribe('https://hook.example/m3', ['payment.created'], 'other');
     deliverMock.mockResolvedValue({ success: true, statusCode: 200 });
 
-    const result = await trigger({
-      id: 'e1',
-      type: 'payment.created',
-      tenantId: 'tenant-T',
-      payload: {},
-      timestamp: new Date().toISOString(),
-    });
+    const result = await trigger(makeEvent({ type: 'payment.created', tenantId: 'tenant-T' }));
 
-    // Only s1 matches.
     expect(deliverMock).toHaveBeenCalledTimes(1);
     expect(deliverMock).toHaveBeenCalledWith('https://hook.example/m1', expect.any(Object), undefined);
     expect(result).toEqual({ delivered: 1, failed: 0 });
@@ -103,41 +99,22 @@ describe('trigger', () => {
     await unsubscribe(s3.id);
   });
 
-  it('reports delivered count when all deliveries succeed', async () => {
+  it('reports delivered=1 when delivery succeeds', async () => {
     const s = await subscribe('https://hook.example/ok', ['payment.succeeded'], 'tenant-ok');
     deliverMock.mockResolvedValue({ success: true, statusCode: 200 });
-
-    const result = await trigger({
-      id: 'e2',
-      type: 'payment.succeeded',
-      tenantId: 'tenant-ok',
-      payload: {},
-      timestamp: new Date().toISOString(),
-    });
-
-    expect(result.delivered).toBe(1);
-    expect(result.failed).toBe(0);
+    const result = await trigger(makeEvent({ type: 'payment.succeeded', tenantId: 'tenant-ok' }));
+    expect(result).toEqual({ delivered: 1, failed: 0 });
     await unsubscribe(s.id);
   });
 
-  it('reports failed count when every retry fails', async () => {
+  it('reports failed=1 when every retry fails', async () => {
     const s = await subscribe('https://hook.example/fail', ['payment.failed'], 'tenant-fail');
     deliverMock.mockResolvedValue({ success: false, error: 'HTTP 500' });
-
     const result = await trigger(
-      {
-        id: 'e3',
-        type: 'payment.failed',
-        tenantId: 'tenant-fail',
-        payload: {},
-        timestamp: new Date().toISOString(),
-      },
-      2 // reduce retries so the test stays fast
+      makeEvent({ type: 'payment.failed', tenantId: 'tenant-fail' }),
+      2
     );
-
-    expect(result.delivered).toBe(0);
-    expect(result.failed).toBe(1);
-    // Should have attempted exactly `retries` times for the single sub.
+    expect(result).toEqual({ delivered: 0, failed: 1 });
     expect(deliverMock).toHaveBeenCalledTimes(2);
     await unsubscribe(s.id);
   });
@@ -147,53 +124,25 @@ describe('trigger', () => {
     deliverMock
       .mockResolvedValueOnce({ success: false, error: 'HTTP 502' })
       .mockResolvedValueOnce({ success: true, statusCode: 200 });
-
-    const result = await trigger(
-      {
-        id: 'e4',
-        type: 'payment.created',
-        tenantId: 'tenant-flaky',
-        payload: {},
-        timestamp: new Date().toISOString(),
-      },
-      3
-    );
-
+    const result = await trigger(makeEvent({ tenantId: 'tenant-flaky' }), 3);
     expect(result).toEqual({ delivered: 1, failed: 0 });
-    // 1 failure + 1 success = 2 calls; the 3rd retry slot is unused.
     expect(deliverMock).toHaveBeenCalledTimes(2);
     await unsubscribe(s.id);
   });
 
   it('applies exponential backoff between retries', async () => {
-    const s = await subscribe('https://hook.example/backoff', ['payment.created'], 'tenant-bo');
-    // Three failures so we get two backoffs between attempts 1->2 and 2->3.
-    deliverMock.mockResolvedValue({ success: false, error: 'boom' });
-
+    const s = await subscribe('https://hook.example/bo', ['payment.created'], 'tenant-bo');
     const timestamps: number[] = [];
     deliverMock.mockImplementation(async () => {
       timestamps.push(Date.now());
       return { success: false, error: 'boom' };
     });
-
-    // Math.random patched to 0 so jitter is deterministic and the formula is:
-    //   sleep = 1000 * 2^(attempt-1)  → 1000ms then 2000ms.
+    // Pin Math.random so sleep = 1000 * 2^(attempt-1): 1000ms, then 2000ms.
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
-
     try {
-      const result = await trigger(
-        {
-          id: 'e5',
-          type: 'payment.created',
-          tenantId: 'tenant-bo',
-          payload: {},
-          timestamp: new Date().toISOString(),
-        },
-        3
-      );
+      const result = await trigger(makeEvent({ tenantId: 'tenant-bo' }), 3);
       expect(result.failed).toBe(1);
       expect(deliverMock).toHaveBeenCalledTimes(3);
-      // Gap #1 should be ~1000ms, gap #2 should be ~2000ms (both >= the base).
       const gap1 = timestamps[1]! - timestamps[0]!;
       const gap2 = timestamps[2]! - timestamps[1]!;
       expect(gap1).toBeGreaterThanOrEqual(950);
