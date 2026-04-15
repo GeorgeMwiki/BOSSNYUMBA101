@@ -22,6 +22,7 @@ import { customersRouter } from './routes/customers';
 import { leasesRouter } from './routes/leases';
 import { invoicesApp } from './routes/invoices';
 import { paymentsApp } from './routes/payments';
+import { webhooksApp } from './routes/webhooks';
 import { workOrdersRouter } from './routes/work-orders.hono';
 import { vendorsRouter } from './routes/vendors.hono';
 import { notificationsRouter } from './routes/notifications';
@@ -88,6 +89,7 @@ api.route('/customers', customersRouter);
 api.route('/leases', leasesRouter);
 api.route('/invoices', invoicesApp);
 api.route('/payments', paymentsApp);
+api.route('/webhooks', webhooksApp);
 api.route('/work-orders', workOrdersRouter);
 api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
@@ -128,6 +130,7 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/leases',
       '/api/v1/invoices',
       '/api/v1/payments',
+      '/api/v1/webhooks',
       '/api/v1/work-orders',
       '/api/v1/vendors',
       '/api/v1/notifications',

@@ -46,25 +46,31 @@ export interface ProcessPaymentRequest {
   phoneNumber?: string; // For M-Pesa
 }
 
-/**
- * Simplified payment creation payload used by the customer app
- * payments form (amount + method + optional reference).
- */
-export interface CustomerCreatePaymentInput {
-  tenantId: string;
+export interface StkPushRequest {
   amount: number;
-  currency?: string;
-  method: 'mpesa' | 'card' | 'bank';
-  reference?: string;
+  phone: string;
+  invoiceId?: string;
   leaseId?: string;
-  description?: string;
-  phoneNumber?: string;
 }
 
-export interface ListPaymentsInput {
-  tenantId: string;
-  limit?: number;
-  page?: number;
+export interface StkPushInitiatedResponse {
+  paymentId: string;
+  checkoutRequestId: string;
+  merchantRequestId?: string;
+  status: string;
+  customerMessage?: string;
+}
+
+export interface PaymentStatusResponse {
+  paymentId: string;
+  status: string;
+  amount: number;
+  currency: string;
+  receiptNumber?: string;
+  completedAt?: string;
+  invoiceId?: string;
+  invoiceStatus?: string;
+  failureReason?: string;
 }
 
 export const paymentsService = {
@@ -155,40 +161,38 @@ export const paymentsService = {
   },
 
   /**
-   * Customer-app oriented payment creation used by PaymentsPage.
-   * Posts to `/api/payments` with a normalized shape.
+   * Initiate an M-Pesa STK Push against the customer's phone.
+   * Returns a paymentId (tracked server-side) and the Safaricom checkoutRequestId.
    */
-  async createPayment(
-    input: CustomerCreatePaymentInput
-  ): Promise<ApiResponse<PaymentIntent>> {
-    const body = {
-      tenantId: input.tenantId,
-      amount: {
-        amount: input.amount,
-        currency: input.currency ?? 'KES',
-      },
-      method: input.method,
-      reference: input.reference,
-      leaseId: input.leaseId,
-      description: input.description,
-      phoneNumber: input.phoneNumber,
-    };
-    return getApiClient().post<PaymentIntent>('/api/payments', body);
+  async stkPush(
+    request: StkPushRequest
+  ): Promise<ApiResponse<StkPushInitiatedResponse>> {
+    return getApiClient().post<StkPushInitiatedResponse>(
+      '/payments/mpesa/stk-push',
+      request
+    );
   },
 
   /**
-   * Customer-app oriented payment listing used by PaymentsPage.
-   * Returns the most recent payments for the given tenant.
+   * Get the current status of a payment (for polling after STK push).
    */
-  async listPayments(
-    input: ListPaymentsInput
-  ): Promise<ApiResponse<PaymentIntent[]>> {
-    const params: Record<string, string> = {
-      tenantId: input.tenantId,
-      limit: String(input.limit ?? 20),
-      page: String(input.page ?? 1),
-    };
-    return getApiClient().get<PaymentIntent[]>('/api/payments', { params });
+  async getStatus(id: PaymentIntentId): Promise<ApiResponse<PaymentStatusResponse>> {
+    return getApiClient().get<PaymentStatusResponse>(`/payments/${id}/status`);
+  },
+
+  /**
+   * Fetch a receipt/confirmation for a completed payment.
+   */
+  async getReceipt(id: PaymentIntentId): Promise<ApiResponse<{
+    paymentId: string;
+    receiptNumber: string;
+    amount: number;
+    currency: string;
+    paidAt: string;
+    invoiceNumber?: string;
+    downloadUrl?: string;
+  }>> {
+    return getApiClient().get(`/payments/${id}/receipt`);
   },
 };
 

@@ -294,6 +294,25 @@ export class PaymentRepository {
       .orderBy(desc(payments.createdAt));
   }
 
+  /**
+   * Find a payment by its provider transaction id (e.g. Safaricom's
+   * CheckoutRequestID). Used by unauthenticated webhook callbacks that
+   * do not know the tenantId up front.
+   */
+  async findByProviderTransactionId(provider: string, providerTransactionId: string) {
+    const rows = await this.db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.provider, provider),
+          eq(payments.providerTransactionId, providerTransactionId)
+        )
+      )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async create(data: typeof payments.$inferInsert) {
     const [row] = await this.db.insert(payments).values(data).returning();
     return row!;

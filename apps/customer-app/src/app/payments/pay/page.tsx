@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   CreditCard,
   Smartphone,
@@ -13,7 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { CURRENT_BALANCE } from '@/lib/payments-data';
+import { api } from '@/lib/api';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
 
@@ -59,8 +60,16 @@ function PayPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
-  const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
-  
+  const invoiceIdParam = searchParams.get('invoiceId') ?? undefined;
+
+  const balanceQuery = useQuery({
+    queryKey: ['customer-payments-balance'],
+    queryFn: () => api.payments.getBalance(),
+  });
+
+  const liveBalance = Number(balanceQuery.data?.totalDue?.amount ?? 0);
+  const amount = amountParam ? parseInt(amountParam, 10) : liveBalance;
+
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [showAmountInput, setShowAmountInput] = useState(false);
@@ -69,11 +78,15 @@ function PayPageContent() {
 
   const handleContinue = () => {
     if (!selectedMethod) return;
-    
+
+    const query = new URLSearchParams();
+    query.set('amount', String(paymentAmount));
+    if (invoiceIdParam) query.set('invoiceId', invoiceIdParam);
+
     if (selectedMethod === 'mpesa') {
-      router.push(`/payments/mpesa?amount=${paymentAmount}`);
+      router.push(`/payments/mpesa?${query.toString()}`);
     } else if (selectedMethod === 'bank') {
-      router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
+      router.push(`/payments/bank-transfer?${query.toString()}`);
     } else {
       // Card payment - would implement card form
       alert('Card payments coming soon!');
