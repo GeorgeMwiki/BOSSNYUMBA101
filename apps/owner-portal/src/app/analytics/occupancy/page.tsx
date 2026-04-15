@@ -22,12 +22,16 @@ export default function OccupancyPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<typeof trendData>('/analytics/occupancy').then((res) => {
-      if (res.success && res.data) {
-        setTrendData(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<typeof trendData>('/analytics/occupancy')
+      .then((res) => {
+        if (res.success && res.data) {
+          setTrendData(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayData = trendData.length

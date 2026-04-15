@@ -22,12 +22,16 @@ export default function RevenuePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<typeof data>('/analytics/revenue').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<typeof data>('/analytics/revenue')
+      .then((res) => {
+        if (res.success && res.data) {
+          setData(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const chartData = data.length

@@ -27,12 +27,16 @@ export default function TenantCommunicationsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<Conversation[]>('/tenants/communications').then((res) => {
-      if (res.success && res.data) {
-        setConversations(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<Conversation[]>('/tenants/communications')
+      .then((res) => {
+        if (res.success && res.data) {
+          setConversations(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = conversations.filter(

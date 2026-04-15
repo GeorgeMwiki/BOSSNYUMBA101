@@ -27,12 +27,16 @@ export default function PortfolioPerformancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<PropertyPerformance[]>('/portfolio/performance').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<PropertyPerformance[]>('/portfolio/performance')
+      .then((res) => {
+        if (res.success && res.data) {
+          setData(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const chartData = data.length

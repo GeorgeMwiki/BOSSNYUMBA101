@@ -19,12 +19,16 @@ export default function InspectionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<Inspection[]>('/compliance/inspections').then((res) => {
-      if (res.success && res.data) {
-        setInspections(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<Inspection[]>('/compliance/inspections')
+      .then((res) => {
+        if (res.success && res.data) {
+          setInspections(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayInspections = inspections.length

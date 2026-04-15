@@ -71,7 +71,7 @@ export default function DashboardPage() {
       paymentsService.list(
         {
           dateFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        } as never,
+        },
         1,
         5
       ),

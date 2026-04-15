@@ -28,12 +28,16 @@ export default function VendorContractsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<VendorContract[]>('/vendors/contracts').then((res) => {
-      if (res.success && res.data) {
-        setContracts(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<VendorContract[]>('/vendors/contracts')
+      .then((res) => {
+        if (res.success && res.data) {
+          setContracts(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayContracts = contracts.length

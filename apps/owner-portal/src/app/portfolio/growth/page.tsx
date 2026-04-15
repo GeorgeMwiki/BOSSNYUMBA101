@@ -24,12 +24,16 @@ export default function PortfolioGrowthPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<GrowthData[]>('/portfolio/growth').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<GrowthData[]>('/portfolio/growth')
+      .then((res) => {
+        if (res.success && res.data) {
+          setData(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const chartData = data.length

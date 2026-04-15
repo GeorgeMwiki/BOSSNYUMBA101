@@ -20,12 +20,16 @@ export default function LicensesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<License[]>('/compliance/licenses').then((res) => {
-      if (res.success && res.data) {
-        setLicenses(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<License[]>('/compliance/licenses')
+      .then((res) => {
+        if (res.success && res.data) {
+          setLicenses(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayLicenses = licenses.length

@@ -22,12 +22,16 @@ export default function InsurancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<InsurancePolicy[]>('/compliance/insurance').then((res) => {
-      if (res.success && res.data) {
-        setPolicies(res.data);
-      }
-      setLoading(false);
-    });
+    api.get<InsurancePolicy[]>('/compliance/insurance')
+      .then((res) => {
+        if (res.success && res.data) {
+          setPolicies(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to sample/default data rendered below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayPolicies = policies.length

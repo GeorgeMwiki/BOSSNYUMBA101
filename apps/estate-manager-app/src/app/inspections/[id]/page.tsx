@@ -24,6 +24,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { inspectionsService } from '@bossnyumba/api-client';
+import type { InspectionId } from '@bossnyumba/domain-models';
 
 type InspectionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type InspectionType = 'MOVE_IN' | 'MOVE_OUT' | 'ROUTINE' | 'ANNUAL';
@@ -79,7 +80,7 @@ export default function InspectionDetailPage() {
   // Fetch inspection from API
   const { data: inspectionData, isLoading } = useQuery({
     queryKey: ['inspection', id],
-    queryFn: () => inspectionsService.get(id as never),
+    queryFn: () => inspectionsService.get(id as InspectionId),
     enabled: !!id,
     retry: false,
   });
@@ -122,7 +123,7 @@ export default function InspectionDetailPage() {
   const { data: moveInData } = useQuery({
     queryKey: ['inspections', 'moveIn', inspection?.unitId],
     queryFn: () => inspectionsService.list(
-      { unitId: inspection!.unitId, type: ['MOVE_IN'] as never },
+      { unitId: inspection!.unitId, type: ['MOVE_IN'] },
       1,
       1
     ),
@@ -144,7 +145,7 @@ export default function InspectionDetailPage() {
 
   // Generate report
   const handleGenerateReport = () => {
-    inspectionsService.generateReport(id as never);
+    inspectionsService.generateReport(id as InspectionId);
   };
 
   if (isLoading) {
