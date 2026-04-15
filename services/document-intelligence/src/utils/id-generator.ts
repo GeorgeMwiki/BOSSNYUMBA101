@@ -3,6 +3,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'node:crypto';
 import type {
   DocumentId,
   IdentityProfileId,
@@ -45,9 +46,13 @@ export function generateOCRExtractionId(): string {
   return `ocr_${uuidv4()}`;
 }
 
+// Back-compat alias for casing variants referenced elsewhere
+export const generateOcrExtractionId = generateOCRExtractionId;
+
+/**
+ * SHA-256 checksum using Node's crypto module. ESM-compatible.
+ * Used to ensure document integrity across upload/retrieval.
+ */
 export function generateChecksum(content: Buffer | string): string {
-  // Using a simple hash for demonstration
-  // In production, use crypto.createHash('sha256')
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(content).digest('hex');
+  return createHash('sha256').update(content).digest('hex');
 }

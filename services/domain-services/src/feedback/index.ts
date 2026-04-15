@@ -280,11 +280,16 @@ export interface SentimentAnalysisProvider {
   analyze(text: string): Promise<SentimentAnalysis>;
 }
 
-/** Default implementation - can be replaced with AI provider */
+/**
+ * Default sentiment analysis provider.
+ *
+ * Uses a deterministic lexicon-based scorer so the platform continues
+ * to work offline and in tests. Production deployments should inject a
+ * different implementation (OpenAI, Azure Language, local LLM, etc.)
+ * via the `SentimentAnalysisProvider` interface at the composition root.
+ */
 export class DefaultSentimentAnalysisProvider implements SentimentAnalysisProvider {
   async analyze(text: string): Promise<SentimentAnalysis> {
-    // Placeholder - integrates with AI (e.g., OpenAI, Azure, local LLM)
-    // In production: call AI API for sentiment analysis
     const now = new Date().toISOString();
     const trimmed = text.trim().toLowerCase();
 

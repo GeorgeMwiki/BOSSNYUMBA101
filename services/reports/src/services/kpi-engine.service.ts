@@ -400,18 +400,19 @@ export class KPIEngine {
       throw new Error(`Property ${propertyId} not found`);
     }
 
-    const [financial, collection, occupancy, maintenance] = await Promise.all([
+    const [financial, collection, occupancy, maintenance, satisfaction] = await Promise.all([
       this.calculateFinancialKPIs(tenantId, period, [propertyId]),
       this.calculateCollectionKPIs(tenantId, period, [propertyId]),
       this.calculateOccupancyKPIs(tenantId, period, [propertyId]),
       this.calculateMaintenanceKPIs(tenantId, period, [propertyId]),
+      this.calculateSatisfactionKPIs(tenantId, period),
     ]);
 
     const healthScore = this.calculateHealthScore({
       occupancyRate: occupancy.physicalOccupancy.current,
       collectionRate: collection.collectionRate.current,
       slaCompliance: maintenance.slaComplianceRate.current,
-      satisfaction: 80, // Placeholder
+      satisfaction: satisfaction.overallSatisfaction.current,
     }).current;
 
     // Calculate ranking among all properties
@@ -812,6 +813,15 @@ export class KPIEngine {
     period: KPIPeriod
   ): Promise<Array<{ propertyId: PropertyId; score: number }>> {
     const properties = await this.dataProvider.getPropertyList(tenantId);
+    // Fetch the portfolio-wide satisfaction once; property-level
+    // satisfaction breakdowns are not available on the data-provider
+    // interface today so we fall back to the portfolio average rather
+    // than assuming a static default.
+    const portfolioSatisfaction = await this.calculateSatisfactionKPIs(tenantId, period).catch(
+      () => null,
+    );
+    const satisfaction = portfolioSatisfaction?.overallSatisfaction.current ?? 0;
+
     const scores: Array<{ propertyId: PropertyId; score: number }> = [];
 
     for (const property of properties) {
@@ -826,12 +836,18 @@ export class KPIEngine {
           occupancyRate: occupancy.physicalOccupancy.current,
           collectionRate: collection.collectionRate.current,
           slaCompliance: maintenance.slaComplianceRate.current,
-          satisfaction: 80, // Placeholder
+          satisfaction,
         }).current;
 
         scores.push({ propertyId: property.id, score });
-      } catch {
-        // Skip properties with errors
+      } catch (error) {
+        // Skip properties with errors but log so we can observe them
+        // in production. Swallowing silently made debugging painful.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[KPIEngine] Failed to compute health score for property ${property.id}:`,
+          error instanceof Error ? error.message : error,
+        );
       }
     }
 

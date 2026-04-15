@@ -30,8 +30,18 @@ export { DocumentCollectionService, MockImageQualityAnalyzer } from './services/
 export { OCRExtractionService, MockOCRProvider } from './services/ocr-extraction.service.js';
 export { FraudDetectionService, MockImageAnalyzer } from './services/fraud-detection.service.js';
 export { ValidationConsistencyService, MockExternalVerificationProvider } from './services/validation-consistency.service.js';
-export { EvidencePackService, MockPDFGenerator } from './services/evidence-pack.service.js';
+export { EvidencePackBuilderService, MockPDFGenerator } from './services/evidence-pack-builder.service.js';
+// Back-compat alias for earlier naming.
+export { EvidencePackBuilderService as EvidencePackService } from './services/evidence-pack-builder.service.js';
 export { ExpiryTrackingService } from './services/expiry-tracking.service.js';
+
+// Real OCR provider implementations (wired via adapters, not mocks).
+export {
+  TextractOCRProvider,
+  GoogleVisionOCRProvider,
+  TesseractOCRProvider,
+  CompositeOCRProvider,
+} from './services/ocr-providers.js';
 
 // ============================================================================
 // API Routes
@@ -109,6 +119,16 @@ export {
   matchIdNumbers,
   validateIdFormat,
 } from './utils/name-matcher.js';
+
+// ============================================================================
+// Observability (health / ready / metrics factory)
+// ============================================================================
+export {
+  createDocumentIntelligenceObservability,
+  type DocumentIntelligenceHealth,
+  type DocumentIntelligenceObservability,
+  type DocumentIntelligenceObservabilityOptions,
+} from './observability.js';
 
 // ============================================================================
 // Version

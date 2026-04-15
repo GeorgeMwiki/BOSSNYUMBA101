@@ -6,7 +6,7 @@
  */
 
 import type { TenantId, PropertyId } from '../types/index.js';
-import type { ReportFormat } from '../generators/index.js';
+import type { IReportGenerator, ReportData, ReportFormat } from '../generators/index.js';
 import type { IReportStorage, StoredReport } from '../storage/storage.js';
 
 // ============================================================================
@@ -442,13 +442,27 @@ const AUDIT_PACK_TEMPLATES: AuditPackTemplate[] = [
 // Audit Pack Builder Service
 // ============================================================================
 
+export interface AuditPackBuilderOptions {
+  /**
+   * Optional per-format generators used to render document data returned
+   * from the `IAuditPackDataProvider` into the requested `ReportFormat`.
+   * If not provided, document content is stored as canonical JSON, which
+   * can be transformed by downstream consumers.
+   */
+  generators?: Partial<Record<ReportFormat, IReportGenerator>>;
+}
+
 export class AuditPackBuilderService {
   private readonly auditPacks = new Map<string, AuditPack>();
+  private readonly generators: Partial<Record<ReportFormat, IReportGenerator>>;
 
   constructor(
     private readonly dataProvider: IAuditPackDataProvider,
-    private readonly storage: IReportStorage
-  ) {}
+    private readonly storage: IReportStorage,
+    options: AuditPackBuilderOptions = {}
+  ) {
+    this.generators = options.generators ?? {};
+  }
 
   /**
    * Get available audit pack templates
@@ -548,6 +562,7 @@ export class AuditPackBuilderService {
               auditPack.tenantId,
               auditPack.period,
               doc.id,
+              doc.format,
               auditPack.propertyIds
             );
 
@@ -683,12 +698,9 @@ export class AuditPackBuilderService {
     tenantId: TenantId,
     period: AuditPackPeriod,
     documentId: string,
+    format: ReportFormat,
     propertyIds?: PropertyId[]
   ): Promise<Buffer | string> {
-    // In production, this would call the appropriate data provider method
-    // and use the report generators to create the document.
-    // For now, return a placeholder.
-
     const documentGenerators: Record<string, () => Promise<unknown>> = {
       income_statement: () => this.dataProvider.getIncomeStatement(tenantId, period, propertyIds),
       balance_sheet: () => this.dataProvider.getBalanceSheet(tenantId, period.end, propertyIds),
@@ -713,13 +725,80 @@ export class AuditPackBuilderService {
     };
 
     const generator = documentGenerators[documentId];
-    if (generator) {
-      const data = await generator();
-      // In production, format the data using appropriate report generator
-      return Buffer.from(JSON.stringify(data, null, 2));
+    if (!generator) {
+      throw new Error(
+        `No data provider registered for audit document '${documentId}'. ` +
+          `Extend IAuditPackDataProvider to support this document.`,
+      );
     }
 
-    // Return placeholder for unimplemented generators
-    return Buffer.from(`Document: ${documentId}\nPeriod: ${period.label}\nGenerated: ${new Date().toISOString()}`);
+    const data = await generator();
+    const renderer = this.generators[format];
+    if (renderer) {
+      return renderer.generate(
+        {
+          title: `${documentId} - ${period.label}`,
+          generatedAt: new Date(),
+          metadata: { tenantId, propertyIds, period },
+        },
+        this.toReportData(documentId, data),
+      );
+    }
+
+    // No format-specific generator has been injected. Persist canonical
+    // JSON so downstream consumers can transform the data themselves.
+    return Buffer.from(JSON.stringify(data, null, 2), 'utf8');
+  }
+
+  /**
+   * Convert arbitrary data-provider payloads into the canonical
+   * `ReportData` shape used by the format generators. Arrays of plain
+   * objects render as a single table; objects render as a summary.
+   */
+  private toReportData(documentId: string, data: unknown): ReportData {
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+      const rows = data as Record<string, unknown>[];
+      const headers = Array.from(
+        rows.reduce<Set<string>>((acc, row) => {
+          for (const k of Object.keys(row)) acc.add(k);
+          return acc;
+        }, new Set<string>()),
+      );
+      return {
+        sections: [
+          {
+            title: documentId,
+            table: {
+              headers,
+              rows: rows.map((row) =>
+                headers.map((h) => {
+                  const v = row[h];
+                  if (v === null || v === undefined) return '';
+                  if (typeof v === 'number' || typeof v === 'string') return v;
+                  return JSON.stringify(v);
+                }),
+              ),
+            },
+          },
+        ],
+      };
+    }
+
+    if (data && typeof data === 'object') {
+      const obj = data as Record<string, unknown>;
+      const summary: Record<string, string | number> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'number' || typeof v === 'string') summary[k] = v;
+        else summary[k] = JSON.stringify(v);
+      }
+      return {
+        sections: [{ title: documentId, content: JSON.stringify(data, null, 2) }],
+        summary,
+      };
+    }
+
+    return {
+      sections: [{ title: documentId, content: String(data ?? '') }],
+    };
   }
 }

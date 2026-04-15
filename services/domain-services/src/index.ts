@@ -8,6 +8,14 @@
 // Common infrastructure
 export * from './common/index.js';
 
+// Observability helpers (health, ready, metrics)
+export {
+  createDomainServicesObservability,
+  type DomainServicesHealth,
+  type DomainServicesObservability,
+  type DomainServicesObservabilityOptions,
+} from './observability.js';
+
 // Tenant services - create, update, getPolicyConstitution
 export * from './tenant/index.js';
 

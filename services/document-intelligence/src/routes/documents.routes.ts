@@ -9,10 +9,20 @@
  * - GET /identity/:customerId/badges
  */
 
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { Context } from 'hono';
+
+/** Generate a random ID suitable for correlating a request end-to-end. */
+function cryptoRandomId(): string {
+  try {
+    return randomUUID();
+  } catch {
+    return `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
 import {
   DocumentTypeSchema,
   UploadChannelSchema,
@@ -271,6 +281,69 @@ export interface DocumentIntelligenceRoutesDeps {
 
 export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRoutesDeps) {
   const app = new Hono();
+
+  // ============================================================================
+  // Observability: health, readiness, metrics, request IDs
+  //
+  // Every service in the platform exposes these three endpoints so the
+  // runtime (K8s liveness/readiness probes, Prometheus scraper) can
+  // converge on a single contract. `/health` reports whether the
+  // process is alive; `/ready` reports whether dependencies are wired
+  // up; `/metrics` exposes counters in Prometheus text format.
+  // ============================================================================
+
+  const serviceStartedAt = Date.now();
+  const counters = { requests: 0, errors: 0 };
+
+  // Lightweight request-id + counter middleware. Adds an x-request-id
+  // header (echoing the caller's ID if provided) and increments the
+  // request/error counters exposed at /metrics.
+  app.use('*', async (c, next) => {
+    const incoming = c.req.header('x-request-id');
+    const requestId = incoming && incoming.length > 0 ? incoming : cryptoRandomId();
+    c.set('requestId', requestId);
+    c.res.headers.set('x-request-id', requestId);
+    counters.requests += 1;
+    try {
+      await next();
+      if (c.res.status >= 500) counters.errors += 1;
+    } catch (err) {
+      counters.errors += 1;
+      throw err;
+    }
+  });
+
+  app.get('/health', (c) => c.json({ status: 'ok', service: 'document-intelligence' }));
+
+  app.get('/ready', (c) => {
+    const ready = Boolean(deps);
+    return c.json(
+      {
+        status: ready ? 'ok' : 'degraded',
+        service: 'document-intelligence',
+        dependencies: {
+          services: ready ? 'wired' : 'unwired',
+        },
+      },
+      ready ? 200 : 503,
+    );
+  });
+
+  app.get('/metrics', (c) => {
+    const uptimeSeconds = (Date.now() - serviceStartedAt) / 1000;
+    const lines = [
+      '# HELP document_intelligence_requests_total Total HTTP requests received',
+      '# TYPE document_intelligence_requests_total counter',
+      `document_intelligence_requests_total ${counters.requests}`,
+      '# HELP document_intelligence_errors_total Total HTTP requests that returned >=500',
+      '# TYPE document_intelligence_errors_total counter',
+      `document_intelligence_errors_total ${counters.errors}`,
+      '# HELP document_intelligence_uptime_seconds Service uptime in seconds',
+      '# TYPE document_intelligence_uptime_seconds gauge',
+      `document_intelligence_uptime_seconds ${uptimeSeconds.toFixed(3)}`,
+    ].join('\n');
+    return c.text(lines + '\n', 200, { 'Content-Type': 'text/plain; version=0.0.4' });
+  });
 
   // ============================================================================
   // Document Upload & Management
