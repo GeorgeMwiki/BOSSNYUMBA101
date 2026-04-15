@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Hono } from 'hono';
 import { authMiddleware, type AuthContext } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';

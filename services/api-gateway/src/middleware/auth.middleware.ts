@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * JWT Authentication Middleware - BOSSNYUMBA
  *
@@ -13,6 +12,7 @@ import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
+import type { AuthContext as BaseAuthContext } from './hono-auth';
 
 // ============================================================================
 // Configuration
@@ -37,12 +37,13 @@ const JWT_AUDIENCE = process.env.JWT_AUDIENCE || 'bossnyumba-api';
 // Types
 // ============================================================================
 
-export interface AuthContext {
-  userId: string;
-  tenantId: string;
-  role: UserRole;
-  permissions: string[];
-  propertyAccess: string[];
+/**
+ * Extends the baseline AuthContext (declared by hono-auth middleware) with
+ * optional session/identity fields populated when the enhanced JWT flow is
+ * used. Kept structurally compatible so both middlewares can share the same
+ * `auth` context slot in Hono.
+ */
+export interface AuthContext extends BaseAuthContext {
   email?: string;
   sessionId?: string;
   tokenExp?: number;
@@ -537,12 +538,7 @@ export const flexibleAuthMiddleware = createMiddleware(async (c, next) => {
 // ============================================================================
 // Hono Context Type Extension
 // ============================================================================
-
-declare module 'hono' {
-  interface ContextVariableMap {
-    auth: AuthContext;
-  }
-}
+// Note: `auth` is declared by ./hono-auth and we extend that shape via
+// AuthContext above (optional fields only), so no duplicate augmentation here.
 
 export type { UserRole };
-// @ts-nocheck

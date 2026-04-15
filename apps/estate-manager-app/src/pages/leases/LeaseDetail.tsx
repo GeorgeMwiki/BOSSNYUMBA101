@@ -17,12 +17,12 @@ export function LeaseDetail({ leaseId }: LeaseDetailProps) {
     retry: false,
   });
 
-  const lease = leaseQuery.data?.data as any;
+  const lease = leaseQuery.data?.data;
 
   return (
     <>
       <PageHeader
-        title={lease?.leaseNumber || 'Lease'}
+        title={lease?.customer?.name || 'Lease'}
         showBack
         action={lease ? <Link href={`/leases/${leaseId}/renew`} className="btn-primary text-sm">Renew</Link> : null}
       />

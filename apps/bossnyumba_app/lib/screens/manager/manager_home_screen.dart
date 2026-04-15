@@ -64,12 +64,20 @@ class ManagerHomeScreen extends StatelessWidget {
           _QuickAction(
             icon: Icons.people,
             label: 'Occupancy',
-            onTap: () => context.go('/work-orders'),
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Occupancy reports are available in the web portal'),
+              ),
+            ),
           ),
           _QuickAction(
             icon: Icons.payments,
             label: 'Collections',
-            onTap: () => context.go('/payments'),
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Rent collections dashboard opens in the web portal'),
+              ),
+            ),
           ),
         ],
       ),

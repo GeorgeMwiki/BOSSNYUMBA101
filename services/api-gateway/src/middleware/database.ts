@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Database middleware for Hono
  * Initializes database client and injects repositories into request context

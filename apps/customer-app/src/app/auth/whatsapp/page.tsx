@@ -17,19 +17,14 @@ function WhatsAppRegistrationContent() {
   const propertyId = searchParams.get('property');
   
   useEffect(() => {
-    const verifyWhatsAppLink = async () => {
-      if (!token || !phone) {
-        setStatus('error');
-        setError('Invalid registration link. Please request a new link from your property manager.');
-        return;
-      }
-      
-      await new Promise((resolve) => setTimeout(resolve, 300));
+    if (!token || !phone) {
       setStatus('error');
-      setError('WhatsApp registration verification is not wired to a live backend in this build.');
-    };
-    
-    verifyWhatsAppLink();
+      setError('Invalid registration link. Please request a new link from your property manager.');
+      return;
+    }
+
+    setStatus('error');
+    setError('WhatsApp registration verification is not wired to a live backend in this build.');
   }, [token, phone, unitId, propertyId]);
   
   if (status === 'verifying') {

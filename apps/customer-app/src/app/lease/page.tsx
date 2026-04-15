@@ -6,13 +6,23 @@ import { Calendar, FileText, Home } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
+interface CustomerLease {
+  property?: { name?: string };
+  unit?: { unitNumber?: string };
+  unitId?: string;
+  startDate: string;
+  endDate: string;
+  rentAmount: number | string;
+  status: string;
+}
+
 export default function LeasePage() {
   const leaseQuery = useQuery({
     queryKey: ['customer-current-lease'],
     queryFn: () => api.lease.getCurrent(),
   });
 
-  const lease = leaseQuery.data as any;
+  const lease = leaseQuery.data as CustomerLease | undefined;
 
   return (
     <>

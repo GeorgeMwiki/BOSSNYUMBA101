@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Generic DB row shape. Drizzle $inferSelect types live in
  * packages/database and aren't re-exported, so we treat rows as

@@ -11,11 +11,18 @@ class OwnerHomeScreen extends StatefulWidget {
 }
 
 class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
-  Future<ApiResponse<Map<String, dynamic>>> _loadPortfolio() async {
+  Future<ApiResponse<List<dynamic>>> _loadPortfolio() async {
     final api = ApiClient.instance;
-    final resp = await api.get<Map<String, dynamic>>('/properties');
-    if (!resp.isOk) return ApiResponse.error(resp.error ?? 'Unknown error', statusCode: resp.statusCode);
-    return ApiResponse.ok(resp.data ?? {});
+    final resp = await api.get<dynamic>('/properties');
+    if (!resp.isOk) {
+      return ApiResponse.error(resp.error ?? 'Unknown error', statusCode: resp.statusCode);
+    }
+    final data = resp.data;
+    if (data is List) return ApiResponse.ok(data);
+    if (data is Map && data['items'] is List) {
+      return ApiResponse.ok(List<dynamic>.from(data['items'] as List));
+    }
+    return ApiResponse.ok(const []);
   }
 
   @override
@@ -25,13 +32,13 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Portfolio')),
-      body: FutureBuilder<ApiResponse<Map<String, dynamic>>>(
+      body: FutureBuilder<ApiResponse<List<dynamic>>>(
         future: _loadPortfolio(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snap.hasError || !snap.data!.isOk) {
+          if (snap.hasError || snap.data == null || !snap.data!.isOk) {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -50,6 +57,15 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
                           snap.data?.error ?? snap.error?.toString() ?? 'Unable to load portfolio',
                           style: TextStyle(color: Theme.of(context).colorScheme.error),
                         ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => setState(() {}),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -57,8 +73,7 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
               ],
             );
           }
-          final data = snap.data!.data;
-          final List<dynamic> properties = data is List ? data : (data is Map && data['items'] != null ? List<dynamic>.from(data['items'] as List) : []);
+          final properties = snap.data!.data ?? const [];
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -95,8 +110,7 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
                   ),
                 )
               else
-                ...properties.map((p) {
-                  final m = p as Map<String, dynamic>;
+                ...properties.whereType<Map<String, dynamic>>().map((m) {
                   return Card(
                     child: ListTile(
                       title: Text(m['name']?.toString() ?? 'Property'),

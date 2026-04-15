@@ -59,7 +59,7 @@ class StoriesBar extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          s.name[0],
+                          s.name.isEmpty ? '?' : s.name[0].toUpperCase(),
                           style: const TextStyle(
                             color: Color(0xFF1DB954),
                             fontSize: 20,

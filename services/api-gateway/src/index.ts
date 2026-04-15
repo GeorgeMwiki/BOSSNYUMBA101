@@ -12,6 +12,7 @@ import pino from 'pino';
 import pinoHttp from 'pino-http';
 import { handle } from '@hono/node-server/vercel';
 import { Hono } from 'hono';
+import { getDatabaseClient } from './middleware/database';
 import { authRouter } from './routes/auth';
 import { tenantsRouter } from './routes/tenants.hono';
 import { usersRouter } from './routes/users.hono';
@@ -54,12 +55,90 @@ app.use(express.json());
 app.use(pinoHttp({ logger }));
 app.use(rateLimitMiddleware());
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
+// Health check — surfaces downstream reachability so ops can diagnose at a glance.
+const SERVICE_VERSION = process.env.SERVICE_VERSION || process.env.npm_package_version || '1.0.0';
+const SERVICE_START_TIME = Date.now();
+
+type CheckStatus = 'ok' | 'down' | 'unknown';
+
+async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return await Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+async function checkDatabase(): Promise<CheckStatus> {
+  const db = getDatabaseClient();
+  if (!db) return 'unknown';
+  try {
+    // Lazy import so drizzle-orm is only pulled in when a live DB is configured.
+    const { sql } = await import('drizzle-orm');
+    await withTimeout((db as unknown as { execute: (q: unknown) => Promise<unknown> }).execute(sql`SELECT 1`), 500);
+    return 'ok';
+  } catch (err) {
+    logger.warn({ err }, 'health: db check failed');
+    return 'down';
+  }
+}
+
+async function checkRedis(): Promise<CheckStatus> {
+  // No Redis client is wired into the gateway process today
+  // (rate limiter uses an in-memory store). Report 'unknown' until one exists.
+  const g = globalThis as unknown as { __redisClient?: { ping: () => Promise<string> } };
+  const client = g.__redisClient;
+  if (!client || typeof client.ping !== 'function') return 'unknown';
+  try {
+    await withTimeout(client.ping(), 500);
+    return 'ok';
+  } catch (err) {
+    logger.warn({ err }, 'health: redis check failed');
+    return 'down';
+  }
+}
+
+async function checkHttp(url: string | undefined, timeoutMs: number): Promise<CheckStatus> {
+  if (!url) return 'unknown';
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    return res.ok ? 'ok' : 'down';
+  } catch (err) {
+    logger.warn({ err, url }, 'health: upstream check failed');
+    return 'down';
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+app.get('/health', async (_req, res) => {
+  const [db, redis, notifications, paymentsLedger] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkHttp(process.env.NOTIFICATIONS_SERVICE_URL, 1000),
+    checkHttp(process.env.PAYMENTS_LEDGER_URL, 1000),
+  ]);
+
+  const checks = { db, redis, notifications, paymentsLedger };
+
+  // Hard-fail only on DB down; optional deps being 'down' or 'unknown' degrade but don't 503.
+  const hardFail = db === 'down';
+  const anyDown =
+    db === 'down' || redis === 'down' || notifications === 'down' || paymentsLedger === 'down';
+  const status: 'ok' | 'degraded' = anyDown ? 'degraded' : 'ok';
+
+  res.status(hardFail ? 503 : 200).json({
+    status,
     service: 'api-gateway',
-    timestamp: new Date().toISOString(),
+    uptime: Math.floor((Date.now() - SERVICE_START_TIME) / 1000),
+    version: SERVICE_VERSION,
+    checks,
   });
 });
 

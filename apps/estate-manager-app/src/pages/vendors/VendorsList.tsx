@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { vendorsService } from '@bossnyumba/api-client';
+import { vendorsService, type Vendor } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function VendorsList() {
@@ -25,7 +25,7 @@ export default function VendorsList() {
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {vendorsQuery.isLoading && <div className="card p-4 text-sm text-gray-500">Loading vendors...</div>}
         {vendorsQuery.error && <div className="card p-4 text-sm text-danger-600">{(vendorsQuery.error as Error).message}</div>}
-        {vendors.map((vendor: any) => (
+        {vendors.map((vendor: Vendor) => (
           <Link key={vendor.id} href={`/vendors/${vendor.id}`} className="card block p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -33,12 +33,15 @@ export default function VendorsList() {
                 <div className="text-sm text-gray-500">{vendor.email || vendor.phone || 'No primary contact'}</div>
               </div>
               <div className="text-right">
-                <div className="badge-info text-xs">{vendor.status}</div>
+                <div className="badge-info text-xs">{vendor.isAvailable ? 'Available' : 'Unavailable'}</div>
                 <div className="mt-1 text-sm text-gray-500">{(vendor.categories || []).join(', ') || 'General'}</div>
               </div>
             </div>
           </Link>
         ))}
+        {!vendorsQuery.isLoading && !vendorsQuery.error && vendors.length === 0 && (
+          <div className="card p-4 text-sm text-gray-500">No vendors found.</div>
+        )}
       </div>
     </>
   );

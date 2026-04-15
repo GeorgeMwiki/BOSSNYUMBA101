@@ -6,6 +6,17 @@ import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
+interface PaymentRow {
+  id: string;
+  description?: string;
+  paymentNumber?: string;
+  status: string;
+  amount: number | string;
+  currency: string;
+  completedAt?: string;
+  createdAt?: string;
+}
+
 export default function PaymentsPage() {
   const balanceQuery = useQuery({
     queryKey: ['customer-payments-balance'],
@@ -24,8 +35,8 @@ export default function PaymentsPage() {
 
   const error = balanceQuery.error || pendingQuery.error || historyQuery.error;
   const balance = balanceQuery.data;
-  const pending = pendingQuery.data ?? [];
-  const history = historyQuery.data ?? [];
+  const pending: PaymentRow[] = (pendingQuery.data ?? []) as PaymentRow[];
+  const history: PaymentRow[] = (historyQuery.data ?? []) as PaymentRow[];
 
   return (
     <>
@@ -70,7 +81,7 @@ export default function PaymentsPage() {
             {pending.length === 0 ? (
               <div className="text-sm text-gray-400">No pending payments.</div>
             ) : (
-              pending.map((payment: any) => (
+              pending.map((payment) => (
                 <div key={payment.id} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
                   <div>
                     <div className="font-medium text-white">{payment.description || payment.paymentNumber}</div>
@@ -96,7 +107,7 @@ export default function PaymentsPage() {
             {history.length === 0 ? (
               <div className="text-sm text-gray-400">No payment history yet.</div>
             ) : (
-              history.map((payment: any) => (
+              history.map((payment) => (
                 <Link
                   key={payment.id}
                   href="/payments/history"

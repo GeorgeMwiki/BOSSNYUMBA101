@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Audit Middleware - BOSSNYUMBA API Gateway
  * 
@@ -106,11 +105,22 @@ function buildRequestContext(c: Context): AuditRequestContext {
 }
 
 /**
+ * Extended auth shape: identity tokens may carry optional display fields
+ * (userName, email, tenantName) used only for audit enrichment. These are
+ * not part of the baseline AuthContext contract.
+ */
+type AuditAuthContext = AuthContext & {
+  userName?: string;
+  email?: string;
+  tenantName?: string;
+};
+
+/**
  * Build audit user from auth context
  */
 function buildAuditUser(c: Context): AuditUser {
-  const auth = c.get('auth') as AuthContext | undefined;
-  
+  const auth = c.get('auth') as AuditAuthContext | undefined;
+
   return {
     id: auth?.userId || 'anonymous',
     name: auth?.userName,
@@ -328,7 +338,7 @@ export const createAuditMiddleware = (config: AuditMiddlewareConfig = {}) => {
     };
 
     // Get auth context for tenant info
-    const auth = c.get('auth') as AuthContext | undefined;
+    const auth = c.get('auth') as AuditAuthContext | undefined;
     if (auth?.tenantId) {
       details.tenant = {
         tenantId: auth.tenantId,
@@ -423,7 +433,7 @@ export async function auditRequest(
   const user = buildAuditUser(c);
   const requestContext = buildRequestContext(c);
 
-  const auth = c.get('auth') as AuthContext | undefined;
+  const auth = c.get('auth') as AuditAuthContext | undefined;
   const tenant = auth?.tenantId
     ? { tenantId: auth.tenantId, tenantName: auth.tenantName }
     : undefined;
@@ -441,4 +451,3 @@ declare module 'hono' {
     skipAudit?: boolean;
   }
 }
-// @ts-nocheck

@@ -38,7 +38,7 @@ class FeedCard extends StatelessWidget {
                   radius: 18,
                   backgroundColor: const Color(0xFF1DB954),
                   child: Text(
-                    author[0],
+                    author.isEmpty ? '?' : author[0].toUpperCase(),
                     style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                   ),
                 ),

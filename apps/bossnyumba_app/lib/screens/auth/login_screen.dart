@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 
+// Reasonable RFC-5322-ish email check; good enough for client-side gating.
+final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -24,6 +28,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String? _validateEmail(String? v) {
+    final value = v?.trim() ?? '';
+    if (value.isEmpty) return 'Email required';
+    if (!_emailRegex.hasMatch(value)) return 'Enter a valid email address';
+    return null;
+  }
+
+  String? _validatePassword(String? v) {
+    if (v == null || v.isEmpty) return 'Password required';
+    if (v.length < 8) return 'Password must be at least 8 characters';
+    return null;
+  }
+
   Future<void> _login() async {
     if (_loading) return;
     setState(() {
@@ -31,14 +48,15 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
     });
     try {
-      final ok = await context.read<AuthProvider>().login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      final auth = context.read<AuthProvider>();
+      final ok = await auth.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
       if (!mounted) return;
       if (!ok) {
         setState(() {
-          _error = 'Invalid email or password';
+          _error = auth.lastError ?? 'Invalid email or password';
           _loading = false;
         });
       }
@@ -51,6 +69,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _forgotPassword() {
+    // TODO: wire to real /auth/forgot-password flow once backend endpoint lands.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Password reset is coming soon. Contact support for now.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -83,34 +111,60 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email, AutofillHints.username],
+                  enabled: !_loading,
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Email required' : null,
+                  validator: _validateEmail,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  enabled: !_loading,
+                  onFieldSubmitted: (_) {
+                    if (_formKey.currentState?.validate() ?? false) {
+                      _login();
+                    }
+                  },
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outlined),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword,
+                      ),
+                    ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Password required' : null,
+                  validator: _validatePassword,
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _loading ? null : _forgotPassword,
+                    child: const Text('Forgot password?'),
+                  ),
                 ),
                 if (_error != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Text(
                     _error!,
                     style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _loading
                       ? null
@@ -129,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => context.go('/register'),
+                  onPressed: _loading ? null : () => context.go('/register'),
                   child: const Text('Create account'),
                 ),
               ],

@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
+typedef UnauthorizedHandler = Future<void> Function();
+
 class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient();
 
   String? _token;
+  UnauthorizedHandler? _onUnauthorized;
   final String baseUrl = ApiConfig.baseUrl;
 
   ApiClient() {
@@ -14,6 +17,13 @@ class ApiClient {
   }
 
   void setToken(String? token) => _token = token;
+
+  /// Register a callback to be invoked when the API returns 401 Unauthorized.
+  /// Typically wired to AuthProvider.logout() so the session is cleared and
+  /// the router bounces the user to /login.
+  void setUnauthorizedHandler(UnauthorizedHandler? handler) {
+    _onUnauthorized = handler;
+  }
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -31,7 +41,7 @@ class ApiClient {
       final resp = await http
           .get(uri, headers: _headers)
           .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
-      return _handleResponse<T>(resp);
+      return await _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
     }
@@ -47,7 +57,7 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
-      return _handleResponse<T>(resp);
+      return await _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
     }
@@ -63,13 +73,13 @@ class ApiClient {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
-      return _handleResponse<T>(resp);
+      return await _handleResponse<T>(resp);
     } catch (e) {
       return ApiResponse.error(e.toString());
     }
   }
 
-  ApiResponse<T> _handleResponse<T>(http.Response resp) {
+  Future<ApiResponse<T>> _handleResponse<T>(http.Response resp) async {
     dynamic json;
     try {
       json = resp.body.isEmpty ? null : jsonDecode(resp.body);
@@ -82,9 +92,30 @@ class ApiClient {
       }
       return ApiResponse.ok(json as T);
     }
-    final msg = json is Map && json['error'] != null
-        ? (json['error']['message'] ?? resp.reasonPhrase ?? 'Unknown error')
-        : resp.reasonPhrase ?? 'Unknown error';
+    // Auto-logout on 401 so stale/invalid tokens don't leave the UI stuck.
+    if (resp.statusCode == 401 && _onUnauthorized != null) {
+      // Fire-and-forget — don't let a handler error swallow the API error.
+      try {
+        await _onUnauthorized!.call();
+      } catch (_) {}
+    }
+    // Prefer a structured backend error body: { error: { message, code } } or
+    // { message: "..." } over the bare HTTP reason phrase.
+    String msg;
+    if (json is Map) {
+      final err = json['error'];
+      if (err is Map && err['message'] != null) {
+        msg = err['message'].toString();
+      } else if (err is String) {
+        msg = err;
+      } else if (json['message'] != null) {
+        msg = json['message'].toString();
+      } else {
+        msg = resp.reasonPhrase ?? 'Request failed';
+      }
+    } else {
+      msg = resp.reasonPhrase ?? 'Request failed';
+    }
     return ApiResponse.error(msg, statusCode: resp.statusCode);
   }
 }

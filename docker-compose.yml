@@ -93,20 +93,13 @@ services:
   # ---------------------------------------------------------------------------
   # Notifications service (HTTP surface proxied by api-gateway at
   # /api/v1/notifications -> http://notifications:4100).
-  # TODO: add services/notifications/Dockerfile (or wire docker/Dockerfile.service
-  #       for the notifications workspace) so this entry can be built & run.
-  # Until then, run the service directly via `pnpm --filter notifications-service dev`.
   # ---------------------------------------------------------------------------
   notifications:
-    # TODO: uncomment once a Dockerfile exists for this service.
-    # build:
-    #   context: .
-    #   dockerfile: services/notifications/Dockerfile
-    image: bossnyumba-notifications:local
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
     container_name: bossnyumba-notifications
     restart: unless-stopped
-    profiles:
-      - notifications  # opt-in until image is buildable
     ports:
       - "4100:4100"
     environment:

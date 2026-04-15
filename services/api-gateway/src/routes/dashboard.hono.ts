@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
@@ -268,7 +266,7 @@ function buildOwnerDashboardPayload(scope) {
       timestamp: workOrder.updatedAt || workOrder.createdAt,
     })),
   ]
-    .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp))
+    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
     .slice(0, 8);
 
   const alerts = [
@@ -471,7 +469,7 @@ async function getAdminDashboardData(auth, repos) {
       user: payment.tenantName,
     })),
   ]
-    .sort((left, right) => new Date(right.timestamp) - new Date(left.timestamp))
+    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
     .slice(0, 8);
 
   return {

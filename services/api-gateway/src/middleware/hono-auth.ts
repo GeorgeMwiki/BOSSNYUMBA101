@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hono-compatible auth middleware
  * Extracts JWT from Authorization header and provides tenant-scoped auth context

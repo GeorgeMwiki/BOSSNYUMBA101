@@ -31,7 +31,7 @@ export function LeaseRenewal({ leaseId }: LeaseRenewalProps) {
         {leaseQuery.data?.data && (
           <div className="card p-4 space-y-3">
             <div className="text-sm text-gray-500">Current end date</div>
-            <div className="text-lg font-medium">{new Date((leaseQuery.data.data as any).endDate).toLocaleDateString()}</div>
+            <div className="text-lg font-medium">{new Date(leaseQuery.data.data.endDate).toLocaleDateString()}</div>
             <div className="text-sm text-gray-500">This action extends the lease by 12 months using the live lease endpoint.</div>
             <button className="btn-primary" onClick={() => renewal.mutate()} disabled={renewal.isPending}>
               {renewal.isPending ? 'Renewing...' : 'Renew for 12 Months'}

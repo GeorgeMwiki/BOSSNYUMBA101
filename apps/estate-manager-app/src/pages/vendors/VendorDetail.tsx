@@ -16,7 +16,7 @@ export default function VendorDetail({ vendorId }: VendorDetailProps) {
     retry: false,
   });
 
-  const vendor = vendorQuery.data?.data as any;
+  const vendor = vendorQuery.data?.data;
 
   return (
     <>
@@ -27,7 +27,7 @@ export default function VendorDetail({ vendorId }: VendorDetailProps) {
         {vendor && (
           <div className="card p-4 grid grid-cols-2 gap-4">
             <div><div className="text-sm text-gray-500">Company</div><div className="font-medium">{vendor.companyName || vendor.name}</div></div>
-            <div><div className="text-sm text-gray-500">Status</div><div className="font-medium">{vendor.status}</div></div>
+            <div><div className="text-sm text-gray-500">Availability</div><div className="font-medium">{vendor.isAvailable ? 'Available' : 'Unavailable'}</div></div>
             <div><div className="text-sm text-gray-500">Email</div><div className="font-medium">{vendor.email || 'N/A'}</div></div>
             <div><div className="text-sm text-gray-500">Phone</div><div className="font-medium">{vendor.phone || 'N/A'}</div></div>
             <div className="col-span-2"><div className="text-sm text-gray-500">Categories</div><div className="font-medium">{(vendor.categories || []).join(', ') || 'General'}</div></div>

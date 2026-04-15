@@ -15,7 +15,7 @@ export default function WorkOrderDetailPage() {
     retry: false,
   });
 
-  const workOrder = workOrderQuery.data?.data as any;
+  const workOrder = workOrderQuery.data?.data;
 
   return (
     <>

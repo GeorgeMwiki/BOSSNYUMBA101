@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { leasesService } from '@bossnyumba/api-client';
+import { leasesService, type LeaseWithDetails } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export function LeasesList() {
@@ -30,11 +30,11 @@ export function LeasesList() {
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {leasesQuery.isLoading && <div className="card p-4 text-sm text-gray-500">Loading leases...</div>}
         {leasesQuery.error && <div className="card p-4 text-sm text-danger-600">{(leasesQuery.error as Error).message}</div>}
-        {leases.map((lease: any) => (
+        {leases.map((lease: LeaseWithDetails) => (
           <Link key={lease.id} href={`/leases/${lease.id}`} className="card block p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="font-medium">{lease.customer?.name || lease.leaseNumber || lease.id}</div>
+                <div className="font-medium">{lease.customer?.name || lease.id}</div>
                 <div className="text-sm text-gray-500">
                   {lease.unit?.unitNumber || lease.unitId} • {lease.property?.name || 'Property pending'}
                 </div>

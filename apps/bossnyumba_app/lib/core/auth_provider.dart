@@ -93,10 +93,15 @@ class AuthProvider extends ChangeNotifier {
 
   UserSession? _session;
   bool _loading = true;
+  String? _lastError;
 
   AuthProvider({required ApiClient api}) : _api = api {
+    // Auto-logout on 401 from any request.
+    _api.setUnauthorizedHandler(_onUnauthorized);
     _init();
   }
+
+  String? get lastError => _lastError;
 
   UserSession? get session => _session;
   bool get isAuthenticated => _session != null;
@@ -111,10 +116,22 @@ class AuthProvider extends ChangeNotifier {
   bool get isAccountant => role.isAccountant;
 
   Future<void> _init() async {
-    final token = await _storage.read(key: 'access_token');
-    if (token != null) {
-      _api.setToken(token);
-      await _fetchMe();
+    try {
+      final token = await _storage.read(key: 'access_token');
+      if (token != null) {
+        _api.setToken(token);
+        await _fetchMe();
+      }
+    } catch (e) {
+      // Treat any bootstrap failure (corrupt keystore, network error while
+      // validating the stored token, etc.) as "not signed in" rather than
+      // leaving the app stuck on a loading spinner forever.
+      debugPrint('AuthProvider init failed: $e');
+      _session = null;
+      try {
+        await _storage.delete(key: 'access_token');
+      } catch (_) {}
+      _api.setToken(null);
     }
     _loading = false;
     notifyListeners();
@@ -149,14 +166,23 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> login(String email, String password) async {
+    _lastError = null;
     final resp = await _api.post<Map<String, dynamic>>('/auth/login', body: {
       'email': email,
       'password': password,
     });
-    if (!resp.isOk) return false;
+    if (!resp.isOk) {
+      _lastError = resp.error;
+      notifyListeners();
+      return false;
+    }
     final d = resp.data;
     final token = d is Map ? d['token'] as String? : null;
-    if (token == null) return false;
+    if (token == null) {
+      _lastError = 'No token returned';
+      notifyListeners();
+      return false;
+    }
     await _storage.write(key: 'access_token', value: token);
     _api.setToken(token);
     await _fetchMe();
@@ -170,6 +196,7 @@ class AuthProvider extends ChangeNotifier {
     String lastName, {
     String? phone,
   }) async {
+    _lastError = null;
     final resp = await _api.post<Map<String, dynamic>>('/auth/register', body: {
       'email': email,
       'password': password,
@@ -177,17 +204,61 @@ class AuthProvider extends ChangeNotifier {
       'lastName': lastName,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
     });
-    if (!resp.isOk) return false;
+    if (!resp.isOk) {
+      _lastError = resp.error;
+      notifyListeners();
+      return false;
+    }
     final d = resp.data;
     final token = d is Map ? d['token'] as String? : null;
-    if (token == null) return false;
+    if (token == null) {
+      _lastError = 'No token returned';
+      notifyListeners();
+      return false;
+    }
     await _storage.write(key: 'access_token', value: token);
     _api.setToken(token);
     await _fetchMe();
     return isAuthenticated;
   }
 
+  /// Update the current user's profile (name, phone) via PATCH /auth/me.
+  /// Returns true on success; exposes backend error via [lastError] on failure.
+  Future<bool> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+  }) async {
+    _lastError = null;
+    final body = <String, dynamic>{
+      if (firstName != null) 'firstName': firstName,
+      if (lastName != null) 'lastName': lastName,
+      if (phone != null) 'phone': phone,
+    };
+    if (body.isEmpty) return true;
+    final resp = await _api.patch<Map<String, dynamic>>('/auth/me', body: body);
+    if (!resp.isOk) {
+      _lastError = resp.error;
+      notifyListeners();
+      return false;
+    }
+    // Re-fetch to get canonical server state.
+    await _fetchMe();
+    return true;
+  }
+
   Future<void> logout() async {
+    await _storage.delete(key: 'access_token');
+    _api.setToken(null);
+    _session = null;
+    _lastError = null;
+    notifyListeners();
+  }
+
+  /// Called by ApiClient when any request returns 401. Clears local session
+  /// so the router's redirect logic bounces to /login on the next tick.
+  Future<void> _onUnauthorized() async {
+    if (_session == null && _api == _api) return;
     await _storage.delete(key: 'access_token');
     _api.setToken(null);
     _session = null;

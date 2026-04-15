@@ -7,10 +7,14 @@ import 'core/api_client.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final api = ApiClient();
+  final auth = AuthProvider(api: api);
+  // Clear session + token on any 401 so a stale/expired token bounces the
+  // user back to /login instead of silently failing every subsequent call.
+  api.setUnauthorizedHandler(() => auth.logout());
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider(api: api)),
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
         Provider<ApiClient>.value(value: api),
       ],
       child: const BossNyumbaApp(),

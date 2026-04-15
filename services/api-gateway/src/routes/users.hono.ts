@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Hono } from 'hono';
 import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
