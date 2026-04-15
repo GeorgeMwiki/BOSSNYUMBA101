@@ -8,14 +8,21 @@ declare module '@bossnyumba/domain-models' {
   export type RoleId = string;
   export type UserId = string;
   export type PolicyId = string;
+  export type SessionId = string;
+
+  export interface UserRoleAssignment {
+    roleId: RoleId;
+    organizationId: OrganizationId;
+    expiresAt?: string;
+  }
 
   export interface User {
     id: UserId;
     tenantId: TenantId;
     type: string;
-    primaryOrganizationId?: OrganizationId;
-    roleAssignments: Array<{ roleId: RoleId; organizationId: OrganizationId; expiresAt?: string }>;
-    security?: { mfaEnabled?: boolean };
+    primaryOrganizationId: OrganizationId;
+    roleAssignments: UserRoleAssignment[];
+    security: { mfaEnabled: boolean };
   }
 
   export interface Role {
@@ -23,57 +30,65 @@ declare module '@bossnyumba/domain-models' {
     name: string;
     permissions: string[];
     inheritsFrom: RoleId[];
-    isAdmin?: boolean;
-    priority?: number;
+    isAdmin: boolean;
+    priority: number;
   }
 
   export interface AuthorizationRequest {
-    subject: unknown;
-    action: string;
-    resource: unknown;
-    context?: unknown;
+    subject: SubjectAttributes;
+    action: ActionAttributes;
+    resource: ResourceAttributes;
+    context: ContextAttributes;
   }
 
   export interface AuthorizationDecision {
     allowed: boolean;
     reason?: string;
+    decidingPolicyId?: PolicyId | null;
+    decidingRuleIndex?: number | null;
+    evaluationTrace?: PolicyEvaluationResult[];
   }
 
   export interface SubjectAttributes {
     userId: string;
-    tenantId?: string;
-    userType?: string;
-    roleIds?: string[];
-    organizationIds?: string[];
-    primaryOrganizationId?: string;
-    permissions?: Set<string>;
-    mfaVerified?: boolean;
+    tenantId: string;
+    userType: string;
+    roleIds: string[];
+    organizationIds: string[];
+    primaryOrganizationId: string;
+    permissions: string[];
+    mfaVerified: boolean;
     metadata?: Record<string, unknown>;
   }
 
   export interface ResourceAttributes {
     type: string;
-    id?: string;
-    ownerId?: string;
-    tenantId?: string;
+    id: string | null;
+    ownerId: string | null;
+    tenantId: string;
+    organizationId: string | null;
     metadata?: Record<string, unknown>;
   }
 
   export interface ContextAttributes {
-    ipAddress?: string;
-    userAgent?: string;
+    ipAddress: string;
+    userAgent: string;
+    timestamp: string;
+    requestId: string;
+    sessionId: string | null;
     metadata?: Record<string, unknown>;
   }
 
   export interface ActionAttributes {
     name: string;
-    resource?: string;
+    resource: string;
     metadata?: Record<string, unknown>;
   }
 
   export interface PolicyCondition {
+    source: AttributeSource;
     attribute: string;
-    operator: string;
+    operator: ConditionOperator;
     value: unknown;
   }
 
@@ -82,27 +97,80 @@ declare module '@bossnyumba/domain-models' {
     conditions: Array<PolicyCondition | ConditionGroup>;
   }
 
+  export interface PolicyTargetPrincipals {
+    userIds: string[];
+    roleIds: string[];
+    userTypes: string[];
+  }
+
   export interface Policy {
     id: PolicyId;
     name: string;
-    rules: unknown[];
+    description?: string;
+    effect?: PolicyEffect;
+    priority: number;
+    targetPrincipals: PolicyTargetPrincipals;
+    targetOrganizations: string[];
+    rules: PolicyRule[];
   }
 
   export interface PolicyRule {
     id: string;
-    effect: string;
-    conditions?: unknown[];
+    effect: PolicyEffect;
+    actions: string[];
+    resources: string[];
+    conditions?: ConditionGroup;
   }
 
   export interface PolicyEvaluationResult {
-    allowed: boolean;
-    reason?: string;
+    policyId: PolicyId;
+    policyName: string;
+    matched: boolean;
+    effect: PolicyEffect | null;
+    matchedRuleIndex: number | null;
+    evaluationTimeMs: number;
   }
 
-  export type PolicyEffect = 'allow' | 'deny';
-  export type PolicyStatus = string;
-  export type ConditionOperator = string;
-  export type AttributeSource = string;
+  export const PolicyEffect: {
+    readonly ALLOW: 'allow';
+    readonly DENY: 'deny';
+  };
+  export type PolicyEffect = (typeof PolicyEffect)[keyof typeof PolicyEffect];
+
+  export const PolicyStatus: {
+    readonly ACTIVE: 'active';
+    readonly INACTIVE: 'inactive';
+    readonly DRAFT: 'draft';
+  };
+  export type PolicyStatus = (typeof PolicyStatus)[keyof typeof PolicyStatus];
+
+  export const ConditionOperator: {
+    readonly EQUALS: 'eq';
+    readonly NOT_EQUALS: 'neq';
+    readonly GREATER_THAN: 'gt';
+    readonly GREATER_THAN_OR_EQUALS: 'gte';
+    readonly LESS_THAN: 'lt';
+    readonly LESS_THAN_OR_EQUALS: 'lte';
+    readonly IN: 'in';
+    readonly NOT_IN: 'nin';
+    readonly CONTAINS: 'contains';
+    readonly NOT_CONTAINS: 'ncontains';
+    readonly STARTS_WITH: 'starts_with';
+    readonly ENDS_WITH: 'ends_with';
+    readonly MATCHES: 'matches';
+    readonly EXISTS: 'exists';
+    readonly IS_OWNER: 'is_owner';
+    readonly IN_ORG_HIERARCHY: 'in_org_hierarchy';
+  };
+  export type ConditionOperator = (typeof ConditionOperator)[keyof typeof ConditionOperator];
+
+  export const AttributeSource: {
+    readonly SUBJECT: 'subject';
+    readonly RESOURCE: 'resource';
+    readonly CONTEXT: 'context';
+    readonly ACTION: 'action';
+  };
+  export type AttributeSource = (typeof AttributeSource)[keyof typeof AttributeSource];
 
   export interface AccessTokenClaims {
     sub: string;
@@ -122,4 +190,5 @@ declare module '@bossnyumba/domain-models' {
   export function asUserId(value: string): UserId;
   export function asOrganizationId(value: string): OrganizationId;
   export function asRoleId(value: string): RoleId;
+  export function permissionMatches(granted: string, required: string): boolean;
 }
