@@ -4,3 +4,6 @@ export * from './stk-push';
 export * from './callback-handler';
 export * from './query';
 export * from './b2c';
+export * from './account-balance';
+export * from './transaction-status';
+export * from './security-credential';
