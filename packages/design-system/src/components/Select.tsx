@@ -158,6 +158,15 @@ export interface SearchableSelectProps {
   error?: boolean;
   className?: string;
   emptyMessage?: string;
+  /** When true, the component renders a clear button once a value is set. */
+  clearable?: boolean;
+  /**
+   * Async loader for options. When set, the static `options` prop is used as
+   * the initial list and each keystroke in the search input (debounced 200ms)
+   * triggers `loadOptions(query)` to refresh the list. Cancels stale requests
+   * using an AbortController so the latest query always wins.
+   */
+  loadOptions?: (query: string, signal: AbortSignal) => Promise<SearchableSelectOption[]>;
 }
 
 const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>(
@@ -172,21 +181,62 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
       error = false,
       className,
       emptyMessage = 'No options found.',
+      clearable = false,
+      loadOptions,
     },
     ref
   ) => {
     const [open, setOpen] = React.useState(false);
     const [search, setSearch] = React.useState('');
+    const [asyncOptions, setAsyncOptions] = React.useState<SearchableSelectOption[] | null>(null);
+    const [loading, setLoading] = React.useState(false);
+    const [highlighted, setHighlighted] = React.useState(0);
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const listboxId = React.useId();
+    const triggerId = React.useId();
+
+    const effectiveOptions = asyncOptions ?? options;
 
     const filteredOptions = React.useMemo(() => {
-      if (!search) return options;
-      return options.filter((option) =>
+      if (loadOptions) return effectiveOptions; // server already filtered
+      if (!search) return effectiveOptions;
+      return effectiveOptions.filter((option) =>
         option.label.toLowerCase().includes(search.toLowerCase())
       );
-    }, [options, search]);
+    }, [effectiveOptions, search, loadOptions]);
 
-    const selectedOption = options.find((opt) => opt.value === value);
+    // Debounced async loading
+    React.useEffect(() => {
+      if (!loadOptions || !open) return;
+      const controller = new AbortController();
+      const handle = setTimeout(async () => {
+        setLoading(true);
+        try {
+          const next = await loadOptions(search, controller.signal);
+          if (!controller.signal.aborted) setAsyncOptions(next);
+        } catch (error) {
+          if ((error as { name?: string })?.name !== 'AbortError') {
+            // Surface errors to consumers via console; the UI shows the empty message.
+            // eslint-disable-next-line no-console
+            console.error('SearchableSelect loadOptions failed', error);
+            if (!controller.signal.aborted) setAsyncOptions([]);
+          }
+        } finally {
+          if (!controller.signal.aborted) setLoading(false);
+        }
+      }, 200);
+      return () => {
+        clearTimeout(handle);
+        controller.abort();
+      };
+    }, [search, open, loadOptions]);
+
+    // Reset highlight when list changes
+    React.useEffect(() => {
+      setHighlighted(0);
+    }, [filteredOptions.length, open]);
+
+    const selectedOption = effectiveOptions.find((opt) => opt.value === value);
 
     const handleSelect = (optionValue: string) => {
       onChange?.(optionValue);
@@ -200,9 +250,38 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
       }
     }, [open]);
 
+    const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlighted((i) => Math.min(i + 1, filteredOptions.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlighted((i) => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const option = filteredOptions[highlighted];
+        if (option && !option.disabled) handleSelect(option.value);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setHighlighted(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setHighlighted(Math.max(filteredOptions.length - 1, 0));
+      }
+    };
+
+    const activeDescendant =
+      filteredOptions[highlighted]?.value !== undefined
+        ? `${listboxId}-opt-${filteredOptions[highlighted].value}`
+        : undefined;
+
     return (
       <div ref={ref} className={cn('relative w-full', className)}>
         <button
+          id={triggerId}
           type="button"
           onClick={() => !disabled && setOpen(!open)}
           className={cn(
@@ -211,13 +290,39 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
             !selectedOption && 'text-muted-foreground'
           )}
           disabled={disabled}
+          role="combobox"
           aria-expanded={open}
           aria-haspopup="listbox"
+          aria-controls={listboxId}
+          aria-activedescendant={open ? activeDescendant : undefined}
         >
           <span className="truncate">
             {selectedOption ? selectedOption.label : placeholder}
           </span>
-          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+          <div className="flex items-center gap-1">
+            {clearable && selectedOption && !disabled && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Clear selection"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange?.('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onChange?.('');
+                  }
+                }}
+                className="text-muted-foreground hover:text-destructive p-0.5"
+              >
+                <X className="h-3.5 w-3.5" />
+              </span>
+            )}
+            <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+          </div>
         </button>
 
         {open && (
@@ -235,37 +340,68 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={onSearchKeyDown}
                     placeholder={searchPlaceholder}
+                    aria-label={searchPlaceholder}
+                    aria-controls={listboxId}
+                    aria-autocomplete="list"
                     className="w-full rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
-              <div className="max-h-60 overflow-y-auto p-1">
-                {filteredOptions.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
+              <ul
+                id={listboxId}
+                role="listbox"
+                aria-labelledby={triggerId}
+                className="max-h-60 overflow-y-auto p-1"
+              >
+                {loading ? (
+                  <li
+                    role="option"
+                    aria-selected="false"
+                    aria-busy="true"
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
+                    Loading...
+                  </li>
+                ) : filteredOptions.length === 0 ? (
+                  <li
+                    role="option"
+                    aria-selected="false"
+                    aria-disabled="true"
+                    className="py-6 text-center text-sm text-muted-foreground"
+                  >
                     {emptyMessage}
-                  </div>
+                  </li>
                 ) : (
-                  filteredOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => !option.disabled && handleSelect(option.value)}
-                      className={cn(
-                        'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
-                        option.disabled && 'pointer-events-none opacity-50',
-                        value === option.value && 'bg-accent text-accent-foreground'
-                      )}
-                      disabled={option.disabled}
-                    >
-                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                        {value === option.value && <Check className="h-4 w-4" />}
-                      </span>
-                      {option.label}
-                    </button>
-                  ))
+                  filteredOptions.map((option, idx) => {
+                    const isSelected = value === option.value;
+                    const isHighlighted = highlighted === idx;
+                    return (
+                      <li
+                        id={`${listboxId}-opt-${option.value}`}
+                        role="option"
+                        aria-selected={isSelected}
+                        aria-disabled={option.disabled ?? false}
+                        key={option.value}
+                        onClick={() => !option.disabled && handleSelect(option.value)}
+                        onMouseEnter={() => setHighlighted(idx)}
+                        className={cn(
+                          'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
+                          option.disabled && 'pointer-events-none opacity-50',
+                          isHighlighted && 'bg-accent text-accent-foreground',
+                          isSelected && 'font-medium'
+                        )}
+                      >
+                        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                          {isSelected && <Check className="h-4 w-4" />}
+                        </span>
+                        {option.label}
+                      </li>
+                    );
+                  })
                 )}
-              </div>
+              </ul>
             </div>
           </>
         )}

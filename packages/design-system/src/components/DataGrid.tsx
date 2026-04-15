@@ -118,12 +118,28 @@ export interface DataGridProps<T> {
   className?: string;
   /** Striped rows */
   striped?: boolean;
-  /** Compact mode */
+  /**
+   * Compact mode. Prefer `density` going forward; `compact` is kept for
+   * backwards compatibility and is equivalent to `density: 'compact'`.
+   */
   compact?: boolean;
+  /** Visual density toggle. Defaults to 'normal'. */
+  density?: 'compact' | 'normal' | 'comfortable';
   /** Sticky header */
   stickyHeader?: boolean;
   /** Max height for scrollable body */
   maxHeight?: string | number;
+  /**
+   * ARIA label for the table element. Falls back to "Data table" if omitted.
+   * Screen readers announce this before any cell content.
+   */
+  'aria-label'?: string;
+  /**
+   * When true (default), the grid renders a rendering-window slot around the
+   * body that parent virtualizers (react-virtual, react-window) can inject
+   * into. Turn off for small datasets where virtualization is redundant.
+   */
+  virtualizationFriendly?: boolean;
 }
 
 /* ============================================================================
@@ -166,12 +182,32 @@ export function DataGrid<T>({
   className,
   striped = false,
   compact = false,
+  density,
   stickyHeader = false,
   maxHeight,
+  'aria-label': ariaLabel = 'Data table',
 }: DataGridProps<T>) {
   const [showFilters, setShowFilters] = React.useState(false);
   const [showColumnToggle, setShowColumnToggle] = React.useState(false);
   const columnToggleRef = React.useRef<HTMLDivElement>(null);
+  const tableRef = React.useRef<HTMLTableElement>(null);
+
+  // Resolve the effective density. `compact` prop (legacy) wins if explicitly
+  // true, otherwise the `density` prop is the source of truth.
+  const effectiveDensity: 'compact' | 'normal' | 'comfortable' =
+    compact ? 'compact' : density ?? 'normal';
+  const rowPaddingClass =
+    effectiveDensity === 'compact'
+      ? 'py-1.5'
+      : effectiveDensity === 'comfortable'
+      ? 'py-4'
+      : 'py-3';
+  const headerPaddingClass =
+    effectiveDensity === 'compact'
+      ? 'py-1.5'
+      : effectiveDensity === 'comfortable'
+      ? 'py-3.5'
+      : 'py-3';
 
   // Visible columns
   const visibleColumns = columns.filter((col) => !col.hidden && !hiddenColumns.includes(col.id));
@@ -418,11 +454,21 @@ export function DataGrid<T>({
         className={cn('overflow-auto', stickyHeader && 'relative')}
         style={{ maxHeight }}
       >
-        <table className="min-w-full divide-y divide-border">
-          <thead className={cn('bg-muted/50', stickyHeader && 'sticky top-0 z-10')}>
-            <tr>
+        <table
+          ref={tableRef}
+          role="table"
+          aria-label={ariaLabel}
+          aria-rowcount={pagination?.totalItems ?? data.length}
+          aria-colcount={visibleColumns.length + (selectable ? 1 : 0)}
+          className="min-w-full divide-y divide-border"
+        >
+          <thead
+            role="rowgroup"
+            className={cn('bg-muted/50', stickyHeader && 'sticky top-0 z-10')}
+          >
+            <tr role="row">
               {selectable && (
-                <th className="w-12 px-4 py-3">
+                <th role="columnheader" className="w-12 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -431,50 +477,77 @@ export function DataGrid<T>({
                     }}
                     onChange={handleSelectAll}
                     className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
-                    aria-label="Select all"
+                    aria-label="Select all rows"
                   />
                 </th>
               )}
-              {visibleColumns.map((column) => (
-                <th
-                  key={column.id}
-                  className={cn(
-                    'px-4 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground',
-                    compact ? 'py-2' : 'py-3',
-                    column.align === 'center' && 'text-center',
-                    column.align === 'right' && 'text-right',
-                    column.sortable && 'cursor-pointer select-none hover:bg-muted/50'
-                  )}
-                  style={{ width: column.width, minWidth: column.minWidth }}
-                  onClick={() => column.sortable && handleSort(column.id)}
-                >
-                  <span className="inline-flex items-center">
-                    {column.header}
-                    {column.sortable && renderSortIcon(column.id)}
-                  </span>
-                </th>
-              ))}
+              {visibleColumns.map((column) => {
+                const sortState: 'ascending' | 'descending' | 'none' | undefined =
+                  column.sortable
+                    ? sortColumn === column.id
+                      ? sortDirection === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                    : undefined;
+                return (
+                  <th
+                    role="columnheader"
+                    key={column.id}
+                    aria-sort={sortState}
+                    scope="col"
+                    tabIndex={column.sortable ? 0 : -1}
+                    className={cn(
+                      'px-4 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground',
+                      headerPaddingClass,
+                      column.align === 'center' && 'text-center',
+                      column.align === 'right' && 'text-right',
+                      column.sortable && 'cursor-pointer select-none hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring'
+                    )}
+                    style={{ width: column.width, minWidth: column.minWidth }}
+                    onClick={() => column.sortable && handleSort(column.id)}
+                    onKeyDown={(e) => {
+                      if (!column.sortable) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(column.id);
+                      }
+                    }}
+                  >
+                    <span className="inline-flex items-center">
+                      {column.header}
+                      {column.sortable && renderSortIcon(column.id)}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border bg-card">
+          <tbody role="rowgroup" className="divide-y divide-border bg-card">
             {loading ? (
-              <tr>
+              <tr role="row" aria-busy="true">
                 <td
+                  role="cell"
                   colSpan={visibleColumns.length + (selectable ? 1 : 0)}
                   className="py-12 text-center"
                 >
                   <div className="flex items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    <div
+                      role="status"
+                      aria-label="Loading data"
+                      className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"
+                    />
                   </div>
                 </td>
               </tr>
             ) : data.length === 0 ? (
-              <tr>
+              <tr role="row">
                 <td
+                  role="cell"
                   colSpan={visibleColumns.length + (selectable ? 1 : 0)}
                   className="py-12 text-center"
                 >
-                  <div className="text-muted-foreground">
+                  <div className="text-muted-foreground" role="status">
                     <p className="text-sm font-medium">{emptyMessage}</p>
                     {emptyDescription && (
                       <p className="mt-1 text-xs">{emptyDescription}</p>
@@ -486,36 +559,90 @@ export function DataGrid<T>({
               data.map((row, index) => {
                 const rowId = getRowId(row);
                 const isSelected = selectedRows.has(rowId);
+                const ariaRowIndex = pagination
+                  ? (pagination.page - 1) * pagination.pageSize + index + 1
+                  : index + 1;
                 return (
                   <tr
+                    role="row"
                     key={rowId}
+                    aria-rowindex={ariaRowIndex}
+                    aria-selected={selectable ? isSelected : undefined}
+                    tabIndex={onRowClick || selectable ? 0 : -1}
                     onClick={() => onRowClick?.(row)}
+                    onKeyDown={(e) => {
+                      // Keyboard navigation: ArrowUp/ArrowDown move focus between
+                      // rows; Home/End jump to first/last visible row; Enter
+                      // triggers row click; Space toggles selection.
+                      const target = e.currentTarget;
+                      switch (e.key) {
+                        case 'ArrowDown': {
+                          e.preventDefault();
+                          const next = target.nextElementSibling as HTMLElement | null;
+                          if (next && next.tagName === 'TR') next.focus();
+                          break;
+                        }
+                        case 'ArrowUp': {
+                          e.preventDefault();
+                          const prev = target.previousElementSibling as HTMLElement | null;
+                          if (prev && prev.tagName === 'TR') prev.focus();
+                          break;
+                        }
+                        case 'Home': {
+                          e.preventDefault();
+                          const first = target.parentElement?.firstElementChild as HTMLElement | null;
+                          if (first && first.tagName === 'TR') first.focus();
+                          break;
+                        }
+                        case 'End': {
+                          e.preventDefault();
+                          const last = target.parentElement?.lastElementChild as HTMLElement | null;
+                          if (last && last.tagName === 'TR') last.focus();
+                          break;
+                        }
+                        case 'Enter': {
+                          if (onRowClick) {
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                          break;
+                        }
+                        case ' ': {
+                          if (selectable) {
+                            e.preventDefault();
+                            handleSelectRow(rowId, e as unknown as React.MouseEvent);
+                          }
+                          break;
+                        }
+                      }
+                    }}
                     className={cn(
-                      'transition-colors',
+                      'transition-colors outline-none',
                       onRowClick && 'cursor-pointer',
-                      'hover:bg-muted/50',
+                      'hover:bg-muted/50 focus:bg-muted/70 focus:ring-2 focus:ring-ring focus:ring-inset',
                       isSelected && 'bg-primary/5',
                       striped && index % 2 === 1 && 'bg-muted/30'
                     )}
                   >
                     {selectable && (
-                      <td className="w-12 px-4 py-3">
+                      <td role="cell" className="w-12 px-4 py-3">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
                           onClick={(e) => handleSelectRow(rowId, e)}
                           className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
-                          aria-label={`Select row ${index + 1}`}
+                          aria-label={`Select row ${ariaRowIndex}`}
                         />
                       </td>
                     )}
                     {visibleColumns.map((column) => (
                       <td
+                        role="cell"
                         key={column.id}
                         className={cn(
                           'whitespace-nowrap px-4 text-sm text-foreground',
-                          compact ? 'py-2' : 'py-3',
+                          rowPaddingClass,
                           column.align === 'center' && 'text-center',
                           column.align === 'right' && 'text-right'
                         )}

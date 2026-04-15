@@ -19,6 +19,16 @@ export interface HeaderProps {
   showMobileMenu?: boolean;
   searchPlaceholder?: string;
   onSearch?: (query: string) => void;
+  /**
+   * Optional search slot. When provided, overrides the built-in search input;
+   * the parent is responsible for accessibility and behavior.
+   */
+  searchSlot?: React.ReactNode;
+  /**
+   * Breadcrumb slot rendered between the logo/title and the search field.
+   * Consumers typically pass a <PageHeader> or custom breadcrumb component.
+   */
+  breadcrumb?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }
@@ -34,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   showMobileMenu,
   searchPlaceholder = 'Search...',
   onSearch,
+  searchSlot,
+  breadcrumb,
   actions,
   className,
 }) => {
@@ -46,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
+      role="banner"
       className={cn(
         'sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 sm:px-6',
         className
@@ -55,12 +68,15 @@ export const Header: React.FC<HeaderProps> = ({
       {onMenuClick && (
         <button
           onClick={onMenuClick}
+          aria-label={showMobileMenu ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={!!showMobileMenu}
+          aria-controls="primary-navigation"
           className="lg:hidden -m-2.5 p-2.5 text-gray-700"
         >
           {showMobileMenu ? (
-            <X className="h-6 w-6" />
+            <X className="h-6 w-6" aria-hidden="true" />
           ) : (
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6" aria-hidden="true" />
           )}
         </button>
       )}
@@ -75,23 +91,36 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Search */}
-      {onSearch && (
-        <form
-          onSubmit={handleSearchSubmit}
-          className="hidden md:flex flex-1 max-w-md mx-4"
-        >
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full h-9 rounded-lg border border-gray-300 bg-gray-50 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-        </form>
+      {/* Breadcrumb slot */}
+      {breadcrumb && (
+        <div className="hidden md:flex items-center border-l border-gray-200 pl-4 ml-2 min-w-0">
+          {breadcrumb}
+        </div>
+      )}
+
+      {/* Search slot (custom) or built-in search form */}
+      {searchSlot ? (
+        <div className="hidden md:flex flex-1 max-w-md mx-4">{searchSlot}</div>
+      ) : (
+        onSearch && (
+          <form
+            onSubmit={handleSearchSubmit}
+            role="search"
+            className="hidden md:flex flex-1 max-w-md mx-4"
+          >
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                className="w-full h-9 rounded-lg border border-gray-300 bg-gray-50 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </form>
+        )
       )}
 
       {/* Right side */}
@@ -103,11 +132,19 @@ export const Header: React.FC<HeaderProps> = ({
         {onNotificationsClick && (
           <button
             onClick={onNotificationsClick}
+            aria-label={
+              notifications && notifications > 0
+                ? `Notifications, ${notifications} unread`
+                : 'Notifications'
+            }
             className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5" aria-hidden="true" />
             {notifications !== undefined && notifications > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white"
+              >
                 {notifications > 99 ? '99+' : notifications}
               </span>
             )}
