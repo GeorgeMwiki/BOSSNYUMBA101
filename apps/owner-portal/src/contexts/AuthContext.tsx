@@ -275,8 +275,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = (await api.post('/auth/login', { email, password })) as AuthApiResponse<AuthLoginPayload>;
 
-      if (response.data?.success || response.success) {
-        const data = (response.data?.data ?? response.data) as AuthLoginPayload;
+      const wrapped = response.data as { success?: boolean; data?: AuthLoginPayload; error?: { message?: string } } | AuthLoginPayload | undefined;
+      const wrappedSuccess = typeof wrapped === 'object' && wrapped !== null && 'success' in wrapped ? wrapped.success : undefined;
+      if (wrappedSuccess || response.success) {
+        const data = (typeof wrapped === 'object' && wrapped !== null && 'data' in wrapped ? wrapped.data : wrapped) as AuthLoginPayload | undefined;
+        if (!data) {
+          throw new Error('Login failed: invalid response');
+        }
         const { token: newToken, user: newUser, tenant: newTenant, role: newRole, permissions: newPerms, properties: newProps } = data;
         localStorage.setItem('token', newToken);
         setToken(newToken);
@@ -287,7 +292,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProperties(newProps || []);
         resetSessionTimeout();
       } else {
-        throw new Error(response.data?.error?.message || 'Login failed');
+        const message = typeof wrapped === 'object' && wrapped !== null && 'error' in wrapped ? wrapped.error?.message : undefined;
+        throw new Error(message || 'Login failed');
       }
     } catch (error) {
       throw error instanceof Error ? error : new Error('Login failed');

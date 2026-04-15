@@ -2,36 +2,37 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
+import { vendorsService, type VendorCategory } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const categories = [
-  'plumbing',
-  'electrical',
-  'hvac',
-  'appliance',
-  'structural',
-  'pest_control',
-  'security',
-  'general',
+const categories: { value: VendorCategory; label: string }[] = [
+  { value: 'PLUMBING', label: 'plumbing' },
+  { value: 'ELECTRICAL', label: 'electrical' },
+  { value: 'HVAC', label: 'hvac' },
+  { value: 'APPLIANCE', label: 'appliance' },
+  { value: 'STRUCTURAL', label: 'structural' },
+  { value: 'GENERAL', label: 'general' },
 ];
 
 export default function VendorForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
     type: 'company' as 'company' | 'individual',
     phone: '',
     email: '',
     address: '',
-    selectedCategories: [] as string[],
+    selectedCategories: [] as VendorCategory[],
     hourlyRate: '',
     callOutFee: '',
     paymentTerms: 'Net 30',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleCategory = (cat: string) => {
+  const toggleCategory = (cat: VendorCategory) => {
     setFormData((prev) => ({
       ...prev,
       selectedCategories: prev.selectedCategories.includes(cat)
@@ -40,13 +41,36 @@ export default function VendorForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: () =>
+      vendorsService.create({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        categories: formData.selectedCategories.length > 0 ? formData.selectedCategories : ['GENERAL'],
+        isAvailable: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors-list-live'] });
+      router.push('/vendors');
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Failed to create vendor');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/vendors');
+    setError(null);
+    if (!formData.name.trim()) return setError('Vendor name is required');
+    if (!formData.phone.trim()) return setError('Phone is required');
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      return setError('Enter a valid email address');
+    }
+    if (formData.selectedCategories.length === 0) {
+      return setError('Select at least one service category');
+    }
+    createMutation.mutate();
   };
 
   return (
@@ -54,6 +78,11 @@ export default function VendorForm() {
       <PageHeader title="Add Vendor" showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
+        {error && (
+          <div className="card p-3 text-sm text-danger-700 bg-danger-50 border-danger-200">
+            {error}
+          </div>
+        )}
         {/* Basic Info */}
         <div className="space-y-3">
           <label className="label">Vendor Name</label>
@@ -140,17 +169,17 @@ export default function VendorForm() {
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
               <button
-                key={cat}
+                key={cat.value}
                 type="button"
-                onClick={() => toggleCategory(cat)}
+                onClick={() => toggleCategory(cat.value)}
                 className={`btn text-sm ${
-                  formData.selectedCategories.includes(cat)
+                  formData.selectedCategories.includes(cat.value)
                     ? 'btn-primary'
                     : 'btn-secondary'
                 }`}
               >
-                {cat.replace('_', ' ')}
-                {formData.selectedCategories.includes(cat) && (
+                {cat.label.replace('_', ' ')}
+                {formData.selectedCategories.includes(cat.value) && (
                   <X className="w-3 h-3 ml-1" />
                 )}
               </button>

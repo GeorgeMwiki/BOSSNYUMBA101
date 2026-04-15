@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
@@ -267,7 +265,9 @@ function buildStatementReport(scope, period) {
           description: workOrder.title,
           amount: Number(workOrder.actualCost || workOrder.estimatedCost || 0),
         })),
-    ].sort((left, right) => new Date(right.date) - new Date(left.date)),
+    ].sort(
+      (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()
+    ),
   };
 }
 
