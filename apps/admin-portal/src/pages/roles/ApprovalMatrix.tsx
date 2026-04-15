@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -16,24 +16,14 @@ import {
   ChevronDown,
   ChevronUp,
   Shield,
+  RefreshCw,
 } from 'lucide-react';
-
-// ─── Types ─────────────────────────────────────────────────
-
-interface ApprovalRule {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  trigger: string;
-  thresholdType: 'amount' | 'count' | 'always';
-  thresholdValue: number;
-  thresholdCurrency?: string;
-  approvers: { level: number; role: string; requiredCount: number; autoApproveAfterHours: number }[];
-  escalationHours: number;
-  autoRejectAfterHours: number;
-  isActive: boolean;
-}
+import {
+  useApprovalRules,
+  useSaveApprovalMatrix,
+  useDeleteApprovalRule,
+  type ApprovalRule,
+} from '../../lib/api/approvals';
 
 const categoryIcons: Record<string, React.ElementType> = {
   finance: DollarSign,

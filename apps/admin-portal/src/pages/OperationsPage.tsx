@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -6,29 +6,28 @@ import {
   Clock,
   RefreshCw,
   Server,
-  Database,
-  Cpu,
-  HardDrive,
   Zap,
   TrendingUp,
-  TrendingDown,
-  Play,
-  Pause,
   RotateCcw,
   Eye,
   X,
-  ChevronRight,
-  Bot,
   Brain,
-  MessageSquare,
-  FileText,
   Users,
   Building2,
-  Filter,
   Search,
   Download,
   Settings,
 } from 'lucide-react';
+import {
+  useOperationsSnapshot,
+  useRetryWorkflow,
+  useCancelWorkflow,
+  useOverrideAIDecision,
+  useAssignException,
+  type AIDecisionItem,
+  type ExceptionItem,
+  type WorkflowItem,
+} from '../lib/api/operations';
 import {
   AreaChart,
   Area,
@@ -37,125 +36,48 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
-
-interface SystemHealth {
-  service: string;
-  status: 'healthy' | 'degraded' | 'down';
-  latency: number;
-  uptime: number;
-  lastCheck: string;
-  errorRate: number;
-}
-
-interface ExceptionItem {
-  id: string;
-  type: string;
-  tenant: string;
-  description: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  status: 'open' | 'investigating' | 'resolved';
-  createdAt: string;
-  assignee?: string;
-  workflowId?: string;
-}
-
-interface WorkflowItem {
-  id: string;
-  type: string;
-  tenant: string;
-  description: string;
-  status: 'stuck' | 'pending_approval' | 'error' | 'timeout';
-  step: string;
-  stuckSince: string;
-  retries: number;
-}
-
-interface AIDecision {
-  id: string;
-  type: string;
-  tenant: string;
-  input: string;
-  decision: string;
-  confidence: number;
-  reasoning: string;
-  timestamp: string;
-  overridden: boolean;
-}
-
-const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
 
 export function OperationsPage() {
   const [activeTab, setActiveTab] = useState('health');
-  const [systemHealth, setSystemHealth] = useState<SystemHealth[]>([]);
-  const [exceptions, setExceptions] = useState<ExceptionItem[]>([]);
-  const [stuckWorkflows, setStuckWorkflows] = useState<WorkflowItem[]>([]);
-  const [aiDecisions, setAIDecisions] = useState<AIDecision[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<AIDecisionItem | null>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowItem | null>(null);
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [healthMetrics, setHealthMetrics] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
 
-  useEffect(() => {
-    // Mock data
-    setSystemHealth([
-      { service: 'API Gateway', status: 'healthy', latency: 45, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Auth Service', status: 'healthy', latency: 32, uptime: 99.98, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.02 },
-      { service: 'Payment Service', status: 'healthy', latency: 128, uptime: 99.95, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.05 },
-      { service: 'Notification Service', status: 'degraded', latency: 450, uptime: 98.50, lastCheck: '2026-02-13T14:30:00Z', errorRate: 2.30 },
-      { service: 'AI Engine', status: 'healthy', latency: 280, uptime: 99.90, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.10 },
-      { service: 'Database Primary', status: 'healthy', latency: 12, uptime: 99.999, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.001 },
-      { service: 'Database Replica', status: 'healthy', latency: 15, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Redis Cache', status: 'healthy', latency: 3, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Object Storage', status: 'healthy', latency: 85, uptime: 99.95, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.05 },
-      { service: 'Message Queue', status: 'healthy', latency: 8, uptime: 99.98, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.02 },
-    ]);
+  const { data: snapshot, isLoading: loading, error, refetch, isFetching } = useOperationsSnapshot();
+  const retryMutation = useRetryWorkflow();
+  const cancelMutation = useCancelWorkflow();
+  const overrideMutation = useOverrideAIDecision();
+  const assignMutation = useAssignException();
+  const [assignExceptionTarget, setAssignExceptionTarget] = useState<ExceptionItem | null>(null);
+  const [assignEmail, setAssignEmail] = useState('');
 
-    setExceptions([
-      { id: '1', type: 'Payment Failed', tenant: 'Acme Properties', description: 'M-PESA timeout after 3 retries', priority: 'critical', status: 'investigating', createdAt: '2026-02-13T12:45:00Z', assignee: 'John K.' },
-      { id: '2', type: 'Sync Error', tenant: 'Sunset Estates', description: 'Property sync failed - API rate limit exceeded', priority: 'high', status: 'open', createdAt: '2026-02-13T11:30:00Z' },
-      { id: '3', type: 'Invoice Generation', tenant: 'Prime Rentals', description: 'Monthly invoices stuck in queue', priority: 'high', status: 'investigating', createdAt: '2026-02-13T10:00:00Z', assignee: 'Mary W.' },
-      { id: '4', type: 'Email Delivery', tenant: 'Urban Living', description: 'Bounce rate exceeded threshold (15%)', priority: 'medium', status: 'open', createdAt: '2026-02-13T09:15:00Z' },
-      { id: '5', type: 'Data Validation', tenant: 'Coastal Homes', description: 'Invalid tenant data imported', priority: 'low', status: 'resolved', createdAt: '2026-02-12T16:00:00Z' },
-    ]);
+  const systemHealth = snapshot?.systemHealth ?? [];
+  const exceptions = snapshot?.exceptions ?? [];
+  const stuckWorkflows = snapshot?.stuckWorkflows ?? [];
+  const aiDecisions = snapshot?.aiDecisions ?? [];
+  const healthMetrics = snapshot?.healthMetrics ?? [];
 
-    setStuckWorkflows([
-      { id: 'WF-001', type: 'Lease Renewal', tenant: 'Acme Properties', description: 'Waiting for owner approval', status: 'pending_approval', step: 'Owner Approval', stuckSince: '2026-02-10T08:00:00Z', retries: 0 },
-      { id: 'WF-002', type: 'Payment Processing', tenant: 'Sunset Estates', description: 'M-PESA callback not received', status: 'stuck', step: 'Payment Confirmation', stuckSince: '2026-02-13T11:00:00Z', retries: 5 },
-      { id: 'WF-003', type: 'Maintenance Dispatch', tenant: 'Prime Rentals', description: 'No available vendors', status: 'error', step: 'Vendor Assignment', stuckSince: '2026-02-12T14:00:00Z', retries: 3 },
-      { id: 'WF-004', type: 'Document Generation', tenant: 'Urban Living', description: 'Template rendering timeout', status: 'timeout', step: 'PDF Generation', stuckSince: '2026-02-13T09:30:00Z', retries: 2 },
-      { id: 'WF-005', type: 'Tenant Onboarding', tenant: 'Coastal Homes', description: 'Awaiting KYC verification', status: 'pending_approval', step: 'KYC Review', stuckSince: '2026-02-11T10:00:00Z', retries: 0 },
-    ]);
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
-    setAIDecisions([
-      { id: '1', type: 'Late Payment Response', tenant: 'Acme Properties', input: 'Tenant 3 days overdue, KES 45,000', decision: 'Send reminder SMS + grace period', confidence: 0.92, reasoning: 'First-time late payer with good history. Grace period policy allows 5 days.', timestamp: '2026-02-13T14:00:00Z', overridden: false },
-      { id: '2', type: 'Maintenance Priority', tenant: 'Sunset Estates', input: 'Water leak in Unit 12B', decision: 'Priority: CRITICAL, Dispatch immediate', confidence: 0.98, reasoning: 'Water damage risk high. Similar issues in building require urgent attention.', timestamp: '2026-02-13T13:30:00Z', overridden: false },
-      { id: '3', type: 'Rent Adjustment', tenant: 'Prime Rentals', input: 'Market analysis for Block A', decision: 'Recommend 8% increase', confidence: 0.78, reasoning: 'Market rates increased 12% but tenant retention risk suggests moderate adjustment.', timestamp: '2026-02-13T12:00:00Z', overridden: true },
-      { id: '4', type: 'Lease Renewal', tenant: 'Urban Living', input: 'Tenant renewal request', decision: 'Auto-approve with standard terms', confidence: 0.95, reasoning: 'Perfect payment history, no violations, long-term tenant (3+ years).', timestamp: '2026-02-13T11:00:00Z', overridden: false },
-      { id: '5', type: 'Eviction Assessment', tenant: 'Coastal Homes', input: '90 days overdue, KES 180,000', decision: 'Initiate legal process', confidence: 0.88, reasoning: 'Multiple payment plans defaulted. No response to communication attempts.', timestamp: '2026-02-13T10:00:00Z', overridden: false },
-    ]);
-
-    setHealthMetrics([
-      { time: '00:00', requests: 1200, errors: 12, latency: 45 },
-      { time: '04:00', requests: 800, errors: 5, latency: 38 },
-      { time: '08:00', requests: 3500, errors: 28, latency: 52 },
-      { time: '12:00', requests: 5200, errors: 45, latency: 68 },
-      { time: '16:00', requests: 4800, errors: 38, latency: 58 },
-      { time: '20:00', requests: 2800, errors: 18, latency: 48 },
-    ]);
-
-    setLoading(false);
-  }, []);
+  const avgLatency = useMemo(() => {
+    if (systemHealth.length === 0) return 0;
+    return Math.round(systemHealth.reduce((s, x) => s + x.latency, 0) / systemHealth.length);
+  }, [systemHealth]);
+  const avgUptime = useMemo(() => {
+    if (systemHealth.length === 0) return 0;
+    return (systemHealth.reduce((s, x) => s + x.uptime, 0) / systemHealth.length).toFixed(2);
+  }, [systemHealth]);
+  const avgErrorRate = useMemo(() => {
+    if (systemHealth.length === 0) return 0;
+    return (systemHealth.reduce((s, x) => s + x.errorRate, 0) / systemHealth.length).toFixed(2);
+  }, [systemHealth]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -187,14 +109,37 @@ export function OperationsPage() {
   };
 
   const handleRetryWorkflow = async (workflow: WorkflowItem) => {
-    setNotification({ type: 'success', message: `Retrying workflow ${workflow.id}...` });
-    setTimeout(() => setNotification(null), 3000);
+    try {
+      await retryMutation.mutateAsync(workflow.id);
+      showNotification('success', `Workflow ${workflow.id} retried`);
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Retry failed');
+    }
   };
 
   const handleCancelWorkflow = async (workflow: WorkflowItem) => {
-    setStuckWorkflows(stuckWorkflows.filter(w => w.id !== workflow.id));
-    setNotification({ type: 'success', message: `Workflow ${workflow.id} cancelled` });
-    setTimeout(() => setNotification(null), 3000);
+    try {
+      await cancelMutation.mutateAsync(workflow.id);
+      showNotification('success', `Workflow ${workflow.id} cancelled`);
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Cancel failed');
+    }
+  };
+
+  const handleOverrideDecision = async () => {
+    if (!selectedDecision) return;
+    if (overrideReason.trim().length < 3) {
+      showNotification('error', 'Enter a reason for the override');
+      return;
+    }
+    try {
+      await overrideMutation.mutateAsync({ id: selectedDecision.id, reason: overrideReason.trim() });
+      showNotification('success', 'Decision overridden');
+      setSelectedDecision(null);
+      setOverrideReason('');
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Override failed');
+    }
   };
 
   const filteredExceptions = exceptions.filter(e => {
@@ -219,6 +164,23 @@ export function OperationsPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-red-900">Operations data unavailable</h2>
+            <p className="text-sm text-red-800">{error instanceof Error ? error.message : 'Failed to load operations snapshot.'}</p>
+            <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-100">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -236,8 +198,12 @@ export function OperationsPage() {
             <Eye className="h-4 w-4" />
             Enhanced Control Tower
           </a>
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-            <RefreshCw className="h-4 w-4" />
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -316,7 +282,7 @@ export function OperationsPage() {
                   <Zap className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">45ms</p>
+                  <p className="text-2xl font-bold text-gray-900">{avgLatency}ms</p>
                   <p className="text-sm text-gray-500">Avg Latency</p>
                 </div>
               </div>
@@ -327,7 +293,7 @@ export function OperationsPage() {
                   <TrendingUp className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">99.95%</p>
+                  <p className="text-2xl font-bold text-gray-900">{avgUptime}%</p>
                   <p className="text-sm text-gray-500">Avg Uptime</p>
                 </div>
               </div>
@@ -338,7 +304,7 @@ export function OperationsPage() {
                   <AlertTriangle className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">0.24%</p>
+                  <p className="text-2xl font-bold text-gray-900">{avgErrorRate}%</p>
                   <p className="text-sm text-gray-500">Error Rate</p>
                 </div>
               </div>
@@ -484,12 +450,21 @@ export function OperationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      {exception.workflowId && (
+                        <a
+                          href={`/operations/control-tower?workflow=${encodeURIComponent(exception.workflowId)}`}
+                          className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
+                          title="View related workflow"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </a>
+                      )}
                       {exception.status !== 'resolved' && (
-                        <button className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
-                          Assign
+                        <button
+                          onClick={() => { setAssignExceptionTarget(exception); setAssignEmail(exception.assignee ?? ''); }}
+                          className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50"
+                        >
+                          {exception.assignee ? 'Reassign' : 'Assign'}
                         </button>
                       )}
                     </div>
@@ -506,7 +481,7 @@ export function OperationsPage() {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Stuck Workflows ({stuckWorkflows.length})</h3>
-            <button className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
+            <a href="/operations/control-tower" className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</a>
           </div>
           <div className="divide-y divide-gray-200">
             {stuckWorkflows.map((workflow) => (
@@ -589,7 +564,22 @@ export function OperationsPage() {
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Recent AI Decisions</h3>
-              <button className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
+              <button
+                onClick={() => {
+                  const csv = [
+                    ['id', 'type', 'tenant', 'input', 'decision', 'confidence', 'timestamp', 'overridden'].join(','),
+                    ...aiDecisions.map((d) => [d.id, d.type, d.tenant, d.input, d.decision, d.confidence, d.timestamp, d.overridden].map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')),
+                  ].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `ai-decisions-${new Date().toISOString().slice(0, 10)}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700"
+              >
                 <Download className="h-4 w-4" />
                 Export Log
               </button>
@@ -645,6 +635,97 @@ export function OperationsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exception Assign Modal */}
+      {assignExceptionTarget && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setAssignExceptionTarget(null)} />
+            <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">Assign exception</h3>
+                <button onClick={() => setAssignExceptionTarget(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-3 text-sm">
+                <p className="text-gray-600">{assignExceptionTarget.type} &middot; {assignExceptionTarget.tenant}</p>
+                <label className="block">
+                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Assignee email</span>
+                  <input
+                    type="email"
+                    value={assignEmail}
+                    onChange={(e) => setAssignEmail(e.target.value)}
+                    placeholder="user@bossnyumba.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+                <button onClick={() => setAssignExceptionTarget(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium">Cancel</button>
+                <button
+                  onClick={async () => {
+                    if (!assignExceptionTarget) return;
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(assignEmail)) { showNotification('error', 'Enter a valid email'); return; }
+                    try {
+                      await assignMutation.mutateAsync({ id: assignExceptionTarget.id, assignee: assignEmail.trim() });
+                      showNotification('success', 'Exception assigned');
+                      setAssignExceptionTarget(null);
+                      setAssignEmail('');
+                    } catch (err) {
+                      showNotification('error', err instanceof Error ? err.message : 'Assignment failed');
+                    }
+                  }}
+                  disabled={assignMutation.isPending}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 disabled:opacity-50"
+                >
+                  {assignMutation.isPending ? 'Saving...' : 'Assign'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Detail Modal */}
+      {selectedWorkflow && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedWorkflow(null)} />
+            <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">Workflow {selectedWorkflow.id}</h3>
+                <button onClick={() => setSelectedWorkflow(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-3 text-sm">
+                <div><span className="text-gray-500">Type:</span> <span className="font-medium text-gray-900">{selectedWorkflow.type}</span></div>
+                <div><span className="text-gray-500">Tenant:</span> <span className="font-medium text-gray-900">{selectedWorkflow.tenant}</span></div>
+                <div><span className="text-gray-500">Step:</span> <span className="font-medium text-gray-900">{selectedWorkflow.step}</span></div>
+                <div><span className="text-gray-500">Status:</span> <span className="font-medium text-gray-900">{selectedWorkflow.status}</span></div>
+                <div><span className="text-gray-500">Stuck since:</span> <span className="font-medium text-gray-900">{new Date(selectedWorkflow.stuckSince).toLocaleString()}</span></div>
+                <div><span className="text-gray-500">Retries:</span> <span className="font-medium text-gray-900">{selectedWorkflow.retries}</span></div>
+                <div><span className="text-gray-500">Description:</span> <p className="mt-1 text-gray-700">{selectedWorkflow.description}</p></div>
+              </div>
+              <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+                <button
+                  onClick={() => { handleCancelWorkflow(selectedWorkflow); setSelectedWorkflow(null); }}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium"
+                >
+                  Cancel workflow
+                </button>
+                <button
+                  onClick={() => { handleRetryWorkflow(selectedWorkflow); setSelectedWorkflow(null); }}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700"
+                >
+                  Retry now
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -721,17 +802,34 @@ export function OperationsPage() {
                     </div>
                   </div>
                 )}
+
+                {!selectedDecision.overridden && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase">Override Reason</label>
+                    <textarea
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      rows={3}
+                      placeholder="Explain why this decision must be overridden..."
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
                 <button
-                  onClick={() => setSelectedDecision(null)}
+                  onClick={() => { setSelectedDecision(null); setOverrideReason(''); }}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
                 >
                   Close
                 </button>
                 {!selectedDecision.overridden && (
-                  <button className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700">
-                    Override Decision
+                  <button
+                    onClick={handleOverrideDecision}
+                    disabled={overrideMutation.isPending}
+                    className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 disabled:opacity-50"
+                  >
+                    {overrideMutation.isPending ? 'Submitting...' : 'Override Decision'}
                   </button>
                 )}
               </div>

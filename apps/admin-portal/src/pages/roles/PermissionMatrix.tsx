@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield,
@@ -16,7 +16,9 @@ import {
   FileText,
   Settings,
   Lock,
+  RefreshCw,
 } from 'lucide-react';
+import { useRoles, useSavePermissionMatrix } from '../../lib/api/roles';
 
 // ─── Data ──────────────────────────────────────────────────
 
@@ -90,25 +92,35 @@ interface RoleData {
   color: string;
 }
 
-const initialRoles: RoleData[] = [
-  { id: '1', name: 'Super Admin', isSystem: true, permissions: new Set(modules.flatMap((m) => m.permissions.map((p) => p.id))), color: 'bg-violet-600' },
-  { id: '2', name: 'Support Agent', isSystem: true, permissions: new Set(['tenants.view', 'users.view', 'users.impersonate', 'finance.view', 'maintenance.view', 'documents.view', 'settings.audit']), color: 'bg-blue-600' },
-  { id: '3', name: 'Finance Manager', isSystem: false, permissions: new Set(['tenants.view', 'users.view', 'finance.view', 'finance.invoices', 'finance.payments', 'finance.disbursements', 'finance.adjustments']), color: 'bg-green-600' },
-  { id: '4', name: 'Operations Lead', isSystem: false, permissions: new Set(['tenants.view', 'users.view', 'maintenance.view', 'maintenance.create', 'maintenance.assign', 'maintenance.approve', 'maintenance.complete', 'documents.view', 'documents.upload']), color: 'bg-amber-600' },
-  { id: '5', name: 'Read Only', isSystem: false, permissions: new Set(['properties.view', 'units.view', 'tenants.view', 'users.view', 'finance.view', 'maintenance.view', 'documents.view', 'settings.view']), color: 'bg-gray-600' },
-];
+const COLOR_POOL = ['bg-violet-600', 'bg-blue-600', 'bg-green-600', 'bg-amber-600', 'bg-gray-600', 'bg-pink-600', 'bg-indigo-600', 'bg-emerald-600'];
 
 // ─── Component ─────────────────────────────────────────────
 
 export default function PermissionMatrix() {
   const navigate = useNavigate();
-  const [roles, setRoles] = useState<RoleData[]>(initialRoles);
+  const { data: serverRoles, isLoading, error, refetch } = useRoles();
+  const saveMutation = useSavePermissionMatrix();
+
+  const [roles, setRoles] = useState<RoleData[]>([]);
   const [search, setSearch] = useState('');
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  const allPermissions = useMemo(() => modules.flatMap((m) => m.permissions.map((p) => p.id)), []);
+  useEffect(() => {
+    if (!serverRoles) return;
+    setRoles(
+      serverRoles.map((r, i) => ({
+        id: r.id,
+        name: r.name,
+        isSystem: r.isSystem,
+        permissions: new Set(r.permissions),
+        color: COLOR_POOL[i % COLOR_POOL.length],
+      }))
+    );
+    setHasChanges(false);
+  }, [serverRoles]);
+
+  const saving = saveMutation.isPending;
 
   const filteredModules = useMemo(() => {
     if (!search) return modules;
@@ -153,12 +165,37 @@ export default function PermissionMatrix() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaving(false);
-    setHasChanges(false);
-    setNotification({ type: 'success', message: 'Permission matrix saved successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    try {
+      await saveMutation.mutateAsync({
+        roles: roles
+          .filter((r) => !r.isSystem)
+          .map((r) => ({ id: r.id, permissions: Array.from(r.permissions) })),
+      });
+      setHasChanges(false);
+      setNotification({ type: 'success', message: 'Permission matrix saved successfully' });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'Save failed' });
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  const handleExport = () => {
+    const header = ['Module', 'Permission', ...roles.map((r) => r.name)];
+    const rows: string[][] = [];
+    modules.forEach((m) => {
+      m.permissions.forEach((p) => {
+        rows.push([m.name, p.name, ...roles.map((r) => (r.permissions.has(p.id) ? 'Y' : ''))]);
+      });
+    });
+    const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `permission-matrix-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -175,7 +212,7 @@ export default function PermissionMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Download className="h-4 w-4" />
             Export
           </button>
@@ -231,7 +268,31 @@ export default function PermissionMatrix() {
         </div>
       </div>
 
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-48 bg-white rounded-xl border border-gray-200">
+          <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+        </div>
+      )}
+
+      {/* Error */}
+      {error && !isLoading && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-red-900">Matrix unavailable</h2>
+              <p className="text-sm text-red-800">{error instanceof Error ? error.message : 'Failed to load roles.'}</p>
+              <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-100">
+                <RefreshCw className="h-4 w-4" /> Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Matrix Table */}
+      {!isLoading && !error && (
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full border-collapse min-w-[900px]">
           <thead>
@@ -318,6 +379,7 @@ export default function PermissionMatrix() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Shield,
@@ -24,33 +24,14 @@ import {
   Grid3X3,
   GitBranch,
 } from 'lucide-react';
-
-interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: string[];
-  userCount: number;
-  isSystem: boolean;
-  createdAt: string;
-  createdBy: string;
-}
-
-interface AuditEntry {
-  id: string;
-  action: string;
-  actor: string;
-  target: string;
-  changes: string;
-  timestamp: string;
-}
+import {
+  useRoles,
+  useRoleAuditLog,
+  useCreateRole,
+  useUpdateRole,
+  useDeleteRole,
+  type Role,
+} from '../lib/api/roles';
 
 const permissionCategories = [
   {
@@ -148,14 +129,16 @@ const permissionCategories = [
 ];
 
 export function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: roles = [], isLoading: loading, error: rolesError, refetch } = useRoles();
+  const { data: auditLog = [] } = useRoleAuditLog();
+  const createMutation = useCreateRole();
+  const updateMutation = useUpdateRole();
+  const deleteMutation = useDeleteRole();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showPermissionAudit, setShowPermissionAudit] = useState(false);
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [roleForm, setRoleForm] = useState<{
     name: string;
@@ -167,142 +150,79 @@ export function RolesPage() {
     permissions: [],
   });
 
-  useEffect(() => {
-    // Mock data
-    setRoles([
-      {
-        id: '1',
-        name: 'Super Admin',
-        description: 'Full system access with all permissions',
-        permissions: permissionCategories.flatMap(c => c.permissions.map(p => p.id)),
-        userCount: 3,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '2',
-        name: 'Support Agent',
-        description: 'Customer support with read access and impersonation',
-        permissions: [
-          'tenants.view', 'users.view', 'users.impersonate',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.audit',
-        ],
-        userCount: 8,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '3',
-        name: 'Finance Manager',
-        description: 'Full access to financial operations',
-        permissions: [
-          'tenants.view', 'users.view',
-          'finance.view', 'finance.invoices', 'finance.payments', 'finance.disbursements', 'finance.adjustments',
-        ],
-        userCount: 5,
-        isSystem: false,
-        createdAt: '2024-06-15',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '4',
-        name: 'Operations Lead',
-        description: 'Manages daily operations and workflows',
-        permissions: [
-          'tenants.view', 'users.view',
-          'maintenance.view', 'maintenance.create', 'maintenance.assign', 'maintenance.approve', 'maintenance.complete',
-          'documents.view', 'documents.upload',
-        ],
-        userCount: 4,
-        isSystem: false,
-        createdAt: '2024-08-20',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '5',
-        name: 'Read Only',
-        description: 'View-only access to all modules',
-        permissions: [
-          'properties.view', 'units.view', 'tenants.view', 'users.view',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.view',
-        ],
-        userCount: 12,
-        isSystem: false,
-        createdAt: '2024-09-10',
-        createdBy: 'admin@bossnyumba.com',
-      },
-    ]);
+  const saving = createMutation.isPending || updateMutation.isPending;
 
-    setAuditLog([
-      { id: '1', action: 'Role Created', actor: 'admin@bossnyumba.com', target: 'Operations Lead', changes: 'New role with 7 permissions', timestamp: '2026-02-13T10:30:00Z' },
-      { id: '2', action: 'Permission Added', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added finance.adjustments', timestamp: '2026-02-12T15:45:00Z' },
-      { id: '3', action: 'Permission Removed', actor: 'super@bossnyumba.com', target: 'Support Agent', changes: 'Removed users.edit', timestamp: '2026-02-11T09:20:00Z' },
-      { id: '4', action: 'Role Updated', actor: 'admin@bossnyumba.com', target: 'Read Only', changes: 'Updated description', timestamp: '2026-02-10T14:00:00Z' },
-      { id: '5', action: 'User Assigned', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added john@tenant.com to role', timestamp: '2026-02-09T11:30:00Z' },
-    ]);
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
-    setLoading(false);
-  }, []);
-
-  const filteredRoles = roles.filter(role =>
+  const filteredRoles = roles.filter((role) =>
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     role.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const validateForm = (): string | null => {
+    if (!roleForm.name.trim()) return 'Role name is required';
+    if (roleForm.name.trim().length < 2) return 'Role name must be at least 2 characters';
+    if (roleForm.permissions.length === 0) return 'Select at least one permission';
+    return null;
+  };
+
   const handleCreateRole = async () => {
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newRole: Role = {
-      id: String(roles.length + 1),
-      name: roleForm.name,
-      description: roleForm.description,
-      permissions: roleForm.permissions,
-      userCount: 0,
-      isSystem: false,
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: 'admin@bossnyumba.com',
-    };
-    setRoles([...roles, newRole]);
-    setSaving(false);
-    setShowCreateModal(false);
-    setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role created successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    const err = validateForm();
+    if (err) { showNotification('error', err); return; }
+    try {
+      await createMutation.mutateAsync({
+        name: roleForm.name.trim(),
+        description: roleForm.description.trim(),
+        permissions: roleForm.permissions,
+      });
+      setShowCreateModal(false);
+      setRoleForm({ name: '', description: '', permissions: [] });
+      showNotification('success', 'Role created successfully');
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Create failed');
+    }
   };
 
   const handleUpdateRole = async () => {
     if (!selectedRole) return;
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRoles(roles.map(r => r.id === selectedRole.id ? {
-      ...r,
-      name: roleForm.name,
-      description: roleForm.description,
-      permissions: roleForm.permissions,
-    } : r));
-    setSaving(false);
-    setSelectedRole(null);
-    setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role updated successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    const err = validateForm();
+    if (err) { showNotification('error', err); return; }
+    try {
+      await updateMutation.mutateAsync({
+        id: selectedRole.id,
+        name: roleForm.name.trim(),
+        description: roleForm.description.trim(),
+        permissions: roleForm.permissions,
+      });
+      setSelectedRole(null);
+      setRoleForm({ name: '', description: '', permissions: [] });
+      showNotification('success', 'Role updated successfully');
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Update failed');
+    }
   };
 
   const handleDeleteRole = async (role: Role) => {
     if (role.isSystem) {
-      setNotification({ type: 'error', message: 'Cannot delete system roles' });
-      setTimeout(() => setNotification(null), 3000);
+      showNotification('error', 'Cannot delete system roles');
       return;
     }
     if (role.userCount > 0) {
-      setNotification({ type: 'error', message: 'Cannot delete role with assigned users' });
-      setTimeout(() => setNotification(null), 3000);
+      showNotification('error', 'Cannot delete role with assigned users');
       return;
     }
-    setRoles(roles.filter(r => r.id !== role.id));
-    setNotification({ type: 'success', message: 'Role deleted successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    if (!window.confirm(`Delete role "${role.name}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteMutation.mutateAsync(role.id);
+      showNotification('success', 'Role deleted successfully');
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Delete failed');
+    }
   };
 
   const togglePermission = (permissionId: string) => {
@@ -348,6 +268,23 @@ export function RolesPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (rolesError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-red-900">Roles unavailable</h2>
+            <p className="text-sm text-red-800">{rolesError instanceof Error ? rolesError.message : 'Failed to load roles.'}</p>
+            <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-100">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -495,6 +432,15 @@ export function RolesPage() {
           </div>
         ))}
       </div>
+
+      {filteredRoles.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <Shield className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">
+            {searchQuery ? 'No roles match your search' : 'No roles configured yet'}
+          </p>
+        </div>
+      )}
 
       {/* Create/Edit Role Modal */}
       {(showCreateModal || selectedRole) && (
