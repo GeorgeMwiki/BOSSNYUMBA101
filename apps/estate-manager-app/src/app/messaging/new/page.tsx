@@ -1,44 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Send, User, Building2 } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { z } from 'zod';
+import { Send, User, Building2, Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { messagingApi } from '@/lib/api';
+import { customersService } from '@bossnyumba/api-client';
 
-// Mock data - replace with API
-const tenants = [
-  { id: '1', name: 'Mary Wanjiku', unit: 'A-301', property: 'Sunset Apartments' },
-  { id: '2', name: 'Peter Ochieng', unit: 'B-105', property: 'Sunset Apartments' },
-  { id: '3', name: 'Grace Muthoni', unit: 'C-202', property: 'Sunset Apartments' },
-  { id: '4', name: 'David Kimani', unit: 'A-102', property: 'Sunset Apartments' },
-];
+const formSchema = z.object({
+  recipientType: z.enum(['tenant', 'staff']),
+  recipientId: z.string().min(1, 'Select a recipient'),
+  subject: z.string().min(1, 'Subject is required').max(200),
+  message: z.string().min(1, 'Message is required').max(2000),
+});
 
-const staff = [
-  { id: 'm1', name: 'Maintenance Team', role: 'Maintenance' },
-  { id: 'm2', name: 'Property Manager', role: 'Management' },
-];
+type FormState = z.infer<typeof formSchema>;
 
 export default function NewConversationPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    recipientType: 'tenant' as 'tenant' | 'staff',
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<FormState>({
+    recipientType: 'tenant',
     recipientId: '',
     subject: '',
     message: '',
   });
   const [search, setSearch] = useState('');
 
-  const recipients = formData.recipientType === 'tenant' ? tenants : staff;
-  const filteredRecipients = recipients.filter((r) =>
-    r.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const tenantsQuery = useQuery({
+    queryKey: ['customers-all'],
+    queryFn: () => customersService.list({ pageSize: 100 }),
+    retry: false,
+    enabled: formData.recipientType === 'tenant',
+  });
+
+  const tenants = tenantsQuery.data?.data ?? [];
+
+  const filteredTenants = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tenants;
+    return tenants.filter((t: any) => {
+      const name = [t.firstName, t.lastName].filter(Boolean).join(' ');
+      return name.toLowerCase().includes(q) || (t.email ?? '').toLowerCase().includes(q);
+    });
+  }, [tenants, search]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: FormState) =>
+      messagingApi.createConversation(data.recipientId, data.subject, data.message),
+    onSuccess: (resp) => {
+      if (resp.success && resp.data?.id) {
+        router.push(`/messaging/${resp.data.id}`);
+      } else {
+        setErrors({ form: resp.error?.message ?? 'Failed to start conversation' });
+      }
+    },
+    onError: (err) => {
+      setErrors({ form: err instanceof Error ? err.message : 'Failed to start conversation' });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.recipientId || !formData.subject || !formData.message) return;
-    // In real app: API call to create conversation
-    router.push('/messaging');
+    setErrors({});
+    const parsed = formSchema.safeParse(formData);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0];
+        if (typeof path === 'string') fieldErrors[path] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return;
+    }
+    createMutation.mutate(parsed.data);
   };
 
   return (
@@ -46,22 +83,37 @@ export default function NewConversationPage() {
       <PageHeader title="New Message" showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+        {errors.form && (
+          <div className="card p-3 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>{errors.form}</div>
+          </div>
+        )}
+
         <div className="card p-4 space-y-4">
           <div>
             <label className="label">Recipient Type</label>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, recipientType: 'tenant', recipientId: '' })}
-                className={`btn flex-1 ${formData.recipientType === 'tenant' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() =>
+                  setFormData({ ...formData, recipientType: 'tenant', recipientId: '' })
+                }
+                className={`btn flex-1 ${
+                  formData.recipientType === 'tenant' ? 'btn-primary' : 'btn-secondary'
+                }`}
               >
                 <User className="w-4 h-4" />
                 Tenant
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, recipientType: 'staff', recipientId: '' })}
-                className={`btn flex-1 ${formData.recipientType === 'staff' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() =>
+                  setFormData({ ...formData, recipientType: 'staff', recipientId: '' })
+                }
+                className={`btn flex-1 ${
+                  formData.recipientType === 'staff' ? 'btn-primary' : 'btn-secondary'
+                }`}
               >
                 <Building2 className="w-4 h-4" />
                 Staff
@@ -78,28 +130,43 @@ export default function NewConversationPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {filteredRecipients.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, recipientId: r.id })}
-                  className={`w-full p-3 rounded-lg text-left border transition-colors ${
-                    formData.recipientId === r.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="font-medium">{r.name}</div>
-                  {formData.recipientType === 'tenant' && 'unit' in r && (
-                    <div className="text-sm text-gray-500">Unit {(r as { unit: string }).unit}</div>
-                  )}
-                  {formData.recipientType === 'staff' && 'role' in r && (
-                    <div className="text-sm text-gray-500">{(r as { role: string }).role}</div>
-                  )}
-                </button>
-              ))}
-            </div>
+            {formData.recipientType === 'tenant' && tenantsQuery.isLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading tenants...
+              </div>
+            )}
+            {formData.recipientType === 'staff' && (
+              <div className="p-3 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500">
+                Direct-to-staff messaging is routed through the admin directory. Contact your
+                administrator to enable internal routing for this inbox.
+              </div>
+            )}
+            {formData.recipientType === 'tenant' && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {filteredTenants.map((r: any) => {
+                  const name = [r.firstName, r.lastName].filter(Boolean).join(' ') || r.email || r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, recipientId: r.id })}
+                      className={`w-full p-3 rounded-lg text-left border transition-colors ${
+                        formData.recipientId === r.id
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium">{name}</div>
+                      {r.email && <div className="text-sm text-gray-500">{r.email}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {errors.recipientId && (
+              <p className="text-xs text-danger-600 mt-1">{errors.recipientId}</p>
+            )}
           </div>
 
           <div>
@@ -112,6 +179,7 @@ export default function NewConversationPage() {
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               required
             />
+            {errors.subject && <p className="text-xs text-danger-600 mt-1">{errors.subject}</p>}
           </div>
 
           <div>
@@ -123,6 +191,7 @@ export default function NewConversationPage() {
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               required
             />
+            {errors.message && <p className="text-xs text-danger-600 mt-1">{errors.message}</p>}
           </div>
         </div>
 
@@ -133,9 +202,13 @@ export default function NewConversationPage() {
           <button
             type="submit"
             className="btn-primary flex-1 flex items-center justify-center gap-2"
-            disabled={!formData.recipientId || !formData.subject || !formData.message}
+            disabled={createMutation.isPending}
           >
-            <Send className="w-4 h-4" />
+            {createMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
             Send Message
           </button>
         </div>

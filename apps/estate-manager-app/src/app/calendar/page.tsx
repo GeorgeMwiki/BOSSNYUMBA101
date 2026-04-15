@@ -1,38 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
   Clock,
-  MapPin,
   Plus,
-  Wrench,
-  ClipboardCheck,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { schedulingApi, type ScheduleEvent } from '@/lib/api';
 
 type ViewMode = 'month' | 'week';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  type: 'work_order' | 'inspection' | 'appointment';
-  unit?: string;
-}
-
-// Mock data - replace with API
-const events: CalendarEvent[] = [
-  { id: '1', title: 'Kitchen sink repair', date: '2024-02-25', time: '09:00', type: 'work_order', unit: 'A-204' },
-  { id: '2', title: 'Move-in Inspection', date: '2024-02-25', time: '10:00', type: 'inspection', unit: 'A-301' },
-  { id: '3', title: 'AC repair', date: '2024-02-25', time: '11:00', type: 'work_order', unit: 'B-102' },
-  { id: '4', title: 'Move-out Inspection', date: '2024-02-26', time: '14:00', type: 'inspection', unit: 'B-105' },
-  { id: '5', title: 'Door lock replacement', date: '2024-02-27', time: '14:00', type: 'work_order', unit: 'C-301' },
-];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -46,17 +29,49 @@ function getDaysInMonth(year: number, month: number) {
   return days;
 }
 
-function getEventsForDate(dateStr: string) {
-  return events.filter((e) => e.date === dateStr);
+function eventLink(ev: ScheduleEvent): string {
+  if (ev.workOrderId) return `/work-orders/${ev.workOrderId}`;
+  if (ev.inspectionId) return `/inspections/${ev.inspectionId}`;
+  return `/calendar/events`;
 }
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date('2024-02-25'));
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const days = getDaysInMonth(year, month);
+  const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
+
+  const monthStart = new Date(year, month, 1).toISOString();
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+  const calendarQuery = useQuery({
+    queryKey: ['calendar', monthStart, monthEnd],
+    queryFn: () => schedulingApi.getCalendar(monthStart, monthEnd),
+    retry: false,
+  });
+
+  const response = calendarQuery.data;
+  const events: ScheduleEvent[] = response?.data ?? [];
+
+  const errorMessage =
+    calendarQuery.error instanceof Error
+      ? calendarQuery.error.message
+      : response && !response.success
+      ? response.error?.message
+      : undefined;
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, ScheduleEvent[]>();
+    for (const ev of events) {
+      const key = new Date(ev.startAt).toISOString().split('T')[0];
+      const list = map.get(key) ?? [];
+      list.push(ev);
+      map.set(key, list);
+    }
+    return map;
+  }, [events]);
 
   const navigate = (direction: number) => {
     const newDate = new Date(currentDate);
@@ -87,7 +102,6 @@ export default function CalendarPage() {
       />
 
       <div className="px-4 py-4 space-y-4">
-        {/* Navigation */}
         <div className="flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-gray-100">
             <ChevronLeft className="w-5 h-5" />
@@ -111,45 +125,71 @@ export default function CalendarPage() {
           </button>
         </div>
 
-        {/* Calendar Grid */}
+        {calendarQuery.isLoading && (
+          <div className="card p-4 flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading calendar...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="card p-4 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">Unable to load calendar</div>
+              <div>{errorMessage}</div>
+            </div>
+          </div>
+        )}
+
         <div className="card overflow-hidden">
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {WEEKDAYS.map((day) => (
-              <div key={day} className="bg-gray-50 text-center text-xs font-medium text-gray-500 py-2">
+              <div
+                key={day}
+                className="bg-gray-50 text-center text-xs font-medium text-gray-500 py-2"
+              >
                 {day}
               </div>
             ))}
             {days.map((day, idx) => {
               const dateStr = day ? day.toISOString().split('T')[0] : '';
-              const dayEvents = day ? getEventsForDate(dateStr) : [];
+              const dayEvents = day ? eventsByDate.get(dateStr) ?? [] : [];
               const isToday = day && day.toDateString() === new Date().toDateString();
 
               return (
-                <div
-                  key={idx}
-                  className={`min-h-[80px] bg-white p-1 ${!day ? 'bg-gray-50' : ''}`}
-                >
+                <div key={idx} className={`min-h-[80px] bg-white p-1 ${!day ? 'bg-gray-50' : ''}`}>
                   {day && (
                     <>
                       <div
                         className={`text-sm font-medium mb-1 ${
-                          isToday ? 'w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center' : ''
+                          isToday
+                            ? 'w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center'
+                            : ''
                         }`}
                       >
                         {day.getDate()}
                       </div>
                       <div className="space-y-0.5">
-                        {dayEvents.slice(0, 2).map((ev) => (
-                          <Link
-                            key={ev.id}
-                            href={ev.type === 'work_order' ? `/work-orders/${ev.id}` : `/inspections/${ev.id}`}
-                            className="block text-xs p-1 rounded truncate bg-primary-50 text-primary-800 hover:bg-primary-100"
-                          >
-                            {ev.time} {ev.title}
-                          </Link>
-                        ))}
+                        {dayEvents.slice(0, 2).map((ev) => {
+                          const time = new Date(ev.startAt).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          });
+                          return (
+                            <Link
+                              key={ev.id}
+                              href={eventLink(ev)}
+                              className="block text-xs p-1 rounded truncate bg-primary-50 text-primary-800 hover:bg-primary-100"
+                            >
+                              {time} {ev.title}
+                            </Link>
+                          );
+                        })}
                         {dayEvents.length > 2 && (
-                          <span className="text-xs text-gray-500">+{dayEvents.length - 2} more</span>
+                          <span className="text-xs text-gray-500">
+                            +{dayEvents.length - 2} more
+                          </span>
                         )}
                       </div>
                     </>
@@ -160,14 +200,19 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Quick Links */}
         <div className="flex gap-3">
-          <Link href="/calendar/events" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <Link
+            href="/calendar/events"
+            className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow"
+          >
             <CalendarIcon className="w-6 h-6 text-primary-600" />
             <span className="font-medium">View Events</span>
             <span className="ml-auto text-primary-600">→</span>
           </Link>
-          <Link href="/calendar/availability" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <Link
+            href="/calendar/availability"
+            className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow"
+          >
             <Clock className="w-6 h-6 text-primary-600" />
             <span className="font-medium">Availability</span>
             <span className="ml-auto text-primary-600">→</span>

@@ -2,23 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, TrendingUp, Droplet, Zap, Flame } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Plus,
+  TrendingUp,
+  Droplet,
+  Zap,
+  Flame,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-type UtilityType = 'water' | 'electricity' | 'gas';
-
-interface Reading {
-  id: string;
-  unit: string;
-  property: string;
-  utilityType: UtilityType;
-  previousReading: number;
-  currentReading: number;
-  consumption: number;
-  unitLabel: string;
-  recordedAt?: string;
-  status: 'recorded' | 'pending';
-}
+import { utilitiesApi, type MeterReading, type UtilityType } from '@/lib/api';
 
 const utilityIcons: Record<UtilityType, React.ElementType> = {
   water: Droplet,
@@ -32,26 +27,30 @@ const utilityLabels: Record<UtilityType, string> = {
   gas: 'Gas',
 };
 
-// Mock data - replace with API
-const readings: Reading[] = [
-  { id: '1', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'water', previousReading: 45, currentReading: 52, consumption: 7, unitLabel: 'm³', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '2', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 320, currentReading: 385, consumption: 65, unitLabel: 'kWh', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '3', unit: 'A-102', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-  { id: '4', unit: 'B-105', property: 'Sunset Apartments', utilityType: 'water', previousReading: 28, currentReading: 31, consumption: 3, unitLabel: 'm³', recordedAt: '2024-02-24', status: 'recorded' },
-  { id: '5', unit: 'C-202', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-];
-
 export default function MeterReadingsPage() {
-  const [filter, setFilter] = useState<'all' | 'pending'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'recorded'>('pending');
   const [utilityFilter, setUtilityFilter] = useState<UtilityType | 'all'>('all');
 
-  const filteredReadings = readings.filter((r) => {
-    if (filter === 'pending' && r.status !== 'pending') return false;
-    if (utilityFilter !== 'all' && r.utilityType !== utilityFilter) return false;
-    return true;
+  const readingsQuery = useQuery({
+    queryKey: ['meter-readings', filter, utilityFilter],
+    queryFn: () =>
+      utilitiesApi.listReadings({
+        status: filter === 'all' ? undefined : filter,
+        utilityType: utilityFilter === 'all' ? undefined : utilityFilter,
+      }),
+    retry: false,
   });
 
+  const response = readingsQuery.data;
+  const readings: MeterReading[] = response?.data ?? [];
   const pendingCount = readings.filter((r) => r.status === 'pending').length;
+
+  const errorMessage =
+    readingsQuery.error instanceof Error
+      ? readingsQuery.error.message
+      : response && !response.success
+      ? response.error?.message
+      : undefined;
 
   return (
     <>
@@ -68,18 +67,14 @@ export default function MeterReadingsPage() {
       />
 
       <div className="px-4 py-4 space-y-4">
-        {/* Filters */}
         <div className="flex gap-2 flex-wrap">
-          {[
-            { value: 'pending', label: 'Pending' },
-            { value: 'all', label: 'All' },
-          ].map((tab) => (
+          {(['pending', 'recorded', 'all'] as const).map((tab) => (
             <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value as 'all' | 'pending')}
-              className={`btn text-sm ${filter === tab.value ? 'btn-primary' : 'btn-secondary'}`}
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`btn text-sm ${filter === tab ? 'btn-primary' : 'btn-secondary'}`}
             >
-              {tab.label}
+              {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
           <span className="border-l border-gray-200 mx-2" />
@@ -94,9 +89,25 @@ export default function MeterReadingsPage() {
           ))}
         </div>
 
-        {/* Readings List */}
+        {readingsQuery.isLoading && (
+          <div className="card p-4 flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading meter readings...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="card p-4 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">Unable to load readings</div>
+              <div>{errorMessage}</div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
-          {filteredReadings.map((reading) => {
+          {readings.map((reading) => {
             const Icon = utilityIcons[reading.utilityType];
             return (
               <div key={reading.id} className="card p-4">
@@ -106,8 +117,10 @@ export default function MeterReadingsPage() {
                       <Icon className="w-5 h-5 text-gray-600" />
                     </div>
                     <div>
-                      <div className="font-medium">Unit {reading.unit}</div>
-                      <div className="text-sm text-gray-500">{reading.property}</div>
+                      <div className="font-medium">Unit {reading.unit.unitNumber}</div>
+                      <div className="text-sm text-gray-500">
+                        {reading.property?.name ?? '—'}
+                      </div>
                       <div className="text-xs text-gray-400 mt-1">
                         {utilityLabels[reading.utilityType]} • {reading.unitLabel}
                       </div>
@@ -116,8 +129,12 @@ export default function MeterReadingsPage() {
                   <div className="text-right">
                     {reading.status === 'recorded' ? (
                       <>
-                        <div className="font-medium">{reading.currentReading} {reading.unitLabel}</div>
-                        <div className="text-sm text-success-600">+{reading.consumption} used</div>
+                        <div className="font-medium">
+                          {reading.currentReading} {reading.unitLabel}
+                        </div>
+                        <div className="text-sm text-success-600">
+                          +{reading.consumption} used
+                        </div>
                         {reading.recordedAt && (
                           <div className="text-xs text-gray-400 mt-1">
                             {new Date(reading.recordedAt).toLocaleDateString()}
@@ -134,12 +151,14 @@ export default function MeterReadingsPage() {
           })}
         </div>
 
-        {filteredReadings.length === 0 && (
+        {!readingsQuery.isLoading && !errorMessage && readings.length === 0 && (
           <div className="text-center py-12">
             <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <h3 className="font-medium text-gray-900">No readings found</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filter === 'pending' ? 'All readings have been recorded' : 'Record meter readings to get started'}
+              {filter === 'pending'
+                ? 'All readings have been recorded'
+                : 'Record meter readings to get started'}
             </p>
             <Link href="/utilities/readings/record" className="btn-primary mt-4 inline-block">
               Record Reading

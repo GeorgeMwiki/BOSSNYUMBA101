@@ -1,52 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, MessageCircle, ChevronRight, Clock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Search, MessageCircle, ChevronRight, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-type ConversationStatus = 'unread' | 'read';
-
-interface Conversation {
-  id: string;
-  subject: string;
-  participants: string[];
-  lastMessage: string;
-  lastMessageAt: string;
-  status: ConversationStatus;
-  preview: string;
-}
-
-// Mock data - replace with API
-const conversations: Conversation[] = [
-  {
-    id: '1',
-    subject: 'Water leak in Unit A-301',
-    participants: ['Maintenance Team', 'Mary Wanjiku'],
-    lastMessage: 'The plumber has been scheduled for tomorrow.',
-    lastMessageAt: '2024-02-25T10:30:00',
-    status: 'unread',
-    preview: 'Thanks for the update. I\'ll be home in the afternoon.',
-  },
-  {
-    id: '2',
-    subject: 'Lease renewal - Unit B-105',
-    participants: ['Peter Ochieng', 'Property Manager'],
-    lastMessage: 'Please find the renewal documents attached.',
-    lastMessageAt: '2024-02-24T14:20:00',
-    status: 'read',
-    preview: 'I\'ve reviewed the terms. When can we sign?',
-  },
-  {
-    id: '3',
-    subject: 'Rent payment confirmation',
-    participants: ['Grace Muthoni'],
-    lastMessage: 'Payment received. Receipt #REC-2024-4521',
-    lastMessageAt: '2024-02-24T09:15:00',
-    status: 'read',
-    preview: 'Thank you for your prompt payment.',
-  },
-];
+import { messagingApi, type Conversation } from '@/lib/api';
 
 function formatTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -64,13 +23,31 @@ function formatTime(dateStr: string) {
 export default function MessagingPage() {
   const [search, setSearch] = useState('');
 
-  const filteredConversations = conversations.filter(
-    (c) =>
-      c.subject.toLowerCase().includes(search.toLowerCase()) ||
-      c.participants.some((p) => p.toLowerCase().includes(search.toLowerCase()))
-  );
+  const conversationsQuery = useQuery({
+    queryKey: ['messaging-conversations'],
+    queryFn: () => messagingApi.listConversations({ pageSize: 100 }),
+    retry: false,
+  });
 
-  const unreadCount = conversations.filter((c) => c.status === 'unread').length;
+  const response = conversationsQuery.data;
+  const conversations: Conversation[] = response?.data ?? [];
+  const unreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  const errorMessage =
+    conversationsQuery.error instanceof Error
+      ? conversationsQuery.error.message
+      : response && !response.success
+      ? response.error?.message
+      : undefined;
+
+  const filteredConversations = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => {
+      const subject = c.subject?.toLowerCase() ?? '';
+      if (subject.includes(q)) return true;
+      return c.participants.some((p) => (p.name ?? '').toLowerCase().includes(q));
+    });
+  }, [conversations, search]);
 
   return (
     <>
@@ -97,45 +74,68 @@ export default function MessagingPage() {
           />
         </div>
 
+        {conversationsQuery.isLoading && (
+          <div className="card p-4 flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading conversations...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="card p-4 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">Unable to load messages</div>
+              <div>{errorMessage}</div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
-          {filteredConversations.map((conv) => (
-            <Link key={conv.id} href={`/messaging/${conv.id}`}>
-              <div
-                className={`card p-4 hover:shadow-md transition-shadow ${
-                  conv.status === 'unread' ? 'border-l-4 border-l-primary-500' : ''
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium ${conv.status === 'unread' ? 'text-gray-900' : 'text-gray-700'}`}>
-                        {conv.subject}
+          {filteredConversations.map((conv) => {
+            const participantNames = conv.participants.map((p) => p.name || p.id).join(', ');
+            const lastMessage = conv.lastMessage?.content ?? '(no messages)';
+            const lastAt = conv.lastMessage?.createdAt ?? conv.updatedAt;
+            const isUnread = (conv.unreadCount || 0) > 0;
+            return (
+              <Link key={conv.id} href={`/messaging/${conv.id}`}>
+                <div
+                  className={`card p-4 hover:shadow-md transition-shadow ${
+                    isUnread ? 'border-l-4 border-l-primary-500' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`font-medium ${
+                            isUnread ? 'text-gray-900' : 'text-gray-700'
+                          }`}
+                        >
+                          {conv.subject || 'Conversation'}
+                        </span>
+                        {isUnread && (
+                          <span className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0" />
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500 mt-0.5">{participantNames}</div>
+                      <div className="text-sm text-gray-600 mt-2 truncate">{lastMessage}</div>
+                    </div>
+                    <div className="flex flex-col items-end flex-shrink-0">
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatTime(lastAt)}
                       </span>
-                      {conv.status === 'unread' && (
-                        <span className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0" />
-                      )}
+                      <ChevronRight className="w-5 h-5 text-gray-400 mt-2" />
                     </div>
-                    <div className="text-sm text-gray-500 mt-0.5">
-                      {conv.participants.join(', ')}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-2 truncate">
-                      {conv.lastMessage}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatTime(conv.lastMessageAt)}
-                    </span>
-                    <ChevronRight className="w-5 h-5 text-gray-400 mt-2" />
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
-        {filteredConversations.length === 0 && (
+        {!conversationsQuery.isLoading && !errorMessage && filteredConversations.length === 0 && (
           <div className="text-center py-12">
             <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <h3 className="font-medium text-gray-900">No conversations</h3>

@@ -1,8 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  BarChart3,
+  FileText,
+  Calendar,
+  TrendingUp,
+  ChevronRight,
+  DollarSign,
+  Home,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { reportsApi } from '@/lib/api';
 
 interface ReportCard {
   id: string;
@@ -25,7 +37,7 @@ const reportTypes: ReportCard[] = [
     title: 'Revenue Report',
     description: 'Rent collection and payment history',
     icon: DollarSign,
-    href: '/reports/generate?type=revenue',
+    href: '/reports/generate?type=financial',
   },
   {
     id: 'maintenance',
@@ -35,22 +47,29 @@ const reportTypes: ReportCard[] = [
     href: '/reports/generate?type=maintenance',
   },
   {
-    id: 'inspections',
-    title: 'Inspections Report',
-    description: 'Inspection completion and conditions',
+    id: 'statements',
+    title: 'Owner Statements',
+    description: 'Owner payout and NOI statements',
     icon: FileText,
-    href: '/reports/generate?type=inspections',
+    href: '/reports/generate?type=statements',
   },
 ];
 
-// Mock data
-const recentReports = [
-  { id: '1', name: 'Occupancy - Feb 2024', generatedAt: '2024-02-25', type: 'occupancy' },
-  { id: '2', name: 'Revenue - Jan 2024', generatedAt: '2024-02-01', type: 'revenue' },
-  { id: '3', name: 'Maintenance - Q4 2023', generatedAt: '2024-01-15', type: 'maintenance' },
-];
-
 export default function ReportsDashboardPage() {
+  const recentQuery = useQuery({
+    queryKey: ['reports-recent'],
+    queryFn: () => reportsApi.listRecent(),
+    retry: false,
+  });
+
+  const recent = recentQuery.data?.data ?? [];
+  const errorMessage =
+    recentQuery.error instanceof Error
+      ? recentQuery.error.message
+      : recentQuery.data && !recentQuery.data.success
+      ? recentQuery.data.error?.message
+      : undefined;
+
   return (
     <>
       <PageHeader
@@ -65,7 +84,6 @@ export default function ReportsDashboardPage() {
       />
 
       <div className="px-4 py-4 space-y-6">
-        {/* Report Types */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Report Types</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -91,7 +109,6 @@ export default function ReportsDashboardPage() {
           </div>
         </section>
 
-        {/* Quick Actions */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
           <div className="space-y-3">
@@ -122,25 +139,62 @@ export default function ReportsDashboardPage() {
           </div>
         </section>
 
-        {/* Recent Reports */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">Recent Reports</h2>
-          <div className="card divide-y divide-gray-100">
-            {recentReports.map((report) => (
-              <div key={report.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">{report.name}</div>
-                    <div className="text-xs text-gray-500">
-                      Generated {new Date(report.generatedAt).toLocaleDateString()}
+          {recentQuery.isLoading && (
+            <div className="card p-4 flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading recent reports...
+            </div>
+          )}
+          {errorMessage && (
+            <div className="card p-4 flex items-start gap-2 border-warning-200 bg-warning-50 text-warning-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>Recent reports are not yet available: {errorMessage}</div>
+            </div>
+          )}
+          {!recentQuery.isLoading && !errorMessage && (
+            <div className="card divide-y divide-gray-100">
+              {recent.length === 0 && (
+                <div className="p-4 text-sm text-gray-500">
+                  No reports generated yet. Create one to get started.
+                </div>
+              )}
+              {recent.map((report: any) => (
+                <div
+                  key={report.id}
+                  className="p-4 flex items-center justify-between hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium text-sm">{report.name}</div>
+                      <div className="text-xs text-gray-500">
+                        Generated {new Date(report.generatedAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
+                  {report.downloadUrl ? (
+                    <a
+                      href={report.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary-600"
+                    >
+                      Download
+                    </a>
+                  ) : (
+                    <Link
+                      href={`/reports/generate?type=${encodeURIComponent(report.type)}`}
+                      className="text-sm text-primary-600"
+                    >
+                      View
+                    </Link>
+                  )}
                 </div>
-                <button className="text-sm text-primary-600">View</button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </>

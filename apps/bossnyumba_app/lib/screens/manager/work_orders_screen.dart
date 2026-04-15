@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/services/work_orders_service.dart';
 import '../../core/api_client.dart';
 
@@ -21,7 +20,7 @@ class _WorkOrdersScreenState extends State<WorkOrdersScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snap.hasError || !snap.data!.isOk) {
+          if (snap.hasError || !(snap.data?.isOk ?? false)) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -60,15 +59,84 @@ class _WorkOrdersScreenState extends State<WorkOrdersScreen> {
               final priority = wo['priority'] ?? 'MEDIUM';
               return Card(
                 child: ListTile(
-                  title: Text(wo['title'] ?? 'Work Order'),
+                  title: Text(wo['title']?.toString() ?? 'Work Order'),
                   subtitle: Text('$status • $priority'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showWorkOrderSheet(context, wo),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showWorkOrderSheet(BuildContext context, Map<String, dynamic> wo) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _WorkOrderDetailSheet(workOrder: wo),
+    );
+  }
+}
+
+class _WorkOrderDetailSheet extends StatelessWidget {
+  const _WorkOrderDetailSheet({required this.workOrder});
+  final Map<String, dynamic> workOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  workOrder['title']?.toString() ?? 'Work Order',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _row('Status', workOrder['status']?.toString() ?? 'PENDING'),
+          _row('Priority', workOrder['priority']?.toString() ?? 'MEDIUM'),
+          _row('Category', workOrder['category']?.toString() ?? 'OTHER'),
+          if (workOrder['location'] != null)
+            _row('Location', workOrder['location'].toString()),
+          if (workOrder['description'] != null) ...[
+            const SizedBox(height: 12),
+            const Text('Description',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(workOrder['description'].toString()),
+          ],
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(k, style: const TextStyle(color: Colors.grey)),
+          ),
+          Expanded(child: Text(v)),
+        ],
       ),
     );
   }

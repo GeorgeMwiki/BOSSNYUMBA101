@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/api_client.dart';
 
 class InspectionsScreen extends StatefulWidget {
@@ -32,7 +31,7 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snap.hasError || !snap.data!.isOk) {
+          if (snap.hasError || !(snap.data?.isOk ?? false)) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -69,15 +68,70 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
               final inv = items[i] as Map<String, dynamic>;
               return Card(
                 child: ListTile(
-                  title: Text(inv['type'] ?? 'Inspection'),
-                  subtitle: Text('${inv['scheduledAt'] ?? inv['date'] ?? ''} • ${inv['status'] ?? ''}'),
+                  title: Text(inv['type']?.toString() ?? 'Inspection'),
+                  subtitle: Text(
+                    '${inv['scheduledAt']?.toString() ?? inv['date']?.toString() ?? ''} • ${inv['status']?.toString() ?? ''}',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showInspection(context, inv),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showInspection(BuildContext context, Map<String, dynamic> inv) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    inv['type']?.toString() ?? 'Inspection',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _row('Status', inv['status']?.toString() ?? 'SCHEDULED'),
+            _row('Scheduled', inv['scheduledAt']?.toString() ?? '—'),
+            if (inv['unitId'] != null) _row('Unit', inv['unitId'].toString()),
+            if (inv['notes'] != null) ...[
+              const SizedBox(height: 12),
+              const Text('Notes', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(inv['notes'].toString()),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(width: 90, child: Text(k, style: const TextStyle(color: Colors.grey))),
+          Expanded(child: Text(v)),
+        ],
       ),
     );
   }

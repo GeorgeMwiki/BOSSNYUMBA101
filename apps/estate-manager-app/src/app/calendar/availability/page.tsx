@@ -1,29 +1,68 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Check, Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { schedulingApi } from '@/lib/api';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
 ];
 
-// Mock - default availability
-const defaultAvailability: Record<string, string[]> = {
-  Mon: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-  Tue: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-  Wed: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-  Thu: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-  Fri: ['09:00', '10:00', '11:00', '14:00', '15:00'],
-  Sat: ['10:00', '11:00'],
+const emptyAvailability: Record<string, string[]> = {
+  Mon: [],
+  Tue: [],
+  Wed: [],
+  Thu: [],
+  Fri: [],
+  Sat: [],
   Sun: [],
 };
 
 export default function SetAvailabilityPage() {
   const router = useRouter();
-  const [availability, setAvailability] = useState<Record<string, string[]>>(defaultAvailability);
+  const [availability, setAvailability] = useState<Record<string, string[]>>(emptyAvailability);
+  const [formError, setFormError] = useState<string | undefined>(undefined);
+
+  const availabilityQuery = useQuery({
+    queryKey: ['availability'],
+    queryFn: () => schedulingApi.getAvailability(),
+    retry: false,
+  });
+
+  useEffect(() => {
+    const data = availabilityQuery.data?.data;
+    if (data) {
+      setAvailability({ ...emptyAvailability, ...data });
+    }
+  }, [availabilityQuery.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: (value: Record<string, string[]>) => schedulingApi.saveAvailability(value),
+    onSuccess: (resp) => {
+      if (resp.success) {
+        router.push('/calendar');
+      } else {
+        setFormError(resp.error?.message ?? 'Failed to save availability');
+      }
+    },
+    onError: (err) => {
+      setFormError(err instanceof Error ? err.message : 'Failed to save availability');
+    },
+  });
 
   const toggleSlot = (day: string, time: string) => {
     setAvailability((prev) => {
@@ -36,21 +75,44 @@ export default function SetAvailabilityPage() {
     });
   };
 
-  const handleSave = () => {
-    // In real app: API call to save availability
-    router.push('/calendar');
-  };
+  const queryError =
+    availabilityQuery.error instanceof Error
+      ? availabilityQuery.error.message
+      : availabilityQuery.data && !availabilityQuery.data.success
+      ? availabilityQuery.data.error?.message
+      : undefined;
 
   return (
     <>
-      <PageHeader title="Set Availability" subtitle="When you're available for inspections" showBack />
+      <PageHeader
+        title="Set Availability"
+        subtitle="When you're available for inspections"
+        showBack
+      />
 
       <div className="px-4 py-4 space-y-6">
+        {queryError && (
+          <div className="card p-4 flex items-start gap-2 border-warning-200 bg-warning-50 text-warning-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">Loaded default schedule</div>
+              <div>{queryError}. You can still update and save availability below.</div>
+            </div>
+          </div>
+        )}
+
         <div className="card p-4">
           <p className="text-sm text-gray-600 mb-4">
-            Select the time slots when you&apos;re available for inspections and appointments. 
+            Select the time slots when you&apos;re available for inspections and appointments.
             Inspections will be scheduled within these windows.
           </p>
+
+          {availabilityQuery.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading availability...
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -92,12 +154,27 @@ export default function SetAvailabilityPage() {
           </div>
         </div>
 
+        {formError && (
+          <div className="card p-3 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>{formError}</div>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
             Cancel
           </button>
-          <button onClick={handleSave} className="btn-primary flex-1 flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" />
+          <button
+            onClick={() => saveMutation.mutate(availability)}
+            disabled={saveMutation.isPending}
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
             Save Availability
           </button>
         </div>
