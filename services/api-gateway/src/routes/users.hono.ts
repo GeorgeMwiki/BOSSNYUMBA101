@@ -131,6 +131,57 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) }, 201);
 });
 
+app.patch('/me', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const db = c.get('db');
+
+  let body: any = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    body = {};
+  }
+
+  const updates: Record<string, unknown> = {
+    updatedBy: auth.userId,
+  };
+
+  if (typeof body.region === 'string' && body.region.trim()) {
+    updates.region = body.region.trim();
+  }
+  if (typeof body.language === 'string' && body.language.trim()) {
+    updates.language = body.language.trim();
+    // Keep locale in sync with language for notification template resolution
+    updates.locale = body.language.trim().toLowerCase().slice(0, 2);
+  }
+  if (typeof body.firstName === 'string') updates.firstName = body.firstName;
+  if (typeof body.lastName === 'string') updates.lastName = body.lastName;
+  if (typeof body.phone === 'string') updates.phone = body.phone;
+
+  if (Object.keys(updates).length === 1) {
+    return c.json(
+      { success: false, error: { code: 'NO_FIELDS', message: 'No valid fields provided' } },
+      400
+    );
+  }
+
+  const row = await repos.users.update(auth.userId, auth.tenantId, updates);
+  if (!row) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'User not found' } },
+      404
+    );
+  }
+
+  const roleMap = await getRoleMap(db, auth.tenantId, [row.id]);
+  const mapped = mapUser(row, roleMap.get(row.id));
+  return c.json({
+    success: true,
+    data: { ...mapped, region: row.region ?? null, language: row.language ?? null },
+  });
+});
+
 app.put('/:id', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');

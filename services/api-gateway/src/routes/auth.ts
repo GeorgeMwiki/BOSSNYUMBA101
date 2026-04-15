@@ -8,6 +8,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
+import { activatePendingMemberships } from './memberships.hono';
 
 const app = new Hono();
 
@@ -178,6 +179,16 @@ app.post('/login', async (c) => {
   const valid = await bcrypt.compare(body.password, record.passwordHash);
   if (!valid) {
     return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+  }
+
+  // Auto-activate any pending cross-tenant invitations addressed to this email.
+  // Safe to call on every login: no-op when there are no pending rows.
+  try {
+    await activatePendingMemberships(db, record.id, record.email);
+  } catch (err) {
+    // Never block login on invitation bookkeeping
+    // eslint-disable-next-line no-console
+    console.warn('activatePendingMemberships failed', err);
   }
 
   const token = generateToken({

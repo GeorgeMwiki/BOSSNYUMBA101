@@ -9,6 +9,7 @@ import { getPaymentTemplate } from './payment.template.js';
 import { getMaintenanceTemplate } from './maintenance.template.js';
 import { getLeaseTemplate } from './lease.template.js';
 import { getWelcomeTemplate } from './templates/welcome.template.js';
+import { getInvitationTemplate } from './templates/invitation.template.js';
 
 export type TemplateData = Record<string, string>;
 
@@ -40,6 +41,11 @@ export function resolveTemplate(
       return getLeaseTemplate(loc, data as unknown as Parameters<typeof getLeaseTemplate>[1]);
     case 'welcome':
       return getWelcomeTemplate(loc, data as unknown as Parameters<typeof getWelcomeTemplate>[1]);
+    case 'invitation':
+      return getInvitationTemplate(
+        loc,
+        data as unknown as Parameters<typeof getInvitationTemplate>[1]
+      );
     default:
       throw new Error(`Unknown template: ${templateId}`);
   }

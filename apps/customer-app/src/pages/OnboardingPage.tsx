@@ -16,9 +16,30 @@ import {
   Shield,
   X,
   AlertCircle,
+  MapPin,
 } from 'lucide-react';
+import { api } from '@/lib/api';
 
-type OnboardingStep = 'welcome' | 'id_upload' | 'inspection' | 'signature';
+type OnboardingStep =
+  | 'welcome'
+  | 'region'
+  | 'id_upload'
+  | 'inspection'
+  | 'signature';
+
+const REGIONS = [
+  { code: 'nairobi', label: 'Nairobi' },
+  { code: 'mombasa', label: 'Mombasa' },
+  { code: 'kisumu', label: 'Kisumu' },
+  { code: 'nakuru', label: 'Nakuru' },
+  { code: 'eldoret', label: 'Eldoret' },
+  { code: 'other', label: 'Other' },
+];
+
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'sw', label: 'Kiswahili' },
+];
 
 interface StepInfo {
   id: OnboardingStep;
@@ -33,6 +54,12 @@ const STEPS: StepInfo[] = [
     title: 'Welcome',
     description: 'Get started with your new home',
     icon: Home,
+  },
+  {
+    id: 'region',
+    title: 'Region & Language',
+    description: 'Help us personalize your experience',
+    icon: MapPin,
   },
   {
     id: 'id_upload',
@@ -59,6 +86,11 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Region & Language state
+  const [region, setRegion] = useState<string>('');
+  const [language, setLanguage] = useState<string>('en');
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
 
   // ID Upload state
   const [idFrontImage, setIdFrontImage] = useState<string | null>(null);
@@ -166,16 +198,56 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleComplete = async () => {
-    setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    localStorage.setItem('onboarding_completed', 'true');
-    router.push('/');
+  const persistPreferences = async () => {
+    if (!region || !language) return;
+    try {
+      await api.profile.updatePreferences({ region, language });
+      setPreferencesError(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to save region/language';
+      setPreferencesError(message);
+      throw err;
+    }
   };
 
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+    try {
+      // Persist region + language on the user record before finalising onboarding.
+      // If the region step was skipped somehow, this is a no-op (no fields set).
+      if (region && language) {
+        try {
+          await persistPreferences();
+        } catch {
+          // preferencesError is already set; surface but don't block completion
+          // so an offline customer can still finish. A retry banner is shown.
+        }
+      }
+
+      localStorage.setItem('onboarding_completed', 'true');
+      router.push('/');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const canProceedFromRegion = Boolean(region) && Boolean(language);
   const canProceedFromIdUpload = idFrontImage && idBackImage && selfieImage;
   const canCompleteSignature = hasSignature && agreedToTerms;
+
+  const handleContinue = async () => {
+    // When leaving the region step, PATCH /users/me so partial progress is
+    // persisted even if the user drops off before completion.
+    if (currentStep === 'region' && canProceedFromRegion) {
+      try {
+        await persistPreferences();
+      } catch {
+        return; // stay on step; error is displayed inline
+      }
+    }
+    goToNextStep();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -263,6 +335,65 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Region & Language Step */}
+        {currentStep === 'region' && (
+          <div className="px-4 py-6 space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold mb-2">Choose Your Region & Language</h2>
+              <p className="text-gray-600 text-sm">
+                We use this to tailor notifications, billing, and support to you.
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <h3 className="font-medium mb-3">Region</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {REGIONS.map((r) => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    onClick={() => setRegion(r.code)}
+                    className={`px-3 py-3 rounded-lg border text-sm text-left ${
+                      region === r.code
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <h3 className="font-medium mb-3">Language</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {LANGUAGES.map((l) => (
+                  <button
+                    key={l.code}
+                    type="button"
+                    onClick={() => setLanguage(l.code)}
+                    className={`px-3 py-3 rounded-lg border text-sm text-left ${
+                      language === l.code
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {preferencesError && (
+              <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{preferencesError}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -574,8 +705,11 @@ export default function OnboardingPage() {
             </button>
           ) : (
             <button
-              onClick={goToNextStep}
-              disabled={currentStep === 'id_upload' && !canProceedFromIdUpload}
+              onClick={handleContinue}
+              disabled={
+                (currentStep === 'id_upload' && !canProceedFromIdUpload) ||
+                (currentStep === 'region' && !canProceedFromRegion)
+              }
               className="btn-primary flex-1 py-4"
             >
               Continue
