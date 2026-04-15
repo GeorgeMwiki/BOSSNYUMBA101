@@ -33,6 +33,54 @@ export class TenantIsolationError extends Error {
 export interface TenantContext {
   readonly tenantId: TenantId;
   readonly isSuperAdmin: boolean;
+  /** Identifier of the acting principal (used for audit trail when super-admin crosses tenants). */
+  readonly actorId?: string;
+  /** Optional reason that justifies a super-admin cross-tenant action. */
+  readonly superAdminReason?: string;
+  /** Correlation/request identifier propagated with the context. */
+  readonly requestId?: string;
+}
+
+/**
+ * Audit event emitted every time a super-admin performs a cross-tenant operation.
+ * Downstream code (e.g. authz-policy audit logger / observability) subscribes via
+ * {@link onSuperAdminCrossTenantAccess}.
+ */
+export interface SuperAdminCrossTenantAuditEvent {
+  readonly actorId: string | undefined;
+  readonly requestId: string | undefined;
+  readonly contextTenantId: TenantId;
+  readonly accessedTenantId: TenantId;
+  readonly operation: 'assertTenantMatch' | 'assertTenantId' | 'validateEntity' | 'filterTenantEntities';
+  readonly reason: string | undefined;
+  readonly timestamp: string;
+}
+
+type SuperAdminAuditListener = (event: SuperAdminCrossTenantAuditEvent) => void;
+
+const superAdminAuditListeners = new Set<SuperAdminAuditListener>();
+
+/**
+ * Register a listener for super-admin cross-tenant audit events.
+ * Returns an unregister function.
+ */
+export function onSuperAdminCrossTenantAccess(
+  listener: SuperAdminAuditListener
+): () => void {
+  superAdminAuditListeners.add(listener);
+  return () => {
+    superAdminAuditListeners.delete(listener);
+  };
+}
+
+function emitSuperAdminAudit(event: SuperAdminCrossTenantAuditEvent): void {
+  for (const listener of superAdminAuditListeners) {
+    try {
+      listener(event);
+    } catch {
+      // Listener failures must never break authz flow.
+    }
+  }
 }
 
 /**
@@ -64,20 +112,44 @@ export class TenantIsolationEnforcer {
    * Throws TenantIsolationError if not.
    */
   assertTenantMatch<T extends TenantScoped>(entity: T): T {
-    if (!this.context.isSuperAdmin && entity.tenantId !== this.context.tenantId) {
-      throw new TenantIsolationError(this.context.tenantId, entity.tenantId);
+    if (entity.tenantId !== this.context.tenantId) {
+      if (!this.context.isSuperAdmin) {
+        throw new TenantIsolationError(this.context.tenantId, entity.tenantId);
+      }
+      this.auditSuperAdmin('assertTenantMatch', entity.tenantId);
     }
     return entity;
   }
-  
+
   /**
    * Assert that a tenant ID matches the current context.
    * Throws TenantIsolationError if not.
    */
   assertTenantId(tenantId: TenantId): void {
-    if (!this.context.isSuperAdmin && tenantId !== this.context.tenantId) {
-      throw new TenantIsolationError(this.context.tenantId, tenantId);
+    if (tenantId !== this.context.tenantId) {
+      if (!this.context.isSuperAdmin) {
+        throw new TenantIsolationError(this.context.tenantId, tenantId);
+      }
+      this.auditSuperAdmin('assertTenantId', tenantId);
     }
+  }
+
+  /**
+   * Emit a super-admin cross-tenant audit event.
+   */
+  private auditSuperAdmin(
+    operation: SuperAdminCrossTenantAuditEvent['operation'],
+    accessedTenantId: TenantId
+  ): void {
+    emitSuperAdminAudit({
+      actorId: this.context.actorId,
+      requestId: this.context.requestId,
+      contextTenantId: this.context.tenantId,
+      accessedTenantId,
+      operation,
+      reason: this.context.superAdminReason,
+      timestamp: new Date().toISOString(),
+    });
   }
   
   /**
@@ -87,9 +159,18 @@ export class TenantIsolationEnforcer {
    */
   filterTenantEntities<T extends TenantScoped>(entities: readonly T[]): readonly T[] {
     if (this.context.isSuperAdmin) {
+      const crossed = new Set<TenantId>();
+      for (const entity of entities) {
+        if (entity.tenantId !== this.context.tenantId) {
+          crossed.add(entity.tenantId);
+        }
+      }
+      for (const crossedTenantId of crossed) {
+        this.auditSuperAdmin('filterTenantEntities', crossedTenantId);
+      }
       return entities;
     }
-    
+
     const filtered: T[] = [];
     for (const entity of entities) {
       if (entity.tenantId === this.context.tenantId) {
@@ -108,14 +189,13 @@ export class TenantIsolationEnforcer {
       return null;
     }
     
-    if (this.context.isSuperAdmin) {
-      return entity;
-    }
-    
     if (entity.tenantId !== this.context.tenantId) {
-      return null;
+      if (!this.context.isSuperAdmin) {
+        return null;
+      }
+      this.auditSuperAdmin('validateEntity', entity.tenantId);
     }
-    
+
     return entity;
   }
   

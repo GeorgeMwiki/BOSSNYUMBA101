@@ -10,7 +10,9 @@ import {
   getCurrentTenantContext,
   requireTenantContext,
   createTenantEnforcer,
+  onSuperAdminCrossTenantAccess,
   type TenantContext,
+  type SuperAdminCrossTenantAuditEvent,
 } from './tenant-isolation.js';
 import { asTenantId, asUserId, type TenantScoped, type TenantId } from '@bossnyumba/domain-models';
 
@@ -219,6 +221,98 @@ describe('requireTenantContext', () => {
       expect(() => requireTenantContext()).not.toThrow();
       expect(requireTenantContext().tenantId).toBe('tenant-1');
     });
+  });
+});
+
+describe('super-admin cross-tenant audit', () => {
+  it('should emit audit event when super admin crosses tenant via assertTenantMatch', () => {
+    const events: SuperAdminCrossTenantAuditEvent[] = [];
+    const unsubscribe = onSuperAdminCrossTenantAccess((e) => events.push(e));
+
+    const enforcer = new TenantIsolationEnforcer({
+      tenantId: asTenantId('tenant-1'),
+      isSuperAdmin: true,
+      actorId: 'user-admin',
+      superAdminReason: 'break-glass',
+      requestId: 'req-123',
+    });
+
+    enforcer.assertTenantMatch({
+      id: 'x',
+      name: 'x',
+      tenantId: asTenantId('tenant-2'),
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].operation).toBe('assertTenantMatch');
+    expect(events[0].actorId).toBe('user-admin');
+    expect(events[0].accessedTenantId).toBe('tenant-2');
+    expect(events[0].reason).toBe('break-glass');
+    expect(events[0].requestId).toBe('req-123');
+
+    unsubscribe();
+  });
+
+  it('should not emit audit when super admin operates within own tenant', () => {
+    const events: SuperAdminCrossTenantAuditEvent[] = [];
+    const unsubscribe = onSuperAdminCrossTenantAccess((e) => events.push(e));
+
+    const enforcer = new TenantIsolationEnforcer({
+      tenantId: asTenantId('tenant-1'),
+      isSuperAdmin: true,
+      actorId: 'user-admin',
+    });
+
+    enforcer.assertTenantMatch({
+      id: 'x',
+      name: 'x',
+      tenantId: asTenantId('tenant-1'),
+    });
+
+    expect(events).toHaveLength(0);
+    unsubscribe();
+  });
+
+  it('should emit per-crossed-tenant during filterTenantEntities', () => {
+    const events: SuperAdminCrossTenantAuditEvent[] = [];
+    const unsubscribe = onSuperAdminCrossTenantAccess((e) => events.push(e));
+
+    const enforcer = new TenantIsolationEnforcer({
+      tenantId: asTenantId('tenant-1'),
+      isSuperAdmin: true,
+      actorId: 'user-admin',
+    });
+
+    enforcer.filterTenantEntities([
+      createMockEntity('tenant-1', 'e1'),
+      createMockEntity('tenant-2', 'e2'),
+      createMockEntity('tenant-3', 'e3'),
+      createMockEntity('tenant-2', 'e4'),
+    ]);
+
+    // tenant-2 and tenant-3 crossed, but only one event per tenant
+    expect(events).toHaveLength(2);
+    const crossed = events.map((e) => e.accessedTenantId).sort();
+    expect(crossed).toEqual(['tenant-2', 'tenant-3']);
+
+    unsubscribe();
+  });
+
+  it('should not leak listeners across unsubscribe', () => {
+    const events: SuperAdminCrossTenantAuditEvent[] = [];
+    const unsubscribe = onSuperAdminCrossTenantAccess((e) => events.push(e));
+    unsubscribe();
+
+    const enforcer = new TenantIsolationEnforcer({
+      tenantId: asTenantId('tenant-1'),
+      isSuperAdmin: true,
+    });
+    enforcer.assertTenantMatch({
+      id: 'x',
+      name: 'x',
+      tenantId: asTenantId('tenant-9'),
+    });
+    expect(events).toHaveLength(0);
   });
 });
 

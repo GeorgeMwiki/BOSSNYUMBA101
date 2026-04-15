@@ -205,18 +205,62 @@ export class AuthorizationMiddleware {
 }
 
 /**
+ * Permission decorator factory configuration.
+ * Supplies access to the {@link AuthorizationService} used by the decorator.
+ * Consumers must register a resolver once at application bootstrap.
+ */
+export interface PermissionDecoratorResolver {
+  getAuthorizationService(): AuthorizationService;
+  getCurrentUser(): User | null;
+}
+
+let decoratorResolver: PermissionDecoratorResolver | null = null;
+
+/**
+ * Register the authorization service + current-user resolver used by
+ * {@link requirePermission}. Must be called before any decorated methods are
+ * invoked (typically during composition root setup).
+ */
+export function configurePermissionDecorator(
+  resolver: PermissionDecoratorResolver
+): void {
+  decoratorResolver = resolver;
+}
+
+/**
  * Permission decorator factory.
  * Creates a decorator that checks permissions before method execution.
+ *
+ * The decorator resolves the current user via the registered
+ * {@link PermissionDecoratorResolver} and verifies the permission against the
+ * authorization service. Throws {@link AuthenticationError} if no user is
+ * available and {@link AuthorizationError} if the permission is missing.
  */
 export function requirePermission(permission: string) {
   return function <TThis, TArgs extends unknown[], TReturn>(
     target: (this: TThis, ...args: TArgs) => Promise<TReturn>,
-    context: ClassMethodDecoratorContext
+    _context: ClassMethodDecoratorContext
   ) {
     return async function (this: TThis, ...args: TArgs): Promise<TReturn> {
-      // This would need access to the auth context and authorization service
-      // In practice, this would be injected or accessed via async local storage
-      console.log(`Checking permission: ${permission}`);
+      if (!decoratorResolver) {
+        throw new Error(
+          'requirePermission decorator used without configurePermissionDecorator()'
+        );
+      }
+      const user = decoratorResolver.getCurrentUser();
+      if (!user) {
+        throw new AuthenticationError('Authentication required');
+      }
+      const svc = decoratorResolver.getAuthorizationService();
+      const allowed = await svc.hasPermission(user, permission);
+      if (!allowed) {
+        const [resource = 'unknown', action = 'unknown'] = permission.split(':');
+        throw new AuthorizationError(
+          `Missing required permission: ${permission}`,
+          resource,
+          action
+        );
+      }
       return target.apply(this, args);
     };
   };

@@ -1,10 +1,12 @@
 /**
  * Health Check System
- * 
+ *
  * Implements comprehensive health checking for services, dependencies,
  * and infrastructure. Supports liveness, readiness, and startup probes
  * for Kubernetes-style deployments.
  */
+
+import { statfs } from 'node:fs/promises';
 
 /**
  * Health Check Status
@@ -494,13 +496,36 @@ export const HealthCheckBuilders = {
     successThreshold: 1,
     ...options,
     check: async () => {
-      // This would need actual disk check implementation
-      // Placeholder returning healthy
-      return {
-        healthy: true,
-        message: `Disk space check for ${path}`,
-        details: { path, minFreePercent },
-      };
+      try {
+        const stats = await statfs(path);
+        const totalBytes = Number(stats.blocks) * Number(stats.bsize);
+        const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+        const usedBytes = totalBytes - freeBytes;
+        const freePercent = totalBytes > 0 ? (freeBytes / totalBytes) * 100 : 0;
+        const healthy = freePercent >= minFreePercent;
+        return {
+          healthy,
+          message: healthy
+            ? `Disk ${path} has ${freePercent.toFixed(1)}% free`
+            : `Disk ${path} below threshold: ${freePercent.toFixed(1)}% free (min ${minFreePercent}%)`,
+          details: {
+            path,
+            totalBytes,
+            freeBytes,
+            usedBytes,
+            freePercent: Number(freePercent.toFixed(2)),
+            minFreePercent,
+          },
+        };
+      } catch (error) {
+        return {
+          healthy: false,
+          message: `Disk space check failed for ${path}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          details: { path, minFreePercent },
+        };
+      }
     },
   }),
 
