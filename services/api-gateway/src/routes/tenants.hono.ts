@@ -118,4 +118,85 @@ app.get('/', async (c) => {
   });
 });
 
+// TODO: wire to real store — tenant-scoped conversations feed for the
+// owner portal "tenant communications" page. Kept above /:id so it is
+// not captured by the id param.
+app.get('/communications', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+app.post('/', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (auth.role !== 'SUPER_ADMIN') {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can create tenants.' } }, 403);
+  }
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const row = await repos.tenants.create({
+    id: crypto.randomUUID(),
+    name: String(body.name ?? ''),
+    slug: String(body.slug ?? ''),
+    primaryEmail: body.ownerEmail ?? body.contactEmail,
+    primaryPhone: body.contactPhone,
+    subscriptionTier: body.plan ?? 'starter',
+    status: 'pending',
+    createdBy: auth.userId,
+    updatedBy: auth.userId,
+  });
+  return c.json({ success: true, data: mapTenant(row) }, 201);
+});
+
+app.get('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (auth.role !== 'SUPER_ADMIN' && c.req.param('id') !== auth.tenantId) {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Tenant access denied.' } }, 403);
+  }
+  const tenant = await repos.tenants.findById(c.req.param('id'));
+  if (!tenant) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
+  return c.json({ success: true, data: mapTenant(tenant) });
+});
+
+app.patch('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (auth.role !== 'SUPER_ADMIN' && c.req.param('id') !== auth.tenantId) {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Tenant access denied.' } }, 403);
+  }
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const tenant = await repos.tenants.update(
+    c.req.param('id'),
+    {
+      name: body.name,
+      primaryEmail: body.contactEmail,
+      primaryPhone: body.contactPhone,
+      updatedBy: auth.userId,
+    },
+    auth.userId
+  );
+  if (!tenant) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
+  return c.json({ success: true, data: mapTenant(tenant) });
+});
+
+// TODO: wire to real store — suspension workflow should persist the reason
+// and emit an event. For now, updates status to 'suspended' via repository.
+app.post('/:id/suspend', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (auth.role !== 'SUPER_ADMIN') {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can suspend tenants.' } }, 403);
+  }
+  const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
+  const tenant = await repos.tenants.update(
+    c.req.param('id'),
+    { status: 'suspended', updatedBy: auth.userId },
+    auth.userId
+  );
+  if (!tenant) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Tenant not found' } }, 404);
+  return c.json({
+    success: true,
+    data: { ...mapTenant(tenant), suspensionReason: body.reason ?? null },
+  });
+});
+
 export const tenantsRouter = app;

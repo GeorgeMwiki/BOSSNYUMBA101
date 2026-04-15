@@ -22,7 +22,7 @@ vi.mock('@bossnyumba/observability', () => ({
   },
 }));
 
-import { createIdempotencyStore } from '../idempotency.js';
+import { createIdempotencyStore } from '../idempotency';
 
 const ORIGINAL_ENV = { ...process.env };
 

@@ -161,4 +161,44 @@ app.delete('/:id', async (c) => {
   return c.json({ success: true, data: { message: 'User deleted' } });
 });
 
+// PATCH alias for PUT — admin UI uses PATCH to partially update a user.
+app.patch('/:id', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const row = await repos.users.update(id, auth.tenantId, {
+    firstName: body.firstName,
+    lastName: body.lastName,
+    phone: body.phone,
+    status: body.status ? String(body.status).toLowerCase() : undefined,
+    updatedBy: auth.userId,
+  });
+  if (!row) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
+  const roleMap = await getRoleMap(db, auth.tenantId, [row.id]);
+  return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) });
+});
+
+// TODO: wire to real store — impersonation should mint a short-lived
+// audit-tagged token and record an audit log entry. Scaffold returns a
+// placeholder token so the admin UI flow can be exercised.
+app.post('/:id/impersonate', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(auth.role)) {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Only admins can impersonate users.' } }, 403);
+  }
+  const target = await repos.users.findById(c.req.param('id'), auth.tenantId);
+  if (!target) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
+  return c.json({
+    success: true,
+    data: {
+      impersonationToken: `impersonation-${target.id}-${Date.now()}`,
+      targetUserId: target.id,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    },
+  });
+});
+
 export const usersRouter = app;
