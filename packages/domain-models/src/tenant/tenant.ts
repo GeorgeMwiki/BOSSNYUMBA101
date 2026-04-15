@@ -12,11 +12,13 @@ import type {
   ISOTimestamp,
 } from '../common/types';
 
-/** Tenant status */
-export type TenantStatus = 'active' | 'suspended' | 'pending_setup' | 'churned';
-
-/** Subscription tier */
-export type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
+// TenantStatus / SubscriptionTier are canonical in `../common/enums`.
+// Re-export the type aliases here so existing relative imports keep working.
+export type { TenantStatus, SubscriptionTier } from '../common/enums';
+import type {
+  TenantStatus,
+  SubscriptionTier,
+} from '../common/enums';
 
 /** Billing cycle */
 export type BillingCycle = 'monthly' | 'quarterly' | 'annual';
@@ -139,7 +141,7 @@ export function createTenant(
     id,
     name: data.name,
     slug: data.slug,
-    status: 'pending_setup',
+    status: 'pending',
     subscriptionTier: data.subscriptionTier ?? 'starter',
     billingCycle: data.billingCycle ?? 'monthly',
     contactEmail: data.contactEmail,
@@ -159,10 +161,14 @@ export function createTenant(
 }
 
 function getDefaultSettings(tier: SubscriptionTier): TenantSettings {
-  const limits = {
+  const limits: Record<
+    SubscriptionTier,
+    { users: number; properties: number; units: number }
+  > = {
     starter: { users: 5, properties: 10, units: 50 },
     professional: { users: 25, properties: 50, units: 500 },
     enterprise: { users: -1, properties: -1, units: -1 }, // unlimited
+    custom: { users: -1, properties: -1, units: -1 }, // bespoke contracts
   };
 
   return {

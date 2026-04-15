@@ -315,7 +315,7 @@ export class TenantService {
     
     const result = await this.updateTenant(
       tenantId,
-      { status: 'churned' as TenantStatus },
+      { status: 'cancelled' as TenantStatus },
       deactivatedBy,
       correlationId
     );
@@ -346,7 +346,7 @@ export class TenantService {
     }
     
     // Check if tenant is active/pending before allowing plan changes
-    if (existing.status !== TenantStatus.ACTIVE && existing.status !== 'pending_setup') {
+    if (existing.status !== TenantStatus.ACTIVE && existing.status !== TenantStatus.PENDING) {
       return err({
         code: TenantServiceError.TENANT_NOT_FOUND,
         message: `Cannot change subscription while tenant is ${existing.status}`,
@@ -478,9 +478,13 @@ export class TenantService {
     }
     
     // Merge existing config with new config
+    const existingConfig =
+      ((existing as unknown as { config?: unknown }).config as
+        | Partial<TenantConfig>
+        | undefined) ?? {};
     const mergedConfig: TenantConfig = {
       ...DEFAULT_TENANT_CONFIG,
-      ...(existing as unknown as { config: unknown }).config,
+      ...existingConfig,
       ...config,
     };
     

@@ -70,6 +70,7 @@ export function verifyCsrfToken(
   const parts = cookieValue.split('.');
   if (parts.length !== 2) return false;
   const [random, providedMac] = parts;
+  if (!random || !providedMac) return false;
   const expectedMac = createHmac('sha256', config.secret)
     .update(`${sessionId}.${random}`)
     .digest('hex');
