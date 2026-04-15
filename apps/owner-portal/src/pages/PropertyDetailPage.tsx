@@ -53,22 +53,38 @@ export function PropertyDetailPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
 
     Promise.all([
       api.get<Property>(`/properties/${id}`),
       api.get<Unit[]>(`/properties/${id}/units`),
-    ]).then(([propertyRes, unitsRes]) => {
-      if (propertyRes.success && propertyRes.data) {
-        setProperty(propertyRes.data);
-      }
-      if (unitsRes.success && unitsRes.data) {
-        setUnits(unitsRes.data);
-      }
-      setLoading(false);
-    });
+    ])
+      .then(([propertyRes, unitsRes]) => {
+        if (cancelled) return;
+        if (propertyRes.success && propertyRes.data) {
+          setProperty(propertyRes.data);
+        } else {
+          setError(propertyRes.error?.message || 'Unable to load property');
+        }
+        if (unitsRes.success && unitsRes.data) {
+          setUnits(unitsRes.data);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Unable to load property');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (loading) {
@@ -77,6 +93,10 @@ export function PropertyDetailPage() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (error) {
+    return <div className="text-center py-12 text-red-600">{error}</div>;
   }
 
   if (!property) {
@@ -89,7 +109,10 @@ export function PropertyDetailPage() {
     totalUnits: property.totalUnits,
     occupiedUnits: property.occupiedUnits,
     availableUnits: property.totalUnits - property.occupiedUnits,
-    occupancyRate: (property.occupiedUnits / property.totalUnits) * 100,
+    occupancyRate:
+      property.totalUnits > 0
+        ? (property.occupiedUnits / property.totalUnits) * 100
+        : 0,
   };
 
   return (

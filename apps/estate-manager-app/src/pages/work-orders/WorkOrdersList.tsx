@@ -34,7 +34,7 @@ export default function WorkOrdersList() {
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {workOrdersQuery.isLoading && <div className="card p-4 text-sm text-gray-500">Loading work orders...</div>}
         {workOrdersQuery.error && <div className="card p-4 text-sm text-danger-600">{(workOrdersQuery.error as Error).message}</div>}
-        {workOrders.map((workOrder: any) => (
+        {workOrders.map((workOrder) => (
           <Link key={workOrder.id} href={`/work-orders/${workOrder.id}`} className="card block p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -48,6 +48,9 @@ export default function WorkOrdersList() {
             </div>
           </Link>
         ))}
+        {!workOrdersQuery.isLoading && !workOrdersQuery.error && workOrders.length === 0 && (
+          <div className="card p-4 text-sm text-gray-500">No work orders found.</div>
+        )}
       </div>
     </>
   );

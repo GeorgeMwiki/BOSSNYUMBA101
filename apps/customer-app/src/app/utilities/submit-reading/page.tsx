@@ -32,6 +32,7 @@ export default function SubmitReadingPage() {
   });
   const [photo, setPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +40,22 @@ export default function SubmitReadingPage() {
     if (!hasReading) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    router.push('/utilities?submitted=true');
+    setSubmitError(null);
+    try {
+      const response = await fetch('/api/v1/utilities/readings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readings, photo }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit readings (${response.status})`);
+      }
+      router.push('/utilities?submitted=true');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit readings');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePhotoUpload = () => {
@@ -109,13 +124,18 @@ export default function SubmitReadingPage() {
           </div>
         </section>
 
+        {submitError && (
+          <div className="card border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+            {submitError}
+          </div>
+        )}
+
         <button
           type="submit"
           className="btn-primary w-full py-3"
           disabled={
-            !readings.water?.trim() &&
-            !readings.electricity?.trim() &&
-            isSubmitting
+            isSubmitting ||
+            (!readings.water?.trim() && !readings.electricity?.trim())
           }
         >
           {isSubmitting ? 'Submitting...' : 'Submit Readings'}

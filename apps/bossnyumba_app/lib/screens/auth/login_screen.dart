@@ -70,7 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _forgotPassword() {
-    // TODO: wire to real /auth/forgot-password flow once backend endpoint lands.
+    // The backend does not yet expose /auth/forgot-password. Until that
+    // endpoint exists, direct users to support rather than silently failing.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Password reset is coming soon. Contact support for now.'),

@@ -53,15 +53,31 @@ export default function NewRequestPage() {
   });
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/requests?submitted=true');
+    try {
+      const response = await fetch('/api/v1/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          photoCount: photos.length,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit request (${response.status})`);
+      }
+      router.push('/requests?submitted=true');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectedPriority = PRIORITIES.find((p) => p.value === formData.priority);
