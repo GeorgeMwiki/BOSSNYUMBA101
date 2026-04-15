@@ -88,6 +88,43 @@ export type {
   ModelInfo,
 } from './providers/ai-provider.js';
 
+// Chat providers (conversation-style LLM calls)
+export {
+  AnthropicChatProvider,
+  OpenAIChatProvider,
+  DeepSeekChatProvider,
+  MockChatProvider,
+} from './providers/chat-provider.js';
+
+export type {
+  ChatProvider,
+  ChatMessage,
+  ChatRole,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ChatStreamChunk,
+  ChatCompletionUsage,
+  AnthropicChatConfig,
+  OpenAIChatConfig,
+  DeepSeekChatConfig,
+} from './providers/chat-provider.js';
+
+// LLM Provider Gate (jurisdiction-aware routing)
+export {
+  resolveChatProvider,
+  getJurisdictionPolicy,
+  JURISDICTION_POLICIES,
+  DEFAULT_JURISDICTION,
+} from './providers/llm-provider-gate.js';
+
+export type {
+  JurisdictionPolicy,
+  ProviderId,
+  LLMGateEnv,
+  ResolveOptions,
+  ResolvedProvider,
+} from './providers/llm-provider-gate.js';
+
 // Services
 export {
   BaseCopilot,
