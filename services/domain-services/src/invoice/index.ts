@@ -16,10 +16,10 @@ import type {
   Result,
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
+import type { InvoiceType } from '@bossnyumba/domain-models/financial/invoice';
 import {
   type Invoice,
   type InvoiceStatus,
-  type InvoiceType,
   type InvoiceLineItem,
   createInvoice,
   sendInvoice,

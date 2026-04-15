@@ -12,6 +12,10 @@ import type {
   PaginationParams,
   PaginatedResult,
 } from '@bossnyumba/domain-models';
+import type {
+  TenantStatus,
+  SubscriptionTier,
+} from '@bossnyumba/domain-models/tenant/tenant';
 import {
   type Tenant,
   type CreateTenantInput,
@@ -21,8 +25,6 @@ import {
   type CreateOrganizationInput,
   type UpdateOrganizationInput,
   type TenantConfig,
-  TenantStatus,
-  SubscriptionTier,
   OrganizationType,
   OrganizationStatus,
   DEFAULT_TENANT_CONFIG,
@@ -274,7 +276,7 @@ export class TenantService {
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
     return this.updateTenant(
       tenantId,
-      { status: TenantStatus.SUSPENDED },
+      { status: 'suspended' as TenantStatus },
       suspendedBy,
       correlationId
     );
@@ -290,7 +292,7 @@ export class TenantService {
   ): Promise<Result<Tenant, TenantServiceErrorResult>> {
     return this.updateTenant(
       tenantId,
-      { status: TenantStatus.ACTIVE },
+      { status: 'active' as TenantStatus },
       activatedBy,
       correlationId
     );
@@ -315,7 +317,7 @@ export class TenantService {
     
     const result = await this.updateTenant(
       tenantId,
-      { status: 'cancelled' as TenantStatus },
+      { status: 'churned' as TenantStatus },
       deactivatedBy,
       correlationId
     );
@@ -346,7 +348,7 @@ export class TenantService {
     }
     
     // Check if tenant is active/pending before allowing plan changes
-    if (existing.status !== TenantStatus.ACTIVE && existing.status !== TenantStatus.PENDING) {
+    if (existing.status !== 'active' as TenantStatus && existing.status !== 'pending_setup') {
       return err({
         code: TenantServiceError.TENANT_NOT_FOUND,
         message: `Cannot change subscription while tenant is ${existing.status}`,
@@ -406,7 +408,7 @@ export class TenantService {
       });
     }
     
-    const existingPolicies = ((existing as unknown as { config: unknown }).config as Record<string, unknown>)?.policyConstitution ?? {};
+    const existingPolicies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
     const mergedPolicies = { ...existingPolicies as Record<string, unknown>, ...policies };
     
     return this.configureTenant(
@@ -431,7 +433,7 @@ export class TenantService {
       });
     }
     
-    const policies = ((existing as unknown as { config: unknown }).config as Record<string, unknown>)?.policyConstitution ?? {};
+    const policies = (existing.config as Record<string, unknown>)?.policyConstitution ?? {};
     return ok(policies as Record<string, unknown>);
   }
   
@@ -478,19 +480,15 @@ export class TenantService {
     }
     
     // Merge existing config with new config
-    const existingConfig =
-      ((existing as unknown as { config?: unknown }).config as
-        | Partial<TenantConfig>
-        | undefined) ?? {};
     const mergedConfig: TenantConfig = {
       ...DEFAULT_TENANT_CONFIG,
-      ...existingConfig,
+      ...existing.config,
       ...config,
     };
     
     const tenant = await this.uow.tenants.update(
       tenantId,
-      { config: mergedConfig } as unknown as Parameters<typeof this.uow.tenants.update>[1],
+      { config: mergedConfig },
       updatedBy
     );
     
@@ -505,7 +503,7 @@ export class TenantService {
       metadata: {},
       payload: {
         changes: {
-          config: { old: (existing as unknown as { config: unknown }).config, new: mergedConfig },
+          config: { old: existing.config, new: mergedConfig },
         },
       },
     };

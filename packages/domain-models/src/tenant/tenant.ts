@@ -46,6 +46,8 @@ export interface Tenant extends EntityMetadata, SoftDeletable {
   readonly timezone: string;
   readonly locale: string;
   readonly trialEndsAt: ISOTimestamp | null;
+  /** Optional open-ended configuration bag (Policy Constitution, feature flags, etc.). */
+  readonly config?: TenantConfig;
 }
 
 /** Tenant configuration (for services) */
@@ -68,6 +70,7 @@ export interface UpdateTenantInput {
   readonly name?: string;
   readonly status?: TenantStatus;
   readonly subscriptionTier?: SubscriptionTier;
+  readonly config?: TenantConfig;
 }
 
 /** Tenant with usage statistics */
