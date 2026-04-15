@@ -4,32 +4,18 @@ import Link from 'next/link';
 import { Users, FileText, Calendar, MessageSquare } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const communityPosts = [
-  {
-    id: '1',
-    author: 'John K.',
-    unit: 'A-204',
-    content: 'Anyone know when the gym will reopen?',
-    timestamp: '2024-02-12T14:30:00Z',
-    replies: 3,
-  },
-  {
-    id: '2',
-    author: 'Mary W.',
-    unit: 'B-105',
-    content: 'Lost keys near the parking area. Found a set—please contact me if yours.',
-    timestamp: '2024-02-11T09:15:00Z',
-    replies: 1,
-  },
-  {
-    id: '3',
-    author: 'James M.',
-    unit: 'A-301',
-    content: 'Pool cleaning scheduled for tomorrow 9am. FYI.',
-    timestamp: '2024-02-10T16:00:00Z',
-    replies: 0,
-  },
-];
+interface CommunityPost {
+  id: string;
+  author: string;
+  unit: string;
+  content: string;
+  timestamp: string;
+  replies: number;
+}
+
+// Community board is gated on live resident feed APIs. Until wired,
+// render the empty state rather than seeded mock posts.
+const communityPosts: CommunityPost[] = [];
 
 export default function CommunityPage() {
   return (

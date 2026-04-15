@@ -181,7 +181,19 @@ api.route('/cases', casesRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
-api.route('/admin', adminPortalRouter);
+api.route('/admin', adminRouter);
+api.route('/admin-portal', adminPortalRouter);
+api.route('/ai', aiRouter);
+api.route('/support', supportRouter);
+api.route('/platform', platformRouter);
+api.route('/analytics', analyticsRouter);
+api.route('/compliance', complianceRouter);
+api.route('/portfolio', portfolioRouter);
+api.route('/budgets', budgetsRouter);
+api.route('/invitations', invitationsRouter);
+api.route('/approvals', approvalsRouter);
+api.route('/requests', requestsRouter);
+api.route('/system', systemRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning
