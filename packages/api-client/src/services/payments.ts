@@ -39,6 +39,33 @@ export interface ProcessPaymentRequest {
   phoneNumber?: string; // For M-Pesa
 }
 
+export interface StkPushRequest {
+  amount: number;
+  phone: string;
+  invoiceId?: string;
+  leaseId?: string;
+}
+
+export interface StkPushInitiatedResponse {
+  paymentId: string;
+  checkoutRequestId: string;
+  merchantRequestId?: string;
+  status: string;
+  customerMessage?: string;
+}
+
+export interface PaymentStatusResponse {
+  paymentId: string;
+  status: string;
+  amount: number;
+  currency: string;
+  receiptNumber?: string;
+  completedAt?: string;
+  invoiceId?: string;
+  invoiceStatus?: string;
+  failureReason?: string;
+}
+
 export const paymentsService = {
   /**
    * List payment intents with optional filters
@@ -125,6 +152,41 @@ export const paymentsService = {
     }>
   > {
     return getApiClient().get('/payments/balance');
+  },
+
+  /**
+   * Initiate an M-Pesa STK Push against the customer's phone.
+   * Returns a paymentId (tracked server-side) and the Safaricom checkoutRequestId.
+   */
+  async stkPush(
+    request: StkPushRequest
+  ): Promise<ApiResponse<StkPushInitiatedResponse>> {
+    return getApiClient().post<StkPushInitiatedResponse>(
+      '/payments/mpesa/stk-push',
+      request
+    );
+  },
+
+  /**
+   * Get the current status of a payment (for polling after STK push).
+   */
+  async getStatus(id: PaymentIntentId): Promise<ApiResponse<PaymentStatusResponse>> {
+    return getApiClient().get<PaymentStatusResponse>(`/payments/${id}/status`);
+  },
+
+  /**
+   * Fetch a receipt/confirmation for a completed payment.
+   */
+  async getReceipt(id: PaymentIntentId): Promise<ApiResponse<{
+    paymentId: string;
+    receiptNumber: string;
+    amount: number;
+    currency: string;
+    paidAt: string;
+    invoiceNumber?: string;
+    downloadUrl?: string;
+  }>> {
+    return getApiClient().get(`/payments/${id}/receipt`);
   },
 };
 

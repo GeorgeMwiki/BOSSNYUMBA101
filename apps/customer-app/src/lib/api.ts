@@ -116,6 +116,22 @@ export const api = {
     async getPaymentPlan(id: string) {
       return requireLiveData(() => ensureClient().get(`/payments/plans/${id}`));
     },
+
+    async getPayment(id: string) {
+      return requireLiveData(() => ensureClient().get(`/payments/${id}`));
+    },
+
+    async getStatus(id: string) {
+      return requireLiveData(() => ensureClient().get(`/payments/${id}/status`));
+    },
+
+    async getReceipt(id: string) {
+      return requireLiveData(() => ensureClient().get(`/payments/${id}/receipt`));
+    },
+
+    async stkPush(data: { amount: number; phone: string; invoiceId?: string; leaseId?: string }) {
+      return requireLiveData(() => ensureClient().post('/payments/mpesa/stk-push', data));
+    },
   },
 
   lease: {
