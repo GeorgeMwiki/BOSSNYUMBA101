@@ -379,11 +379,6 @@ describe('POST /auth/login (wave-5 contract)', () => {
   });
 
   it('returns 400 when body is not JSON', async () => {
-    const res = await fetch('http://x/auth/login', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: 'not-json',
-    }).catch(() => null);
     // Use Hono fetch directly; testClient won't send malformed JSON.
     const honoRes = await api.fetch(
       new Request('http://x/auth/login', {

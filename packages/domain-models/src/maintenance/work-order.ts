@@ -11,7 +11,6 @@ import type { UnitId } from '../property/unit';
 
 // Re-export branded IDs from canonical source to avoid duplicate export conflicts
 export { type WorkOrderId, asWorkOrderId, type VendorId, asVendorId } from '../common/types';
-}
 
 /** Work order priority */
 export type WorkOrderPriority = 'emergency' | 'high' | 'medium' | 'low';
