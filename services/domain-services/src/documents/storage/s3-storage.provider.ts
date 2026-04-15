@@ -15,6 +15,7 @@ export interface S3ClientLike {
     ContentType?: string;
     Metadata?: Record<string, string>;
   }): Promise<{ ETag?: string }>;
+  getObject(params: { Bucket: string; Key: string }): Promise<{ Body: Buffer | Uint8Array }>;
   deleteObject(params: { Bucket: string; Key: string }): Promise<void>;
   headObject(params: { Bucket: string; Key: string }): Promise<unknown>;
   getSignedUrl?(operation: string, params: Record<string, unknown>, expiresIn: number): Promise<string>;
@@ -59,6 +60,12 @@ export class S3StorageProvider implements StorageProvider {
 
     const url = `https://${this.bucket}.s3.amazonaws.com/${s3Key}`;
     return { key: input.key, url, etag: result.ETag };
+  }
+
+  async download(tenantId: TenantId, key: string): Promise<Buffer> {
+    const s3Key = this.getS3Key(tenantId, key);
+    const result = await this.s3.getObject({ Bucket: this.bucket, Key: s3Key });
+    return Buffer.isBuffer(result.Body) ? result.Body : Buffer.from(result.Body);
   }
 
   async getSignedUrl(tenantId: TenantId, key: string, options: SignedUrlOptions): Promise<string> {

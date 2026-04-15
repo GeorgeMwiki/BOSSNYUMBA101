@@ -56,6 +56,8 @@ export interface Customer extends EntityMetadata, SoftDeletable {
   readonly tags: readonly string[];
   readonly preferredLanguage: string;
   readonly communicationPreferences: CommunicationPreferences;
+  /** Optional open-ended metadata bag for consumer-defined fields. */
+  readonly metadata?: Record<string, unknown>;
 }
 
 /** Communication preferences */

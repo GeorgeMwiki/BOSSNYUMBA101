@@ -48,6 +48,14 @@ export class LocalStorageProvider implements StorageProvider {
     return { key: input.key, url };
   }
 
+  async download(tenantId: TenantId, key: string): Promise<Buffer> {
+    const fullPath = this.getFullPath(tenantId, key);
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`File not found: ${key}`);
+    }
+    return fs.readFileSync(fullPath);
+  }
+
   async getSignedUrl(tenantId: TenantId, key: string, _options: SignedUrlOptions): Promise<string> {
     const fullPath = this.getFullPath(tenantId, key);
     if (!fs.existsSync(fullPath)) {

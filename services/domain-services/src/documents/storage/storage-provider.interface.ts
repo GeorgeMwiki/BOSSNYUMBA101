@@ -32,6 +32,9 @@ export interface StorageProvider {
   /** Upload a file and return its storage key and URL */
   upload(input: UploadInput): Promise<UploadResult>;
 
+  /** Download a file's contents by key (used for OCR / text extraction). */
+  download(tenantId: TenantId, key: string): Promise<Buffer>;
+
   /** Get a signed URL for temporary access */
   getSignedUrl(tenantId: TenantId, key: string, options: SignedUrlOptions): Promise<string>;
 
