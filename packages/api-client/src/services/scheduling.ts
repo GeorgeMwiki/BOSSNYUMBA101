@@ -106,7 +106,7 @@ export const schedulingService = {
       startDate: params?.startDate,
       endDate: params?.endDate,
     });
-    return getApiClient().get<ScheduleEvent[]>('/scheduling/events', searchParams) as Promise<
+    return getApiClient().get<ScheduleEvent[]>('/scheduling/events', { params: searchParams }) as Promise<
       ApiResponse<ScheduleEvent[]> & { pagination?: PaginationInfo }
     >;
   },
@@ -152,7 +152,7 @@ export const schedulingService = {
       propertyId: params?.propertyId,
       unitId: params?.unitId,
     });
-    return getApiClient().get<TimeSlot[]>('/scheduling/available-slots', searchParams);
+    return getApiClient().get<TimeSlot[]>('/scheduling/available-slots', { params: searchParams });
   },
 
   /**

@@ -180,7 +180,7 @@ export const invoicesService = {
    * Get invoice PDF metadata (or download with ?download=1)
    */
   async getPdf(id: string, download?: boolean): Promise<ApiResponse<InvoicePdfResponse>> {
-    const requestOptions = download ? { params: { download: '1' } } : undefined;
-    return getApiClient().get<InvoicePdfResponse>(`/invoices/${id}/pdf`, requestOptions);
+    const options = download ? { params: { download: '1' } } : undefined;
+    return getApiClient().get<InvoicePdfResponse>(`/invoices/${id}/pdf`, options);
   },
 };

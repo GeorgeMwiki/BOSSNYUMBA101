@@ -72,7 +72,7 @@ export const vendorsService = {
       available: params?.available,
       search: params?.search,
     });
-    return getApiClient().get<Vendor[]>('/vendors', searchParams) as Promise<
+    return getApiClient().get<Vendor[]>('/vendors', { params: searchParams }) as Promise<
       ApiResponse<Vendor[]> & { pagination?: PaginationInfo }
     >;
   },

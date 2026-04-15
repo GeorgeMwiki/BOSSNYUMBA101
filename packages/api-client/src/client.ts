@@ -407,12 +407,7 @@ export class ApiClient {
 
   private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     if (!response.ok) {
-      let errorData: {
-        error?: ApiError;
-        code?: string;
-        message?: string;
-        details?: Record<string, unknown> | Array<Record<string, unknown>>;
-      };
+      let errorData: { error?: ApiError; code?: string; message?: string };
 
       try {
         errorData = await response.json();
@@ -422,14 +417,12 @@ export class ApiClient {
         });
       }
 
-      const error: Partial<ApiError> & { code?: string; message?: string } =
-        errorData.error ?? errorData;
+      const error = errorData.error ?? errorData;
+      const details = 'details' in error ? error.details : undefined;
       throw new ApiClientError(error.code || 'UNKNOWN_ERROR', error.message || 'Request failed', {
         status: response.status,
-        ...(error.details !== undefined ? { details: error.details } : {}),
-        ...(response.headers.get('X-Request-ID')
-          ? { requestId: response.headers.get('X-Request-ID') as string }
-          : {}),
+        details,
+        requestId: response.headers.get('X-Request-ID') || undefined,
       });
     }
 

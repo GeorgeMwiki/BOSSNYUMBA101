@@ -6,14 +6,14 @@ import { getApiClient, ApiResponse } from '../client';
 import type {
   PaymentIntent,
   PaymentIntentId,
-  PaymentIntentStatus,
-  PaymentType,
+  PaymentStatus as PaymentIntentStatus,
   PaymentChannel,
   PaymentMethod,
   PaymentMethodId,
   Statement,
   StatementId,
 } from '@bossnyumba/domain-models';
+import type { PaymentType } from '@bossnyumba/domain-models/payment';
 
 export interface PaymentFilters {
   status?: PaymentIntentStatus[];
