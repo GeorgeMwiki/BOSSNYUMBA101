@@ -8,6 +8,7 @@ import { registerServiceWorker } from '@/lib/pwa/register-sw';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 import { UpdatePrompt } from '@/components/pwa/UpdatePrompt';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -85,7 +86,9 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
     <ErrorBoundary>
       <QueryProvider>
         <AuthProvider>
-          <PWAProvider>{children}</PWAProvider>
+          <ToastProvider>
+            <PWAProvider>{children}</PWAProvider>
+          </ToastProvider>
         </AuthProvider>
       </QueryProvider>
     </ErrorBoundary>

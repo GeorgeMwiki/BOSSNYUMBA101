@@ -1,9 +1,14 @@
 import type { Payment } from '@/lib/payment-types';
 
+/**
+ * Fallback values used when live payment data is still loading. Treat these as
+ * pure constants. All real payment data comes from `@/lib/api`.
+ */
 export const CURRENT_BALANCE = 0;
 export const CARD_PAYMENT_ENABLED = false;
 
-export const MOCK_PAYMENTS: Payment[] = [];
+/** Intentionally empty. Real payments come from the API. */
+export const EMPTY_PAYMENTS: Payment[] = [];
 
 export const DATE_RANGE_OPTIONS = [
   { label: 'All time', value: 'all' },
