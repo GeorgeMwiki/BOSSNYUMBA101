@@ -8,6 +8,31 @@ import type { Money } from '../../common/types';
 import { getMpesaAccessToken } from './auth';
 import type { MpesaConfig } from './types';
 
+// Observability: M-Pesa transaction metric emitter. Soft-loaded so a missing
+// install doesn't break the payments service in constrained environments.
+type MpesaMetricInput = {
+  type: string;
+  status: string;
+  latencyMs: number;
+  tenantId?: string;
+  amountMinorUnits?: number;
+  currency?: string;
+};
+let emitMpesaTransactionSafe: (m: MpesaMetricInput) => void = () => {
+  /* no-op */
+};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const obs = require('@bossnyumba/observability') as {
+    emitMpesaTransaction?: (m: MpesaMetricInput) => void;
+  };
+  if (obs && typeof obs.emitMpesaTransaction === 'function') {
+    emitMpesaTransactionSafe = obs.emitMpesaTransaction;
+  }
+} catch {
+  /* observability not installed */
+}
+
 const STK_PUSH_PATH = '/mpesa/stkpush/v1/processrequest';
 
 function normalizePhone(phone: string): string {
@@ -122,22 +147,48 @@ export async function initiateStkPush(
     };
   };
 
+  const startedAt = Date.now();
   try {
     const result = await withRetry(doRequest);
+    const latencyMs = Date.now() - startedAt;
     logger.info(
       {
         checkoutRequestId: result.checkoutRequestId,
         reference: params.reference,
         amount: amountMajor,
+        latencyMs,
       },
       'M-Pesa STK push initiated'
     );
+    try {
+      emitMpesaTransactionSafe({
+        type: 'stk_push',
+        status: 'initiated',
+        latencyMs,
+        amountMinorUnits: params.amount.amountMinorUnits,
+        currency: params.amount.currency,
+      });
+    } catch {
+      /* metrics must never break the caller */
+    }
     return result;
   } catch (err) {
+    const latencyMs = Date.now() - startedAt;
     logger.error(
-      { err, reference: params.reference, provider: 'mpesa' },
+      { err, reference: params.reference, provider: 'mpesa', latencyMs },
       'M-Pesa STK push failed'
     );
+    try {
+      emitMpesaTransactionSafe({
+        type: 'stk_push',
+        status: 'failed',
+        latencyMs,
+        amountMinorUnits: params.amount.amountMinorUnits,
+        currency: params.amount.currency,
+      });
+    } catch {
+      /* metrics must never break the caller */
+    }
     throw err;
   }
 }

@@ -9,6 +9,42 @@ import { AIResult, AIError, aiOk, aiErr, ModelId, asModelId } from '../types/cor
 import { CompiledPrompt } from '../types/prompt.types.js';
 
 /**
+ * Optional observability peer dependency. We soft-require it so the package
+ * still builds/runs in environments where @bossnyumba/observability isn't
+ * installed (per the optional peerDependency declaration in package.json).
+ */
+type LlmMetricInput = {
+  provider: string;
+  model: string;
+  tokens: number;
+  latencyMs: number;
+  tenantId?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  outcome?: string;
+};
+
+let emitLlmCallSafe: (m: LlmMetricInput) => void = () => {
+  /* no-op until observability is resolved (async) or if not installed */
+};
+
+// Best-effort async load so we don't hard-fail when the optional peer
+// dependency is absent. Import resolves by the time the first LLM call
+// returns in normal runtime conditions.
+void (async () => {
+  try {
+    const obs = (await import('@bossnyumba/observability')) as {
+      emitLlmCall?: (m: LlmMetricInput) => void;
+    };
+    if (obs && typeof obs.emitLlmCall === 'function') {
+      emitLlmCallSafe = obs.emitLlmCall;
+    }
+  } catch {
+    // Observability not installed — leave emitter as a no-op.
+  }
+})();
+
+/**
  * AI completion request
  */
 export interface AICompletionRequest {
@@ -257,22 +293,54 @@ export class OpenAIProvider implements AIProvider {
         }
       }
 
+      const promptTokens = data.usage?.prompt_tokens ?? 0;
+      const completionTokens = data.usage?.completion_tokens ?? 0;
+      const totalTokens = data.usage?.total_tokens ?? (promptTokens + completionTokens);
+      const finishReason = (data.choices?.[0]?.finish_reason ?? 'stop') as
+        'stop' | 'length' | 'content_filter' | 'error';
+
+      try {
+        emitLlmCallSafe({
+          provider: this.providerId,
+          model: modelId,
+          tokens: totalTokens,
+          promptTokens,
+          completionTokens,
+          latencyMs: processingTimeMs,
+          outcome: finishReason,
+        });
+      } catch {
+        /* metrics must never break the caller */
+      }
+
       return aiOk({
         content,
         parsedJson,
         modelId: asModelId(modelId),
         usage: {
-          promptTokens: data.usage?.prompt_tokens ?? 0,
-          completionTokens: data.usage?.completion_tokens ?? 0,
-          totalTokens: data.usage?.total_tokens ?? 0,
+          promptTokens,
+          completionTokens,
+          totalTokens,
         },
         processingTimeMs,
-        finishReason: (data.choices?.[0]?.finish_reason ?? 'stop') as 'stop' | 'length' | 'content_filter' | 'error',
+        finishReason,
       });
 
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
-      
+
+      try {
+        emitLlmCallSafe({
+          provider: this.providerId,
+          model: modelId,
+          tokens: 0,
+          latencyMs: processingTimeMs,
+          outcome: 'error',
+        });
+      } catch {
+        /* metrics must never break the caller */
+      }
+
       if (error instanceof Error && error.name === 'AbortError') {
         return aiErr({
           code: 'TIMEOUT',
@@ -383,6 +451,22 @@ export class MockAIProvider implements AIProvider {
       }
     }
 
+    const processingTimeMs = Date.now() - startTime;
+
+    try {
+      emitLlmCallSafe({
+        provider: this.providerId,
+        model: 'mock-model',
+        tokens: 150,
+        promptTokens: 100,
+        completionTokens: 50,
+        latencyMs: processingTimeMs,
+        outcome: 'stop',
+      });
+    } catch {
+      /* metrics must never break the caller */
+    }
+
     return aiOk({
       content,
       parsedJson,
@@ -392,7 +476,7 @@ export class MockAIProvider implements AIProvider {
         completionTokens: 50,
         totalTokens: 150,
       },
-      processingTimeMs: Date.now() - startTime,
+      processingTimeMs,
       finishReason: 'stop',
     });
   }
