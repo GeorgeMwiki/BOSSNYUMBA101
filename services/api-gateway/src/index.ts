@@ -43,7 +43,9 @@ import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
 import { aiRouter } from './routes/ai';
-import { httpLogger } from '@bossnyumba/observability';
+import { messagesRouter } from './routes/messages';
+import { searchRouter } from './routes/search';
+import { approvalsRouter } from './routes/approvals';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -106,6 +108,9 @@ api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
 api.route('/admin', adminPortalRouter);
 api.route('/ai', aiRouter);
+api.route('/messages', messagesRouter);
+api.route('/search', searchRouter);
+api.route('/approvals', approvalsRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning
@@ -131,6 +136,10 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/analytics',
       '/api/v1/onboarding',
       '/api/v1/feedback',
+      '/api/v1/ai',
+      '/api/v1/approvals',
+      '/api/v1/messages',
+      '/api/v1/search',
       '/api/v1/complaints',
       '/api/v1/inspections',
       '/api/v1/documents',
