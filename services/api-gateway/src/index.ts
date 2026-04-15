@@ -39,6 +39,7 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+import { aiRouter } from './routes/ai';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -91,6 +92,7 @@ api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
 api.route('/admin', adminPortalRouter);
+api.route('/ai', aiRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning
@@ -119,6 +121,8 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
+      '/api/v1/ai/copilot/chat',
+      '/api/v1/ai/copilot/suggestions',
     ],
   });
 });

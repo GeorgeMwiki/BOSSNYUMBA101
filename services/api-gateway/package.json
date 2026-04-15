@@ -17,6 +17,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
+    "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
