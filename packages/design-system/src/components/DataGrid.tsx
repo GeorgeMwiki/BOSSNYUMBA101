@@ -833,19 +833,19 @@ export function SimpleDataGrid<T>({
       searchable={searchable}
       searchValue={search}
       onSearchChange={setSearch}
-      sortColumn={sortColumn}
+      {...(sortColumn !== undefined ? { sortColumn } : {})}
       sortDirection={sortDirection}
       onSort={handleSort}
-      pagination={
-        paginate
-          ? {
+      {...(paginate
+        ? {
+            pagination: {
               page,
               pageSize,
               totalItems: sortedData.length,
               totalPages: Math.ceil(sortedData.length / pageSize),
-            }
-          : undefined
-      }
+            },
+          }
+        : {})}
       onPageChange={setPage}
       onPageSizeChange={setPageSize}
       {...props}

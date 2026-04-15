@@ -280,10 +280,12 @@ export function SortableTable<T>({
             {columns.map((column) => (
               <TableHead
                 key={column.id}
-                sortable={column.sortable}
-                sortDirection={sortColumn === column.id ? sortDirection : null}
-                onSort={() => column.sortable && handleSort(column.id)}
-                style={{ width: column.width }}
+                {...(column.sortable !== undefined ? { sortable: column.sortable } : {})}
+                sortDirection={sortColumn === column.id ? (sortDirection ?? null) : null}
+                onSort={() => {
+                  if (column.sortable) handleSort(column.id);
+                }}
+                {...(column.width !== undefined ? { style: { width: column.width } } : {})}
                 className={cn(
                   column.align === 'center' && 'text-center',
                   column.align === 'right' && 'text-right'

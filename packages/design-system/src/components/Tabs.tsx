@@ -131,10 +131,10 @@ const SimpleTabs: React.FC<SimpleTabsProps> = ({
 
   return (
     <Tabs
-      value={value}
-      defaultValue={initialValue}
-      onValueChange={onChange}
-      className={className}
+      {...(value !== undefined ? { value } : {})}
+      {...(initialValue !== undefined ? { defaultValue: initialValue } : {})}
+      {...(onChange !== undefined ? { onValueChange: onChange } : {})}
+      {...(className !== undefined ? { className } : {})}
     >
       <TabsList variant={variant} fullWidth={fullWidth}>
         {tabs.map((tab) => (
@@ -143,8 +143,8 @@ const SimpleTabs: React.FC<SimpleTabsProps> = ({
             value={tab.id}
             variant={variant}
             icon={tab.icon}
-            badge={tab.badge}
-            disabled={tab.disabled}
+            {...(tab.badge !== undefined ? { badge: tab.badge } : {})}
+            {...(tab.disabled !== undefined ? { disabled: tab.disabled } : {})}
           >
             {tab.label}
           </TabsTrigger>
@@ -181,9 +181,9 @@ const VerticalTabs: React.FC<VerticalTabsProps> = ({
 
   return (
     <Tabs
-      value={value}
-      defaultValue={initialValue}
-      onValueChange={onChange}
+      {...(value !== undefined ? { value } : {})}
+      {...(initialValue !== undefined ? { defaultValue: initialValue } : {})}
+      {...(onChange !== undefined ? { onValueChange: onChange } : {})}
       className={cn('flex gap-4', className)}
       orientation="vertical"
     >

@@ -71,15 +71,15 @@ export const EmptySearch: React.FC<EmptySearchProps> = ({
       variant="search"
       title={`No results for "${query}"`}
       description="Try adjusting your search or filters to find what you're looking for."
-      action={
-        onClear
-          ? {
+      {...(onClear
+        ? {
+            action: {
               label: 'Clear search',
               onClick: onClear,
-            }
-          : undefined
-      }
-      className={className}
+            },
+          }
+        : {})}
+      {...(className !== undefined ? { className } : {})}
     />
   );
 };

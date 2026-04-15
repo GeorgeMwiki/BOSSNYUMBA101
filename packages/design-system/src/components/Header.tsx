@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
             trigger={
               <button className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-gray-100">
                 <Avatar
-                  src={user.avatarUrl}
+                  {...(user.avatarUrl !== undefined ? { src: user.avatarUrl } : {})}
                   name={user.name}
                   size="sm"
                 />

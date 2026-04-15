@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return sections.map((section) => (
         <SidebarSectionComponent
           key={section.id}
-          title={section.title}
+          {...(section.title !== undefined ? { title: section.title } : {})}
           collapsed={collapsed}
         >
           {section.items.map((item) => (
@@ -318,7 +318,7 @@ export const MobileSidebar: React.FC<MobileSidebarProps> = ({
       return sections.map((section) => (
         <SidebarSectionComponent
           key={section.id}
-          title={section.title}
+          {...(section.title !== undefined ? { title: section.title } : {})}
           collapsed={false}
         >
           {section.items.map((item) => (

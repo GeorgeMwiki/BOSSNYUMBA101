@@ -268,9 +268,9 @@ export const ModalFooter: React.FC<ModalFooterProps> = ({
         {primaryLabel && (
           <Button
             variant={primaryVariant === 'danger' ? 'danger' : primaryVariant === 'success' ? 'success' : 'default'}
-            onClick={onPrimaryAction}
-            loading={primaryLoading}
-            disabled={primaryDisabled}
+            {...(onPrimaryAction !== undefined ? { onClick: onPrimaryAction } : {})}
+            {...(primaryLoading !== undefined ? { loading: primaryLoading } : {})}
+            {...(primaryDisabled !== undefined ? { disabled: primaryDisabled } : {})}
           >
             {primaryLabel}
           </Button>
@@ -307,7 +307,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'default',
   loading = false,
 }) => (
-  <Modal open={open} onClose={onClose} title={title} description={description} size="sm">
+  <Modal open={open} onClose={onClose} title={title} {...(description !== undefined ? { description } : {})} size="sm">
     <ModalFooter
       primaryLabel={confirmLabel}
       secondaryLabel={cancelLabel}

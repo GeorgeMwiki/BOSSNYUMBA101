@@ -15,7 +15,10 @@ const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
     return (
       <div ref={ref} className={cn('space-y-2', className)} {...props}>
         {label && (
-          <Label htmlFor={htmlFor} required={required}>
+          <Label
+            {...(htmlFor !== undefined ? { htmlFor } : {})}
+            {...(required !== undefined ? { required } : {})}
+          >
             {label}
           </Label>
         )}
