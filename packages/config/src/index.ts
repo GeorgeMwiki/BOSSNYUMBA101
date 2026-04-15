@@ -12,6 +12,8 @@ function loadEnv(): EnvSchema {
     JWT_SECRET: process.env.JWT_SECRET,
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
+    ACCESS_TOKEN_TTL_SECONDS: process.env.ACCESS_TOKEN_TTL_SECONDS,
+    REFRESH_TOKEN_TTL_DAYS: process.env.REFRESH_TOKEN_TTL_DAYS,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     MPESA_CONSUMER_KEY: process.env.MPESA_CONSUMER_KEY,
     MPESA_CONSUMER_SECRET: process.env.MPESA_CONSUMER_SECRET,
@@ -94,6 +96,10 @@ export const redis = () => ({
 export const auth = () => ({
   jwtSecret: getConfig().JWT_SECRET,
   jwtExpiresIn: getConfig().JWT_EXPIRES_IN,
+  /** Access-token TTL (seconds). Short-lived; default 15 minutes. */
+  accessTokenTtlSeconds: getConfig().ACCESS_TOKEN_TTL_SECONDS,
+  /** Refresh-token TTL (days). Long-lived; default 30 days. */
+  refreshTokenTtlDays: getConfig().REFRESH_TOKEN_TTL_DAYS,
   clerkSecretKey: getConfig().CLERK_SECRET_KEY,
 });
 

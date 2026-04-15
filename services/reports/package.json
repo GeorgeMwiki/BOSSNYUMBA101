@@ -22,7 +22,9 @@
     "nodemailer": "^6.10.1",
     "pdfkit": "^0.15.2",
     "uuid": "^9.0.0",
-    "@bossnyumba/domain-models": "workspace:*"
+    "@bossnyumba/domain-models": "workspace:*",
+    "@bossnyumba/database": "workspace:*",
+    "drizzle-orm": "^0.29.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

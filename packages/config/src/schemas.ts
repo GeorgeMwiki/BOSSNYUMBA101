@@ -41,6 +41,18 @@ export const authSchema = z.object({
     .string()
     .default('7d')
     .describe('JWT token expiration time'),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(900)
+    .describe('Access token (JWT) lifetime in seconds. Default 15 minutes.'),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30)
+    .describe('Refresh token lifetime in days. Default 30 days.'),
   CLERK_SECRET_KEY: z
     .string()
     .optional()

@@ -31,3 +31,7 @@ export { MessagingRepository } from './messaging.repository.js';
 export { SchedulingRepository } from './scheduling.repository.js';
 export { UtilitiesRepository } from './utilities.repository.js';
 export { ComplianceRepository, DocumentRepository } from './compliance.repository.js';
+export {
+  RefreshTokenRepository,
+  type CreateRefreshTokenInput,
+} from './refresh-token.repository.js';

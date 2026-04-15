@@ -144,6 +144,18 @@ export const requirePermission = (...permissions: string[]) => {
   };
 };
 
-export const generateToken = (payload: Omit<JWTPayload, 'exp' | 'iat'>): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+/**
+ * Default access-token lifetime when no env override is supplied. Kept at 24h
+ * so unrelated callers/tests that rely on the legacy long-lived JWTs continue
+ * to work; the auth router itself uses ACCESS_TOKEN_TTL_SECONDS (default 900s)
+ * for tokens that are paired with a refresh token.
+ */
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+
+export const generateToken = (
+  payload: Omit<JWTPayload, 'exp' | 'iat'>,
+  options?: { expiresInSeconds?: number }
+): string => {
+  const ttl = options?.expiresInSeconds ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: ttl });
 };

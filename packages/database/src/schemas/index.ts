@@ -118,3 +118,6 @@ export * from './jurisdiction-config.schema.js';
 
 // Subprocessor registry (DPA gates, kill-switches)
 export * from './subprocessors.schema.js';
+
+// Refresh tokens (rotation + compromise detection)
+export * from './refresh-tokens.schema.js';
