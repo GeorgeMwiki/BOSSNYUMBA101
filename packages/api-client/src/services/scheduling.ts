@@ -160,8 +160,10 @@ export const schedulingService = {
    */
   async getCalendar(startDate: string, endDate: string): Promise<ApiResponse<ScheduleEvent[]>> {
     return getApiClient().get<ScheduleEvent[]>('/scheduling/calendar', {
-      startDate,
-      endDate,
+      params: {
+        startDate,
+        endDate,
+      },
     });
   },
 };

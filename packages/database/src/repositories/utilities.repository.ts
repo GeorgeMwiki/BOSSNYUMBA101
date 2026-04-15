@@ -22,6 +22,11 @@ import {
 import type { TenantId } from '@bossnyumba/domain-models';
 import { buildPaginatedResult } from './base.repository.js';
 
+type UtilityType =
+  (typeof utilityAccounts)['_']['columns']['utilityType']['_']['data'];
+type UtilityBillStatus =
+  (typeof utilityBills)['_']['columns']['status']['_']['data'];
+
 export class UtilitiesRepository {
   constructor(private db: DatabaseClient) {}
 
@@ -49,7 +54,7 @@ export class UtilitiesRepository {
     options?: {
       propertyId?: string;
       unitId?: string;
-      utilityType?: string;
+      utilityType?: UtilityType;
       limit?: number;
       offset?: number;
     }
@@ -80,10 +85,11 @@ export class UtilitiesRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const totalRows = await this.db
       .select({ total: count() })
       .from(utilityAccounts)
       .where(and(...conditions));
+    const total = totalRows[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -125,7 +131,7 @@ export class UtilitiesRepository {
 
   async getBills(
     accountId: string,
-    options?: { status?: string; limit?: number; offset?: number }
+    options?: { status?: UtilityBillStatus; limit?: number; offset?: number }
   ) {
     const limit = options?.limit ?? 50;
     const offset = options?.offset ?? 0;
@@ -148,14 +154,14 @@ export class UtilitiesRepository {
   async updateBillStatus(
     id: string,
     accountId: string,
-    status: string,
+    status: UtilityBillStatus,
     paidAt?: Date
   ) {
     const [row] = await this.db
       .update(utilityBills)
       .set({
         status,
-        paidAt: status === 'paid' ? paidAt ?? new Date() : undefined,
+        paidAt: status === 'paid' ? paidAt ?? new Date() : null,
         updatedAt: new Date(),
       })
       .where(and(eq(utilityBills.id, id), eq(utilityBills.accountId, accountId)))
