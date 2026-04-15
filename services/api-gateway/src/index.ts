@@ -176,8 +176,28 @@ function gracefulShutdown(signal: string) {
 
 let server: ReturnType<typeof app.listen> | null = null;
 
+// Boot the jurisdiction registry (seeds synchronously, hydrates from DB
+// asynchronously, refreshes periodically). Must run BEFORE any route
+// handler consults getJurisdiction/getTaxRate/isSubprocessorBlocked.
+async function bootJurisdictionRegistry(): Promise<void> {
+  try {
+    const { bootstrapJurisdictions } = await import('@bossnyumba/domain-models');
+    // DB loader is intentionally left undefined for now — the seeds
+    // (TZ/KE/NG/ZA) are sufficient until the jurisdiction_configs
+    // table is populated in production. When the admin portal
+    // starts writing to that table, pass a dbLoader that SELECTs
+    // from it and maps rows to JurisdictionConfig.
+    await bootstrapJurisdictions({
+      logger: logger as unknown as Parameters<typeof bootstrapJurisdictions>[0] extends { logger?: infer L } ? L : never,
+    });
+  } catch (err) {
+    logger.error({ err }, 'jurisdiction bootstrap failed — falling back to hardcoded seeds');
+  }
+}
+
 // Start server
 if (require.main === module) {
+  void bootJurisdictionRegistry();
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });
