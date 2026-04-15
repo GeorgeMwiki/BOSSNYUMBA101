@@ -7,14 +7,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
-import {
-  tenants,
-  users,
-  roles,
-  userRoles,
-  RefreshTokenRepository,
-} from '@bossnyumba/database';
-import { auth as authConfig } from '@bossnyumba/config';
+import { tenants, users, roles, userRoles, memberships } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
 import { activatePendingMemberships } from './memberships.hono';
 
@@ -416,6 +409,10 @@ app.post('/login', async (c) => {
     role: record.role,
     permissions: record.permissions,
     propertyAccess: record.propertyAccess,
+    // Default active org on login is the user's home tenant. Callers can
+    // switch later via POST /auth/switch-org or per-request via the
+    // X-Active-Org header (validated by hono-auth.ts).
+    activeOrgId: record.tenantId,
   });
 
   const deviceId = readDeviceId(c);
@@ -436,9 +433,8 @@ app.post('/login', async (c) => {
       role: record.role,
       permissions: record.permissions,
       properties: record.propertyAccess,
-      memberships,
       activeOrgId: record.tenantId,
-      expiresAt: access.expiresAt,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
   });
 });
@@ -446,63 +442,111 @@ app.post('/login', async (c) => {
 app.get('/me', authMiddleware, async (c) => {
   const auth = c.get('auth');
 
-  // Honor X-Active-Org header: if the caller provides it and it resolves to a
-  // tenant the user is a member of, hydrate against that tenant.
-  const requestedOrg = c.req.header('x-active-org') || c.req.header('X-Active-Org');
+app.post('/refresh', authMiddleware, async (c) => {
+  const auth = c.get('auth');
+  // Preserve the home tenant in the JWT's `tenantId` claim so refresh
+  // does not silently elevate a session into whatever org happened to be
+  // active when the refresh fired. The active org rides along on its
+  // own claim and continues to scope the next request.
+  const token = generateToken({
+    userId: auth.userId,
+    tenantId: auth.homeTenantId ?? auth.tenantId,
+    role: auth.role,
+    permissions: auth.permissions,
+    propertyAccess: auth.propertyAccess,
+    activeOrgId: auth.activeOrgId ?? auth.tenantId,
+  });
+  return c.json({
+    success: true,
+    data: {
+      token,
+      activeOrgId: auth.activeOrgId ?? auth.tenantId,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    },
+  });
+});
 
-  const db = getDatabaseClient();
-  if (!db) {
-    return c.json({
-      success: true,
-      data: {
-        user: {
-          id: auth.userId,
-          tenantId: auth.tenantId,
-        },
-        role: auth.role,
-        permissions: auth.permissions,
-        properties: auth.propertyAccess,
-        memberships: [],
-        activeOrgId: auth.tenantId,
-      },
-    });
+/**
+ * POST /auth/switch-org
+ * Body: { tenantId | orgId: string }
+ *
+ * Re-issues the JWT with `activeOrgId = targetOrg`. The caller must have
+ * an `active` membership in the target tenant (or it must be their home
+ * tenant). Authorisation is checked here in the route — the per-request
+ * `X-Active-Org` validation in hono-auth.ts is a separate layer.
+ */
+app.post('/switch-org', authMiddleware, async (c) => {
+  const auth = c.get('auth');
+  let body: { tenantId?: string; orgId?: string } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    body = {};
   }
-
-  // Resolve the primary record to get the email, then list memberships.
-  const primary = await resolveUserForTenant(auth.userId, auth.tenantId);
-  if (!primary) {
+  const targetId = ((body.tenantId || body.orgId || '') as string).trim();
+  if (!targetId) {
     return c.json(
-      {
-        success: false,
-        error: { code: 'USER_NOT_FOUND', message: 'Authenticated user no longer exists.' },
-      },
-      404
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'tenantId is required.' } },
+      400
     );
   }
 
-  const memberships = await resolveMembershipsForEmail(primary.email);
+  const homeTenantId = auth.homeTenantId ?? auth.tenantId;
 
-  let active = primary;
-  let activeOrgId = auth.tenantId;
-  if (requestedOrg && memberships.some((m) => m.tenantId === requestedOrg)) {
-    const match = memberships.find((m) => m.tenantId === requestedOrg)!;
-    const switched = await resolveUserForTenant(match.userId, match.tenantId);
-    if (switched) {
-      active = switched;
-      activeOrgId = match.tenantId;
+  if (targetId !== homeTenantId) {
+    const db = getDatabaseClient();
+    if (!db) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'AUTH_NOT_CONFIGURED',
+            message: 'Org switching requires a live database connection.',
+          },
+        },
+        503
+      );
+    }
+    const rows = await db
+      .select({ id: memberships.id })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.userId, auth.userId),
+          eq(memberships.tenantId, targetId),
+          eq(memberships.status, 'active'),
+        ),
+      )
+      .limit(1);
+    if (rows.length === 0) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_ACTIVE_ORG',
+            message: 'You do not have an active membership in the requested organization.',
+          },
+        },
+        403
+      );
     }
   }
+
+  const token = generateToken({
+    userId: auth.userId,
+    tenantId: homeTenantId,
+    role: auth.role,
+    permissions: auth.permissions,
+    propertyAccess: auth.propertyAccess,
+    activeOrgId: targetId,
+  });
 
   return c.json({
     success: true,
     data: {
-      user: buildUserPayload(active),
-      tenant: buildTenantPayload(active),
-      role: active.role,
-      permissions: active.permissions,
-      properties: active.propertyAccess,
-      memberships,
-      activeOrgId,
+      token,
+      activeOrgId: targetId,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
   });
 });

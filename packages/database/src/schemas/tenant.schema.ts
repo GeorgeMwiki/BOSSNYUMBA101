@@ -419,6 +419,60 @@ export const auditEvents = pgTable(
 );
 
 // ============================================================================
+// Memberships Table
+// ============================================================================
+//
+// A membership attaches a user (or a not-yet-registered invite_email) to a
+// tenant with a role. The active-org middleware reads this table to verify
+// that a caller's `X-Active-Org` header points at a tenant they actually
+// belong to (status = 'active'). Pending rows are auto-activated on the
+// invitee's first login (see routes/auth.ts).
+
+export const memberships = pgTable(
+  'memberships',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+    // Target user (null while still a pending invite)
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    inviteEmail: text('invite_email'),
+
+    // Role granted on activation
+    role: text('role').notNull().default('member'),
+
+    // Invitation state
+    status: membershipStatusEnum('status').notNull().default('pending'),
+    inviteToken: text('invite_token'),
+    inviteExpiresAt: timestamp('invite_expires_at', { withTimezone: true }),
+    invitedBy: text('invited_by'),
+
+    // Lifecycle
+    invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+
+    // Timestamps
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: text('created_by'),
+    updatedBy: text('updated_by'),
+  },
+  (table) => ({
+    tenantIdx: index('memberships_tenant_idx').on(table.tenantId),
+    userIdx: index('memberships_user_idx').on(table.userId),
+    statusIdx: index('memberships_status_idx').on(table.status),
+    inviteEmailIdx: index('memberships_invite_email_idx').on(table.inviteEmail),
+    inviteTokenIdx: uniqueIndex('memberships_invite_token_idx').on(table.inviteToken),
+    userTenantStatusIdx: index('memberships_user_tenant_status_idx').on(
+      table.userId,
+      table.tenantId,
+      table.status,
+    ),
+  })
+);
+
+// ============================================================================
 // Relations
 // ============================================================================
 
@@ -427,6 +481,18 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
   roles: many(roles),
   sessions: many(sessions),
+  memberships: many(memberships),
+}));
+
+export const membershipsRelations = relations(memberships, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [memberships.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [memberships.userId],
+    references: [users.id],
+  }),
 }));
 
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
