@@ -107,7 +107,9 @@ export class FraudDetectionService {
     this.documentRepository = options.documentRepository;
     this.storageProvider = options.storageProvider;
     this.fraudScoreRepository = options.fraudScoreRepository;
-    this.imageAnalyzer = options.imageAnalyzer;
+    if (options.imageAnalyzer !== undefined) {
+      this.imageAnalyzer = options.imageAnalyzer;
+    }
     this.config = { ...DEFAULT_CONFIG, ...options.config };
   }
 

@@ -268,6 +268,7 @@ export function validationErrorHook(
       400
     );
   }
+  return undefined;
 }
 
 // ============================================================================

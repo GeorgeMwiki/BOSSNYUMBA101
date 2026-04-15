@@ -125,7 +125,9 @@ export class ExpiryTrackingService {
   constructor(options: ExpiryTrackingServiceOptions) {
     this.documentRepository = options.documentRepository;
     this.expiryRepository = options.expiryTrackerRepository;
-    this.notificationService = options.notificationService;
+    if (options.notificationService !== undefined) {
+      this.notificationService = options.notificationService;
+    }
     this.config = { ...DEFAULT_CONFIG, ...options.config };
   }
 

@@ -19,22 +19,25 @@ export function levenshteinDistance(str1: string, str2: string): number {
     matrix[i] = [i];
   }
 
+  const row0 = matrix[0]!;
   for (let j = 0; j <= n; j++) {
-    matrix[0][j] = j;
+    row0[j] = j;
   }
 
   for (let i = 1; i <= m; i++) {
+    const row = matrix[i]!;
+    const prev = matrix[i - 1]!;
     for (let j = 1; j <= n; j++) {
       const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
+      row[j] = Math.min(
+        (prev[j] ?? 0) + 1,
+        (row[j - 1] ?? 0) + 1,
+        (prev[j - 1] ?? 0) + cost
       );
     }
   }
 
-  return matrix[m][n];
+  return matrix[m]![n]!;
 }
 
 /**
@@ -119,17 +122,18 @@ export function extractNameParts(fullName: string): {
   }
 
   if (parts.length === 1) {
-    return { firstName: parts[0], middleName: null, lastName: parts[0] };
+    const only = parts[0]!;
+    return { firstName: only, middleName: null, lastName: only };
   }
 
   if (parts.length === 2) {
-    return { firstName: parts[0], middleName: null, lastName: parts[1] };
+    return { firstName: parts[0]!, middleName: null, lastName: parts[1]! };
   }
 
   return {
-    firstName: parts[0],
+    firstName: parts[0]!,
     middleName: parts.slice(1, -1).join(' ') || null,
-    lastName: parts[parts.length - 1],
+    lastName: parts[parts.length - 1]!,
   };
 }
 

@@ -15,6 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": ["node", "pdfkit", "uuid", "crypto-js"],
     "noEmit": false
   },
   "include": ["src/**/*.ts"],

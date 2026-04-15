@@ -152,8 +152,12 @@ export class EvidencePackBuilderService {
     this.documentRepository = options.documentRepository;
     this.storageProvider = options.storageProvider;
     this.evidencePackRepository = options.evidencePackRepository;
-    this.pdfGenerator = options.pdfGenerator;
-    this.communicationLogProvider = options.communicationLogProvider;
+    if (options.pdfGenerator !== undefined) {
+      this.pdfGenerator = options.pdfGenerator;
+    }
+    if (options.communicationLogProvider !== undefined) {
+      this.communicationLogProvider = options.communicationLogProvider;
+    }
     this.config = { ...DEFAULT_CONFIG, ...options.config };
   }
 
@@ -461,8 +465,8 @@ export class EvidencePackBuilderService {
       type,
       title: packTitle,
       description: `Auto-generated evidence pack for ${type.replace('_', ' ')}`,
-      caseId,
-      leaseId,
+      ...(caseId !== undefined ? { caseId } : {}),
+      ...(leaseId !== undefined ? { leaseId } : {}),
       documentIds: relevantDocuments.map(d => d.id),
       includeTimeline: true,
     });

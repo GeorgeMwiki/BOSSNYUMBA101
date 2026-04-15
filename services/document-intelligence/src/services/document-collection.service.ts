@@ -133,7 +133,9 @@ export class DocumentCollectionService {
     this.repository = options.repository;
     this.storage = options.storage;
     this.imageAnalyzer = options.imageAnalyzer;
-    this.notificationService = options.notificationService;
+    if (options.notificationService !== undefined) {
+      this.notificationService = options.notificationService;
+    }
     this.config = { ...DEFAULT_CONFIG, ...options.config };
   }
 

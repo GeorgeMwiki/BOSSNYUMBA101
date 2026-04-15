@@ -26,7 +26,6 @@ import type {
   ExpiryTrackerId,
   ExpiryTracker,
   ExpiryType,
-  OcrExtractionId,
   OCRExtractionResult,
   ISOTimestamp,
 } from '../types/index.js';
@@ -96,10 +95,10 @@ export interface OCRExtractionFilter {
 
 export interface IOCRExtractionRepository {
   create(extraction: OCRExtractionResult): Promise<OCRExtractionResult>;
-  findById(id: OcrExtractionId): Promise<OCRExtractionResult | null>;
+  findById(id: string): Promise<OCRExtractionResult | null>;
   findByDocumentId(documentId: DocumentId): Promise<OCRExtractionResult | null>;
-  update(id: OcrExtractionId, updates: Partial<OCRExtractionResult>): Promise<OCRExtractionResult | null>;
-  delete(id: OcrExtractionId): Promise<boolean>;
+  update(id: string, updates: Partial<OCRExtractionResult>): Promise<OCRExtractionResult | null>;
+  delete(id: string): Promise<boolean>;
   findByFilter(filter: OCRExtractionFilter, pagination: PaginationParams): Promise<PaginatedResult<OCRExtractionResult>>;
 }
 
