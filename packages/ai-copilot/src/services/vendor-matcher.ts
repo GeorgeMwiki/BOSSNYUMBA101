@@ -18,10 +18,9 @@ import { z } from 'zod';
 import { VENDOR_MATCHING_PROMPT } from '../prompts/index.js';
 import {
   AnthropicProvider,
-  AnthropicProviderConfig,
-  createAnthropicProvider,
+  type AnthropicProviderConfig,
 } from '../providers/anthropic-provider.js';
-import { MODEL_DEFAULTS } from '../providers/model-defaults.js';
+import { DEFAULT_MODEL_DEFAULTS, ModelTask, modelForTask } from '../providers/model-defaults.js';
 import { asPromptId } from '../types/core.types.js';
 import type { CompiledPrompt } from '../types/prompt.types.js';
 
@@ -208,7 +207,7 @@ export class VendorMatcherService {
     if (config.anthropicProvider) {
       this.anthropic = config.anthropicProvider;
     } else if (config.anthropicApiKey) {
-      this.anthropic = createAnthropicProvider({
+      this.anthropic = new AnthropicProvider({
         apiKey: config.anthropicApiKey,
         ...config.anthropicConfig,
       });
@@ -222,7 +221,9 @@ export class VendorMatcherService {
 
     this.model =
       config.model ??
-      (this.anthropic ? MODEL_DEFAULTS.MATCHING : 'gpt-4-turbo-preview');
+      (this.anthropic
+        ? modelForTask(ModelTask.MATCHING, DEFAULT_MODEL_DEFAULTS)
+        : 'gpt-4-turbo-preview');
     this.temperature = config.temperature ?? 0.2;
     this.maxTokens = config.maxTokens ?? 2048;
   }
@@ -277,7 +278,7 @@ export class VendorMatcherService {
       prompt: compiled,
       jsonMode: true,
     });
-    if (!result.success) {
+    if (result.success === false) {
       throw new Error(
         `Anthropic vendor-matcher call failed: ${result.error.message}`
       );

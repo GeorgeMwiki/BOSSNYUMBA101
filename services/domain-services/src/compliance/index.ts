@@ -1867,7 +1867,7 @@ export class KycService {
       verifiedBy: actor,
       expiresAt: expiresAt ?? null,
     });
-    if (transitioned.ok) {
+    if (transitioned.success) {
       await this.eventBus.publish(
         createEventEnvelope(
           {

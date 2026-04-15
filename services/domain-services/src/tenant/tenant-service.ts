@@ -348,7 +348,7 @@ export class TenantService {
     }
     
     // Check if tenant is active/pending before allowing plan changes
-    if (existing.status !== 'active' as TenantStatus && existing.status !== 'pending_setup') {
+    if (existing.status !== 'active' as TenantStatus && existing.status !== ('pending' as TenantStatus)) {
       return err({
         code: TenantServiceError.TENANT_NOT_FOUND,
         message: `Cannot change subscription while tenant is ${existing.status}`,

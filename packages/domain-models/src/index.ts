@@ -42,10 +42,19 @@ export {
   type CreateUserInput,
   type UpdateUserInput,
   type InviteUserInput,
+  buildDisplayName,
+  canUserLogin,
+  normalizeEmail,
+  SECURITY_CONSTANTS,
 } from './identity/user';
 export * from './identity/role';
 export {
   type Session,
+  type CreateSessionInput,
+  type DeviceInfo,
+  type GeoLocation,
+  AuthMethod,
+  SESSION_CONSTANTS,
 } from './identity/session';
 export * from './identity/policy';
 
@@ -265,6 +274,8 @@ export {
   pauseSLA,
   resumeSLA,
   isResponseSLABreached,
+  isResolutionSLABreached,
+  generateWorkOrderNumber,
 } from './maintenance/work-order';
 
 export * from './maintenance/inspection';

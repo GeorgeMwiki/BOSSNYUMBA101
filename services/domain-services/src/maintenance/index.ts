@@ -34,7 +34,7 @@ import {
   triageWorkOrder,
   assignWorkOrder,
   scheduleWorkOrder,
-  startWork,
+  startWorkOrderWork as startWork,
   completeWorkOrder,
   verifyCompletion,
   escalateWorkOrder,
