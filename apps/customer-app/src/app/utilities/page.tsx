@@ -1,46 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { Zap, Droplets, Plus, ChevronRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { Plus, ChevronRight, Zap } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const utilities = [
-  {
-    id: 'water',
-    type: 'Water',
-    icon: Droplets,
-    lastReading: 245,
-    unit: 'm³',
-    dueDate: '2024-03-01',
-    amount: 3200,
-    status: 'pending' as const,
-  },
-  {
-    id: 'electricity',
-    type: 'Electricity',
-    icon: Zap,
-    lastReading: 1250,
-    unit: 'kWh',
-    dueDate: '2024-03-01',
-    amount: 8750,
-    status: 'paid' as const,
-  },
-];
+interface UtilityReading {
+  id: string;
+  type: string;
+  icon: LucideIcon;
+  lastReading: number;
+  unit: string;
+  dueDate: string;
+  amount: number;
+  status: 'pending' | 'paid';
+}
 
-const recentBills = [
-  {
-    id: '1',
-    month: 'February 2024',
-    total: 11950,
-    paid: true,
-  },
-  {
-    id: '2',
-    month: 'January 2024',
-    total: 10800,
-    paid: true,
-  },
-];
+interface UtilityBill {
+  id: string;
+  month: string;
+  total: number;
+  paid: boolean;
+}
+
+// Utility readings and bill history are gated on live utility APIs.
+// Until wired, render empty states rather than seeded entries.
+const utilities: UtilityReading[] = [];
+const recentBills: UtilityBill[] = [];
 
 export default function UtilitiesPage() {
   return (
@@ -80,6 +66,11 @@ export default function UtilitiesPage() {
           <h3 className="text-sm font-medium text-gray-500 mb-3">
             Current Readings
           </h3>
+          {utilities.length === 0 && (
+            <div className="card p-4 text-sm text-gray-500">
+              No utility readings yet. Submit a new reading to get started.
+            </div>
+          )}
           <div className="space-y-3">
             {utilities.map((util) => {
               const Icon = util.icon;
