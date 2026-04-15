@@ -55,17 +55,27 @@ export const schedulingSlots = createTableProxy('schedulingSlots');
 export const documents = createTableProxy('documents');
 export const complianceRecords = createTableProxy('complianceRecords');
 export const auditLogs = createTableProxy('auditLogs');
+export const outboxEvents = createTableProxy('outboxEvents');
+export const auditEvents = createTableProxy('auditEvents');
 
 // ---------------------------------------------------------------------------
-// Repository base - all methods return empty / throw "not available in tests"
+// Repository base - returns empty results/paginated shells; mutations throw
 // ---------------------------------------------------------------------------
 
 function notAvailable(method: string): never {
   throw new Error(
     `[database-test-shim] ${method} is not implemented in test shim. ` +
-      `Routes should use in-memory mock data for NODE_ENV=test.`,
+      `Routes must use in-memory mock data when NODE_ENV=test.`,
   );
 }
+
+const EMPTY_PAGINATED = Object.freeze({
+  items: [] as unknown[],
+  total: 0,
+  limit: 20,
+  offset: 0,
+  hasMore: false,
+});
 
 class ShimRepository {
   constructor(public db: unknown) {}
@@ -73,11 +83,20 @@ class ShimRepository {
   async findById(): Promise<null> {
     return null;
   }
-  async findMany(): Promise<unknown[]> {
-    return [];
+  async findMany(): Promise<typeof EMPTY_PAGINATED> {
+    return EMPTY_PAGINATED;
   }
   async findAll(): Promise<unknown[]> {
     return [];
+  }
+  async findByProperty(): Promise<typeof EMPTY_PAGINATED> {
+    return EMPTY_PAGINATED;
+  }
+  async findByCustomer(): Promise<typeof EMPTY_PAGINATED> {
+    return EMPTY_PAGINATED;
+  }
+  async findByTenant(): Promise<typeof EMPTY_PAGINATED> {
+    return EMPTY_PAGINATED;
   }
   async count(): Promise<number> {
     return 0;
@@ -91,6 +110,9 @@ class ShimRepository {
   async delete(): Promise<unknown> {
     return notAvailable('delete');
   }
+  async softDelete(): Promise<unknown> {
+    return notAvailable('softDelete');
+  }
 }
 
 export class TenantRepository extends ShimRepository {}
@@ -101,13 +123,43 @@ export class CustomerRepository extends ShimRepository {}
 export class LeaseRepository extends ShimRepository {}
 export class InvoiceRepository extends ShimRepository {}
 export class PaymentRepository extends ShimRepository {}
+export class TransactionRepository extends ShimRepository {}
 export class WorkOrderRepository extends ShimRepository {}
 export class VendorRepository extends ShimRepository {}
 export class MessagingRepository extends ShimRepository {}
 export class InspectionRepository extends ShimRepository {}
 export class SchedulingRepository extends ShimRepository {}
+export class UtilitiesRepository extends ShimRepository {}
 export class ComplianceRepository extends ShimRepository {}
 export class DocumentRepository extends ShimRepository {}
+
+// ---------------------------------------------------------------------------
+// Filter / result types (kept permissive for the test shim)
+// ---------------------------------------------------------------------------
+
+export type CustomerFilters = Record<string, unknown>;
+export type LeaseFilters = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+// Pagination helpers (mirrors real base.repository surface)
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_PAGINATION = { limit: 20, offset: 0 } as const;
+
+export function buildPaginatedResult<T>(
+  items: T[],
+  total: number,
+  limit = DEFAULT_PAGINATION.limit,
+  offset = DEFAULT_PAGINATION.offset,
+) {
+  return {
+    items,
+    total,
+    limit,
+    offset,
+    hasMore: offset + items.length < total,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Database client factory
