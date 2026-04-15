@@ -397,6 +397,11 @@ export default function MaintenancePage() {
 
           {/* Submit Button */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 safe-area-bottom">
+            {submitError && (
+              <div className="mb-3 rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+                {submitError}
+              </div>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}

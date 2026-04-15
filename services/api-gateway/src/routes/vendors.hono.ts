@@ -28,6 +28,12 @@ app.get('/', async (c) => {
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });
 
+// TODO: wire to real store — vendor contracts collection used by the
+// owner portal. Declared before `/:id` so the static segment wins.
+app.get('/contracts', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
 app.get('/available', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
