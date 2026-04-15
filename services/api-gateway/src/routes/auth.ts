@@ -247,4 +247,79 @@ app.post('/forgot-password', (c) =>
   c.json({ success: false, error: { code: 'LIVE_DATA_NOT_IMPLEMENTED', message: 'Password reset is not enabled.' } }, 503)
 );
 
+// TODO: wire to real store — MFA setup should enrol a TOTP secret and
+// return a provisioning URI / QR code. Scaffold returns a placeholder
+// secret so the owner portal setup screen can render.
+app.post('/mfa/setup', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  return c.json({
+    success: true,
+    data: {
+      email: body.email ?? null,
+      secret: 'MFA_SECRET_PLACEHOLDER',
+      otpauthUrl: `otpauth://totp/BOSSNYUMBA:${encodeURIComponent(body.email ?? 'user')}?secret=MFA_SECRET_PLACEHOLDER&issuer=BOSSNYUMBA`,
+      qrCode: null,
+    },
+  });
+});
+
+// TODO: wire to real store — verify a TOTP code. Scaffold accepts any
+// 6-digit numeric code so the UI flow can be exercised end-to-end in dev.
+app.post('/mfa/verify', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { email?: string; code?: string };
+  if (!body.code || !/^\d{6}$/.test(body.code)) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_CODE', message: 'MFA code must be 6 digits.' } },
+      400
+    );
+  }
+  return c.json({
+    success: true,
+    data: { email: body.email ?? null, verified: true, verifiedAt: new Date().toISOString() },
+  });
+});
+
+// TODO: wire to real store — confirm email via one-time token.
+app.post('/verify-email', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { email?: string; code?: string };
+  return c.json({
+    success: true,
+    data: { email: body.email ?? null, verified: true, verifiedAt: new Date().toISOString() },
+  });
+});
+
+// TODO: wire to real store — accept an invitation and provision the
+// underlying user account. Scaffold echoes acceptance so the UI flow
+// can proceed to the login screen.
+app.post('/accept-invite', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { token?: string; password?: string };
+  if (!body.token) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_TOKEN', message: 'Invite token is required.' } },
+      400
+    );
+  }
+  return c.json({
+    success: true,
+    data: { accepted: true, acceptedAt: new Date().toISOString() },
+  });
+});
+
+// TODO: wire to real store — look up pending invite by token so the
+// invite landing page can show the inviter / tenant context.
+app.get('/invite/:token', (c) => {
+  const token = c.req.param('token');
+  return c.json({
+    success: true,
+    data: {
+      token,
+      email: null,
+      tenantName: null,
+      role: null,
+      expiresAt: null,
+      status: 'pending',
+    },
+  });
+});
+
 export const authRouter = app;

@@ -1,29 +1,34 @@
 'use client';
 
-import { Home, Calendar, Wrench } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const stats = [
-  {
-    label: 'Unit',
-    value: 'A-204',
-    icon: Home,
-    color: 'bg-primary-50 text-primary-600',
-  },
-  {
-    label: 'Lease Ends',
-    value: '45 days',
-    icon: Calendar,
-    color: 'bg-warning-50 text-warning-600',
-  },
-  {
-    label: 'Open Tickets',
-    value: '1',
-    icon: Wrench,
-    color: 'bg-success-50 text-success-600',
-  },
-];
+export interface DashboardStat {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  color: string;
+}
 
-export function DashboardStats() {
+interface DashboardStatsProps {
+  stats?: DashboardStat[];
+  loading?: boolean;
+  error?: string | null;
+}
+
+export function DashboardStats({ stats, loading, error }: DashboardStatsProps) {
+  if (loading) {
+    return <div className="card p-3 text-sm text-gray-500">Loading stats...</div>;
+  }
+  if (error) {
+    return (
+      <div className="card border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+        {error}
+      </div>
+    );
+  }
+  if (!stats || stats.length === 0) {
+    return null;
+  }
   return (
     <div className="grid grid-cols-3 gap-3">
       {stats.map((stat) => {
