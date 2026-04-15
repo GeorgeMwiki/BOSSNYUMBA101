@@ -27,10 +27,8 @@ import {
   type CreateSessionInput,
   type DeviceInfo,
   type GeoLocation,
-  UserStatus,
   UserType,
   RoleType,
-  SessionStatus,
   AuthMethod,
   SECURITY_CONSTANTS,
   SESSION_CONSTANTS,
@@ -45,6 +43,11 @@ import {
   err,
   type Result,
 } from '@bossnyumba/domain-models';
+// Import UserStatus/SessionStatus directly from their identity modules
+// (UPPERCASE constants) to avoid the lowercase variants in common/enums
+// that the barrel picks up first.
+import { UserStatus } from '@bossnyumba/domain-models/identity/user';
+import { SessionStatus } from '@bossnyumba/domain-models/identity/session';
 import type {
   UserRepository,
   RoleRepository,

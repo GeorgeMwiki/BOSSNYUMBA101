@@ -36,6 +36,21 @@
       "types": "./dist/maintenance/index.d.ts",
       "import": "./dist/maintenance/index.mjs",
       "require": "./dist/maintenance/index.js"
+    },
+    "./audit/audit-event": {
+      "types": "./dist/audit/audit-event.d.ts",
+      "import": "./dist/audit/audit-event.mjs",
+      "require": "./dist/audit/audit-event.js"
+    },
+    "./identity/user": {
+      "types": "./dist/identity/user.d.ts",
+      "import": "./dist/identity/user.mjs",
+      "require": "./dist/identity/user.js"
+    },
+    "./identity/session": {
+      "types": "./dist/identity/session.d.ts",
+      "import": "./dist/identity/session.mjs",
+      "require": "./dist/identity/session.js"
     }
   },
   "files": [

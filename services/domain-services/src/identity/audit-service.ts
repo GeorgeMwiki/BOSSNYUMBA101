@@ -23,12 +23,15 @@ import {
   AuditCategory,
   AuditSeverity,
   AuditOutcome,
-  AuditEventType,
   getCategoryForEventType,
   getDefaultSeverityForEventType,
   buildAuditDescription,
   asAuditEventId,
 } from '@bossnyumba/domain-models';
+// Import audit's AuditEventType (UPPERCASE strings) directly via the
+// deep import path to bypass the common/enums AuditEventType that also
+// re-exports from the barrel but uses lowercase strings.
+import { AuditEventType } from '@bossnyumba/domain-models/audit/audit-event';
 import type { AuditEventRepository, UnitOfWork } from '../common/repository.js';
 
 /** Audit service for recording and querying audit events */
