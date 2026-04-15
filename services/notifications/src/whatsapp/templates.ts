@@ -1428,3 +1428,267 @@ export function detectLanguage(text: string): SupportedLanguage {
 
   return 'en';
 }
+
+// ============================================================================
+// Meta-Approved Template Registry
+// ============================================================================
+//
+// WhatsApp Business templates must be pre-approved by Meta before they can be
+// sent outside of the 24-hour customer-service window. Each entry below maps
+// our internal identifier to the template name registered with Meta, the
+// approved category/locale pair, and the ordered list of body/header/button
+// variables used for substitution via the Cloud API.
+//
+// Template category reference:
+//   - UTILITY        Transactional updates (payment, booking, appointment)
+//   - MARKETING      Promotional content (requires explicit opt-in)
+//   - AUTHENTICATION One-time passcodes
+//
+// The `variables` array mirrors the `{{1}}, {{2}}, ...` placeholders Meta
+// allocates at approval time. Order is significant and must match exactly.
+
+export type MetaTemplateCategory = 'UTILITY' | 'MARKETING' | 'AUTHENTICATION';
+export type MetaTemplateLocale = 'en' | 'sw' | 'en_US' | 'sw_KE' | 'sw_TZ';
+
+export interface MetaTemplateComponentSpec {
+  readonly type: 'header' | 'body' | 'footer' | 'button';
+  readonly subType?: 'quick_reply' | 'url' | 'call_to_action';
+  readonly index?: number;
+  readonly parameters: readonly string[];
+}
+
+export interface MetaTemplateSpec {
+  /** The name registered in WhatsApp Business Manager. */
+  readonly name: string;
+  /** Meta-approved category. */
+  readonly category: MetaTemplateCategory;
+  /** Primary language of the approved template. */
+  readonly language: MetaTemplateLocale;
+  /** Optional list of alternative-language siblings also approved by Meta. */
+  readonly languageFallbacks?: readonly MetaTemplateLocale[];
+  /** Ordered body parameters (maps to {{1}}, {{2}}, ...). */
+  readonly variables: readonly string[];
+  /** Template component layout. */
+  readonly components: readonly MetaTemplateComponentSpec[];
+  /** Short description for operators. */
+  readonly description: string;
+}
+
+export type MetaTemplateKey =
+  | 'onboarding_welcome'
+  | 'move_in_confirmation'
+  | 'rent_reminder'
+  | 'rent_overdue'
+  | 'rent_receipt'
+  | 'lease_expiring'
+  | 'lease_renewal_offer'
+  | 'maintenance_ack'
+  | 'maintenance_update'
+  | 'maintenance_completed'
+  | 'inspection_scheduled'
+  | 'emergency_ack'
+  | 'emergency_resolved'
+  | 'otp_verification';
+
+export const META_TEMPLATE_REGISTRY: Record<MetaTemplateKey, MetaTemplateSpec> = {
+  onboarding_welcome: {
+    name: 'bn_onboarding_welcome',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'propertyName'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'propertyName'] },
+    ],
+    description: 'Welcome message sent when a tenant joins a property.',
+  },
+  move_in_confirmation: {
+    name: 'bn_move_in_confirmation',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'propertyName', 'unitNumber', 'moveInDate'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'propertyName', 'unitNumber', 'moveInDate'] },
+    ],
+    description: 'Confirms tenant move-in details after onboarding.',
+  },
+  rent_reminder: {
+    name: 'bn_rent_reminder',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'amount', 'dueDate', 'propertyName'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'amount', 'dueDate', 'propertyName'] },
+      { type: 'button', subType: 'quick_reply', index: 0, parameters: ['pay_now'] },
+      { type: 'button', subType: 'quick_reply', index: 1, parameters: ['payment_plan'] },
+    ],
+    description: 'Pre-due-date rent reminder with pay-now / payment-plan actions.',
+  },
+  rent_overdue: {
+    name: 'bn_rent_overdue',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'amount', 'daysOverdue', 'lateFee'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'amount', 'daysOverdue', 'lateFee'] },
+      { type: 'button', subType: 'quick_reply', index: 0, parameters: ['pay_now'] },
+    ],
+    description: 'Sent when rent is past due. Includes late-fee disclosure.',
+  },
+  rent_receipt: {
+    name: 'bn_rent_receipt',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'amount', 'paidAt', 'receiptNumber'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'amount', 'paidAt', 'receiptNumber'] },
+      { type: 'button', subType: 'url', index: 0, parameters: ['receiptUrl'] },
+    ],
+    description: 'Payment acknowledgement with a URL to the PDF receipt.',
+  },
+  lease_expiring: {
+    name: 'bn_lease_expiring',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'propertyName', 'expiryDate', 'daysUntilExpiry'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'propertyName', 'expiryDate', 'daysUntilExpiry'] },
+      { type: 'button', subType: 'quick_reply', index: 0, parameters: ['renew_lease'] },
+      { type: 'button', subType: 'quick_reply', index: 1, parameters: ['move_out'] },
+    ],
+    description: 'Notifies tenant that their lease is approaching expiry.',
+  },
+  lease_renewal_offer: {
+    name: 'bn_lease_renewal_offer',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'newRentAmount', 'newTermMonths', 'renewalDeadline'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'newRentAmount', 'newTermMonths', 'renewalDeadline'] },
+      { type: 'button', subType: 'url', index: 0, parameters: ['renewalUrl'] },
+    ],
+    description: 'Lease renewal offer with link to e-sign the new agreement.',
+  },
+  maintenance_ack: {
+    name: 'bn_maintenance_ack',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'workOrderNumber', 'issueCategory', 'estimatedResponseHours'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'workOrderNumber', 'issueCategory', 'estimatedResponseHours'] },
+    ],
+    description: 'Acknowledges a maintenance request with its work-order number.',
+  },
+  maintenance_update: {
+    name: 'bn_maintenance_update',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'workOrderNumber', 'status', 'notes'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'workOrderNumber', 'status', 'notes'] },
+    ],
+    description: 'Status transition update for an open maintenance request.',
+  },
+  maintenance_completed: {
+    name: 'bn_maintenance_completed',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'workOrderNumber', 'completedAt'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'workOrderNumber', 'completedAt'] },
+      { type: 'button', subType: 'quick_reply', index: 0, parameters: ['rate_service'] },
+    ],
+    description: 'Completion notice with a CSAT follow-up quick reply.',
+  },
+  inspection_scheduled: {
+    name: 'bn_inspection_scheduled',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'inspectionType', 'date', 'time'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'inspectionType', 'date', 'time'] },
+      { type: 'button', subType: 'quick_reply', index: 0, parameters: ['confirm_inspection'] },
+      { type: 'button', subType: 'quick_reply', index: 1, parameters: ['reschedule_inspection'] },
+    ],
+    description: 'Schedules a property inspection with confirm/reschedule actions.',
+  },
+  emergency_ack: {
+    name: 'bn_emergency_ack',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'emergencyType', 'responseETA'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'emergencyType', 'responseETA'] },
+    ],
+    description: 'Immediate acknowledgement of a reported emergency.',
+  },
+  emergency_resolved: {
+    name: 'bn_emergency_resolved',
+    category: 'UTILITY',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['tenantName', 'emergencyType', 'resolutionNotes', 'duration'],
+    components: [
+      { type: 'body', parameters: ['tenantName', 'emergencyType', 'resolutionNotes', 'duration'] },
+    ],
+    description: 'Emergency resolution summary for the reporting tenant.',
+  },
+  otp_verification: {
+    name: 'bn_otp_verification',
+    category: 'AUTHENTICATION',
+    language: 'en',
+    languageFallbacks: ['sw'],
+    variables: ['code'],
+    components: [
+      { type: 'body', parameters: ['code'] },
+      { type: 'button', subType: 'url', index: 0, parameters: ['code'] },
+    ],
+    description: 'One-time verification code for tenant logins or sensitive actions.',
+  },
+};
+
+/** Return the Meta template spec, throwing if the key is unknown. */
+export function getMetaTemplate(key: MetaTemplateKey): MetaTemplateSpec {
+  const spec = META_TEMPLATE_REGISTRY[key];
+  if (!spec) {
+    throw new Error(`Unknown Meta template key: ${key}`);
+  }
+  return spec;
+}
+
+/**
+ * Produce an ordered positional-parameter list for a Meta template body
+ * component, given a variable bag. Missing values are rejected to avoid
+ * sending malformed payloads to Meta.
+ */
+export function buildMetaBodyParameters(
+  key: MetaTemplateKey,
+  variables: Record<string, string | number | undefined>
+): string[] {
+  const spec = getMetaTemplate(key);
+  return spec.variables.map((name) => {
+    const value = variables[name];
+    if (value === undefined || value === null || value === '') {
+      throw new Error(
+        `Missing required variable "${name}" for Meta template "${spec.name}"`
+      );
+    }
+    return String(value);
+  });
+}
+
+/** Map an internal template key to the Meta template name registered with WhatsApp. */
+export function resolveMetaTemplateName(key: MetaTemplateKey): string {
+  return getMetaTemplate(key).name;
+}
