@@ -3,7 +3,6 @@
  * For development and testing
  */
 
-import type { PaginationParams, PaginatedResult } from '@bossnyumba/domain-models';
 import type {
   ApprovalRequest,
   ApprovalRequestId,
@@ -14,6 +13,8 @@ import type {
 import type {
   ApprovalRequestRepository,
   ApprovalPolicyRepository,
+  PaginationParams,
+  PaginatedResult,
 } from './approval-repository.interface.js';
 
 const requests = new Map<string, ApprovalRequest>();
