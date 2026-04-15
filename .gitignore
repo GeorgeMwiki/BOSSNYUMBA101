@@ -46,9 +46,13 @@ npm-debug.log*
 .terraform/
 .terraform.lock.hcl
 *.tfvars
+**/terraform.tfvars
 !*.tfvars.example
+!**/terraform.tfvars.example
 !backend.hcl.example
+!**/backend.hcl.example
 backend.hcl
+**/backend.hcl
 crash.log
 override.tf
 override.tf.json

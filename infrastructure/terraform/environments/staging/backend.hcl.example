@@ -1,12 +1,19 @@
 # =============================================================================
-# Staging - Terraform S3 Backend Configuration
+# Staging - Terraform S3 Backend Configuration (EXAMPLE)
 # =============================================================================
-# Copy to backend.hcl: cp backend.hcl.example backend.hcl
-# Then: terraform init -backend-config=backend.hcl
+# Copy this file to backend.hcl (which is gitignored) and adjust if needed.
+# DO NOT commit real values or the resulting backend.hcl file.
+#
+#   cp backend.hcl.example backend.hcl
+#   terraform init -backend-config=backend.hcl
+#
+# Prerequisites (provisioned once, out-of-band):
+#   - S3 bucket with versioning + SSE enabled
+#   - DynamoDB table for state locking (partition key: LockID, type String)
 # =============================================================================
 
-bucket         = "bossnyumba-terraform-state"
-key            = "bossnyumba/staging/terraform.tfstate"
+bucket         = "bossnyumba-tf-state-staging"
+key            = "staging/terraform.tfstate"
 region         = "eu-west-1"
 encrypt        = true
-dynamodb_table = "bossnyumba-terraform-locks"
+dynamodb_table = "bossnyumba-tf-locks-staging"

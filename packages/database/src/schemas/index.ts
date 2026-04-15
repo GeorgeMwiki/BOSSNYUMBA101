@@ -25,3 +25,4 @@ export * from './communications.schema.js';
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';
+export * from './webhook-subscriptions.schema.js';

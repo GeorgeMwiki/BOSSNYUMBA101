@@ -47,6 +47,7 @@ import { createRepositories } from './repositories/factory';
 import { ReconciliationJob } from './jobs/reconciliation.job';
 import { StatementGenerationJob } from './jobs/statement-generation.job';
 import { DisbursementJob } from './jobs/disbursement.job';
+import { createIdempotencyStore } from './idempotency';
 
 // =============================================================================
 // Request Validation Schemas
@@ -170,30 +171,17 @@ obsLogger.info('Observability initialized for payments-ledger', {
  * Upstream api-gateway is expected to propagate user context; fall back to anonymous.
  */
 // -----------------------------------------------------------------------------
-// Idempotency cache (in-process). For multi-replica deployments, back this
-// with Redis — see IDEMPOTENCY_STORE env (not yet implemented, falls back
-// to in-memory with a production warning).
+// Idempotency store. Backed by Redis when IDEMPOTENCY_STORE=redis (safe for
+// multi-replica deploys), else by an in-process Map (single-replica / dev).
+// See ./idempotency for implementation and failure-mode semantics.
 // -----------------------------------------------------------------------------
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const idempotencyStore = createIdempotencyStore();
 
-interface IdempotentEntry {
-  status: number;
-  body: unknown;
-  expiresAt: number;
-}
-
-const idempotencyCache = new Map<string, IdempotentEntry>();
-
-// Best-effort pruning: every 10 minutes drop expired entries so the Map
-// doesn't grow without bound under high throughput.
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of idempotencyCache) {
-    if (v.expiresAt < now) idempotencyCache.delete(k);
-  }
-}, 10 * 60 * 1000).unref?.();
-
-if (process.env.NODE_ENV === 'production' && !process.env.IDEMPOTENCY_STORE) {
+if (
+  process.env.NODE_ENV === 'production' &&
+  process.env.IDEMPOTENCY_STORE !== 'redis'
+) {
   obsLogger.warn(
     'Idempotency cache is in-process. Set IDEMPOTENCY_STORE=redis for multi-replica safety.'
   );
@@ -441,7 +429,7 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
         customerId: data.customerId,
       });
     } else {
-      const cached = idempotencyCache.get(`${data.tenantId}:${idempotencyKey}`);
+      const cached = await idempotencyStore.get(`${data.tenantId}:${idempotencyKey}`);
       if (cached) {
         obsLogger.info('Returning cached idempotent payment response', {
           tenantId: data.tenantId,
@@ -484,11 +472,11 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
     };
 
     if (idempotencyKey) {
-      idempotencyCache.set(`${data.tenantId}:${idempotencyKey}`, {
-        status: 201,
-        body,
-        expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
-      });
+      await idempotencyStore.set(
+        `${data.tenantId}:${idempotencyKey}`,
+        { status: 201, body },
+        IDEMPOTENCY_TTL_MS
+      );
     }
 
     res.status(201).json(body);
@@ -1917,14 +1905,22 @@ app.listen(PORT, () => {
 // Graceful Shutdown
 // =============================================================================
 
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+async function shutdown(signal: string): Promise<void> {
+  logger.info(`${signal} received, shutting down gracefully`);
+  try {
+    await idempotencyStore.close?.();
+  } catch (err) {
+    logger.warn({ err }, 'Error closing idempotency store during shutdown');
+  }
   process.exit(0);
+}
+
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM');
 });
 
 process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  void shutdown('SIGINT');
 });
 
 export { app };

@@ -1,0 +1,87 @@
+# =============================================================================
+# Production - Terraform Variables (EXAMPLE)
+# =============================================================================
+# Copy to terraform.tfvars (gitignored) and fill in sensitive values.
+# Prefer environment variables or a secrets manager for secrets:
+#   export TF_VAR_rds_password="$(aws secretsmanager get-secret-value ...)"
+# DO NOT commit terraform.tfvars.
+# =============================================================================
+
+project_name = "bossnyumba"
+environment  = "production"
+aws_region   = "eu-west-1"
+
+# -----------------------------------------------------------------------------
+# VPC / Networking (prod: 3 AZs, NAT per AZ for HA)
+# -----------------------------------------------------------------------------
+vpc_cidr             = "10.20.0.0/16"
+availability_zones   = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+public_subnet_cidrs  = ["10.20.1.0/24", "10.20.2.0/24", "10.20.3.0/24"]
+private_subnet_cidrs = ["10.20.10.0/24", "10.20.11.0/24", "10.20.12.0/24"]
+
+enable_nat_gateway = true
+single_nat_gateway = false
+
+# -----------------------------------------------------------------------------
+# RDS (prod: sized for load, Multi-AZ)
+# -----------------------------------------------------------------------------
+rds_instance_class    = "db.m6g.large"
+rds_allocated_storage = 200
+rds_database_name     = "bossnyumba"
+# rds_username = "bossnyumba"   # prefer TF_VAR_rds_username / Secrets Manager
+# rds_password = "CHANGE_ME"    # prefer TF_VAR_rds_password / Secrets Manager
+rds_multi_az = true
+
+# -----------------------------------------------------------------------------
+# Redis (prod: replicated)
+# -----------------------------------------------------------------------------
+redis_node_type          = "cache.m6g.large"
+redis_num_cache_clusters = 2
+
+# -----------------------------------------------------------------------------
+# ECS / API (prod: higher task count + resources)
+# -----------------------------------------------------------------------------
+api_image         = "bossnyumba/api-gateway:stable"
+api_cpu           = 1024
+api_memory        = 2048
+api_desired_count = 3
+
+enable_container_insights = true
+
+# -----------------------------------------------------------------------------
+# App services (prod)
+# -----------------------------------------------------------------------------
+app_services = {
+  estate-manager = {
+    image         = "bossnyumba/estate-manager-app:stable"
+    cpu           = 512
+    memory        = 1024
+    port          = 3000
+    desired_count = 3
+    path_pattern  = "/manager/*"
+  }
+  customer-app = {
+    image         = "bossnyumba/customer-app:stable"
+    cpu           = 512
+    memory        = 1024
+    port          = 3000
+    desired_count = 3
+    path_pattern  = "/app/*"
+  }
+  owner-portal = {
+    image         = "bossnyumba/owner-portal:stable"
+    cpu           = 512
+    memory        = 1024
+    port          = 80
+    desired_count = 2
+    path_pattern  = "/owner/*"
+  }
+  admin-portal = {
+    image         = "bossnyumba/admin-portal:stable"
+    cpu           = 256
+    memory        = 512
+    port          = 80
+    desired_count = 2
+    path_pattern  = "/admin/*"
+  }
+}

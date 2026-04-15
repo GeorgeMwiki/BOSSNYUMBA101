@@ -1,17 +1,21 @@
 /**
- * Webhook subscription management and event triggering with retry
+ * Webhook subscription management and event triggering with retry.
+ *
+ * Persistence is delegated to a pluggable WebhookStore (see ./store.ts):
+ *   - WEBHOOKS_STORE=database  -> DatabaseWebhookStore (Postgres-backed).
+ *   - anything else (incl. unset) -> InMemoryWebhookStore (tests, local dev).
+ *
+ * All public helpers are async. Callers must await.
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import type { WebhookEvent, WebhookEventType, WebhookSubscription } from './types.js';
 import { deliver } from './delivery.js';
 import { Logger as ObsLogger } from '@bossnyumba/observability';
 import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
+import { createWebhookStore, type WebhookStore } from './store.js';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
-
-const subscriptions = new Map<string, WebhookSubscription>();
 
 export const webhooksLogger = new ObsLogger({
   service: {
@@ -26,13 +30,17 @@ webhooksLogger.info('Observability initialized for webhooks service', {
   env: process.env.NODE_ENV || 'development',
 });
 
+// Single process-wide store, selected at module load.
+const store: WebhookStore = createWebhookStore();
+
 let inMemoryWarningLogged = false;
 function warnIfInMemory(): void {
   if (inMemoryWarningLogged) return;
   inMemoryWarningLogged = true;
+  if (process.env.WEBHOOKS_STORE === 'database') return;
   if (process.env.NODE_ENV === 'production') {
     webhooksLogger.warn(
-      'Using in-memory subscription store. Subscriptions will NOT survive restarts. Set WEBHOOKS_STORE=database to enable persistence (not yet implemented).'
+      'Using in-memory subscription store. Subscriptions will NOT survive restarts. Set WEBHOOKS_STORE=database to enable persistence.'
     );
   }
 }
@@ -41,13 +49,13 @@ function warnIfInMemory(): void {
  * Subscribe with an authz check. Callers that already have an auth context
  * (api-gateway handlers) should prefer this over the raw subscribe() helper.
  */
-export function subscribeWithAuthz(
+export async function subscribeWithAuthz(
   user: AuthzUser,
   url: string,
   events: WebhookEventType[],
   tenantId: string,
   secret?: string
-): WebhookSubscription {
+): Promise<WebhookSubscription> {
   const decision = rbacEngine.checkPermission(user, 'create', 'webhook', { tenantId });
   if (!decision.allowed) {
     webhooksLogger.warn('Webhook subscribe denied by rbac', {
@@ -60,57 +68,37 @@ export function subscribeWithAuthz(
   return subscribe(url, events, tenantId, secret);
 }
 
-function isValidUrl(candidate: string): boolean {
-  try {
-    const u = new URL(candidate);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-export function subscribe(
+export async function subscribe(
   url: string,
   events: WebhookEventType[],
   tenantId: string,
   secret?: string
-): WebhookSubscription {
-  if (!isValidUrl(url)) {
-    throw new Error('Webhook URL must be a valid http(s) URL');
-  }
-  if (!events.length) {
-    throw new Error('At least one webhook event type is required');
-  }
+): Promise<WebhookSubscription> {
   warnIfInMemory();
-  const sub: WebhookSubscription = {
-    id: uuidv4(),
+  // URL/events validation lives inside the store (assertValidSubscribeInput)
+  // so DatabaseWebhookStore and InMemoryWebhookStore stay consistent.
+  return store.subscribe({
     url,
     events,
     tenantId,
-    active: true,
-    createdAt: new Date().toISOString(),
     ...(secret !== undefined && { secret }),
-  };
-  subscriptions.set(sub.id, sub);
-  return sub;
+  });
 }
 
-export function unsubscribe(id: string): boolean {
-  return subscriptions.delete(id);
+export async function unsubscribe(id: string): Promise<boolean> {
+  return store.unsubscribe(id);
 }
 
-export function getSubscriptions(tenantId?: string): WebhookSubscription[] {
-  const list = Array.from(subscriptions.values()).filter((s) => s.active);
-  return tenantId ? list.filter((s) => s.tenantId === tenantId) : list;
+export async function getSubscriptions(tenantId?: string): Promise<WebhookSubscription[]> {
+  return store.getSubscriptions(tenantId);
 }
 
 export async function trigger(
   event: WebhookEvent,
   retries = MAX_RETRIES
 ): Promise<{ delivered: number; failed: number }> {
-  const subs = getSubscriptions(event.tenantId).filter((s) =>
-    s.events.includes(event.type)
-  );
+  const allForTenant = await store.getSubscriptions(event.tenantId);
+  const subs = allForTenant.filter((s) => s.events.includes(event.type));
 
   let delivered = 0;
   let failed = 0;
