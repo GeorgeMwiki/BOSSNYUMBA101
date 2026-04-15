@@ -8,9 +8,8 @@
  * Internal auth:       INTERNAL_API_KEY          (signs X-Internal-Token header)
  */
 
-// @ts-nocheck
-
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -45,7 +44,7 @@ function upstreamUrl(path: string, query?: Record<string, string | undefined>): 
 }
 
 /** Build headers for the upstream request. */
-function upstreamHeaders(c: any): Record<string, string> {
+function upstreamHeaders(c: Context): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -74,7 +73,7 @@ function upstreamHeaders(c: any): Record<string, string> {
 }
 
 /** Shape of the JSON we return when the upstream can't be reached. */
-function unavailableResponse(c: any) {
+function unavailableResponse(c: Context) {
   return c.json(
     {
       success: false,
@@ -89,7 +88,7 @@ function unavailableResponse(c: any) {
 
 /** Call the upstream service with a 5s abort timeout. */
 async function callUpstream(
-  c: any,
+  c: Context,
   method: string,
   path: string,
   opts: { query?: Record<string, string | undefined>; body?: unknown } = {}

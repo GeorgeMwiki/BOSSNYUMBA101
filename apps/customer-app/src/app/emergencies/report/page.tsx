@@ -194,6 +194,12 @@ export default function ReportEmergencyPage() {
             </div>
           </div>
 
+          {submitError && (
+            <div className="card border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+              {submitError}
+            </div>
+          )}
+
           <button
             type="submit"
             className="btn-primary w-full py-3"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Home, Loader2, CheckCircle, AlertCircle, Users } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -26,7 +26,6 @@ export function InvitePage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!token) {
@@ -36,17 +35,23 @@ export function InvitePage() {
     }
 
     // Fetch invite details
-    api.get<InviteDetails>(`/auth/invite/${token}`).then((response) => {
-      if (response.success && response.data) {
-        setInvite(response.data);
-        setStep('details');
-      } else if (response.error?.code === 'INVITE_EXPIRED') {
-        setStep('expired');
-      } else {
+    api
+      .get<InviteDetails>(`/auth/invite/${token}`)
+      .then((response) => {
+        if (response.success && response.data) {
+          setInvite(response.data);
+          setStep('details');
+        } else if (response.error?.code === 'INVITE_EXPIRED') {
+          setStep('expired');
+        } else {
+          setStep('error');
+          setError(response.error?.message || 'Invalid invitation');
+        }
+      })
+      .catch((err) => {
         setStep('error');
-        setError(response.error?.message || 'Invalid invitation');
-      }
-    });
+        setError(err instanceof Error ? err.message : 'Failed to load invitation');
+      });
   }, [token]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
