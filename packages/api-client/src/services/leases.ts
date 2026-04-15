@@ -78,9 +78,11 @@ export const leasesService = {
     pageSize = 20
   ): Promise<ApiResponse<LeaseWithDetails[]> & { pagination?: PaginationInfo }> {
     return getApiClient().get<LeaseWithDetails[]>('/leases/expiring', {
-      days: String(days),
-      page: String(page),
-      pageSize: String(pageSize),
+      params: {
+        days: String(days),
+        page: String(page),
+        pageSize: String(pageSize),
+      },
     }) as Promise<ApiResponse<LeaseWithDetails[]> & { pagination?: PaginationInfo }>;
   },
 

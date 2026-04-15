@@ -79,8 +79,26 @@ export * from './documents/document-upload';
 export * from './documents/verification-badge';
 export * from './documents/fraud-risk-score';
 
-// Intelligence (AI Personalization)
-export * from './intelligence/index';
+// Intelligence (AI Personalization).
+// Intelligence re-exports several asXxxId helpers that are also defined on
+// common/types. The common/types versions take precedence; consumers can
+// still reach intelligence-specific helpers via `from '@bossnyumba/domain-
+// models/intelligence'` once a subpath export is added.
+// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+export type {
+  CustomerPreferences,
+  RiskFactor,
+  PreferredChannel,
+  CommsStyle,
+  RiskLevel,
+  RiskType,
+  ActionType,
+  ActionStatus,
+  ActionOutcome,
+  QuietHours,
+  CustomerPreferencesId,
+} from './intelligence/index';
+export { asCustomerPreferencesId } from './intelligence/index';
 
 // Notifications
 export * from './notifications/notification';

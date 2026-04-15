@@ -180,7 +180,7 @@ export class UserRepository {
     ];
 
     if (filters?.status) {
-      conditions.push(eq(users.status, filters.status as unknown as typeof users.status.$inferType));
+      conditions.push(eq(users.status, filters.status as (typeof users)['_']['columns']['status']['_']['data']));
     }
 
     if (filters?.search) {
@@ -204,10 +204,11 @@ export class UserRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const totalRows = await this.db
       .select({ total: count() })
       .from(users)
       .where(whereClause);
+    const total = totalRows[0]?.total ?? 0;
 
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
@@ -241,7 +242,7 @@ export class UserRepository {
     await this.db
       .update(users)
       .set({
-        status: 'deactivated' as unknown as typeof users.status.$inferType,
+        status: 'deactivated' as (typeof users)['_']['columns']['status']['_']['data'],
         deletedAt: new Date(),
         deletedBy,
         updatedAt: new Date(),
