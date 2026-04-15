@@ -24,6 +24,7 @@ import { invoicesApp } from './routes/invoices';
 import { paymentsApp } from './routes/payments';
 import { webhooksApp } from './routes/webhooks';
 import { workOrdersRouter } from './routes/work-orders.hono';
+import { maintenanceRouter } from './routes/maintenance';
 import { vendorsRouter } from './routes/vendors.hono';
 import { notificationsRouter } from './routes/notifications';
 import { reportsHonoRouter } from './routes/reports.hono';
@@ -88,6 +89,7 @@ api.route('/invoices', invoicesApp);
 api.route('/payments', paymentsApp);
 api.route('/webhooks', webhooksApp);
 api.route('/work-orders', workOrdersRouter);
+api.route('/maintenance', maintenanceRouter);
 api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
 api.route('/reports', reportsHonoRouter);
@@ -126,6 +128,7 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/payments',
       '/api/v1/webhooks',
       '/api/v1/work-orders',
+      '/api/v1/maintenance/tickets',
       '/api/v1/vendors',
       '/api/v1/notifications',
       '/api/v1/reports',

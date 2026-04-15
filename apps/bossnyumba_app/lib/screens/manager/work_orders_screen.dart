@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/work_orders_service.dart';
 import '../../core/api_client.dart';
+import 'work_order_detail_screen.dart';
 
 class WorkOrdersScreen extends StatefulWidget {
   const WorkOrdersScreen({super.key});
@@ -54,15 +55,27 @@ class _WorkOrdersScreenState extends State<WorkOrdersScreen> {
             padding: const EdgeInsets.all(16),
             itemCount: items.length,
             itemBuilder: (_, i) {
-              final wo = items[i] as Map<String, dynamic>;
+              final wo = (items[i] is Map)
+                  ? Map<String, dynamic>.from(items[i] as Map)
+                  : <String, dynamic>{};
               final status = wo['status'] ?? 'PENDING';
               final priority = wo['priority'] ?? 'MEDIUM';
+              final id = (wo['id'] ?? '').toString();
               return Card(
                 child: ListTile(
-                  title: Text(wo['title'] ?? 'Work Order'),
+                  title: Text(wo['title']?.toString() ?? 'Work Order'),
                   subtitle: Text('$status • $priority'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: id.isEmpty
+                      ? null
+                      : () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => WorkOrderDetailScreen(workOrderId: id),
+                            ),
+                          );
+                          if (mounted) setState(() {});
+                        },
                 ),
               );
             },

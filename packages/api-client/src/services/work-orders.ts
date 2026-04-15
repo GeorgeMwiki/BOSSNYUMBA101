@@ -160,7 +160,7 @@ export const workOrdersService = {
    * Submit customer rating
    */
   async rate(id: WorkOrderId, rating: WorkOrderRating): Promise<ApiResponse<WorkOrder>> {
-    return getApiClient().post<WorkOrder>(`/work-orders/${id}/rate`, rating);
+    return getApiClient().post<WorkOrder>(`/work-orders/${id}/rating`, rating);
   },
 
   /**

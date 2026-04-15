@@ -32,7 +32,7 @@ function getApiBaseUrl(): string {
 
 const API_BASE_URL = getApiBaseUrl();
 
-function ensureClient() {
+export function ensureClient() {
   if (!hasApiClient()) {
     const token =
       typeof window !== 'undefined'
@@ -78,6 +78,12 @@ function ensureClient() {
   }
 
   return client;
+}
+
+// Eagerly bootstrap the singleton so bare `maintenanceService.*` calls in
+// client components work without any extra wiring.
+if (typeof window !== 'undefined') {
+  ensureClient();
 }
 
 function normalizeError(error: unknown): Error {

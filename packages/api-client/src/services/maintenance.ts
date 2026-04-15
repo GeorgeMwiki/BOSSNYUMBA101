@@ -1,108 +1,132 @@
 /**
- * Maintenance API Service
+ * Maintenance Tickets API Service
  *
- * Customer-app oriented wrapper for the maintenance / work-orders
- * backend. Exposes a simple `createTicket` / `listTickets` / `closeTicket`
- * surface so that the resident-facing MaintenancePage can talk to the
- * backend without dealing with the richer manager-side work-order shape.
+ * Customer-facing maintenance intake. A "ticket" is a customer-side view of a
+ * work order. Under the hood this calls `/maintenance/tickets` on the gateway
+ * which bridges to the work-order domain service.
  */
 
-import { getApiClient, ApiResponse } from '../client';
-import type {
-  WorkOrder,
-  WorkOrderId,
-  WorkOrderPriority,
-  WorkOrderCategory,
-} from '@bossnyumba/domain-models';
+import { getApiClient, type ApiResponse } from '../client';
 
-export interface CreateMaintenanceTicketInput {
+export type MaintenanceTicketStatus =
+  | 'submitted'
+  | 'triaged'
+  | 'pending_approval'
+  | 'approved'
+  | 'assigned'
+  | 'scheduled'
+  | 'in_progress'
+  | 'pending_verification'
+  | 'completed'
+  | 'cancelled';
+
+export type MaintenanceTicketPriority = 'emergency' | 'high' | 'medium' | 'low';
+
+export type MaintenanceTicketCategory =
+  | 'plumbing'
+  | 'electrical'
+  | 'appliance'
+  | 'hvac'
+  | 'structural'
+  | 'pest_control'
+  | 'security'
+  | 'cleaning'
+  | 'landscaping'
+  | 'other';
+
+export interface MaintenanceTicketAttachment {
+  type: 'image' | 'video' | 'audio' | 'document';
+  url: string;
+  filename: string;
+}
+
+export interface MaintenanceTicket {
+  id: string;
   tenantId: string;
-  title: string;
-  description: string;
-  category: WorkOrderCategory | string;
-  priority: WorkOrderPriority | string;
-  photos?: Array<{ url: string; filename: string; type?: string }>;
+  ticketNumber: string;
+  workOrderNumber?: string;
   propertyId?: string;
   unitId?: string;
+  customerId?: string;
+  vendorId?: string;
+  title: string;
+  description?: string;
   location?: string;
+  category: MaintenanceTicketCategory | string;
+  priority: MaintenanceTicketPriority | string;
+  status: MaintenanceTicketStatus | string;
+  attachments?: MaintenanceTicketAttachment[];
+  scheduledDate?: string;
+  completedAt?: string;
+  completionNotes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ListMaintenanceTicketsInput {
-  tenantId: string;
-  status?: 'open' | 'closed' | 'all';
-  limit?: number;
+export interface ListTicketsFilter {
+  tenantId?: string;
+  status?: MaintenanceTicketStatus | MaintenanceTicketStatus[];
+  customerId?: string;
   page?: number;
+  pageSize?: number;
 }
 
-export interface CloseMaintenanceTicketInput {
-  ticketId: WorkOrderId | string;
-  resolutionNotes?: string;
+export interface CreateTicketRequest {
+  propertyId?: string;
+  unitId?: string;
+  customerId?: string;
+  category: MaintenanceTicketCategory | string;
+  priority: MaintenanceTicketPriority | string;
+  title: string;
+  description: string;
+  location?: string;
+  attachments?: MaintenanceTicketAttachment[];
+  permissionToEnter?: boolean;
+  entryInstructions?: string;
+}
+
+export interface RateTicketRequest {
+  rating: number; // 1..5
+  feedback?: string;
+  tags?: string[];
+  wouldRecommend?: boolean;
+  categoryRatings?: Record<string, number>;
 }
 
 export const maintenanceService = {
   /**
-   * Create a new maintenance ticket (backed by work-orders).
+   * List maintenance tickets for the authenticated customer (or filtered set).
+   * Calls GET /api/v1/maintenance/tickets
    */
-  async createTicket(
-    input: CreateMaintenanceTicketInput
-  ): Promise<ApiResponse<WorkOrder>> {
-    const body = {
-      tenantId: input.tenantId,
-      title: input.title,
-      description: input.description,
-      category: input.category,
-      priority: input.priority,
-      propertyId: input.propertyId,
-      unitId: input.unitId,
-      location: input.location,
-      attachments: (input.photos ?? []).map((p) => ({
-        type: p.type ?? 'photo',
-        url: p.url,
-        filename: p.filename,
-      })),
-    };
-    return getApiClient().post<WorkOrder>('/api/maintenance/tickets', body);
-  },
-
-  /**
-   * List maintenance tickets for the given tenant.
-   * `status: 'open'` returns tickets that are not yet completed/cancelled.
-   */
-  async listTickets(
-    input: ListMaintenanceTicketsInput
-  ): Promise<ApiResponse<WorkOrder[]>> {
-    const params: Record<string, string> = {
-      tenantId: input.tenantId,
-      limit: String(input.limit ?? 20),
-      page: String(input.page ?? 1),
-    };
-    if (input.status && input.status !== 'all') {
-      params.status = input.status;
+  async list(filter: ListTicketsFilter = {}): Promise<ApiResponse<MaintenanceTicket[]>> {
+    const params: Record<string, string> = {};
+    if (filter.tenantId) params.tenantId = filter.tenantId;
+    if (filter.customerId) params.customerId = filter.customerId;
+    if (filter.page) params.page = String(filter.page);
+    if (filter.pageSize) params.pageSize = String(filter.pageSize);
+    if (filter.status) {
+      params.status = Array.isArray(filter.status) ? filter.status.join(',') : filter.status;
     }
-    return getApiClient().get<WorkOrder[]>('/api/maintenance/tickets', {
-      params,
-    });
+    return getApiClient().get<MaintenanceTicket[]>('/maintenance/tickets', { params });
   },
 
-  /**
-   * Close an open ticket.
-   */
-  async closeTicket(
-    input: CloseMaintenanceTicketInput
-  ): Promise<ApiResponse<WorkOrder>> {
-    return getApiClient().post<WorkOrder>(
-      `/api/maintenance/tickets/${input.ticketId}/close`,
-      { resolutionNotes: input.resolutionNotes }
-    );
+  /** Get a single ticket by id. */
+  async get(id: string): Promise<ApiResponse<MaintenanceTicket>> {
+    return getApiClient().get<MaintenanceTicket>(`/maintenance/tickets/${id}`);
   },
-};
 
-/**
- * Namespaced alias used by customer-app surfaces that expect
- * `maintenance.createTicket(...)` / `maintenance.listTickets(...)`.
- */
-export const maintenance = {
-  createTicket: maintenanceService.createTicket,
-  listTickets: maintenanceService.listTickets,
-  closeTicket: maintenanceService.closeTicket,
+  /** Create a new maintenance ticket (customer intake). */
+  async create(request: CreateTicketRequest): Promise<ApiResponse<MaintenanceTicket>> {
+    return getApiClient().post<MaintenanceTicket>('/maintenance/tickets', request);
+  },
+
+  /** Cancel a ticket the customer no longer needs. */
+  async cancel(id: string, reason?: string): Promise<ApiResponse<MaintenanceTicket>> {
+    return getApiClient().post<MaintenanceTicket>(`/maintenance/tickets/${id}/cancel`, { reason });
+  },
+
+  /** Customer rating for a completed ticket. */
+  async rate(id: string, rating: RateTicketRequest): Promise<ApiResponse<MaintenanceTicket>> {
+    return getApiClient().post<MaintenanceTicket>(`/maintenance/tickets/${id}/rating`, rating);
+  },
 };
