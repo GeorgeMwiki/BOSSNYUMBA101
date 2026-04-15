@@ -87,11 +87,51 @@ class UserSession {
   String get displayName => '$firstName $lastName'.trim();
 }
 
+class Membership {
+  final String userId;
+  final String tenantId;
+  final String tenantName;
+  final String tenantSlug;
+  final String? tenantStatus;
+  final UserRole role;
+  final List<String> permissions;
+
+  Membership({
+    required this.userId,
+    required this.tenantId,
+    required this.tenantName,
+    required this.tenantSlug,
+    this.tenantStatus,
+    required this.role,
+    this.permissions = const [],
+  });
+
+  factory Membership.fromJson(Map<String, dynamic> json) {
+    return Membership(
+      userId: json['userId'] as String? ?? '',
+      tenantId: json['tenantId'] as String? ?? '',
+      tenantName: json['tenantName'] as String? ?? '',
+      tenantSlug: json['tenantSlug'] as String? ?? '',
+      tenantStatus: json['tenantStatus'] as String?,
+      role: roleFromString(json['role'] as String?),
+      permissions: (json['permissions'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+    );
+  }
+}
+
 class AuthProvider extends ChangeNotifier {
+  static const _tokenKey = 'access_token';
+  static const _activeOrgKey = 'active_org_id';
+
   final ApiClient _api;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   UserSession? _session;
+  List<Membership> _memberships = const [];
+  String? _activeOrgId;
   bool _loading = true;
 
   AuthProvider({required ApiClient api}) : _api = api {
@@ -101,6 +141,8 @@ class AuthProvider extends ChangeNotifier {
   UserSession? get session => _session;
   bool get isAuthenticated => _session != null;
   bool get loading => _loading;
+  List<Membership> get memberships => _memberships;
+  String? get activeOrgId => _activeOrgId;
 
   UserRole get role => _session?.role ?? UserRole.unknown;
 
@@ -110,64 +152,98 @@ class AuthProvider extends ChangeNotifier {
   bool get isAdmin => role.isAdmin;
   bool get isAccountant => role.isAccountant;
 
-  AuthProvider() {
-    _init();
-  }
-
   Future<void> _init() async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await _storage.read(key: _tokenKey);
+    final storedOrg = await _storage.read(key: _activeOrgKey);
     if (token != null) {
       _api.setToken(token);
+      if (storedOrg != null) {
+        _api.setActiveOrg(storedOrg);
+        _activeOrgId = storedOrg;
+      }
       await _fetchMe();
     }
     _loading = false;
     notifyListeners();
   }
 
+  void _applySessionFromMe(Map<String, dynamic> d) {
+    final user = (d['user'] as Map<String, dynamic>?) ?? d;
+    final tenant = d['tenant'] as Map<String, dynamic>?;
+    _session = UserSession(
+      id: user['id'] as String? ?? '',
+      email: user['email'] as String? ?? '',
+      firstName: user['firstName'] as String? ?? '',
+      lastName: user['lastName'] as String? ?? '',
+      avatarUrl: user['avatarUrl'] as String?,
+      tenantId: tenant?['id'] as String?,
+      tenantName: tenant?['name'] as String? ?? tenant?['slug'] as String?,
+      role: roleFromString(user['role'] as String? ?? d['role'] as String?),
+      permissions: (d['permissions'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+    );
+
+    _memberships = ((d['memberships'] as List<dynamic>?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(Membership.fromJson)
+        .toList();
+
+    final nextOrgId =
+        d['activeOrgId'] as String? ?? tenant?['id'] as String?;
+    if (nextOrgId != null) {
+      _activeOrgId = nextOrgId;
+      _api.setActiveOrg(nextOrgId);
+      // fire and forget — safe to persist in background
+      _storage.write(key: _activeOrgKey, value: nextOrgId);
+    }
+  }
+
   Future<void> _fetchMe() async {
     final resp = await _api.get<Map<String, dynamic>>('/auth/me');
     if (resp.isOk && resp.data != null) {
-      final d = resp.data!;
-      final user = d['user'] as Map<String, dynamic>? ?? d;
-      final tenant = d['tenant'] as Map<String, dynamic>?;
-      _session = UserSession(
-        id: user['id'] as String? ?? '',
-        email: user['email'] as String? ?? '',
-        firstName: user['firstName'] as String? ?? '',
-        lastName: user['lastName'] as String? ?? '',
-        avatarUrl: user['avatarUrl'] as String?,
-        tenantId: tenant?['id'] as String?,
-        tenantName: tenant?['name'] as String? ?? tenant?['slug'] as String?,
-        role: roleFromString(user['role'] as String? ?? d['role'] as String?),
-        permissions: (d['permissions'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-      );
+      _applySessionFromMe(resp.data!);
     } else {
       _session = null;
-      await _storage.delete(key: 'access_token');
+      _memberships = const [];
+      _activeOrgId = null;
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _activeOrgKey);
       _api.setToken(null);
+      _api.setActiveOrg(null);
     }
     notifyListeners();
   }
 
-  Future<bool> login(String email, String password) async {
+  /// Returns `null` on success, or a human-readable error message on failure.
+  /// Callers that want boolean behaviour can check `isAuthenticated` after.
+  Future<String?> login(String email, String password) async {
     final resp = await _api.post<Map<String, dynamic>>('/auth/login', body: {
       'email': email,
       'password': password,
     });
-    if (!resp.isOk) return false;
+    if (!resp.isOk) {
+      return resp.error ?? 'Login failed';
+    }
     final d = resp.data;
     final token = d is Map ? d['token'] as String? : null;
-    if (token == null) return false;
-    await _storage.write(key: 'access_token', value: token);
+    if (token == null) {
+      return 'Login response missing token';
+    }
+    await _storage.write(key: _tokenKey, value: token);
     _api.setToken(token);
+    // Apply session synchronously from the login response so memberships are
+    // available immediately for the org picker.
+    if (d is Map<String, dynamic>) {
+      _applySessionFromMe(d);
+    }
+    // Also fetch /auth/me to confirm and get any X-Active-Org normalisations.
     await _fetchMe();
-    return isAuthenticated;
+    return isAuthenticated ? null : 'Login failed';
   }
 
-  Future<bool> register(
+  Future<String?> register(
     String email,
     String password,
     String firstName,
@@ -181,20 +257,54 @@ class AuthProvider extends ChangeNotifier {
       'lastName': lastName,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
     });
-    if (!resp.isOk) return false;
+    if (!resp.isOk) return resp.error ?? 'Registration failed';
     final d = resp.data;
     final token = d is Map ? d['token'] as String? : null;
-    if (token == null) return false;
-    await _storage.write(key: 'access_token', value: token);
+    if (token == null) return 'Registration response missing token';
+    await _storage.write(key: _tokenKey, value: token);
     _api.setToken(token);
+    if (d is Map<String, dynamic>) {
+      _applySessionFromMe(d);
+    }
     await _fetchMe();
-    return isAuthenticated;
+    return isAuthenticated ? null : 'Registration failed';
+  }
+
+  Future<String?> setActiveOrg(String tenantId) async {
+    if (tenantId.isEmpty) return 'tenantId is required';
+    // Optimistic update: all subsequent calls carry X-Active-Org immediately.
+    _activeOrgId = tenantId;
+    _api.setActiveOrg(tenantId);
+    await _storage.write(key: _activeOrgKey, value: tenantId);
+
+    final resp = await _api.post<Map<String, dynamic>>(
+      '/auth/switch-org',
+      body: {'tenantId': tenantId},
+    );
+    if (!resp.isOk) {
+      return resp.error ?? 'Failed to switch organization';
+    }
+    final d = resp.data;
+    if (d is Map<String, dynamic>) {
+      final token = d['token'] as String?;
+      if (token != null) {
+        await _storage.write(key: _tokenKey, value: token);
+        _api.setToken(token);
+      }
+      _applySessionFromMe(d);
+    }
+    notifyListeners();
+    return null;
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _activeOrgKey);
     _api.setToken(null);
+    _api.setActiveOrg(null);
     _session = null;
+    _memberships = const [];
+    _activeOrgId = null;
     notifyListeners();
   }
 }

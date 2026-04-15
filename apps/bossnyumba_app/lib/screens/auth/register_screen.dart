@@ -35,16 +35,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _loading = true;
     });
     try {
-      final ok = await context.read<AuthProvider>().register(
+      // register() returns `null` on success or a server error message.
+      final err = await context.read<AuthProvider>().register(
             _emailController.text.trim(),
             _passwordController.text,
             _firstNameController.text.trim(),
             _lastNameController.text.trim(),
           );
       if (!mounted) return;
-      if (!ok) {
+      if (err != null) {
         setState(() {
-          _error = 'Registration failed';
+          _error = err;
           _loading = false;
         });
       }

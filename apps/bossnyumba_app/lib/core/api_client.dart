@@ -7,6 +7,7 @@ class ApiClient {
   static ApiClient get instance => _instance ??= ApiClient();
 
   String? _token;
+  String? _activeOrgId;
   final String baseUrl = ApiConfig.baseUrl;
 
   ApiClient() {
@@ -15,10 +16,17 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
+  /// Sets the active organization id to be sent as `X-Active-Org` on every
+  /// subsequent request. Pass `null` to clear (e.g. on logout).
+  void setActiveOrg(String? tenantId) => _activeOrgId = tenantId;
+
+  String? get activeOrg => _activeOrgId;
+
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',
+        if (_activeOrgId != null) 'X-Active-Org': _activeOrgId!,
       };
 
   Future<ApiResponse<T>> get<T>(

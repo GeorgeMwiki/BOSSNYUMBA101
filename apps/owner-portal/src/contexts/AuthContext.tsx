@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { api } from '../lib/api';
+import { api, ACTIVE_ORG_STORAGE_KEY } from '../lib/api';
 
 interface User {
   id: string;
@@ -21,6 +21,16 @@ interface Property {
   name: string;
 }
 
+export interface Membership {
+  userId: string;
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  tenantStatus?: string;
+  role: string;
+  permissions: string[];
+}
+
 interface AuthContextType {
   user: User | null;
   tenant: Tenant | null;
@@ -28,6 +38,8 @@ interface AuthContextType {
   role: string | null;
   permissions: string[];
   properties: Property[];
+  memberships: Membership[];
+  activeOrgId: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   sessionTimeoutMinutes: number;
@@ -36,6 +48,7 @@ interface AuthContextType {
   logout: () => void;
   refreshSession: () => void;
   setSessionTimeout: (minutes: number) => void;
+  setActiveOrg: (tenantId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,33 +63,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(
+    localStorage.getItem(ACTIVE_ORG_STORAGE_KEY)
+  );
   const [loading, setLoading] = useState(true);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(
     parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT))
   );
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
-  
-  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const sessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const logout = useCallback((reason?: string) => {
     localStorage.removeItem('token');
     localStorage.removeItem('lastActivity');
+    localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
     setToken(null);
     setUser(null);
     setTenant(null);
     setRole(null);
     setPermissions([]);
     setProperties([]);
+    setMemberships([]);
+    setActiveOrgId(null);
     setLastActivity(null);
-    
+
     if (sessionTimeoutRef.current) {
       clearTimeout(sessionTimeoutRef.current);
     }
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
     }
-    
+
     if (reason === 'timeout') {
       // Store the reason for logout to show message on login page
       sessionStorage.setItem('logoutReason', 'Session expired due to inactivity');
@@ -97,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set warning timeout
     warningTimeoutRef.current = setTimeout(() => {
       // Dispatch event for session warning
-      window.dispatchEvent(new CustomEvent('session-warning', { 
+      window.dispatchEvent(new CustomEvent('session-warning', {
         detail: { minutesRemaining: Math.ceil((timeoutMs - warningMs) / 60000) }
       }));
     }, warningMs);
@@ -131,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
 
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    
+
     const handleActivity = () => {
       refreshSession();
     };
@@ -154,12 +174,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const lastActivityTime = new Date(storedLastActivity).getTime();
       const now = Date.now();
       const timeoutMs = sessionTimeoutMinutes * 60 * 1000;
-      
+
       if (now - lastActivityTime > timeoutMs) {
         // Session has expired
         logout('timeout');
         return;
       }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applySessionData = useCallback((data: any) => {
+    setUser(data.user ?? null);
+    setTenant(data.tenant ?? null);
+    setRole(data.role ?? null);
+    setPermissions(data.permissions || []);
+    setProperties(data.properties || []);
+    setMemberships(data.memberships || []);
+    const nextOrgId = data.activeOrgId ?? data.tenant?.id ?? null;
+    setActiveOrgId(nextOrgId);
+    if (nextOrgId) {
+      localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, nextOrgId);
     }
   }, []);
 
@@ -167,17 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       if (token) {
         try {
-          const response: any = await api.get('/auth/me');
-          if (response.data?.success || response.success) {
-            const data: any = response.data?.data || response.data;
-            if (data) {
-              setUser(data.user);
-              setTenant(data.tenant);
-              setRole(data.role);
-              setPermissions(data.permissions || []);
-              setProperties(data.properties || []);
-              resetSessionTimeout();
-            }
+          const response = await api.get<any>('/auth/me');
+          if (response.success && response.data) {
+            applySessionData(response.data);
+            resetSessionTimeout();
           } else {
             logout();
           }
@@ -190,30 +218,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
-  }, [token, resetSessionTimeout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response: any = await api.post('/auth/login', { email, password });
+    const response = await api.post<any>('/auth/login', { email, password });
 
-      if (response.data?.success || response.success) {
-        const data: any = response.data?.data || response.data;
-        const { token: newToken, user: newUser, tenant: newTenant, role: newRole, permissions: newPerms, properties: newProps } = data;
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-        setUser(newUser);
-        setTenant(newTenant);
-        setRole(newRole);
-        setPermissions(newPerms || []);
-        setProperties(newProps || []);
-        resetSessionTimeout();
-      } else {
-        throw new Error(response.data?.error?.message || 'Login failed');
-      }
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Login failed');
+    if (!response.success || !response.data) {
+      // Surface the server's error message verbatim.
+      throw new Error(response.error?.message || 'Login failed');
     }
+
+    const data = response.data;
+    const newToken: string | undefined = data.token;
+    if (!newToken) {
+      throw new Error('Login response missing token');
+    }
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    applySessionData(data);
+    resetSessionTimeout();
   };
+
+  const setActiveOrg = useCallback(async (tenantId: string) => {
+    if (!tenantId) return;
+    // Optimistic local update so subsequent calls carry X-Active-Org
+    localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, tenantId);
+    setActiveOrgId(tenantId);
+
+    const response = await api.post<any>('/auth/switch-org', { tenantId });
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Failed to switch organization');
+    }
+    const data = response.data;
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      setToken(data.token);
+    }
+    applySessionData(data);
+  }, [applySessionData]);
 
   return (
     <AuthContext.Provider
@@ -224,6 +267,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         permissions,
         properties,
+        memberships,
+        activeOrgId,
         isAuthenticated: !!token && !!user,
         loading,
         sessionTimeoutMinutes,
@@ -232,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refreshSession,
         setSessionTimeout,
+        setActiveOrg,
       }}
     >
       {children}

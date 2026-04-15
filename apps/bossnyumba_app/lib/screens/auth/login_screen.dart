@@ -31,17 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
     });
     try {
-      final ok = await context.read<AuthProvider>().login(
+      // login() returns `null` on success, or the server's error message.
+      final err = await context.read<AuthProvider>().login(
             _emailController.text.trim(),
             _passwordController.text,
           );
       if (!mounted) return;
-      if (!ok) {
+      if (err != null) {
         setState(() {
-          _error = 'Invalid email or password';
+          _error = err;
           _loading = false;
         });
       }
+      // Success: GoRouter's refreshListenable on AuthProvider will redirect.
     } catch (e) {
       if (!mounted) return;
       setState(() {

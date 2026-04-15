@@ -31,32 +31,37 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      // First, attempt login with credentials
+      // Probe the gateway: if MFA is required/pending we short-circuit to the
+      // MFA UI; otherwise fall through to AuthContext.login() which is the
+      // single source of truth for token + session state.
       const response = await api.post<{
-        success: boolean;
-        requiresMfa: boolean;
-        mfaSetupRequired: boolean;
+        requiresMfa?: boolean;
+        mfaSetupRequired?: boolean;
         tempToken?: string;
         mfaSecret?: string;
         qrCodeUrl?: string;
       }>('/auth/login', { email, password });
 
-      if (response.data) {
-        if (response.data.requiresMfa) {
-          // User has MFA enabled, need to verify
-          setPendingToken(response.data.tempToken || null);
-          setStep('mfa_verify');
-        } else if (response.data.mfaSetupRequired) {
-          // MFA setup required for this account
-          setPendingToken(response.data.tempToken || null);
-          setMfaSecret(response.data.mfaSecret || '');
-          setMfaQrCode(response.data.qrCodeUrl || '');
-          setStep('mfa_setup');
-        } else {
-          // No MFA, proceed with login
-          await login(email, password);
-          navigate('/dashboard');
-        }
+      if (!response.success) {
+        setError(response.error?.message || 'Login failed');
+        return;
+      }
+
+      const data = response.data ?? {};
+
+      if (data.requiresMfa) {
+        setPendingToken(data.tempToken || null);
+        setStep('mfa_verify');
+      } else if (data.mfaSetupRequired) {
+        setPendingToken(data.tempToken || null);
+        setMfaSecret(data.mfaSecret || '');
+        setMfaQrCode(data.qrCodeUrl || '');
+        setStep('mfa_setup');
+      } else {
+        // No MFA, hydrate via AuthContext (this re-issues the token but keeps
+        // a single write path for user/tenant/memberships).
+        await login(email, password);
+        navigate('/dashboard');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
