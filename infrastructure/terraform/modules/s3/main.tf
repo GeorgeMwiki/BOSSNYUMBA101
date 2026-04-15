@@ -6,7 +6,7 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# S3 Bucket
+# S3 Buckets
 # -----------------------------------------------------------------------------
 resource "aws_s3_bucket" "documents" {
   bucket = "${var.project_name}-${var.environment}-documents"
@@ -14,6 +14,17 @@ resource "aws_s3_bucket" "documents" {
   tags = {
     Name        = "${var.project_name}-${var.environment}-documents"
     Environment = var.environment
+    Purpose     = "documents"
+  }
+}
+
+resource "aws_s3_bucket" "reports" {
+  bucket = "${var.project_name}-${var.environment}-reports"
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-reports"
+    Environment = var.environment
+    Purpose     = "reports"
   }
 }
 
@@ -143,11 +154,74 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
 }
 
 # -----------------------------------------------------------------------------
-# IAM Policy for Application Access
+# Reports bucket configuration (mirrors documents bucket hardening)
+# -----------------------------------------------------------------------------
+resource "aws_s3_bucket_versioning" "reports" {
+  bucket = aws_s3_bucket.reports.id
+  versioning_configuration {
+    status = var.enable_versioning ? "Enabled" : "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = var.use_kms ? "aws:kms" : "AES256"
+      kms_master_key_id = var.use_kms ? aws_kms_key.s3[0].arn : null
+    }
+    bucket_key_enabled = var.use_kms
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "reports" {
+  bucket = aws_s3_bucket.reports.id
+
+  rule {
+    id     = "archive-old-reports"
+    status = "Enabled"
+
+    transition {
+      days          = 90
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 365
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 2555 # ~7 years retention
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# IAM Policy for Application Access (documents + reports)
 # -----------------------------------------------------------------------------
 resource "aws_iam_policy" "s3_access" {
   name        = "${var.project_name}-${var.environment}-s3-access"
-  description = "Policy for accessing ${var.project_name} documents bucket"
+  description = "Policy for accessing ${var.project_name} documents and reports buckets"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -162,7 +236,9 @@ resource "aws_iam_policy" "s3_access" {
         ]
         Resource = [
           aws_s3_bucket.documents.arn,
-          "${aws_s3_bucket.documents.arn}/*"
+          "${aws_s3_bucket.documents.arn}/*",
+          aws_s3_bucket.reports.arn,
+          "${aws_s3_bucket.reports.arn}/*"
         ]
       }
     ]

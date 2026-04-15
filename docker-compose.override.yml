@@ -2,7 +2,7 @@
 # BOSSNYUMBA - Development Overrides (hot reload, debug ports)
 # =============================================================================
 # Usage: docker compose up (automatically merges with docker-compose.yml)
-# For hot reload: use `make dev` or run with this override
+# For hot reload: use `make docker-up-dev` or run with this override.
 # =============================================================================
 
 services:
@@ -23,6 +23,45 @@ services:
       - "4000:4000"
       - "9229:9229"  # Node.js debug port
 
+  payments:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: payments
+    volumes:
+      - ./services/payments/src:/app/services/payments/src
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+
+  notifications:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: notifications
+    volumes:
+      - ./services/notifications/src:/app/services/notifications/src
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+
+  reports:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: reports
+    volumes:
+      - ./services/reports/src:/app/services/reports/src
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+
   estate-manager:
     build:
       context: .
@@ -33,9 +72,10 @@ services:
       - ./apps/estate-manager-app:/app/apps/estate-manager-app
       - ./packages:/app/packages
     ports:
-      - "3003:3003"
+      - "3003:3000"
       - "9230:9229"  # Debug port
-    command: ["pnpm", "dev"]
+    # Next.js dev server listens on 3000 by default
+    command: ["pnpm", "dev", "--", "--port", "3000", "--hostname", "0.0.0.0"]
 
   customer-app:
     build:
@@ -47,9 +87,9 @@ services:
       - ./apps/customer-app:/app/apps/customer-app
       - ./packages:/app/packages
     ports:
-      - "3002:3002"
+      - "3002:3000"
       - "9231:9229"  # Debug port
-    command: ["pnpm", "dev"]
+    command: ["pnpm", "dev", "--", "--port", "3000", "--hostname", "0.0.0.0"]
 
   owner-portal:
     build:
@@ -62,7 +102,7 @@ services:
       - ./packages:/app/packages
     ports:
       - "3001:5173"  # Vite dev server port
-    command: ["pnpm", "dev"]
+    command: ["pnpm", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
   admin-portal:
     build:
@@ -75,4 +115,4 @@ services:
       - ./packages:/app/packages
     ports:
       - "3000:5173"  # Vite dev server port
-    command: ["pnpm", "dev"]
+    command: ["pnpm", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

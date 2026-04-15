@@ -1,8 +1,17 @@
 # =============================================================================
 # BOSSNYUMBA - Local Development Docker Compose
 # =============================================================================
+# Boots the full local stack: PostgreSQL, Redis, Neo4j, API gateway, backend
+# services (payments, notifications, reports), and all four front-end apps.
+# All services join the bossnyumba-network so they can reach each other by
+# container name. Healthchecks and restart policies are configured for every
+# long-running service to enable reliable dependency ordering.
+# =============================================================================
 
 services:
+  # ---------------------------------------------------------------------------
+  # Data stores
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
     container_name: bossnyumba-postgres
@@ -19,12 +28,16 @@ services:
       test: ["CMD-SHELL", "pg_isready -U bossnyumba -d bossnyumba"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+    networks:
+      - bossnyumba-network
 
   redis:
     image: redis:7-alpine
     container_name: bossnyumba-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
@@ -33,7 +46,10 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 5s
+    networks:
+      - bossnyumba-network
 
   neo4j:
     image: neo4j:5-community
@@ -59,11 +75,17 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - bossnyumba-network
 
+  # ---------------------------------------------------------------------------
+  # Backend services
+  # ---------------------------------------------------------------------------
   api-gateway:
     build:
       context: .
       dockerfile: docker/Dockerfile.api
+    image: bossnyumba/api-gateway:local
     container_name: bossnyumba-api-gateway
     restart: unless-stopped
     ports:
@@ -74,7 +96,7 @@ services:
       DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
       REDIS_URL: redis://redis:6379
       NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
+      NEO4J_USERNAME: neo4j
       NEO4J_PASSWORD: bossnyumba_graph_dev
     depends_on:
       postgres:
@@ -83,7 +105,111 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - bossnyumba-network
 
+  payments:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: payments
+    image: bossnyumba/payments:local
+    container_name: bossnyumba-payments
+    restart: unless-stopped
+    ports:
+      - "4010:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      SERVICE_NAME: payments
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - bossnyumba-network
+
+  notifications:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: notifications
+    image: bossnyumba/notifications:local
+    container_name: bossnyumba-notifications
+    restart: unless-stopped
+    ports:
+      - "4011:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      SERVICE_NAME: notifications
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - bossnyumba-network
+
+  reports:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: reports
+    image: bossnyumba/reports:local
+    container_name: bossnyumba-reports
+    restart: unless-stopped
+    ports:
+      - "4012:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      SERVICE_NAME: reports
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - bossnyumba-network
+
+  # ---------------------------------------------------------------------------
+  # Front-end apps
+  # ---------------------------------------------------------------------------
   estate-manager:
     build:
       context: .
@@ -92,6 +218,7 @@ services:
         APP_NAME: estate-manager-app
         APP_PATH: apps/estate-manager-app
       target: nextjs
+    image: bossnyumba/estate-manager-app:local
     container_name: bossnyumba-estate-manager
     restart: unless-stopped
     ports:
@@ -100,7 +227,16 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bossnyumba-network
 
   customer-app:
     build:
@@ -110,6 +246,7 @@ services:
         APP_NAME: customer-app
         APP_PATH: apps/customer-app
       target: nextjs
+    image: bossnyumba/customer-app:local
     container_name: bossnyumba-customer-app
     restart: unless-stopped
     ports:
@@ -118,7 +255,16 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bossnyumba-network
 
   owner-portal:
     build:
@@ -128,6 +274,7 @@ services:
         APP_NAME: owner-portal
         APP_PATH: apps/owner-portal
       target: vite
+    image: bossnyumba/owner-portal:local
     container_name: bossnyumba-owner-portal
     restart: unless-stopped
     ports:
@@ -135,7 +282,16 @@ services:
     environment:
       NODE_ENV: production
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bossnyumba-network
 
   admin-portal:
     build:
@@ -145,6 +301,7 @@ services:
         APP_NAME: admin-portal
         APP_PATH: apps/admin-portal
       target: vite
+    image: bossnyumba/admin-portal:local
     container_name: bossnyumba-admin-portal
     restart: unless-stopped
     ports:
@@ -152,7 +309,16 @@ services:
     environment:
       NODE_ENV: production
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bossnyumba-network
 
 volumes:
   postgres_data:
@@ -161,5 +327,6 @@ volumes:
   neo4j_logs:
 
 networks:
-  default:
+  bossnyumba-network:
     name: bossnyumba-network
+    driver: bridge

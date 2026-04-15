@@ -13,7 +13,7 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '8'
+  PNPM_VERSION: '8.15.0'
 
 jobs:
   # ============================================
@@ -45,6 +45,9 @@ jobs:
             ci
             chore
             revert
+            infra
+            e2e
+            deps
           requireScope: false
 
   # ============================================
@@ -61,6 +64,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -73,33 +78,21 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
       - name: Type check
         run: pnpm typecheck
-        continue-on-error: true
 
       - name: Test
-        run: pnpm test:coverage
-        continue-on-error: true
+        run: pnpm test
 
       - name: Build
         run: pnpm build
 
-      - name: Check coverage thresholds
-        run: |
-          pnpm test:coverage 2>&1 | tee coverage-output.txt
-          if grep -q "Coverage threshold" coverage-output.txt; then
-            echo "Coverage thresholds not met!"
-            exit 1
-          fi
-        continue-on-error: true
-
   # ============================================
-  # Security
+  # Coverage (reported, not gated until baseline is established)
   # ============================================
-  security:
-    name: Security Check
+  coverage:
+    name: Coverage Report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -107,6 +100,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -117,8 +112,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Security audit
-        run: pnpm audit --audit-level=high
+      - name: Coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-pr
+          path: coverage
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ============================================
+  # Security (pnpm audit)
+  # ============================================
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Security audit (high+)
+        run: pnpm audit --prod --audit-level=high
 
   # ============================================
   # Size Check
@@ -132,6 +163,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -147,12 +180,18 @@ jobs:
 
       - name: Report bundle sizes
         run: |
-          echo "## Bundle Sizes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          find packages apps -name "dist" -type d 2>/dev/null | while read dir; do
-            size=$(du -sh "$dir" 2>/dev/null | cut -f1)
-            echo "- $dir: $size" >> $GITHUB_STEP_SUMMARY
-          done || echo "No dist directories found" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Bundle Sizes"
+            echo ""
+            if find packages apps -name "dist" -type d 2>/dev/null | grep -q .; then
+              find packages apps -name "dist" -type d 2>/dev/null | while read -r dir; do
+                size=$(du -sh "$dir" 2>/dev/null | cut -f1)
+                echo "- $dir: $size"
+              done
+            else
+              echo "No dist directories found."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================
   # Summary
@@ -165,9 +204,9 @@ jobs:
     steps:
       - name: Check results
         run: |
-          if [[ "${{ needs.conventional-commits.result }}" == "failure" ]] || \
-             [[ "${{ needs.quality.result }}" == "failure" ]] || \
-             [[ "${{ needs.security.result }}" == "failure" ]]; then
+          if [[ "${{ needs.conventional-commits.result }}" != "success" ]] || \
+             [[ "${{ needs.quality.result }}" != "success" ]] || \
+             [[ "${{ needs.security.result }}" != "success" ]]; then
             echo "One or more required checks failed"
             exit 1
           fi

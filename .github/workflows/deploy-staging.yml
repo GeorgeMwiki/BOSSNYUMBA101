@@ -45,7 +45,6 @@ jobs:
 
       - name: Build ${{ matrix.app }}
         run: pnpm -r --filter=@bossnyumba/${{ matrix.app }} build
-        continue-on-error: true
 
       - name: Upload ${{ matrix.app }} artifact
         uses: actions/upload-artifact@v4
@@ -71,25 +70,29 @@ jobs:
       - name: Download all app artifacts
         uses: actions/download-artifact@v4
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
       - name: Deploy to staging (Terraform)
+        working-directory: infrastructure/terraform/environments/staging
         run: |
-          cd infra/terraform
-          terraform init -input=false
-          terraform workspace select staging || terraform workspace new staging
-          terraform plan -var="environment=staging" -out=tfplan
+          terraform init -backend-config=backend.hcl
+          terraform plan -var-file=staging.tfvars -out=tfplan
           terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-1
-        continue-on-error: true
 
       - name: Deploy summary
         run: |
-          echo "## Staging Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Build completed for all apps" >> $GITHUB_STEP_SUMMARY
-          echo "⏳ Configure Terraform/AWS credentials for full deployment" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Staging Deployment"
+            echo ""
+            echo "Build completed for all apps. Infrastructure applied via Terraform."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================
   # Smoke Tests
@@ -104,11 +107,12 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          echo "Running smoke tests against staging..."
-          # Add your staging URL when configured
-          # curl -sf "${{ vars.STAGING_URL }}/api/health" || echo "Staging URL not configured"
-          echo "Smoke tests placeholder - configure STAGING_URL variable"
-        continue-on-error: true
+          STAGING_URL="${{ vars.STAGING_URL }}"
+          if [ -z "$STAGING_URL" ]; then
+            echo "STAGING_URL variable not configured; failing so it can be set."
+            exit 1
+          fi
+          curl -sf "$STAGING_URL/api/health"
 
   # ============================================
   # Slack Notification (optional)
