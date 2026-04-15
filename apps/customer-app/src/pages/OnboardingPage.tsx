@@ -73,6 +73,7 @@ export default function OnboardingPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
@@ -168,6 +169,7 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const response = await fetch('/api/v1/onboarding/complete', {
         method: 'POST',
@@ -179,6 +181,8 @@ export default function OnboardingPage() {
       }
       localStorage.setItem('onboarding_completed', 'true');
       router.push('/');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to complete onboarding');
     } finally {
       setIsSubmitting(false);
     }
