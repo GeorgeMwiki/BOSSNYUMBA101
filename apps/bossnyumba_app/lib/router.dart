@@ -14,6 +14,7 @@ import 'screens/manager/manager_home_screen.dart';
 import 'screens/manager/work_orders_screen.dart';
 import 'screens/manager/inspections_screen.dart';
 import 'screens/owner/owner_home_screen.dart';
+import 'screens/owner/owner_approvals_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 
 GoRouter createGoRouter(AuthProvider auth) {
@@ -101,6 +102,10 @@ GoRouter createGoRouter(AuthProvider auth) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/owner/approvals',
+            builder: (_, __) => const OwnerApprovalsScreen(),
           ),
           GoRoute(
             path: '/admin',

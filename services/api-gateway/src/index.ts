@@ -36,10 +36,6 @@ import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { approvalsRouter } from './routes/approvals';
-import { maintenanceRouter } from './routes/maintenance.hono';
-import { documentsEnhancedRouter, evidencePacksRouter } from './routes/modules/documents.routes';
-import { maintenanceRequestsRouter } from './routes/modules/maintenance.routes';
-import { invoicesRouter as moduleInvoicesRouter, paymentsRouter as modulePaymentsRouter, reconciliationRouter, statementsRouter } from './routes/modules/payments.routes';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
@@ -102,14 +98,6 @@ api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
 api.route('/approvals', approvalsRouter);
-api.route('/maintenance', maintenanceRouter);
-api.route('/documents-enhanced', documentsEnhancedRouter);
-api.route('/evidence-packs', evidencePacksRouter);
-api.route('/maintenance-requests', maintenanceRequestsRouter);
-api.route('/module-invoices', moduleInvoicesRouter);
-api.route('/module-payments', modulePaymentsRouter);
-api.route('/reconciliation', reconciliationRouter);
-api.route('/statements', statementsRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -145,18 +133,6 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/messaging',
       '/api/v1/cases',
       '/api/v1/approvals',
-      '/api/v1/maintenance',
-      '/api/v1/documents-enhanced',
-      '/api/v1/evidence-packs',
-      '/api/v1/maintenance-requests',
-      '/api/v1/module-invoices',
-      '/api/v1/module-payments',
-      '/api/v1/reconciliation',
-      '/api/v1/statements',
-      '/api/v1/customer',
-      '/api/v1/owner',
-      '/api/v1/manager',
-      '/api/v1/admin',
     ],
   });
 });

@@ -1,616 +1,593 @@
-// Owner approvals queue — single place for "needs your sign-off" items.
-//
-// Shows vendor invoices over threshold, work-order quote approvals, lease
-// renewals, and deposit refunds. Optimised for 30-second decisions: swipe
-// right to approve, swipe left to reject, tap to see full context.
-//
-// The screen listens to [OrgProvider.activeOrgId] and refetches whenever
-// the active org changes. A 4-second Undo snackbar sits between the user
-// gesture and the actual POST, so accidental swipes don't hit the API.
-
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-
-import '../../core/approvals/approval.dart';
+import '../../core/auth_provider.dart';
 import '../../core/approvals/approvals_repository.dart';
-import '../../core/approvals/org_scope.dart';
-import 'approval_detail_screen.dart';
-
-/// Filter chip values. `null` == "All".
-class _Filter {
-  final String label;
-  final ApprovalType? type;
-  const _Filter(this.label, this.type);
-}
-
-const List<_Filter> _kFilters = [
-  _Filter('All', null),
-  _Filter('Vendor invoices', ApprovalType.vendorInvoice),
-  _Filter('Work orders', ApprovalType.workOrder),
-  _Filter('Leases', ApprovalType.lease),
-  _Filter('Refunds', ApprovalType.refund),
-];
 
 class OwnerApprovalsScreen extends StatefulWidget {
-  /// Optional repository override so tests can inject a fake.
-  final ApprovalsRepository? repository;
-
-  const OwnerApprovalsScreen({super.key, this.repository});
+  const OwnerApprovalsScreen({super.key});
 
   @override
   State<OwnerApprovalsScreen> createState() => _OwnerApprovalsScreenState();
 }
 
 class _OwnerApprovalsScreenState extends State<OwnerApprovalsScreen> {
-  late final ApprovalsRepository _repo;
-  OrgProvider? _orgProvider;
-  String? _lastOrgId;
-
+  final ApprovalsRepository _repo = ApprovalsRepository();
+  List<Approval> _approvals = [];
   bool _loading = true;
   String? _error;
-  List<Approval> _items = const [];
-  _Filter _filter = _kFilters.first;
-
-  // Search
-  bool _searching = false;
-  String _query = '';
-  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _repo = widget.repository ?? ApprovalsRepository();
+    _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Re-wire org provider listener on every dependency change so that
-    // changes to the active org trigger a refetch automatically.
-    final next = _tryReadOrgProvider();
-    if (!identical(next, _orgProvider)) {
-      _orgProvider?.removeListener(_onOrgChanged);
-      _orgProvider = next;
-      _orgProvider?.addListener(_onOrgChanged);
-    }
-    final orgId = _orgProvider?.activeOrgId;
-    if (orgId != _lastOrgId) {
-      _lastOrgId = orgId;
-      // Kick off initial/refetch load.
-      _fetch();
-    }
-  }
-
-  OrgProvider? _tryReadOrgProvider() {
-    try {
-      return Provider.of<OrgProvider>(context, listen: false);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _onOrgChanged() {
-    final orgId = _orgProvider?.activeOrgId;
-    if (orgId == _lastOrgId) return;
-    _lastOrgId = orgId;
-    _fetch();
-  }
-
-  @override
-  void dispose() {
-    _orgProvider?.removeListener(_onOrgChanged);
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetch() async {
-    // Safe to setState from didChangeDependencies / callbacks; we also
-    // guard with `mounted` after the async gap.
+  Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
-    try {
-      final orgId = _orgProvider?.activeOrgId ?? '';
-      final items = await _repo.listApprovals(
-        type: _filter.type?.wireValue,
-        activeOrgId: orgId,
-      );
-      if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final resp = await _repo.list(orgId: auth.session?.tenantId);
+    if (!mounted) return;
+    if (!resp.isOk) {
       setState(() {
-        _items = items;
         _loading = false;
+        _error = resp.error ?? 'Failed to load approvals';
       });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      return;
     }
-  }
-
-  void _setFilter(_Filter f) {
-    if (f.type == _filter.type) return;
-    setState(() => _filter = f);
-    _fetch();
-  }
-
-  List<Approval> get _visible {
-    if (_query.isEmpty) return _items;
-    final q = _query.toLowerCase();
-    return _items
-        .where((a) =>
-            a.title.toLowerCase().contains(q) ||
-            a.subtitle.toLowerCase().contains(q))
-        .toList();
-  }
-
-  // --- Swipe actions -------------------------------------------------------
-
-  /// Remove the card immediately, then queue the API call behind a 4-second
-  /// Undo snackbar so the owner can cancel an accidental swipe.
-  void _handleSwipe(Approval a, _SwipeAction action) {
-    final originalIndex = _items.indexWhere((x) => x.id == a.id);
-    if (originalIndex == -1) return;
-    setState(() => _items = List.of(_items)..removeAt(originalIndex));
-
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-
-    bool undone = false;
-    final completer = Completer<void>();
-
-    final bar = SnackBar(
-      duration: const Duration(seconds: 4),
-      content: Text(action == _SwipeAction.approve
-          ? 'Approving "${a.title}"'
-          : 'Rejecting "${a.title}"'),
-      action: SnackBarAction(
-        label: 'Undo',
-        onPressed: () {
-          undone = true;
-          setState(() {
-            final list = List.of(_items);
-            final insertAt =
-                originalIndex <= list.length ? originalIndex : list.length;
-            list.insert(insertAt, a);
-            _items = list;
-          });
-          if (!completer.isCompleted) completer.complete();
-        },
-      ),
-    );
-
-    final controller = messenger.showSnackBar(bar);
-    controller.closed.then((_) async {
-      if (completer.isCompleted) return;
-      completer.complete();
-      if (undone) return;
-      try {
-        if (action == _SwipeAction.approve) {
-          await _repo.approve(a.id);
-        } else {
-          await _repo.reject(a.id, reason: 'Rejected from queue');
-        }
-      } catch (e) {
-        if (!mounted) return;
-        // Restore on failure so the owner can retry.
-        setState(() {
-          final list = List.of(_items);
-          final insertAt =
-              originalIndex <= list.length ? originalIndex : list.length;
-          list.insert(insertAt, a);
-          _items = list;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
-      }
+    setState(() {
+      _approvals = resp.data ?? [];
+      _loading = false;
     });
   }
 
-  Future<void> _openDetail(Approval a) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) =>
-            ApprovalDetailScreen(approval: a, repository: _repo),
-      ),
-    );
-    if (result == true) {
-      // Detail screen resolved (approved/rejected) — refetch the list.
-      await _fetch();
+  Map<ApprovalType, List<Approval>> _grouped(List<Approval> items) {
+    final Map<ApprovalType, List<Approval>> out = {};
+    for (final a in items) {
+      out.putIfAbsent(a.type, () => []).add(a);
+    }
+    return out;
+  }
+
+  /// Optimistic approve:
+  ///   1. Prompt biometric gate.
+  ///   2. Flip UI to APPROVED immediately.
+  ///   3. Fire POST in the background.
+  ///   4. On failure -> revert + snackbar with retry.
+  Future<void> _approve(Approval approval) async {
+    final allowed = await BiometricGate.authenticate('Approve ${approval.title}');
+    if (!allowed) {
+      _showSnack('Biometric authentication cancelled');
+      return;
+    }
+
+    final previousStatus = approval.status;
+    final index = _approvals.indexWhere((a) => a.id == approval.id);
+    if (index < 0) return;
+
+    setState(() {
+      _approvals[index].status = ApprovalStatus.approved;
+    });
+    _showSnack('Approved');
+
+    final resp = await _repo.approve(approval.id);
+    if (!mounted) return;
+    if (!resp.isOk) {
+      setState(() {
+        if (index < _approvals.length && _approvals[index].id == approval.id) {
+          _approvals[index].status = previousStatus;
+        }
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Approve failed: ${resp.error ?? 'Unknown error'}'),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _approve(approval),
+          ),
+        ),
+      );
+    } else if (resp.data != null) {
+      setState(() {
+        _approvals[index] = resp.data!;
+      });
     }
   }
 
-  // --- UI ------------------------------------------------------------------
+  Future<void> _reject(Approval approval) async {
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _RejectBottomSheet(approvalTitle: approval.title),
+    );
+    if (reason == null || reason.trim().isEmpty) return;
+
+    final allowed = await BiometricGate.authenticate('Reject ${approval.title}');
+    if (!allowed) {
+      _showSnack('Biometric authentication cancelled');
+      return;
+    }
+
+    final previousStatus = approval.status;
+    final index = _approvals.indexWhere((a) => a.id == approval.id);
+    if (index < 0) return;
+
+    setState(() {
+      _approvals[index].status = ApprovalStatus.rejected;
+    });
+    _showSnack('Rejected');
+
+    final resp = await _repo.reject(approval.id, reason.trim());
+    if (!mounted) return;
+    if (!resp.isOk) {
+      setState(() {
+        if (index < _approvals.length && _approvals[index].id == approval.id) {
+          _approvals[index].status = previousStatus;
+        }
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reject failed: ${resp.error ?? 'Unknown error'}'),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _reject(approval),
+          ),
+        ),
+      );
+    } else if (resp.data != null) {
+      setState(() {
+        _approvals[index] = resp.data!;
+      });
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+  }
+
+  void _openDetail(Approval approval) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ApprovalDetailScreen(
+          approvalId: approval.id,
+          repo: _repo,
+          onApprove: _approve,
+          onReject: _reject,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: _searching
-            ? TextField(
-                controller: _searchCtrl,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Search approvals',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  border: InputBorder.none,
-                ),
-                onChanged: (v) => setState(() => _query = v),
-              )
-            : const Text('Approvals'),
+        title: const Text('Approvals'),
         actions: [
-          IconButton(
-            tooltip: _searching ? 'Close search' : 'Search',
-            icon: Icon(_searching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                if (_searching) {
-                  _searching = false;
-                  _query = '';
-                  _searchCtrl.clear();
-                } else {
-                  _searching = true;
-                }
-              });
-            },
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
-      body: Column(
-        children: [
-          _FilterBar(
-            current: _filter,
-            onSelected: _setFilter,
-          ),
-          Expanded(child: _buildBody()),
-        ],
-      ),
+      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const _SkeletonList();
-    if (_error != null) {
-      return _ErrorView(message: _error!, onRetry: _fetch);
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
     }
-    final list = _visible;
-    if (list.isEmpty) return const _EmptyView();
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 12),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _load, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_approvals.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          children: [
+            SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    const Text('No approvals pending'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final grouped = _grouped(_approvals);
+    final keys = grouped.keys.toList()
+      ..sort((a, b) => approvalTypeLabel(a).compareTo(approvalTypeLabel(b)));
+
     return RefreshIndicator(
-      onRefresh: _fetch,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: list.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 4),
-        itemBuilder: (context, i) {
-          final a = list[i];
-          return Dismissible(
-            key: ValueKey('approval-${a.id}'),
-            background: _swipeBg(
-              color: Colors.green.shade700,
-              icon: Icons.check,
-              label: 'Approve',
-              alignment: Alignment.centerLeft,
-            ),
-            secondaryBackground: _swipeBg(
-              color: Colors.red.shade700,
-              icon: Icons.close,
-              label: 'Reject',
-              alignment: Alignment.centerRight,
-            ),
-            onDismissed: (dir) => _handleSwipe(
-              a,
-              dir == DismissDirection.startToEnd
-                  ? _SwipeAction.approve
-                  : _SwipeAction.reject,
-            ),
-            child: ApprovalCard(
-              approval: a,
-              onTap: () => _openDetail(a),
-            ),
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: keys.length,
+        itemBuilder: (context, groupIndex) {
+          final type = keys[groupIndex];
+          final items = grouped[type]!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  '${approvalTypeLabel(type)} (${items.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              ...items.map(_buildTile),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _swipeBg({
-    required Color color,
-    required IconData icon,
-    required String label,
-    required Alignment alignment,
-  }) {
-    return Container(
-      color: color,
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              )),
-        ],
-      ),
+  Widget _buildTile(Approval approval) {
+    final canAct = approval.status == ApprovalStatus.pending;
+    final subtitle = [
+      if (approval.vendorName != null) approval.vendorName!,
+      if (approval.amount != null)
+        '${approval.amount!.currency} ${approval.amount!.amount.toStringAsFixed(0)}',
+    ].join(' • ');
+
+    final tile = ListTile(
+      title: Text(approval.title),
+      subtitle: subtitle.isEmpty ? null : Text(subtitle),
+      trailing: _statusChip(approval.status),
+      onTap: () => _openDetail(approval),
     );
-  }
-}
 
-enum _SwipeAction { approve, reject }
+    if (!canAct) {
+      return Card(margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: tile);
+    }
 
-// ---------------------------------------------------------------------------
-// ApprovalCard
-// ---------------------------------------------------------------------------
-
-class ApprovalCard extends StatelessWidget {
-  final Approval approval;
-  final VoidCallback? onTap;
-
-  const ApprovalCard({super.key, required this.approval, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Dismissible(
+        key: ValueKey('approval-${approval.id}'),
+        background: Container(
+          color: Colors.green,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 20),
+          child: const Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor:
-                    theme.colorScheme.primary.withOpacity(0.15),
-                child: Icon(approval.type.icon,
-                    color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      approval.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      approval.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _timeAgo(approval.requestedAt),
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _AmountBadge(amount: approval.amount, currency: approval.currency),
+              Icon(Icons.check, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Approve', style: TextStyle(color: Colors.white)),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AmountBadge extends StatelessWidget {
-  final double amount;
-  final String currency;
-  const _AmountBadge({required this.amount, required this.currency});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final nf = NumberFormat.currency(
-      symbol: '$currency ',
-      decimalDigits: 0,
-    );
-    Color color = theme.colorScheme.primary;
-    if (amount >= 500000) {
-      color = Colors.redAccent;
-    } else if (amount >= 100000) {
-      color = Colors.orangeAccent;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        nf.format(amount),
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
+        secondaryBackground: Container(
+          color: Colors.red,
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text('Reject', style: TextStyle(color: Colors.white)),
+              SizedBox(width: 8),
+              Icon(Icons.close, color: Colors.white),
+            ],
+          ),
         ),
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            await _approve(approval);
+          } else {
+            await _reject(approval);
+          }
+          // Don't actually dismiss the tile; state refresh handles visuals.
+          return false;
+        },
+        child: Card(child: tile),
       ),
     );
   }
+
+  Widget _statusChip(ApprovalStatus s) {
+    switch (s) {
+      case ApprovalStatus.approved:
+        return const Chip(
+          label: Text('Approved'),
+          backgroundColor: Color(0xFFDCFCE7),
+          labelStyle: TextStyle(color: Color(0xFF166534)),
+        );
+      case ApprovalStatus.rejected:
+        return const Chip(
+          label: Text('Rejected'),
+          backgroundColor: Color(0xFFFEE2E2),
+          labelStyle: TextStyle(color: Color(0xFF991B1B)),
+        );
+      case ApprovalStatus.pending:
+        return const Chip(
+          label: Text('Pending'),
+          backgroundColor: Color(0xFFFEF3C7),
+          labelStyle: TextStyle(color: Color(0xFF92400E)),
+        );
+    }
+  }
 }
 
-// ---------------------------------------------------------------------------
-// States
-// ---------------------------------------------------------------------------
+class _RejectBottomSheet extends StatefulWidget {
+  final String approvalTitle;
+  const _RejectBottomSheet({required this.approvalTitle});
 
-class _FilterBar extends StatelessWidget {
-  final _Filter current;
-  final ValueChanged<_Filter> onSelected;
-  const _FilterBar({required this.current, required this.onSelected});
+  @override
+  State<_RejectBottomSheet> createState() => _RejectBottomSheetState();
+}
+
+class _RejectBottomSheetState extends State<_RejectBottomSheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    final insets = MediaQuery.of(context).viewInsets;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: 16 + insets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final f in _kFilters) ...[
-            ChoiceChip(
-              label: Text(f.label),
-              selected: f.type == current.type,
-              onSelected: (_) => onSelected(f),
+          Text('Reject: ${widget.approvalTitle}',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Reason for rejection',
+              border: OutlineInputBorder(),
             ),
-            const SizedBox(width: 8),
-          ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () {
+                  final text = _controller.text.trim();
+                  if (text.isEmpty) return;
+                  Navigator.of(context).pop(text);
+                },
+                child: const Text('Reject'),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _SkeletonList extends StatelessWidget {
-  const _SkeletonList();
+class ApprovalDetailScreen extends StatefulWidget {
+  final String approvalId;
+  final ApprovalsRepository repo;
+  final Future<void> Function(Approval) onApprove;
+  final Future<void> Function(Approval) onReject;
+
+  const ApprovalDetailScreen({
+    super.key,
+    required this.approvalId,
+    required this.repo,
+    required this.onApprove,
+    required this.onReject,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: 4,
-      itemBuilder: (_, __) => const _SkeletonCard(),
-    );
-  }
+  State<ApprovalDetailScreen> createState() => _ApprovalDetailScreenState();
 }
 
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard();
+class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
+  Approval? _approval;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final resp = await widget.repo.get(widget.approvalId);
+    if (!mounted) return;
+    if (!resp.isOk) {
+      setState(() {
+        _loading = false;
+        _error = resp.error ?? 'Failed to load';
+      });
+      return;
+    }
+    setState(() {
+      _approval = resp.data;
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final base = Colors.white.withOpacity(0.08);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Approval')),
+      body: _build(),
+    );
+  }
+
+  Widget _build() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(radius: 22, backgroundColor: base),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(height: 14, width: 160, color: base),
-                  const SizedBox(height: 6),
-                  Container(height: 10, width: 120, color: base),
-                  const SizedBox(height: 6),
-                  Container(height: 10, width: 80, color: base),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              height: 30,
-              width: 72,
-              decoration: BoxDecoration(
-                color: base,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            Text(_error!),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _load, child: const Text('Retry')),
           ],
         ),
-      ),
-    );
-  }
-}
+      );
+    }
+    final a = _approval;
+    if (a == null) return const Center(child: Text('Not found'));
+    final canAct = a.status == ApprovalStatus.pending;
 
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: c.maxHeight,
-          child: Center(
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(a.title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(approvalTypeLabel(a.type),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.grey[600])),
+        const SizedBox(height: 16),
+        if (a.summary != null) ...[
+          Text(a.summary!),
+          const SizedBox(height: 16),
+        ],
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.inbox_outlined,
-                    size: 72, color: Colors.grey.shade600),
-                const SizedBox(height: 12),
-                const Text('Nothing to approve right now',
-                    style: TextStyle(fontSize: 16)),
+                if (a.amount != null)
+                  _kv('Amount',
+                      '${a.amount!.currency} ${a.amount!.amount.toStringAsFixed(2)}'),
+                if (a.threshold != null)
+                  _kv('Threshold',
+                      '${a.threshold!.currency} ${a.threshold!.amount.toStringAsFixed(2)}'),
+                if (a.vendorName != null) _kv('Vendor', a.vendorName!),
+                if (a.invoiceId != null) _kv('Invoice', a.invoiceId!),
+                if (a.requestedByName != null) _kv('Requested by', a.requestedByName!),
+                _kv('Created', a.createdAt.toLocal().toString()),
+                if (a.decidedAt != null)
+                  _kv('Decided', a.decidedAt!.toLocal().toString()),
+                if (a.rejectionReason != null) _kv('Rejection reason', a.rejectionReason!),
+                if (a.metadata.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('Metadata: ${a.metadata}',
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ),
               ],
             ),
           ),
         ),
-      ),
+        if (a.documents.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Documents', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ...a.documents.map((d) => Card(
+                child: ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(d.name),
+                  subtitle: Text(d.mimeType ?? d.url),
+                  trailing: const Icon(Icons.open_in_new),
+                ),
+              )),
+        ],
+        const SizedBox(height: 16),
+        Text('Audit log', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ...a.audit.map((e) => ListTile(
+              dense: true,
+              leading: const Icon(Icons.history),
+              title: Text('${e.action} by ${e.actorId}'),
+              subtitle: Text(
+                '${e.at.toLocal()}${e.reason != null ? ' — ${e.reason}' : ''}',
+              ),
+            )),
+        if (canAct) ...[
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.close),
+                  label: const Text('Reject'),
+                  onPressed: () async {
+                    await widget.onReject(a);
+                    if (mounted) Navigator.of(context).pop();
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.check),
+                  label: const Text('Approve'),
+                  onPressed: () async {
+                    await widget.onApprove(a);
+                    if (mounted) Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
-}
 
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-  const _ErrorView({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _kv(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14),
+            SizedBox(
+              width: 120,
+              child: Text(k, style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
+            Expanded(child: Text(v)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-String _timeAgo(DateTime t) {
-  final now = DateTime.now();
-  final diff = now.difference(t);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays == 1) return 'yesterday';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return DateFormat.yMMMd().format(t);
+      );
 }
