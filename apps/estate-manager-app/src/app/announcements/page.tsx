@@ -1,53 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Megaphone, ChevronRight, Calendar, Pin } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Megaphone, ChevronRight, Pin, Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-type AnnouncementPriority = 'normal' | 'important' | 'urgent';
-
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  priority: AnnouncementPriority;
-  publishedAt: string;
-  expiresAt?: string;
-  isPinned: boolean;
-  property?: string;
-}
-
-// Mock data - replace with API
-const announcements: Announcement[] = [
-  {
-    id: '1',
-    title: 'Water Maintenance - Scheduled Shutdown',
-    content: 'Water supply will be temporarily shut down on Feb 28, 9 AM - 2 PM for pump maintenance.',
-    priority: 'urgent',
-    publishedAt: '2024-02-25T08:00:00',
-    expiresAt: '2024-02-28',
-    isPinned: true,
-    property: 'Sunset Apartments',
-  },
-  {
-    id: '2',
-    title: 'New Parking Rules Effective March 1',
-    content: 'Please review the updated parking policy. Visitor parking is now limited to 2 hours.',
-    priority: 'important',
-    publishedAt: '2024-02-20T10:00:00',
-    expiresAt: '2024-03-01',
-    isPinned: false,
-  },
-  {
-    id: '3',
-    title: 'Rent Payment Reminder',
-    content: 'Rent payments are due by the 5th of each month. Late fees apply after the 10th.',
-    priority: 'normal',
-    publishedAt: '2024-02-15T09:00:00',
-    isPinned: false,
-  },
-];
+import { announcementsApi, type AnnouncementListItem, type AnnouncementPriority } from '@/lib/api';
 
 const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
   normal: { label: 'Normal', color: 'badge-gray' },
@@ -56,25 +14,40 @@ const priorityConfig: Record<AnnouncementPriority, { label: string; color: strin
 };
 
 export default function AnnouncementsPage() {
-  const [filter, setFilter] = useState<string>('all');
+  const [filter, setFilter] = useState<'all' | 'pinned'>('all');
 
-  const filteredAnnouncements = announcements.filter((a) => {
-    if (filter === 'pinned') return a.isPinned;
-    return true;
+  const announcementsQuery = useQuery({
+    queryKey: ['announcements', filter],
+    queryFn: () =>
+      announcementsApi.list(filter === 'pinned' ? { pinned: true } : undefined),
+    retry: false,
   });
 
-  // Sort: pinned first, then by date
-  const sorted = [...filteredAnnouncements].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+  const response = announcementsQuery.data;
+  const announcements: AnnouncementListItem[] = response?.data ?? [];
+
+  const sorted = useMemo(
+    () =>
+      [...announcements].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      }),
+    [announcements]
+  );
+
+  const errorMessage =
+    announcementsQuery.error instanceof Error
+      ? announcementsQuery.error.message
+      : response && !response.success
+      ? response.error?.message
+      : undefined;
 
   return (
     <>
       <PageHeader
         title="Announcements"
-        subtitle={`${announcements.length} active`}
+        subtitle={announcements.length > 0 ? `${announcements.length} active` : undefined}
         action={
           <Link href="/announcements/create" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
@@ -84,23 +57,35 @@ export default function AnnouncementsPage() {
       />
 
       <div className="px-4 py-4 space-y-4">
-        {/* Filter Tabs */}
         <div className="flex gap-2">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'pinned', label: 'Pinned' },
-          ].map((tab) => (
+          {(['all', 'pinned'] as const).map((tab) => (
             <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`btn text-sm ${filter === tab.value ? 'btn-primary' : 'btn-secondary'}`}
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`btn text-sm ${filter === tab ? 'btn-primary' : 'btn-secondary'}`}
             >
-              {tab.label}
+              {tab === 'all' ? 'All' : 'Pinned'}
             </button>
           ))}
         </div>
 
-        {/* Announcements List */}
+        {announcementsQuery.isLoading && (
+          <div className="card p-4 flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading announcements...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="card p-4 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">Unable to load announcements</div>
+              <div>{errorMessage}</div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           {sorted.map((announcement) => {
             const priority = priorityConfig[announcement.priority];
@@ -128,7 +113,7 @@ export default function AnnouncementsPage() {
                             {new Date(announcement.publishedAt).toLocaleDateString()}
                           </span>
                           {announcement.property && (
-                            <span className="text-xs text-gray-400">• {announcement.property}</span>
+                            <span className="text-xs text-gray-400">• {announcement.property.name}</span>
                           )}
                         </div>
                       </div>
@@ -141,7 +126,7 @@ export default function AnnouncementsPage() {
           })}
         </div>
 
-        {filteredAnnouncements.length === 0 && (
+        {!announcementsQuery.isLoading && !errorMessage && sorted.length === 0 && (
           <div className="text-center py-12">
             <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <h3 className="font-medium text-gray-900">No announcements</h3>

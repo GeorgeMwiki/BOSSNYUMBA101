@@ -2,54 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Megaphone, Pin, Calendar, Edit, Trash2 } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Megaphone, Pin, Calendar, Edit, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-type AnnouncementPriority = 'normal' | 'important' | 'urgent';
-
-// Mock data - replace with API
-const announcementData: Record<string, {
-  id: string;
-  title: string;
-  content: string;
-  priority: AnnouncementPriority;
-  publishedAt: string;
-  expiresAt?: string;
-  isPinned: boolean;
-  property?: string;
-  author?: string;
-}> = {
-  '1': {
-    id: '1',
-    title: 'Water Maintenance - Scheduled Shutdown',
-    content: 'Water supply will be temporarily shut down on Feb 28, 9 AM - 2 PM for pump maintenance. Please store water in advance. We apologize for any inconvenience.',
-    priority: 'urgent',
-    publishedAt: '2024-02-25T08:00:00',
-    expiresAt: '2024-02-28',
-    isPinned: true,
-    property: 'Sunset Apartments',
-    author: 'Property Management',
-  },
-  '2': {
-    id: '2',
-    title: 'New Parking Rules Effective March 1',
-    content: 'Please review the updated parking policy. Visitor parking is now limited to 2 hours. Resident parking permits must be displayed. Unauthorized vehicles will be towed.',
-    priority: 'important',
-    publishedAt: '2024-02-20T10:00:00',
-    expiresAt: '2024-03-01',
-    isPinned: false,
-    author: 'Property Management',
-  },
-  '3': {
-    id: '3',
-    title: 'Rent Payment Reminder',
-    content: 'Rent payments are due by the 5th of each month. Late fees apply after the 10th. Please use the online portal or visit the office during business hours.',
-    priority: 'normal',
-    publishedAt: '2024-02-15T09:00:00',
-    isPinned: false,
-    author: 'Property Management',
-  },
-};
+import { announcementsApi, type AnnouncementPriority } from '@/lib/api';
 
 const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
   normal: { label: 'Normal', color: 'badge-gray' },
@@ -62,14 +18,46 @@ export default function AnnouncementDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const announcement = announcementData[id];
+  const announcementQuery = useQuery({
+    queryKey: ['announcement', id],
+    queryFn: () => announcementsApi.get(id),
+    retry: false,
+    enabled: Boolean(id),
+  });
 
-  if (!announcement) {
+  const deleteMutation = useMutation({
+    mutationFn: () => announcementsApi.remove(id),
+    onSuccess: () => router.push('/announcements'),
+  });
+
+  const response = announcementQuery.data;
+  const announcement = response?.data;
+  const errorMessage =
+    announcementQuery.error instanceof Error
+      ? announcementQuery.error.message
+      : response && !response.success
+      ? response.error?.message
+      : undefined;
+
+  if (announcementQuery.isLoading) {
+    return (
+      <>
+        <PageHeader title="Announcement" showBack />
+        <div className="px-4 py-8 flex items-center justify-center gap-2 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Loading announcement...
+        </div>
+      </>
+    );
+  }
+
+  if (errorMessage || !announcement) {
     return (
       <>
         <PageHeader title="Announcement" showBack />
         <div className="px-4 py-8 text-center">
-          <p className="text-gray-500 mb-4">Announcement not found</p>
+          <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 mb-4">{errorMessage ?? 'Announcement not found'}</p>
           <button onClick={() => router.back()} className="btn-secondary">
             Go Back
           </button>
@@ -80,6 +68,11 @@ export default function AnnouncementDetailPage() {
 
   const priority = priorityConfig[announcement.priority];
 
+  const handleDelete = () => {
+    if (!window.confirm('Delete this announcement?')) return;
+    deleteMutation.mutate();
+  };
+
   return (
     <>
       <PageHeader
@@ -87,10 +80,25 @@ export default function AnnouncementDetailPage() {
         showBack
         action={
           <div className="flex gap-2">
-            <Link href={`/announcements/${id}/edit`} className="btn-secondary text-sm flex items-center gap-1">
+            <Link
+              href={`/announcements/${id}/edit`}
+              className="btn-secondary text-sm flex items-center gap-1"
+            >
               <Edit className="w-4 h-4" />
               Edit
             </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="btn-secondary text-sm flex items-center gap-1 text-danger-600"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Delete
+            </button>
           </div>
         }
       />
@@ -124,12 +132,8 @@ export default function AnnouncementDetailPage() {
             {announcement.expiresAt && (
               <span>Expires {new Date(announcement.expiresAt).toLocaleDateString()}</span>
             )}
-            {announcement.property && (
-              <span>{announcement.property}</span>
-            )}
-            {announcement.author && (
-              <span>By {announcement.author}</span>
-            )}
+            {announcement.property && <span>{announcement.property.name}</span>}
+            {announcement.author && <span>By {announcement.author.name}</span>}
           </div>
         </div>
       </div>
