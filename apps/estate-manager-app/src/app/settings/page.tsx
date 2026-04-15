@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, Bell, Shield, HelpCircle, ChevronRight, LogOut } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -29,6 +30,20 @@ const settingsSections: { title: string; items: SettingsItem[] }[] = [
 ];
 
 export default function SettingsOverviewPage() {
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('authToken');
+        window.localStorage.removeItem('refreshToken');
+      } catch {
+        // ignore storage access errors
+      }
+    }
+    router.push('/');
+  };
+
   return (
     <>
       <PageHeader title="Settings" subtitle="Manage your account" />
@@ -62,7 +77,11 @@ export default function SettingsOverviewPage() {
         ))}
 
         <div className="pt-4">
-          <button className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 py-3 text-danger-600 font-medium hover:bg-danger-50 rounded-lg transition-colors"
+          >
             <LogOut className="w-5 h-5" />
             Sign Out
           </button>

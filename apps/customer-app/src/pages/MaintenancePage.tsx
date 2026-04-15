@@ -141,6 +141,7 @@ export default function MaintenancePage() {
     if (!selectedCategory || !title || !description) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const response = await fetch('/api/v1/maintenance/requests', {
         method: 'POST',
@@ -163,6 +164,8 @@ export default function MaintenancePage() {
       setPriority('medium');
       setPhotos([]);
       setShowNewRequestForm(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit maintenance request');
     } finally {
       setIsSubmitting(false);
     }
