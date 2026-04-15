@@ -66,6 +66,7 @@ class UserSession {
   final String email;
   final String firstName;
   final String lastName;
+  final String? phone;
   final String? avatarUrl;
   final String? tenantId;
   final String? tenantName;
@@ -77,6 +78,7 @@ class UserSession {
     required this.email,
     required this.firstName,
     required this.lastName,
+    this.phone,
     this.avatarUrl,
     this.tenantId,
     this.tenantName,
@@ -148,6 +150,7 @@ class AuthProvider extends ChangeNotifier {
         email: user['email'] as String? ?? '',
         firstName: user['firstName'] as String? ?? '',
         lastName: user['lastName'] as String? ?? '',
+        phone: user['phone'] as String?,
         avatarUrl: user['avatarUrl'] as String?,
         tenantId: tenant?['id'] as String?,
         tenantName: tenant?['name'] as String? ?? tenant?['slug'] as String?,

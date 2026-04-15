@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * RBAC (Role-Based Access Control) Middleware - BOSSNYUMBA
  *
@@ -722,4 +721,3 @@ declare module 'hono' {
 }
 
 export { rbacEngine };
-// @ts-nocheck

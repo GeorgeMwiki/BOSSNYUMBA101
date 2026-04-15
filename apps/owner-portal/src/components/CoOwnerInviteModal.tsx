@@ -65,11 +65,15 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
     }
     setLoading(true);
     try {
-      await api.post('/invitations/co-owner', formData);
-      setStep('success');
-      onSuccess?.();
+      const response = await api.post('/invitations/co-owner', formData);
+      if (response.success) {
+        setStep('success');
+        onSuccess?.();
+      } else {
+        setError(response.error?.message || 'Failed to send invitation');
+      }
     } catch (err) {
-      setStep('success');
+      setError(err instanceof Error ? err.message : 'Failed to send invitation');
     } finally {
       setLoading(false);
     }

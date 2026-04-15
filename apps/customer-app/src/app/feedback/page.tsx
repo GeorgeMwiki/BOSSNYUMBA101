@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Send, MessageSquare, ChevronRight } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const feedbackTypes = [
@@ -14,7 +13,6 @@ const feedbackTypes = [
 ];
 
 export default function FeedbackPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     type: '',
     subject: '',
@@ -22,16 +20,34 @@ export default function FeedbackPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.message.trim()) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setSubmitted(true);
-    setIsSubmitting(false);
-    setFormData({ type: '', subject: '', message: '' });
+    setSubmitError(null);
+    try {
+      const response = await fetch('/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: formData.type || 'other',
+          subject: formData.subject,
+          message: formData.message,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback (${response.status})`);
+      }
+      setSubmitted(true);
+      setFormData({ type: '', subject: '', message: '' });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -137,6 +153,12 @@ export default function FeedbackPage() {
             required
           />
         </section>
+
+        {submitError && (
+          <div className="card border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+            {submitError}
+          </div>
+        )}
 
         <button
           type="submit"

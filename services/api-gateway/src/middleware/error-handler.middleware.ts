@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Global Error Handler Middleware - BOSSNYUMBA
  *

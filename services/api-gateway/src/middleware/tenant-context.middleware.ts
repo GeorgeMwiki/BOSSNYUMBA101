@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tenant Context Middleware - BOSSNYUMBA
  *
@@ -566,4 +565,3 @@ declare module 'hono' {
     tenant: TenantContext;
   }
 }
-// @ts-nocheck

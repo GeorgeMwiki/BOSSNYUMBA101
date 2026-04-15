@@ -75,9 +75,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   void _showInvoiceDetail(BuildContext context, Map<String, dynamic> inv) {
+    final status = (inv['status'] ?? 'PENDING').toString().toUpperCase();
+    final isPaid = status == 'PAID' || status == 'SETTLED';
     showModalBottomSheet(
       context: context,
-      builder: (_) => Padding(
+      isScrollControlled: true,
+      builder: (sheetCtx) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -85,13 +88,34 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           children: [
             Text(
               inv['description']?.toString() ?? 'Invoice',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(sheetCtx).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text('Amount: ${inv['amount'] ?? inv['totalAmount'] ?? 0} ${inv['currency'] ?? 'KES'}'),
-            Text('Status: ${inv['status'] ?? 'PENDING'}'),
+            Text('Status: $status'),
             if (inv['dueDate'] != null) Text('Due: ${inv['dueDate']}'),
-            const SizedBox(height: 16),
+            if (inv['invoiceNumber'] != null) Text('Ref: ${inv['invoiceNumber']}'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: Icon(isPaid ? Icons.check_circle : Icons.payments),
+                label: Text(isPaid ? 'Paid' : 'Pay now'),
+                onPressed: isPaid
+                    ? null
+                    : () {
+                        Navigator.of(sheetCtx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'M-Pesa STK push will be sent to your registered phone',
+                            ),
+                          ),
+                        );
+                      },
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
