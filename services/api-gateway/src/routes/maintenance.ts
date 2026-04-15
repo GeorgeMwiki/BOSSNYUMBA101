@@ -13,6 +13,11 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapWorkOrderRow, paginateArray } from './db-mappers';
 import { dispatchWorkOrderNotification } from './notifications-dispatcher';
+import {
+  uploadFile,
+  readAndValidateUpload,
+  uploadErrorToResponse,
+} from '../lib/storage';
 
 function workOrderNumber() {
   return `WO-${Date.now().toString().slice(-6)}`;
@@ -90,6 +95,10 @@ app.post('/tickets', async (c) => {
   const repos = c.get('repos');
   const contentType = c.req.header('content-type') || '';
 
+  // Pre-allocate the ticket ID so storage keys can include it before the row
+  // is created. This keeps photo URLs stable from the moment they are written.
+  const ticketId = crypto.randomUUID();
+
   let body: any = {};
   let intakeAttachments: any[] = [];
 
@@ -102,6 +111,7 @@ app.post('/tickets', async (c) => {
       body = {};
     }
     const photoFields = ['photos', 'photos[]', 'attachments', 'attachments[]'];
+    let totalBytes = 0;
     for (const field of photoFields) {
       const value = form[field];
       if (!value) continue;
@@ -109,13 +119,33 @@ app.post('/tickets', async (c) => {
       for (const f of files) {
         if (typeof f === 'string') {
           intakeAttachments.push({ type: 'image', url: f, filename: f.split('/').pop() || 'photo' });
-        } else if (f && typeof f === 'object' && 'name' in f) {
-          // TODO: upload to object storage and persist durable URL.
+          continue;
+        }
+        if (!f || typeof f !== 'object' || !('arrayBuffer' in f)) continue;
+
+        try {
+          const validated = await readAndValidateUpload(f as any, totalBytes);
+          totalBytes += validated.size;
+          const fileId = crypto.randomUUID();
+          const key = `maintenance-tickets/${auth.tenantId}/${ticketId}/${fileId}-${validated.filename}`;
+          const uploaded = await uploadFile({
+            tenantId: auth.tenantId,
+            key,
+            body: validated.buffer,
+            contentType: validated.contentType,
+          });
           intakeAttachments.push({
             type: 'image',
-            url: `pending-upload://${(f as any).name}`,
-            filename: (f as any).name,
+            url: uploaded.url,
+            key: uploaded.key,
+            filename: validated.filename,
+            contentType: validated.contentType,
+            size: validated.size,
           });
+        } catch (err) {
+          const mapped = uploadErrorToResponse(err);
+          if (mapped) return c.json(mapped.body, mapped.status);
+          throw err;
         }
       }
     }
@@ -141,7 +171,7 @@ app.post('/tickets', async (c) => {
   }
 
   const row = await repos.workOrders.create({
-    id: crypto.randomUUID(),
+    id: ticketId,
     tenantId: auth.tenantId,
     propertyId: body.propertyId,
     unitId: body.unitId,

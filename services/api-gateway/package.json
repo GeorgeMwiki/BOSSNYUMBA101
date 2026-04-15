@@ -25,6 +25,8 @@
     "@bossnyumba/notifications-service": "workspace:*",
     "@bossnyumba/observability": "workspace:*",
     "@bossnyumba/reports-service": "workspace:*",
+    "@aws-sdk/client-s3": "^3.500.0",
+    "@aws-sdk/s3-request-presigner": "^3.500.0",
     "@hono/node-server": "^1.11.0",
     "@hono/zod-validator": "^0.4.0",
     "bcrypt": "^5.1.1",

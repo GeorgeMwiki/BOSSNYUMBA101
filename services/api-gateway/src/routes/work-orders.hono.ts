@@ -5,6 +5,11 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapWorkOrderRow, paginateArray } from './db-mappers';
 import { dispatchWorkOrderNotification } from './notifications-dispatcher';
+import {
+  uploadFile,
+  readAndValidateUpload,
+  uploadErrorToResponse,
+} from '../lib/storage';
 
 function workOrderNumber() {
   return `WO-${Date.now().toString().slice(-6)}`;
@@ -291,6 +296,7 @@ app.post('/:id/complete', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const contentType = c.req.header('content-type') || '';
+  const workOrderId = c.req.param('id');
 
   let body: any = {};
   let proofAttachments: any[] = [];
@@ -305,6 +311,7 @@ app.post('/:id/complete', async (c) => {
       body = {};
     }
     const photoFields = ['afterPhotos', 'photos', 'proof', 'proof[]'];
+    let totalBytes = 0;
     for (const field of photoFields) {
       const value = form[field];
       if (!value) continue;
@@ -312,14 +319,33 @@ app.post('/:id/complete', async (c) => {
       for (const f of files) {
         if (typeof f === 'string') {
           proofAttachments.push({ type: 'image', url: f, filename: f.split('/').pop() || 'proof' });
-        } else if (f && typeof f === 'object' && 'name' in f) {
-          // File object: in production this would be uploaded to object storage.
-          // TODO: integrate with document-intelligence / S3 uploader.
+          continue;
+        }
+        if (!f || typeof f !== 'object' || !('arrayBuffer' in f)) continue;
+
+        try {
+          const validated = await readAndValidateUpload(f as any, totalBytes);
+          totalBytes += validated.size;
+          const fileId = crypto.randomUUID();
+          const key = `work-orders/${auth.tenantId}/${workOrderId}/proof/${fileId}-${validated.filename}`;
+          const uploaded = await uploadFile({
+            tenantId: auth.tenantId,
+            key,
+            body: validated.buffer,
+            contentType: validated.contentType,
+          });
           proofAttachments.push({
             type: 'image',
-            url: `pending-upload://${(f as any).name}`,
-            filename: (f as any).name,
+            url: uploaded.url,
+            key: uploaded.key,
+            filename: validated.filename,
+            contentType: validated.contentType,
+            size: validated.size,
           });
+        } catch (err) {
+          const mapped = uploadErrorToResponse(err);
+          if (mapped) return c.json(mapped.body, mapped.status);
+          throw err;
         }
       }
     }
