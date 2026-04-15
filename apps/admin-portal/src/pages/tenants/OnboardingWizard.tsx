@@ -13,6 +13,8 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react';
+import { useOnboardTenant } from '../../lib/api/tenants';
+import { useToast } from '../../components/ui/Toast';
 
 // ─── Types ─────────────────────────────────────────────────
 
@@ -92,11 +94,45 @@ const plans = [
 
 // ─── Component ─────────────────────────────────────────────
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateOrg(o: OrganizationDetails): string[] {
+  const errs: string[] = [];
+  if (o.name.trim().length < 2) errs.push('Organization name is required.');
+  if (!o.address.trim()) errs.push('Address is required.');
+  if (!o.city.trim()) errs.push('City is required.');
+  if (!o.phone.trim()) errs.push('Phone is required.');
+  if (o.website && !/^https?:\/\//i.test(o.website)) errs.push('Website must start with http:// or https://');
+  return errs;
+}
+
+function validatePolicy(p: PolicyConstitution): string[] {
+  const errs: string[] = [];
+  if (p.gracePeriodDays < 0 || p.gracePeriodDays > 90) errs.push('Grace period must be 0-90 days.');
+  if (p.lateFeeValue < 0) errs.push('Late fee value cannot be negative.');
+  if (p.lateFeeType === 'percentage' && p.lateFeeValue > 100) errs.push('Late fee percentage must be at most 100.');
+  if (p.maxPaymentRetries < 0 || p.maxPaymentRetries > 10) errs.push('Max retries must be 0-10.');
+  if (p.securityDepositMonths < 0) errs.push('Security deposit months must be >= 0.');
+  if (p.noticeperiodDays < 0) errs.push('Notice period must be >= 0.');
+  return errs;
+}
+
+function validateAdmin(a: AdminUser): string[] {
+  const errs: string[] = [];
+  if (!a.firstName.trim()) errs.push('First name is required.');
+  if (!a.lastName.trim()) errs.push('Last name is required.');
+  if (!EMAIL_RE.test(a.email)) errs.push('A valid admin email is required.');
+  return errs;
+}
+
 export default function OnboardingWizard() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const onboard = useOnboardTenant();
   const [currentStep, setCurrentStep] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
+  const [stepErrors, setStepErrors] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [createdTenantId, setCreatedTenantId] = useState<string | null>(null);
 
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails>({
     name: '', industry: 'real_estate', address: '', city: '', country: 'Kenya', phone: '', website: '', registrationNumber: '',
@@ -117,26 +153,56 @@ export default function OnboardingWizard() {
 
   // ─── Validation ────────────────────────────────────────────
 
-  const validateStep = (step: number): boolean => {
+  const validateStep = (step: number): string[] => {
     switch (step) {
-      case 0: return !!(orgDetails.name && orgDetails.address && orgDetails.city && orgDetails.phone);
-      case 1: return policy.gracePeriodDays >= 0 && policy.lateFeeValue >= 0;
-      case 2: return !!subscription.plan;
-      case 3: return !!(admin.firstName && admin.lastName && admin.email);
-      case 4: return true;
-      default: return false;
+      case 0: return validateOrg(orgDetails);
+      case 1: return validatePolicy(policy);
+      case 2: return subscription.plan ? [] : ['Please choose a plan.'];
+      case 3: return validateAdmin(admin);
+      case 4: return [];
+      default: return ['Unknown step'];
     }
   };
 
-  const goNext = () => { if (validateStep(currentStep) && currentStep < steps.length - 1) setCurrentStep(currentStep + 1); };
-  const goBack = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
+  const isStepValid = (step: number) => validateStep(step).length === 0;
+
+  const goNext = () => {
+    const errs = validateStep(currentStep);
+    setStepErrors(errs);
+    if (errs.length === 0 && currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const goBack = () => {
+    setStepErrors([]);
+    if (currentStep > 0) setCurrentStep(currentStep - 1);
+  };
 
   const handleSubmit = async () => {
-    setSubmitting(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 2000));
-    setSubmitting(false);
-    setSubmitted(true);
+    // Re-validate every step before submitting.
+    for (let i = 0; i < steps.length; i++) {
+      const errs = validateStep(i);
+      if (errs.length > 0) {
+        setCurrentStep(i);
+        setStepErrors(errs);
+        toast.error(errs[0]);
+        return;
+      }
+    }
+    try {
+      const result = await onboard.mutateAsync({
+        organization: orgDetails,
+        policy,
+        subscription,
+        admin,
+      });
+      setCreatedTenantId(result.tenantId);
+      setSubmitted(true);
+      toast.success(`Tenant ${result.tenantName} created`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   const selectedPlan = plans.find((p) => p.id === subscription.plan)!;
@@ -168,7 +234,12 @@ export default function OnboardingWizard() {
           <button onClick={() => navigate('/tenants')} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
             Back to Tenants
           </button>
-          <button onClick={() => { setSubmitted(false); setCurrentStep(0); setOrgDetails({ name: '', industry: 'real_estate', address: '', city: '', country: 'Kenya', phone: '', website: '', registrationNumber: '' }); setAdmin({ firstName: '', lastName: '', email: '', phone: '', role: 'TENANT_ADMIN', sendInvite: true }); }} className="px-6 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium">
+          {createdTenantId && (
+            <button onClick={() => navigate(`/tenants/${createdTenantId}`)} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+              View Tenant
+            </button>
+          )}
+          <button onClick={() => { setSubmitted(false); setCreatedTenantId(null); setCurrentStep(0); setOrgDetails({ name: '', industry: 'real_estate', address: '', city: '', country: 'Kenya', phone: '', website: '', registrationNumber: '' }); setAdmin({ firstName: '', lastName: '', email: '', phone: '', role: 'TENANT_ADMIN', sendInvite: true }); }} className="px-6 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium">
             Onboard Another
           </button>
         </div>
@@ -223,6 +294,15 @@ export default function OnboardingWizard() {
           })}
         </div>
       </div>
+
+      {stepErrors.length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+          <ul className="text-sm text-red-800 list-disc pl-4 space-y-0.5">
+            {stepErrors.map((e, i) => <li key={i}>{e}</li>)}
+          </ul>
+        </div>
+      )}
 
       {/* Step Content */}
       <div className="bg-white rounded-xl border border-gray-200 p-8 mb-6">
@@ -566,7 +646,7 @@ export default function OnboardingWizard() {
           {currentStep < steps.length - 1 ? (
             <button
               onClick={goNext}
-              disabled={!validateStep(currentStep)}
+              disabled={!isStepValid(currentStep)}
               className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Continue
@@ -575,10 +655,10 @@ export default function OnboardingWizard() {
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={onboard.isPending}
               className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
             >
-              {submitting ? (
+              {onboard.isPending ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Activating...
