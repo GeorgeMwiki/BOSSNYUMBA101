@@ -85,12 +85,10 @@ export function RegisterPage() {
       if (response.success) {
         setStep('verify');
       } else {
-        // For development - proceed to next step
-        setStep('verify');
+        setError(response.error?.message || 'Registration failed. Please try again.');
       }
     } catch (err) {
-      // For development - proceed to next step
-      setStep('verify');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -110,10 +108,10 @@ export function RegisterPage() {
       if (response.success) {
         await initiateMfaSetup();
       } else {
-        await initiateMfaSetup();
+        setError(response.error?.message || 'Verification failed. Please check the code and try again.');
       }
     } catch (err) {
-      await initiateMfaSetup();
+      setError(err instanceof Error ? err.message : 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }

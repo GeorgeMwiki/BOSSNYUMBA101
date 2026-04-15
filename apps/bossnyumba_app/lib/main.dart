@@ -7,10 +7,9 @@ import 'core/api_client.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final api = ApiClient();
+  // AuthProvider wires api.setUnauthorizedHandler internally so that any 401
+  // response clears the session and the router bounces the user to /login.
   final auth = AuthProvider(api: api);
-  // Clear session + token on any 401 so a stale/expired token bounces the
-  // user back to /login instead of silently failing every subsequent call.
-  api.setUnauthorizedHandler(() => auth.logout());
   runApp(
     MultiProvider(
       providers: [

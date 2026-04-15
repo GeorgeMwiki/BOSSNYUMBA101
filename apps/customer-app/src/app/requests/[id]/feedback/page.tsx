@@ -5,33 +5,46 @@ import { useParams, useRouter } from 'next/navigation';
 import { Star, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const workOrder = {
-  id: '1',
-  workOrderNumber: 'WO-2024-0031',
-  title: 'Broken door handle',
-  category: 'Structural',
-};
-
 export default function FeedbackPage() {
   const params = useParams();
   const router = useRouter();
+  const requestId = params.id as string;
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [issueNotResolved, setIssueNotResolved] = useState(false);
   const [issueDetails, setIssueDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const displayRating = hoverRating || rating;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (rating === 0) return;
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    router.push('/requests?feedback=submitted');
+    try {
+      const response = await fetch(`/api/v1/requests/${requestId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating,
+          feedback,
+          issueNotResolved,
+          issueDetails: issueNotResolved ? issueDetails : undefined,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback (${response.status})`);
+      }
+      router.push('/requests?feedback=submitted');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -41,9 +54,8 @@ export default function FeedbackPage() {
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-8">
         {/* Request Context */}
         <div className="card p-4 bg-gray-50">
-          <div className="text-xs text-gray-500 mb-1">{workOrder.workOrderNumber}</div>
-          <div className="font-medium">{workOrder.title}</div>
-          <div className="text-sm text-gray-500">{workOrder.category}</div>
+          <div className="text-xs text-gray-500 mb-1">Request</div>
+          <div className="font-medium">#{requestId}</div>
         </div>
 
         {/* Star Rating */}
