@@ -160,6 +160,24 @@ export const urls = () => ({
   frontendUrl: getConfig().FRONTEND_URL,
 });
 
+/** Re-export feature-flag API for convenience */
+export {
+  isEnabled,
+  isEnabledSync,
+  getEnvFlag,
+  registerFeatureFlagLoader,
+  snapshotFlags,
+  KNOWN_FLAGS,
+  FLAG_REGISTRY,
+  FF,
+} from './feature-flags.js';
+export type {
+  FeatureFlagName,
+  FeatureFlagLoader,
+  FlagContext,
+  FlagDescriptor,
+} from './feature-flags.js';
+
 /** Re-export schemas for consumers that need validation */
 export {
   envSchema,
