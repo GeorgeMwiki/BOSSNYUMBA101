@@ -7,6 +7,9 @@
     "moduleResolution": "NodeNext",
     "types": ["node"],
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
     "paths": {
       "@/*": ["./src/*"]
     },

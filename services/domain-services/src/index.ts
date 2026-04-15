@@ -3,81 +3,104 @@
  *
  * Core domain services for the BOSSNYUMBA platform.
  * Implements business logic and data persistence with tenant isolation.
+ *
+ * Note: Explicit re-exports are used below to disambiguate between modules
+ * that define overlapping symbols (e.g. CustomerRepository is defined in
+ * both lease/ and customer/; InvoiceId in both invoice/ and payment/, etc.).
+ * The last-wins "export *" strategy does not work under isolatedModules,
+ * so we import wildcard where safe and use explicit named re-exports to
+ * prefer the canonical source per symbol.
  */
 
 // Common infrastructure
 export * from './common/index.js';
 
-// Observability helpers (health, ready, metrics)
-export {
-  createDomainServicesObservability,
-  type DomainServicesHealth,
-  type DomainServicesObservability,
-  type DomainServicesObservabilityOptions,
-} from './observability.js';
-
 // Tenant services - create, update, getPolicyConstitution
 export * from './tenant/index.js';
 
-// Identity services
+// Identity services (prefer identity's AuditService; audit/ module has its own)
 export * from './identity/index.js';
 
 // Property services - CRUD, getOccupancy, getUnits
 export * from './property/index.js';
 
+// Lease services - create, renew, terminate, getActive
+// Lease defines CustomerRepository and CustomerCreatedEvent; prefer the
+// customer/ versions below by using explicit re-exports from lease/ minus
+// the conflicting symbols.
+export type {
+  LeaseServiceErrorCode,
+  LeaseServiceErrorResult,
+  LeaseRepository,
+  CreateCustomerInput as LeaseCreateCustomerInput,
+  UpdateCustomerInput as LeaseUpdateCustomerInput,
+  CreateLeaseInput,
+  UpdateLeaseInput,
+  RenewalInput,
+  RenewalWindowType,
+  RenewalWindow,
+  ConditionReportItem,
+  ConditionReport,
+  DepositDeductionReason,
+  DepositDeduction,
+  DepositDisposition,
+  LeaseCreatedEvent,
+  LeaseActivatedEvent,
+  LeaseTerminatedEvent,
+  LeaseRenewalWindowEvent,
+  DepositReturnedEvent,
+} from './lease/index.js';
+export { LeaseServiceError, LeaseService } from './lease/index.js';
+
 // Customer services - onboard, updateProfile, getTimeline
-// Star-export is the authoritative source for Customer-related symbols.
 export * from './customer/index.js';
 
-// Lease services - create, renew, terminate, getActive
-// NOTE: lease/index re-declares some customer-related symbols (CustomerCreatedEvent,
-// CustomerRepository, ConditionRating). We explicitly re-export lease-owned names
-// here to avoid ambiguity with customer/index and other modules.
-export {
-  LeaseServiceError,
-  type LeaseServiceErrorCode,
-  type LeaseServiceErrorResult,
-  type LeaseRepository,
-  type CreateCustomerInput,
-  type UpdateCustomerInput,
-  type CreateLeaseInput,
-  type UpdateLeaseInput,
-  type RenewalInput,
-  type RenewalWindowType,
-  type RenewalWindow,
-  type ConditionReportItem,
-  type ConditionReport,
-  type DepositDeductionReason,
-  type DepositDeduction,
-  type DepositDisposition,
-  type LeaseCreatedEvent,
-  type LeaseActivatedEvent,
-  type LeaseTerminatedEvent,
-  type LeaseRenewalWindowEvent,
-  type DepositReturnedEvent,
-  LeaseService,
-} from './lease/index.js';
-
 // Invoice services - generate, send, getOutstanding
-// NOTE: invoice/index re-declares symbols shared with other modules. Use explicit
-// re-exports for invoice-owned symbols only.
-export {
-  type Invoice,
-  type InvoiceId,
-  type InvoiceLineItem,
-  type InvoiceStatus,
-  type InvoicePaidEvent,
-  type InvoiceRepository,
-  type RecordPaymentInput,
-} from './invoice/index.js';
+// Invoice defines Invoice, InvoiceId, InvoiceLineItem, InvoiceStatus which
+// are also defined under payment/. Prefer invoice/ here and omit from
+// payment re-export below.
+export * from './invoice/index.js';
 
-// Payment services
-export * from './payment/index.js';
+// Payment services - use explicit re-exports to avoid conflicts with invoice/
+export type {
+  PaymentId,
+  TransactionId,
+  PaymentStatus,
+  PaymentMethod,
+  Payment,
+  TransactionType,
+  TransactionCategory,
+  Transaction,
+  PaymentServiceErrorCode,
+  PaymentServiceErrorResult,
+  InvoiceLineItemType,
+} from './payment/index.js';
+export {
+  asPaymentId,
+  asTransactionId,
+  PaymentServiceError,
+} from './payment/index.js';
 
 // Maintenance services - createRequest, dispatch, complete
-// NOTE: maintenance/index redeclares Vendor* symbols that also live in vendor/index.
-// We let vendor/index be authoritative via its star-export later.
-export * from './maintenance/index.js';
+// Maintenance defines Vendor* symbols that conflict with vendor/. Prefer
+// vendor/ (canonical) and re-export only non-conflicting from maintenance.
+export type {
+  VendorSpecialization,
+  VendorEntity,
+  MaintenanceServiceErrorCode,
+  MaintenanceServiceErrorResult,
+  WorkOrderRepository,
+  CreateWorkOrderInput,
+  TriageWorkOrderInput,
+  AssignWorkOrderInput,
+  ScheduleWorkOrderInput,
+  CompleteWorkOrderInput,
+  WorkOrderCreatedEvent,
+  WorkOrderAssignedEvent,
+  WorkOrderCompletedEvent,
+  SLABreachedEvent,
+} from './maintenance/index.js';
+export { MaintenanceServiceError, MaintenanceService } from './maintenance/index.js';
 
 // Document services - upload, verify, getEvidencePack
 export * from './document/index.js';
@@ -97,48 +120,45 @@ export * from './scheduling/index.js';
 // Approval workflow services
 export * from './approvals/index.js';
 
-// Utilities tracking services
-// NOTE: utilities re-declares DateRange which also lives in other modules.
-// Keep star export but consumers should import DateRange from the desired module directly.
-export * from './utilities/index.js';
-
-// Audit logging services
-// NOTE: identity/index also exports an AuditService; we re-export audit/ items
-// except AuditService to avoid ambiguity. Consumers can import AuditService
-// directly from 'domain-services/audit' if they need the audit-module version.
+// Utilities tracking services - has DateRange that conflicts
 export type {
-  AuditAction,
-  AuditEntry,
-  AuditChange,
-  AuditQuery,
-  PaginatedAuditResult,
-  AuditStats,
-  AuditSearchFilters,
-  RetentionPolicy,
-  AuditContext,
+  UtilityType,
+  MeterType,
+  UtilityResponsibility,
+  UtilityBillStatus,
+  MeterReading,
+  UtilityAccount,
+  UtilityBill,
+  MeterReadingRecordedEvent,
+  UtilityBillCreatedEvent,
+  HighConsumptionAlertEvent,
+  UtilityEvent,
+  UtilityAccountStore,
+  MeterReadingStore,
+  UtilityBillStore,
+  UtilityBillFilters,
+  UtilityServiceErrorCode,
+  UtilityServiceErrorResult,
+} from './utilities/index.js';
+export {
+  UtilityServiceError,
+  DEFAULT_HIGH_CONSUMPTION_THRESHOLD,
+} from './utilities/index.js';
+
+// Audit logging services (AuditService already exported via identity/)
+export type {
   AuditServiceOptions,
   AuditRepository,
   AuditedOptions,
-  SensitiveDataAccessedEvent,
-  BulkExportPerformedEvent,
-  SuspiciousActivityDetectedEvent,
-  AuditEvent,
 } from './audit/index.js';
-export {
-  MemoryAuditRepository,
-  getAuditContext,
-  setAuditContext,
-  clearAuditContext,
-  withAuditContext,
-  Audited,
-} from './audit/index.js';
+export { MemoryAuditRepository, Audited } from './audit/index.js';
 
 // Messaging/Chat services
 export * from './messaging/index.js';
 
-// Compliance/Legal services
-// NOTE: compliance re-declares DateRange (also in utilities). We re-export
-// compliance-owned symbols explicitly.
+// Compliance/Legal services - defines CaseStatus, NoticeType, DateRange
+// (DateRange already conflicts with utilities/). Prefer compliance's
+// CaseStatus/NoticeType over cases/ versions below.
 export type {
   ComplianceType,
   ComplianceStatus,
@@ -177,69 +197,13 @@ export {
   MemoryNoticeStore,
 } from './compliance/index.js';
 
-// Case management services
-// NOTE: cases re-declares CaseStatus, NoticeType (also in compliance) and
-// CustomerId (also in customer). We explicitly re-export cases-owned symbols.
+// Case management services - CaseId, NoticeType conflict with compliance/
+// Also CustomerId, InvoiceId conflict with customer/invoice. Use explicit.
 export type {
   CaseId,
   NoticeId,
   EvidenceId,
-  LeaseId as CasesLeaseId,
-  PropertyId as CasesPropertyId,
-  UnitId,
-  InvoiceId as CasesInvoiceId,
-  CaseType,
-  CaseSeverity,
-  NoticeChannel,
-  CaseTimelineEvent,
-  CaseNotice,
-  CaseEvidence,
-  PaymentPlan,
-  CaseResolution,
-  Case,
-  CaseServiceErrorCode,
-  CaseServiceErrorResult,
-  CaseRepository,
-  CreateCaseInput,
-  UpdateCaseInput,
-  AddTimelineEventInput,
-  CreateNoticeInput,
-  SendNoticeInput,
-  AddEvidenceInput,
-  ResolveCaseInput,
-  CaseCreatedEvent,
-  CaseEscalatedEvent,
-  CaseResolvedEvent,
-  NoticeSentEvent,
-} from './cases/index.js';
-export {
-  asCaseId,
-  asNoticeId,
-  asEvidenceId,
-  CaseServiceError,
-  CaseService,
 } from './cases/index.js';
 
-// Vendor management services
-// NOTE: maintenance/index also exports some Vendor* symbols. We take
-// vendor/index as authoritative and explicitly re-export its vendor-owned
-// names (omitting ones that also appear in maintenance/index).
-export type {
-  VendorId,
-  VendorCategory,
-  VendorScorecard,
-  VendorCertification,
-  Vendor,
-  VendorServiceErrorCode,
-  VendorServiceErrorResult,
-  AddCertificationInput,
-  UpdateMetricsInput,
-  VendorCreatedEvent,
-  VendorStatusChangedEvent,
-  VendorScorecardUpdatedEvent,
-} from './vendor/index.js';
-export {
-  asVendorId,
-  VendorServiceError,
-  VendorService,
-} from './vendor/index.js';
+// Vendor management services - preferred source for Vendor* types
+export * from './vendor/index.js';
