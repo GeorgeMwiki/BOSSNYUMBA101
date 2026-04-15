@@ -1,8 +1,11 @@
 /**
- * Notification queue consumer - process jobs with BullMQ
+ * Notification queue consumer - process jobs with BullMQ.
+ *
+ * Uses @bossnyumba/queue's createWorker so connection resolution and
+ * lifecycle are shared with every other worker in the platform.
  */
 
-import { Worker, type Job } from 'bullmq';
+import { createWorker, QueueNames, type Job, type Worker } from '@bossnyumba/queue';
 import type { NotificationJobData } from './producer.js';
 import { notificationProcessor } from '../services/notification.service.js';
 import { createLogger } from '../logger.js';
@@ -10,38 +13,13 @@ import { createLogger } from '../logger.js';
 const logger = createLogger('notification-consumer');
 
 export interface ConsumerOptions {
-  connection?: { host: string; port: number; password?: string };
+  redisUrl?: string;
   queueName?: string;
   concurrency?: number;
 }
 
-const DEFAULT_QUEUE_NAME = 'notifications';
-
-function getDefaultConnection(): { host: string; port: number; password?: string } {
-  const url = process.env['REDIS_URL'];
-  if (url) {
-    try {
-      const u = new URL(url);
-      return {
-        host: u.hostname,
-        port: parseInt(u.port ?? '6379', 10),
-        password: u.password || undefined,
-      };
-    } catch {
-      // invalid URL
-    }
-  }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('REDIS_URL is required in production for the notification queue');
-  }
-  return { host: 'localhost', port: 6379 };
-}
-
 let workerInstance: Worker<NotificationJobData> | null = null;
 
-/**
- * Process a single notification job
- */
 async function processNotificationJob(job: Job<NotificationJobData>): Promise<void> {
   const { recipient, channel, templateId, data, notificationId } = job.data;
 
@@ -74,7 +52,7 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
 }
 
 /**
- * Create and start the notification queue worker
+ * Create and start the notification queue worker.
  */
 export function createNotificationWorker(
   options?: ConsumerOptions
@@ -83,17 +61,11 @@ export function createNotificationWorker(
     return workerInstance;
   }
 
-  const connection = options?.connection ?? getDefaultConnection();
-  const queueName = options?.queueName ?? DEFAULT_QUEUE_NAME;
-  const concurrency = options?.concurrency ?? 5;
-
-  workerInstance = new Worker<NotificationJobData>(
-    queueName,
+  workerInstance = createWorker<NotificationJobData>(
+    options?.queueName ?? QueueNames.Notifications,
     async (job) => processNotificationJob(job),
-    {
-      connection,
-      concurrency,
-    }
+    options?.redisUrl,
+    { concurrency: options?.concurrency ?? 5 }
   );
 
   workerInstance.on('completed', (job) => {
@@ -116,7 +88,7 @@ export function createNotificationWorker(
 }
 
 /**
- * Stop the notification queue consumer (graceful shutdown)
+ * Stop the notification queue consumer (graceful shutdown).
  */
 export async function stopNotificationConsumer(): Promise<void> {
   if (workerInstance) {

@@ -1,98 +1,93 @@
 /**
- * BOSSNYUMBA Retention Worker — entry point
+ * Retention worker entrypoint.
  *
- * Two operating modes:
+ * Registers all entity adapters (audit_events, chat_messages,
+ * communication_logs, ai_interactions, deleted_user_pii), starts the cron
+ * scheduler, and installs SIGINT/SIGTERM handlers for graceful shutdown.
  *
- *   1. `node dist/index.js` — daemon mode. Starts a node-cron schedule
- *      that fires once a day at 02:00 UTC (configurable via
- *      `RETENTION_CRON_SCHEDULE`).
- *
- *   2. `node dist/index.js --once [--dry-run]` — run a single sweep and
- *      exit. Useful for ops runbooks and first-of-month audits.
- *
- * The worker intentionally does NOT modify the main API process; it runs
- * as its own long-lived container.
+ * This file is both the library entry (for tests/imports) AND the
+ * executable entry (when run via `node dist/index.js`). The executable
+ * branch is gated on import.meta.url so importing it as a module does not
+ * spawn a cron.
  */
 
-import { startRetentionSchedule, DEFAULT_CRON_SCHEDULE } from './cron.js';
+import { loadConfig } from './config.js';
+import { createDefaultAdapters, runSweep } from './worker.js';
+import { startRetentionCron, type CronHandle } from './cron.js';
 import { createLogger } from './logger.js';
-import { RegistryRetentionRepository } from './repository.js';
-import { runRetentionSweep } from './worker.js';
 
-export { runRetentionSweep } from './worker.js';
-export { startRetentionSchedule, DEFAULT_CRON_SCHEDULE } from './cron.js';
-export { RegistryRetentionRepository } from './repository.js';
-export type {
-  RetentionRepository,
-  RetentionCandidate,
-  RunRetentionSweepOptions,
-  SweepResult,
-  PolicyRunResult,
-} from './types.js';
-export type { EntityAdapter, AuditLogSink } from './repository.js';
+// Re-exports for library consumers / tests.
+export { loadConfig } from './config.js';
+export { runSweep, createDefaultAdapters } from './worker.js';
+export { startRetentionCron } from './cron.js';
+export type { SweepSummary } from './worker.js';
+export type { RetentionConfig } from './config.js';
+export type { RetentionAdapter, AdapterResult, AdapterRunOptions } from './adapters/index.js';
 
-interface CliFlags {
-  readonly once: boolean;
-  readonly dryRun: boolean;
-}
+const logger = createLogger('retention');
 
-function parseArgs(argv: readonly string[]): CliFlags {
-  return {
-    once: argv.includes('--once'),
-    dryRun: argv.includes('--dry-run'),
-  };
-}
+/**
+ * Boot sequence:
+ *   1. Load config (throws on invalid numeric envs).
+ *   2. Register adapters - we log the roster up front so ops can confirm
+ *      from the first log line that each entity is covered.
+ *   3. Start cron. runOnStart=true so containers that come up mid-window
+ *      still perform an initial sweep.
+ *   4. Wire graceful shutdown.
+ */
+export async function bootstrap(): Promise<CronHandle> {
+  const config = loadConfig();
 
-async function main(): Promise<void> {
-  const logger = createLogger('retention-worker');
-  const flags = parseArgs(process.argv.slice(2));
-
-  // In production this registry is populated by service-specific adapters
-  // (e.g. audit-log adapter, messages adapter, ledger adapter). Until
-  // those land, the worker runs safely as a no-op against unknown
-  // entity types — it will log a warning per type but never touch rows
-  // it does not understand.
-  const repository = new RegistryRetentionRepository({ logger });
-
-  if (flags.once) {
-    logger.info('running single retention sweep', { dryRun: flags.dryRun });
-    const result = await runRetentionSweep(
-      { repository, logger },
-      { dryRun: flags.dryRun },
-    );
-    logger.info('single sweep complete', {
-      sweepId: result.sweepId,
-      totalDeleted: result.totalDeleted,
-      totalExcludedByLegalHold: result.totalExcludedByLegalHold,
-    });
-    return;
-  }
-
-  const handle = startRetentionSchedule({ repository, logger });
-  logger.info('retention worker daemon started', {
-    defaultSchedule: DEFAULT_CRON_SCHEDULE,
+  const adapters = createDefaultAdapters(config);
+  logger.info('retention adapters registered', {
+    adapters: adapters.map((a) => ({
+      name: a.name,
+      retentionDays: a.retentionDays,
+    })),
+    cron: config.cronSchedule,
+    timezone: config.cronTimezone,
+    dryRun: config.dryRun,
+    batchLimit: config.batchLimit,
   });
 
-  const shutdown = (signal: string): void => {
-    logger.info('received shutdown signal', { signal });
+  const handle = startRetentionCron({ config, runOnStart: true });
+
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info('shutdown signal received', { signal });
     handle.stop();
     process.exit(0);
   };
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+  return handle;
 }
 
-// Only run `main` when this module is executed directly (not when
-// imported from tests or other services).
+// When invoked directly (node dist/index.js), run bootstrap. Avoid doing
+// this at import time so unit tests can import runSweep without starting
+// a scheduler.
 const isDirectRun =
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith('retention-worker/dist/index.js') === true;
+  typeof process !== 'undefined' &&
+  Array.isArray(process.argv) &&
+  process.argv[1] !== undefined &&
+  // import.meta.url resolves to file://.../dist/index.js; the node CLI
+  // argv[1] is the absolute path. Compare normalized URLs.
+  import.meta.url === new URL(`file://${process.argv[1]}`).href;
 
 if (isDirectRun) {
-  main().catch((err: unknown) => {
-    const logger = createLogger('retention-worker');
-    const message = err instanceof Error ? err.message : String(err);
-    logger.error('retention worker failed to start', { error: message });
+  bootstrap().catch((err) => {
+    // Use console.error directly - logger may not flush before exit.
+    // eslint-disable-next-line no-console
+    console.error('retention-worker failed to start', err);
     process.exit(1);
   });
+}
+
+// Default export for one-shot CLI mode: `node -e "import('...').then(m => m.runOnce())"`.
+export async function runOnce(): Promise<void> {
+  const summary = await runSweep();
+  if (!summary.ok) {
+    process.exit(1);
+  }
 }

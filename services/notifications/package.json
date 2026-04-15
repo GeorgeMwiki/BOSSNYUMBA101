@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.0.0",
+    "@bossnyumba/queue": "workspace:*",
     "africastalking": "^0.7.8",
     "@sendgrid/mail": "^8.1.0",
     "axios": "^1.6.7",

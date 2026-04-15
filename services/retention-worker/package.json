@@ -1,25 +1,25 @@
 {
   "name": "@bossnyumba/retention-worker",
   "version": "1.0.0",
-  "description": "Nightly data retention sweep worker honoring legal holds for BOSSNYUMBA",
+  "description": "Background worker that enforces data retention policies (soft/hard delete, legal hold exemption)",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "sweep": "node dist/index.js --once",
-    "sweep:dry-run": "node dist/index.js --once --dry-run",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/enterprise-hardening": "workspace:*",
+    "@bossnyumba/queue": "workspace:*",
+    "drizzle-orm": "^0.29.3",
     "node-cron": "^3.0.3"
   },
   "devDependencies": {
@@ -27,8 +27,5 @@
     "@types/node-cron": "^3.0.11",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
