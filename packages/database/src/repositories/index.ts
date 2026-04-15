@@ -31,3 +31,18 @@ export { MessagingRepository } from './messaging.repository.js';
 export { SchedulingRepository } from './scheduling.repository.js';
 export { UtilitiesRepository } from './utilities.repository.js';
 export { ComplianceRepository, DocumentRepository } from './compliance.repository.js';
+
+// Brain — Thread Store + HR
+export { BrainThreadRepository } from './brain-thread.repository.js';
+export type {
+  BrainThread,
+  BrainThreadEvent,
+} from './brain-thread.repository.js';
+export {
+  DepartmentRepository,
+  TeamRepository,
+  EmployeeRepository,
+  AssignmentRepository,
+  PerformanceRepository,
+  type EmployeeRankingRow,
+} from './hr.repository.js';

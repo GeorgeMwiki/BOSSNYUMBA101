@@ -37,6 +37,7 @@ interface TurnBody {
   threadId?: string;
   userText?: string;
   forcePersonaId?: string;
+  defaultVisibility?: 'private' | 'team' | 'management' | 'public';
 }
 
 export async function POST(req: Request) {
@@ -52,25 +53,13 @@ export async function POST(req: Request) {
 
   const { orchestrator } = brain();
 
-  // Phase 1 admin context — replace when api-gateway auth is wired.
-  const tenant = {
-    tenantId: 'dev-tenant',
-    tenantName: 'Development',
-    environment: 'development' as const,
-  };
-  const actor = {
-    type: 'user' as const,
-    id: 'admin-dev',
-    name: 'Admin (dev)',
-    roles: ['admin', 'manager'],
-  };
-  const viewer = {
-    userId: actor.id,
-    roles: actor.roles,
-    teamIds: [],
-    isAdmin: true,
-    isManagement: true,
-  };
+  // Auth context. Prefer the api-gateway-supplied headers when present; fall
+  // back to a dev admin context otherwise. This is the seam where real JWT
+  // verification attaches in Phase 2 (Bearer -> verifyJwt -> principal).
+  const { tenant, actor, viewer } = buildAuthContext(
+    req,
+    body.forcePersonaId?.startsWith('coworker.') === true
+  );
 
   try {
     if (!body.threadId) {
@@ -128,4 +117,72 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Auth context extraction
+// ---------------------------------------------------------------------------
+
+interface AuthContext {
+  tenant: {
+    tenantId: string;
+    tenantName: string;
+    environment: 'production' | 'staging' | 'development';
+  };
+  actor: {
+    type: 'user';
+    id: string;
+    name?: string;
+    roles: string[];
+  };
+  viewer: {
+    userId: string;
+    roles: string[];
+    teamIds: string[];
+    employeeId?: string;
+    isAdmin?: boolean;
+    isManagement?: boolean;
+  };
+}
+
+function buildAuthContext(req: Request, isCoworkerRoute: boolean): AuthContext {
+  // In production, the api-gateway forwards these headers on every request
+  // (jwt middleware attaches them). In dev, we fall back to a sensible admin.
+  const h = req.headers;
+  const tenantId = h.get('x-tenant-id') ?? 'dev-tenant';
+  const tenantName = h.get('x-tenant-name') ?? 'Development';
+  const env = (h.get('x-environment') as
+    | 'production'
+    | 'staging'
+    | 'development'
+    | null) ?? 'development';
+  const userId = h.get('x-user-id') ?? (isCoworkerRoute ? 'employee-dev' : 'admin-dev');
+  const userName = h.get('x-user-name') ?? undefined;
+  const rolesCsv = h.get('x-user-roles') ?? (isCoworkerRoute ? 'employee' : 'admin,manager');
+  const roles = rolesCsv.split(',').map((r) => r.trim()).filter(Boolean);
+  const teamsCsv = h.get('x-user-teams') ?? '';
+  const teamIds = teamsCsv.split(',').map((t) => t.trim()).filter(Boolean);
+  const employeeId = h.get('x-employee-id') ?? undefined;
+
+  const isAdmin = roles.includes('admin');
+  const isManagement =
+    isAdmin || roles.includes('manager') || roles.includes('team_leader');
+
+  return {
+    tenant: { tenantId, tenantName, environment: env },
+    actor: {
+      type: 'user',
+      id: userId,
+      name: userName,
+      roles,
+    },
+    viewer: {
+      userId,
+      roles,
+      teamIds,
+      employeeId,
+      isAdmin,
+      isManagement,
+    },
+  };
 }

@@ -5,3 +5,4 @@
 export * from './visibility.js';
 export * from './handoff-packet.js';
 export * from './thread-store.js';
+export * from './postgres-backend.js';

@@ -5,17 +5,17 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   ClipboardList,
-  Calendar,
   Wrench,
   Brain,
+  Users,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/brain', icon: Brain, label: 'Brain' },
+  { href: '/coworker', icon: Users, label: 'Coworker' },
   { href: '/work-orders', icon: ClipboardList, label: 'Tasks' },
   { href: '/maintenance', icon: Wrench, label: 'Maint' },
-  { href: '/schedule', icon: Calendar, label: 'Schedule' },
 ];
 
 export function BottomNavigation() {

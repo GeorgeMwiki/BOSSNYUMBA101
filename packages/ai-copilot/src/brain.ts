@@ -26,6 +26,7 @@ import {
 } from './personas/persona.js';
 import { DEFAULT_PERSONAE } from './personas/personas.catalog.js';
 import { registerDefaultSkills } from './skills/index.js';
+import { GraphToolkitLike } from './skills/graph/index.js';
 import { ReviewService, createReviewService } from './services/review-service.js';
 import {
   AIGovernanceService,
@@ -45,6 +46,8 @@ export interface BrainConfig {
   governance?: AIGovernanceService;
   /** Existing review service to share with the rest of AICopilot. */
   reviewService?: ReviewService;
+  /** Graph toolkit from @bossnyumba/graph-sync for graph tool wiring. */
+  graphToolkit?: GraphToolkitLike;
 }
 
 export interface Brain {
@@ -90,7 +93,7 @@ export function createBrain(cfg: BrainConfig = {}): Brain {
 
   // Tool dispatcher (skills register themselves)
   const tools = new ToolDispatcher(threads);
-  registerDefaultSkills(tools);
+  registerDefaultSkills(tools, { graphToolkit: cfg.graphToolkit });
 
   // Orchestrator
   const orchestrator = new Orchestrator({

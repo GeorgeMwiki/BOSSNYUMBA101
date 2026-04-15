@@ -8,4 +8,18 @@
 
 export * from './scenario.js';
 export * from './golden-scenarios.js';
+export * from './scenarios-extended.js';
 export * from './runner.js';
+
+import { GOLDEN_SCENARIOS } from './golden-scenarios.js';
+import { EXTENDED_SCENARIOS } from './scenarios-extended.js';
+import type { Scenario } from './scenario.js';
+
+/**
+ * Full eval set — GOLDEN + EXTENDED. ~100 scenarios covering routing,
+ * tool dispatch, advisor gating, visibility, handoff, and governance.
+ */
+export const ALL_SCENARIOS: Scenario[] = [
+  ...GOLDEN_SCENARIOS,
+  ...EXTENDED_SCENARIOS,
+];
