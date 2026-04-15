@@ -179,7 +179,9 @@ resource "aws_lb_target_group" "api" {
 }
 
 # -----------------------------------------------------------------------------
-# ALB Listener - HTTP (redirect to HTTPS in production)
+# ALB Listener - HTTP
+# In production, HTTP redirects to HTTPS. In non-production we forward
+# unmatched traffic to the API target group as a safe default.
 # -----------------------------------------------------------------------------
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
@@ -187,8 +189,66 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
+    type = var.environment == "production" ? "redirect" : "forward"
+
+    dynamic "redirect" {
+      for_each = var.environment == "production" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    dynamic "forward" {
+      for_each = var.environment == "production" ? [] : [1]
+      content {
+        target_group {
+          arn = aws_lb_target_group.api.arn
+        }
+      }
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# ALB Listener - HTTPS (only when a certificate ARN is provided)
+# -----------------------------------------------------------------------------
+resource "aws_lb_listener" "https" {
+  count = var.certificate_arn == "" ? 0 : 1
+
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
+  }
+}
+
+locals {
+  primary_listener_arn = var.certificate_arn == "" ? aws_lb_listener.http.arn : aws_lb_listener.https[0].arn
+}
+
+# -----------------------------------------------------------------------------
+# Route /api/* explicitly at priority 1 so it cannot be shadowed
+# -----------------------------------------------------------------------------
+resource "aws_lb_listener_rule" "api" {
+  listener_arn = local.primary_listener_arn
+  priority     = 1
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*", "/health", "/ready"]
+    }
   }
 }
 
@@ -322,7 +382,7 @@ resource "aws_ecs_service" "app" {
 resource "aws_lb_listener_rule" "app" {
   for_each = var.app_services
 
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = local.primary_listener_arn
   priority     = 100 + index(keys(var.app_services), each.key)
 
   action {

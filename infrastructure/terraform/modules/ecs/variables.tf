@@ -74,6 +74,12 @@ variable "enable_container_insights" {
   default     = true
 }
 
+variable "certificate_arn" {
+  description = "ACM certificate ARN for the HTTPS listener. Leave empty to skip HTTPS."
+  type        = string
+  default     = ""
+}
+
 # -----------------------------------------------------------------------------
 # App Services (estate-manager, customer-app, owner-portal, admin-portal)
 # -----------------------------------------------------------------------------

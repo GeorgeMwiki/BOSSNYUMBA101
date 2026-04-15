@@ -1,0 +1,78 @@
+# =============================================================================
+# Staging - Terraform Variables
+# =============================================================================
+# Copy to staging.tfvars and fill in. Do NOT commit real secrets.
+# Use: export TF_VAR_rds_password="..." for sensitive values.
+# =============================================================================
+
+project_name = "bossnyumba"
+environment  = "staging"
+aws_region   = "eu-west-1"
+
+# -----------------------------------------------------------------------------
+# Networking
+# -----------------------------------------------------------------------------
+vpc_cidr             = "10.10.0.0/16"
+availability_zones   = ["eu-west-1a", "eu-west-1b"]
+public_subnet_cidrs  = ["10.10.1.0/24", "10.10.2.0/24"]
+private_subnet_cidrs = ["10.10.11.0/24", "10.10.12.0/24"]
+enable_nat_gateway   = true
+single_nat_gateway   = true
+
+# -----------------------------------------------------------------------------
+# RDS
+# -----------------------------------------------------------------------------
+rds_instance_class    = "db.t3.small"
+rds_allocated_storage = 20
+rds_database_name     = "bossnyumba"
+rds_username          = "bossnyumba"
+# rds_password set via TF_VAR_rds_password
+rds_password          = "replace-me-in-TF_VAR_rds_password"
+rds_multi_az          = false
+
+# -----------------------------------------------------------------------------
+# Redis
+# -----------------------------------------------------------------------------
+redis_node_type          = "cache.t3.micro"
+redis_num_cache_clusters = 1
+
+# -----------------------------------------------------------------------------
+# ECS / API Gateway
+# -----------------------------------------------------------------------------
+api_image         = "bossnyumba/api-gateway:staging"
+api_cpu           = 256
+api_memory        = 512
+api_desired_count = 2
+
+enable_container_insights = true
+
+# -----------------------------------------------------------------------------
+# App services (optional path-based routing on the ALB)
+# -----------------------------------------------------------------------------
+app_services = {
+  # Example (uncomment and fill in):
+  # customer-app = {
+  #   image         = "bossnyumba/customer-app:staging"
+  #   cpu           = 256
+  #   memory        = 512
+  #   port          = 3000
+  #   desired_count = 1
+  #   path_pattern  = "/*"
+  # }
+}
+
+s3_cors_allowed_origins = ["https://staging.bossnyumba.com", "http://localhost:3000"]
+
+# -----------------------------------------------------------------------------
+# DNS / ACM (leave blank to skip)
+# -----------------------------------------------------------------------------
+domain_name        = ""
+create_hosted_zone = false
+san_domains        = []
+alb_alias_names    = []
+
+# -----------------------------------------------------------------------------
+# WAF / Monitoring
+# -----------------------------------------------------------------------------
+waf_rate_limit         = 2000
+alarm_email_recipients = []

@@ -1,5 +1,5 @@
 # =============================================================================
-# Staging Environment - Variables
+# Production Environment - Variables
 # =============================================================================
 
 variable "project_name" {
@@ -112,4 +112,65 @@ variable "api_desired_count" {
 variable "enable_container_insights" {
   description = "Container Insights"
   type        = bool
+}
+
+variable "app_services" {
+  description = "Map of app services to deploy"
+  type = map(object({
+    image         = string
+    cpu           = number
+    memory        = number
+    port          = number
+    desired_count = number
+    path_pattern  = string
+  }))
+  default = {}
+}
+
+variable "s3_cors_allowed_origins" {
+  description = "CORS allowed origins for S3 document uploads"
+  type        = list(string)
+  default     = ["*"]
+}
+
+# -----------------------------------------------------------------------------
+# DNS / ACM (optional)
+# -----------------------------------------------------------------------------
+variable "domain_name" {
+  description = "Apex domain for this environment. Empty disables DNS/ACM/HTTPS."
+  type        = string
+  default     = ""
+}
+
+variable "create_hosted_zone" {
+  description = "Create a Route53 hosted zone for domain_name"
+  type        = bool
+  default     = false
+}
+
+variable "san_domains" {
+  description = "Additional SANs on the ACM certificate"
+  type        = list(string)
+  default     = []
+}
+
+variable "alb_alias_names" {
+  description = "FQDNs to alias to the ALB"
+  type        = list(string)
+  default     = []
+}
+
+# -----------------------------------------------------------------------------
+# WAF / Monitoring
+# -----------------------------------------------------------------------------
+variable "waf_rate_limit" {
+  description = "Per-IP request ceiling over a 5-minute sliding window"
+  type        = number
+  default     = 2000
+}
+
+variable "alarm_email_recipients" {
+  description = "Email addresses that will receive CloudWatch alarms"
+  type        = list(string)
+  default     = []
 }

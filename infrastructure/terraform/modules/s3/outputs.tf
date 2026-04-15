@@ -3,23 +3,33 @@
 # =============================================================================
 
 output "bucket_id" {
-  description = "The S3 bucket ID"
+  description = "The documents S3 bucket ID"
   value       = aws_s3_bucket.documents.id
 }
 
 output "bucket_arn" {
-  description = "The S3 bucket ARN"
+  description = "The documents S3 bucket ARN"
   value       = aws_s3_bucket.documents.arn
 }
 
 output "bucket_domain_name" {
-  description = "The S3 bucket domain name"
+  description = "The documents S3 bucket domain name"
   value       = aws_s3_bucket.documents.bucket_domain_name
 }
 
 output "bucket_regional_domain_name" {
-  description = "The S3 bucket regional domain name"
+  description = "The documents S3 bucket regional domain name"
   value       = aws_s3_bucket.documents.bucket_regional_domain_name
+}
+
+output "reports_bucket_id" {
+  description = "The reports S3 bucket ID"
+  value       = aws_s3_bucket.reports.id
+}
+
+output "reports_bucket_arn" {
+  description = "The reports S3 bucket ARN"
+  value       = aws_s3_bucket.reports.arn
 }
 
 output "iam_policy_arn" {
