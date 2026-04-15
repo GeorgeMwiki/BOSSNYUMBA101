@@ -46,6 +46,7 @@ import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
 import { aiRouter } from './routes/ai';
+import { adminFeatureFlagsRouter } from './routes/admin/feature-flags.hono';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -108,6 +109,9 @@ api.route('/memberships', membershipsRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
+// Mount the admin feature-flags router BEFORE the catch-all adminPortalRouter
+// so /admin/feature-flags hits the explicit handlers.
+api.route('/admin/feature-flags', adminFeatureFlagsRouter);
 api.route('/admin', adminPortalRouter);
 api.route('/ai', aiRouter);
 app.use('/api/v1', handle(api));

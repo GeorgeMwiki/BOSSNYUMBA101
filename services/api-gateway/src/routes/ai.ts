@@ -36,6 +36,25 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 
+// Lazily import the reports service so a missing/uninstalled package
+// (e.g. in lightweight CI environments) degrades to repo-only metrics
+// instead of crashing the whole AI router.
+let reportsModulePromise: Promise<{ mod: any | null }> | null = null;
+async function loadReportsModule(): Promise<{ mod: any | null }> {
+  if (reportsModulePromise) return reportsModulePromise;
+  reportsModulePromise = (async () => {
+    for (const name of ['@bossnyumba/reports-service', '@bossnyumba/reports']) {
+      try {
+        return { mod: await import(name) };
+      } catch {
+        // try next
+      }
+    }
+    return { mod: null };
+  })();
+  return reportsModulePromise;
+}
+
 export const aiRouter = new Hono();
 
 aiRouter.use('*', authMiddleware);
@@ -87,7 +106,8 @@ function startOfMonthUtc(date = new Date()): Date {
 async function fetchPortfolioContext(
   repos: any,
   auth: { tenantId: string; propertyAccess?: string[] },
-  jurisdictionCode: string
+  jurisdictionCode: string,
+  db?: any
 ): Promise<PortfolioContext> {
   const defaults: PortfolioContext = {
     propertyCount: 0,
@@ -138,9 +158,9 @@ async function fetchPortfolioContext(
       return d >= monthStart;
     });
 
-    const monthlyInvoiced = scopedInvoices.reduce((s: number, inv: any) => s + Number(inv.total ?? inv.amount ?? 0), 0);
-    const monthlyCollected = scopedPayments.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0);
-    const collectionRate = monthlyInvoiced > 0 ? (monthlyCollected / monthlyInvoiced) * 100 : 0;
+    let monthlyInvoiced = scopedInvoices.reduce((s: number, inv: any) => s + Number(inv.total ?? inv.amount ?? 0), 0);
+    let monthlyCollected = scopedPayments.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0);
+    let collectionRate = monthlyInvoiced > 0 ? (monthlyCollected / monthlyInvoiced) * 100 : 0;
 
     const scopedWOs = workOrders.items.filter((wo: any) => propIds.has(wo.propertyId));
     const openStatuses = new Set([
@@ -157,6 +177,39 @@ async function fetchPortfolioContext(
     const criticalTickets = scopedWOs.filter(
       (wo: any) => openStatuses.has(wo.status) && (wo.priority === 'emergency' || wo.priority === 'high')
     ).length;
+
+    // Prefer SQLKPIDataProvider for the headline money numbers when the
+    // reports service is available — it runs the same SQL aggregations
+    // that the owner portfolio endpoint uses, keeping briefing and
+    // portfolio in sync.
+    if (db) {
+      try {
+        const loaded = await loadReportsModule();
+        if (loaded?.mod?.SQLKPIDataProvider) {
+          const provider = new loaded.mod.SQLKPIDataProvider(db, { tenantId: auth.tenantId });
+          const period = {
+            start: monthStart,
+            end: new Date(),
+            label: 'mtd',
+          };
+          const propertyIdList =
+            propIds.size > 0 && !auth.propertyAccess?.includes('*')
+              ? Array.from(propIds) as string[]
+              : undefined;
+          const collection = await provider.getRentCollectionRate(
+            auth.tenantId,
+            period,
+            propertyIdList
+          );
+          monthlyInvoiced = collection.totalBilled;
+          monthlyCollected = collection.totalCollected;
+          collectionRate = collection.rate;
+        }
+      } catch {
+        // Fall back to repo-derived values silently — never break the AI
+        // briefing because the KPI provider hiccupped.
+      }
+    }
 
     const flags: string[] = [];
     if (collectionRate > 0 && collectionRate < 75) flags.push('LOW_COLLECTION_RATE');
@@ -347,7 +400,7 @@ aiRouter.post('/copilot/chat', zValidator('json', chatSchema), async (c) => {
     requested: body.provider,
   });
 
-  const ctx = await fetchPortfolioContext(repos, auth, policy.code);
+  const ctx = await fetchPortfolioContext(repos, auth, policy.code, db);
   const systemPrompt = buildChatSystemPrompt(policy, ctx);
 
   const messages: ChatMessage[] = [
@@ -514,7 +567,7 @@ aiRouter.post('/briefing', async (c) => {
     jurisdiction: jurisdictionCode,
   });
 
-  const ctx = await fetchPortfolioContext(repos, auth, policy.code);
+  const ctx = await fetchPortfolioContext(repos, auth, policy.code, db);
   const systemPrompt = buildBriefingSystemPrompt(
     { ...policy, language: body?.locale ?? policy.language },
     ctx

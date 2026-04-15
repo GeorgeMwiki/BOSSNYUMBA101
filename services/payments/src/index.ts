@@ -2,6 +2,47 @@
 // gets the M-Pesa support stores auto-wired from `MPESA_STORE_BACKEND`.
 import './bootstrap';
 
+// Wire the DB-backed loader for @bossnyumba/config/feature-flags. Without
+// this call any tenant/user-scoped row in `feature_flags` is dead data on
+// the payments path. We dynamic-import both modules so this package stays
+// dep-light (no hard dep on @bossnyumba/database / @bossnyumba/config) and
+// any module-resolution / runtime DB failure degrades silently to env +
+// static defaults — payments must never refuse to boot because of flags.
+void (async () => {
+  try {
+    const [{ registerFeatureFlagLoader }, dbModule] = await Promise.all([
+      import('@bossnyumba/config/feature-flags'),
+      import('@bossnyumba/database'),
+    ]);
+    const { FeatureFlagRepository, createDatabaseClient } = dbModule as {
+      FeatureFlagRepository: new (db: unknown) => {
+        findByFlag: (
+          k: string,
+          t?: string,
+          u?: string
+        ) => Promise<{ enabled: boolean } | null>;
+      };
+      createDatabaseClient: (url: string) => unknown;
+    };
+
+    const url = process.env.DATABASE_URL;
+    if (!url) return;
+    const db = createDatabaseClient(url);
+    const repo = new FeatureFlagRepository(db);
+
+    registerFeatureFlagLoader(async (flag, ctx) => {
+      try {
+        const row = await repo.findByFlag(flag, ctx.tenantId, ctx.userId);
+        return row ? row.enabled : undefined;
+      } catch {
+        return undefined;
+      }
+    });
+  } catch {
+    // No-op: loader stays unregistered, isEnabled() falls through to env + defaults.
+  }
+})();
+
 // M-Pesa STK Push
 export {
   MpesaStkPush,

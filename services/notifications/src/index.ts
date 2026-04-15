@@ -1,6 +1,6 @@
 /**
  * BOSSNYUMBA Notifications Service
- * 
+ *
  * Multi-channel notification service supporting:
  * - WhatsApp Business API
  * - SMS (Africa's Talking)
@@ -8,6 +8,48 @@
  * - Push Notifications (Firebase)
  * - In-App Notifications
  */
+
+// Wire the DB-backed loader for @bossnyumba/config/feature-flags. Without
+// this call any tenant/user-scoped row in `feature_flags` is dead data on
+// the notifications path (e.g. FF_PUSH_NOTIFICATIONS rollout). We
+// dynamic-import both modules so this package stays dep-light (no hard dep
+// on @bossnyumba/database / @bossnyumba/config) and any module-resolution
+// or runtime DB failure degrades silently to env + static defaults —
+// notification dispatch must never refuse to boot because of flags.
+void (async () => {
+  try {
+    const [{ registerFeatureFlagLoader }, dbModule] = await Promise.all([
+      import('@bossnyumba/config/feature-flags'),
+      import('@bossnyumba/database'),
+    ]);
+    const { FeatureFlagRepository, createDatabaseClient } = dbModule as {
+      FeatureFlagRepository: new (db: unknown) => {
+        findByFlag: (
+          k: string,
+          t?: string,
+          u?: string
+        ) => Promise<{ enabled: boolean } | null>;
+      };
+      createDatabaseClient: (url: string) => unknown;
+    };
+
+    const url = process.env.DATABASE_URL;
+    if (!url) return;
+    const db = createDatabaseClient(url);
+    const repo = new FeatureFlagRepository(db);
+
+    registerFeatureFlagLoader(async (flag, ctx) => {
+      try {
+        const row = await repo.findByFlag(flag, ctx.tenantId, ctx.userId);
+        return row ? row.enabled : undefined;
+      } catch {
+        return undefined;
+      }
+    });
+  } catch {
+    // No-op: loader stays unregistered, isEnabled() falls through to env + defaults.
+  }
+})();
 
 // ============================================================================
 // WhatsApp Client (Legacy)

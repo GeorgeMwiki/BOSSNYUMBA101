@@ -699,6 +699,7 @@ async function loadReportsModule() {
 app.get('/portfolio', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
+  const db = c.get('db');
 
   const loaded = await loadReportsModule();
   if (!loaded?.mod) {
@@ -716,29 +717,39 @@ app.get('/portfolio', async (c) => {
     );
   }
 
+  if (!db) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'Database client not initialised; cannot compute portfolio KPIs.',
+        },
+      },
+      503
+    );
+  }
+
   try {
     const reports = loaded.mod;
     const scope = await getOwnerScope(auth, repos);
 
-    // Build a KPI data provider. Use the mock provider if the service
-    // exposes one; otherwise 503 instead of inventing metrics.
-    const dataProvider = reports.MockReportDataProvider
-      ? new reports.MockReportDataProvider()
-      : null;
-    if (!dataProvider || !reports.KPIEngine) {
+    // Use SQL-backed data provider so KPIs reflect real tenant data
+    // rather than the mock numbers that the reports package ships for
+    // local development.
+    if (!reports.SQLKPIDataProvider) {
       return c.json(
         {
           success: false,
           error: {
-            code: 'KPI_ENGINE_UNAVAILABLE',
-            message: 'KPI engine is not configured in this environment.',
+            code: 'KPI_PROVIDER_UNAVAILABLE',
+            message: 'SQLKPIDataProvider is not exported by the reports service.',
           },
         },
         503
       );
     }
 
-    const engine = new reports.KPIEngine(dataProvider);
     const now = new Date();
     const period = {
       start: new Date(now.getFullYear(), now.getMonth(), 1),
@@ -746,10 +757,12 @@ app.get('/portfolio', async (c) => {
       label: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
     };
 
-    // Per-property KPI calculation. Fall back gracefully when the KPI
-    // engine throws for properties unknown to its data provider (e.g.
-    // fresh tenants); those properties are returned with null KPIs so
-    // the client can display them without fabricating numbers.
+    const provider = new reports.SQLKPIDataProvider(db, { tenantId: auth.tenantId });
+
+    // Per-property KPI calculation. Fall back gracefully when the
+    // provider throws for an individual property; that property is
+    // returned with null KPIs so the client renders it without
+    // fabricating numbers.
     const enriched = await Promise.all(
       scope.properties.map(async (property) => {
         const units = scope.units.filter((unit) => unit.propertyId === property.id);
@@ -774,13 +787,14 @@ app.get('/portfolio', async (c) => {
         let collectionRate = null;
 
         try {
-          const detail = await engine.calculatePropertyKPIs(
-            auth.tenantId,
-            property.id,
-            period
-          );
-          occupancyRate = detail?.occupancy?.physicalOccupancy?.current ?? null;
-          collectionRate = detail?.collection?.collectionRate?.current ?? null;
+          const occ = await provider.getOccupancyRate(auth.tenantId, period, [property.id]);
+          occupancyRate = occ?.rate ?? null;
+        } catch {
+          // Leave null; do NOT fabricate values.
+        }
+        try {
+          const col = await provider.getRentCollectionRate(auth.tenantId, period, [property.id]);
+          collectionRate = col?.rate ?? null;
         } catch {
           // Leave null; do NOT fabricate values.
         }

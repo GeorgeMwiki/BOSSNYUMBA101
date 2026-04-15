@@ -7,7 +7,14 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
-import { tenants, users, roles, userRoles, memberships } from '@bossnyumba/database';
+import {
+  tenants,
+  users,
+  roles,
+  userRoles,
+  RefreshTokenRepository,
+} from '@bossnyumba/database';
+import { auth as authConfig } from '@bossnyumba/config';
 import { UserRole } from '../types/user-role';
 import { activatePendingMemberships } from './memberships.hono';
 

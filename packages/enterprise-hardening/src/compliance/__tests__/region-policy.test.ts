@@ -1,12 +1,26 @@
 /**
- * Tests for the region policy bundle.
+ * Tests for the region-policy SHIM and the underlying jurisdiction
+ * registry that backs it.
  *
- * These tests pin the policy table against accidental drift. Anyone
- * editing region-policy.ts MUST keep these passing.
+ * The shim in `../region-policy` is @deprecated — it delegates to
+ * `@bossnyumba/domain-models`'s jurisdiction registry. We test BOTH
+ * surfaces here so:
+ *   1. Backward-compat callers keep working through the shim, and
+ *   2. The new jurisdiction API is exercised by the same expectations
+ *      so seed data drift can't desync the two surfaces.
  */
 
-import { describe, it, expect } from 'vitest';
-import { Region, Language, FiscalAuthority } from '@bossnyumba/domain-models';
+import { describe, it, expect, beforeAll } from 'vitest';
+import {
+  Region,
+  Language,
+  FiscalAuthority,
+  loadSeedJurisdictions,
+  getJurisdiction,
+  isSubprocessorBlocked,
+  getTaxRate,
+  requiresFiscalSubmission as registryRequiresFiscalSubmission,
+} from '@bossnyumba/domain-models';
 import {
   getUserPolicy,
   isSubprocessorBlockedForRegion,
@@ -14,7 +28,18 @@ import {
   requiresFiscalSubmission,
 } from '../region-policy';
 
-describe('getUserPolicy', () => {
+beforeAll(() => {
+  // Make sure the jurisdiction registry is populated before exercising
+  // either the shim or the registry directly. The shim auto-seeds, but
+  // we also want the registry-direct tests below to work standalone.
+  loadSeedJurisdictions();
+});
+
+// ---------------------------------------------------------------------------
+// Legacy shim — must stay backward-compatible for un-migrated callers
+// ---------------------------------------------------------------------------
+
+describe('shim: getUserPolicy', () => {
   it('Tanzania policy: Swahili default, DeepSeek blocked, PDPA', () => {
     const p = getUserPolicy(Region.TANZANIA);
     expect(p.region).toBe('TZ');
@@ -58,7 +83,7 @@ describe('getUserPolicy', () => {
   });
 });
 
-describe('isSubprocessorBlockedForRegion', () => {
+describe('shim: isSubprocessorBlockedForRegion', () => {
   it('blocks DeepSeek for TZ', () => {
     expect(isSubprocessorBlockedForRegion('deepseek', Region.TANZANIA)).toBe(true);
   });
@@ -83,7 +108,7 @@ describe('isSubprocessorBlockedForRegion', () => {
   });
 });
 
-describe('getOrgFiscalPolicy', () => {
+describe('shim: getOrgFiscalPolicy', () => {
   it('Tanzania: TRA, TZS, 18% VAT, 10% resident WHT, no MRI', () => {
     const p = getOrgFiscalPolicy(Region.TANZANIA);
     expect(p.fiscalCountry).toBe('TZ');
@@ -120,7 +145,7 @@ describe('getOrgFiscalPolicy', () => {
   });
 });
 
-describe('requiresFiscalSubmission', () => {
+describe('shim: requiresFiscalSubmission', () => {
   it('returns true for KE', () => {
     expect(requiresFiscalSubmission(Region.KENYA)).toBe(true);
   });
@@ -138,7 +163,7 @@ describe('requiresFiscalSubmission', () => {
   });
 });
 
-describe('user vs org region independence', () => {
+describe('shim: user vs org region independence', () => {
   it('TZ user renting from KE landlord gets TZ user policy + KE fiscal policy', () => {
     const userP = getUserPolicy(Region.TANZANIA);
     const orgP = getOrgFiscalPolicy(Region.KENYA);
@@ -162,5 +187,104 @@ describe('user vs org region independence', () => {
     expect(userP.defaultLanguage).toBe(Language.ENGLISH);
     expect(orgP.fiscalAuthority).toBe(FiscalAuthority.TRA);
     expect(orgP.defaultCurrency).toBe('TZS');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New jurisdiction registry — the canonical source of truth
+// ---------------------------------------------------------------------------
+
+describe('jurisdiction registry: getJurisdiction', () => {
+  it('returns Tanzania config keyed by ISO code', () => {
+    const j = getJurisdiction('TZ');
+    expect(j.countryCode).toBe('TZ');
+    expect(j.defaultCurrency).toBe('TZS');
+    expect(j.defaultLanguage).toBe('sw');
+    expect(j.compliance.blockedSubprocessors).toContain('deepseek');
+    expect(j.fiscalAuthority?.key).toBe('tra');
+  });
+
+  it('returns Kenya config keyed by ISO code', () => {
+    const j = getJurisdiction('KE');
+    expect(j.countryCode).toBe('KE');
+    expect(j.defaultCurrency).toBe('KES');
+    expect(j.fiscalAuthority?.key).toBe('kra');
+  });
+
+  it('seeds Nigeria and South Africa as expansion-ready', () => {
+    expect(getJurisdiction('NG').countryCode).toBe('NG');
+    expect(getJurisdiction('ZA').countryCode).toBe('ZA');
+  });
+
+  it('falls back to GLOBAL default for unknown country code', () => {
+    const j = getJurisdiction('XX');
+    expect(j.defaultCurrency).toBe('USD');
+    expect(j.compliance.dataProtectionLaw).toMatch(/GDPR/);
+  });
+
+  it('case-insensitive lookup', () => {
+    expect(getJurisdiction('tz').defaultCurrency).toBe('TZS');
+    expect(getJurisdiction(' KE ').defaultCurrency).toBe('KES');
+  });
+});
+
+describe('jurisdiction registry: getTaxRate', () => {
+  it('returns TZ VAT 18%', () => {
+    expect(getTaxRate('TZ', 'vat')).toBe(0.18);
+  });
+
+  it('returns KE MRI 7.5%', () => {
+    expect(getTaxRate('KE', 'mri')).toBe(0.075);
+  });
+
+  it('returns 0 for an unknown tax key', () => {
+    expect(getTaxRate('TZ', 'no_such_tax')).toBe(0);
+  });
+});
+
+describe('jurisdiction registry: isSubprocessorBlocked', () => {
+  it('blocks deepseek for TZ and KE', () => {
+    expect(isSubprocessorBlocked('TZ', 'deepseek')).toBe(true);
+    expect(isSubprocessorBlocked('KE', 'deepseek')).toBe(true);
+  });
+
+  it('does not block openai/anthropic anywhere', () => {
+    expect(isSubprocessorBlocked('TZ', 'openai')).toBe(false);
+    expect(isSubprocessorBlocked('KE', 'anthropic')).toBe(false);
+    expect(isSubprocessorBlocked('XX', 'deepseek')).toBe(false);
+  });
+});
+
+describe('jurisdiction registry: requiresFiscalSubmission', () => {
+  it('TZ + RENT requires submission', () => {
+    expect(registryRequiresFiscalSubmission('TZ', 'RENT')).toBe(true);
+  });
+
+  it('KE + UTILITY requires submission', () => {
+    expect(registryRequiresFiscalSubmission('KE', 'UTILITY')).toBe(true);
+  });
+
+  it('NG fiscal authority is inactive — no submission required', () => {
+    expect(registryRequiresFiscalSubmission('NG', 'RENT')).toBe(false);
+  });
+
+  it('unknown country — no submission required', () => {
+    expect(registryRequiresFiscalSubmission('XX', 'RENT')).toBe(false);
+  });
+});
+
+describe('shim<->registry parity', () => {
+  it('shim VAT matches registry VAT for TZ and KE', () => {
+    expect(getOrgFiscalPolicy(Region.TANZANIA).taxRates.vat).toBe(getTaxRate('TZ', 'vat'));
+    expect(getOrgFiscalPolicy(Region.KENYA).taxRates.vat).toBe(getTaxRate('KE', 'vat'));
+  });
+
+  it('shim subprocessor block matches registry block', () => {
+    expect(isSubprocessorBlockedForRegion('deepseek', Region.TANZANIA)).toBe(
+      isSubprocessorBlocked('TZ', 'deepseek'),
+    );
+    expect(isSubprocessorBlockedForRegion('deepseek', Region.KENYA)).toBe(
+      isSubprocessorBlocked('KE', 'deepseek'),
+    );
   });
 });
