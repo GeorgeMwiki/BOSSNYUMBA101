@@ -36,7 +36,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -45,6 +45,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows0[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -90,7 +91,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows1 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -100,6 +101,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows1[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -117,7 +119,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows2 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -127,6 +129,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows2[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -144,7 +147,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows3 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -154,6 +157,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows3[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -171,7 +175,7 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows4 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
@@ -181,6 +185,7 @@ export class WorkOrderRepository {
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows4[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -190,7 +195,7 @@ export class WorkOrderRepository {
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, status as typeof workOrders.status.enumValues[number]),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -198,16 +203,17 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows5 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, status as typeof workOrders.status.enumValues[number]),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows5[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -217,7 +223,7 @@ export class WorkOrderRepository {
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, priority as typeof workOrders.priority.enumValues[number]),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -225,16 +231,17 @@ export class WorkOrderRepository {
       .orderBy(desc(workOrders.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows6 = await this.db
       .select({ total: count() })
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, priority as typeof workOrders.priority.enumValues[number]),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
       );
+    const total = _totalRows6[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -283,10 +290,11 @@ export class WorkOrderRepository {
   }
 
   async getNextSequence(tenantId: TenantId): Promise<number> {
-    const [{ count: c }] = await this.db
+    const _countRows0 = await this.db
       .select({ count: count() })
       .from(workOrders)
       .where(eq(workOrders.tenantId, tenantId));
+    const c = _countRows0[0]?.count;
     return (c ?? 0) + 1;
   }
 
@@ -325,7 +333,7 @@ export class VendorRepository {
       .orderBy(desc(vendors.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows7 = await this.db
       .select({ total: count() })
       .from(vendors)
       .where(
@@ -334,6 +342,7 @@ export class VendorRepository {
           isNull(vendors.deletedAt)
         )
       );
+    const total = _totalRows7[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -443,10 +452,11 @@ export class VendorRepository {
   }
 
   async getNextSequence(tenantId: TenantId): Promise<number> {
-    const [{ count: c }] = await this.db
+    const _countRows1 = await this.db
       .select({ count: count() })
       .from(vendors)
       .where(eq(vendors.tenantId, tenantId));
+    const c = _countRows1[0]?.count;
     return (c ?? 0) + 1;
   }
 }

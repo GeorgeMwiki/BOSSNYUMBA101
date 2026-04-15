@@ -39,7 +39,7 @@ export class InvoiceRepository {
       .orderBy(desc(invoices.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(invoices)
       .where(
@@ -48,6 +48,7 @@ export class InvoiceRepository {
           isNull(invoices.deletedAt)
         )
       );
+    const total = _totalRows0[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -87,7 +88,7 @@ export class InvoiceRepository {
       .orderBy(desc(invoices.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows1 = await this.db
       .select({ total: count() })
       .from(invoices)
       .where(
@@ -97,6 +98,7 @@ export class InvoiceRepository {
           isNull(invoices.deletedAt)
         )
       );
+    const total = _totalRows1[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -114,7 +116,7 @@ export class InvoiceRepository {
       .orderBy(desc(invoices.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows2 = await this.db
       .select({ total: count() })
       .from(invoices)
       .where(
@@ -124,6 +126,7 @@ export class InvoiceRepository {
           isNull(invoices.deletedAt)
         )
       );
+    const total = _totalRows2[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -133,7 +136,7 @@ export class InvoiceRepository {
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, status as typeof invoices.status.enumValues[number]),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
@@ -141,16 +144,17 @@ export class InvoiceRepository {
       .orderBy(desc(invoices.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows3 = await this.db
       .select({ total: count() })
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, status as typeof invoices.status.enumValues[number]),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
       );
+    const total = _totalRows3[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -191,10 +195,11 @@ export class InvoiceRepository {
   }
 
   async getNextSequence(tenantId: TenantId): Promise<number> {
-    const [{ count: c }] = await this.db
+    const _countRows0 = await this.db
       .select({ count: count() })
       .from(invoices)
       .where(eq(invoices.tenantId, tenantId));
+    const c = _countRows0[0]?.count;
     return (c ?? 0) + 1;
   }
 }
@@ -214,10 +219,11 @@ export class PaymentRepository {
       .orderBy(desc(payments.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows4 = await this.db
       .select({ total: count() })
       .from(payments)
       .where(eq(payments.tenantId, tenantId));
+    const total = _totalRows4[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -247,10 +253,11 @@ export class PaymentRepository {
       .orderBy(desc(payments.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows5 = await this.db
       .select({ total: count() })
       .from(payments)
       .where(and(eq(payments.customerId, customerId), eq(payments.tenantId, tenantId)));
+    const total = _totalRows5[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -271,14 +278,15 @@ export class PaymentRepository {
     const rows = await this.db
       .select()
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)))
+      .where(and(eq(payments.status, status as typeof payments.status.enumValues[number]), eq(payments.tenantId, tenantId)))
       .orderBy(desc(payments.createdAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows6 = await this.db
       .select({ total: count() })
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)));
+      .where(and(eq(payments.status, status as typeof payments.status.enumValues[number]), eq(payments.tenantId, tenantId)));
+    const total = _totalRows6[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -307,10 +315,11 @@ export class PaymentRepository {
   }
 
   async getNextSequence(tenantId: TenantId): Promise<number> {
-    const [{ count: c }] = await this.db
+    const _countRows1 = await this.db
       .select({ count: count() })
       .from(payments)
       .where(eq(payments.tenantId, tenantId));
+    const c = _countRows1[0]?.count;
     return (c ?? 0) + 1;
   }
 }
@@ -343,7 +352,7 @@ export class TransactionRepository {
       .orderBy(desc(transactions.sequenceNumber))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows7 = await this.db
       .select({ total: count() })
       .from(transactions)
       .where(
@@ -352,6 +361,7 @@ export class TransactionRepository {
           eq(transactions.tenantId, tenantId)
         )
       );
+    const total = _totalRows7[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -368,7 +378,7 @@ export class TransactionRepository {
       .orderBy(desc(transactions.sequenceNumber))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows8 = await this.db
       .select({ total: count() })
       .from(transactions)
       .where(
@@ -377,6 +387,7 @@ export class TransactionRepository {
           eq(transactions.tenantId, tenantId)
         )
       );
+    const total = _totalRows8[0]?.total ?? 0;
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
@@ -400,7 +411,7 @@ export class TransactionRepository {
 
   async getNextSequence(tenantId: TenantId, customerId?: string): Promise<number> {
     if (customerId) {
-      const [{ maxSeq }] = await this.db
+      const maxRows = await this.db
         .select({ maxSeq: max(transactions.sequenceNumber) })
         .from(transactions)
         .where(
@@ -409,12 +420,14 @@ export class TransactionRepository {
             eq(transactions.customerId, customerId)
           )
         );
+      const maxSeq = maxRows[0]?.maxSeq;
       return (maxSeq ?? 0) + 1;
     }
-    const [{ count: c }] = await this.db
+    const _countRows2 = await this.db
       .select({ count: count() })
       .from(transactions)
       .where(eq(transactions.tenantId, tenantId));
+    const c = _countRows2[0]?.count;
     return (c ?? 0) + 1;
   }
 

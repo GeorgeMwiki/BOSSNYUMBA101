@@ -76,7 +76,7 @@ export class LeaseRepository {
 
     if (filters?.status) {
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      conditions.push(inArray(leases.status, statuses as unknown as typeof leases.status.$inferType[]));
+      conditions.push(inArray(leases.status, statuses as typeof leases.status.enumValues[number][]));
     }
 
     if (filters?.propertyId) {

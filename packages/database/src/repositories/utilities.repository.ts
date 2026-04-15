@@ -22,11 +22,6 @@ import {
 import type { TenantId } from '@bossnyumba/domain-models';
 import { buildPaginatedResult } from './base.repository.js';
 
-type UtilityType =
-  (typeof utilityAccounts)['_']['columns']['utilityType']['_']['data'];
-type UtilityBillStatus =
-  (typeof utilityBills)['_']['columns']['status']['_']['data'];
-
 export class UtilitiesRepository {
   constructor(private db: DatabaseClient) {}
 
@@ -54,7 +49,7 @@ export class UtilitiesRepository {
     options?: {
       propertyId?: string;
       unitId?: string;
-      utilityType?: UtilityType;
+      utilityType?: string;
       limit?: number;
       offset?: number;
     }
@@ -74,7 +69,7 @@ export class UtilitiesRepository {
       conditions.push(eq(utilityAccounts.unitId, options.unitId));
     }
     if (options?.utilityType) {
-      conditions.push(eq(utilityAccounts.utilityType, options.utilityType));
+      conditions.push(eq(utilityAccounts.utilityType, options.utilityType as typeof utilityAccounts.utilityType.enumValues[number]));
     }
 
     const rows = await this.db
@@ -85,11 +80,11 @@ export class UtilitiesRepository {
       .limit(limit)
       .offset(offset);
 
-    const totalRows = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(utilityAccounts)
       .where(and(...conditions));
-    const total = totalRows[0]?.total ?? 0;
+    const total = _totalRows0[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -131,7 +126,7 @@ export class UtilitiesRepository {
 
   async getBills(
     accountId: string,
-    options?: { status?: UtilityBillStatus; limit?: number; offset?: number }
+    options?: { status?: string; limit?: number; offset?: number }
   ) {
     const limit = options?.limit ?? 50;
     const offset = options?.offset ?? 0;
@@ -139,7 +134,7 @@ export class UtilitiesRepository {
     const conditions = [eq(utilityBills.accountId, accountId)];
 
     if (options?.status) {
-      conditions.push(eq(utilityBills.status, options.status));
+      conditions.push(eq(utilityBills.status, options.status as typeof utilityBills.status.enumValues[number]));
     }
 
     return this.db
@@ -154,14 +149,14 @@ export class UtilitiesRepository {
   async updateBillStatus(
     id: string,
     accountId: string,
-    status: UtilityBillStatus,
+    status: string,
     paidAt?: Date
   ) {
     const [row] = await this.db
       .update(utilityBills)
       .set({
-        status,
-        paidAt: status === 'paid' ? paidAt ?? new Date() : null,
+        status: status as typeof utilityBills.status.enumValues[number],
+        ...(status === 'paid' && { paidAt: paidAt ?? new Date() }),
         updatedAt: new Date(),
       })
       .where(and(eq(utilityBills.id, id), eq(utilityBills.accountId, accountId)))

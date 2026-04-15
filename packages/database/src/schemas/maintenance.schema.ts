@@ -683,6 +683,7 @@ export const assets = pgTable(
   })
 );
 
+
 // ============================================================================
 // Vendor Assignments Table
 // ============================================================================
@@ -827,6 +828,7 @@ export const assetsRelations = relations(assets, ({ one }) => ({
     references: [units.id],
   }),
 }));
+
 
 export const vendorAssignmentsRelations = relations(vendorAssignments, ({ one }) => ({
   tenant: one(tenants, {

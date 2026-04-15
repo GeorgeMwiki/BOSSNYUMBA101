@@ -74,16 +74,16 @@ export class ComplianceRepository {
     ];
 
     if (options?.entityType) {
-      conditions.push(eq(complianceItems.entityType, options.entityType));
+      conditions.push(eq(complianceItems.entityType, options.entityType as typeof complianceItems.entityType.enumValues[number]));
     }
     if (options?.entityId) {
       conditions.push(eq(complianceItems.entityId, options.entityId));
     }
     if (options?.type) {
-      conditions.push(eq(complianceItems.type, options.type));
+      conditions.push(eq(complianceItems.type, options.type as typeof complianceItems.type.enumValues[number]));
     }
     if (options?.status) {
-      conditions.push(eq(complianceItems.status, options.status));
+      conditions.push(eq(complianceItems.status, options.status as typeof complianceItems.status.enumValues[number]));
     }
 
     const rows = await this.db
@@ -94,10 +94,11 @@ export class ComplianceRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(complianceItems)
       .where(and(...conditions));
+    const total = _totalRows0[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -128,7 +129,7 @@ export class ComplianceRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows1 = await this.db
       .select({ total: count() })
       .from(complianceItems)
       .where(
@@ -140,6 +141,7 @@ export class ComplianceRepository {
           eq(complianceItems.status, 'pending')
         )
       );
+    const total = _totalRows1[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -160,7 +162,7 @@ export class ComplianceRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows2 = await this.db
       .select({ total: count() })
       .from(complianceItems)
       .where(
@@ -171,6 +173,7 @@ export class ComplianceRepository {
           eq(complianceItems.status, 'pending')
         )
       );
+    const total = _totalRows2[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -222,7 +225,7 @@ export class ComplianceRepository {
     ];
 
     if (options?.status) {
-      conditions.push(eq(legalCases.status, options.status));
+      conditions.push(eq(legalCases.status, options.status as typeof legalCases.status.enumValues[number]));
     }
     if (options?.propertyId) {
       conditions.push(eq(legalCases.propertyId, options.propertyId));
@@ -239,10 +242,11 @@ export class ComplianceRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows3 = await this.db
       .select({ total: count() })
       .from(legalCases)
       .where(and(...conditions));
+    const total = _totalRows3[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -275,7 +279,7 @@ export class ComplianceRepository {
     ];
 
     if (options?.type) {
-      conditions.push(eq(notices.type, options.type));
+      conditions.push(eq(notices.type, options.type as typeof notices.type.enumValues[number]));
     }
     if (options?.customerId) {
       conditions.push(eq(notices.customerId, options.customerId));
@@ -292,10 +296,11 @@ export class ComplianceRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows4 = await this.db
       .select({ total: count() })
       .from(notices)
       .where(and(...conditions));
+    const total = _totalRows4[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }
@@ -343,10 +348,10 @@ export class DocumentRepository {
     ];
 
     if (options?.documentType) {
-      conditions.push(eq(documentUploads.documentType, options.documentType as unknown as typeof documentUploads.documentType.$inferType));
+      conditions.push(eq(documentUploads.documentType, options.documentType as typeof documentUploads.documentType.enumValues[number]));
     }
     if (options?.status) {
-      conditions.push(eq(documentUploads.status, options.status as unknown as typeof documentUploads.status.$inferType));
+      conditions.push(eq(documentUploads.status, options.status as typeof documentUploads.status.enumValues[number]));
     }
     if (options?.entityType) {
       conditions.push(eq(documentUploads.entityType, options.entityType));
@@ -366,10 +371,11 @@ export class DocumentRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows5 = await this.db
       .select({ total: count() })
       .from(documentUploads)
       .where(and(...conditions));
+    const total = _totalRows5[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }

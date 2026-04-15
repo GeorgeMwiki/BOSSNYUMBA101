@@ -5,7 +5,7 @@
 
 import {
   eq,
-  neq,
+  ne,
   and,
   or,
   asc,
@@ -90,7 +90,7 @@ export class SchedulingRepository {
       .orderBy(asc(scheduledEvents.startAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(scheduledEvents)
       .where(
@@ -101,6 +101,7 @@ export class SchedulingRepository {
           lte(scheduledEvents.startAt, endDate)
         )
       );
+    const total = _totalRows0[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
@@ -123,7 +124,7 @@ export class SchedulingRepository {
       .orderBy(desc(scheduledEvents.startAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows1 = await this.db
       .select({ total: count() })
       .from(scheduledEvents)
       .where(
@@ -133,6 +134,7 @@ export class SchedulingRepository {
           isNull(scheduledEvents.cancelledAt)
         )
       );
+    const total = _totalRows1[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
@@ -164,10 +166,11 @@ export class SchedulingRepository {
       .orderBy(desc(scheduledEvents.startAt))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows2 = await this.db
       .select({ total: count() })
       .from(scheduledEvents)
       .where(and(...conditions));
+    const total = _totalRows2[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
@@ -227,7 +230,7 @@ export class SchedulingRepository {
     ];
 
     if (options?.excludeEventId) {
-      conditions.push(neq(scheduledEvents.id, options.excludeEventId));
+      conditions.push(ne(scheduledEvents.id, options.excludeEventId));
     }
     if (options?.propertyId) {
       conditions.push(eq(scheduledEvents.propertyId, options.propertyId));

@@ -8,6 +8,21 @@ import type {
   PaginatedResult,
 } from '@bossnyumba/domain-models';
 
+/**
+ * Extract the numeric total from a count query result.
+ * Count queries always return exactly one row; if the result is empty, fall back to 0.
+ */
+export function totalFrom(rows: readonly { total: number }[]): number {
+  return rows[0]?.total ?? 0;
+}
+
+/**
+ * Extract the numeric count from a scalar count query result.
+ */
+export function countFrom(rows: readonly { count: number }[]): number {
+  return rows[0]?.count ?? 0;
+}
+
 /** Default pagination when not specified */
 export const DEFAULT_PAGINATION: PaginationParams = {
   limit: 20,

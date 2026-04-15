@@ -46,10 +46,10 @@ export class MessagingRepository {
     const conditions = [eq(conversations.tenantId, tenantId)];
 
     if (options?.type) {
-      conditions.push(eq(conversations.type, options.type));
+      conditions.push(eq(conversations.type, options.type as typeof conversations.type.enumValues[number]));
     }
     if (options?.status) {
-      conditions.push(eq(conversations.status, options.status));
+      conditions.push(eq(conversations.status, options.status as typeof conversations.status.enumValues[number]));
     }
 
     const rows = await this.db
@@ -60,10 +60,11 @@ export class MessagingRepository {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(conversations)
       .where(and(...conditions));
+    const total = _totalRows0[0]?.total ?? 0;
 
     return buildPaginatedResult(rows, total, { limit, offset });
   }

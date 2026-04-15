@@ -77,7 +77,7 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows0 = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
@@ -87,6 +87,7 @@ export class InspectionRepository {
           isNull(inspections.deletedAt)
         )
       );
+    const total = _totalRows0[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
@@ -111,7 +112,7 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows1 = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
@@ -122,6 +123,7 @@ export class InspectionRepository {
           lte(inspections.scheduledDate, endDate)
         )
       );
+    const total = _totalRows1[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 
@@ -131,7 +133,7 @@ export class InspectionRepository {
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, status as typeof inspections.status.enumValues[number]),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
@@ -139,16 +141,17 @@ export class InspectionRepository {
       .orderBy(desc(inspections.scheduledDate))
       .limit(limit)
       .offset(offset);
-    const [{ total }] = await this.db
+    const _totalRows2 = await this.db
       .select({ total: count() })
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, status as typeof inspections.status.enumValues[number]),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
       );
+    const total = _totalRows2[0]?.total ?? 0;
     return buildPaginatedResult(rows, total, { limit, offset });
   }
 

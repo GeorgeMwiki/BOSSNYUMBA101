@@ -893,3 +893,4 @@ export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
     references: [customers.id],
   }),
 }));
+
