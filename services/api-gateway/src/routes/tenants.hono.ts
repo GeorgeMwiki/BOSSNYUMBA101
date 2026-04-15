@@ -161,7 +161,9 @@ app.get('/:id', async (c) => {
 app.patch('/:id', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  if (auth.role !== 'SUPER_ADMIN' && c.req.param('id') !== auth.tenantId) {
+  const isSuper = auth.role === 'SUPER_ADMIN';
+  const isTenantAdminOnOwn = auth.role === 'TENANT_ADMIN' && c.req.param('id') === auth.tenantId;
+  if (!isSuper && !isTenantAdminOnOwn) {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Tenant access denied.' } }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, any>;

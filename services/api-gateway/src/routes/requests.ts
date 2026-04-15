@@ -12,6 +12,26 @@ import { authMiddleware } from '../middleware/hono-auth';
 const app = new Hono();
 app.use('*', authMiddleware);
 
+// TODO: wire to real store — create a new resident-facing request.
+app.post('/', async (c) => {
+  const auth = c.get('auth');
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(
+    {
+      success: true,
+      data: {
+        id: `request-${Date.now()}`,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        status: 'submitted',
+        createdAt: new Date().toISOString(),
+        ...body,
+      },
+    },
+    201
+  );
+});
+
 // TODO: wire to real store — post-request feedback from the resident.
 app.post('/:id/feedback', async (c) => {
   const auth = c.get('auth');

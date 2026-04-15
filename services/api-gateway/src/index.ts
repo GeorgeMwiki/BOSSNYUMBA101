@@ -52,6 +52,10 @@ import { invitationsRouter } from './routes/invitations';
 import { approvalsRouter } from './routes/approvals';
 import { requestsRouter } from './routes/requests';
 import { systemRouter } from './routes/system';
+import { communicationsRouter } from './routes/communications';
+import { emergenciesRouter } from './routes/emergencies';
+import { utilitiesRouter } from './routes/utilities';
+import { maintenanceRouter } from './routes/maintenance';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -194,6 +198,10 @@ api.route('/invitations', invitationsRouter);
 api.route('/approvals', approvalsRouter);
 api.route('/requests', requestsRouter);
 api.route('/system', systemRouter);
+api.route('/communications', communicationsRouter);
+api.route('/emergencies', emergenciesRouter);
+api.route('/utilities', utilitiesRouter);
+api.route('/maintenance', maintenanceRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning

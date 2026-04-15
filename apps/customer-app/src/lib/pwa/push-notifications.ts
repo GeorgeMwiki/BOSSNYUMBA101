@@ -26,6 +26,13 @@ export async function requestPushPermission(): Promise<PushPermissionState> {
   return 'default';
 }
 
+export class PushNotificationError extends Error {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message);
+    this.name = 'PushNotificationError';
+  }
+}
+
 export async function getPushSubscription(): Promise<PushSubscriptionJSON | null> {
   if (
     typeof window === 'undefined' ||
@@ -35,12 +42,16 @@ export async function getPushSubscription(): Promise<PushSubscriptionJSON | null
     return null;
   }
 
-  const registration = await navigator.serviceWorker.ready;
-  const pushManager = registration.pushManager;
-  if (!pushManager) return null;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const pushManager = registration.pushManager;
+    if (!pushManager) return null;
 
-  const subscription = await pushManager.getSubscription();
-  return subscription?.toJSON() ?? null;
+    const subscription = await pushManager.getSubscription();
+    return subscription?.toJSON() ?? null;
+  } catch (error) {
+    throw new PushNotificationError('Failed to read push subscription', error);
+  }
 }
 
 export async function subscribeToPush(
@@ -57,30 +68,41 @@ export async function subscribeToPush(
   const permission = await requestPushPermission();
   if (permission !== 'granted') return null;
 
-  const registration = await navigator.serviceWorker.ready;
-  const pushManager = registration.pushManager;
-  if (!pushManager) return null;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const pushManager = registration.pushManager;
+    if (!pushManager) return null;
 
-  const options: PushSubscriptionOptionsInit = {
-    userVisibleOnly: true,
-    ...(applicationServerKey && { applicationServerKey }),
-  };
+    const options: PushSubscriptionOptionsInit = {
+      userVisibleOnly: true,
+      ...(applicationServerKey && { applicationServerKey }),
+    };
 
-  const subscription = await pushManager.subscribe(options);
-  return subscription.toJSON();
+    const subscription = await pushManager.subscribe(options);
+    return subscription.toJSON();
+  } catch (error) {
+    throw new PushNotificationError('Failed to subscribe to push notifications', error);
+  }
 }
 
 export async function unsubscribeFromPush(): Promise<boolean> {
-  const subscription = await getPushSubscription();
-  if (!subscription?.endpoint) return false;
-
-  const registration = await navigator.serviceWorker.ready;
-  const pushManager = registration.pushManager;
-  if (!pushManager) return false;
-
-  const sub = await pushManager.getSubscription();
-  if (sub) {
-    return sub.unsubscribe();
+  if (
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !navigator.serviceWorker.ready
+  ) {
+    return false;
   }
-  return false;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const pushManager = registration.pushManager;
+    if (!pushManager) return false;
+
+    const sub = await pushManager.getSubscription();
+    if (!sub) return false;
+    return sub.unsubscribe();
+  } catch (error) {
+    throw new PushNotificationError('Failed to unsubscribe from push notifications', error);
+  }
 }

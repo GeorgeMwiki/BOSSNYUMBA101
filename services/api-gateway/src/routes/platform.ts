@@ -55,4 +55,29 @@ app.get('/billing', (c) => {
   });
 });
 
+// TODO: wire to real store — retry a failed tenant invoice payment.
+app.post('/billing/:tenantId/retry', (c) => {
+  const tenantId = c.req.param('tenantId');
+  return c.json({
+    success: true,
+    data: { tenantId, retriedAt: new Date().toISOString(), status: 'queued' },
+  });
+});
+
+// TODO: wire to real store — platform-wide overview dashboard.
+app.get('/overview', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      totals: { tenants: 0, users: 0, mrr: 0, activeProperties: 0 },
+      recent: [],
+    },
+  });
+});
+
+// TODO: wire to real store — subscriptions list.
+app.get('/subscriptions', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
 export const platformRouter = app;

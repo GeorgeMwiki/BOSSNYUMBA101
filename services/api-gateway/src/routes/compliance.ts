@@ -40,4 +40,28 @@ app.get('/licenses', (c) => {
   return c.json({ success: true, data: [] });
 });
 
+// TODO: wire to real store — list GDPR-style data requests.
+app.get('/data-requests', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+// TODO: wire to real store — advance a data request to the next state.
+app.post('/data-requests/:id/advance', async (c) => {
+  const id = c.req.param('id');
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json({
+    success: true,
+    data: {
+      id,
+      advancedAt: new Date().toISOString(),
+      payload: body,
+    },
+  });
+});
+
+// TODO: wire to real store — list compliance documents.
+app.get('/documents', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
 export const complianceRouter = app;
