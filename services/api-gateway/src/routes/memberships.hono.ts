@@ -40,6 +40,12 @@ async function sendInviteEmail(params: {
 }): Promise<{ delivered: boolean; warning?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // TODO(deps-fix): package '@bossnyumba/notifications' does not exist in this
+    // monorepo. The real workspace package is '@bossnyumba/notifications-service'
+    // (see services/notifications/package.json). Update this import to
+    // '@bossnyumba/notifications-service' (or the appropriate subpath such as
+    // '@bossnyumba/notifications-service/templates') and ensure templates are
+    // exported before removing the fallback below.
     const notifications: any = await import(
       /* @vite-ignore */ '@bossnyumba/notifications'
     ).catch(() => null);
