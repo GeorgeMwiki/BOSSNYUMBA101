@@ -224,17 +224,14 @@ jobs:
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/production
         run: terraform init -backend-config=backend.hcl
-        continue-on-error: true
 
       - name: Terraform Plan
         working-directory: infrastructure/terraform/environments/production
         run: terraform plan -var-file=production.tfvars -out=tfplan
-        continue-on-error: true
 
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/production
         run: terraform apply -auto-approve tfplan
-        continue-on-error: true
 
   # ============================================
   # Deploy to Production
@@ -287,28 +284,28 @@ jobs:
       - name: API Health Check
         run: |
           PROD_URL="${{ vars.PRODUCTION_API_URL }}"
-          if [ -n "$PROD_URL" ]; then
-            for i in {1..5}; do
-              if curl -sf "$PROD_URL/health"; then
-                echo "Health check passed"
-                exit 0
-              fi
-              sleep 10
-            done
-            echo "Health check failed"
+          if [ -z "$PROD_URL" ]; then
+            echo "PRODUCTION_API_URL not configured; failing so secrets/ops can set it."
             exit 1
-          else
-            echo "PRODUCTION_API_URL not configured"
           fi
-        continue-on-error: true
+          for i in 1 2 3 4 5; do
+            if curl -sf "$PROD_URL/health"; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check failed"
+          exit 1
 
       - name: Readiness Check
         run: |
           PROD_URL="${{ vars.PRODUCTION_API_URL }}"
-          if [ -n "$PROD_URL" ]; then
-            curl -sf "$PROD_URL/ready" || echo "Readiness check skipped"
+          if [ -z "$PROD_URL" ]; then
+            echo "PRODUCTION_API_URL not configured"
+            exit 1
           fi
-        continue-on-error: true
+          curl -sf "$PROD_URL/ready"
 
   # ============================================
   # Rollback (if health checks fail)

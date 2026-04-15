@@ -200,17 +200,14 @@ jobs:
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/staging
         run: terraform init -backend-config=backend.hcl
-        continue-on-error: true
 
       - name: Terraform Plan
         working-directory: infrastructure/terraform/environments/staging
         run: terraform plan -var-file=staging.tfvars -out=tfplan
-        continue-on-error: true
 
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/staging
         run: terraform apply -auto-approve tfplan
-        continue-on-error: true
 
   # ============================================
   # Deploy to ECS
@@ -247,9 +244,12 @@ jobs:
     steps:
       - name: Health check
         run: |
-          if [ -n "${{ vars.STAGING_API_URL }}" ]; then
-            curl -sf "${{ vars.STAGING_API_URL }}/health" --retry 5 --retry-delay 10 || echo "Health check skipped"
+          STAGING_URL="${{ vars.STAGING_API_URL }}"
+          if [ -z "$STAGING_URL" ]; then
+            echo "STAGING_API_URL not configured; failing so the variable can be set."
+            exit 1
           fi
+          curl -sf "$STAGING_URL/health" --retry 5 --retry-delay 10
 
   # ============================================
   # Summary

@@ -16,6 +16,7 @@ updates:
           - "@types/*"
           - "typescript"
           - "vitest"
+          - "@playwright/*"
           - "eslint*"
           - "prettier*"
       production-dependencies:
@@ -39,9 +40,9 @@ updates:
       - dependencies
       - github-actions
 
-  # Terraform
+  # Terraform (canonical layout)
   - package-ecosystem: terraform
-    directory: infra/terraform
+    directory: /infrastructure/terraform
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
@@ -50,3 +51,38 @@ updates:
     labels:
       - dependencies
       - terraform
+
+  - package-ecosystem: terraform
+    directory: /infrastructure/terraform/environments/staging
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: infra
+    labels:
+      - dependencies
+      - terraform
+
+  - package-ecosystem: terraform
+    directory: /infrastructure/terraform/environments/production
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: infra
+    labels:
+      - dependencies
+      - terraform
+
+  # Docker base images
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+    labels:
+      - dependencies
+      - docker
