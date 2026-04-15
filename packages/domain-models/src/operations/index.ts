@@ -6,5 +6,22 @@
 export * from './maintenance-request';
 export * from './dispatch-event';
 export * from './completion-proof';
-export * from './dual-signoff';
+// dual-signoff redeclares CompletionProofId and addTechnicianSignature;
+// re-export only signoff-specific symbols to avoid ambiguity.
+export {
+  DualSignoffSchema,
+  DualSignoffStatusSchema,
+  RefusalReasonSchema,
+  SatisfactionLevelSchema,
+  SignatureDetailsSchema,
+  type DualSignoff,
+  type DualSignoffData,
+  type DualSignoffId,
+  type DualSignoffStatus,
+  type RefusalReason,
+  type SatisfactionLevel,
+  type SignatureDetails,
+  asDualSignoffId,
+  createDualSignoff,
+} from './dual-signoff';
 export * from './asset';

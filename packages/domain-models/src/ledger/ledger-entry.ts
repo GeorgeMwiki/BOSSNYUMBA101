@@ -70,7 +70,7 @@ export const LedgerEntrySchema = z.object({
 
 export type LedgerEntryData = z.infer<typeof LedgerEntrySchema>;
 
-export interface LedgerEntry extends Omit<LedgerEntryData, 'amount' | 'balanceAfter'>, TenantScopedEntity {
+export interface LedgerEntry extends Omit<LedgerEntryData, 'amount' | 'balanceAfter' | 'createdBy'>, TenantScopedEntity {
   id: LedgerEntryId;
   tenantId: TenantId;
   accountId: AccountId;

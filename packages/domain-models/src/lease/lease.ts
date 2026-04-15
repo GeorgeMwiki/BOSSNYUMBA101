@@ -9,7 +9,8 @@ import type { CustomerId, LeaseId } from '../payments/payment-intent';
 import type { PropertyId } from '../property/property';
 import type { UnitId } from '../property/unit';
 
-export { LeaseId, asLeaseId } from '../payments/payment-intent';
+export type { LeaseId } from '../payments/payment-intent';
+export { asLeaseId } from '../payments/payment-intent';
 
 /** Lease status */
 export type LeaseStatus =

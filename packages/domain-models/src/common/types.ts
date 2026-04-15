@@ -350,8 +350,8 @@ export interface TenantScopedEntity {
   readonly tenantId: TenantId;
   readonly createdAt: Date;
   readonly createdBy: string;
-  readonly updatedAt: Date;
-  readonly updatedBy: string;
+  updatedAt: Date;
+  updatedBy: string;
 }
 
 /** ISO 8601 timestamp string */
@@ -360,9 +360,9 @@ export type ISOTimestamp = string;
 /** Standard entity metadata */
 export interface EntityMetadata {
   readonly createdAt: ISOTimestamp;
-  readonly updatedAt: ISOTimestamp;
+  updatedAt: ISOTimestamp;
   readonly createdBy: UserId;
-  readonly updatedBy: UserId;
+  updatedBy: UserId;
 }
 
 /** Soft-deletable entity */

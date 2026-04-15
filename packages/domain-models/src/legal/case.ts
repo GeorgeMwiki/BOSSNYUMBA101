@@ -509,7 +509,10 @@ export function isSlaBreached(caseItem: Case): { response: boolean; resolution: 
      caseItem.slaDetails.resolutionDeadline &&
      now > new Date(caseItem.slaDetails.resolutionDeadline));
   
-  return { response: responseBreached, resolution: resolutionBreached };
+  return {
+    response: Boolean(responseBreached),
+    resolution: Boolean(resolutionBreached),
+  };
 }
 
 export function generateCaseNumber(

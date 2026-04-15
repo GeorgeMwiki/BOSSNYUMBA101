@@ -74,9 +74,22 @@ export * from './legal/evidence-attachment';
 export * from './legal/notice';
 export * from './legal/notice-service-receipt';
 
-// Documents
+// Documents — verification-badge re-declares VerificationBadgeId / IdentityProfileId
+// and as* helpers that also live in common/types. Re-export selectively.
 export * from './documents/document-upload';
-export * from './documents/verification-badge';
+export {
+  VerificationBadgeSchema,
+  type VerificationBadge,
+  type VerificationBadgeData,
+  createVerificationBadge,
+  revokeBadge,
+  renewBadge,
+  addEvidenceDocument,
+  isBadgeActive,
+  isBadgeExpired,
+  getDaysUntilExpiry,
+  isIdentityBadge,
+} from './documents/verification-badge';
 export * from './documents/fraud-risk-score';
 
 // Intelligence (AI Personalization).
@@ -100,5 +113,25 @@ export type {
 } from './intelligence/index';
 export { asCustomerPreferencesId } from './intelligence/index';
 
-// Notifications
-export * from './notifications/notification';
+// Notifications — `notification.ts` exports `markDelivered` which collides with
+// `legal/notice.ts`'s `markDelivered`. Re-export selectively.
+export {
+  NotificationSchema,
+  NotificationChannelSchema,
+  NotificationStatusSchema,
+  NotificationCategorySchema,
+  NotificationLocaleSchema,
+  type Notification,
+  type NotificationChannel,
+  type NotificationStatus,
+  type NotificationCategory,
+  type NotificationLocale,
+  type NotificationId,
+  asNotificationId,
+  canTransition as canNotificationTransition,
+  createNotification,
+  markSent,
+  markDelivered as markNotificationDelivered,
+  markFailed as markNotificationFailed,
+  markRead as markNotificationRead,
+} from './notifications/notification';
