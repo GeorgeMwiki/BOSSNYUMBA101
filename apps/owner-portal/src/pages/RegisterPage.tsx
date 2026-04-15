@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, Loader2, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
-import { api } from '../lib/api';
+import { authApi } from '../lib/api/index';
 
 interface MfaSetup {
   secret: string;
@@ -73,24 +73,22 @@ export function RegisterPage() {
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/register', {
+      const response = await authApi.register({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        companyName: formData.companyName,
+        companyName: formData.companyName || undefined,
       });
 
       if (response.success) {
         setStep('verify');
       } else {
-        // For development - proceed to next step
-        setStep('verify');
+        setError(response.error?.message ?? 'Registration failed');
       }
     } catch (err) {
-      // For development - proceed to next step
-      setStep('verify');
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -102,18 +100,15 @@ export function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/verify-email', {
-        email: formData.email,
-        code: verificationCode,
-      });
+      const response = await authApi.verifyEmail(formData.email, verificationCode);
 
       if (response.success) {
         await initiateMfaSetup();
       } else {
-        await initiateMfaSetup();
+        setError(response.error?.message ?? 'Verification failed');
       }
     } catch (err) {
-      await initiateMfaSetup();
+      setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setLoading(false);
     }
@@ -122,36 +117,16 @@ export function RegisterPage() {
   const initiateMfaSetup = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/mfa/setup', { email: formData.email });
+      const response = await authApi.mfaSetup(formData.email);
 
       if (response.success && response.data) {
-        setMfaSetup(response.data as MfaSetup);
+        setMfaSetup(response.data);
         setStep('mfa-setup');
       } else {
-        if (process.env.NODE_ENV !== 'production') {
-          const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-          setMfaSetup({
-            secret: devSecret,
-            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-            backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-          });
-          setStep('mfa-setup');
-        } else {
-          setError('MFA setup failed. Please try again.');
-        }
+        setError(response.error?.message ?? 'MFA setup failed. Please try again.');
       }
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-        setMfaSetup({
-          secret: devSecret,
-          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-          backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-        });
-        setStep('mfa-setup');
-      } else {
-        setError('MFA setup failed. Please try again.');
-      }
+      setError(err instanceof Error ? err.message : 'MFA setup failed');
     } finally {
       setLoading(false);
     }
@@ -163,16 +138,17 @@ export function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/mfa/verify', { email: formData.email, code: mfaCode });
+      const response = await authApi.mfaVerify({
+        email: formData.email,
+        code: mfaCode,
+      });
       if (response.success) {
         setStep('success');
       } else {
-        if (mfaCode.length === 6) setStep('success');
-        else setError('Please enter a valid 6-digit code');
+        setError(response.error?.message ?? 'Invalid verification code');
       }
     } catch (err) {
-      if (mfaCode.length === 6) setStep('success');
-      else setError('Please enter a valid 6-digit code');
+      setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setLoading(false);
     }

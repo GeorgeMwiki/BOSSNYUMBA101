@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Home, Loader2, Shield, Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../lib/api';
+import { authApi } from '../lib/api/index';
 
 type LoginStep = 'credentials' | 'mfa_verify' | 'mfa_setup';
 
@@ -31,32 +31,29 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      // First, attempt login with credentials
-      const response = await api.post<{
-        success: boolean;
-        requiresMfa: boolean;
-        mfaSetupRequired: boolean;
-        tempToken?: string;
-        mfaSecret?: string;
-        qrCodeUrl?: string;
-      }>('/auth/login', { email, password });
+      const response = await authApi.login(email, password);
 
-      if (response.data) {
-        if (response.data.requiresMfa) {
-          // User has MFA enabled, need to verify
-          setPendingToken(response.data.tempToken || null);
-          setStep('mfa_verify');
-        } else if (response.data.mfaSetupRequired) {
-          // MFA setup required for this account
-          setPendingToken(response.data.tempToken || null);
-          setMfaSecret(response.data.mfaSecret || '');
-          setMfaQrCode(response.data.qrCodeUrl || '');
-          setStep('mfa_setup');
-        } else {
-          // No MFA, proceed with login
-          await login(email, password);
-          navigate('/dashboard');
-        }
+      if (!response.success) {
+        setError(response.error?.message ?? 'Invalid email or password');
+        return;
+      }
+
+      const data = response.data;
+      if (data?.requiresMfa) {
+        setPendingToken(data.tempToken ?? null);
+        setStep('mfa_verify');
+      } else if (data?.mfaSetupRequired) {
+        setPendingToken(data.tempToken ?? null);
+        setMfaSecret(data.mfaSecret ?? '');
+        setMfaQrCode(data.qrCodeUrl ?? '');
+        setStep('mfa_setup');
+      } else if (data?.token) {
+        localStorage.setItem('token', data.token);
+        await login(email, password);
+        navigate('/dashboard');
+      } else {
+        await login(email, password);
+        navigate('/dashboard');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -71,17 +68,22 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/mfa/verify', {
-        tempToken: pendingToken,
+      const response = await authApi.mfaVerify({
+        tempToken: pendingToken ?? undefined,
         code: mfaCode,
       });
 
-      if (response.success) {
-        await login(email, password);
-        navigate('/dashboard');
-      } else {
-        setError('Invalid verification code');
+      if (!response.success) {
+        setError(response.error?.message ?? 'Invalid verification code');
+        return;
       }
+
+      const data = response.data as { token?: string } | undefined;
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+      }
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
@@ -95,18 +97,22 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/mfa/setup', {
-        tempToken: pendingToken,
-        secret: mfaSecret,
+      const response = await authApi.mfaVerify({
+        tempToken: pendingToken ?? undefined,
         code: mfaCode,
       });
 
-      if (response.success) {
-        await login(email, password);
-        navigate('/dashboard');
-      } else {
-        setError('Invalid verification code. Please try again.');
+      if (!response.success) {
+        setError(response.error?.message ?? 'Invalid verification code. Please try again.');
+        return;
       }
+
+      const data = response.data as { token?: string } | undefined;
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+      }
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'MFA setup failed');
     } finally {

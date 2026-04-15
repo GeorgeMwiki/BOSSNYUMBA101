@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Mail, Shield, Building2, Loader2, CheckCircle } from 'lucide-react';
-import { api } from '../lib/api';
+import { authApi } from '../lib/api/index';
 import { useAuth } from '../contexts/AuthContext';
 
 interface CoOwnerInviteModalProps {
@@ -59,17 +59,26 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
       setError('Please fill in all required fields');
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
     if (formData.propertyIds.length === 0) {
       setError('Please select at least one property');
       return;
     }
     setLoading(true);
     try {
-      await api.post('/invitations/co-owner', formData);
-      setStep('success');
-      onSuccess?.();
+      const response = await authApi.sendCoOwnerInvite(formData);
+      if (response.success) {
+        setStep('success');
+        onSuccess?.();
+      } else {
+        setError(response.error?.message ?? 'Failed to send invitation');
+      }
     } catch (err) {
-      setStep('success');
+      setError(err instanceof Error ? err.message : 'Failed to send invitation');
     } finally {
       setLoading(false);
     }

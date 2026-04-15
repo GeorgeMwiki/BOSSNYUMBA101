@@ -20,6 +20,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/api';
+import { maintenanceApi } from '../lib/api/index';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface WorkOrderEvent {
@@ -73,12 +74,20 @@ export function WorkOrderDetailModal({
   onReject,
   isPendingApproval,
 }: WorkOrderDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidence' | 'costs'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidence' | 'comments' | 'costs'>('details');
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [approvalComment, setApprovalComment] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [comments, setComments] = useState<
+    Array<{ id: string; author: string; content: string; createdAt: string }>
+  >([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [postingComment, setPostingComment] = useState(false);
 
   if (!isOpen || !workOrder) return null;
 
@@ -120,29 +129,99 @@ export function WorkOrderDetailModal({
   };
 
   const handleApprove = async () => {
+    if (!workOrder) return;
+    setActionError(null);
     setApproving(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onApprove?.(workOrder.id);
-    setApproving(false);
-    setApprovalComment('');
-    onClose();
+    try {
+      const response = await maintenanceApi.approve(
+        workOrder.id,
+        approvalComment || undefined
+      );
+      if (response.success === false) {
+        setActionError(response.error?.message ?? 'Failed to approve work order');
+        return;
+      }
+      onApprove?.(workOrder.id);
+      setApprovalComment('');
+      onClose();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to approve work order');
+    } finally {
+      setApproving(false);
+    }
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) return;
+    if (!workOrder || !rejectReason.trim()) return;
+    setActionError(null);
     setRejecting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onReject?.(workOrder.id, rejectReason);
-    setRejecting(false);
-    setShowRejectForm(false);
-    setRejectReason('');
-    onClose();
+    try {
+      const response = await maintenanceApi.reject(workOrder.id, rejectReason);
+      if (response.success === false) {
+        setActionError(response.error?.message ?? 'Failed to reject work order');
+        return;
+      }
+      onReject?.(workOrder.id, rejectReason);
+      setShowRejectForm(false);
+      setRejectReason('');
+      onClose();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reject work order');
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  // Load comments when tab opens
+  React.useEffect(() => {
+    if (!workOrder || activeTab !== 'comments') return;
+    let cancelled = false;
+    (async () => {
+      setCommentsLoading(true);
+      setCommentError(null);
+      try {
+        const resp = await maintenanceApi.listComments(workOrder.id);
+        if (cancelled) return;
+        if (resp.success && resp.data) setComments(resp.data);
+        else setCommentError(resp.error?.message ?? 'Unable to load comments');
+      } catch (err) {
+        if (cancelled) return;
+        setCommentError(err instanceof Error ? err.message : 'Unable to load comments');
+      } finally {
+        if (!cancelled) setCommentsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workOrder, activeTab]);
+
+  const handlePostComment = async () => {
+    if (!workOrder || !newComment.trim()) return;
+    setPostingComment(true);
+    setCommentError(null);
+    try {
+      const resp = await maintenanceApi.addComment(workOrder.id, newComment.trim());
+      if (resp.success === false) {
+        setCommentError(resp.error?.message ?? 'Failed to post comment');
+        return;
+      }
+      setNewComment('');
+      // refresh
+      const list = await maintenanceApi.listComments(workOrder.id);
+      if (list.success && list.data) setComments(list.data);
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : 'Failed to post comment');
+    } finally {
+      setPostingComment(false);
+    }
   };
 
   const tabs = [
     { id: 'details' as const, label: 'Details' },
     { id: 'timeline' as const, label: 'Timeline' },
     { id: 'evidence' as const, label: 'Evidence' },
+    { id: 'comments' as const, label: 'Comments' },
     ...(showApproval ? [{ id: 'costs' as const, label: 'Cost Analysis' }] : []),
   ];
 
@@ -430,6 +509,61 @@ export function WorkOrderDetailModal({
             </div>
           )}
 
+          {/* Comments Tab */}
+          {activeTab === 'comments' && (
+            <div className="space-y-4">
+              {commentError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  {commentError}
+                </div>
+              )}
+              {commentsLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">No comments yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {comments.map((c) => (
+                    <div key={c.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-1 text-xs text-gray-500">
+                        <span className="font-medium text-gray-700">{c.author}</span>
+                        <span>{formatDateTime(c.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{c.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="border-t pt-3 space-y-2">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                  placeholder="Write a comment..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handlePostComment}
+                    disabled={postingComment || !newComment.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  >
+                    {postingComment && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Post Comment
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Cost Analysis Tab (for approvals) */}
           {activeTab === 'costs' && showApproval && (
             <div className="space-y-6">
@@ -506,6 +640,12 @@ export function WorkOrderDetailModal({
         {/* Footer with approval actions */}
         {showApproval && (
           <div className="border-t border-gray-200 p-4 flex-shrink-0">
+            {actionError && (
+              <div className="mb-3 flex items-start gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                {actionError}
+              </div>
+            )}
             {showRejectForm ? (
               <div className="space-y-3">
                 <div>
