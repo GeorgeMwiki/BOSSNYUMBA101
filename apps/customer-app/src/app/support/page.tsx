@@ -234,11 +234,21 @@ export default function SupportPage() {
                   rows={4}
                   className="input min-h-[100px]"
                   placeholder="Share your suggestions or report an issue..."
+                  required
                 />
               </div>
-              <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
+              {submitError && (
+                <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+                  {submitError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmitting || !feedback.trim()}
+                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+              >
                 <Send className="w-4 h-4" />
-                Submit feedback
+                {isSubmitting ? 'Submitting...' : 'Submit feedback'}
               </button>
             </form>
           )}
