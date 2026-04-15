@@ -1,243 +1,233 @@
 /**
- * Region Policy Bundle
+ * Region Policy Bundle — DEPRECATED SHIM
  *
- * Single source of truth that maps a `Region` (TZ / KE / OTHER) to a
- * complete bundle of policy + compliance + UX rules. ALL application
- * code that needs to make a region-dependent decision SHOULD import
- * this bundle rather than hard-coding region literals.
+ * @deprecated use packages/domain-models/src/jurisdiction/ directly.
  *
- * Two flavors of bundle:
+ * This file is now a backward-compatibility SHIM. The single source of
+ * truth for region/jurisdiction rules is the config-driven jurisdiction
+ * registry in `packages/domain-models/src/jurisdiction/`:
  *
- * 1. **User region policy** — `getUserPolicy(region)`. Drives PII /
- *    privacy rules that follow the data subject (the human user):
- *    Privacy Policy / ToS document, allowed LLM subprocessors,
- *    cookie/consent behavior, default UI language.
+ *   - `getJurisdiction(countryCode)` — full JurisdictionConfig
+ *   - `getTaxRate(countryCode, key)` — single tax rate
+ *   - `isSubprocessorBlocked(countryCode, subprocessorId)`
+ *   - `requiresFiscalSubmission(countryCode, invoiceType)`
+ *   - `registerJurisdiction(config)` — extend at runtime
  *
- * 2. **Org fiscal policy** — `getOrgFiscalPolicy(region)`. Drives the
- *    landlord-side fiscal authority routing: which tax authority
- *    receives invoices, default tax rates for VAT/WHT/MRI, invoice
- *    template flavor.
+ * Adding a new country = inserting a row in the `jurisdiction_configs`
+ * table (or calling `registerJurisdiction` with a seed). NO code changes
+ * required. The old `Region` enum (TZ / KE / OTHER) is intentionally
+ * limited and will be removed once all callers have migrated.
  *
- * Why two: a TZ user can rent from a KE landlord. The user's PII
- * routes by `getUserPolicy('TZ')` (Tanzania PDPA, no DeepSeek). The
- * rent invoice routes by `getOrgFiscalPolicy('KE')` (KRA eTIMS).
+ * DELEGATION MAP (legacy API → jurisdiction registry):
+ *
+ *   getUserPolicy(region)
+ *     → getJurisdiction(regionToCountryCode(region))
+ *       Fields are projected from JurisdictionConfig.compliance + .languages.
+ *
+ *   getOrgFiscalPolicy(region)
+ *     → getJurisdiction(regionToCountryCode(region))
+ *       Tax rates are projected from JurisdictionConfig.taxRates by key:
+ *         vat               → taxRate('vat')
+ *         whtRentResident   → taxRate('wht_resident')
+ *         whtRentNonResident→ taxRate('wht_nonresident')
+ *         mri               → taxRate('mri') or null when absent
+ *
+ *   isSubprocessorBlockedForRegion(id, region)
+ *     → isSubprocessorBlocked(regionToCountryCode(region), id)
+ *
+ *   requiresFiscalSubmission(region)
+ *     → getJurisdiction(...).fiscalAuthority?.requiresPreAuthSubmission
+ *
+ *   Region.TANZANIA  → countryCode 'TZ'
+ *   Region.KENYA     → countryCode 'KE'
+ *   Region.OTHER     → countryCode 'GLOBAL' (falls through to GLOBAL_DEFAULT)
  */
 
 import {
   Region,
   Language,
   FiscalAuthority,
-  defaultLanguageForRegion,
-  fiscalAuthorityForRegion,
+} from '@bossnyumba/domain-models';
+import {
+  getJurisdiction,
+  isSubprocessorBlocked as registryIsSubprocessorBlocked,
+  loadSeedJurisdictions,
+  isJurisdictionConfigured,
+  type JurisdictionConfig,
 } from '@bossnyumba/domain-models';
 
 // ---------------------------------------------------------------------------
-// User region policy (PII / privacy / language)
+// Lazy seed loader — guarantees the registry is populated before the shim
+// projects values out of it. Idempotent.
 // ---------------------------------------------------------------------------
 
+let seeded = false;
+function ensureSeeded(): void {
+  if (seeded) return;
+  // Only seed if no jurisdictions are registered yet — avoids clobbering
+  // a runtime-loaded DB hydration that already happened.
+  if (!isJurisdictionConfigured('TZ')) {
+    loadSeedJurisdictions();
+  }
+  seeded = true;
+}
+
 /**
- * The set of LLM subprocessors that can NEVER be used to process this
- * region's user data. Application code (e.g.
- * `packages/ai-copilot/src/llm-provider-gate.ts`) MUST honor this list.
+ * Map the legacy Region enum to an ISO-3166 alpha-2 country code that
+ * the jurisdiction registry understands. `OTHER` and unknown values
+ * resolve to `'GLOBAL'`, which the registry maps to its global default.
  */
+function regionToCountryCode(region: Region | undefined | null): string {
+  if (!region) return 'GLOBAL';
+  if (region === Region.TANZANIA) return 'TZ';
+  if (region === Region.KENYA) return 'KE';
+  return 'GLOBAL';
+}
+
+/**
+ * Project a JurisdictionConfig back to the legacy Region enum value.
+ * Used to populate the `region`/`fiscalCountry` field on the legacy
+ * shim payload. Anything outside TZ/KE collapses to OTHER.
+ */
+function countryCodeToRegion(countryCode: string): Region {
+  const c = countryCode.trim().toUpperCase();
+  if (c === 'TZ') return Region.TANZANIA;
+  if (c === 'KE') return Region.KENYA;
+  return Region.OTHER;
+}
+
+function languageFromCode(code: string): Language {
+  return code === 'sw' ? Language.SWAHILI : Language.ENGLISH;
+}
+
+// ---------------------------------------------------------------------------
+// User region policy (PII / privacy / language) — projected from registry
+// ---------------------------------------------------------------------------
+
+/** @deprecated use JurisdictionConfig.compliance + .languages directly. */
 export interface UserRegionPolicy {
-  /** Region this policy applies to. */
   readonly region: Region;
-  /** Default UI language suggestion. User can override. */
   readonly defaultLanguage: Language;
-  /** Languages offered in the picker for users in this region. */
   readonly availableLanguages: readonly Language[];
-  /**
-   * Stable identifier of the Privacy Policy document version. The
-   * customer-app + estate-manager-app + bossnyumba_app render the doc
-   * at this id from `Docs/legal/{region}/privacy-{id}.md` (or wherever
-   * the legal team chooses to host it).
-   */
   readonly privacyDocId: string;
-  /** Stable identifier of the Terms-of-Service document version. */
   readonly termsDocId: string;
-  /**
-   * Subprocessor ids that MUST NOT receive PII for users in this region.
-   * Cross-references `packages/enterprise-hardening/src/compliance/subprocessors.ts`.
-   */
   readonly blockedSubprocessors: readonly string[];
-  /**
-   * Whether the user must explicitly opt in to non-essential cookies.
-   * GDPR-style consent (TZ + KE both require this).
-   */
   readonly requiresExplicitCookieConsent: boolean;
-  /**
-   * Statutory data-protection law that applies to PII for users in
-   * this region. Used for compliance audits and data-subject-rights
-   * (DSR) responses.
-   */
   readonly dataProtectionLaw: string;
 }
 
-const USER_POLICIES: Readonly<Record<Region, UserRegionPolicy>> = {
-  [Region.TANZANIA]: {
-    region: Region.TANZANIA,
-    defaultLanguage: Language.SWAHILI,
-    availableLanguages: [Language.SWAHILI, Language.ENGLISH],
-    privacyDocId: 'tz-pdpa-2026-04',
-    termsDocId: 'tz-tos-2026-04',
-    blockedSubprocessors: ['deepseek'],
-    requiresExplicitCookieConsent: true,
-    dataProtectionLaw: 'Tanzania Personal Data Protection Act, 2022 (PDPA)',
-  },
-  [Region.KENYA]: {
-    region: Region.KENYA,
-    defaultLanguage: Language.ENGLISH,
-    availableLanguages: [Language.ENGLISH, Language.SWAHILI],
-    privacyDocId: 'ke-dpa-2026-04',
-    termsDocId: 'ke-tos-2026-04',
-    blockedSubprocessors: ['deepseek'],
-    requiresExplicitCookieConsent: true,
-    dataProtectionLaw: 'Kenya Data Protection Act, 2019',
-  },
-  [Region.OTHER]: {
-    region: Region.OTHER,
-    defaultLanguage: Language.ENGLISH,
-    availableLanguages: [Language.ENGLISH, Language.SWAHILI],
-    privacyDocId: 'global-2026-04',
-    termsDocId: 'global-tos-2026-04',
-    blockedSubprocessors: [],
-    requiresExplicitCookieConsent: true,
-    dataProtectionLaw: 'GDPR (EU 2016/679) — default for non-TZ/KE jurisdictions',
-  },
-};
-
-/**
- * Returns the full user-region policy bundle. Always returns a value
- * (falls back to OTHER if the region is unknown).
- */
-export function getUserPolicy(region: Region | undefined | null): UserRegionPolicy {
-  if (!region) return USER_POLICIES[Region.OTHER];
-  return USER_POLICIES[region] ?? USER_POLICIES[Region.OTHER];
+function projectUserPolicy(config: JurisdictionConfig): UserRegionPolicy {
+  return {
+    region: countryCodeToRegion(config.countryCode),
+    defaultLanguage: languageFromCode(config.defaultLanguage),
+    availableLanguages: config.languages.map(languageFromCode),
+    privacyDocId: config.privacyDocId,
+    termsDocId: config.termsDocId,
+    blockedSubprocessors: config.compliance.blockedSubprocessors,
+    requiresExplicitCookieConsent: config.compliance.requiresExplicitCookieConsent,
+    dataProtectionLaw: config.compliance.dataProtectionLaw,
+  };
 }
 
 /**
- * Convenience: returns true if the named subprocessor is blocked for
- * the given region.
+ * @deprecated use `getJurisdiction(countryCode)` from
+ * `@bossnyumba/domain-models` directly.
+ */
+export function getUserPolicy(region: Region | undefined | null): UserRegionPolicy {
+  ensureSeeded();
+  return projectUserPolicy(getJurisdiction(regionToCountryCode(region)));
+}
+
+/**
+ * @deprecated use `isSubprocessorBlocked(countryCode, id)` from
+ * `@bossnyumba/domain-models` directly.
  */
 export function isSubprocessorBlockedForRegion(
   subprocessorId: string,
   region: Region | undefined | null,
 ): boolean {
-  return getUserPolicy(region).blockedSubprocessors.includes(subprocessorId);
+  ensureSeeded();
+  return registryIsSubprocessorBlocked(regionToCountryCode(region), subprocessorId);
 }
 
 // ---------------------------------------------------------------------------
-// Org fiscal policy (tax authority + rates + invoice templates)
+// Org fiscal policy (tax authority + rates + invoice templates) — projected
 // ---------------------------------------------------------------------------
 
-/**
- * Tax-rate bundle. Rates are stored as decimal fractions (0.18 = 18%).
- * Use the helpers in `services/tax-compliance/src/engine/tax-calculator.ts`
- * to apply them rather than multiplying ad-hoc.
- */
+/** @deprecated use JurisdictionConfig.taxRates and helpers from domain-models. */
 export interface TaxRates {
-  /** Standard VAT rate on commercial rent + services. */
   readonly vat: number;
-  /**
-   * Withholding tax rate on rent paid to resident landlords (TZ-specific
-   * convention; KE handles via different mechanism — see `mri`).
-   */
   readonly whtRentResident: number;
-  /** Withholding tax rate on rent paid to non-resident landlords. */
   readonly whtRentNonResident: number;
-  /**
-   * Monthly Rental Income tax rate (KE-specific). TZ does not use MRI.
-   *
-   * KE rate is currently disputed in prior research: pre-2024 was 10%,
-   * post-Jan-2024 was reduced to 7.5% — DO confirm with KRA before
-   * production use. The default here is the post-2024 7.5% rate; the
-   * tax-compliance engine exposes a `MRI_RATE_OVERRIDE` env var.
-   */
   readonly mri: number | null;
 }
 
+/** @deprecated use JurisdictionConfig directly. */
 export interface OrgFiscalPolicy {
   readonly fiscalCountry: Region;
   readonly fiscalAuthority: FiscalAuthority;
-  /** Currency code expected on invoices. ISO-4217. */
   readonly defaultCurrency: string;
-  /**
-   * Identifier of the invoice-template variant to render. The PDF
-   * pipeline renders different fields per variant (KE eTIMS QR + receipt
-   * number, TZ TRA TIN + EFD signature, etc.).
-   */
   readonly invoiceTemplateId: string;
   readonly taxRates: TaxRates;
-  /**
-   * If true, invoices for triggering types MUST be posted to the
-   * fiscal authority before being marked authoritative
-   * (PENDING_TAX_SUBMISSION on failure). See
-   * `services/payments-ledger/src/services/invoice.generator.ts`.
-   */
   readonly requiresFiscalSubmissionBeforeAuthoritative: boolean;
 }
 
-const FISCAL_POLICIES: Readonly<Record<Region, OrgFiscalPolicy>> = {
-  [Region.TANZANIA]: {
-    fiscalCountry: Region.TANZANIA,
-    fiscalAuthority: FiscalAuthority.TRA,
-    defaultCurrency: 'TZS',
-    invoiceTemplateId: 'tz-tra-2026-04',
+function fiscalAuthorityFromKey(key: string | undefined): FiscalAuthority {
+  if (!key) return FiscalAuthority.NONE;
+  const k = key.toLowerCase();
+  if (k === 'kra') return FiscalAuthority.KRA;
+  if (k === 'tra') return FiscalAuthority.TRA;
+  return FiscalAuthority.NONE;
+}
+
+function findRate(config: JurisdictionConfig, key: string): number {
+  const t = config.taxRates.find((r) => r.key === key);
+  return t?.rate ?? 0;
+}
+
+function findRateOrNull(config: JurisdictionConfig, key: string): number | null {
+  const t = config.taxRates.find((r) => r.key === key);
+  return t?.rate ?? null;
+}
+
+function projectFiscalPolicy(config: JurisdictionConfig): OrgFiscalPolicy {
+  const fa = config.fiscalAuthority;
+  return {
+    fiscalCountry: countryCodeToRegion(config.countryCode),
+    fiscalAuthority: fa?.active ? fiscalAuthorityFromKey(fa.key) : FiscalAuthority.NONE,
+    defaultCurrency: config.defaultCurrency,
+    invoiceTemplateId: config.invoiceTemplateId,
     taxRates: {
-      vat: 0.18,
-      whtRentResident: 0.10,
-      whtRentNonResident: 0.15,
-      mri: null,
+      vat: findRate(config, 'vat'),
+      whtRentResident: findRate(config, 'wht_resident'),
+      whtRentNonResident: findRate(config, 'wht_nonresident'),
+      mri: findRateOrNull(config, 'mri'),
     },
-    requiresFiscalSubmissionBeforeAuthoritative: true,
-  },
-  [Region.KENYA]: {
-    fiscalCountry: Region.KENYA,
-    fiscalAuthority: FiscalAuthority.KRA,
-    defaultCurrency: 'KES',
-    invoiceTemplateId: 'ke-etims-2026-04',
-    taxRates: {
-      vat: 0.16,
-      whtRentResident: 0.10,
-      whtRentNonResident: 0.30,
-      mri: 0.075,
-    },
-    requiresFiscalSubmissionBeforeAuthoritative: true,
-  },
-  [Region.OTHER]: {
-    fiscalCountry: Region.OTHER,
-    fiscalAuthority: FiscalAuthority.NONE,
-    defaultCurrency: 'USD',
-    invoiceTemplateId: 'global-2026-04',
-    taxRates: {
-      vat: 0,
-      whtRentResident: 0,
-      whtRentNonResident: 0,
-      mri: null,
-    },
-    requiresFiscalSubmissionBeforeAuthoritative: false,
-  },
-};
+    requiresFiscalSubmissionBeforeAuthoritative:
+      !!fa?.active && !!fa?.requiresPreAuthSubmission,
+  };
+}
 
 /**
- * Returns the full org fiscal-policy bundle. Always returns a value
- * (falls back to OTHER if the region is unknown).
+ * @deprecated use `getJurisdiction(countryCode)` from
+ * `@bossnyumba/domain-models` directly.
  */
 export function getOrgFiscalPolicy(
   fiscalCountry: Region | undefined | null,
 ): OrgFiscalPolicy {
-  if (!fiscalCountry) return FISCAL_POLICIES[Region.OTHER];
-  return FISCAL_POLICIES[fiscalCountry] ?? FISCAL_POLICIES[Region.OTHER];
+  ensureSeeded();
+  return projectFiscalPolicy(getJurisdiction(regionToCountryCode(fiscalCountry)));
 }
 
 /**
- * Convenience: returns true if invoices for the given org's fiscal
- * country must be posted to the fiscal authority before being marked
- * authoritative.
+ * @deprecated use `requiresFiscalSubmission(countryCode, invoiceType)` from
+ * `@bossnyumba/domain-models` directly. The shim returns true if the
+ * jurisdiction's fiscal authority is active AND requires pre-auth
+ * submission, regardless of invoice type (the legacy API was binary).
  */
 export function requiresFiscalSubmission(
   fiscalCountry: Region | undefined | null,
 ): boolean {
+  ensureSeeded();
   return getOrgFiscalPolicy(fiscalCountry).requiresFiscalSubmissionBeforeAuthoritative;
 }

@@ -121,6 +121,11 @@ export {
 // KPI Data Provider (simple accessors for HTTP routes / owner-portal)
 // ============================================================================
 export {
+  SQLKPIDataProvider,
+  type SQLKPIDataProviderOptions,
+} from './services/sql-kpi-data-provider.js';
+
+export {
   MockKPIDataProvider,
   buildMonthBuckets,
   lastNMonthsPeriod,

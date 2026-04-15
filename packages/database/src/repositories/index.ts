@@ -35,3 +35,7 @@ export {
   RefreshTokenRepository,
   type CreateRefreshTokenInput,
 } from './refresh-token.repository.js';
+export {
+  FeatureFlagRepository,
+  type FeatureFlagLookup,
+} from './feature-flag.repository.js';

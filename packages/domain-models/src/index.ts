@@ -576,3 +576,11 @@ export {
 // ============================================================================
 export * from './jurisdiction/jurisdiction';
 export { loadSeedJurisdictions, TANZANIA, KENYA, NIGERIA, SOUTH_AFRICA } from './jurisdiction/seeds';
+export { bootstrapJurisdictions, stopJurisdictionRefresh, type JurisdictionDbLoader, type BootstrapJurisdictionsOptions } from './jurisdiction/bootstrap';
+
+// ============================================================================
+// Region (DEPRECATED — use jurisdiction registry instead). Kept for backward
+// compatibility. The Region/Language/FiscalAuthority enums and helpers are
+// thin facades over the jurisdiction registry.
+// ============================================================================
+export * from './region/region';

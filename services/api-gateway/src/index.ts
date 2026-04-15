@@ -40,6 +40,7 @@ import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { membershipsRouter } from './routes/memberships.hono';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
+import { getDatabaseClient } from './middleware/database';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
@@ -188,6 +189,37 @@ function gracefulShutdown(signal: string) {
 
 let server: ReturnType<typeof app.listen> | null = null;
 
+// Wire the DB-backed loader for @bossnyumba/config/feature-flags. Without
+// this call every isEnabled() invocation falls through to env-only resolution
+// and any tenant/user-scoped row in `feature_flags` is dead data. We use
+// dynamic imports so a packaging mistake (missing optional dep) cannot crash
+// boot — failures degrade to env + static defaults.
+async function registerFeatureFlagDbLoader(): Promise<void> {
+  try {
+    const [{ registerFeatureFlagLoader }, { FeatureFlagRepository }] = await Promise.all([
+      import('@bossnyumba/config/feature-flags'),
+      import('@bossnyumba/database'),
+    ]);
+
+    registerFeatureFlagLoader(async (flag, ctx) => {
+      try {
+        const db = getDatabaseClient();
+        if (!db) return undefined;
+        const repo = new FeatureFlagRepository(db);
+        const row = await repo.findByFlag(flag, ctx.tenantId, ctx.userId);
+        if (!row) return undefined;
+        return row.enabled;
+      } catch {
+        // Swallow — isEnabled() will fall through to the static default.
+        return undefined;
+      }
+    });
+    logger.info('Feature flag DB loader registered');
+  } catch (err) {
+    logger.error({ err }, 'Failed to register feature flag DB loader — env + defaults only');
+  }
+}
+
 // Boot the jurisdiction registry (seeds synchronously, hydrates from DB
 // asynchronously, refreshes periodically). Must run BEFORE any route
 // handler consults getJurisdiction/getTaxRate/isSubprocessorBlocked.
@@ -210,6 +242,10 @@ async function bootJurisdictionRegistry(): Promise<void> {
 // Start server
 if (require.main === module) {
   void bootJurisdictionRegistry();
+  // Register the DB-backed feature-flag loader once the DB client module is
+  // resolvable. Safe to fire-and-forget — the loader is consulted lazily by
+  // isEnabled() callers, and a slow boot just degrades to env + defaults.
+  void registerFeatureFlagDbLoader();
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });

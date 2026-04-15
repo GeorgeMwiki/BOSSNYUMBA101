@@ -1,16 +1,122 @@
 // @ts-nocheck
 
+import crypto from 'crypto';
 import { Hono } from 'hono';
 import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
-import { tenants, users, roles, userRoles } from '@bossnyumba/database';
+import {
+  tenants,
+  users,
+  roles,
+  userRoles,
+  RefreshTokenRepository,
+} from '@bossnyumba/database';
+import { auth as authConfig } from '@bossnyumba/config';
 import { UserRole } from '../types/user-role';
 import { activatePendingMemberships } from './memberships.hono';
 
 const app = new Hono();
+
+// ---------------------------------------------------------------------------
+// Token helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Read TTL knobs lazily so tests can override env after import. Falls back to
+ * the documented defaults (15 min access / 30 day refresh) if @bossnyumba/config
+ * isn't loaded (e.g. mock-mode tests that never read env).
+ */
+function getAuthTtls(): { accessSeconds: number; refreshDays: number } {
+  try {
+    const cfg = authConfig();
+    return {
+      accessSeconds: cfg.accessTokenTtlSeconds ?? 900,
+      refreshDays: cfg.refreshTokenTtlDays ?? 30,
+    };
+  } catch {
+    return { accessSeconds: 900, refreshDays: 30 };
+  }
+}
+
+/** Generate an opaque 256-bit refresh token, base64url-encoded. NOT a JWT. */
+function generateRefreshToken(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+/** SHA-256 hex digest. We never persist the plaintext refresh token. */
+function hashRefreshToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function refreshTokenExpiry(days: number): Date {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function issueAccessToken(record: {
+  userId: string;
+  tenantId: string;
+  role: UserRole;
+  permissions: string[];
+  propertyAccess: string[];
+}): { token: string; expiresAt: string; ttlSeconds: number } {
+  const { accessSeconds } = getAuthTtls();
+  const token = generateToken(
+    {
+      userId: record.userId,
+      tenantId: record.tenantId,
+      role: record.role,
+      permissions: record.permissions,
+      propertyAccess: record.propertyAccess,
+    },
+    { expiresInSeconds: accessSeconds }
+  );
+  return {
+    token,
+    expiresAt: new Date(Date.now() + accessSeconds * 1000).toISOString(),
+    ttlSeconds: accessSeconds,
+  };
+}
+
+/**
+ * Persist a fresh refresh token for (userId, tenantId, deviceId?). Returns
+ * the plaintext refresh token (only ever returned ONCE, to the client) and
+ * its expiry timestamp.
+ */
+async function issueAndStoreRefreshToken(
+  userId: string,
+  tenantId: string,
+  deviceId: string | null
+): Promise<{ refreshToken: string; refreshTokenExpiresAt: string } | null> {
+  const db = getDatabaseClient();
+  if (!db) return null;
+
+  const { refreshDays } = getAuthTtls();
+  const refreshToken = generateRefreshToken();
+  const tokenHash = hashRefreshToken(refreshToken);
+  const expiresAt = refreshTokenExpiry(refreshDays);
+
+  const repo = new RefreshTokenRepository(db);
+  await repo.create({
+    userId,
+    tenantId,
+    deviceId,
+    tokenHash,
+    expiresAt,
+  });
+
+  return {
+    refreshToken,
+    refreshTokenExpiresAt: expiresAt.toISOString(),
+  };
+}
+
+function readDeviceId(c: any): string | null {
+  const value = c.req.header('x-device-id') || c.req.header('X-Device-Id');
+  return value ? String(value).slice(0, 255) : null;
+}
 
 function mapRoleName(roleName?: string): UserRole {
   switch ((roleName || '').toLowerCase()) {
@@ -221,96 +327,11 @@ function buildTenantPayload(record: any) {
   };
 }
 
-function mockLogin(email: string, password: string) {
-  // Check platform admin users
-  const platformRoles = getPlatformAdminRoles();
-  const platformUser = PLATFORM_ADMIN_USERS.find((u) => u.email === email);
-  if (platformUser && password === 'demo123') {
-    const role = platformRoles[email] || UserRole.ADMIN;
-    return {
-      user: platformUser,
-      tenantId: 'platform',
-      tenantName: 'BOSSNYUMBA Platform',
-      role,
-      permissions: ['*'],
-    };
-  }
-
-  // Check tenant users
-  const demoUser = DEMO_USERS.find((u) => u.email === email);
-  if (demoUser && password === 'demo123') {
-    const tenantUser = DEMO_TENANT_USERS.find((tu) => tu.userId === demoUser.id);
-    return {
-      user: demoUser,
-      tenantId: DEMO_TENANT.id,
-      tenantName: DEMO_TENANT.name,
-      role: tenantUser?.role ?? UserRole.TENANT_ADMIN,
-      permissions: tenantUser?.permissions ?? ['*'],
-    };
-  }
-
-  return null;
-}
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
 
 app.post('/login', async (c) => {
-  let body: any;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid request body' } }, 400);
-  }
-  if (!body || !body.email) {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Email is required' } }, 400);
-  }
-  if (typeof body.email !== 'string' || !body.email.includes('@')) {
-    return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } }, 400);
-  }
-
-  const db = getDatabaseClient();
-  if (db) {
-    // Live database path
-    const record = await resolveAuthUser(body.email);
-    if (!record?.passwordHash) {
-      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
-    }
-
-    const valid = await bcrypt.compare(body.password, record.passwordHash);
-    if (!valid) {
-      return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
-    }
-
-    const token = generateToken({
-      userId: record.id,
-      tenantId: record.tenantId,
-      role: record.role,
-      permissions: record.permissions,
-      propertyAccess: record.propertyAccess,
-    });
-
-    return c.json({
-      success: true,
-      data: {
-        token,
-        user: {
-          id: record.id,
-          email: record.email,
-          firstName: record.firstName,
-          lastName: record.lastName,
-          avatarUrl: record.avatarUrl,
-        },
-        tenant: {
-          id: record.tenantId,
-          name: record.tenantName,
-          slug: record.tenantSlug,
-        },
-        role: record.role,
-        permissions: record.permissions,
-        properties: record.propertyAccess,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      },
-    });
-  }
-
   let body: { email?: string; password?: string };
   try {
     body = await c.req.json();
@@ -326,16 +347,39 @@ app.post('/login', async (c) => {
 
   const email = (body?.email ?? '').trim().toLowerCase();
   const password = body?.password ?? '';
-  if (!email || !password) {
+  if (!email) {
+    return c.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'Email is required' } },
+      400
+    );
+  }
+  if (typeof email !== 'string' || !email.includes('@')) {
+    return c.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } },
+      400
+    );
+  }
+  if (!password) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Email and password are required.' },
+      },
+      400
+    );
+  }
+
+  const db = getDatabaseClient();
+  if (!db) {
     return c.json(
       {
         success: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Email and password are required.',
+          code: 'AUTH_NOT_CONFIGURED',
+          message: 'Authentication requires a live database connection.',
         },
       },
-      400
+      503
     );
   }
 
@@ -360,23 +404,33 @@ app.post('/login', async (c) => {
   try {
     await activatePendingMemberships(db, record.id, record.email);
   } catch (err) {
-    // Never block login on invitation bookkeeping
     // eslint-disable-next-line no-console
     console.warn('activatePendingMemberships failed', err);
   }
 
-  const token = generateToken({
-    userId: result.user.id,
-    tenantId: result.tenantId,
-    role: result.role,
-    permissions: result.permissions,
-    propertyAccess: ['*'],
+  const memberships = await resolveMembershipsForEmail(record.email);
+
+  const access = issueAccessToken({
+    userId: record.id,
+    tenantId: record.tenantId,
+    role: record.role,
+    permissions: record.permissions,
+    propertyAccess: record.propertyAccess,
   });
+
+  const deviceId = readDeviceId(c);
+  const refresh = await issueAndStoreRefreshToken(record.id, record.tenantId, deviceId);
 
   return c.json({
     success: true,
     data: {
-      token,
+      // Legacy field kept for back-compat with existing clients.
+      token: access.token,
+      accessToken: access.token,
+      refreshToken: refresh?.refreshToken ?? null,
+      refreshTokenExpiresAt: refresh?.refreshTokenExpiresAt ?? null,
+      tokenType: 'Bearer',
+      expiresIn: access.ttlSeconds,
       user: buildUserPayload(record),
       tenant: buildTenantPayload(record),
       role: record.role,
@@ -384,7 +438,7 @@ app.post('/login', async (c) => {
       properties: record.propertyAccess,
       memberships,
       activeOrgId: record.tenantId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: access.expiresAt,
     },
   });
 });
@@ -453,27 +507,152 @@ app.get('/me', authMiddleware, async (c) => {
   });
 });
 
-app.post('/refresh', authMiddleware, async (c) => {
-  const auth = c.get('auth');
+/**
+ * POST /refresh
+ *
+ * Real refresh-token rotation with compromise detection.
+ *
+ * Happy path:
+ *   1. Caller posts { refreshToken } (opaque random string).
+ *   2. We hash it and look the row up.
+ *   3. If the row is active (not revoked, not expired), we:
+ *      a) issue a NEW access token (short-lived JWT)
+ *      b) issue a NEW refresh token (opaque), persist its hash
+ *      c) mark the OLD row as used and link replaced_by_token_hash -> new hash
+ *      d) return both new tokens
+ *
+ * Compromise detection:
+ *   - If the row is unknown -> 401, nothing to revoke.
+ *   - If the row exists but is expired -> 401, no chain action (natural EOL).
+ *   - If the row exists but was already used (revoked_at set AND
+ *     replaced_by_token_hash set), an attacker is replaying a rotated token.
+ *     We REVOKE the entire user's active refresh chain and return 401.
+ *   - If the row was revoked for any other reason (logout/admin) -> 401.
+ */
+app.post('/refresh', async (c) => {
+  let body: { refreshToken?: string } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    body = {};
+  }
 
-  // TODO: wire a real refresh-token store. Today we re-issue on the current
-  // access token which means a compromised token can be extended indefinitely.
-  // A production implementation should:
-  //   1. Store refresh tokens in a `refresh_tokens` table keyed to userId+deviceId
-  //   2. Require the refresh token (not the access token) in the request body
-  //   3. Rotate the refresh token on each use and revoke on logout
-  const token = generateToken({
-    userId: auth.userId,
-    tenantId: auth.tenantId,
-    role: auth.role,
-    permissions: auth.permissions,
-    propertyAccess: auth.propertyAccess,
+  const presented = (body?.refreshToken ?? '').trim();
+  if (!presented) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'refreshToken is required.' },
+      },
+      400
+    );
+  }
+
+  const db = getDatabaseClient();
+  if (!db) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'AUTH_NOT_CONFIGURED',
+          message: 'Authentication requires a live database connection.',
+        },
+      },
+      503
+    );
+  }
+
+  const repo = new RefreshTokenRepository(db);
+  const presentedHash = hashRefreshToken(presented);
+  const row = await repo.findByTokenHash(presentedHash);
+
+  // Unknown token: opaque 401, no chain to revoke.
+  if (!row) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid.' } },
+      401
+    );
+  }
+
+  const now = Date.now();
+
+  // Already-used token being replayed -> compromise. Revoke the chain.
+  if (row.revokedAt && row.replacedByTokenHash) {
+    await repo.revokeByUserId(row.userId);
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'REFRESH_TOKEN_REUSED',
+          message: 'Refresh token has already been used. All sessions for this user have been revoked.',
+        },
+      },
+      401
+    );
+  }
+
+  // Revoked (logout / admin / earlier compromise) but never rotated.
+  if (row.revokedAt) {
+    return c.json(
+      { success: false, error: { code: 'REFRESH_TOKEN_REVOKED', message: 'Refresh token has been revoked.' } },
+      401
+    );
+  }
+
+  // Expired.
+  if (new Date(row.expiresAt).getTime() <= now) {
+    return c.json(
+      { success: false, error: { code: 'REFRESH_TOKEN_EXPIRED', message: 'Refresh token has expired.' } },
+      401
+    );
+  }
+
+  // Re-resolve the user so role/permissions reflect the current state of the
+  // world (not whatever was stamped at login time).
+  const userRecord = await resolveUserForTenant(row.userId, row.tenantId);
+  if (!userRecord) {
+    // The user was deleted while holding a refresh token. Revoke the chain.
+    await repo.revokeByUserId(row.userId);
+    return c.json(
+      { success: false, error: { code: 'USER_NOT_FOUND', message: 'User no longer exists.' } },
+      401
+    );
+  }
+
+  // Rotate.
+  const access = issueAccessToken({
+    userId: userRecord.id,
+    tenantId: userRecord.tenantId,
+    role: userRecord.role,
+    permissions: userRecord.permissions,
+    propertyAccess: userRecord.propertyAccess,
   });
+
+  const { refreshDays } = getAuthTtls();
+  const newRefreshToken = generateRefreshToken();
+  const newHash = hashRefreshToken(newRefreshToken);
+  const newExpiresAt = refreshTokenExpiry(refreshDays);
+
+  await repo.create({
+    userId: row.userId,
+    tenantId: row.tenantId,
+    deviceId: row.deviceId,
+    tokenHash: newHash,
+    expiresAt: newExpiresAt,
+  });
+
+  await repo.markUsed(row.id, newHash);
+
   return c.json({
     success: true,
     data: {
-      token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      token: access.token,
+      accessToken: access.token,
+      refreshToken: newRefreshToken,
+      refreshTokenExpiresAt: newExpiresAt.toISOString(),
+      tokenType: 'Bearer',
+      expiresIn: access.ttlSeconds,
+      expiresAt: access.expiresAt,
     },
   });
 });
@@ -538,7 +717,7 @@ app.post('/switch-org', authMiddleware, async (c) => {
     );
   }
 
-  const token = generateToken({
+  const access = issueAccessToken({
     userId: switched.id,
     tenantId: switched.tenantId,
     role: switched.role,
@@ -549,7 +728,10 @@ app.post('/switch-org', authMiddleware, async (c) => {
   return c.json({
     success: true,
     data: {
-      token,
+      token: access.token,
+      accessToken: access.token,
+      tokenType: 'Bearer',
+      expiresIn: access.ttlSeconds,
       user: buildUserPayload(switched),
       tenant: buildTenantPayload(switched),
       role: switched.role,
@@ -557,14 +739,50 @@ app.post('/switch-org', authMiddleware, async (c) => {
       properties: switched.propertyAccess,
       memberships,
       activeOrgId: switched.tenantId,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: access.expiresAt,
     },
   });
 });
 
-app.post('/logout', (_c) => {
-  // TODO: when refresh-token store lands, revoke the caller's refresh token here.
-  return _c.json({ success: true, data: { loggedOut: true } });
+/**
+ * POST /logout
+ *
+ * Revokes the refresh token presented in the body. If `allDevices=true` (or
+ * if the token's row has a deviceId and `device=true`), revokes every active
+ * refresh token belonging to the same user / device chain.
+ */
+app.post('/logout', async (c) => {
+  let body: { refreshToken?: string; allDevices?: boolean } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    body = {};
+  }
+
+  const presented = (body?.refreshToken ?? '').trim();
+  const db = getDatabaseClient();
+
+  // Without a token (or without DB), logout is best-effort idempotent.
+  if (!presented || !db) {
+    return c.json({ success: true, data: { loggedOut: true } });
+  }
+
+  const repo = new RefreshTokenRepository(db);
+  const presentedHash = hashRefreshToken(presented);
+  const row = await repo.findByTokenHash(presentedHash);
+
+  if (!row) {
+    // Don't leak existence; return 200.
+    return c.json({ success: true, data: { loggedOut: true } });
+  }
+
+  if (body.allDevices === true) {
+    const revoked = await repo.revokeByUserId(row.userId);
+    return c.json({ success: true, data: { loggedOut: true, revokedCount: revoked } });
+  }
+
+  await repo.revokeByHash(presentedHash);
+  return c.json({ success: true, data: { loggedOut: true, revokedCount: 1 } });
 });
 
 app.post('/register', (c) =>
@@ -596,3 +814,10 @@ app.post('/forgot-password', (c) =>
 );
 
 export const authRouter = app;
+
+// Exposed for unit tests.
+export const __testables = {
+  generateRefreshToken,
+  hashRefreshToken,
+  refreshTokenExpiry,
+};

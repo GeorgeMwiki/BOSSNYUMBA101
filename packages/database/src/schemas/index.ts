@@ -121,3 +121,6 @@ export * from './subprocessors.schema.js';
 
 // Refresh tokens (rotation + compromise detection)
 export * from './refresh-tokens.schema.js';
+
+// Feature flags (DB loader for @bossnyumba/config/feature-flags)
+export * from './feature-flags.schema.js';
