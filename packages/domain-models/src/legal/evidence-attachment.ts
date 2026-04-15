@@ -286,11 +286,7 @@ export function isVerified(evidence: EvidenceAttachment): boolean {
 
 export function getFileExtension(evidence: EvidenceAttachment): string {
   const parts = evidence.fileName.split('.');
-<<<<<<< HEAD
   return parts.length > 1 ? (parts[parts.length - 1]?.toLowerCase() ?? '') : '';
-=======
-  return parts.length > 1 ? (parts[parts.length - 1] ?? '').toLowerCase() : '';
->>>>>>> worktree-agent-a793f70a
 }
 
 export function isImageEvidence(evidence: EvidenceAttachment): boolean {

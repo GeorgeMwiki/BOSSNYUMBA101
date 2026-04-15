@@ -893,7 +893,3 @@ export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
     references: [customers.id],
   }),
 }));
-<<<<<<< HEAD
-=======
-
->>>>>>> worktree-agent-a793f70a

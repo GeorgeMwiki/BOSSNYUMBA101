@@ -510,13 +510,8 @@ export function isSlaBreached(caseItem: Case): { response: boolean; resolution: 
     (!caseItem.resolvedAt &&
      !!caseItem.slaDetails.resolutionDeadline &&
      now > new Date(caseItem.slaDetails.resolutionDeadline));
-<<<<<<< HEAD
-  
-  return { response: Boolean(responseBreached), resolution: Boolean(resolutionBreached) };
-=======
 
-  return { response: responseBreached, resolution: resolutionBreached };
->>>>>>> worktree-agent-a793f70a
+  return { response: Boolean(responseBreached), resolution: Boolean(resolutionBreached) };
 }
 
 export function generateCaseNumber(
