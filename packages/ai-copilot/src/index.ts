@@ -42,6 +42,17 @@ export {
   type CopilotHealthStatus,
 } from './ai-copilot.js';
 
+// ============================================
+// Brain — singular-intelligence layer
+// (amplifies AICopilot; does not replace it)
+// ============================================
+export * from './brain.js';
+export * from './thread/index.js';
+export * from './personas/index.js';
+export * from './orchestrator/index.js';
+export * from './skills/index.js';
+export * from './eval/index.js';
+
 // Types
 export * from './types/index.js';
 

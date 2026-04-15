@@ -1,0 +1,658 @@
+/**
+ * Orchestrator — deterministic state machine routing turns through personae.
+ *
+ * This is the heart of the Brain. It does NOT use an LLM for routing — the
+ * LLM proposes intent/actions inside a persona's response; the Orchestrator
+ * interprets those proposals and enforces policy, RBAC, visibility, and
+ * human review gates.
+ *
+ * Turn lifecycle (per design rule #1):
+ *   1. Receive user message -> append to thread as user_message.
+ *   2. If thread has no primary persona, classify intent and bind one.
+ *   3. Compose persona context: system prompt + handoff packet (if any) +
+ *      filtered thread view + available tools.
+ *   4. Execute persona via AdvisorExecutor (executor + optional Opus advice).
+ *   5. Append persona_message to thread.
+ *   6. Parse response for:
+ *      - Tool calls (dispatched via ToolDispatcher, appended as events).
+ *      - PROPOSED_ACTION (routed to Review Service if risk >= persona floor).
+ *      - HANDOFF_TO (constructs HandoffPacket, appends handoff_out, recurses
+ *        into the target persona).
+ *   7. Return the final synthesized response + trace ids to the caller.
+ *
+ * Recursion depth on handoff is bounded (default 3) to prevent cycles.
+ */
+
+import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
+import {
+  AITenantContext,
+  AIActor,
+  AIResult,
+  aiOk,
+  aiErr,
+  RiskLevel,
+} from '../types/core.types.js';
+import { Persona, PersonaRegistry, bindPersona } from '../personas/persona.js';
+import {
+  ThreadStore,
+  ThreadEvent,
+  UserMessageEvent,
+} from '../thread/thread-store.js';
+import {
+  VisibilityLabel,
+  VisibilityScope,
+  VisibilityViewer,
+} from '../thread/visibility.js';
+import {
+  HandoffPacket,
+  renderHandoffPacket,
+} from '../thread/handoff-packet.js';
+import {
+  classifyInitialTurn,
+  parseHandoffDirective,
+  parseProposedAction,
+} from './intent-router.js';
+import { ToolDispatcher } from './tool-dispatcher.js';
+import {
+  AdvisorExecutor,
+  AdvisorHardCategory,
+} from '../providers/advisor.js';
+import { AIProvider } from '../providers/ai-provider.js';
+import { ANTHROPIC_MODELS } from '../providers/anthropic.js';
+import { CompiledPrompt } from '../types/prompt.types.js';
+import { asPromptId } from '../types/core.types.js';
+import { ReviewService } from '../services/review-service.js';
+import { AIGovernanceService } from '../governance/ai-governance.js';
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface TurnRequest {
+  threadId: string;
+  tenant: AITenantContext;
+  actor: AIActor;
+  userText: string;
+  attachments?: UserMessageEvent['attachments'];
+  /** Explicit persona override (e.g. employee chatting with Coworker). */
+  forcePersonaId?: string;
+  /** Viewer for visibility filtering when rendering context. */
+  viewer: VisibilityViewer;
+  /** Max handoff depth for this turn. Defaults to 3. */
+  maxHandoffDepth?: number;
+}
+
+export interface TurnResult {
+  threadId: string;
+  /** Final persona that produced the user-visible response. */
+  finalPersonaId: string;
+  /** The persona's text. */
+  responseText: string;
+  /** Tool calls made during the turn. */
+  toolCalls: Array<{ tool: string; ok: boolean }>;
+  /** Any handoffs that happened. */
+  handoffs: Array<{ from: string; to: string; objective: string }>;
+  /** Proposed action if the persona emitted one. */
+  proposedAction?: {
+    verb: string;
+    object: string;
+    riskLevel: RiskLevel;
+    reviewRequired: boolean;
+  };
+  /** Whether Opus advisor was consulted on the final turn. */
+  advisorConsulted: boolean;
+  /** Total token usage across all LLM calls in this turn. */
+  tokensUsed: number;
+  /** Total time in ms across the turn. */
+  timeMs: number;
+}
+
+export interface OrchestratorConfig {
+  personas: PersonaRegistry;
+  threads: ThreadStore;
+  tools: ToolDispatcher;
+  reviewService: ReviewService;
+  governance: AIGovernanceService;
+  /** Primary AIProvider — should be Anthropic in production. */
+  executorProvider: AIProvider;
+  /** Advisor provider — Anthropic (Opus) in production. */
+  advisorProvider: AIProvider;
+  /** Default token budget per turn. */
+  defaultTokenBudget?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Orchestrator
+// ---------------------------------------------------------------------------
+
+export class Orchestrator {
+  private readonly advisor: AdvisorExecutor;
+
+  constructor(private readonly cfg: OrchestratorConfig) {
+    this.advisor = new AdvisorExecutor({
+      executorProvider: cfg.executorProvider,
+      advisorProvider: cfg.advisorProvider,
+    });
+  }
+
+  /**
+   * Execute a single turn.
+   */
+  async handleTurn(
+    req: TurnRequest
+  ): Promise<AIResult<TurnResult, { code: string; message: string; retryable: boolean }>> {
+    const turnStart = Date.now();
+    const thread = await this.cfg.threads.getThread(req.threadId);
+    if (!thread) {
+      return aiErr({
+        code: 'THREAD_NOT_FOUND',
+        message: `Thread ${req.threadId} not found`,
+        retryable: false,
+      });
+    }
+
+    // 1. Resolve the persona that owns this turn
+    const personaId = req.forcePersonaId ?? thread.primaryPersonaId;
+    const boundPersona = this.resolvePersona(personaId, req.tenant.tenantId, {
+      teamId: thread.teamId,
+      employeeId: thread.employeeId,
+    });
+    if (!boundPersona) {
+      return aiErr({
+        code: 'PERSONA_NOT_FOUND',
+        message: `Persona ${personaId} not registered`,
+        retryable: false,
+      });
+    }
+
+    // Default visibility for this turn is the persona's default, but capped
+    // by the persona's budget and by the thread's scope context.
+    const defaultVisibility: VisibilityLabel = {
+      scope: boundPersona.defaultVisibility,
+      authorActorId: boundPersona.id,
+      initiatingUserId: req.actor.id,
+      teamId: thread.teamId,
+      rationale: 'persona_default',
+    };
+
+    // 2. Append user message
+    await this.cfg.threads.append({
+      id: uuid(),
+      threadId: req.threadId,
+      kind: 'user_message',
+      createdAt: new Date().toISOString(),
+      visibility: defaultVisibility,
+      actorId: req.actor.id,
+      text: req.userText,
+      attachments: req.attachments,
+    });
+
+    // 3. Execute the persona (may recurse on handoff)
+    const budget = req.maxHandoffDepth ?? 3;
+    const acc: TurnAccumulator = {
+      toolCalls: [],
+      handoffs: [],
+      tokensUsed: 0,
+      advisorConsulted: false,
+    };
+
+    const execResult = await this.executePersona({
+      persona: boundPersona,
+      thread,
+      req,
+      acc,
+      depth: 0,
+      maxDepth: budget,
+      handoffPacket: undefined,
+    });
+    if (!execResult.success) {
+      const e = (execResult as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
+      return aiErr(e);
+    }
+    const final = execResult.data;
+
+    return aiOk<TurnResult>({
+      threadId: req.threadId,
+      finalPersonaId: final.personaId,
+      responseText: final.responseText,
+      toolCalls: acc.toolCalls,
+      handoffs: acc.handoffs,
+      proposedAction: final.proposedAction,
+      advisorConsulted: acc.advisorConsulted,
+      tokensUsed: acc.tokensUsed,
+      timeMs: Date.now() - turnStart,
+    });
+  }
+
+  /**
+   * Start a new thread and dispatch the first turn. Performs intent
+   * classification to pick the primary persona.
+   */
+  async startThread(input: {
+    tenant: AITenantContext;
+    actor: AIActor;
+    initialUserText: string;
+    viewer: VisibilityViewer;
+    title?: string;
+    teamId?: string;
+    employeeId?: string;
+    forcePersonaId?: string;
+  }): Promise<AIResult<{ thread: { id: string; primaryPersonaId: string }; turn: TurnResult }, { code: string; message: string; retryable: boolean }>> {
+    const intent = input.forcePersonaId
+      ? {
+          personaId: input.forcePersonaId,
+          confidence: 1,
+          rationale: 'forced',
+        }
+      : classifyInitialTurn(input.initialUserText);
+
+    const threadId = uuid();
+    const thread = await this.cfg.threads.createThread({
+      id: threadId,
+      tenantId: input.tenant.tenantId,
+      initiatingUserId: input.actor.id,
+      primaryPersonaId: intent.personaId,
+      teamId: input.teamId,
+      employeeId: input.employeeId,
+      title: input.title ?? input.initialUserText.slice(0, 80),
+      status: 'open',
+    });
+
+    await this.cfg.threads.append({
+      id: uuid(),
+      threadId: thread.id,
+      kind: 'system_note',
+      noteKind: 'info',
+      createdAt: new Date().toISOString(),
+      visibility: {
+        scope: 'management',
+        authorActorId: 'orchestrator',
+        initiatingUserId: input.actor.id,
+        rationale: 'intent_classification',
+      },
+      actorId: 'orchestrator',
+      text: `intent: ${intent.personaId} (${intent.rationale}, confidence=${intent.confidence.toFixed(2)})`,
+    });
+
+    const turn = await this.handleTurn({
+      threadId: thread.id,
+      tenant: input.tenant,
+      actor: input.actor,
+      userText: input.initialUserText,
+      viewer: input.viewer,
+    });
+    if (!turn.success) {
+      const e = (turn as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
+      return aiErr(e);
+    }
+
+    return aiOk({
+      thread: { id: thread.id, primaryPersonaId: intent.personaId },
+      turn: turn.data,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Internals
+  // -------------------------------------------------------------------------
+
+  private resolvePersona(
+    personaId: string,
+    tenantId: string,
+    bindings: { teamId?: string; employeeId?: string }
+  ): Persona | null {
+    // Handle Coworker `coworker.<employeeId>` family form.
+    let template: Persona | null;
+    if (personaId.startsWith('coworker.') && personaId.length > 'coworker.'.length) {
+      template = this.cfg.personas.resolveCoworker();
+      if (template) {
+        return bindPersona(template, {
+          tenantId,
+          teamId: bindings.teamId,
+          employeeId: personaId.slice('coworker.'.length),
+        });
+      }
+      return null;
+    }
+    template = this.cfg.personas.get(personaId);
+    if (!template) return null;
+    return bindPersona(template, {
+      tenantId,
+      teamId: bindings.teamId,
+      employeeId: bindings.employeeId,
+    });
+  }
+
+  private async executePersona(args: {
+    persona: Persona;
+    thread: { id: string; teamId?: string; employeeId?: string };
+    req: TurnRequest;
+    acc: TurnAccumulator;
+    depth: number;
+    maxDepth: number;
+    handoffPacket?: HandoffPacket;
+  }): Promise<AIResult<FinalPersonaResult, { code: string; message: string; retryable: boolean }>> {
+    const { persona, thread, req, acc, depth, maxDepth, handoffPacket } = args;
+
+    // Render filtered context as the human principal (enforces visibility).
+    const contextText = await this.cfg.threads.renderContextAs(
+      thread.id,
+      req.viewer,
+      { maxEvents: 40 }
+    );
+
+    const handoffText = handoffPacket ? renderHandoffPacket(handoffPacket) : '';
+    const userPrompt = [
+      handoffText,
+      handoffText ? '' : '',
+      'Thread context (filtered to your visibility):',
+      contextText,
+      '',
+      'Tools available to you:',
+      ...this.cfg.tools
+        .getDefinitionsFor(persona)
+        .map((t) => `- ${t.name}: ${t.description}`),
+      '',
+      'Latest user message:',
+      req.userText,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const compiled: CompiledPrompt = {
+      promptId: asPromptId(`persona:${persona.id}`),
+      version: '1.0.0',
+      systemPrompt: persona.systemPrompt,
+      userPrompt,
+      modelConfig: {
+        modelId: modelForTier(persona.modelTier),
+        maxTokens: 2048,
+        temperature: 0.4,
+      },
+      guardrails: {
+        piiHandling: 'redact',
+      },
+    };
+
+    // Decide advisor hard category from handoff (if any) or from persona.
+    const hardCategory = inferHardCategory(persona, req.userText);
+
+    const advResult = await this.advisor.run(
+      { prompt: compiled, jsonMode: false },
+      {
+        category: hardCategory ?? undefined,
+        reason: `persona:${persona.id} depth:${depth}`,
+      }
+    );
+    if (!advResult.success) {
+      const advErr = (advResult as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
+      return aiErr({
+        code: 'EXECUTOR_FAILED',
+        message: advErr.message,
+        retryable: advErr.retryable,
+      });
+    }
+    const outcome = advResult.data;
+    acc.tokensUsed += outcome.totalTokens;
+    if (outcome.advisorConsulted) acc.advisorConsulted = true;
+
+    const responseText = outcome.finalContent.trim();
+
+    // Append persona message
+    const visibility: VisibilityLabel = handoffPacket
+      ? handoffPacket.visibility
+      : {
+          scope: persona.defaultVisibility,
+          authorActorId: persona.id,
+          initiatingUserId: req.actor.id,
+          teamId: thread.teamId,
+          rationale: 'persona_default',
+        };
+
+    await this.cfg.threads.append({
+      id: uuid(),
+      threadId: thread.id,
+      kind: 'persona_message',
+      createdAt: new Date().toISOString(),
+      visibility,
+      actorId: persona.id,
+      personaId: persona.id,
+      text: responseText,
+      advisorConsulted: outcome.advisorConsulted,
+    });
+
+    // Governance: log the Brain turn (persona-aware, advisor-aware).
+    const totalPromptTokens =
+      outcome.executor.usage.promptTokens +
+      (outcome.advisor?.usage.promptTokens ?? 0);
+    const totalCompletionTokens =
+      outcome.executor.usage.completionTokens +
+      (outcome.advisor?.usage.completionTokens ?? 0);
+    await this.cfg.governance
+      .logBrainTurn({
+        tenant: req.tenant,
+        actor: req.actor,
+        personaId: persona.id,
+        threadId: thread.id,
+        modelId: String(outcome.advisor?.modelId ?? outcome.executor.modelId),
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
+        advisorConsulted: outcome.advisorConsulted,
+        depth,
+        processingTimeMs: outcome.totalProcessingTimeMs,
+      })
+      .catch(() => {
+        /* governance is best-effort; errors never fail the turn */
+      });
+
+    // Parse directives emitted by the persona.
+    const proposed = parseProposedAction(responseText);
+    const handoff = parseHandoffDirective(responseText);
+
+    // Handoff dispatch (recursive)
+    if (handoff && depth < maxDepth) {
+      if (!persona.delegatesTo || !persona.delegatesTo.includes(handoff.targetPersonaId)) {
+        await this.cfg.threads.append({
+          id: uuid(),
+          threadId: thread.id,
+          kind: 'system_note',
+          noteKind: 'governance',
+          createdAt: new Date().toISOString(),
+          visibility: { ...visibility, scope: 'management' },
+          actorId: 'orchestrator',
+          text: `handoff denied: ${persona.id} -> ${handoff.targetPersonaId} (not in delegatesTo)`,
+        });
+      } else {
+        const target = this.resolvePersona(
+          handoff.targetPersonaId,
+          req.tenant.tenantId,
+          { teamId: thread.teamId, employeeId: thread.employeeId }
+        );
+        if (target) {
+          const packet: HandoffPacket = {
+            id: uuid(),
+            threadId: thread.id,
+            targetPersonaId: target.id,
+            sourcePersonaId: persona.id,
+            objective: handoff.objective,
+            outputFormat:
+              'Return: (1) what you did, (2) evidence citations, (3) any PROPOSED_ACTION.',
+            relevantEntities: [],
+            priorDecisions: [],
+            constraints: [],
+            allowedTools: target.allowedTools,
+            contextSummary: summarizeForHandoff(responseText),
+            latestUserMessage: req.userText,
+            visibility,
+            tokensSoFar: acc.tokensUsed,
+            tokenBudget: 2048,
+            createdAt: new Date().toISOString(),
+          };
+          await this.cfg.threads.append({
+            id: uuid(),
+            threadId: thread.id,
+            kind: 'handoff_out',
+            createdAt: new Date().toISOString(),
+            visibility,
+            actorId: persona.id,
+            packet,
+          });
+          acc.handoffs.push({
+            from: persona.id,
+            to: target.id,
+            objective: handoff.objective,
+          });
+          return this.executePersona({
+            persona: target,
+            thread,
+            req,
+            acc,
+            depth: depth + 1,
+            maxDepth,
+            handoffPacket: packet,
+          });
+        }
+      }
+    }
+
+    // Review gate on proposed actions.
+    let reviewRequired = false;
+    if (proposed) {
+      reviewRequired = riskAtLeast(
+        proposed.riskLevel as RiskLevel,
+        persona.minReviewRiskLevel
+      );
+      if (reviewRequired) {
+        await this.cfg.threads.append({
+          id: uuid(),
+          threadId: thread.id,
+          kind: 'review_requested',
+          createdAt: new Date().toISOString(),
+          visibility: { ...visibility, scope: widest(visibility.scope, 'management') },
+          actorId: persona.id,
+          personaId: persona.id,
+          copilotRequestId: uuid(),
+          riskLevel: proposed.riskLevel,
+        });
+      }
+    }
+
+    return aiOk<FinalPersonaResult>({
+      personaId: persona.id,
+      responseText,
+      proposedAction: proposed
+        ? {
+            verb: proposed.verb,
+            object: proposed.object,
+            riskLevel: proposed.riskLevel as RiskLevel,
+            reviewRequired,
+          }
+        : undefined,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+interface TurnAccumulator {
+  toolCalls: Array<{ tool: string; ok: boolean }>;
+  handoffs: Array<{ from: string; to: string; objective: string }>;
+  tokensUsed: number;
+  advisorConsulted: boolean;
+}
+
+interface FinalPersonaResult {
+  personaId: string;
+  responseText: string;
+  proposedAction?: TurnResult['proposedAction'];
+}
+
+function modelForTier(tier: Persona['modelTier']): string {
+  switch (tier) {
+    case 'advanced':
+      return ANTHROPIC_MODELS.OPUS_4_6;
+    case 'standard':
+      return ANTHROPIC_MODELS.SONNET_4_6;
+    case 'basic':
+      return ANTHROPIC_MODELS.HAIKU_4_5;
+  }
+}
+
+function inferHardCategory(
+  persona: Persona,
+  userText: string
+): AdvisorHardCategory | null {
+  // If persona has no hard categories, nothing fires.
+  if (!persona.advisorHardCategories.length) return null;
+  const text = userText.toLowerCase();
+  if (
+    persona.advisorHardCategories.includes('lease_interpretation') &&
+    /\b(lease|renewal|clause|termination|security deposit)\b/.test(text)
+  )
+    return 'lease_interpretation';
+  if (
+    persona.advisorHardCategories.includes('legal_drafting') &&
+    /\b(notice|demand|letter to|court|legal|subpoena)\b/.test(text)
+  )
+    return 'legal_drafting';
+  if (
+    persona.advisorHardCategories.includes('compliance_ruling') &&
+    /\b(dpa|compliance|kra|violation)\b/.test(text)
+  )
+    return 'compliance_ruling';
+  if (
+    persona.advisorHardCategories.includes('large_financial_posting') &&
+    /\b(refund|write[- ]?off|credit|adjust|large|above\s+\d)\b/.test(text)
+  )
+    return 'large_financial_posting';
+  if (
+    persona.advisorHardCategories.includes('tenant_termination') &&
+    /\b(evict|terminate|quit notice|vacate)\b/.test(text)
+  )
+    return 'tenant_termination';
+  return null;
+}
+
+const RISK_ORDER: Record<RiskLevel, number> = {
+  LOW: 0,
+  MEDIUM: 1,
+  HIGH: 2,
+  CRITICAL: 3,
+};
+
+function riskAtLeast(a: RiskLevel, b: RiskLevel): boolean {
+  return RISK_ORDER[a] >= RISK_ORDER[b];
+}
+
+const SCOPE_ORDER: Record<VisibilityScope, number> = {
+  private: 0,
+  team: 1,
+  management: 2,
+  public: 3,
+};
+
+function widest(a: VisibilityScope, b: VisibilityScope): VisibilityScope {
+  return SCOPE_ORDER[a] >= SCOPE_ORDER[b] ? a : b;
+}
+
+function summarizeForHandoff(responseText: string): string {
+  // A minimal, auditable summarizer: the first 5 non-empty lines.
+  return responseText
+    .split(/\r?\n/)
+    .filter((l) => l.trim())
+    .slice(0, 5)
+    .join(' | ')
+    .slice(0, 1000);
+}
+
+// Zod schemas reserved for future contract validation (kept here so the
+// dispatcher and transport layers can import from a single symbol).
+export const TurnRequestSchema = z.object({
+  threadId: z.string().min(1),
+  userText: z.string().min(1).max(10_000),
+  forcePersonaId: z.string().optional(),
+  maxHandoffDepth: z.number().int().min(0).max(5).optional(),
+});

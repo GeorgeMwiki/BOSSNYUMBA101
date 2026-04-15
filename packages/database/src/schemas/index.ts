@@ -25,3 +25,9 @@ export * from './communications.schema.js';
 // Audit and Event Infrastructure
 export * from './audit-events.schema.js';
 export * from './outbox.schema.js';
+
+// HR / Organization (Brain)
+export * from './hr.schema.js';
+
+// Conversation / Thread Store (Brain)
+export * from './conversation.schema.js';

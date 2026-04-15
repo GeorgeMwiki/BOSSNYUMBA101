@@ -3,3 +3,5 @@
  */
 
 export * from './ai-provider.js';
+export * from './anthropic.js';
+export * from './advisor.js';

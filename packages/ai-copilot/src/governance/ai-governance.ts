@@ -511,6 +511,62 @@ export class AIGovernanceService {
   }
 
   /**
+   * Log a Brain (persona/orchestrator) turn.
+   *
+   * Captures what the existing `logCopilotInvocation` cannot: persona id,
+   * advisor consultation, handoff depth, and thread id. Emits as a
+   * `COPILOT_INVOCATION` event so existing usage-metric aggregations include
+   * Brain traffic automatically.
+   */
+  async logBrainTurn(params: {
+    tenant: AITenantContext;
+    actor: AIActor;
+    personaId: string;
+    threadId: string;
+    modelId: string;
+    promptTokens: number;
+    completionTokens: number;
+    advisorConsulted: boolean;
+    depth: number;
+    outcome?: 'success' | 'failure';
+    domain?: CopilotDomain;
+    riskLevel?: RiskLevel;
+    processingTimeMs?: number;
+  }): Promise<void> {
+    const totalTokens = params.promptTokens + params.completionTokens;
+    const cost = this.calculateCost(params.modelId, {
+      promptTokens: params.promptTokens,
+      completionTokens: params.completionTokens,
+    });
+    const event: AIAuditEvent = {
+      id: uuidv4(),
+      timestamp: new Date().toISOString(),
+      timestampMs: Date.now(),
+      operationType: AIOperationType.COPILOT_INVOCATION,
+      tenant: params.tenant,
+      actor: params.actor,
+      domain: params.domain,
+      riskLevel: params.riskLevel,
+      outcome: params.outcome ?? 'success',
+      details: {
+        kind: 'brain_turn',
+        personaId: params.personaId,
+        threadId: params.threadId,
+        advisorConsulted: params.advisorConsulted,
+        depth: params.depth,
+      },
+      tokenUsage: {
+        promptTokens: params.promptTokens,
+        completionTokens: params.completionTokens,
+        totalTokens,
+      },
+      cost,
+      processingTimeMs: params.processingTimeMs,
+    };
+    await this.storage.saveAuditEvent(event);
+  }
+
+  /**
    * Get usage metrics for a tenant
    */
   async getUsageMetrics(tenantId: string, start: Date, end: Date): Promise<UsageMetrics> {

@@ -5,19 +5,17 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   ClipboardList,
-  Search,
   Calendar,
-  BarChart3,
   Wrench,
+  Brain,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/brain', icon: Brain, label: 'Brain' },
   { href: '/work-orders', icon: ClipboardList, label: 'Tasks' },
   { href: '/maintenance', icon: Wrench, label: 'Maint' },
-  { href: '/inspections', icon: Search, label: 'Inspect' },
   { href: '/schedule', icon: Calendar, label: 'Schedule' },
-  { href: '/sla', icon: BarChart3, label: 'SLA' },
 ];
 
 export function BottomNavigation() {
