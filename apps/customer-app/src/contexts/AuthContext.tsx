@@ -1,37 +1,7 @@
 'use client';
 
-/**
- * Customer-app AuthContext
- *
- * Real JWT-backed auth wired to the api-gateway `/auth` routes:
- *   POST /auth/login    -> { token, user, tenant, role, permissions, properties, expiresAt }
- *   GET  /auth/me       -> { user, tenant, role, permissions, properties }
- *   POST /auth/refresh  -> { token, expiresAt }
- *
- * Exposes the shape `{ user, token, tenantId }` that parallel agents assume,
- * plus full `login / logout / refreshToken` actions and backwards-compatible
- * `loginWithPhone / verifyOtp / register` helpers kept so the existing login
- * pages continue to work until OTP is migrated.
- */
-
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  AUTH_TOKEN_KEY as AUTH_TOKEN_KEY_CONST,
-  decodeJwt as decodeJwtUtil,
-  isTokenExpired as isTokenExpiredUtil,
-} from './auth-utils';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { hasApiClient, getApiClient } from '@bossnyumba/api-client';
 
 export interface CustomerUser {
   id: string;
@@ -90,13 +60,9 @@ interface AuthContextType {
   // Canonical shape required by parallel agents.
   user: CustomerUser | null;
   token: string | null;
-  /**
-   * The currently active tenant id for API scoping. Equals the active
-   * membership's tenantId if multi-org, else the user's primary tenant.
-   */
-  tenantId: string | null;
-
-  // State flags.
+  activeOrgId: string | null;
+  setActiveOrg: (orgId: string | null) => void;
+  loading: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   /** @deprecated use `isLoading`. */
@@ -136,16 +102,9 @@ interface AuthContextType {
   }) => Promise<LoginResult>;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-export const AUTH_TOKEN_KEY = AUTH_TOKEN_KEY_CONST;
-// Legacy keys kept in sync so `lib/api.ts` / other consumers still read them.
-const LEGACY_TOKEN_KEY = 'customer_token';
-const LEGACY_USER_KEY = 'customer_user';
-/** Persisted active membership id so the org switcher survives reload. */
-const ACTIVE_ORG_KEY = 'bossnyumba:auth:activeOrgId';
+const CUSTOMER_TOKEN_KEY = 'customer_token';
+const CUSTOMER_USER_KEY = 'customer_user';
+const CUSTOMER_ACTIVE_ORG_KEY = 'customer_active_org_id';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -254,201 +213,80 @@ interface RefreshResponseBody {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomerUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [tenant, setTenant] = useState<TenantInfo | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  // Cross-tenant membership + region/language state.
-  const [memberships, setMemberships] = useState<OrgMembership[]>([]);
   const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
-  const [region, setRegion] = useState<'TZ' | 'KE' | 'OTHER' | null>(null);
-  const [language, setLanguage] = useState<'en' | 'sw' | null>(null);
-  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const clearState = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    setTenant(null);
-    setRole(null);
-    setPermissions([]);
-    setMemberships([]);
-    setActiveOrgIdState(null);
-    setRegion(null);
-    setLanguage(null);
+  // Keep refs so the provider callbacks registered on the ApiClient always
+  // read the latest values without needing to re-register on every render.
+  const tokenRef = useRef<string | null>(null);
+  const activeOrgIdRef = useRef<string | null>(null);
+  tokenRef.current = token;
+  activeOrgIdRef.current = activeOrgId;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedToken = localStorage.getItem(CUSTOMER_TOKEN_KEY);
+    const storedUser = localStorage.getItem(CUSTOMER_USER_KEY);
+    const storedOrg = localStorage.getItem(CUSTOMER_ACTIVE_ORG_KEY);
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+        localStorage.removeItem(CUSTOMER_USER_KEY);
+      }
+    }
+    if (storedOrg) {
+      setActiveOrgIdState(storedOrg);
+    }
+    setLoading(false);
+  }, []);
+
+  // Wire the auth state into the shared ApiClient so every outgoing request
+  // picks up the current bearer token + X-Active-Org header automatically.
+  // We register provider callbacks (not static values) so the client always
+  // sees the latest values without us re-calling setAccessToken on each
+  // change.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!hasApiClient()) return;
+    const client = getApiClient();
+    client.setTokenProvider(() => tokenRef.current);
+    client.setActiveOrgProvider(() => activeOrgIdRef.current);
+    return () => {
+      // On unmount, detach providers so a stale closure doesn't outlive the
+      // provider tree (e.g. in tests / fast refresh).
+      client.setTokenProvider(null);
+      client.setActiveOrgProvider(null);
+    };
+  }, []);
+
+  // Re-assert provider registration whenever token or activeOrgId changes.
+  // This is a no-op in steady state (the refs are already current), but it
+  // covers the case where the ApiClient is initialized AFTER AuthProvider
+  // mounted (e.g. lazy `ensureClient()` path in lib/api.ts).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!hasApiClient()) return;
+    const client = getApiClient();
+    client.setTokenProvider(() => tokenRef.current);
+    client.setActiveOrgProvider(() => activeOrgIdRef.current);
+  }, [token, activeOrgId]);
+
+  const setActiveOrg = useCallback((orgId: string | null) => {
+    setActiveOrgIdState(orgId);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(ACTIVE_ORG_KEY);
+      if (orgId) {
+        localStorage.setItem(CUSTOMER_ACTIVE_ORG_KEY, orgId);
+      } else {
+        localStorage.removeItem(CUSTOMER_ACTIVE_ORG_KEY);
+      }
     }
   }, []);
 
-  /**
-   * Switch the active membership. Accepts either the membership row id or
-   * the tenant id (resolves to the matching membership). Persists to
-   * localStorage so subsequent reloads pick up the same active org.
-   */
-  const setActiveOrg = useCallback(
-    (membershipIdOrTenantId: string) => {
-      const match = memberships.find(
-        (m) => m.id === membershipIdOrTenantId || m.tenantId === membershipIdOrTenantId,
-      );
-      const nextId = match ? match.tenantId : membershipIdOrTenantId;
-      setActiveOrgIdState(nextId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(ACTIVE_ORG_KEY, nextId);
-      }
-    },
-    [memberships],
-  );
-
-  const logout = useCallback(() => {
-    clearTokenFromStorage();
-    clearState();
-    if (expiryTimerRef.current) {
-      clearTimeout(expiryTimerRef.current);
-      expiryTimerRef.current = null;
-    }
-  }, [clearState]);
-
-  const scheduleExpiry = useCallback(
-    (nextToken: string) => {
-      if (expiryTimerRef.current) {
-        clearTimeout(expiryTimerRef.current);
-        expiryTimerRef.current = null;
-      }
-      const claims = decodeJwt(nextToken);
-      if (!claims?.exp) return;
-      const msUntilExpiry = claims.exp * 1000 - Date.now();
-      if (msUntilExpiry <= 0) {
-        logout();
-        return;
-      }
-      expiryTimerRef.current = setTimeout(() => {
-        logout();
-      }, msUntilExpiry);
-    },
-    [logout]
-  );
-
-  const applyToken = useCallback(
-    (
-      nextToken: string,
-      nextUser: CustomerUser | null,
-      nextTenant?: TenantInfo | null,
-      nextRole?: string | null,
-      nextPerms?: string[] | null,
-      nextMemberships?: OrgMembership[] | null,
-      nextRegion?: 'TZ' | 'KE' | 'OTHER' | null,
-      nextLanguage?: 'en' | 'sw' | null,
-    ) => {
-      const claims = decodeJwt(nextToken);
-      const tenantFromClaims = claims?.tenantId ? { id: claims.tenantId } : null;
-      const mergedTenant = nextTenant ?? tenantFromClaims;
-      writeTokenToStorage(nextToken, nextUser);
-      setToken(nextToken);
-      setUser(nextUser);
-      setTenant(mergedTenant);
-      setRole(nextRole ?? claims?.role ?? null);
-      setPermissions(nextPerms ?? claims?.permissions ?? []);
-      // Memberships: backend sends `memberships`. If absent, synthesize a
-      // single primary entry from the user's home tenant so the org
-      // switcher always has at least one entry.
-      const resolvedMemberships: OrgMembership[] =
-        nextMemberships && nextMemberships.length > 0
-          ? nextMemberships
-          : mergedTenant
-          ? [
-              {
-                id: 'primary',
-                tenantId: mergedTenant.id,
-                organizationId: null,
-                role: nextRole ?? claims?.role ?? 'CUSTOMER',
-                displayLabel: mergedTenant.name ?? null,
-                isPrimary: true,
-              },
-            ]
-          : [];
-      setMemberships(resolvedMemberships);
-      // Pick active org: prefer persisted choice if it matches a current
-      // membership, else the primary, else the first.
-      let nextActive: string | null = null;
-      if (typeof window !== 'undefined') {
-        const persisted = localStorage.getItem(ACTIVE_ORG_KEY);
-        if (
-          persisted &&
-          resolvedMemberships.some((m) => m.tenantId === persisted)
-        ) {
-          nextActive = persisted;
-        }
-      }
-      if (!nextActive && resolvedMemberships.length > 0) {
-        nextActive =
-          resolvedMemberships.find((m) => m.isPrimary)?.tenantId ??
-          resolvedMemberships[0].tenantId;
-      }
-      setActiveOrgIdState(nextActive);
-      if (nextActive && typeof window !== 'undefined') {
-        localStorage.setItem(ACTIVE_ORG_KEY, nextActive);
-      }
-      // Region + language come from the user record on /auth/me.
-      if (nextRegion !== undefined) setRegion(nextRegion);
-      if (nextLanguage !== undefined) setLanguage(nextLanguage);
-      scheduleExpiry(nextToken);
-    },
-    [scheduleExpiry]
-  );
-
-  const login = useCallback(
-    async (email: string, password: string): Promise<LoginResult> => {
-      try {
-        const { ok, body } = await apiJson<LoginResponseBody>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
-        if (!ok || !body?.success || !body.data?.token) {
-          return {
-            success: false,
-            message: body?.error?.message ?? 'Invalid email or password',
-          };
-        }
-        applyToken(
-          body.data.token,
-          body.data.user,
-          body.data.tenant ?? null,
-          body.data.role ?? null,
-          body.data.permissions ?? []
-        );
-        return { success: true };
-      } catch (err) {
-        return {
-          success: false,
-          message: err instanceof Error ? err.message : 'Network error',
-        };
-      }
-    },
-    [applyToken]
-  );
-
-  const refreshToken = useCallback(async (): Promise<boolean> => {
-    const current = readTokenFromStorage();
-    if (!current) return false;
-    try {
-      const { ok, body } = await apiJson<RefreshResponseBody>('/auth/refresh', {
-        method: 'POST',
-        token: current,
-      });
-      if (!ok || !body?.success || !body.data?.token) {
-        logout();
-        return false;
-      }
-      applyToken(body.data.token, user, tenant, role, permissions);
-      return true;
-    } catch {
-      logout();
-      return false;
-    }
-  }, [applyToken, logout, user, tenant, role, permissions]);
-
-  // Back-compat OTP helpers. Kept so existing login/otp/register pages compile.
-  const loginWithPhone = useCallback(async (phone: string): Promise<LoginResult> => {
+  const loginWithPhone = useCallback(async (phone: string) => {
     const normalized = phone.replace(/\D/g, '').replace(/^0/, '254');
     if (normalized.length < 9) {
       return { success: false, message: 'Please enter a valid phone number' };
@@ -481,118 +319,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Hydrate on mount: read token, verify with /auth/me, schedule expiry.
-  useEffect(() => {
-    let cancelled = false;
-
-    const hydrate = async () => {
-      const stored = readTokenFromStorage();
-      if (!stored) {
-        setIsLoading(false);
-        return;
-      }
-      if (isTokenExpired(stored)) {
-        clearTokenFromStorage();
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const { ok, body } = await apiJson<MeResponseBody>('/auth/me', {
-          method: 'GET',
-          token: stored,
-        });
-        if (cancelled) return;
-        if (!ok || !body?.success || !body.data) {
-          clearTokenFromStorage();
-          clearState();
-        } else {
-          applyToken(
-            stored,
-            body.data.user,
-            body.data.tenant ?? null,
-            body.data.role ?? null,
-            body.data.permissions ?? [],
-            body.data.memberships ?? null,
-            body.data.user?.region ?? null,
-            body.data.user?.language ?? null,
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          // Network failure on hydrate: keep token but decode claims locally so
-          // the user is not logged out on a transient error.
-          const claims = decodeJwt(stored);
-          if (claims) {
-            applyToken(
-              stored,
-              {
-                id: claims.userId ?? claims.sub ?? 'unknown',
-                email: claims.email,
-              },
-              claims.tenantId ? { id: claims.tenantId } : null,
-              claims.role ?? null,
-              claims.permissions ?? []
-            );
-          }
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    hydrate();
-    return () => {
-      cancelled = true;
-      if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setActiveOrgIdState(null);
+    localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+    localStorage.removeItem(CUSTOMER_USER_KEY);
+    localStorage.removeItem(CUSTOMER_ACTIVE_ORG_KEY);
   }, []);
 
-  const value = useMemo<AuthContextType>(
-    () => ({
-      user,
-      token,
-      // tenantId derives from the active membership when present, else
-      // falls back to the user's primary tenant. This is what consumers
-      // (api-client, server X-Active-Org header) should read.
-      tenantId: activeOrgId ?? tenant?.id ?? null,
-      isAuthenticated: !!token && !!user,
-      isLoading,
-      loading: isLoading,
-      role,
-      permissions,
-      memberships,
-      activeOrgId,
-      setActiveOrg,
-      region,
-      language,
-      login,
-      logout,
-      refreshToken,
-      loginWithPhone,
-      verifyOtp,
-      register,
-    }),
-    [
-      user,
-      token,
-      tenant,
-      isLoading,
-      role,
-      permissions,
-      memberships,
-      activeOrgId,
-      setActiveOrg,
-      region,
-      language,
-      login,
-      logout,
-      refreshToken,
-      loginWithPhone,
-      verifyOtp,
-      register,
-    ]
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        activeOrgId,
+        setActiveOrg,
+        loading,
+        isAuthenticated: !!token,
+        loginWithPhone,
+        verifyOtp,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
