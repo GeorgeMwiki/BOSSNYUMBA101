@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-=======
 // Notifications repository for the owner mobile companion.
 //
 // Wraps `/api/v1/notifications` and provides an offline-friendly local
@@ -11,14 +5,14 @@ import 'package:flutter/foundation.dart';
 // this can be swapped for a Hive box keyed by `notificationId` with
 // zero caller impact — the public surface returns plain models.
 
+import 'dart:async';
 import 'dart:convert';
 
->>>>>>> worktree-agent-a46293cc
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api_client.dart';
 
-<<<<<<< HEAD
 /// Types surfaced in the owner inbox. Mirrors backend taxonomy so callers
 /// can render per-type icons without downstream mapping.
 enum NotificationType {
@@ -62,31 +56,31 @@ NotificationSeverity severityFromString(String? raw) {
   switch (raw?.toLowerCase()) {
     case 'critical':
     case 'urgent':
-      return NotificationSeverity.critical;
-    case 'warning':
-    case 'warn':
-=======
-/// Severity / priority for a notification. Used by the inbox to show
-/// the "Critical" tab and for per-row iconography.
-enum NotificationSeverity { info, warning, critical }
-
-NotificationSeverity _severityFromString(String? s) {
-  switch (s?.toLowerCase()) {
-    case 'critical':
-    case 'urgent':
     case 'high':
       return NotificationSeverity.critical;
     case 'warning':
     case 'warn':
     case 'medium':
->>>>>>> worktree-agent-a46293cc
       return NotificationSeverity.warning;
     default:
       return NotificationSeverity.info;
   }
 }
 
-<<<<<<< HEAD
+/// Private alias used by [NotificationModel.fromJson] for clarity.
+NotificationSeverity _severityFromString(String? s) => severityFromString(s);
+
+String _severityToString(NotificationSeverity s) {
+  switch (s) {
+    case NotificationSeverity.critical:
+      return 'critical';
+    case NotificationSeverity.warning:
+      return 'warning';
+    case NotificationSeverity.info:
+      return 'info';
+  }
+}
+
 @immutable
 class OwnerNotification {
   final String id;
@@ -100,37 +94,11 @@ class OwnerNotification {
   final Map<String, dynamic> data;
 
   const OwnerNotification({
-=======
-String _severityToString(NotificationSeverity s) {
-  switch (s) {
-    case NotificationSeverity.critical:
-      return 'critical';
-    case NotificationSeverity.warning:
-      return 'warning';
-    case NotificationSeverity.info:
-      return 'info';
-  }
-}
-
-/// Plain value object representing a single notification row.
-class NotificationModel {
-  final String id;
-  final String title;
-  final String body;
-  final String type;
-  final NotificationSeverity severity;
-  final bool read;
-  final DateTime createdAt;
-  final Map<String, dynamic> data;
-
-  const NotificationModel({
->>>>>>> worktree-agent-a46293cc
     required this.id,
     required this.title,
     required this.body,
     required this.type,
     required this.severity,
-<<<<<<< HEAD
     required this.createdAt,
     required this.read,
     this.deepLink,
@@ -138,20 +106,11 @@ class NotificationModel {
   });
 
   OwnerNotification copyWith({bool? read}) => OwnerNotification(
-=======
-    required this.read,
-    required this.createdAt,
-    this.data = const {},
-  });
-
-  NotificationModel copyWith({bool? read}) => NotificationModel(
->>>>>>> worktree-agent-a46293cc
         id: id,
         title: title,
         body: body,
         type: type,
         severity: severity,
-<<<<<<< HEAD
         createdAt: createdAt,
         read: read ?? this.read,
         deepLink: deepLink,
@@ -173,7 +132,53 @@ class NotificationModel {
           (json['status'] == 'read'),
       deepLink: json['deepLink'] as String?,
       data: (json['data'] as Map?)?.cast<String, dynamic>() ?? const {},
-=======
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'type': type.name,
+        'severity': severity.name,
+        'createdAt': createdAt.toIso8601String(),
+        'read': read,
+        if (deepLink != null) 'deepLink': deepLink,
+        'data': data,
+      };
+}
+
+/// Plain value object representing a single notification row.
+///
+/// Kept alongside [OwnerNotification] for callers that prefer a simpler,
+/// string-typed model with built-in deep-link routing.
+class NotificationModel {
+  final String id;
+  final String title;
+  final String body;
+  final String type;
+  final NotificationSeverity severity;
+  final bool read;
+  final DateTime createdAt;
+  final Map<String, dynamic> data;
+
+  const NotificationModel({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.severity,
+    required this.read,
+    required this.createdAt,
+    this.data = const {},
+  });
+
+  NotificationModel copyWith({bool? read}) => NotificationModel(
+        id: id,
+        title: title,
+        body: body,
+        type: type,
+        severity: severity,
         read: read ?? this.read,
         createdAt: createdAt,
         data: data,
@@ -194,7 +199,6 @@ class NotificationModel {
           ) ??
           DateTime.now(),
       data: Map<String, dynamic>.from(json['data'] as Map? ?? const {}),
->>>>>>> worktree-agent-a46293cc
     );
   }
 
@@ -202,14 +206,35 @@ class NotificationModel {
         'id': id,
         'title': title,
         'body': body,
-<<<<<<< HEAD
-        'type': type.name,
-        'severity': severity.name,
-        'createdAt': createdAt.toIso8601String(),
+        'type': type,
+        'severity': _severityToString(severity),
         'read': read,
-        if (deepLink != null) 'deepLink': deepLink,
+        'createdAt': createdAt.toIso8601String(),
         'data': data,
       };
+
+  /// Derive a deep link path from the notification's data bag. Mirrors
+  /// the rules used by [PushService.parseDeepLink] so that taps on
+  /// push and taps in the inbox agree.
+  String deepLinkPath() {
+    final bagType = (data['type'] ?? type).toString().toLowerCase();
+    final bagId = (data['id'] ?? data['entityId'])?.toString();
+
+    switch (bagType) {
+      case 'invoice':
+      case 'invoice_approval':
+      case 'approval':
+        if (bagId != null) return '/owner/approvals/$bagId';
+        break;
+      case 'work_order':
+        if (bagId != null) return '/owner/work-orders/$bagId';
+        break;
+      case 'tenant':
+        if (bagId != null) return '/owner/tenants/$bagId';
+        break;
+    }
+    return '/owner/notifications/$id';
+  }
 }
 
 /// In-memory + on-disk cache backed by `shared_preferences`. We would prefer
@@ -395,41 +420,13 @@ class NotificationsRepository extends ChangeNotifier {
 }
 
 enum NotificationsFilter { all, unread, critical }
-=======
-        'type': type,
-        'severity': _severityToString(severity),
-        'read': read,
-        'createdAt': createdAt.toIso8601String(),
-        'data': data,
-      };
 
-  /// Derive a deep link path from the notification's data bag. Mirrors
-  /// the rules used by [PushService.parseDeepLink] so that taps on
-  /// push and taps in the inbox agree.
-  String deepLinkPath() {
-    final bagType = (data['type'] ?? type).toString().toLowerCase();
-    final bagId = (data['id'] ?? data['entityId'])?.toString();
-
-    switch (bagType) {
-      case 'invoice':
-      case 'invoice_approval':
-      case 'approval':
-        if (bagId != null) return '/owner/approvals/$bagId';
-        break;
-      case 'work_order':
-        if (bagId != null) return '/owner/work-orders/$bagId';
-        break;
-      case 'tenant':
-        if (bagId != null) return '/owner/tenants/$bagId';
-        break;
-    }
-    return '/owner/notifications/$id';
-  }
-}
-
-/// Repository that wraps `/notifications` and caches results locally.
-class NotificationsRepository {
-  NotificationsRepository({ApiClient? api, SharedPreferences? prefs})
+/// Stateless repository that wraps `/notifications` and caches results
+/// locally as JSON strings. Returns [NotificationModel] values — preferred
+/// by callers that need [NotificationModel.deepLinkPath] and don't want to
+/// participate in the [ChangeNotifier] lifecycle of [NotificationsRepository].
+class NotificationsApiRepository {
+  NotificationsApiRepository({ApiClient? api, SharedPreferences? prefs})
       : _api = api ?? ApiClient.instance,
         _prefsOverride = prefs;
 
@@ -558,4 +555,3 @@ class NotificationsRepository {
     await prefs.setInt(_unreadBadgeKey, current > 0 ? current - 1 : 0);
   }
 }
->>>>>>> worktree-agent-a46293cc
