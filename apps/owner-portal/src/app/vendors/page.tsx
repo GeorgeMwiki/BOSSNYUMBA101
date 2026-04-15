@@ -27,12 +27,17 @@ export default function VendorsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<Vendor[]>('/vendors').then((res) => {
-      if (res.success && res.data) {
-        setVendors(res.data);
-      }
-      setLoading(false);
-    });
+    api
+      .get<Vendor[]>('/vendors')
+      .then((res) => {
+        if (res.success && res.data) {
+          setVendors(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to empty list; displayVendors will render sample rows
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = vendors.filter(

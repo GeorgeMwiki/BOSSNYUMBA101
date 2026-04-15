@@ -20,12 +20,17 @@ export default function CompliancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/compliance/summary').then((res) => {
-      if (res.success && res.data) {
-        setStats(res.data as typeof stats);
-      }
-      setLoading(false);
-    });
+    api
+      .get('/compliance/summary')
+      .then((res) => {
+        if (res.success && res.data) {
+          setStats(res.data as typeof stats);
+        }
+      })
+      .catch(() => {
+        // Fall back to default displayStats below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayStats = stats || {

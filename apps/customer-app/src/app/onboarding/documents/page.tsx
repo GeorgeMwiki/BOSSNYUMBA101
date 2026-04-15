@@ -22,6 +22,7 @@ import {
   DocumentQualityChecker,
   type QualityCheck,
 } from '@/components/onboarding/DocumentQualityChecker';
+import { api } from '@/lib/api';
 
 interface DocumentUpload {
   id: string;
@@ -219,26 +220,37 @@ export default function OnboardingDocumentsPage() {
     );
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleSubmit = async () => {
     const requiredDocs = documents.filter((d) => d.required);
     const missingDocs = requiredDocs.filter((d) => d.status !== 'uploaded');
 
     if (missingDocs.length > 0) {
-      alert('Please upload all required documents');
+      setSubmitError('Please upload all required documents');
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await api.onboarding.updateStep('documents', {
+        uploaded: documents
+          .filter((d) => d.status === 'uploaded')
+          .map((d) => ({ id: d.id, name: d.name })),
+      });
 
-    // Save progress
-    const progress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
-    progress.documents = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+      const progress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
+      progress.documents = 'completed';
+      localStorage.setItem('onboarding_progress', JSON.stringify(progress));
 
-    router.push('/onboarding/inspection');
+      router.push('/onboarding/inspection');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit documents');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const uploadedCount = documents.filter((d) => d.status === 'uploaded').length;

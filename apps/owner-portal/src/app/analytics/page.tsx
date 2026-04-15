@@ -31,12 +31,17 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/analytics/summary').then((res) => {
-      if (res.success && res.data) {
-        setStats(res.data as typeof stats);
-      }
-      setLoading(false);
-    });
+    api
+      .get('/analytics/summary')
+      .then((res) => {
+        if (res.success && res.data) {
+          setStats(res.data as typeof stats);
+        }
+      })
+      .catch(() => {
+        // Fall back to default values below
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const revenueData = [

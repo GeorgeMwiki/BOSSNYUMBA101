@@ -242,10 +242,10 @@ export default function VendorForm() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createMutation.isPending}
             className="btn-primary flex-1"
           >
-            {isSubmitting ? 'Saving...' : 'Add Vendor'}
+            {createMutation.isPending ? 'Saving...' : 'Add Vendor'}
           </button>
         </div>
       </form>

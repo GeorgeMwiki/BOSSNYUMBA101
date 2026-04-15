@@ -30,12 +30,17 @@ export default function TenantsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<Tenant[]>('/tenants').then((res) => {
-      if (res.success && res.data) {
-        setTenants(res.data);
-      }
-      setLoading(false);
-    });
+    api
+      .get<Tenant[]>('/tenants')
+      .then((res) => {
+        if (res.success && res.data) {
+          setTenants(res.data);
+        }
+      })
+      .catch(() => {
+        // Fall back to empty list; displayTenants will render sample rows
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = tenants.filter(

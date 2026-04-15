@@ -279,8 +279,12 @@ app.get('/financial', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const scope = await getScope(auth, repos);
-  const startDate = c.req.query('startDate') ? new Date(c.req.query('startDate')) : new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
-  const endDate = c.req.query('endDate') ? new Date(c.req.query('endDate')) : new Date();
+  const startQuery = c.req.query('startDate');
+  const endQuery = c.req.query('endDate');
+  const startDate = startQuery
+    ? new Date(startQuery)
+    : new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
+  const endDate = endQuery ? new Date(endQuery) : new Date();
   return c.json({ success: true, data: buildFinancialReport(scope, startDate, endDate) });
 });
 
