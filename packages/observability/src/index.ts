@@ -176,6 +176,61 @@ export {
 } from './metrics/metrics.js';
 
 // ============================================================================
+// Prometheus
+// ============================================================================
+
+export {
+  PrometheusRegistry,
+  renderPrometheus,
+  PROMETHEUS_CONTENT_TYPE,
+  DEFAULT_LATENCY_BUCKETS_MS,
+} from './metrics/prometheus.js';
+
+export type {
+  PrometheusSample,
+  PrometheusMetricType,
+  CounterHandle,
+  GaugeHandle,
+  HistogramHandle,
+} from './metrics/prometheus.js';
+
+// ============================================================================
+// Error Reporting (Sentry-compatible)
+// ============================================================================
+
+export {
+  LoggingErrorReporter,
+  setErrorReporter,
+  getErrorReporter,
+  ensureErrorReporter,
+  captureException,
+  captureMessage,
+  createSentryReporter,
+} from './errors/error-reporter.js';
+
+export type {
+  ErrorReporter,
+  ErrorContext,
+  ErrorSeverity,
+  SentryLikeClient,
+  SentryLikeScope,
+} from './errors/error-reporter.js';
+
+// ============================================================================
+// Health Aggregator
+// ============================================================================
+
+export { HealthAggregator } from './health/health-aggregator.js';
+
+export type {
+  HealthCheck,
+  HealthCheckOutcome,
+  HealthCheckResult,
+  HealthReport,
+  HealthState,
+} from './health/health-aggregator.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 
