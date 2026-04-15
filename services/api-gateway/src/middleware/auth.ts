@@ -10,6 +10,10 @@ export interface AuthContext {
   role: UserRole;
   permissions: string[];
   propertyAccess: string[];
+  // Preferred active org for the caller. Populated by the JWT (set on
+  // /login or /switch-org) and may be overridden per-request via the
+  // X-Active-Org header — see middleware/hono-auth.ts.
+  activeOrgId?: string;
 }
 
 const JWT_SECRET = getJwtSecret();
@@ -24,6 +28,9 @@ export interface JWTPayload {
   role: UserRole;
   permissions: string[];
   propertyAccess: string[];
+  // Optional: org the caller had selected when the token was issued.
+  // Defaults to tenantId when absent (back-compat with older tokens).
+  activeOrgId?: string;
   exp: number;
   iat: number;
 }
@@ -57,6 +64,7 @@ export const authMiddleware = (
         role: decoded.role,
         permissions: decoded.permissions,
         propertyAccess: decoded.propertyAccess,
+        activeOrgId: decoded.activeOrgId ?? decoded.tenantId,
       };
 
       next();
