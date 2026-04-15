@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import pino from 'pino';
 import pinoHttp from 'pino-http';
 import { z } from 'zod';
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
 
 import {
   Money,
@@ -144,10 +146,36 @@ function getTenantAggregate(tenantId: TenantId): TenantAggregate {
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
-  transport: process.env.NODE_ENV !== 'production' 
+  transport: process.env.NODE_ENV !== 'production'
     ? { target: 'pino-pretty' }
     : undefined
 });
+
+// Platform-wide structured logger from @bossnyumba/observability
+const obsLogger = new ObsLogger({
+  service: {
+    name: 'payments-ledger',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
+obsLogger.info('Observability initialized for payments-ledger', {
+  env: process.env.NODE_ENV || 'development',
+});
+
+/**
+ * Build an AuthzUser from request headers.
+ * Upstream api-gateway is expected to propagate user context; fall back to anonymous.
+ */
+function getAuthzUser(req: Request): AuthzUser {
+  const userId = (req.headers['x-user-id'] as string) || 'anonymous';
+  const rolesHeader = (req.headers['x-user-roles'] as string) || '';
+  const tenantId = (req.headers['x-tenant-id'] as string) || undefined;
+  const roles = rolesHeader.split(',').map((r) => r.trim()).filter(Boolean);
+  return { id: userId, roles: roles.length ? roles : ['tenant'], tenantId };
+}
 
 // =============================================================================
 // Create Express app
@@ -329,10 +357,12 @@ app.use(pinoHttp({ logger }));
 // =============================================================================
 
 app.get('/health', (req: Request, res: Response) => {
+  obsLogger.info('Health check requested');
   res.json({
     status: 'healthy',
     service: 'payments-ledger',
     timestamp: new Date().toISOString(),
+    observability: 'active',
     providers: {
       stripe: !!stripeProvider,
       mpesa: !!mpesaProvider
@@ -349,6 +379,17 @@ app.get('/health', (req: Request, res: Response) => {
  */
 app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Authorization: require 'create' on 'payment' resource
+    const authzUser = getAuthzUser(req);
+    const authz = rbacEngine.checkPermission(authzUser, 'create', 'payment');
+    if (!authz.allowed) {
+      obsLogger.warn('Authorization denied for payment create', {
+        userId: authzUser.id,
+        reason: authz.reason,
+      });
+      return res.status(403).json({ error: 'Forbidden', reason: authz.reason });
+    }
+
     const validation = CreatePaymentSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
@@ -360,6 +401,13 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
     const data = validation.data;
     const tenantId = asTenantId(data.tenantId);
     const tenant = getTenantAggregate(tenantId);
+
+    obsLogger.info('Creating payment intent', {
+      tenantId: data.tenantId,
+      customerId: data.customerId,
+      type: data.type,
+      userId: authzUser.id,
+    });
 
     const request: CreatePaymentRequest = {
       tenantId,
@@ -709,6 +757,83 @@ app.post('/api/v1/journal', async (req: Request, res: Response, next: NextFuncti
         balanceAfter: e.balanceAfter.toData()
       }))
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /internal/ledger - Internal event-driven ledger entry
+ *
+ * Called by api-gateway's publishPaymentEvent() when a payment is created/succeeded.
+ * Authenticated via INTERNAL_API_KEY shared secret. Idempotent on eventId —
+ * replays of the same eventId return 200 without double-posting.
+ *
+ * Body shape:
+ *   { eventId: string, type: string, tenantId: string,
+ *     occurredAt: string, payload: { paymentId, amountMinor, currency, ... } }
+ */
+const processedEventIds = new Set<string>();
+app.post('/internal/ledger', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Internal auth: shared secret must match
+    const expected = process.env.INTERNAL_API_KEY?.trim();
+    if (!expected) {
+      obsLogger.error('INTERNAL_API_KEY is not configured; rejecting internal ledger call');
+      return res.status(500).json({ error: 'Internal auth not configured' });
+    }
+    const provided = req.headers['x-internal-key'];
+    if (provided !== expected) {
+      return res.status(401).json({ error: 'Invalid internal key' });
+    }
+
+    const { eventId, type, tenantId, payload } = req.body as {
+      eventId?: string;
+      type?: string;
+      tenantId?: string;
+      occurredAt?: string;
+      payload?: {
+        paymentId?: string;
+        amountMinor?: number;
+        currency?: CurrencyCode;
+        status?: string;
+      };
+    };
+
+    if (!eventId || !type || !tenantId || !payload) {
+      return res.status(400).json({ error: 'Missing required fields: eventId, type, tenantId, payload' });
+    }
+
+    // Idempotency — silent success on replay
+    if (processedEventIds.has(eventId)) {
+      return res.status(200).json({ ok: true, deduplicated: true, eventId });
+    }
+
+    // Only act on success events for now; record 'created' as pending context
+    if (type !== 'payment.succeeded') {
+      processedEventIds.add(eventId);
+      return res.status(202).json({ ok: true, action: 'noop', reason: 'not a success event', eventId });
+    }
+
+    if (!payload.paymentId || payload.amountMinor == null || !payload.currency) {
+      return res.status(400).json({ error: 'payload missing paymentId / amountMinor / currency' });
+    }
+
+    // We don't know destination account IDs here — they depend on tenant chart-of-accounts.
+    // For event-driven posting we log and mark processed; real implementations should
+    // resolve accounts and call ledgerService.postJournalEntry(...). This endpoint is
+    // intentionally a minimal safe scaffold that is fail-closed and idempotent.
+    obsLogger.info('Internal ledger event received', {
+      eventId,
+      type,
+      tenantId,
+      paymentId: payload.paymentId,
+      amountMinor: payload.amountMinor,
+      currency: payload.currency,
+    });
+
+    processedEventIds.add(eventId);
+    return res.status(202).json({ ok: true, accepted: true, eventId });
   } catch (error) {
     next(error);
   }

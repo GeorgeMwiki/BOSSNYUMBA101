@@ -1,6 +1,6 @@
 /**
  * BOSSNYUMBA Notifications Service
- * 
+ *
  * Multi-channel notification service supporting:
  * - WhatsApp Business API
  * - SMS (Africa's Talking)
@@ -8,6 +8,32 @@
  * - Push Notifications (Firebase)
  * - In-App Notifications
  */
+
+// ============================================================================
+// Platform Observability & Authz wiring
+// ============================================================================
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+import { rbacEngine } from '@bossnyumba/authz-policy';
+
+export const serviceLogger = new ObsLogger({
+  service: {
+    name: 'notifications',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
+
+serviceLogger.info('Observability initialized for notifications service', {
+  env: process.env.NODE_ENV || 'development',
+});
+
+// Re-export the RBAC engine so downstream callers (api-gateway, direct importers)
+// can perform permission checks before invoking notification primitives.
+export { rbacEngine as notificationsRbacEngine };
+export type { User as NotificationsAuthUser } from '@bossnyumba/authz-policy';
+
 
 // ============================================================================
 // WhatsApp Client (Legacy)

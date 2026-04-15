@@ -3,6 +3,8 @@
  */
 
 export type WebhookEventType =
+  | 'payment.created'
+  | 'payment.succeeded'
   | 'payment.completed'
   | 'payment.failed'
   | 'lease.created'

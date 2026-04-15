@@ -111,6 +111,55 @@ export {
 } from './utils/name-matcher.js';
 
 // ============================================================================
+// Platform Observability & Authz wiring
+// ============================================================================
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
+
+export const docIntelLogger = new ObsLogger({
+  service: {
+    name: 'document-intelligence',
+    version: '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
+
+docIntelLogger.info('Observability initialized for document-intelligence', {
+  env: process.env.NODE_ENV || 'development',
+});
+
+/**
+ * Authorize a document-intelligence write (upload/verify/revoke).
+ * Throws when denied so callers can surface 403 without polluting happy path.
+ *
+ * Callers without an AuthzUser (e.g. internal retry workers) should skip this
+ * gate — they are trusted by construction.
+ */
+export function authorizeDocumentAction(
+  user: AuthzUser,
+  action: 'create' | 'update' | 'delete' | 'read',
+  resource: 'document' | 'verification' | 'evidence-pack' = 'document'
+): void {
+  const decision = rbacEngine.checkPermission(user, action, resource);
+  if (!decision.allowed) {
+    docIntelLogger.warn('Document action denied by rbac', {
+      userId: user.id,
+      action,
+      resource,
+      reason: decision.reason,
+    });
+    const err = new Error(decision.reason ?? `Forbidden: cannot ${action} ${resource}`);
+    (err as Error & { code?: string }).code = 'FORBIDDEN';
+    throw err;
+  }
+}
+
+export { rbacEngine as documentIntelligenceRbacEngine };
+export type { AuthzUser as DocumentIntelligenceAuthzUser };
+
+// ============================================================================
 // Version
 // ============================================================================
 export const VERSION = '1.0.0';

@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, type AuthContext } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import {
   mapUnitRow,
@@ -11,7 +11,10 @@ import {
   majorToMinor,
 } from './db-mappers';
 
-function hasPropertyAccess(auth: any, propertyId: string) {
+type UnitRow = Record<string, unknown> & { propertyId: string };
+type MappedUnit = ReturnType<typeof mapUnitRow>;
+
+function hasPropertyAccess(auth: AuthContext, propertyId: string) {
   return auth.propertyAccess?.includes('*') || auth.propertyAccess?.includes(propertyId);
 }
 
@@ -32,13 +35,13 @@ app.get('/', async (c) => {
     ? await repos.units.findByProperty(propertyId, auth.tenantId, { limit: 1000, offset: 0 })
     : await repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 });
 
-  let items = result.items
-    .filter((row: any) => hasPropertyAccess(auth, row.propertyId))
+  let items: MappedUnit[] = result.items
+    .filter((row: UnitRow) => hasPropertyAccess(auth, row.propertyId))
     .map(mapUnitRow);
 
-  if (status) items = items.filter((item: any) => item.status === status);
+  if (status) items = items.filter((item) => item.status === status);
   if (search) {
-    items = items.filter((item: any) =>
+    items = items.filter((item) =>
       [item.unitNumber, item.name, item.type].some((v) => String(v || '').toLowerCase().includes(search))
     );
   }

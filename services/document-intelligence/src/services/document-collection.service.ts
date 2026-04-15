@@ -23,6 +23,7 @@ import type {
 import { ok, err } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { generateDocumentId, generateChecksum } from '../utils/id-generator.js';
+import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
 
 // ============================================================================
 // Repository Interface
@@ -158,6 +159,21 @@ export class DocumentCollectionService {
     const { tenantId, customerId, uploadedBy, documentType, channel, file, metadata, expiresAt } = params;
     const now = new Date().toISOString();
 
+    // Advisory RBAC check. uploadedBy is a bare UserId — api-gateway is the
+    // real enforcement point. Synthesise an AuthzUser so every upload flows
+    // through the policy engine and we get an auditable allow/deny decision.
+    // TODO: thread a real AuthzUser (with roles) through this service API
+    // once upstream adopters consistently pass one in.
+    const advisoryUser: AuthzUser = {
+      id: uploadedBy as unknown as string,
+      roles: ['tenant'],
+      tenantId: tenantId as unknown as string,
+    };
+    const authzDecision = rbacEngine.checkPermission(advisoryUser, 'create', 'document', {
+      documentType,
+      channel,
+    });
+
     logger.info('Starting document upload', {
       tenantId,
       customerId,
@@ -165,6 +181,7 @@ export class DocumentCollectionService {
       channel,
       fileName: file.originalName,
       fileSize: file.buffer.length,
+      authzAllowed: authzDecision.allowed,
     });
 
     // Validate file size

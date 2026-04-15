@@ -45,7 +45,6 @@ jobs:
 
       - name: Run ESLint
         run: pnpm lint
-        continue-on-error: true
 
   # ============================================
   # Quality Gate 2: Type Check
@@ -71,7 +70,6 @@ jobs:
 
       - name: Run TypeScript type check
         run: pnpm typecheck
-        continue-on-error: true
 
   # ============================================
   # Quality Gate 3: Unit Tests (parallel matrix)
@@ -139,7 +137,6 @@ jobs:
 
       - name: Build all packages
         run: pnpm build
-        continue-on-error: true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -283,14 +280,22 @@ jobs:
     needs: [lint, typecheck, test, build, e2e]
     if: always()
     steps:
-      - name: Check all jobs
+      - name: Check blocking jobs
         run: |
           echo "Lint: ${{ needs.lint.result }}"
           echo "TypeCheck: ${{ needs.typecheck.result }}"
           echo "Build: ${{ needs.build.result }}"
           echo "Tests: ${{ needs.test.result }}"
           echo "E2E: ${{ needs.e2e.result }}"
-          echo "All CI jobs completed"
+          # Fail the summary job if any blocking gate failed.
+          # Test/E2E are advisory until backing services are wired in CI.
+          if [ "${{ needs.lint.result }}" = "failure" ] || \
+             [ "${{ needs.typecheck.result }}" = "failure" ] || \
+             [ "${{ needs.build.result }}" = "failure" ]; then
+            echo "One or more blocking quality gates failed."
+            exit 1
+          fi
+          echo "All blocking CI jobs passed"
 
       - name: Summary
         run: |

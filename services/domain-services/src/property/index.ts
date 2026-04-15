@@ -39,6 +39,7 @@ import {
 } from '@bossnyumba/domain-models';
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
+import { domainServicesLogger, rbacEngine } from '../common/observability.js';
 
 // ============================================================================
 // Error Types
@@ -346,6 +347,21 @@ export class PropertyService {
     createdBy: UserId,
     correlationId: string
   ): Promise<Result<Property, PropertyServiceErrorResult>> {
+    // Authz gate: createdBy is a bare UserId here; api-gateway is expected to
+    // have already authenticated/authorized the caller. We still run an
+    // advisory RBAC check against a synthesised AuthzUser so every write goes
+    // through the policy engine and the decision is observable in logs.
+    // TODO: plumb a real AuthzUser (with roles/permissions) through this API
+    // once upstream callers consistently pass one in.
+    const advisoryAuthzUser = { id: createdBy as unknown as string, roles: ['tenant-admin'], tenantId: tenantId as unknown as string };
+    const authzDecision = rbacEngine.checkPermission(advisoryAuthzUser, 'create', 'property', { tenantId });
+    domainServicesLogger.info('createProperty invoked', {
+      tenantId,
+      createdBy,
+      correlationId,
+      authzAllowed: authzDecision.allowed,
+    });
+
     // Generate property code if not provided
     const code = input.code ?? await this.generatePropertyCode(tenantId);
 

@@ -1,5 +1,12 @@
 // @ts-nocheck
 
+/**
+ * Generic DB row shape. Drizzle $inferSelect types live in
+ * packages/database and aren't re-exported, so we treat rows as
+ * keyed records and read individual fields as unknown.
+ */
+type DbRow = Record<string, unknown>;
+
 function asNumber(value: unknown): number | undefined {
   if (value === null || value === undefined) return undefined;
   if (typeof value === 'number') return value;
@@ -15,7 +22,7 @@ export function minorToMajor(amount: number | undefined | null): number {
   return Number(amount ?? 0);
 }
 
-export function paginateArray(items: any[], page = 1, pageSize = 20) {
+export function paginateArray<T>(items: T[], page = 1, pageSize = 20) {
   const offset = (page - 1) * pageSize;
   const totalItems = items.length;
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -121,7 +128,7 @@ export function mapUnitStatusFromDb(status?: string) {
   }
 }
 
-export function mapPropertyRow(row: any) {
+export function mapPropertyRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -167,7 +174,7 @@ export function mapPropertyRow(row: any) {
   };
 }
 
-export function mapUnitRow(row: any) {
+export function mapUnitRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -193,7 +200,7 @@ export function mapUnitRow(row: any) {
   };
 }
 
-export function mapCustomerRow(row: any) {
+export function mapCustomerRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -214,7 +221,7 @@ export function mapCustomerRow(row: any) {
   };
 }
 
-export function mapLeaseRow(row: any) {
+export function mapLeaseRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -267,7 +274,7 @@ export function mapPaymentStatusFromDb(status?: string) {
   return String(status || 'pending').toUpperCase();
 }
 
-export function mapInvoiceRow(row: any) {
+export function mapInvoiceRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -291,7 +298,7 @@ export function mapInvoiceRow(row: any) {
   };
 }
 
-export function mapPaymentRow(row: any) {
+export function mapPaymentRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -313,8 +320,8 @@ export function mapPaymentRow(row: any) {
   };
 }
 
-export function mapVendorRow(row: any) {
-  const primaryContact = Array.isArray(row.contacts) ? row.contacts[0] : undefined;
+export function mapVendorRow(row: DbRow) {
+  const primaryContact = Array.isArray(row.contacts) ? (row.contacts as Array<Record<string, unknown>>)[0] : undefined;
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -338,7 +345,7 @@ export function mapVendorRow(row: any) {
   };
 }
 
-export function mapWorkOrderRow(row: any) {
+export function mapWorkOrderRow(row: DbRow) {
   return {
     id: row.id,
     tenantId: row.tenantId,

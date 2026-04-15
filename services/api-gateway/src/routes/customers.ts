@@ -3,16 +3,27 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import type { Repositories } from '../middleware/database';
 import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
+
+type CustomerRow = Record<string, unknown> & { id: string };
+type LeaseRow = Record<string, unknown> & {
+  id: string;
+  status: unknown;
+  startDate: unknown;
+  endDate: unknown;
+  rentAmount: unknown;
+  unitId?: string;
+};
 
 function customerCode(email: string) {
   return `CUST-${email.split('@')[0].replace(/[^A-Z0-9]+/gi, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
 }
 
-async function enrichCustomer(repos: any, tenantId: string, row: any) {
+async function enrichCustomer(repos: Repositories, tenantId: string, row: CustomerRow) {
   const base = mapCustomerRow(row);
   const leases = await repos.leases.findByCustomer(row.id, tenantId, { limit: 20, offset: 0 });
-  const activeLease = leases.items.find((lease: any) => String(lease.status) === 'active');
+  const activeLease = leases.items.find((lease: LeaseRow) => String(lease.status) === 'active');
   let currentUnit = null;
   if (activeLease?.unitId) {
     const unit = await repos.units.findById(activeLease.unitId, tenantId);
@@ -89,7 +100,7 @@ app.get('/', async (c) => {
   const status = c.req.query('status');
 
   const result = await repos.customers.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { search, status: status?.toLowerCase() });
-  const enriched = await Promise.all(result.items.map((row: any) => enrichCustomer(repos, auth.tenantId, row)));
+  const enriched = await Promise.all(result.items.map((row: CustomerRow) => enrichCustomer(repos, auth.tenantId, row)));
   const paginated = paginateArray(enriched, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });

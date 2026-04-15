@@ -23,8 +23,31 @@ import {
   removeScheduled,
 } from '../repositories/notification.repository.js';
 import { createLogger } from '../logger.js';
+import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
 
 const logger = createLogger('notification-service');
+
+/**
+ * Optional permission gate used by trusted callers who already have an auth
+ * context (e.g. an HTTP handler in api-gateway that invokes this service).
+ * Returns true if the user is allowed to dispatch notifications on the given
+ * channel. Callers without an auth context (background workers, queue
+ * consumers) should skip this check — they are trusted by construction.
+ *
+ * TODO: once the notifications service gains its own HTTP surface, thread
+ * AuthzUser through sendNotification() instead of offering this helper.
+ */
+export function canSendNotification(user: AuthzUser, channel: NotificationChannel): boolean {
+  const decision = rbacEngine.checkPermission(user, 'create', 'notification', { channel });
+  if (!decision.allowed) {
+    logger.warn('Notification send denied by rbac', {
+      userId: user.id,
+      channel,
+      reason: decision.reason,
+    });
+  }
+  return decision.allowed;
+}
 
 function getProvider(channel: NotificationChannel) {
   const providers = providerRegistry[channel];

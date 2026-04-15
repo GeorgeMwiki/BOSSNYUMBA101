@@ -3,13 +3,21 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import type { Repositories } from '../middleware/database';
 import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
+
+type LeaseRow = Record<string, unknown> & {
+  unitId: string;
+  customerId: string;
+  propertyId: string;
+  endDate: Date | string;
+};
 
 function leaseNumber() {
   return `LSE-${Date.now().toString().slice(-6)}`;
 }
 
-async function enrichLease(repos: any, tenantId: string, row: any) {
+async function enrichLease(repos: Repositories, tenantId: string, row: LeaseRow) {
   const lease = mapLeaseRow(row);
   const [unit, customer, property] = await Promise.all([
     repos.units.findById(row.unitId, tenantId),
@@ -33,7 +41,7 @@ app.get('/current', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
-  const lease = result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+  const lease = result.items.find((item: LeaseRow & { status?: unknown }) => String(item.status) === 'active') || result.items[0];
   if (!lease) {
     return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Current lease not found' } }, 404);
   }
@@ -49,8 +57,8 @@ app.get('/expiring', async (c) => {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
   const result = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { status: 'active' });
-  const expiring = result.items.filter((row: any) => new Date(row.endDate) <= cutoff);
-  const enriched = await Promise.all(expiring.map((row: any) => enrichLease(repos, auth.tenantId, row)));
+  const expiring = result.items.filter((row: LeaseRow) => new Date(row.endDate) <= cutoff);
+  const enriched = await Promise.all(expiring.map((row: LeaseRow) => enrichLease(repos, auth.tenantId, row)));
   const paginated = paginateArray(enriched, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });
@@ -66,7 +74,7 @@ app.get('/', async (c) => {
     customerId: c.req.query('customerId'),
   };
   const result = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, filters);
-  const enriched = await Promise.all(result.items.map((row: any) => enrichLease(repos, auth.tenantId, row)));
+  const enriched = await Promise.all(result.items.map((row: LeaseRow) => enrichLease(repos, auth.tenantId, row)));
   const paginated = paginateArray(enriched, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });

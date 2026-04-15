@@ -3,13 +3,20 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import type { Repositories } from '../middleware/database';
 import { majorToMinor, mapInvoiceRow, paginateArray } from './db-mappers';
+
+type InvoiceRow = Record<string, unknown> & {
+  customerId: string;
+  leaseId?: string;
+  unitId?: string;
+};
 
 function invoiceNumber() {
   return `INV-${Date.now().toString().slice(-6)}`;
 }
 
-async function enrichInvoice(repos: any, tenantId: string, row: any) {
+async function enrichInvoice(repos: Repositories, tenantId: string, row: InvoiceRow) {
   const invoice = mapInvoiceRow(row);
   const [customer, lease, unit] = await Promise.all([
     repos.customers.findById(row.customerId, tenantId),
@@ -43,7 +50,7 @@ app.get('/', async (c) => {
   else if (status) result = await repos.invoices.findByStatus(status, auth.tenantId, 1000, 0);
   else result = await repos.invoices.findMany(auth.tenantId, 1000, 0);
 
-  const items = await Promise.all(result.items.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
+  const items = await Promise.all(result.items.map((row: InvoiceRow) => enrichInvoice(repos, auth.tenantId, row)));
   const paginated = paginateArray(items, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });
@@ -54,7 +61,7 @@ app.get('/overdue', async (c) => {
   const page = Number(c.req.query('page') || '1');
   const pageSize = Number(c.req.query('pageSize') || '20');
   const rows = await repos.invoices.findOverdue(auth.tenantId);
-  const items = await Promise.all(rows.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
+  const items = await Promise.all(rows.map((row: InvoiceRow) => enrichInvoice(repos, auth.tenantId, row)));
   const paginated = paginateArray(items, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });

@@ -16,6 +16,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/observability": "workspace:*",
     "@aws-sdk/client-ses": "^3.0.0",
     "africastalking": "^0.7.8",
     "@sendgrid/mail": "^8.1.0",

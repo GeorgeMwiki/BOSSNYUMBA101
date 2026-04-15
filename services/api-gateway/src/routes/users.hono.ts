@@ -5,10 +5,17 @@ import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import type { DatabaseClient } from '@bossnyumba/database';
 import { roles, userRoles } from '@bossnyumba/database';
 
-async function getRoleMap(db: any, tenantId: string, userIds: string[]) {
-  if (!userIds.length) return new Map();
+type UserRow = Record<string, unknown> & { id: string };
+interface RoleData {
+  role: string;
+  permissions: string[];
+}
+
+async function getRoleMap(db: DatabaseClient, tenantId: string, userIds: string[]) {
+  if (!userIds.length) return new Map<string, RoleData>();
   const assignments = await db
     .select({
       userId: userRoles.userId,
@@ -19,19 +26,19 @@ async function getRoleMap(db: any, tenantId: string, userIds: string[]) {
     .innerJoin(roles, eq(roles.id, userRoles.roleId))
     .where(and(eq(userRoles.tenantId, tenantId), inArray(userRoles.userId, userIds), isNull(roles.deletedAt)));
 
-  const roleMap = new Map<string, any>();
+  const roleMap = new Map<string, RoleData>();
   for (const row of assignments) {
     if (!roleMap.has(row.userId)) {
       roleMap.set(row.userId, {
         role: row.roleName,
-        permissions: Array.isArray(row.permissions) ? row.permissions : [],
+        permissions: Array.isArray(row.permissions) ? (row.permissions as string[]) : [],
       });
     }
   }
   return roleMap;
 }
 
-function mapUser(row: any, roleData?: any) {
+function mapUser(row: UserRow, roleData?: RoleData) {
   return {
     id: row.id,
     tenantId: row.tenantId,
@@ -63,8 +70,8 @@ app.get('/', async (c) => {
   const search = c.req.query('search');
   const status = c.req.query('status')?.toLowerCase();
   const result = await repos.users.findMany(auth.tenantId, 1000, 0, { search, status });
-  const roleMap = await getRoleMap(db, auth.tenantId, result.items.map((item: any) => item.id));
-  const items = result.items.map((row: any) => mapUser(row, roleMap.get(row.id)));
+  const roleMap = await getRoleMap(db, auth.tenantId, result.items.map((item: UserRow) => item.id));
+  const items = result.items.map((row: UserRow) => mapUser(row, roleMap.get(row.id)));
   const offset = (page - 1) * pageSize;
   return c.json({
     success: true,

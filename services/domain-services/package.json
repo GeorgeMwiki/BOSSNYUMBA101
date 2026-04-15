@@ -31,7 +31,8 @@
   },
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
-    "@bossnyumba/authz-policy": "workspace:*"
+    "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

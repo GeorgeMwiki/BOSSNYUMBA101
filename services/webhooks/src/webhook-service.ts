@@ -5,23 +5,59 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { WebhookEvent, WebhookEventType, WebhookSubscription } from './types.js';
 import { deliver } from './delivery.js';
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+import { rbacEngine, type User as AuthzUser } from '@bossnyumba/authz-policy';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
 const subscriptions = new Map<string, WebhookSubscription>();
 
+export const webhooksLogger = new ObsLogger({
+  service: {
+    name: 'webhooks',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
+webhooksLogger.info('Observability initialized for webhooks service', {
+  env: process.env.NODE_ENV || 'development',
+});
+
 let inMemoryWarningLogged = false;
 function warnIfInMemory(): void {
   if (inMemoryWarningLogged) return;
   inMemoryWarningLogged = true;
   if (process.env.NODE_ENV === 'production') {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[webhooks] Using in-memory subscription store. Subscriptions will NOT survive restarts. ' +
-        'Set WEBHOOKS_STORE=database to enable persistence (not yet implemented).'
+    webhooksLogger.warn(
+      'Using in-memory subscription store. Subscriptions will NOT survive restarts. Set WEBHOOKS_STORE=database to enable persistence (not yet implemented).'
     );
   }
+}
+
+/**
+ * Subscribe with an authz check. Callers that already have an auth context
+ * (api-gateway handlers) should prefer this over the raw subscribe() helper.
+ */
+export function subscribeWithAuthz(
+  user: AuthzUser,
+  url: string,
+  events: WebhookEventType[],
+  tenantId: string,
+  secret?: string
+): WebhookSubscription {
+  const decision = rbacEngine.checkPermission(user, 'create', 'webhook', { tenantId });
+  if (!decision.allowed) {
+    webhooksLogger.warn('Webhook subscribe denied by rbac', {
+      userId: user.id,
+      tenantId,
+      reason: decision.reason,
+    });
+    throw new Error(decision.reason ?? 'Forbidden: cannot create webhook subscription');
+  }
+  return subscribe(url, events, tenantId, secret);
 }
 
 function isValidUrl(candidate: string): boolean {
@@ -97,6 +133,14 @@ export async function trigger(
     }
     if (lastError) failed++;
   }
+
+  webhooksLogger.info('Webhook event dispatched', {
+    eventType: event.type,
+    tenantId: event.tenantId,
+    delivered,
+    failed,
+    subscriptionCount: subs.length,
+  });
 
   return { delivered, failed };
 }

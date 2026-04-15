@@ -73,10 +73,10 @@ jobs:
 
       - name: Deploy to staging (Terraform)
         run: |
-          cd infra/terraform
-          terraform init -input=false
+          cd infrastructure/terraform
+          terraform init -input=false -backend-config=environments/staging/backend.hcl
           terraform workspace select staging || terraform workspace new staging
-          terraform plan -var="environment=staging" -out=tfplan
+          terraform plan -var-file=environments/staging/terraform.tfvars -var="environment=staging" -out=tfplan
           terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

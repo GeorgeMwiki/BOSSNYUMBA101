@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, type AuthContext } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import {
   mapPropertyRow,
@@ -11,7 +11,10 @@ import {
   paginateArray,
 } from './db-mappers';
 
-function hasPropertyAccess(auth: any, propertyId: string) {
+type PropertyRow = Record<string, unknown> & { id: string; propertyId?: string };
+type MappedProperty = ReturnType<typeof mapPropertyRow>;
+
+function hasPropertyAccess(auth: AuthContext, propertyId: string) {
   return auth.propertyAccess?.includes('*') || auth.propertyAccess?.includes(propertyId);
 }
 
@@ -34,18 +37,20 @@ app.get('/', async (c) => {
   const city = (c.req.query('city') || '').toLowerCase();
 
   const result = await repos.properties.findMany(auth.tenantId, { limit: 1000, offset: 0 });
-  let items = result.items.filter((row: any) => hasPropertyAccess(auth, row.id)).map(mapPropertyRow);
+  let items: MappedProperty[] = result.items
+    .filter((row: PropertyRow) => hasPropertyAccess(auth, row.id))
+    .map(mapPropertyRow);
 
   if (search) {
-    items = items.filter((item: any) =>
+    items = items.filter((item) =>
       [item.name, item.propertyCode, item.address?.line1, item.address?.city].some((v) =>
         String(v || '').toLowerCase().includes(search)
       )
     );
   }
-  if (status) items = items.filter((item: any) => item.status === status);
-  if (type) items = items.filter((item: any) => item.type === type);
-  if (city) items = items.filter((item: any) => String(item.address?.city || '').toLowerCase().includes(city));
+  if (status) items = items.filter((item) => item.status === status);
+  if (type) items = items.filter((item) => item.type === type);
+  if (city) items = items.filter((item) => String(item.address?.city || '').toLowerCase().includes(city));
 
   const paginated = paginateArray(items, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
@@ -64,7 +69,7 @@ app.get('/:id/units', async (c) => {
   const status = c.req.query('status');
   const result = await repos.units.findByProperty(id, auth.tenantId, { limit: 1000, offset: 0 });
   let items = result.items.map(mapUnitRow);
-  if (status) items = items.filter((item: any) => item.status === status);
+  if (status) items = items.filter((item) => item.status === status);
   const paginated = paginateArray(items, page, pageSize);
   return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
 });

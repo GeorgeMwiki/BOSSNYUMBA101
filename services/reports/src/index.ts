@@ -24,6 +24,51 @@
  * ```
  */
 
+// ============================================================================
+// Platform observability + authz wiring
+// ============================================================================
+import { Logger as ObsLogger } from '@bossnyumba/observability';
+import { rbacEngine } from '@bossnyumba/authz-policy';
+
+export const reportsLogger = new ObsLogger({
+  service: {
+    name: 'reports',
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    environment: (process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development',
+  },
+  level: (process.env.LOG_LEVEL as 'info' | 'debug' | 'warn' | 'error') || 'info',
+  pretty: process.env.NODE_ENV !== 'production',
+});
+
+reportsLogger.info('Observability initialized for reports service', {
+  env: process.env.NODE_ENV || 'development',
+});
+
+export { rbacEngine as reportsRbacEngine };
+export type { User as ReportsAuthUser } from '@bossnyumba/authz-policy';
+
+/**
+ * Authorize a report-generation request. Throws a FORBIDDEN error when denied.
+ * Background schedulers without an auth context should skip this gate — they
+ * are trusted by construction (the scheduler itself is configured by an admin).
+ */
+export function authorizeReportGeneration(
+  user: import('@bossnyumba/authz-policy').User,
+  reportType: string
+): void {
+  const decision = rbacEngine.checkPermission(user, 'read', 'report', { reportType });
+  if (!decision.allowed) {
+    reportsLogger.warn('Report generation denied by rbac', {
+      userId: user.id,
+      reportType,
+      reason: decision.reason,
+    });
+    const err = new Error(decision.reason ?? `Forbidden: cannot generate ${reportType} report`);
+    (err as Error & { code?: string }).code = 'FORBIDDEN';
+    throw err;
+  }
+}
+
 // Main service
 import { ReportGenerationService as RGS } from './report-generation-service.js';
 import { InMemoryReportStorage } from './storage/storage.js';
