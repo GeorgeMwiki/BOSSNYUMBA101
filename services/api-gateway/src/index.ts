@@ -43,6 +43,7 @@ import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
 import { aiRouter } from './routes/ai';
+import { httpLogger } from '@bossnyumba/observability';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
