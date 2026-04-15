@@ -45,6 +45,7 @@ import { createRepositories } from './repositories/factory';
 import { ReconciliationJob } from './jobs/reconciliation.job';
 import { StatementGenerationJob } from './jobs/statement-generation.job';
 import { DisbursementJob } from './jobs/disbursement.job';
+import { startWorkersIfEnabled, type WorkerHandles } from './workers';
 
 // =============================================================================
 // Request Validation Schemas
@@ -1705,17 +1706,47 @@ app.listen(PORT, () => {
 });
 
 // =============================================================================
+// Background Workers (eTIMS retry, etc.)
+// =============================================================================
+// Workers only start when PAYMENTS_LEDGER_WORKER_MODE=true. Concrete KRA
+// client + invoice repo wiring is supplied by the deployment entrypoint;
+// when omitted, startWorkersIfEnabled logs and skips.
+let workerHandles: WorkerHandles | null = null;
+try {
+  // Deployments that provide a KRA client and pending-tax repo should set
+  // them on globalThis.__paymentsLedgerWorkerDeps before import, or replace
+  // this block with direct wiring.
+  const injected = (globalThis as any).__paymentsLedgerWorkerDeps as
+    | Parameters<typeof startWorkersIfEnabled>[0]
+    | undefined;
+  workerHandles = startWorkersIfEnabled(injected);
+} catch (err) {
+  logger.error({ err }, 'Failed to start background workers');
+}
+
+// =============================================================================
 // Graceful Shutdown
 // =============================================================================
 
+async function gracefulShutdown(signal: string): Promise<void> {
+  logger.info({ signal }, 'Shutdown signal received');
+  try {
+    if (workerHandles) {
+      await workerHandles.stopAll();
+    }
+  } catch (err) {
+    logger.error({ err }, 'Error while stopping workers');
+  } finally {
+    process.exit(0);
+  }
+}
+
 process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  void gracefulShutdown('SIGTERM');
 });
 
 process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  void gracefulShutdown('SIGINT');
 });
 
 export { app };

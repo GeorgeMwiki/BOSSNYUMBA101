@@ -1,14 +1,17 @@
-/**
- * @bossnyumba/payments
- *
- * Public API for the payments service. All M-Pesa functionality is
- * served by the hardened providers at ./providers/mpesa/ (Week 0
- * security hardening: idempotency, HMAC verification, replay
- * protection, rate limiting, MSISDN redaction, secret rotation).
- *
- * The legacy ./mpesa/ directory was removed — it contained an
- * un-hardened duplicate that was a launch blocker.
- */
+// Bootstrap must be imported first so that any consumer of this package
+// gets the M-Pesa support stores auto-wired from `MPESA_STORE_BACKEND`.
+import './bootstrap';
+
+// M-Pesa STK Push
+export {
+  MpesaStkPush,
+  mpesaStkPush,
+  type MpesaConfig,
+  type StkPushRequest,
+  type StkPushResponse,
+  type StkQueryRequest,
+  type StkQueryResponse,
+} from './mpesa/stk-push';
 
 // M-Pesa STK Push (hardened)
 export {
@@ -76,3 +79,34 @@ export {
   type ReconciliationSummary,
   type MatcherConfig,
 } from './reconciliation/matcher';
+
+// Store wiring (factories + setters). Consumers may override the
+// auto-bootstrapped stores for tests or custom deployments.
+export {
+  bootstrapPaymentsStores,
+  shutdownPaymentsStores,
+} from './bootstrap';
+export {
+  createStores,
+  type PaymentStores,
+  type StoreBackend,
+  type CreateStoresOptions,
+} from './common/store-factory';
+export {
+  setStkIdempotencyStore,
+  getStkIdempotencyStore,
+  setCallbackReplayStore,
+  getCallbackReplayStore,
+  setStkRateLimiter,
+  getStkRateLimiter,
+  type StkIdempotencyStore,
+  type CallbackReplayStore,
+  type StkRateLimiter,
+} from './common/stores';
+export {
+  RedisStkIdempotencyStore,
+  RedisCallbackReplayStore,
+  RedisStkRateLimiter,
+  type RedisLike,
+  type RedisStoreOptions,
+} from './common/redis-store';

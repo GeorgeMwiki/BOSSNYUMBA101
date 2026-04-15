@@ -1,97 +1,120 @@
 /**
- * Store Factory
+ * Store factory: selects memory or redis-backed stores based on the
+ * `MPESA_STORE_BACKEND` environment variable.
  *
- * Picks between in-memory and Redis-backed stores based on the
- * `MPESA_STORE_BACKEND` env var. Default: 'memory'. Set to 'redis'
- * for multi-pod production deployments.
- *
- * When `redis` is selected, reads `REDIS_URL` (default:
- * 'redis://localhost:6379') and lazily creates a single shared ioredis
- * client for all three stores.
- *
- * Usage:
- *   import { createStores } from './store-factory';
- *   const { idempotency, replay, rateLimiter } = createStores();
- *   setStkIdempotencyStore(idempotency);
- *   setCallbackReplayStore(replay);
- *   setStkRateLimiter(rateLimiter);
+ * - `MPESA_STORE_BACKEND=memory` (default): in-process stores, useful for
+ *   tests and single-instance deployments.
+ * - `MPESA_STORE_BACKEND=redis`: redis-backed stores. Requires `REDIS_URL`.
+ *   `ioredis` is loaded lazily so that pure memory consumers don't pay the
+ *   dependency cost.
  */
-
-import { InMemoryIdempotencyStore } from './idempotency';
-import { InMemoryReplayStore } from './replay-store';
-import { FixedWindowRateLimiter } from './rate-limit';
+import { logger } from './logger';
 import {
-  RedisIdempotencyStore,
-  RedisReplayStore,
-  RedisRateLimiter,
-  type RedisClientLike,
+  RedisCallbackReplayStore,
+  RedisStkIdempotencyStore,
+  RedisStkRateLimiter,
+  type RedisLike,
 } from './redis-store';
-import type { IdempotencyStore } from './idempotency';
-import type { ReplayStore } from './replay-store';
-import type { RateLimiter } from './rate-limit';
+import {
+  __memoryImpls,
+  type CallbackReplayStore,
+  type StkIdempotencyStore,
+  type StkRateLimiter,
+} from './stores';
+
+export interface PaymentStores {
+  stkIdempotencyStore: StkIdempotencyStore;
+  callbackReplayStore: CallbackReplayStore;
+  stkRateLimiter: StkRateLimiter;
+  /** Optional handle for graceful shutdown of the backing client. */
+  close?: () => Promise<void>;
+}
 
 export type StoreBackend = 'memory' | 'redis';
 
-export interface StoreBundle {
-  idempotency: IdempotencyStore<any>;
-  replay: ReplayStore;
-  rateLimiter: RateLimiter;
-  backend: StoreBackend;
+export interface CreateStoresOptions {
+  backend?: StoreBackend;
+  redisUrl?: string;
+  redisClient?: RedisLike;
+  keyPrefix?: string;
 }
 
-let cachedRedisClient: RedisClientLike | null = null;
+function resolveBackend(opts: CreateStoresOptions): StoreBackend {
+  if (opts.backend) return opts.backend;
+  const env = (process.env.MPESA_STORE_BACKEND || 'memory').toLowerCase();
+  if (env === 'redis') return 'redis';
+  return 'memory';
+}
 
-function getRedisClient(): RedisClientLike {
-  if (cachedRedisClient) return cachedRedisClient;
-
-  // Dynamic import so ioredis is only required when MPESA_STORE_BACKEND=redis.
+function loadIoredis(): any {
+  // Lazy require so memory-only consumers don't need ioredis installed.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  let Redis: any;
-  try {
-    Redis = require('ioredis');
-  } catch {
-    throw new Error(
-      'MPESA_STORE_BACKEND is set to "redis" but ioredis is not installed. ' +
-      'Run `pnpm add ioredis` in services/payments/',
-    );
-  }
-
-  const url = process.env.REDIS_URL || 'redis://localhost:6379';
-  cachedRedisClient = new Redis(url, {
-    maxRetriesPerRequest: 3,
-    lazyConnect: true,
-  }) as unknown as RedisClientLike;
-
-  return cachedRedisClient;
+  return require('ioredis');
 }
 
-/**
- * Create the store bundle. Call once at service boot, then wire the
- * returned stores into the M-Pesa STK-push + callback handlers via
- * the module-level setters.
- */
-export function createStores(): StoreBundle {
-  const backend = (process.env.MPESA_STORE_BACKEND || 'memory').toLowerCase() as StoreBackend;
+export function createStores(opts: CreateStoresOptions = {}): PaymentStores {
+  const backend = resolveBackend(opts);
 
-  if (backend === 'redis') {
-    const redis = getRedisClient();
+  if (backend === 'memory') {
+    logger.info({ backend: 'memory' }, 'M-Pesa stores initialised');
     return {
-      idempotency: new RedisIdempotencyStore(redis),
-      replay: new RedisReplayStore(redis),
-      rateLimiter: new RedisRateLimiter(
-        redis,
-        parseInt(process.env.MPESA_STK_RATE_LIMIT || '10', 10),
-        parseInt(process.env.MPESA_STK_RATE_WINDOW_MS || '60000', 10),
-      ),
-      backend: 'redis',
+      stkIdempotencyStore: new __memoryImpls.MemoryIdempotencyStore(),
+      callbackReplayStore: new __memoryImpls.MemoryCallbackReplayStore(),
+      stkRateLimiter: new __memoryImpls.MemoryStkRateLimiter(),
     };
   }
 
-  // Default: in-memory (single-instance only)
+  // redis
+  let client: RedisLike;
+  let close: (() => Promise<void>) | undefined;
+
+  if (opts.redisClient) {
+    client = opts.redisClient;
+  } else {
+    const url = opts.redisUrl || process.env.REDIS_URL;
+    if (!url) {
+      logger.warn(
+        'MPESA_STORE_BACKEND=redis set but REDIS_URL is missing; falling back to memory stores'
+      );
+      return createStores({ ...opts, backend: 'memory' });
+    }
+
+    try {
+      const IORedis = loadIoredis();
+      const RedisCtor = IORedis.default || IORedis;
+      const instance = new RedisCtor(url, {
+        lazyConnect: false,
+        maxRetriesPerRequest: 3,
+      });
+      client = instance as RedisLike;
+      close = async () => {
+        try {
+          await instance.quit();
+        } catch {
+          instance.disconnect?.();
+        }
+      };
+    } catch (err) {
+      logger.error(
+        { err },
+        'Failed to initialise ioredis client; falling back to memory stores'
+      );
+      return createStores({ ...opts, backend: 'memory' });
+    }
+  }
+
+  logger.info({ backend: 'redis' }, 'M-Pesa stores initialised');
+
   return {
-    idempotency: new InMemoryIdempotencyStore(),
-    replay: new InMemoryReplayStore(),
-    rateLimiter: new FixedWindowRateLimiter(),
-    backend: 'memory',
+    stkIdempotencyStore: new RedisStkIdempotencyStore(client, {
+      keyPrefix: opts.keyPrefix,
+    }),
+    callbackReplayStore: new RedisCallbackReplayStore(client, {
+      keyPrefix: opts.keyPrefix,
+    }),
+    stkRateLimiter: new RedisStkRateLimiter(client, {
+      keyPrefix: opts.keyPrefix,
+    }),
+    close,
   };
 }
