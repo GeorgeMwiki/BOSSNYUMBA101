@@ -1,30 +1,20 @@
 /**
- * Region & Language Model
+ * Region & Language Model — DEPRECATED
  *
- * BOSSNYUMBA operates across multiple jurisdictions (currently Tanzania
- * and Kenya, with room for expansion). A user's selected region drives:
- *   - Which Privacy Policy / Terms-of-Service document is shown
- *   - Which subprocessors may receive their PII (e.g. DeepSeek is gated
- *     for TZ/KE per `packages/ai-copilot/src/llm-provider-gate.ts`)
- *   - Which language is offered by default
- *   - Cookie/consent banner copy and behavior
+ * @deprecated use the jurisdiction registry in
+ * `packages/domain-models/src/jurisdiction/` instead.
  *
- * An organization (landlord / property-management company) has its own
- * `fiscalCountry` which drives:
- *   - Which fiscal authority receives invoices (KE -> KRA eTIMS,
- *     TZ -> TRA, others -> none)
- *   - Which tax rates apply to rent and services (VAT, WHT, MRI)
- *   - Which invoice template / QR fields are required
+ * This module remains as a thin compatibility layer because the
+ * `Region` / `Language` / `FiscalAuthority` enums are referenced by
+ * persisted entity types (`User.region`, `Organization.fiscalCountry`).
+ * New code MUST use `getJurisdiction(countryCode)` and friends from
+ * the jurisdiction module — adding a new country there is an admin
+ * config change rather than an enum extension.
  *
- * The user's region and the org's fiscalCountry are INDEPENDENT — a
- * Tanzanian renter can lease from a Kenyan landlord, and the rent
- * invoice goes to KRA (because the property + landlord are KE) while
- * the renter's PII rights follow Tanzanian PDPA (because the data
- * subject is TZ).
- *
- * This module is the single source of truth for region constants.
- * Application code MUST import region values from here, never
- * hard-code 'TZ'/'KE' string literals.
+ * The `Region` enum is intentionally limited to TZ / KE / OTHER. To
+ * support a 4th country (NG, ZA, etc.) DO NOT add it here — instead
+ * register it via `registerJurisdiction()` (or insert a row into the
+ * `jurisdiction_configs` table) and migrate callers off the enum.
  */
 
 /**
