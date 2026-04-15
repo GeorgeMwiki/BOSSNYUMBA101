@@ -20,6 +20,24 @@ import {
   type ScheduleEvent,
 } from '@bossnyumba/api-client';
 
+function resolveApiBase(): string {
+  const url = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (url) return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:4000/api/v1';
+  }
+  return '/api/v1';
+}
+
+function resolveAuthToken(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return (
+    localStorage.getItem('auth_token') ||
+    localStorage.getItem('token') ||
+    null
+  );
+}
+
 // ─── Announcements ─────────────────────────────────────────────────
 export type AnnouncementPriority = 'normal' | 'important' | 'urgent';
 
@@ -332,13 +350,8 @@ export const inspectionsApi = {
     const form = new FormData();
     form.append('file', file);
     if (areaLabel) form.append('area', areaLabel);
-    const client = getApiClient() as unknown as {
-      baseUrl: string;
-      defaultHeaders?: Record<string, string>;
-    };
-    const baseUrl = (client.baseUrl ?? '').replace(/\/$/, '');
-    const token =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const baseUrl = resolveApiBase().replace(/\/$/, '');
+    const token = resolveAuthToken();
     const response = await fetch(`${baseUrl}/inspections/${id}/photos`, {
       method: 'POST',
       body: form,
@@ -399,10 +412,8 @@ export const workOrdersApi = {
     const form = new FormData();
     form.append('file', file);
     form.append('type', type);
-    const client = getApiClient() as unknown as { baseUrl: string };
-    const baseUrl = (client.baseUrl ?? '').replace(/\/$/, '');
-    const token =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const baseUrl = resolveApiBase().replace(/\/$/, '');
+    const token = resolveAuthToken();
     const response = await fetch(`${baseUrl}/work-orders/${id}/attachments`, {
       method: 'POST',
       body: form,
