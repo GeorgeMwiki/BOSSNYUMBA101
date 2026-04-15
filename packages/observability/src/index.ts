@@ -176,6 +176,48 @@ export {
 } from './metrics/metrics.js';
 
 // ============================================================================
+// Metrics - Simple Emitters (no-op until backend configured)
+// ============================================================================
+
+export type {
+  MetricRecord,
+  MetricSink,
+  HttpRequestMetric,
+  LlmCallMetric,
+  MpesaTransactionMetric,
+  MpesaTxType,
+  MpesaTxStatus,
+  DbQueryMetric,
+  DbOperation,
+} from './metrics/emitters/index.js';
+
+export {
+  emitMetric,
+  setMetricSink,
+  resetMetricSink,
+  emitHttpRequest,
+  emitLlmCall,
+  emitMpesaTransaction,
+  emitDbQuery,
+} from './metrics/emitters/index.js';
+
+// ============================================================================
+// HTTP Middleware
+// ============================================================================
+
+export type {
+  HttpLoggerAuthContext,
+  HttpLoggerOptions,
+} from './middleware/http-logger.js';
+
+export {
+  httpLogger,
+  getRequestId,
+  REQUEST_ID_HEADER,
+  REQUEST_ID_CONTEXT_KEY,
+} from './middleware/http-logger.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 

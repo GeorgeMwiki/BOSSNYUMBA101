@@ -45,6 +45,7 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+import { httpLogger } from '@bossnyumba/observability';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -72,6 +73,11 @@ app.get('/health', (_req, res) => {
 
 // API v1 - Hono routes
 const api = new Hono();
+
+// Observability: structured request logging + metric emission + X-Request-Id.
+// Must be registered before all routes so every request is traced/logged.
+api.use('*', httpLogger({ service: 'api-gateway' }));
+
 api.route('/auth', authRouter);
 api.route('/auth-enhanced', authEnhancedRouter);
 api.route('/tenants', tenantsRouter);
