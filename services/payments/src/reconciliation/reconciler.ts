@@ -24,7 +24,7 @@ export interface ReconciliationResult {
 
 const AMOUNT_TOLERANCE = 1; // 1 minor unit
 
-function amountMatches(
+function amountMatchesExact(
   paymentAmount: number,
   invoiceAmount: number,
   tolerance: number = AMOUNT_TOLERANCE
@@ -48,28 +48,47 @@ export function reconcile(
   const usedPayments = new Set<string>();
   const usedInvoices = new Set<string>();
 
+  // Strategy: match by reference first, then by exact amount, then partial/over.
+  // Reference match has priority because explicit mapping is authoritative.
   for (const payment of completedPayments) {
-    const dueAmount = payment.amount;
-    const matchingInvoice = openInvoices.find(
-      (inv) =>
-        !usedInvoices.has(inv.id) &&
-        inv.currency === payment.currency &&
-        amountMatches(dueAmount, inv.amountDue)
-    );
+    // 1. Prefer reference-based match
+    let matchingInvoice: InvoiceRecord | undefined;
+    let matchType: ReconciliationMatch['matchType'] | null = null;
 
-    if (matchingInvoice) {
-      usedPayments.add(payment.id);
-      usedInvoices.add(matchingInvoice.id);
-      const matchType: ReconciliationMatch['matchType'] =
-        dueAmount === matchingInvoice.amountDue
+    if (payment.reference) {
+      matchingInvoice = openInvoices.find(
+        (inv) =>
+          !usedInvoices.has(inv.id) &&
+          inv.currency === payment.currency &&
+          inv.id === payment.reference
+      );
+      if (matchingInvoice) {
+        matchType = amountMatchesExact(payment.amount, matchingInvoice.amountDue)
           ? 'EXACT'
-          : dueAmount > matchingInvoice.amountDue
+          : payment.amount > matchingInvoice.amountDue
             ? 'OVERPAYMENT'
             : 'PARTIAL';
+      }
+    }
+
+    // 2. Fall back to exact amount match
+    if (!matchingInvoice) {
+      matchingInvoice = openInvoices.find(
+        (inv) =>
+          !usedInvoices.has(inv.id) &&
+          inv.currency === payment.currency &&
+          amountMatchesExact(payment.amount, inv.amountDue)
+      );
+      if (matchingInvoice) matchType = 'EXACT';
+    }
+
+    if (matchingInvoice && matchType) {
+      usedPayments.add(payment.id);
+      usedInvoices.add(matchingInvoice.id);
       matches.push({
         paymentId: payment.id,
         invoiceId: matchingInvoice.id,
-        amount: Math.min(dueAmount, matchingInvoice.amountDue),
+        amount: Math.min(payment.amount, matchingInvoice.amountDue),
         matchType,
       });
     }

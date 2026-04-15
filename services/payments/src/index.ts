@@ -31,3 +31,26 @@ export {
   type ReconciliationSummary,
   type MatcherConfig,
 } from './reconciliation/matcher';
+
+// Payment/Invoice reconciliation (statements/ledger-driven)
+export {
+  reconcile as reconcilePaymentsInvoices,
+  type ReconciliationInput,
+  type ReconciliationResult as InvoiceReconciliationResult,
+} from './reconciliation/reconciler';
+export {
+  generateReconciliationReport,
+  type ReconciliationReport,
+} from './reconciliation/report';
+
+// Daraja providers (full stack)
+export * as MpesaDaraja from './providers/mpesa';
+export * as AirtelMoney from './providers/airtel-money';
+export * as TigoPesa from './providers/tigopesa';
+
+// Common utilities
+export * from './common/errors';
+export * from './common/types';
+export * from './common/retry';
+export * from './common/idempotency';
+export * from './common/metrics';

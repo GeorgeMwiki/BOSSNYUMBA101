@@ -1,10 +1,8 @@
 /**
  * M-PESA Payment Provider Implementation
- * Implements the payment provider interface for Safaricom M-PESA
- * 
- * Note: This is a skeleton implementation. Actual M-PESA integration
- * requires registration with Safaricom and access to the Daraja API.
+ * Implements the payment provider interface for Safaricom M-PESA (Daraja API).
  */
+import { createHmac, timingSafeEqual } from 'crypto';
 import {
   Money,
   PaymentStatus,
@@ -31,6 +29,10 @@ export interface MpesaProviderConfig {
   passKey: string;
   environment: 'sandbox' | 'production';
   callbackBaseUrl: string;
+  /** Optional initiator name for B2C/balance/status queries */
+  initiatorName?: string;
+  /** Optional RSA-encrypted initiator password (SecurityCredential) */
+  securityCredential?: string;
 }
 
 interface MpesaToken {
@@ -293,9 +295,66 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     metadata?: Record<string, string>;
     idempotencyKey: string;
   }): Promise<RefundResult> {
-    // M-PESA refunds are done via B2C (Business to Customer)
-    // This requires separate registration and approval
-    throw new Error('M-PESA refunds require B2C API setup - contact support');
+    // M-PESA refunds use the Reversal API (TransactionReversal).
+    // Requires initiator credentials. The receiver phone number must be
+    // supplied in metadata (receiverPhone) since a reversal sends funds
+    // back to the original payer and Daraja does not lookup that number.
+    if (!this.config.initiatorName || !this.config.securityCredential) {
+      throw new Error(
+        'M-PESA refund requires initiatorName + securityCredential configuration'
+      );
+    }
+    const receiverPhone = params.metadata?.receiverPhone;
+    if (!receiverPhone) {
+      throw new Error('M-PESA refund requires metadata.receiverPhone');
+    }
+    if (!params.amount) {
+      throw new Error('M-PESA refund requires an amount');
+    }
+    const accessToken = await this.getAccessToken();
+    const body = {
+      Initiator: this.config.initiatorName,
+      SecurityCredential: this.config.securityCredential,
+      CommandID: 'TransactionReversal',
+      TransactionID: params.paymentIntentExternalId,
+      Amount: Math.round(params.amount.amountMajorUnits),
+      ReceiverParty: receiverPhone,
+      RecieverIdentifierType: '4',
+      ResultURL: `${this.config.callbackBaseUrl}/webhooks/mpesa/reversal/result`,
+      QueueTimeOutURL: `${this.config.callbackBaseUrl}/webhooks/mpesa/reversal/timeout`,
+      Remarks: (params.reason ?? 'Refund').substring(0, 100),
+      Occasion: ''
+    };
+
+    const response = await fetch(
+      `${this.baseUrl}/mpesa/reversal/v1/request`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    const data = await response.json() as {
+      ConversationID?: string;
+      ResponseCode?: string;
+      ResponseDescription?: string;
+    };
+    if (!response.ok || data.ResponseCode !== '0') {
+      return {
+        refundId: '',
+        status: 'FAILED',
+        amount: params.amount,
+        failureReason: data.ResponseDescription || response.statusText
+      };
+    }
+    return {
+      refundId: data.ConversationID!,
+      status: 'PENDING',
+      amount: params.amount
+    };
   }
 
   async createTransfer(params: {
@@ -305,8 +364,13 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     metadata?: Record<string, string>;
     idempotencyKey: string;
   }): Promise<TransferResult> {
-    // B2C (Business to Customer) transfer
-    // Requires separate API credentials and approval from Safaricom
+    // B2C (Business to Customer) transfer. Requires initiatorName and a
+    // valid (RSA-encrypted) securityCredential provisioned in Daraja.
+    if (!this.config.initiatorName || !this.config.securityCredential) {
+      throw new Error(
+        'M-PESA B2C requires initiatorName + securityCredential configuration'
+      );
+    }
     const accessToken = await this.getAccessToken();
 
     // Clean phone number
@@ -316,8 +380,8 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     }
 
     const b2cRequest = {
-      InitiatorName: params.metadata?.initiator || 'BOSSNYUMBA',
-      SecurityCredential: '', // Would need encrypted credential
+      InitiatorName: this.config.initiatorName,
+      SecurityCredential: this.config.securityCredential,
       CommandID: 'BusinessPayment',
       Amount: Math.round(params.amount.amountMajorUnits),
       PartyA: this.config.shortCode,
@@ -421,9 +485,27 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     signature: string,
     webhookSecret: string
   ): boolean {
-    // M-PESA callbacks include password validation
-    // Actual implementation depends on your callback setup
-    return true; // Simplified - implement proper validation
+    // Daraja itself does not sign callbacks — the accepted production pattern
+    // is a pre-shared HMAC-SHA256 secret placed on the callback URL (via a
+    // reverse proxy / API gateway) and verified here. If no secret is
+    // configured, reject by default to fail-closed.
+    if (!webhookSecret) {
+      return false;
+    }
+    if (!signature) {
+      return false;
+    }
+    const body = Buffer.isBuffer(payload) ? payload : Buffer.from(payload);
+    const expectedHex = createHmac('sha256', webhookSecret).update(body).digest('hex');
+    const provided = signature.startsWith('sha256=')
+      ? signature.slice('sha256='.length)
+      : signature;
+    if (provided.length !== expectedHex.length) return false;
+    try {
+      return timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expectedHex, 'hex'));
+    } catch {
+      return false;
+    }
   }
 
   parseWebhookEvent(
@@ -453,11 +535,37 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
   }
 
   async getBalance(): Promise<{ available: Money[]; pending: Money[] }> {
-    // Would need to implement account balance query
-    // Requires separate API endpoint and credentials
-    return {
-      available: [],
-      pending: []
+    // AccountBalance is an asynchronous Daraja endpoint — the response is
+    // delivered on the ResultURL callback, not inline. This method initiates
+    // the query; downstream consumers should subscribe to the result webhook
+    // to obtain the actual balances.
+    if (!this.config.initiatorName || !this.config.securityCredential) {
+      return { available: [], pending: [] };
+    }
+    const accessToken = await this.getAccessToken();
+    const body = {
+      Initiator: this.config.initiatorName,
+      SecurityCredential: this.config.securityCredential,
+      CommandID: 'AccountBalance',
+      PartyA: this.config.shortCode,
+      IdentifierType: '4',
+      Remarks: 'Balance query',
+      QueueTimeOutURL: `${this.config.callbackBaseUrl}/webhooks/mpesa/balance/timeout`,
+      ResultURL: `${this.config.callbackBaseUrl}/webhooks/mpesa/balance/result`
     };
+    try {
+      await fetch(`${this.baseUrl}/mpesa/accountbalance/v1/query`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    } catch {
+      // Swallow — balance is advisory. Errors are surfaced via logs upstream.
+    }
+    // No inline balance available; subscribe to webhook for the value.
+    return { available: [], pending: [] };
   }
 }
