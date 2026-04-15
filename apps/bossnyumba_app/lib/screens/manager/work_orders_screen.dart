@@ -60,15 +60,41 @@ class _WorkOrdersScreenState extends State<WorkOrdersScreen> {
               final priority = wo['priority'] ?? 'MEDIUM';
               return Card(
                 child: ListTile(
-                  title: Text(wo['title'] ?? 'Work Order'),
+                  title: Text(wo['title']?.toString() ?? 'Work Order'),
                   subtitle: Text('$status • $priority'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showDetail(context, wo),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context, Map<String, dynamic> wo) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(wo['title']?.toString() ?? 'Work Order',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('Status: ${wo['status'] ?? 'PENDING'}'),
+            Text('Priority: ${wo['priority'] ?? 'MEDIUM'}'),
+            if (wo['assignee'] != null) Text('Assignee: ${wo['assignee']}'),
+            if (wo['description'] != null) ...[
+              const SizedBox(height: 12),
+              Text(wo['description'].toString()),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

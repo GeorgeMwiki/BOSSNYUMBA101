@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { liveDataRequired } from '../../middleware/live-data';
 import { validationErrorHook } from '../validators';
+import { logger } from '../../utils/logger';
 
 const app = new Hono();
 
@@ -212,9 +213,8 @@ paymentsApp.post('/callback', async (c) => {
   }
 
   const callback = result.data;
-  
-  // In production, find payment by transactionId and update
-  console.log('Payment callback received:', callback);
+
+  logger.info({ transactionId: callback.transactionId, status: callback.status }, 'Payment callback received');
 
   return c.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 });

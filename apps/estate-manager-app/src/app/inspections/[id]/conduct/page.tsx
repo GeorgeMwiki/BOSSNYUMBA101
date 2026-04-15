@@ -287,11 +287,7 @@ export default function ConductInspectionPage() {
     }
 
     setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise((r) => setTimeout(r, 2000));
 
-    // Save inspection data
     const inspectionData = {
       id: params.id,
       type: inspectionType,
@@ -300,9 +296,17 @@ export default function ConductInspectionPage() {
       signature,
       completedAt: new Date().toISOString(),
     };
-    console.log('Inspection data:', inspectionData);
 
-    router.push(`/inspections/${params.id}?completed=true`);
+    try {
+      await fetch(`/api/v1/inspections/${params.id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inspectionData),
+      });
+      router.push(`/inspections/${params.id}?completed=true`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

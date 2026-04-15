@@ -56,7 +56,9 @@ async function request<T>(
 
     return { success: true, data: data.data };
   } catch (error) {
-    return { success: false, error: 'Network error' };
+    const message =
+      error instanceof Error ? error.message : 'Network error';
+    return { success: false, error: message };
   }
 }
 

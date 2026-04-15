@@ -392,10 +392,7 @@ export function ConfigurationPage() {
         return (
           <div className="text-center py-12 text-gray-500">
             <Settings className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}{' '}
-              configuration coming soon
-            </p>
+            <p>Select a configuration section from the sidebar to get started.</p>
           </div>
         );
     }

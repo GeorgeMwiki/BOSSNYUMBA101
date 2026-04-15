@@ -51,12 +51,37 @@ class LeaseScreen extends StatelessWidget {
                   title: Text('${l['unitId'] ?? 'Unit'} • ${l['status'] ?? 'ACTIVE'}'),
                   subtitle: Text('${l['startDate']} - ${l['endDate']}'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showLeaseDetail(context, l),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showLeaseDetail(BuildContext context, Map<String, dynamic> l) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Lease ${l['id'] ?? ''}',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('Unit: ${l['unitId'] ?? '-'}'),
+            Text('Status: ${l['status'] ?? 'ACTIVE'}'),
+            Text('Start: ${l['startDate'] ?? '-'}'),
+            Text('End: ${l['endDate'] ?? '-'}'),
+            if (l['monthlyRent'] != null)
+              Text('Rent: ${l['monthlyRent']} ${l['currency'] ?? 'KES'}'),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

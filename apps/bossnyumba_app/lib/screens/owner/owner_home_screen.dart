@@ -99,16 +99,40 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
                   final m = p as Map<String, dynamic>;
                   return Card(
                     child: ListTile(
-                      title: Text(m['name'] ?? 'Property'),
+                      title: Text(m['name']?.toString() ?? 'Property'),
                       subtitle: Text('${m['units'] ?? 0} units • ${m['city'] ?? ''}'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () {},
+                      onTap: () => _showPropertyDetail(context, m),
                     ),
                   );
                 }),
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showPropertyDetail(BuildContext context, Map<String, dynamic> p) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(p['name']?.toString() ?? 'Property',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('City: ${p['city'] ?? '-'}'),
+            Text('Units: ${p['units'] ?? 0}'),
+            if (p['address'] != null) Text('Address: ${p['address']}'),
+            if (p['occupancyRate'] != null)
+              Text('Occupancy: ${p['occupancyRate']}%'),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

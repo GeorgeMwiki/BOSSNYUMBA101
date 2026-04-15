@@ -151,15 +151,19 @@ app.post('/:id/activate', async (c) => {
 app.post('/:id/terminate', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json().catch(() => ({}));
+  const body = await c.req.json().catch(() => null);
+  if (body !== null && typeof body !== 'object') {
+    return c.json({ success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } }, 400);
+  }
+  const safeBody = (body ?? {}) as Record<string, unknown>;
   const row = await repos.leases.update(
     c.req.param('id'),
     auth.tenantId,
     {
       status: 'terminated',
       terminatedAt: new Date(),
-      terminationReason: body.reason ? 'other' : undefined,
-      terminationNotes: body.reason,
+      terminationReason: safeBody.reason ? 'other' : undefined,
+      terminationNotes: safeBody.reason as string | undefined,
       terminatedBy: auth.userId,
     },
     auth.userId
@@ -173,11 +177,19 @@ app.post('/:id/renew', async (c) => {
   const id = c.req.param('id');
   const existing = await repos.leases.findById(id, auth.tenantId);
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Lease not found' } }, 404);
-  const body = await c.req.json().catch(() => ({}));
+  const body = await c.req.json().catch(() => null);
+  if (body !== null && typeof body !== 'object') {
+    return c.json({ success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } }, 400);
+  }
+  const renewBody = (body ?? {}) as {
+    newEndDate?: string;
+    extendMonths?: number | string;
+    newRentAmount?: number;
+  };
   const currentEnd = new Date(existing.endDate);
-  const newEnd = body.newEndDate
-    ? new Date(body.newEndDate)
-    : new Date(currentEnd.getFullYear(), currentEnd.getMonth() + Number(body.extendMonths || 12), currentEnd.getDate());
+  const newEnd = renewBody.newEndDate
+    ? new Date(renewBody.newEndDate)
+    : new Date(currentEnd.getFullYear(), currentEnd.getMonth() + Number(renewBody.extendMonths || 12), currentEnd.getDate());
 
   const row = await repos.leases.update(
     id,
@@ -185,7 +197,7 @@ app.post('/:id/renew', async (c) => {
     {
       status: 'renewed',
       endDate: newEnd,
-      rentAmount: body.newRentAmount != null ? majorToMinor(body.newRentAmount) : undefined,
+      rentAmount: renewBody.newRentAmount != null ? majorToMinor(renewBody.newRentAmount) : undefined,
       updatedBy: auth.userId,
     },
     auth.userId

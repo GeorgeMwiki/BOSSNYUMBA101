@@ -19,7 +19,12 @@ class CustomerHomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+            tooltip: 'Notifications',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No new notifications')),
+              );
+            },
           ),
         ],
       ),
@@ -54,7 +59,11 @@ class CustomerHomeScreen extends StatelessWidget {
             icon: Icons.chat_bubble_outline,
             title: 'Messages',
             subtitle: 'Chat with estate manager & groups',
-            onTap: () {},
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Messaging opens after your lease is activated')),
+              );
+            },
           ),
         ],
       ),

@@ -21,6 +21,23 @@ interface Property {
   name: string;
 }
 
+interface AuthApiResponse<T> {
+  success?: boolean;
+  data?: { success?: boolean; data?: T; error?: { message?: string } } | T;
+}
+
+interface AuthMePayload {
+  user: User;
+  tenant: Tenant;
+  role: string;
+  permissions?: string[];
+  properties?: Property[];
+}
+
+interface AuthLoginPayload extends AuthMePayload {
+  token: string;
+}
+
 interface AuthContextType {
   user: User | null;
   tenant: Tenant | null;
@@ -167,9 +184,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       if (token) {
         try {
-          const response: any = await api.get('/auth/me');
+          const response = (await api.get('/auth/me')) as AuthApiResponse<AuthMePayload>;
           if (response.data?.success || response.success) {
-            const data: any = response.data?.data || response.data;
+            const data = (response.data?.data ?? response.data) as AuthMePayload | undefined;
             if (data) {
               setUser(data.user);
               setTenant(data.tenant);
@@ -194,10 +211,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response: any = await api.post('/auth/login', { email, password });
+      const response = (await api.post('/auth/login', { email, password })) as AuthApiResponse<AuthLoginPayload>;
 
       if (response.data?.success || response.success) {
-        const data: any = response.data?.data || response.data;
+        const data = (response.data?.data ?? response.data) as AuthLoginPayload;
         const { token: newToken, user: newUser, tenant: newTenant, role: newRole, permissions: newPerms, properties: newProps } = data;
         localStorage.setItem('token', newToken);
         setToken(newToken);

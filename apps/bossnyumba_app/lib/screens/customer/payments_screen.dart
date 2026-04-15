@@ -65,12 +65,36 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     '$amount ${inv['currency'] ?? 'KES'} • $status',
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showInvoiceDetail(context, inv),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showInvoiceDetail(BuildContext context, Map<String, dynamic> inv) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              inv['description']?.toString() ?? 'Invoice',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text('Amount: ${inv['amount'] ?? inv['totalAmount'] ?? 0} ${inv['currency'] ?? 'KES'}'),
+            Text('Status: ${inv['status'] ?? 'PENDING'}'),
+            if (inv['dueDate'] != null) Text('Due: ${inv['dueDate']}'),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

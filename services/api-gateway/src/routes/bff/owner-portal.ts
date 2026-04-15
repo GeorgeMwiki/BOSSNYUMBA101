@@ -360,7 +360,11 @@ app.post('/work-orders/:id/reject', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
+  const raw = await c.req.json().catch(() => null);
+  if (raw !== null && typeof raw !== 'object') {
+    return c.json({ success: false, error: { code: 'INVALID_BODY', message: 'Invalid JSON body' } }, 400);
+  }
+  const body = (raw ?? {}) as { reason?: string };
   const existing = await repos.workOrders.findById(id, auth.tenantId);
 
   if (!existing) {

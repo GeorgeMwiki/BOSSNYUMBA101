@@ -25,7 +25,15 @@ class StoriesBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(s.hasNew
+                            ? '${s.name} has new updates'
+                            : 'No new updates from ${s.name}'),
+                      ),
+                    );
+                  },
                   child: Container(
                     width: 56,
                     height: 56,

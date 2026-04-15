@@ -40,24 +40,32 @@ class AdminHomeScreen extends StatelessWidget {
           _QuickAction(
             icon: Icons.business,
             label: 'Tenants',
-            onTap: () {},
+            onTap: () => _openAdminFeature(context, 'tenants'),
           ),
           _QuickAction(
             icon: Icons.people,
             label: 'Users & Roles',
-            onTap: () {},
+            onTap: () => _openAdminFeature(context, 'users'),
           ),
           _QuickAction(
             icon: Icons.support_agent,
             label: 'Support',
-            onTap: () {},
+            onTap: () => _openAdminFeature(context, 'support'),
           ),
           _QuickAction(
             icon: Icons.settings,
             label: 'Platform Settings',
-            onTap: () {},
+            onTap: () => _openAdminFeature(context, 'settings'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openAdminFeature(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Open the admin web portal to manage $feature'),
       ),
     );
   }

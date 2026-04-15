@@ -49,10 +49,22 @@ export default function MaintenanceFeedbackPage() {
   const handleSubmit = async () => {
     if (overallRating === 0) return;
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log({ ticketId, overallRating, categoryRatings, selectedTags, comment, wouldRecommend });
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+    try {
+      await fetch(`/api/v1/work-orders/${ticketId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          overallRating,
+          categoryRatings,
+          tags: selectedTags,
+          comment,
+          wouldRecommend,
+        }),
+      });
+      setIsSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {

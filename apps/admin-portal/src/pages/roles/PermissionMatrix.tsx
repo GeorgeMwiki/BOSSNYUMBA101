@@ -110,6 +110,23 @@ export default function PermissionMatrix() {
 
   const allPermissions = useMemo(() => modules.flatMap((m) => m.permissions.map((p) => p.id)), []);
 
+  const handleExport = () => {
+    const header = ['Role', ...allPermissions].join(',');
+    const rows = roles.map((r) =>
+      [r.name, ...allPermissions.map((p) => (r.permissions.has(p) ? '1' : '0'))].join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `role-permissions-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const filteredModules = useMemo(() => {
     if (!search) return modules;
     const q = search.toLowerCase();
@@ -175,7 +192,7 @@ export default function PermissionMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Download className="h-4 w-4" />
             Export
           </button>

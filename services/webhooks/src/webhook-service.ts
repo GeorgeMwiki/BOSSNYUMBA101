@@ -11,12 +11,41 @@ const RETRY_DELAY_MS = 1000;
 
 const subscriptions = new Map<string, WebhookSubscription>();
 
+let inMemoryWarningLogged = false;
+function warnIfInMemory(): void {
+  if (inMemoryWarningLogged) return;
+  inMemoryWarningLogged = true;
+  if (process.env.NODE_ENV === 'production') {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[webhooks] Using in-memory subscription store. Subscriptions will NOT survive restarts. ' +
+        'Set WEBHOOKS_STORE=database to enable persistence (not yet implemented).'
+    );
+  }
+}
+
+function isValidUrl(candidate: string): boolean {
+  try {
+    const u = new URL(candidate);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function subscribe(
   url: string,
   events: WebhookEventType[],
   tenantId: string,
   secret?: string
 ): WebhookSubscription {
+  if (!isValidUrl(url)) {
+    throw new Error('Webhook URL must be a valid http(s) URL');
+  }
+  if (!events.length) {
+    throw new Error('At least one webhook event type is required');
+  }
+  warnIfInMemory();
   const sub: WebhookSubscription = {
     id: uuidv4(),
     url,
@@ -54,11 +83,14 @@ export async function trigger(
     let lastError: string | undefined;
     for (let attempt = 0; attempt < retries; attempt++) {
       if (attempt > 0) {
-        await sleep(RETRY_DELAY_MS * attempt);
+        // Exponential backoff with jitter: base * 2^(attempt-1) + random 0-250ms
+        const backoff = RETRY_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 250);
+        await sleep(backoff);
       }
       const result = await deliver(sub.url, event, sub.secret);
       if (result.success) {
         delivered++;
+        lastError = undefined;
         break;
       }
       lastError = result.error;

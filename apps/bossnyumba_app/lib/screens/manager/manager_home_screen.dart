@@ -17,7 +17,12 @@ class ManagerHomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+            tooltip: 'Notifications',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No new notifications')),
+              );
+            },
           ),
         ],
       ),
@@ -59,12 +64,12 @@ class ManagerHomeScreen extends StatelessWidget {
           _QuickAction(
             icon: Icons.people,
             label: 'Occupancy',
-            onTap: () {},
+            onTap: () => context.go('/work-orders'),
           ),
           _QuickAction(
             icon: Icons.payments,
             label: 'Collections',
-            onTap: () {},
+            onTap: () => context.go('/payments'),
           ),
         ],
       ),

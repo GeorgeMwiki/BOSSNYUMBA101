@@ -13,4 +13,18 @@ class WorkOrdersService {
     if (data is List) return ApiResponse.ok(data);
     return ApiResponse.ok([]);
   }
+
+  Future<ApiResponse<Map<String, dynamic>>> create({
+    required String title,
+    required String description,
+    String priority = 'MEDIUM',
+    String? category,
+  }) async {
+    return _api.post<Map<String, dynamic>>('/work-orders', body: {
+      'title': title,
+      'description': description,
+      'priority': priority,
+      if (category != null && category.isNotEmpty) 'category': category,
+    });
+  }
 }

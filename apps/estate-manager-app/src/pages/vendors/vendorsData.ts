@@ -8,5 +8,3 @@ export interface VendorListItem {
   onTimePercentage: number;
   status: string;
 }
-
-export const mockVendors: VendorListItem[] = [];

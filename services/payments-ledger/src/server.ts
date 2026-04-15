@@ -244,16 +244,35 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 if (process.env.MPESA_CONSUMER_KEY) {
-  mpesaProvider = new MpesaPaymentProvider({
-    consumerKey: process.env.MPESA_CONSUMER_KEY,
-    consumerSecret: process.env.MPESA_CONSUMER_SECRET || '',
-    shortCode: process.env.MPESA_SHORT_CODE || process.env.MPESA_SHORTCODE || '',
-    passKey: process.env.MPESA_PASS_KEY || process.env.MPESA_PASSKEY || '',
-    environment: (process.env.MPESA_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
-    callbackBaseUrl: process.env.MPESA_CALLBACK_URL || ''
-  });
-  paymentOrchestrationService.registerProvider(mpesaProvider, { currencies: ['KES'] });
-  logger.info('M-PESA payment provider registered');
+  const consumerSecret = process.env.MPESA_CONSUMER_SECRET?.trim();
+  const shortCode = (process.env.MPESA_SHORT_CODE || process.env.MPESA_SHORTCODE)?.trim();
+  const passKey = (process.env.MPESA_PASS_KEY || process.env.MPESA_PASSKEY)?.trim();
+  const callbackBaseUrl = process.env.MPESA_CALLBACK_URL?.trim();
+
+  if (!consumerSecret || !shortCode || !passKey || !callbackBaseUrl) {
+    logger.error(
+      {
+        missing: {
+          MPESA_CONSUMER_SECRET: !consumerSecret,
+          MPESA_SHORT_CODE: !shortCode,
+          MPESA_PASS_KEY: !passKey,
+          MPESA_CALLBACK_URL: !callbackBaseUrl,
+        },
+      },
+      'M-PESA credentials incomplete; provider not registered'
+    );
+  } else {
+    mpesaProvider = new MpesaPaymentProvider({
+      consumerKey: process.env.MPESA_CONSUMER_KEY,
+      consumerSecret,
+      shortCode,
+      passKey,
+      environment: (process.env.MPESA_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+      callbackBaseUrl,
+    });
+    paymentOrchestrationService.registerProvider(mpesaProvider, { currencies: ['KES'] });
+    logger.info('M-PESA payment provider registered');
+  }
 }
 
 // =============================================================================
@@ -1142,8 +1161,12 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
       return res.status(400).json({ error: 'Missing stripe-signature header' });
     }
 
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-    
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret) {
+      logger.error('STRIPE_WEBHOOK_SECRET is not configured; rejecting webhook');
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
     // Verify and parse the webhook
     let event;
     try {

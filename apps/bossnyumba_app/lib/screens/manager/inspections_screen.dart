@@ -69,15 +69,41 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
               final inv = items[i] as Map<String, dynamic>;
               return Card(
                 child: ListTile(
-                  title: Text(inv['type'] ?? 'Inspection'),
+                  title: Text(inv['type']?.toString() ?? 'Inspection'),
                   subtitle: Text('${inv['scheduledAt'] ?? inv['date'] ?? ''} • ${inv['status'] ?? ''}'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showDetail(context, inv),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context, Map<String, dynamic> inv) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(inv['type']?.toString() ?? 'Inspection',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('Status: ${inv['status'] ?? '-'}'),
+            Text('Scheduled: ${inv['scheduledAt'] ?? inv['date'] ?? '-'}'),
+            if (inv['inspector'] != null) Text('Inspector: ${inv['inspector']}'),
+            if (inv['notes'] != null) ...[
+              const SizedBox(height: 12),
+              Text(inv['notes'].toString()),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

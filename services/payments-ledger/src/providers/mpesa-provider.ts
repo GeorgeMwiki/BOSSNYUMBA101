@@ -270,10 +270,9 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
     };
   }
 
-  async cancelPaymentIntent(externalId: string, reason?: string): Promise<void> {
-    // M-PESA STK Push cannot be cancelled once initiated
-    // It times out automatically after ~1 minute
-    console.warn(`M-PESA payment ${externalId} cannot be cancelled - will timeout`);
+  async cancelPaymentIntent(_externalId: string, _reason?: string): Promise<void> {
+    // M-PESA STK Push cannot be cancelled once initiated; it times out
+    // automatically after ~1 minute. This is a no-op by design.
   }
 
   async getPaymentIntentStatus(

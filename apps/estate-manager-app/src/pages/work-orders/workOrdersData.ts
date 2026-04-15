@@ -1,5 +1,3 @@
-import type { WorkOrderCardData } from '@/components/maintenance';
-
 export const KANBAN_COLUMNS = [
   { id: 'submitted', title: 'Submitted' },
   { id: 'triaged', title: 'Triaged' },
@@ -9,5 +7,3 @@ export const KANBAN_COLUMNS = [
 ] as const;
 
 export type KanbanColumnId = (typeof KANBAN_COLUMNS)[number]['id'];
-
-export const mockWorkOrders: WorkOrderCardData[] = [];
