@@ -2,34 +2,83 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
+import { Loader2, X, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { vendorsApi } from '@/lib/api';
 
 const categories = [
-  'plumbing',
-  'electrical',
-  'hvac',
-  'appliance',
-  'structural',
-  'pest_control',
-  'security',
-  'general',
+  'PLUMBING',
+  'ELECTRICAL',
+  'HVAC',
+  'APPLIANCE',
+  'STRUCTURAL',
+  'GENERAL',
 ];
+
+const vendorSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  type: z.enum(['company', 'individual']),
+  phone: z.string().min(7, 'Enter a valid phone number'),
+  email: z.string().email('Enter a valid email').optional().or(z.literal('')),
+  address: z.string().optional(),
+  selectedCategories: z
+    .array(z.string())
+    .min(1, 'Pick at least one service category'),
+  hourlyRate: z.string().optional(),
+  callOutFee: z.string().optional(),
+  paymentTerms: z.string(),
+});
+
+type VendorFormState = z.infer<typeof vendorSchema>;
+
+const emptyForm: VendorFormState = {
+  name: '',
+  type: 'company',
+  phone: '',
+  email: '',
+  address: '',
+  selectedCategories: [],
+  hourlyRate: '',
+  callOutFee: '',
+  paymentTerms: 'Net 30',
+};
 
 export default function VendorForm() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'company' as 'company' | 'individual',
-    phone: '',
-    email: '',
-    address: '',
-    selectedCategories: [] as string[],
-    hourlyRate: '',
-    callOutFee: '',
-    paymentTerms: 'Net 30',
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState<VendorFormState>(emptyForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const mutation = useMutation({
+    mutationFn: (values: VendorFormState) =>
+      vendorsApi.create({
+        name: values.name,
+        companyName: values.type === 'company' ? values.name : undefined,
+        email: values.email || '',
+        phone: values.phone,
+        categories: values.selectedCategories,
+        hourlyRate: values.hourlyRate ? Number(values.hourlyRate) : undefined,
+        callOutFee: values.callOutFee ? Number(values.callOutFee) : undefined,
+        paymentTerms: values.paymentTerms,
+        address: values.address || undefined,
+        isAvailable: true,
+      }),
+    onSuccess: (resp: { success?: boolean; error?: { message?: string } }) => {
+      if (resp?.success === false) {
+        setErrors({ form: resp.error?.message ?? 'Failed to create vendor' });
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      router.push('/vendors');
+    },
+    onError: (err) => {
+      setErrors({
+        form: err instanceof Error ? err.message : 'Failed to create vendor',
+      });
+    },
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleCategory = (cat: string) => {
     setFormData((prev) => ({
@@ -40,21 +89,34 @@ export default function VendorForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    router.push('/vendors');
+    setErrors({});
+    const parsed = vendorSchema.safeParse(formData);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0];
+        if (typeof path === 'string') fieldErrors[path] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return;
+    }
+    mutation.mutate(parsed.data);
   };
 
   return (
     <>
       <PageHeader title="Add Vendor" showBack />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
-        {/* Basic Info */}
+      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 max-w-2xl mx-auto">
+        {errors.form && (
+          <div className="card p-3 flex items-start gap-2 border-danger-200 bg-danger-50 text-danger-700 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>{errors.form}</div>
+          </div>
+        )}
+
         <div className="space-y-3">
           <label className="label">Vendor Name</label>
           <input
@@ -62,11 +124,10 @@ export default function VendorForm() {
             className="input"
             placeholder="Company or individual name"
             value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
+          {errors.name && <p className="text-xs text-danger-600 mt-1">{errors.name}</p>}
         </div>
 
         <div className="space-y-3">
@@ -93,7 +154,6 @@ export default function VendorForm() {
           </div>
         </div>
 
-        {/* Contact */}
         <div className="space-y-3">
           <label className="label">Phone</label>
           <input
@@ -101,11 +161,10 @@ export default function VendorForm() {
             className="input"
             placeholder="+254 7XX XXX XXX"
             value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
           />
+          {errors.phone && <p className="text-xs text-danger-600 mt-1">{errors.phone}</p>}
         </div>
 
         <div className="space-y-3">
@@ -115,10 +174,9 @@ export default function VendorForm() {
             className="input"
             placeholder="vendor@example.com"
             value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
+          {errors.email && <p className="text-xs text-danger-600 mt-1">{errors.email}</p>}
         </div>
 
         <div className="space-y-3">
@@ -127,14 +185,11 @@ export default function VendorForm() {
             type="text"
             className="input"
             placeholder="Physical address"
-            value={formData.address}
-            onChange={(e) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
+            value={formData.address ?? ''}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           />
         </div>
 
-        {/* Specializations */}
         <div className="space-y-3">
           <label className="label">Service Categories</label>
           <div className="flex flex-wrap gap-2">
@@ -144,45 +199,41 @@ export default function VendorForm() {
                 type="button"
                 onClick={() => toggleCategory(cat)}
                 className={`btn text-sm ${
-                  formData.selectedCategories.includes(cat)
-                    ? 'btn-primary'
-                    : 'btn-secondary'
+                  formData.selectedCategories.includes(cat) ? 'btn-primary' : 'btn-secondary'
                 }`}
               >
                 {cat.replace('_', ' ')}
-                {formData.selectedCategories.includes(cat) && (
-                  <X className="w-3 h-3 ml-1" />
-                )}
+                {formData.selectedCategories.includes(cat) && <X className="w-3 h-3 ml-1" />}
               </button>
             ))}
           </div>
+          {errors.selectedCategories && (
+            <p className="text-xs text-danger-600 mt-1">{errors.selectedCategories}</p>
+          )}
         </div>
 
-        {/* Rate Card */}
         <div className="card p-4 space-y-3">
           <h3 className="font-medium">Rate Card</h3>
           <div>
             <label className="label">Hourly Rate (KES)</label>
             <input
-              type="text"
+              type="number"
+              inputMode="decimal"
               className="input"
               placeholder="2500"
               value={formData.hourlyRate}
-              onChange={(e) =>
-                setFormData({ ...formData, hourlyRate: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
             />
           </div>
           <div>
             <label className="label">Call-out Fee (KES)</label>
             <input
-              type="text"
+              type="number"
+              inputMode="decimal"
               className="input"
               placeholder="1500"
               value={formData.callOutFee}
-              onChange={(e) =>
-                setFormData({ ...formData, callOutFee: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, callOutFee: e.target.value })}
             />
           </div>
           <div>
@@ -190,9 +241,7 @@ export default function VendorForm() {
             <select
               className="input"
               value={formData.paymentTerms}
-              onChange={(e) =>
-                setFormData({ ...formData, paymentTerms: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
             >
               <option value="Net 7">Net 7</option>
               <option value="Net 15">Net 15</option>
@@ -202,21 +251,17 @@ export default function VendorForm() {
           </div>
         </div>
 
-        {/* Submit */}
         <div className="flex gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="btn-secondary flex-1"
-          >
+          <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="btn-primary flex-1"
+            disabled={mutation.isPending}
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
-            {isSubmitting ? 'Saving...' : 'Add Vendor'}
+            {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Add Vendor
           </button>
         </div>
       </form>

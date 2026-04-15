@@ -19,6 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { inspectionsApi } from '@/lib/api';
 
 type InspectionType = 'move_in' | 'move_out' | 'routine' | 'pre_lease';
 type ConditionRating = 'excellent' | 'good' | 'fair' | 'poor' | 'not_applicable';
@@ -115,6 +116,9 @@ export default function ConductInspectionPage() {
   const [showSignatureStep, setShowSignatureStep] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,8 +147,8 @@ export default function ConductInspectionPage() {
     }
   }, [showSignatureStep]);
 
-  const handlePhotoCapture = (itemId: string, file: File) => {
-    const url = URL.createObjectURL(file);
+  const handlePhotoCapture = async (itemId: string, file: File) => {
+    const tempUrl = URL.createObjectURL(file);
     const photoId = `photo_${Date.now()}`;
 
     setAreas((prev) =>
@@ -152,11 +156,39 @@ export default function ConductInspectionPage() {
         ...area,
         items: area.items.map((item) =>
           item.id === itemId
-            ? { ...item, photos: [...item.photos, { id: photoId, url }] }
+            ? { ...item, photos: [...item.photos, { id: photoId, url: tempUrl }] }
             : item
         ),
       }))
     );
+
+    try {
+      const result = await inspectionsApi.uploadPhoto(
+        String(params.id),
+        file,
+        itemId
+      );
+      const remoteUrl = result.data?.url ?? result.url;
+      if (remoteUrl) {
+        setAreas((prev) =>
+          prev.map((area) => ({
+            ...area,
+            items: area.items.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    photos: item.photos.map((p) =>
+                      p.id === photoId ? { ...p, url: remoteUrl } : p
+                    ),
+                  }
+                : item
+            ),
+          }))
+        );
+      }
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Photo upload failed');
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,29 +312,83 @@ export default function ConductInspectionPage() {
     }
   };
 
+  const serializeItems = () =>
+    areas.flatMap((area) =>
+      area.items.map((item) => ({
+        area: area.name,
+        item: item.name,
+        condition: item.condition,
+        notes: item.notes || undefined,
+        requiresAction: item.condition === 'poor' || item.condition === 'fair',
+        photoUrls: item.photos.map((p) => p.url),
+      }))
+    );
+
+  const serializeMeters = () =>
+    meterReadings
+      .filter((m) => m.reading.trim() !== '')
+      .map((m) => ({
+        type: m.type,
+        reading: Number(m.reading),
+        unit: m.unit,
+        photoUrl: m.photo,
+      }));
+
+  const handleSaveDraft = async () => {
+    setSubmitError(null);
+    setIsSavingDraft(true);
+    try {
+      await inspectionsApi.saveDraft(String(params.id), {
+        items: serializeItems(),
+        meterReadings: serializeMeters(),
+      });
+      setDraftSaved(new Date().toLocaleTimeString());
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save draft');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!signature) {
       saveSignature();
       return;
     }
 
+    setSubmitError(null);
     setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise((r) => setTimeout(r, 2000));
 
-    // Save inspection data
-    const inspectionData = {
-      id: params.id,
-      type: inspectionType,
-      areas,
-      meterReadings,
-      signature,
-      completedAt: new Date().toISOString(),
-    };
-    console.log('Inspection data:', inspectionData);
+    try {
+      const conditionOrder: Record<ConditionRating, number> = {
+        poor: 0,
+        fair: 1,
+        good: 2,
+        excellent: 3,
+        not_applicable: 4,
+      };
+      const worstRating = areas
+        .flatMap((a) => a.items)
+        .filter((i) => i.condition !== 'not_applicable')
+        .reduce<ConditionRating>((worst, item) => {
+          return conditionOrder[item.condition] < conditionOrder[worst]
+            ? item.condition
+            : worst;
+        }, 'excellent');
 
-    router.push(`/inspections/${params.id}?completed=true`);
+      await inspectionsApi.complete(String(params.id), {
+        overallCondition: worstRating,
+        summary: `Inspection completed with ${areas.length} areas reviewed.`,
+        customerPresent: true,
+        customerSignatureUrl: signature,
+        inspectorSignatureUrl: signature,
+      });
+
+      router.push(`/inspections/${params.id}?completed=true`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit inspection');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -570,7 +656,34 @@ export default function ConductInspectionPage() {
       </div>
 
       {/* Fixed Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 space-y-2">
+        {submitError && (
+          <div className="p-2 bg-danger-50 text-danger-600 rounded-lg text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{submitError}</span>
+          </div>
+        )}
+        {draftSaved && (
+          <div className="p-2 bg-success-50 text-success-700 rounded-lg text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 flex-shrink-0" />
+            Draft saved at {draftSaved}
+          </div>
+        )}
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+            className="text-xs text-primary-600 hover:text-primary-800 disabled:opacity-50 flex items-center gap-1"
+          >
+            {isSavingDraft ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Save className="w-3 h-3" />
+            )}
+            Save Draft
+          </button>
+        </div>
         <div className="flex gap-3">
           <button onClick={goToPrevArea} className="btn-secondary flex-1 py-4">
             <ChevronLeft className="w-5 h-5 mr-1" />

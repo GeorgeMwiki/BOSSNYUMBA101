@@ -13,6 +13,8 @@ import {
   schedulingService,
   reportsService,
   workOrdersService,
+  vendorsService,
+  inspectionsService,
   type Message,
   type Conversation,
   type ScheduleEvent,
@@ -263,7 +265,122 @@ export const paymentsApi = {
   },
 };
 
+// ─── Vendors ──────────────────────────────────────────────────────
+export interface CreateVendorPayload {
+  name: string;
+  companyName?: string;
+  email: string;
+  phone: string;
+  categories: string[];
+  hourlyRate?: number;
+  callOutFee?: number;
+  paymentTerms?: string;
+  address?: string;
+  isAvailable?: boolean;
+}
+
+export const vendorsApi = {
+  list: vendorsService.list.bind(vendorsService),
+  get: vendorsService.get.bind(vendorsService),
+  async create(request: CreateVendorPayload) {
+    return getApiClient().post('/vendors', request);
+  },
+  update: vendorsService.update.bind(vendorsService),
+  remove: vendorsService.delete.bind(vendorsService),
+};
+
+// ─── Inspections ──────────────────────────────────────────────────
+export interface InspectionItemPayload {
+  area: string;
+  item: string;
+  condition: string;
+  notes?: string;
+  requiresAction: boolean;
+  photoUrls?: string[];
+}
+
+export interface MeterReadingPayload {
+  type: string;
+  reading: number;
+  unit: string;
+  photoUrl?: string;
+}
+
+export interface InspectionDraftPayload {
+  items: InspectionItemPayload[];
+  meterReadings?: MeterReadingPayload[];
+}
+
+export interface InspectionCompletePayload {
+  overallCondition: string;
+  summary: string;
+  items: InspectionItemPayload[];
+  meterReadings?: MeterReadingPayload[];
+  customerSignatureUrl?: string;
+  inspectorSignatureUrl?: string;
+  customerPresent?: boolean;
+}
+
+export const inspectionsApi = {
+  get: inspectionsService.get.bind(inspectionsService),
+  start: inspectionsService.start.bind(inspectionsService),
+  complete: inspectionsService.complete.bind(inspectionsService),
+  async saveDraft(id: string, payload: InspectionDraftPayload) {
+    return getApiClient().patch(`/inspections/${id}/draft`, payload);
+  },
+  async uploadPhoto(id: string, file: File, areaLabel?: string) {
+    const form = new FormData();
+    form.append('file', file);
+    if (areaLabel) form.append('area', areaLabel);
+    const client = getApiClient() as unknown as {
+      baseUrl: string;
+      defaultHeaders?: Record<string, string>;
+    };
+    const baseUrl = (client.baseUrl ?? '').replace(/\/$/, '');
+    const token =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${baseUrl}/inspections/${id}/photos`, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.status}`);
+    }
+    return (await response.json()) as { data?: { url: string }; url?: string };
+  },
+};
+
+// ─── Users / Profile ──────────────────────────────────────────────
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  avatarUrl?: string;
+}
+
+export const usersApi = {
+  async me() {
+    return getApiClient().get<UserProfile>('/users/me');
+  },
+  async updateProfile(payload: Partial<UserProfile>) {
+    return getApiClient().patch<UserProfile>('/users/me', payload);
+  },
+  async changePassword(payload: { currentPassword: string; newPassword: string }) {
+    return getApiClient().post('/users/me/password', payload);
+  },
+};
+
 // ─── Work-order helpers ───────────────────────────────────────────
+export interface WorkOrderAttachmentPayload {
+  url: string;
+  type: 'before' | 'after' | 'other';
+  caption?: string;
+}
+
 export const workOrdersApi = {
   list: workOrdersService.list.bind(workOrdersService),
   get: workOrdersService.get.bind(workOrdersService),
@@ -278,6 +395,28 @@ export const workOrdersApi = {
   resumeSLA: workOrdersService.resumeSLA.bind(workOrdersService),
   escalate: workOrdersService.escalate.bind(workOrdersService),
   cancel: workOrdersService.cancel.bind(workOrdersService),
+  async uploadAttachment(id: string, file: File, type: 'before' | 'after' | 'other' = 'other') {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('type', type);
+    const client = getApiClient() as unknown as { baseUrl: string };
+    const baseUrl = (client.baseUrl ?? '').replace(/\/$/, '');
+    const token =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${baseUrl}/work-orders/${id}/attachments`, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+    return (await response.json()) as { data?: { url: string } };
+  },
+  async signOff(
+    id: string,
+    payload: { tenantSignatureUrl: string; technicianSignatureUrl: string; notes?: string }
+  ) {
+    return getApiClient().post(`/work-orders/${id}/sign-off`, payload);
+  },
 };
 
 // ─── Formatters ───────────────────────────────────────────────────

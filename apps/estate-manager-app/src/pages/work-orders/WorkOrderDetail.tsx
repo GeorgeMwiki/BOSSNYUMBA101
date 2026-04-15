@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -36,6 +36,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
+import { workOrdersApi } from '@/lib/api';
 
 interface Material {
   id: string;
@@ -97,7 +98,16 @@ export default function WorkOrderDetail() {
   // Sign-off state
   const [showSignOffModal, setShowSignOffModal] = useState(false);
   const [signOffStep, setSignOffStep] = useState<'technician' | 'tenant' | 'manager'>('technician');
-  const [signatureDrawn, setSignatureDrawn] = useState(false);
+  const [technicianSignature, setTechnicianSignature] = useState<string | null>(null);
+  const [tenantSignature, setTenantSignature] = useState<string | null>(null);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawingSig, setIsDrawingSig] = useState(false);
+
+  // Photo upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingPhotoType = useRef<'before' | 'after'>('before');
+  const [uploadingPhoto, setUploadingPhoto] = useState<'before' | 'after' | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Vendor assignment state
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -249,9 +259,29 @@ export default function WorkOrderDetail() {
   };
 
   const addPhoto = (type: 'before' | 'after') => {
-    const photoUrl = `/photo-${Date.now()}.jpg`;
-    if (type === 'before') setBeforePhotos([...beforePhotos, photoUrl]);
-    else setAfterPhotos([...afterPhotos, photoUrl]);
+    pendingPhotoType.current = type;
+    setUploadError(null);
+    fileInputRef.current?.setAttribute('capture', 'environment');
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+    const type = pendingPhotoType.current;
+    setUploadingPhoto(type);
+    try {
+      const result = await workOrdersApi.uploadAttachment(workOrderId, file, type);
+      const url = result.data?.url;
+      if (!url) throw new Error('Upload response did not include a URL');
+      if (type === 'before') setBeforePhotos((prev) => [...prev, url]);
+      else setAfterPhotos((prev) => [...prev, url]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingPhoto(null);
+    }
   };
 
   const removePhoto = (type: 'before' | 'after', index: number) => {
@@ -263,15 +293,88 @@ export default function WorkOrderDetail() {
     completeMutation.mutate();
   };
 
-  const handleSignOff = async () => {
-    if (signOffStep === 'technician') {
-      setSignOffStep('tenant');
-      setSignatureDrawn(false);
-    } else if (signOffStep === 'tenant') {
-      setSignOffStep('manager');
-      setSignatureDrawn(false);
-    } else {
+  const signOffMutation = useMutation({
+    mutationFn: (payload: { tenantSignatureUrl: string; technicianSignatureUrl: string }) =>
+      workOrdersApi.signOff(workOrderId, { ...payload, notes: workNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrder', workOrderId] });
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
       setShowSignOffModal(false);
+    },
+  });
+
+  // Canvas drawing helpers for signature capture
+  useEffect(() => {
+    if (!showSignOffModal) return;
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+    }
+  }, [showSignOffModal, signOffStep]);
+
+  const startDrawingSig = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = signatureCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    setIsDrawingSig(true);
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.nativeEvent.offsetX;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.nativeEvent.offsetY;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const drawSig = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawingSig) return;
+    const canvas = signatureCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.nativeEvent.offsetX;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.nativeEvent.offsetY;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawingSig = () => setIsDrawingSig(false);
+
+  const clearSigCanvas = () => {
+    const canvas = signatureCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const captureSignatureForStep = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return null;
+    return canvas.toDataURL('image/png');
+  };
+
+  const handleSignOff = async () => {
+    const dataUrl = captureSignatureForStep();
+    if (!dataUrl) return;
+    if (signOffStep === 'technician') {
+      setTechnicianSignature(dataUrl);
+      setSignOffStep('tenant');
+      clearSigCanvas();
+    } else if (signOffStep === 'tenant') {
+      setTenantSignature(dataUrl);
+      setSignOffStep('manager');
+      clearSigCanvas();
+    } else {
+      if (!technicianSignature || !tenantSignature) return;
+      signOffMutation.mutate({
+        technicianSignatureUrl: technicianSignature,
+        tenantSignatureUrl: tenantSignature,
+      });
     }
   };
 
@@ -326,6 +429,14 @@ export default function WorkOrderDetail() {
             Vendor
           </button>
         }
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoFileChange}
       />
 
       <div className="px-4 py-4 space-y-6 pb-32">

@@ -4,14 +4,23 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Camera,
   CheckCircle,
-  AlertTriangle,
   Loader2,
-  Image as ImageIcon,
   X,
   PenLine,
   User,
   Wrench,
 } from 'lucide-react';
+import { workOrdersApi } from '@/lib/api';
+
+interface DualSignOffCompletionData {
+  tenantSignature: string;
+  technicianSignature: string;
+  beforePhotos: string[];
+  afterPhotos: string[];
+  notes: string;
+  materialsUsed: string;
+  laborHours: string;
+}
 
 interface DualSignOffProps {
   workOrder: {
@@ -20,7 +29,7 @@ interface DualSignOffProps {
     customer: { name: string };
     assignedVendor?: { name: string };
   };
-  onComplete: (tenantSignature: string, technicianSignature: string) => void;
+  onComplete: (data: DualSignOffCompletionData) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -36,10 +45,14 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
   const [tenantSignature, setTenantSignature] = useState<string | null>(null);
   const [technicianSignature, setTechnicianSignature] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFor, setUploadingFor] = useState<'before' | 'after' | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingPhotoType = useRef<'before' | 'after'>('before');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentSigner, setCurrentSigner] = useState<'tenant' | 'technician' | null>(null);
 
   // Canvas signature drawing
   useEffect(() => {
@@ -110,20 +123,51 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
   };
 
   const handlePhotoAdd = (type: 'before' | 'after') => {
-    // Simulate photo capture
-    const newPhoto = `/photo-${Date.now()}.jpg`;
-    if (type === 'before') {
-      setBeforePhotos((prev) => [...prev, newPhoto]);
-    } else {
-      setAfterPhotos((prev) => [...prev, newPhoto]);
+    setUploadError(null);
+    pendingPhotoType.current = type;
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute('capture', 'environment');
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+
+    const type = pendingPhotoType.current;
+    setUploadingFor(type);
+    setUploadError(null);
+    try {
+      const result = await workOrdersApi.uploadAttachment(workOrder.id, file, type);
+      const url = result.data?.url;
+      if (!url) throw new Error('Upload response did not include a URL');
+      if (type === 'before') setBeforePhotos((prev) => [...prev, url]);
+      else setAfterPhotos((prev) => [...prev, url]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingFor(null);
     }
   };
 
   const handleSubmit = async () => {
     if (!tenantSignature || !technicianSignature) return;
     setSubmitting(true);
-    await onComplete(tenantSignature, technicianSignature);
-    setSubmitting(false);
+    try {
+      await onComplete({
+        tenantSignature,
+        technicianSignature,
+        beforePhotos,
+        afterPhotos,
+        notes,
+        materialsUsed,
+        laborHours,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const steps = [
@@ -139,6 +183,13 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -176,13 +227,19 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
               Upload before and after photos to document the completed work.
             </p>
 
+            {uploadError && (
+              <div className="p-2 bg-danger-50 text-danger-600 rounded-lg text-xs">
+                {uploadError}
+              </div>
+            )}
+
             {/* Before Photos */}
             <div>
               <label className="label">Before Photos</label>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {beforePhotos.map((photo, idx) => (
-                  <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative">
-                    <ImageIcon className="w-6 h-6 text-gray-400 absolute inset-0 m-auto" />
+                  <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative overflow-hidden">
+                    <img src={photo} alt="Before" className="w-full h-full object-cover" />
                     <button
                       onClick={() => setBeforePhotos((prev) => prev.filter((_, i) => i !== idx))}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-danger-500 rounded-full text-white"
@@ -192,11 +249,19 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                   </div>
                 ))}
                 <button
+                  type="button"
                   onClick={() => handlePhotoAdd('before')}
-                  className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"
+                  disabled={uploadingFor !== null}
+                  className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 disabled:opacity-50"
                 >
-                  <Camera className="w-5 h-5" />
-                  <span className="text-xs mt-1">Add</span>
+                  {uploadingFor === 'before' ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5" />
+                      <span className="text-xs mt-1">Add</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -206,8 +271,8 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
               <label className="label">After Photos (showing completed work)</label>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {afterPhotos.map((photo, idx) => (
-                  <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative">
-                    <ImageIcon className="w-6 h-6 text-gray-400 absolute inset-0 m-auto" />
+                  <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative overflow-hidden">
+                    <img src={photo} alt="After" className="w-full h-full object-cover" />
                     <button
                       onClick={() => setAfterPhotos((prev) => prev.filter((_, i) => i !== idx))}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-danger-500 rounded-full text-white"
@@ -217,11 +282,19 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                   </div>
                 ))}
                 <button
+                  type="button"
                   onClick={() => handlePhotoAdd('after')}
-                  className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"
+                  disabled={uploadingFor !== null}
+                  className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 disabled:opacity-50"
                 >
-                  <Camera className="w-5 h-5" />
-                  <span className="text-xs mt-1">Add</span>
+                  {uploadingFor === 'after' ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5" />
+                      <span className="text-xs mt-1">Add</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

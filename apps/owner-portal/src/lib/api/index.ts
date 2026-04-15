@@ -71,4 +71,114 @@ export const maintenanceApi = {
     api.post(`/owner/approvals/${id}/approve`, { comment }),
   reject: (id: string, reason: string) =>
     api.post(`/owner/approvals/${id}/reject`, { reason }),
+  getWorkOrder: (id: string) => api.get(`/owner/work-orders/${id}`),
+  listComments: (id: string) =>
+    api.get<Array<{ id: string; author: string; content: string; createdAt: string }>>(
+      `/owner/work-orders/${id}/comments`
+    ),
+  addComment: (id: string, content: string) =>
+    api.post(`/owner/work-orders/${id}/comments`, { content }),
+};
+
+// ─── Tenants (owner view) ─────────────────────────────────────────
+export interface OwnerTenant {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  propertyId: string;
+  propertyName: string;
+  unitNumber: string;
+  leaseEndDate: string;
+  rentAmount: number;
+  status: string;
+}
+
+export interface OwnerTenantConversation {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  propertyName: string;
+  unitNumber: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount?: number;
+}
+
+export const tenantsApi = {
+  list: () => api.get<OwnerTenant[]>('/tenants'),
+  conversations: () =>
+    api.get<OwnerTenantConversation[]>('/tenants/communications'),
+};
+
+// ─── Vendors (owner view) ─────────────────────────────────────────
+export interface OwnerVendor {
+  id: string;
+  name: string;
+  type: string;
+  email?: string;
+  phone?: string;
+  status: string;
+  propertiesCount?: number;
+}
+
+export const ownerVendorsApi = {
+  list: () => api.get<OwnerVendor[]>('/vendors'),
+};
+
+// ─── Auth / Invitations ───────────────────────────────────────────
+export const authApi = {
+  login: (email: string, password: string) =>
+    api.post<{
+      token?: string;
+      requiresMfa?: boolean;
+      mfaSetupRequired?: boolean;
+      tempToken?: string;
+      mfaSecret?: string;
+      qrCodeUrl?: string;
+    }>('/auth/login', { email, password }),
+  register: (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+    companyName?: string;
+  }) => api.post('/auth/register', payload),
+  verifyEmail: (email: string, code: string) =>
+    api.post('/auth/verify-email', { email, code }),
+  mfaSetup: (email: string) =>
+    api.post<{
+      secret: string;
+      qrCodeUrl: string;
+      backupCodes: string[];
+    }>('/auth/mfa/setup', { email }),
+  mfaVerify: (payload: { email?: string; code: string; tempToken?: string }) =>
+    api.post('/auth/mfa/verify', payload),
+  invite: {
+    get: (token: string) =>
+      api.get<{
+        inviteId: string;
+        email: string;
+        role: string;
+        inviterName: string;
+        organizationName: string;
+        propertyName?: string;
+        expiresAt: string;
+      }>(`/auth/invite/${token}`),
+    accept: (payload: {
+      token: string;
+      firstName: string;
+      lastName: string;
+      password: string;
+    }) => api.post('/auth/accept-invite', payload),
+  },
+  sendCoOwnerInvite: (payload: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    propertyIds: string[];
+    message?: string;
+  }) => api.post('/invitations/co-owner', payload),
 };
