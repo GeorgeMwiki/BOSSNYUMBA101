@@ -50,8 +50,9 @@ export default function MaintenanceFeedbackPage() {
   const handleSubmit = async () => {
     if (overallRating === 0) return;
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      await fetch(`/api/v1/work-orders/${ticketId}/feedback`, {
+      const response = await fetch(`/api/v1/work-orders/${ticketId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,7 +63,12 @@ export default function MaintenanceFeedbackPage() {
           wouldRecommend,
         }),
       });
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback (${response.status})`);
+      }
       setIsSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit feedback');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,6 +188,11 @@ export default function MaintenanceFeedbackPage() {
 
       {overallRating > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+          {submitError && (
+            <div className="mb-3 rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+              {submitError}
+            </div>
+          )}
           <button onClick={handleSubmit} disabled={isSubmitting} className="btn-primary w-full py-4 text-base font-semibold flex items-center justify-center gap-2">
             {isSubmitting ? (
               <>

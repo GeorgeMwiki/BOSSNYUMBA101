@@ -35,15 +35,19 @@ export default function BudgetsPage() {
     Promise.all([
       api.get<BudgetSummary>('/budgets/summary'),
       api.get<typeof properties>('/properties'),
-    ]).then(([budgetRes, propertiesRes]) => {
-      if (budgetRes.success && budgetRes.data) {
-        setBudget(budgetRes.data);
-      }
-      if (propertiesRes.success && propertiesRes.data) {
-        setProperties(propertiesRes.data);
-      }
-      setLoading(false);
-    });
+    ])
+      .then(([budgetRes, propertiesRes]) => {
+        if (budgetRes.success && budgetRes.data) {
+          setBudget(budgetRes.data);
+        }
+        if (propertiesRes.success && propertiesRes.data) {
+          setProperties(propertiesRes.data);
+        }
+      })
+      .catch(() => {
+        // Fallbacks render below when state remains null/empty
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const displayBudget = budget || {

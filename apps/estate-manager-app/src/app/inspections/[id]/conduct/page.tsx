@@ -19,6 +19,8 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { inspectionsService } from '@bossnyumba/api-client';
+import type { InspectionId, ConditionRating as DomainConditionRating } from '@bossnyumba/domain-models';
 
 type InspectionType = 'move_in' | 'move_out' | 'routine' | 'pre_lease';
 type ConditionRating = 'excellent' | 'good' | 'fair' | 'poor' | 'not_applicable';
@@ -115,6 +117,7 @@ export default function ConductInspectionPage() {
   const [showSignatureStep, setShowSignatureStep] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);

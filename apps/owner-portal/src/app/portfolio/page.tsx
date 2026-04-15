@@ -37,15 +37,19 @@ export default function PortfolioPage() {
     Promise.all([
       api.get<PortfolioSummary>('/portfolio/summary'),
       api.get<typeof properties>('/properties'),
-    ]).then(([summaryRes, propertiesRes]) => {
-      if (summaryRes.success && summaryRes.data) {
-        setPortfolio(summaryRes.data);
-      }
-      if (propertiesRes.success && propertiesRes.data) {
-        setProperties(propertiesRes.data);
-      }
-      setLoading(false);
-    });
+    ])
+      .then(([summaryRes, propertiesRes]) => {
+        if (summaryRes.success && summaryRes.data) {
+          setPortfolio(summaryRes.data);
+        }
+        if (propertiesRes.success && propertiesRes.data) {
+          setProperties(propertiesRes.data);
+        }
+      })
+      .catch(() => {
+        // Fallbacks render below when state remains null/empty
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
