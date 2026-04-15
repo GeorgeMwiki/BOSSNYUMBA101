@@ -51,6 +51,14 @@ import {
   MockAIProvider,
 } from './providers/ai-provider.js';
 import {
+  AnthropicProvider,
+  AnthropicProviderConfig,
+} from './providers/anthropic-provider.js';
+import {
+  DEFAULT_MODEL_DEFAULTS,
+  ModelDefaults,
+} from './providers/model-defaults.js';
+import {
   ReviewService,
   createReviewService,
   ReviewDecisionInput,
@@ -94,7 +102,9 @@ export interface GraphIntelligenceConfig {
  * AI Copilot configuration
  */
 export interface AICopilotConfig {
-  /** OpenAI configuration (required for production) */
+  /** Anthropic Claude configuration (preferred for production) */
+  anthropic?: AnthropicProviderConfig;
+  /** OpenAI configuration (legacy/alt provider) */
   openai?: OpenAIProviderConfig;
   /** Use mock provider for testing */
   useMockProvider?: boolean;
@@ -104,6 +114,8 @@ export interface AICopilotConfig {
   registerDefaultPrompts?: boolean;
   /** Graph intelligence configuration */
   graphIntelligence?: GraphIntelligenceConfig;
+  /** Model selection overrides per task class */
+  modelDefaults?: Partial<ModelDefaults>;
 }
 
 /**
@@ -130,6 +142,7 @@ export class AICopilot {
   private reviewService: ReviewService;
   private predictionEngine: PredictionEngine;
   private governanceService: AIGovernanceService;
+  private modelDefaults: ModelDefaults;
   
   // Domain copilots
   private maintenanceTriageCopilot: MaintenanceTriageCopilot;
@@ -145,13 +158,32 @@ export class AICopilot {
     // Initialize prompt registry
     this.promptRegistry = createPromptRegistry();
     
-    // Initialize AI provider registry
+    // Initialize AI provider registry.
+    // Priority: mock (for tests) > anthropic (preferred) > openai (legacy).
     this.providerRegistry = new AIProviderRegistry();
     if (config.useMockProvider) {
       this.providerRegistry.register(new MockAIProvider(), true);
-    } else if (config.openai) {
-      this.providerRegistry.register(new OpenAIProvider(config.openai), true);
+    } else {
+      if (config.anthropic) {
+        this.providerRegistry.register(new AnthropicProvider(config.anthropic), true);
+      }
+      if (config.openai) {
+        this.providerRegistry.register(
+          new OpenAIProvider(config.openai),
+          !config.anthropic
+        );
+      }
     }
+
+    // Resolve model defaults
+    this.modelDefaults = {
+      ...DEFAULT_MODEL_DEFAULTS,
+      ...(config.modelDefaults ?? {}),
+      taskRouting: {
+        ...DEFAULT_MODEL_DEFAULTS.taskRouting,
+        ...(config.modelDefaults?.taskRouting ?? {}),
+      },
+    };
     
     // Initialize review service
     this.reviewService = createReviewService(undefined, config.reviewPolicy);
@@ -563,6 +595,16 @@ export class AICopilot {
   /** Get the governance service */
   get governance(): AIGovernanceService {
     return this.governanceService;
+  }
+
+  /** Get the AI provider registry */
+  get providers(): AIProviderRegistry {
+    return this.providerRegistry;
+  }
+
+  /** Get model defaults (task routing) */
+  get models(): ModelDefaults {
+    return this.modelDefaults;
   }
 }
 
