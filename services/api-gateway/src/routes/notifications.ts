@@ -112,14 +112,17 @@ async function callUpstream(
 }
 
 /** Forward an upstream Response back to the caller. */
-async function forward(c: any, res: Response) {
+async function forward(c: Context, res: Response) {
   const contentType = res.headers.get('content-type') || '';
+  // Hono's c.json/c.text expect a narrow StatusCode union; upstream may
+  // surface any HTTP number, so cast explicitly to the Hono StatusCode.
+  const status = res.status as import('hono/utils/http-status').StatusCode;
   if (contentType.includes('application/json')) {
     const data = await res.json().catch(() => null);
-    return c.json(data ?? { success: res.ok }, res.status as any);
+    return c.json(data ?? { success: res.ok }, status);
   }
   const text = await res.text().catch(() => '');
-  return c.text(text, res.status as any);
+  return c.text(text, status);
 }
 
 /** Decide whether an error from `fetch` is a network-level failure. */
@@ -145,7 +148,7 @@ function isNetworkError(err: unknown): boolean {
 
 /** Wrap an upstream call so network failures render as 503 NOTIFICATIONS_UNAVAILABLE. */
 async function proxy(
-  c: any,
+  c: Context,
   fn: () => Promise<Response>
 ): Promise<Response> {
   try {

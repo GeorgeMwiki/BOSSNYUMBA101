@@ -18,6 +18,8 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
+  bool get hasToken => _token != null;
+
   /// Register a callback to be invoked when the API returns 401 Unauthorized.
   /// Typically wired to AuthProvider.logout() so the session is cleared and
   /// the router bounces the user to /login.

@@ -21,15 +21,32 @@ interface Property {
 export function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<Property[]>('/properties').then((response) => {
-      if (response.success && response.data) {
-        setProperties(response.data);
-      }
-      setLoading(false);
-    });
+    let cancelled = false;
+    api
+      .get<Property[]>('/properties')
+      .then((response) => {
+        if (cancelled) return;
+        if (response.success && response.data) {
+          setProperties(response.data);
+          setError(null);
+        } else {
+          setError(response.error?.message || 'Unable to load properties');
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Unable to load properties');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filteredProperties = properties.filter((p) =>
@@ -41,6 +58,20 @@ export function PropertiesPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -105,7 +136,9 @@ export function PropertiesPage() {
                 <div className="text-right">
                   <span className="text-sm font-medium text-blue-600">
                     {formatPercentage(
-                      (property.occupiedUnits / property.totalUnits) * 100
+                      property.totalUnits > 0
+                        ? (property.occupiedUnits / property.totalUnits) * 100
+                        : 0
                     )}{' '}
                     occupancy
                   </span>

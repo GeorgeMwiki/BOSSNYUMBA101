@@ -261,7 +261,9 @@ class AuthProvider extends ChangeNotifier {
   /// Called by ApiClient when any request returns 401. Clears local session
   /// so the router's redirect logic bounces to /login on the next tick.
   Future<void> _onUnauthorized() async {
-    if (_session == null && _api == _api) return;
+    // If we're already signed out, nothing to tear down — avoids a redundant
+    // notifyListeners() storm when multiple in-flight requests 401 at once.
+    if (_session == null && _api.hasToken == false) return;
     await _storage.delete(key: 'access_token');
     _api.setToken(null);
     _session = null;

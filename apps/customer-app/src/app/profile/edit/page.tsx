@@ -1,16 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Phone, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
+import { api } from '@/lib/api';
 
-// Mock initial data
-const initialData = {
-  firstName: 'John',
-  lastName: 'Kamau',
-  email: 'john.kamau@example.com',
+interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+}
+
+const emptyProfile: ProfileFormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
   phone: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -18,11 +27,46 @@ const initialData = {
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [formData, setFormData] = useState(initialData);
-  const [emailVerified] = useState(true);
-  const [phoneVerified] = useState(true);
+  const [formData, setFormData] = useState<ProfileFormData>(emptyProfile);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const profile = (await api.profile.get()) as Partial<ProfileFormData> & {
+          emailVerified?: boolean;
+          phoneVerified?: boolean;
+        };
+        if (cancelled) return;
+        setFormData({
+          firstName: profile.firstName ?? '',
+          lastName: profile.lastName ?? '',
+          email: profile.email ?? '',
+          phone: profile.phone ?? '',
+          emergencyContactName: profile.emergencyContactName ?? '',
+          emergencyContactPhone: profile.emergencyContactPhone ?? '',
+        });
+        setEmailVerified(Boolean(profile.emailVerified));
+        setPhoneVerified(Boolean(profile.phoneVerified));
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : 'Failed to load profile');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,16 +80,42 @@ export default function EditProfilePage() {
     setMessage(null);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await api.profile.update({ ...formData });
       setMessage({ type: 'success', text: 'Profile updated successfully' });
       setTimeout(() => router.back(), 1500);
-    } catch {
-      setMessage({ type: 'error', text: 'Failed to update profile' });
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to update profile',
+      });
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="Edit Profile" showBack />
+        <div className="px-4 py-4">
+          <div className="card p-4 text-sm text-gray-500">Loading profile...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <>
+        <PageHeader title="Edit Profile" showBack />
+        <div className="px-4 py-4">
+          <div className="card border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+            {loadError}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

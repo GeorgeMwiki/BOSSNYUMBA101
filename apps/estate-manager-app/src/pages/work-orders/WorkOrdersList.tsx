@@ -6,6 +6,15 @@ import { Plus } from 'lucide-react';
 import { workOrdersService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
+interface WorkOrderListRow {
+  id: string;
+  title?: string;
+  workOrderNumber?: string;
+  ticketNumber?: string;
+  status?: string;
+  priority?: string;
+}
+
 export default function WorkOrdersList() {
   const workOrdersQuery = useQuery({
     queryKey: ['work-orders-list-live'],
@@ -13,7 +22,7 @@ export default function WorkOrdersList() {
     retry: false,
   });
 
-  const workOrders = workOrdersQuery.data?.data ?? [];
+  const workOrders: WorkOrderListRow[] = (workOrdersQuery.data?.data ?? []) as WorkOrderListRow[];
 
   return (
     <>
