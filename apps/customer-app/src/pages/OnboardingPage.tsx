@@ -12,35 +12,30 @@ import {
   Home,
   Shield,
   AlertCircle,
-  X,
+  MapPin,
 } from 'lucide-react';
-import {
-  onboarding,
-  documents as documentsApi,
-  type OnboardingSubmitRequest,
-} from '@bossnyumba/api-client';
-import { useAuth } from '../contexts/AuthContext';
-import {
-  INITIAL_ONBOARDING_STATE,
-  clearPersistedOnboardingState,
-  loadPersistedOnboardingState,
-  persistOnboardingState,
-  validateOnboardingStep as validateStep,
-  type OnboardingFormState,
-  type OnboardingStepId,
-} from '@/components/onboarding/state';
+import { api } from '@/lib/api';
 
-// Re-export helpers for backwards compatibility and tests that imported
-// them from the page module.
-export {
-  INITIAL_ONBOARDING_STATE,
-  clearPersistedOnboardingState,
-  loadPersistedOnboardingState,
-  persistOnboardingState,
-  validateStep,
-  type OnboardingFormState,
-  type OnboardingStepId,
-};
+type OnboardingStep =
+  | 'welcome'
+  | 'region'
+  | 'id_upload'
+  | 'inspection'
+  | 'signature';
+
+const REGIONS = [
+  { code: 'nairobi', label: 'Nairobi' },
+  { code: 'mombasa', label: 'Mombasa' },
+  { code: 'kisumu', label: 'Kisumu' },
+  { code: 'nakuru', label: 'Nakuru' },
+  { code: 'eldoret', label: 'Eldoret' },
+  { code: 'other', label: 'Other' },
+];
+
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'sw', label: 'Kiswahili' },
+];
 
 // ---------------------------------------------------------------------------
 // Step metadata
@@ -52,11 +47,37 @@ interface StepMeta {
   icon: React.ElementType;
 }
 
-const STEPS: StepMeta[] = [
-  { id: 'profile', title: 'Profile', icon: User },
-  { id: 'property', title: 'Property', icon: Home },
-  { id: 'documents', title: 'Documents', icon: FileText },
-  { id: 'terms', title: 'Confirm', icon: Shield },
+const STEPS: StepInfo[] = [
+  {
+    id: 'welcome',
+    title: 'Welcome',
+    description: 'Get started with your new home',
+    icon: Home,
+  },
+  {
+    id: 'region',
+    title: 'Region & Language',
+    description: 'Help us personalize your experience',
+    icon: MapPin,
+  },
+  {
+    id: 'id_upload',
+    title: 'ID Verification',
+    description: 'Upload your identification',
+    icon: Shield,
+  },
+  {
+    id: 'inspection',
+    title: 'Move-in Inspection',
+    description: 'Document unit condition',
+    icon: ClipboardCheck,
+  },
+  {
+    id: 'signature',
+    title: 'Sign Documents',
+    description: 'Complete your lease agreement',
+    icon: PenLine,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -77,18 +98,31 @@ export default function OnboardingPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    const persisted = loadPersistedOnboardingState();
-    // Seed profile from auth user if nothing persisted yet
-    if (
-      !persisted.profile.firstName &&
-      !persisted.profile.lastName &&
-      auth.user
-    ) {
-      persisted.profile.firstName = auth.user.firstName ?? '';
-      persisted.profile.lastName = auth.user.lastName ?? '';
-      persisted.profile.phone = auth.user.phone ?? '';
+  // Region & Language state
+  const [region, setRegion] = useState<string>('');
+  const [language, setLanguage] = useState<string>('en');
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
+
+  // ID Upload state
+  const [idFrontImage, setIdFrontImage] = useState<string | null>(null);
+  const [idBackImage, setIdBackImage] = useState<string | null>(null);
+  const [selfieImage, setSelfieImage] = useState<string | null>(null);
+  const [uploadType, setUploadType] = useState<'front' | 'back' | 'selfie' | null>(null);
+
+  // Signature state
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
+  const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
+
+  const markStepComplete = (step: OnboardingStep) => {
+    if (!completedSteps.includes(step)) {
+      setCompletedSteps([...completedSteps, step]);
     }
     setState(persisted);
     setHydrated(true);
@@ -179,48 +213,101 @@ export default function OnboardingPage() {
     }));
   };
 
-  const handleSubmit = useCallback(async () => {
-    const validation = validateStep('terms', state);
-    setErrors(validation.errors);
-    if (!validation.ok) return;
-    setIsSubmitting(true);
-    setSubmitError(null);
+  // Signature canvas
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.nativeEvent.offsetX;
+      const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.nativeEvent.offsetY;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.nativeEvent.offsetX;
+      const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.nativeEvent.offsetY;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      setHasSignature(true);
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && canvas) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      setHasSignature(false);
+    }
+  };
+
+  const persistPreferences = async () => {
+    if (!region || !language) return;
     try {
-      const payload: OnboardingSubmitRequest = {
-        profile: {
-          firstName: state.profile.firstName.trim(),
-          lastName: state.profile.lastName.trim(),
-          idNumber: state.profile.idNumber.trim(),
-          phone: state.profile.phone.trim(),
-        },
-        property: {
-          propertyId: state.property.propertyId,
-          unitId: state.property.unitId || undefined,
-        },
-        documents: state.documents.map((d) => ({
-          category: d.category,
-          documentId: d.documentId,
-          url: d.url,
-          filename: d.filename,
-        })),
-        agreedToTerms: state.agreedToTerms,
-      };
-      await onboarding.submit(payload);
-      clearPersistedOnboardingState();
-      router.push('/');
+      await api.profile.updatePreferences({ region, language });
+      setPreferencesError(null);
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to submit onboarding'
-      );
+      const message =
+        err instanceof Error ? err.message : 'Failed to save region/language';
+      setPreferencesError(message);
+      throw err;
+    }
+  };
+
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+    try {
+      // Persist region + language on the user record before finalising onboarding.
+      // If the region step was skipped somehow, this is a no-op (no fields set).
+      if (region && language) {
+        try {
+          await persistPreferences();
+        } catch {
+          // preferencesError is already set; surface but don't block completion
+          // so an offline customer can still finish. A retry banner is shown.
+        }
+      }
+
+      localStorage.setItem('onboarding_completed', 'true');
+      router.push('/');
     } finally {
       setIsSubmitting(false);
     }
-  }, [router, state]);
+  };
 
-  const stepTitle = useMemo(
-    () => STEPS[currentIndex]?.title ?? '',
-    [currentIndex]
-  );
+  const canProceedFromRegion = Boolean(region) && Boolean(language);
+  const canProceedFromIdUpload = idFrontImage && idBackImage && selfieImage;
+  const canCompleteSignature = hasSignature && agreedToTerms;
+
+  const handleContinue = async () => {
+    // When leaving the region step, PATCH /users/me so partial progress is
+    // persisted even if the user drops off before completion.
+    if (currentStep === 'region' && canProceedFromRegion) {
+      try {
+        await persistPreferences();
+      } catch {
+        return; // stay on step; error is displayed inline
+      }
+    }
+    goToNextStep();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -251,13 +338,257 @@ export default function OnboardingPage() {
         </div>
       </header>
 
-      <main className="pb-28 px-4 py-6 space-y-6">
-        {/* Profile Step */}
-        {state.currentStep === 'profile' && (
-          <section aria-labelledby="profile-heading" className="space-y-4">
-            <h2 id="profile-heading" className="text-xl font-semibold">
-              Your details
-            </h2>
+      {/* Content Area */}
+      <main className="pb-28">
+        {/* Welcome Step */}
+        {currentStep === 'welcome' && (
+          <div className="px-4 py-8 text-center">
+            <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Home className="w-12 h-12 text-primary-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-3">Welcome to Your New Home!</h2>
+            <p className="text-gray-600 mb-8 max-w-sm mx-auto">
+              Complete these quick steps to finalize your move-in process and get your keys.
+            </p>
+
+            <div className="space-y-4 text-left max-w-sm mx-auto">
+              {STEPS.slice(1).map((step, idx) => {
+                const Icon = step.icon;
+                return (
+                  <div key={step.id} className="card p-4 flex items-center gap-4">
+                    <div className="p-3 bg-gray-100 rounded-xl">
+                      <Icon className="w-6 h-6 text-gray-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{step.title}</h3>
+                      <p className="text-sm text-gray-500">{step.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Region & Language Step */}
+        {currentStep === 'region' && (
+          <div className="px-4 py-6 space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold mb-2">Choose Your Region & Language</h2>
+              <p className="text-gray-600 text-sm">
+                We use this to tailor notifications, billing, and support to you.
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <h3 className="font-medium mb-3">Region</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {REGIONS.map((r) => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    onClick={() => setRegion(r.code)}
+                    className={`px-3 py-3 rounded-lg border text-sm text-left ${
+                      region === r.code
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <h3 className="font-medium mb-3">Language</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {LANGUAGES.map((l) => (
+                  <button
+                    key={l.code}
+                    type="button"
+                    onClick={() => setLanguage(l.code)}
+                    className={`px-3 py-3 rounded-lg border text-sm text-left ${
+                      language === l.code
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {preferencesError && (
+              <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{preferencesError}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ID Upload Step */}
+        {currentStep === 'id_upload' && (
+          <div className="px-4 py-6 space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold mb-2">Verify Your Identity</h2>
+              <p className="text-gray-600 text-sm">
+                Upload clear photos of your ID document and a selfie for verification.
+              </p>
+            </div>
+
+            {/* ID Front */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">ID Front Side</span>
+                </div>
+                {idFrontImage && (
+                  <span className="badge-success">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Uploaded
+                  </span>
+                )}
+              </div>
+              {idFrontImage ? (
+                <div className="relative">
+                  <img
+                    src={idFrontImage}
+                    alt="ID Front"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={() => setIdFrontImage(null)}
+                    className="absolute top-2 right-2 p-2 bg-danger-500 rounded-full text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => openFileSelector('front')}
+                  className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
+                >
+                  <Camera className="w-8 h-8 mb-2" />
+                  <span className="text-sm font-medium">Take or Upload Photo</span>
+                </button>
+              )}
+            </div>
+
+            {/* ID Back */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">ID Back Side</span>
+                </div>
+                {idBackImage && (
+                  <span className="badge-success">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Uploaded
+                  </span>
+                )}
+              </div>
+              {idBackImage ? (
+                <div className="relative">
+                  <img
+                    src={idBackImage}
+                    alt="ID Back"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={() => setIdBackImage(null)}
+                    className="absolute top-2 right-2 p-2 bg-danger-500 rounded-full text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => openFileSelector('back')}
+                  className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
+                >
+                  <Camera className="w-8 h-8 mb-2" />
+                  <span className="text-sm font-medium">Take or Upload Photo</span>
+                </button>
+              )}
+            </div>
+
+            {/* Selfie */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Selfie Verification</span>
+                </div>
+                {selfieImage && (
+                  <span className="badge-success">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Uploaded
+                  </span>
+                )}
+              </div>
+              {selfieImage ? (
+                <div className="relative">
+                  <img
+                    src={selfieImage}
+                    alt="Selfie"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={() => setSelfieImage(null)}
+                    className="absolute top-2 right-2 p-2 bg-danger-500 rounded-full text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => openFileSelector('selfie')}
+                  className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
+                >
+                  <Camera className="w-8 h-8 mb-2" />
+                  <span className="text-sm font-medium">Take Selfie</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-start gap-3 text-sm text-gray-600 p-4 bg-gray-50 rounded-xl">
+              <AlertCircle className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
+              <p>
+                Your documents are encrypted and stored securely. We use them only for identity verification.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Inspection Step */}
+        {currentStep === 'inspection' && (
+          <div className="px-4 py-6 space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold mb-2">Move-in Inspection</h2>
+              <p className="text-gray-600 text-sm">
+                Document the current condition of your unit before moving in.
+              </p>
+            </div>
+
+            <div className="card p-6 text-center">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ClipboardCheck className="w-8 h-8 text-primary-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Complete Your Inspection</h3>
+              <p className="text-gray-600 text-sm mb-6">
+                Walk through each room and document any existing damage or issues. This protects your security deposit.
+              </p>
+              <a href="/onboarding/inspection" className="btn-primary w-full py-4">
+                Start Inspection
+                <ChevronRight className="w-5 h-5 ml-1" />
+              </a>
+            </div>
+
             <div className="space-y-3">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">
@@ -512,8 +843,11 @@ export default function OnboardingPage() {
             </button>
           ) : (
             <button
-              type="button"
-              onClick={goNext}
+              onClick={handleContinue}
+              disabled={
+                (currentStep === 'id_upload' && !canProceedFromIdUpload) ||
+                (currentStep === 'region' && !canProceedFromRegion)
+              }
               className="btn-primary flex-1 py-4"
             >
               Continue

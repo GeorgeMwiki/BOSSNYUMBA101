@@ -13,3 +13,4 @@ export * from './payment.template.js';
 export * from './maintenance.template.js';
 export * from './lease.template.js';
 export * from './templates/welcome.template.js';
+export * from './templates/invitation.template.js';

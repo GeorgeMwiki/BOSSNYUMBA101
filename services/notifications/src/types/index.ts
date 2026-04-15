@@ -18,7 +18,8 @@ export type NotificationTemplateId =
   | 'payment_received'
   | 'maintenance_update'
   | 'lease_expiring'
-  | 'welcome';
+  | 'welcome'
+  | 'invitation';
 
 /** Recipient information */
 export interface NotificationRecipient {

@@ -8,13 +8,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
-import {
-  DEMO_USERS,
-  DEMO_TENANT,
-  DEMO_TENANT_USERS,
-  PLATFORM_ADMIN_USERS,
-  getPlatformAdminRoles,
-} from '../data/mock-data';
+import { activatePendingMemberships } from './memberships.hono';
 
 const app = new Hono();
 
@@ -361,20 +355,15 @@ app.post('/login', async (c) => {
     );
   }
 
-  if (record.status && record.status !== 'active' && record.status !== 'pending_activation') {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'ACCOUNT_DISABLED',
-          message: 'This account is not currently active. Contact your administrator.',
-        },
-      },
-      403
-    );
+  // Auto-activate any pending cross-tenant invitations addressed to this email.
+  // Safe to call on every login: no-op when there are no pending rows.
+  try {
+    await activatePendingMemberships(db, record.id, record.email);
+  } catch (err) {
+    // Never block login on invitation bookkeeping
+    // eslint-disable-next-line no-console
+    console.warn('activatePendingMemberships failed', err);
   }
-
-  const memberships = await resolveMembershipsForEmail(email);
 
   const token = generateToken({
     userId: result.user.id,

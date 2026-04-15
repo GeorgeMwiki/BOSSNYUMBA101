@@ -36,7 +36,7 @@ import { documentsHonoRouter } from './routes/documents.hono';
 import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
-import { approvalsRouter } from './routes/approvals';
+import { membershipsRouter } from './routes/memberships.hono';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
@@ -100,7 +100,7 @@ api.route('/documents', documentsHonoRouter);
 api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
-api.route('/approvals', approvalsRouter);
+api.route('/memberships', membershipsRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -137,8 +137,7 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/scheduling',
       '/api/v1/messaging',
       '/api/v1/cases',
-      '/api/v1/ai/copilot/chat',
-      '/api/v1/ai/copilot/suggestions',
+      '/api/v1/memberships',
     ],
   });
 });

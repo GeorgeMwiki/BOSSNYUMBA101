@@ -48,6 +48,13 @@ export const sessionStatusEnum = pgEnum('session_status', [
   'revoked',
 ]);
 
+export const membershipStatusEnum = pgEnum('membership_status', [
+  'pending',
+  'active',
+  'revoked',
+  'expired',
+]);
+
 export const auditEventTypeEnum = pgEnum('audit_event_type', [
   'user.created',
   'user.updated',
@@ -206,6 +213,8 @@ export const users = pgTable(
     preferences: jsonb('preferences').default({}),
     timezone: text('timezone').default('Africa/Nairobi'),
     locale: text('locale').default('en'),
+    region: text('region'),
+    language: text('language'),
     
     // Timestamps
     activatedAt: timestamp('activated_at', { withTimezone: true }),
@@ -222,6 +231,8 @@ export const users = pgTable(
     orgIdx: index('users_org_idx').on(table.organizationId),
     statusIdx: index('users_status_idx').on(table.status),
     invitationTokenIdx: uniqueIndex('users_invitation_token_idx').on(table.invitationToken),
+    regionIdx: index('users_region_idx').on(table.region),
+    languageIdx: index('users_language_idx').on(table.language),
   })
 );
 
@@ -310,6 +321,53 @@ export const sessions = pgTable(
     userIdx: index('sessions_user_idx').on(table.userId),
     statusIdx: index('sessions_status_idx').on(table.status),
     expiresAtIdx: index('sessions_expires_at_idx').on(table.expiresAt),
+  })
+);
+
+// ============================================================================
+// Memberships Table
+// ============================================================================
+//
+// A membership attaches a user (or a not-yet-registered invite_email) to a
+// tenant with a role. Pending memberships carry an invite_email + invite_token
+// and are auto-activated on the user's first login.
+
+export const memberships = pgTable(
+  'memberships',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+    // Target user (null while membership is still a pending invite)
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    inviteEmail: text('invite_email'),
+
+    // Role granted on activation
+    role: text('role').notNull().default('member'),
+
+    // Invitation state
+    status: membershipStatusEnum('status').notNull().default('pending'),
+    inviteToken: text('invite_token'),
+    inviteExpiresAt: timestamp('invite_expires_at', { withTimezone: true }),
+    invitedBy: text('invited_by'),
+
+    // Lifecycle
+    invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+
+    // Timestamps
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: text('created_by'),
+    updatedBy: text('updated_by'),
+  },
+  (table) => ({
+    tenantIdx: index('memberships_tenant_idx').on(table.tenantId),
+    userIdx: index('memberships_user_idx').on(table.userId),
+    statusIdx: index('memberships_status_idx').on(table.status),
+    inviteEmailIdx: index('memberships_invite_email_idx').on(table.inviteEmail),
+    inviteTokenIdx: uniqueIndex('memberships_invite_token_idx').on(table.inviteToken),
   })
 );
 
@@ -428,6 +486,17 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
   user: one(users, {
     fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const membershipsRelations = relations(memberships, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [memberships.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [memberships.userId],
     references: [users.id],
   }),
 }));

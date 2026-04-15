@@ -232,6 +232,17 @@ export const api = {
     async update(data: Record<string, unknown>) {
       return requireLiveData(() => ensureClient().put('/customers/me', data));
     },
+
+    /**
+     * Persist onboarding personalization (region, language) on the user record
+     * via PATCH /users/me. Returns the updated user DTO.
+     */
+    async updatePreferences(data: {
+      region?: string;
+      language?: string;
+    }) {
+      return requireLiveData(() => ensureClient().patch('/users/me', data));
+    },
   },
 
   inspections: {
