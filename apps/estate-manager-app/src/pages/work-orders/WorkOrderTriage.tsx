@@ -61,7 +61,7 @@ export default function WorkOrderTriage() {
   // Fetch work order from API
   const { data: woData, isLoading: loadingWO } = useQuery({
     queryKey: ['workOrder', workOrderId],
-    queryFn: () => workOrdersService.get(workOrderId as never),
+    queryFn: () => workOrdersService.get(workOrderId as WorkOrderId),
     enabled: !!workOrderId,
     retry: false,
   });
@@ -70,7 +70,7 @@ export default function WorkOrderTriage() {
   const { data: vendorsData, isLoading: loadingVendors } = useQuery({
     queryKey: ['vendors', 'list', category],
     queryFn: () => vendorsService.list({
-      category: category ? category as never : undefined,
+      category: category ? (category as VendorCategory) : undefined,
       available: true,
     }),
     enabled: assigneeType === 'vendor',
@@ -105,17 +105,17 @@ export default function WorkOrderTriage() {
   const triageMutation = useMutation({
     mutationFn: async () => {
       // First triage
-      await workOrdersService.triage(workOrderId as never, {
-        priority: priority as never,
-        category: category as never,
+      await workOrdersService.triage(workOrderId as WorkOrderId, {
+        priority: priority as WorkOrderPriority,
+        category: category as WorkOrderCategory,
         notes,
       });
       // Then assign if selected
       if (assigneeId) {
         if (assigneeType === 'vendor') {
-          await workOrdersService.assign(workOrderId as never, { vendorId: assigneeId });
+          await workOrdersService.assign(workOrderId as WorkOrderId, { vendorId: assigneeId });
         } else {
-          await workOrdersService.assign(workOrderId as never, { assignedToUserId: assigneeId });
+          await workOrdersService.assign(workOrderId as WorkOrderId, { assignedToUserId: assigneeId });
         }
       }
     },

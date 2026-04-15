@@ -63,32 +63,44 @@ export function ApprovalsPage() {
   }, []);
 
   const handleApprove = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/approve`, {
-      decision: 'Approved',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'APPROVED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
+    try {
+      const response = await api.post(`/approvals/${id}/approve`, {
+        decision: 'Approved',
+      });
+      if (response.success) {
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, status: 'APPROVED', decidedAt: new Date().toISOString() }
+              : a
+          )
+        );
+      } else {
+        setError(response.error?.message || 'Failed to approve');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to approve');
     }
   };
 
   const handleReject = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/reject`, {
-      decision: 'Rejected',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'REJECTED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
+    try {
+      const response = await api.post(`/approvals/${id}/reject`, {
+        decision: 'Rejected',
+      });
+      if (response.success) {
+        setApprovals((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, status: 'REJECTED', decidedAt: new Date().toISOString() }
+              : a
+          )
+        );
+      } else {
+        setError(response.error?.message || 'Failed to reject');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reject');
     }
   };
 
@@ -141,6 +153,15 @@ export function ApprovalsPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 border-b border-gray-200">

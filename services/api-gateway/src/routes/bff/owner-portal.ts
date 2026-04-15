@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
@@ -227,7 +225,9 @@ function buildDisbursementData(scope, payments) {
   }
 
   const disbursements = Array.from(grouped.values())
-    .sort((left, right) => new Date(right.date) - new Date(left.date))
+    .sort(
+      (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()
+    )
     .map((disbursement) => ({
       ...disbursement,
       breakdown: {
@@ -274,7 +274,15 @@ async function listOwnerConversations(c, auth, repos) {
     .where(eq(conversations.tenantId, auth.tenantId));
 
   const messagingRows = rows
-    .sort((left, right) => new Date(right.lastMessageAt || right.updatedAt || right.createdAt) - new Date(left.lastMessageAt || left.updatedAt || left.createdAt))
+    .sort(
+      (left, right) =>
+        new Date(
+          right.lastMessageAt || right.updatedAt || right.createdAt
+        ).getTime() -
+        new Date(
+          left.lastMessageAt || left.updatedAt || left.createdAt
+        ).getTime()
+    )
     .slice(0, 100);
 
   const messagesByConversation = await Promise.all(
@@ -641,7 +649,9 @@ app.get('/documents/signatures', async (c) => {
       status: 'SIGNED',
       ipAddress: doc.metadata?.signedIp,
     }))
-    .sort((left, right) => new Date(right.signedAt) - new Date(left.signedAt));
+    .sort(
+      (left, right) => new Date(right.signedAt).getTime() - new Date(left.signedAt).getTime()
+    );
 
   return c.json({ success: true, data: { pending, history } });
 });

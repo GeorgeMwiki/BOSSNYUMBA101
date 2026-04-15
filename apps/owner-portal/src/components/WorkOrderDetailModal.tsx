@@ -121,22 +121,26 @@ export function WorkOrderDetailModal({
 
   const handleApprove = async () => {
     setApproving(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onApprove?.(workOrder.id);
-    setApproving(false);
-    setApprovalComment('');
-    onClose();
+    try {
+      await Promise.resolve(onApprove?.(workOrder.id));
+      setApprovalComment('');
+      onClose();
+    } finally {
+      setApproving(false);
+    }
   };
 
   const handleReject = async () => {
     if (!rejectReason.trim()) return;
     setRejecting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onReject?.(workOrder.id, rejectReason);
-    setRejecting(false);
-    setShowRejectForm(false);
-    setRejectReason('');
-    onClose();
+    try {
+      await Promise.resolve(onReject?.(workOrder.id, rejectReason));
+      setShowRejectForm(false);
+      setRejectReason('');
+      onClose();
+    } finally {
+      setRejecting(false);
+    }
   };
 
   const tabs = [

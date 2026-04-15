@@ -168,10 +168,20 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    localStorage.setItem('onboarding_completed', 'true');
-    router.push('/');
+    try {
+      const response = await fetch('/api/v1/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasSignature, agreedToTerms }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to complete onboarding (${response.status})`);
+      }
+      localStorage.setItem('onboarding_completed', 'true');
+      router.push('/');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceedFromIdUpload = idFrontImage && idBackImage && selfieImage;

@@ -35,6 +35,7 @@ export default function MaintenanceFeedbackPage() {
   const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleCategoryRating = (categoryId: string, rating: number) => {
     setCategoryRatings((prev) => ({ ...prev, [categoryId]: rating }));

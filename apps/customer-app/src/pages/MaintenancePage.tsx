@@ -138,19 +138,33 @@ export default function MaintenancePage() {
 
   const handleSubmit = async () => {
     if (!selectedCategory || !title || !description) return;
-    
+
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Reset form
-    setSelectedCategory(null);
-    setTitle('');
-    setDescription('');
-    setPriority('medium');
-    setPhotos([]);
-    setShowNewRequestForm(false);
-    setIsSubmitting(false);
+    try {
+      const response = await fetch('/api/v1/maintenance/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: selectedCategory,
+          title,
+          description,
+          priority,
+          photoCount: photos.length,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to submit maintenance request (${response.status})`);
+      }
+      // Reset form
+      setSelectedCategory(null);
+      setTitle('');
+      setDescription('');
+      setPriority('medium');
+      setPhotos([]);
+      setShowNewRequestForm(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canSubmit = selectedCategory && title.trim() && description.trim();
