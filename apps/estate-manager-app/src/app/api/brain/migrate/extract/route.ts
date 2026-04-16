@@ -1,9 +1,8 @@
 /**
  * POST /api/brain/migrate/extract
  *
- * Runs skill.migration.extract + skill.migration.diff against the supplied
- * sheets. Returns the bundle + diff in a single response — the client shows
- * the review panel without a second round trip.
+ * Parses uploaded sheets/text into a draft bundle and computes a diff against
+ * the current tenant's existing rows. Requires Supabase JWT auth.
  */
 
 import { NextResponse } from 'next/server';
@@ -12,10 +11,21 @@ import {
   MigrationExtractParamsSchema,
   migrationDiff,
 } from '@bossnyumba/ai-copilot';
+import { brainForRequest, errorToResponse } from '@/lib/brain-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  let ctx;
+  try {
+    ctx = await brainForRequest(req);
+  } catch (err) {
+    const { status, body: payload } = errorToResponse(err);
+    return NextResponse.json(payload, { status });
+  }
+  // No further role gate — extract is read-only and used by both admins and
+  // onboarding consultants. Commit is admin-only (see /commit).
+
   let body: unknown;
   try {
     body = await req.json();
@@ -24,12 +34,17 @@ export async function POST(req: Request) {
   }
   const parsed = MigrationExtractParamsSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.message },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
   const bundle = migrationExtract(parsed.data);
+  // Diff against existing tenant rows requires repo access — Phase A leaves
+  // the existing-state lookup as an empty diff baseline so the UI gets a
+  // "would add N" preview. The committer applies real dedup at write time.
   const diff = migrationDiff({ bundle });
-  return NextResponse.json({ bundle, diff });
+  // tenant id is pulled from ctx so the committer (next call) can use it.
+  return NextResponse.json({
+    bundle,
+    diff,
+    tenantId: ctx.tenant.tenantId,
+  });
 }

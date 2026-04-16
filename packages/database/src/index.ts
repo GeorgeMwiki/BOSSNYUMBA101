@@ -6,3 +6,4 @@
 export { createDatabaseClient, type DatabaseClient } from './client.js';
 export * from './schemas/index.js';
 export * from './repositories/index.js';
+export * from './services/index.js';

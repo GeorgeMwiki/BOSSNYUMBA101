@@ -58,8 +58,14 @@ import {
   AdvisorExecutor,
   AdvisorHardCategory,
 } from '../providers/advisor.js';
-import { AIProvider } from '../providers/ai-provider.js';
-import { ANTHROPIC_MODELS } from '../providers/anthropic.js';
+import {
+  AIProvider,
+  AIMessage,
+} from '../providers/ai-provider.js';
+import {
+  ANTHROPIC_MODELS,
+  buildToolResultMessage,
+} from '../providers/anthropic.js';
 import { CompiledPrompt } from '../types/prompt.types.js';
 import { asPromptId } from '../types/core.types.js';
 import { ReviewService } from '../services/review-service.js';
@@ -81,6 +87,8 @@ export interface TurnRequest {
   viewer: VisibilityViewer;
   /** Max handoff depth for this turn. Defaults to 3. */
   maxHandoffDepth?: number;
+  /** Max tool-call loop iterations per persona invocation. Default 5. */
+  maxToolLoopIterations?: number;
 }
 
 export interface TurnResult {
@@ -345,14 +353,8 @@ export class Orchestrator {
     const handoffText = handoffPacket ? renderHandoffPacket(handoffPacket) : '';
     const userPrompt = [
       handoffText,
-      handoffText ? '' : '',
       'Thread context (filtered to your visibility):',
       contextText,
-      '',
-      'Tools available to you:',
-      ...this.cfg.tools
-        .getDefinitionsFor(persona)
-        .map((t) => `- ${t.name}: ${t.description}`),
       '',
       'Latest user message:',
       req.userText,
@@ -370,36 +372,18 @@ export class Orchestrator {
         maxTokens: 2048,
         temperature: 0.4,
       },
-      guardrails: {
-        piiHandling: 'redact',
-      },
+      guardrails: { piiHandling: 'redact' },
     };
 
-    // Decide advisor hard category from handoff (if any) or from persona.
-    const hardCategory = inferHardCategory(persona, req.userText);
+    // Tool definitions for this persona — Anthropic tool-use schema.
+    const toolDefs = this.cfg.tools
+      .getDefinitionsFor(persona)
+      .map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.parameters,
+      }));
 
-    const advResult = await this.advisor.run(
-      { prompt: compiled, jsonMode: false },
-      {
-        category: hardCategory ?? undefined,
-        reason: `persona:${persona.id} depth:${depth}`,
-      }
-    );
-    if (!advResult.success) {
-      const advErr = (advResult as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
-      return aiErr({
-        code: 'EXECUTOR_FAILED',
-        message: advErr.message,
-        retryable: advErr.retryable,
-      });
-    }
-    const outcome = advResult.data;
-    acc.tokensUsed += outcome.totalTokens;
-    if (outcome.advisorConsulted) acc.advisorConsulted = true;
-
-    const responseText = outcome.finalContent.trim();
-
-    // Append persona message
     const visibility: VisibilityLabel = handoffPacket
       ? handoffPacket.visibility
       : {
@@ -410,6 +394,146 @@ export class Orchestrator {
           rationale: 'persona_default',
         };
 
+    // Drive the tool-call loop. Each iteration:
+    //   - call the model (advisor pattern wraps executor + optional Opus)
+    //   - if it returned tool_use blocks, dispatch them, append tool_result
+    //     blocks to the conversation, and loop
+    //   - otherwise, break with the final text
+    const hardCategory = inferHardCategory(persona, req.userText);
+    const messages: AIMessage[] = [
+      { role: 'user', content: userPrompt },
+    ];
+    const maxLoops = req.maxToolLoopIterations ?? 5;
+    const tokenBudget =
+      handoffPacket?.tokenBudget ??
+      this.cfg.defaultTokenBudget ??
+      8192;
+
+    let outcome:
+      | {
+          executor: import('../providers/ai-provider.js').AICompletionResponse;
+          advisor?: import('../providers/ai-provider.js').AICompletionResponse;
+          finalContent: string;
+          advisorConsulted: boolean;
+          totalTokens: number;
+          totalProcessingTimeMs: number;
+          advisorReason: string;
+        }
+      | null = null;
+    let responseText = '';
+
+    for (let iter = 0; iter < maxLoops; iter++) {
+      // Cost ceiling — every iteration we check the per-turn token budget.
+      if (acc.tokensUsed >= tokenBudget) {
+        await this.cfg.threads.append({
+          id: uuid(),
+          threadId: thread.id,
+          kind: 'system_note',
+          noteKind: 'governance',
+          createdAt: new Date().toISOString(),
+          visibility: { ...visibility, scope: 'management' },
+          actorId: 'orchestrator',
+          text: `token budget exhausted: used=${acc.tokensUsed} budget=${tokenBudget}`,
+        });
+        return aiErr({
+          code: 'TOKEN_BUDGET_EXHAUSTED',
+          message: `Token budget ${tokenBudget} exhausted (used=${acc.tokensUsed})`,
+          retryable: false,
+        });
+      }
+
+      const advResult = await this.advisor.run(
+        {
+          prompt: compiled,
+          jsonMode: false,
+          tools: toolDefs.length ? toolDefs : undefined,
+          priorMessages: messages,
+        },
+        {
+          category: hardCategory ?? undefined,
+          reason: `persona:${persona.id} depth:${depth} iter:${iter}`,
+        }
+      );
+      if (!advResult.success) {
+        const advErr = (advResult as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
+        return aiErr({
+          code: 'EXECUTOR_FAILED',
+          message: advErr.message,
+          retryable: advErr.retryable,
+        });
+      }
+      outcome = advResult.data;
+      acc.tokensUsed += outcome.totalTokens;
+      if (outcome.advisorConsulted) acc.advisorConsulted = true;
+
+      // Inspect tool calls on the executor turn (advisor cannot dispatch).
+      const exec = outcome.executor;
+      const toolCalls = exec.toolCalls ?? [];
+
+      // If the model emitted tool calls, append assistant turn + dispatch each.
+      if (toolCalls.length && exec.rawContent) {
+        messages.push({ role: 'assistant', content: exec.rawContent });
+        const results: Array<{
+          toolUseId: string;
+          content: string;
+          isError?: boolean;
+        }> = [];
+        for (const call of toolCalls) {
+          const dispatch = await this.cfg.tools.dispatch(
+            call.name,
+            call.input,
+            {
+              tenant: req.tenant,
+              actor: req.actor,
+              persona,
+              threadId: thread.id,
+            },
+            visibility
+          );
+          if (dispatch.success) {
+            const data = dispatch.data;
+            acc.toolCalls.push({ tool: call.name, ok: data.ok });
+            results.push({
+              toolUseId: call.id,
+              content:
+                (data.evidenceSummary ?? JSON.stringify(data.data)).slice(
+                  0,
+                  4_000
+                ),
+              isError: !data.ok,
+            });
+          } else {
+            const dErr = (dispatch as { success: false; error: { code: string; message: string } }).error;
+            acc.toolCalls.push({ tool: call.name, ok: false });
+            results.push({
+              toolUseId: call.id,
+              content: `${dErr.code}: ${dErr.message}`,
+              isError: true,
+            });
+          }
+        }
+        // Feed results back as a user turn and continue.
+        messages.push(buildToolResultMessage(results));
+        // If the model also produced text alongside the tool calls, capture
+        // it so we still have something to append on early-exit.
+        if (exec.content && exec.content.trim()) responseText = exec.content;
+        continue;
+      }
+
+      // No tool calls — terminal turn for this persona.
+      responseText = (outcome.finalContent || '').trim();
+      break;
+    }
+
+    if (!outcome) {
+      return aiErr({
+        code: 'EXECUTOR_FAILED',
+        message: 'persona invocation produced no outcome',
+        retryable: false,
+      });
+    }
+
+    // Append persona message (visibility was computed at the top of the turn)
     await this.cfg.threads.append({
       id: uuid(),
       threadId: thread.id,

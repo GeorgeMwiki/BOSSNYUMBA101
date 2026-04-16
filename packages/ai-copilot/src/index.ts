@@ -47,6 +47,7 @@ export {
 // (amplifies AICopilot; does not replace it)
 // ============================================
 export * from './brain.js';
+export * from './config/index.js';
 export * from './thread/index.js';
 export * from './personas/index.js';
 export * from './orchestrator/index.js';

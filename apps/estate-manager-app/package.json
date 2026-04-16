@@ -16,6 +16,7 @@
     "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/api-client": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/database": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@dnd-kit/core": "^6.1.0",

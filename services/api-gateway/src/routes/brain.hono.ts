@@ -3,88 +3,156 @@
 /**
  * /api/v1/brain — BossNyumba Brain gateway routes.
  *
- * Endpoints:
- *   POST /api/v1/brain/turn         — run one Brain turn
- *   GET  /api/v1/brain/personae     — list persona templates
- *   POST /api/v1/brain/migrate/extract — parse upload -> bundle + diff
- *   POST /api/v1/brain/migrate/commit  — commit a reviewed bundle
- *   GET  /api/v1/brain/threads      — list threads for the signed-in viewer
- *   GET  /api/v1/brain/threads/:id  — read a thread (visibility-filtered)
- *
- * Auth: `authMiddleware` from hono-auth attaches the authenticated user and
- * tenant onto the Hono context; we translate that into the Brain's
- * `AITenantContext` + `AIActor` + `VisibilityViewer`.
+ * Production policy:
+ *  - Requires verified Supabase JWT on every request (no dev fallback).
+ *  - Per-tenant Brain instances backed by Postgres ThreadStore.
+ *  - 401 on missing token, 403 on missing tenant claim, 503 on missing env.
  */
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/hono-auth';
 import {
   createBrain,
+  BrainRegistry,
+  PostgresThreadStoreBackend,
+  loadBrainEnv,
+  verifySupabaseJwt,
+  extractBearer,
+  principalToBrainContexts,
+  SupabaseAuthError,
+  BrainConfigError,
   DEFAULT_PERSONAE,
   migrationExtract,
   migrationDiff,
   MigrationExtractParamsSchema,
   ExtractionBundleSchema,
-  migrationCommitTool,
+  checkBrainHealth,
 } from '@bossnyumba/ai-copilot';
+import {
+  createDatabaseClient,
+  BrainThreadRepository,
+  MigrationWriterService,
+} from '@bossnyumba/database';
 
-// Singleton Brain per gateway process. Replace with a factory keyed by tenant
-// when we enable per-tenant ThreadStore persistence.
-let brainSingleton = null;
-function getBrain() {
-  if (!brainSingleton) {
-    brainSingleton = createBrain({
-      anthropic: process.env.ANTHROPIC_API_KEY
-        ? { apiKey: process.env.ANTHROPIC_API_KEY }
-        : undefined,
-      useMockProviders: !process.env.ANTHROPIC_API_KEY,
+// ---------------------------------------------------------------------------
+// Lazy boot — fail fast on missing env, but defer until first request so the
+// gateway can boot for unrelated routes (health, auth-only) when Brain env
+// is intentionally not set.
+// ---------------------------------------------------------------------------
+
+let envCache: ReturnType<typeof loadBrainEnv> | null = null;
+let dbCache: ReturnType<typeof createDatabaseClient> | null = null;
+let registryCache: BrainRegistry | null = null;
+
+function env() {
+  if (envCache) return envCache;
+  envCache = loadBrainEnv(process.env);
+  return envCache;
+}
+
+function db() {
+  if (dbCache) return dbCache;
+  dbCache = createDatabaseClient(env().DATABASE_URL);
+  return dbCache;
+}
+
+function registry() {
+  if (registryCache) return registryCache;
+  const e = env();
+  registryCache = new BrainRegistry((tenantId) => {
+    const repo = new BrainThreadRepository(db());
+    const backend = new PostgresThreadStoreBackend(repo, () => tenantId);
+    return createBrain({
+      anthropic: {
+        apiKey: e.ANTHROPIC_API_KEY,
+        baseUrl: e.ANTHROPIC_BASE_URL,
+        defaultModel: e.ANTHROPIC_MODEL_DEFAULT,
+      },
+      threadStoreBackend: backend,
     });
+  });
+  return registryCache;
+}
+
+async function authenticate(c) {
+  const token = extractBearer(c.req.header('authorization'));
+  if (!token) throw new SupabaseAuthError('missing_authorization_header', 401);
+  const principal = await verifySupabaseJwt(token, {
+    jwtSecret: env().SUPABASE_JWT_SECRET,
+    defaultEnvironment: 'production',
+  });
+  return {
+    principal,
+    ...principalToBrainContexts(principal),
+  };
+}
+
+function handleError(c, err) {
+  if (err instanceof SupabaseAuthError) {
+    return c.json({ error: err.message, code: 'AUTH' }, err.status);
   }
-  return brainSingleton;
+  if (err instanceof BrainConfigError) {
+    return c.json(
+      { error: err.message, code: 'BRAIN_NOT_CONFIGURED' },
+      503
+    );
+  }
+  return c.json(
+    { error: err instanceof Error ? err.message : String(err), code: 'INTERNAL' },
+    500
+  );
 }
 
-function tenantCtx(c) {
-  const user = c.get('user') ?? {};
-  const tenantId = user.tenantId ?? 'dev-tenant';
-  const tenantName = user.tenantName ?? 'Development';
-  const env = (user.environment ?? 'development');
-  return { tenantId, tenantName, environment: env };
-}
+// ---------------------------------------------------------------------------
+// Per-tenant + per-actor in-memory rate limiter
+// ---------------------------------------------------------------------------
 
-function actorCtx(c) {
-  const user = c.get('user') ?? {};
-  return {
-    type: 'user',
-    id: user.userId ?? user.id ?? 'unknown',
-    name: user.name,
-    email: user.email,
-    roles: user.roles ?? [],
-  };
-}
+const RATE_BUCKETS = new Map<string, { tokens: number; updatedAt: number }>();
+const RATE_REFILL_PER_SEC = 1; // 60 turns/min steady state
+const RATE_BURST = 30;
 
-function viewerCtx(c) {
-  const user = c.get('user') ?? {};
-  const roles = user.roles ?? [];
-  return {
-    userId: user.userId ?? user.id ?? 'unknown',
-    roles,
-    teamIds: user.teamIds ?? [],
-    employeeId: user.employeeId,
-    isAdmin: roles.includes('admin'),
-    isManagement:
-      roles.includes('admin') ||
-      roles.includes('manager') ||
-      roles.includes('team_leader'),
-  };
+function checkRate(key: string): boolean {
+  const now = Date.now();
+  const bucket = RATE_BUCKETS.get(key) ?? { tokens: RATE_BURST, updatedAt: now };
+  const elapsed = (now - bucket.updatedAt) / 1000;
+  bucket.tokens = Math.min(RATE_BURST, bucket.tokens + elapsed * RATE_REFILL_PER_SEC);
+  bucket.updatedAt = now;
+  if (bucket.tokens < 1) {
+    RATE_BUCKETS.set(key, bucket);
+    return false;
+  }
+  bucket.tokens -= 1;
+  RATE_BUCKETS.set(key, bucket);
+  return true;
 }
 
 const brainRouter = new Hono();
 
-brainRouter.use('*', authMiddleware);
+// ----- Health -----------------------------------------------------------
 
-// ----- Personae roster ------------------------------------------------------
+brainRouter.get('/health', async (c) => {
+  let ctx;
+  try {
+    ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+  try {
+    const brain = registry().for(ctx.tenant.tenantId);
+    const health = await checkBrainHealth(brain);
+    return c.json(health);
+  } catch (err) {
+    return handleError(c, err);
+  }
+});
 
-brainRouter.get('/personae', (c) => {
+// ----- Personae roster --------------------------------------------------
+
+brainRouter.get('/personae', async (c) => {
+  try {
+    await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
   const personae = DEFAULT_PERSONAE.map((p) => ({
     id: p.id,
     displayName: p.displayName,
@@ -94,7 +162,7 @@ brainRouter.get('/personae', (c) => {
   return c.json({ personae });
 });
 
-// ----- Turn (chat) ----------------------------------------------------------
+// ----- Turn (chat) ------------------------------------------------------
 
 brainRouter.post('/turn', async (c) => {
   let body;
@@ -106,21 +174,34 @@ brainRouter.post('/turn', async (c) => {
   if (!body?.userText || typeof body.userText !== 'string') {
     return c.json({ error: 'userText_required' }, 400);
   }
-  const { orchestrator } = getBrain();
-  const tenant = tenantCtx(c);
-  const actor = actorCtx(c);
-  const viewer = viewerCtx(c);
+
+  let ctx;
+  try {
+    ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+
+  // Rate limit (per tenant + per actor).
+  const rateKey = `${ctx.tenant.tenantId}:${ctx.actor.id}`;
+  if (!checkRate(rateKey)) {
+    return c.json({ error: 'rate_limited', code: 'RATE_LIMIT' }, 429);
+  }
+
+  const brain = registry().for(ctx.tenant.tenantId);
 
   try {
     if (!body.threadId) {
-      const result = await orchestrator.startThread({
-        tenant,
-        actor,
-        viewer,
+      const result = await brain.orchestrator.startThread({
+        tenant: ctx.tenant,
+        actor: ctx.actor,
+        viewer: ctx.viewer,
         initialUserText: body.userText,
         forcePersonaId: body.forcePersonaId,
       });
-      if (!result.success) return c.json({ error: result.error.message }, 500);
+      if (!result.success) {
+        return c.json({ error: result.error.message }, 500);
+      }
       const turn = result.data.turn;
       return c.json({
         threadId: result.data.thread.id,
@@ -133,15 +214,17 @@ brainRouter.post('/turn', async (c) => {
         tokensUsed: turn.tokensUsed,
       });
     }
-    const result = await orchestrator.handleTurn({
+    const result = await brain.orchestrator.handleTurn({
       threadId: body.threadId,
-      tenant,
-      actor,
-      viewer,
+      tenant: ctx.tenant,
+      actor: ctx.actor,
+      viewer: ctx.viewer,
       userText: body.userText,
       forcePersonaId: body.forcePersonaId,
     });
-    if (!result.success) return c.json({ error: result.error.message }, 500);
+    if (!result.success) {
+      return c.json({ error: result.error.message }, 500);
+    }
     return c.json({
       threadId: result.data.threadId,
       finalPersonaId: result.data.finalPersonaId,
@@ -153,40 +236,54 @@ brainRouter.post('/turn', async (c) => {
       tokensUsed: result.data.tokensUsed,
     });
   } catch (err) {
-    return c.json(
-      { error: err instanceof Error ? err.message : 'internal_error' },
-      500
-    );
+    return handleError(c, err);
   }
 });
 
-// ----- Threads --------------------------------------------------------------
+// ----- Threads ----------------------------------------------------------
 
 brainRouter.get('/threads', async (c) => {
-  const { threads } = getBrain();
-  const tenant = tenantCtx(c);
-  const viewer = viewerCtx(c);
+  let ctx;
+  try {
+    ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+  const brain = registry().for(ctx.tenant.tenantId);
   const limit = Number(c.req.query('limit') ?? 50);
-  const list = await threads.listThreads(tenant.tenantId, {
-    userId: viewer.userId,
+  const list = await brain.threads.listThreads(ctx.tenant.tenantId, {
+    userId: ctx.viewer.userId,
     limit,
   });
   return c.json({ threads: list });
 });
 
 brainRouter.get('/threads/:id', async (c) => {
-  const { threads } = getBrain();
-  const viewer = viewerCtx(c);
+  let ctx;
+  try {
+    ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+  const brain = registry().for(ctx.tenant.tenantId);
   const id = c.req.param('id');
-  const thread = await threads.getThread(id);
+  const thread = await brain.threads.getThread(id);
   if (!thread) return c.json({ error: 'thread_not_found' }, 404);
-  const events = await threads.readAs(id, viewer);
+  if (thread.tenantId !== ctx.tenant.tenantId) {
+    return c.json({ error: 'thread_not_found' }, 404);
+  }
+  const events = await brain.threads.readAs(id, ctx.viewer);
   return c.json({ thread, events });
 });
 
-// ----- Migration ------------------------------------------------------------
+// ----- Migration --------------------------------------------------------
 
 brainRouter.post('/migrate/extract', async (c) => {
+  try {
+    await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
   let body;
   try {
     body = await c.req.json();
@@ -201,6 +298,15 @@ brainRouter.post('/migrate/extract', async (c) => {
 });
 
 brainRouter.post('/migrate/commit', async (c) => {
+  let ctx;
+  try {
+    ctx = await authenticate(c);
+  } catch (err) {
+    return handleError(c, err);
+  }
+  if (!ctx.actor.roles.includes('admin')) {
+    return c.json({ error: 'admin_role_required', code: 'FORBIDDEN' }, 403);
+  }
   let body;
   try {
     body = await c.req.json();
@@ -209,33 +315,25 @@ brainRouter.post('/migrate/commit', async (c) => {
   }
   const schema = (await import('zod')).z.object({
     bundle: ExtractionBundleSchema,
-    write: (await import('zod')).z.boolean().optional().default(true),
+    bestEffort: (await import('zod')).z.boolean().optional().default(false),
   });
   const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
-  const tenant = tenantCtx(c);
-  const actor = actorCtx(c);
-  const result = await migrationCommitTool.execute(parsed.data, {
-    tenant,
-    actor,
-    persona: {
-      id: 'migration-wizard',
-      kind: 'utility',
-      displayName: 'Migration Wizard',
-      missionStatement: '',
-      systemPrompt: '',
-      allowedTools: ['skill.migration.commit'],
-      visibilityBudget: 'management',
-      defaultVisibility: 'management',
-      modelTier: 'standard',
-      advisorEnabled: false,
-      advisorHardCategories: [],
-      minReviewRiskLevel: 'HIGH',
-    },
-    threadId: 'migration-wizard-ephemeral',
-  });
-  if (!result.ok) return c.json({ error: result.error }, 500);
-  return c.json({ ok: true, result: result.data });
+  try {
+    const writer = new MigrationWriterService(db());
+    const report = await writer.commit(
+      parsed.data.bundle,
+      {
+        tenantId: ctx.tenant.tenantId,
+        ownerUserId: ctx.actor.id,
+        actorUserId: ctx.actor.id,
+      },
+      { bestEffort: parsed.data.bestEffort }
+    );
+    return c.json({ report });
+  } catch (err) {
+    return handleError(c, err);
+  }
 });
 
 export { brainRouter };

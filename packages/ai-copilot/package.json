@@ -26,6 +26,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "openai": "^4.28.0",
+    "jose": "^5.2.0",
     "zod": "^3.22.4",
     "uuid": "^9.0.0"
   },

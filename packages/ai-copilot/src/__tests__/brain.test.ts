@@ -12,7 +12,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  createBrain,
+  createBrainForTesting,
   PERSONA_IDS,
   parseHandoffDirective,
   parseProposedAction,
@@ -266,7 +266,7 @@ describe('swahili draft', () => {
 
 describe('Brain wiring', () => {
   it('creates a Brain with mock providers and registers default skills', () => {
-    const brain = createBrain({ useMockProviders: true });
+    const brain = createBrainForTesting();
     expect(brain.orchestrator).toBeTruthy();
     expect(brain.personas.list()).toHaveLength(8); // 6 managers + coworker + migration
     expect(brain.tools.has('skill.kenya.mpesa_reconcile')).toBe(true);
@@ -275,7 +275,7 @@ describe('Brain wiring', () => {
   });
 
   it('starts a thread and returns a turn result (mock provider)', async () => {
-    const brain = createBrain({ useMockProviders: true });
+    const brain = createBrainForTesting();
     const result = await brain.orchestrator.startThread({
       tenant: {
         tenantId: 'T',

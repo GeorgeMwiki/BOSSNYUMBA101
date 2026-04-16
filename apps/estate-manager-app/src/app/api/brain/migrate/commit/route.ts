@@ -1,16 +1,37 @@
 /**
  * POST /api/brain/migrate/commit
  *
- * Commits a reviewed migration bundle. Phase 1: calls skill.migration.commit
- * (dry-run). Phase 2 swaps in a MigrationWriterService backed by the HR +
- * property + tenant repositories, behind an admin-approval gate.
+ * Real commit — writes through MigrationWriterService. No dry-run stub.
+ * Requires verified Supabase JWT and the `admin` role to perform a commit.
  */
 
 import { NextResponse } from 'next/server';
 import { ExtractionBundleSchema } from '@bossnyumba/ai-copilot';
-import { migrationCommitTool } from '@bossnyumba/ai-copilot';
+import {
+  createDatabaseClient,
+  MigrationWriterService,
+} from '@bossnyumba/database';
+import { z } from 'zod';
+import {
+  brainForRequest,
+  errorToResponse,
+} from '@/lib/brain-server';
 
 export const dynamic = 'force-dynamic';
+
+const CommitBodySchema = z.object({
+  bundle: ExtractionBundleSchema,
+  bestEffort: z.boolean().optional().default(false),
+});
+
+let dbCache: ReturnType<typeof createDatabaseClient> | null = null;
+function db() {
+  if (dbCache) return dbCache;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL is not configured');
+  dbCache = createDatabaseClient(url);
+  return dbCache;
+}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -19,42 +40,40 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-  const schema = (await import('zod')).z.object({
-    bundle: ExtractionBundleSchema,
-    write: (await import('zod')).z.boolean().optional().default(true),
-  });
-  const parsed = schema.safeParse(body);
+  const parsed = CommitBodySchema.safeParse(body);
   if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+  }
+
+  let ctx;
+  try {
+    ctx = await brainForRequest(req);
+  } catch (err) {
+    const { status, body: payload } = errorToResponse(err);
+    return NextResponse.json(payload, { status });
+  }
+  const { tenant, actor } = ctx;
+  if (!actor.roles.includes('admin')) {
     return NextResponse.json(
-      { error: parsed.error.message },
-      { status: 400 }
+      { error: 'admin_role_required', code: 'FORBIDDEN' },
+      { status: 403 }
     );
   }
-  const result = await migrationCommitTool.execute(parsed.data, {
-    tenant: {
-      tenantId: 'dev-tenant',
-      tenantName: 'Development',
-      environment: 'development',
-    },
-    actor: { type: 'user', id: 'admin-dev', roles: ['admin'] },
-    persona: {
-      id: 'migration-wizard',
-      kind: 'utility',
-      displayName: 'Migration Wizard',
-      missionStatement: '',
-      systemPrompt: '',
-      allowedTools: ['skill.migration.commit'],
-      visibilityBudget: 'management',
-      defaultVisibility: 'management',
-      modelTier: 'standard',
-      advisorEnabled: false,
-      advisorHardCategories: [],
-      minReviewRiskLevel: 'HIGH',
-    },
-    threadId: 'migration-wizard-ephemeral',
-  });
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+
+  try {
+    const writer = new MigrationWriterService(db());
+    const report = await writer.commit(
+      parsed.data.bundle,
+      {
+        tenantId: tenant.tenantId,
+        ownerUserId: actor.id,
+        actorUserId: actor.id,
+      },
+      { bestEffort: parsed.data.bestEffort }
+    );
+    return NextResponse.json({ report });
+  } catch (err) {
+    const { status, body: payload } = errorToResponse(err);
+    return NextResponse.json(payload, { status });
   }
-  return NextResponse.json({ ok: true, result: result.data });
 }

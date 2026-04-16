@@ -1,26 +1,28 @@
 /**
- * Anthropic Provider
+ * Anthropic Provider — production implementation.
  *
  * Provides access to Claude Opus, Sonnet, and Haiku models — the reasoning
- * substrate for the BossNyumba Brain. The Brain's "soul" is Opus for hard
- * reasoning, Sonnet as the default executor, Haiku for high-volume low-cost
- * coworker turns.
+ * substrate for the BossNyumba Brain.
  *
- * Pairs with `advisor.ts` to implement the Anthropic Advisor Pattern (2026):
- * cheap executor + occasional Opus consultation mid-turn.
+ * Production capabilities:
+ *  - Tool-use (Anthropic Messages API `tools` + `tool_use` content blocks)
+ *  - Multi-turn (caller passes `priorMessages` so we can iterate the
+ *    tool-call loop with `tool_result` blocks)
+ *  - Retry with exponential backoff on 429 / 5xx
+ *  - Honest error surfacing (no silent fallbacks)
  *
- * Note: uses plain fetch against the Anthropic Messages API to avoid adding
- * a new SDK dependency. Conforms to the AIProvider contract so it is a drop-in
- * peer of OpenAIProvider / MockAIProvider.
+ * Pairs with `advisor.ts` to implement the Anthropic Advisor Pattern (2026).
  */
 
-import { AIResult, aiOk, aiErr, ModelId, asModelId } from '../types/core.types.js';
+import { AIResult, aiOk, aiErr, asModelId } from '../types/core.types.js';
 import {
   AIProvider,
   AICompletionRequest,
   AICompletionResponse,
   AIProviderError,
   ModelInfo,
+  AIContentBlock,
+  AIMessage,
 } from './ai-provider.js';
 
 /**
@@ -31,17 +33,16 @@ export interface AnthropicProviderConfig {
   baseUrl?: string;
   defaultModel?: string;
   defaultTimeoutMs?: number;
-  /** Anthropic API version (x-api-version header) */
+  /** Anthropic API version (anthropic-version header) */
   apiVersion?: string;
+  /** Max retry attempts on 429 / 5xx. Default 4. */
+  maxRetries?: number;
+  /** Base backoff (ms). Each retry: base * 2^attempt + jitter. Default 500. */
+  retryBaseMs?: number;
 }
 
 /**
- * Anthropic model identifiers.
- *
- * These match the model IDs documented in the 2026 Anthropic Messages API.
- * `claude-opus-4-6` is the flagship reasoning model — the "soul" of the Brain.
- * `claude-sonnet-4-6` is the default executor for Juniors and Estate Manager.
- * `claude-haiku-4-5` is the low-cost executor for Coworker and high-volume paths.
+ * Anthropic model identifiers (2026 Messages API).
  */
 export const ANTHROPIC_MODELS = {
   OPUS_4_6: 'claude-opus-4-6',
@@ -52,9 +53,8 @@ export const ANTHROPIC_MODELS = {
 export type AnthropicModelId =
   (typeof ANTHROPIC_MODELS)[keyof typeof ANTHROPIC_MODELS];
 
-/**
- * Anthropic Provider Implementation
- */
+const DEFAULT_API_VERSION = '2023-06-01';
+
 export class AnthropicProvider implements AIProvider {
   readonly providerId = 'anthropic';
   readonly supportedModels: string[] = [
@@ -63,14 +63,19 @@ export class AnthropicProvider implements AIProvider {
     ANTHROPIC_MODELS.HAIKU_4_5,
   ];
 
-  private config: AnthropicProviderConfig;
+  private config: Required<
+    Pick<AnthropicProviderConfig, 'apiKey'>
+  > &
+    Omit<AnthropicProviderConfig, 'apiKey'>;
   private modelInfoMap: Map<string, ModelInfo>;
 
   constructor(config: AnthropicProviderConfig) {
+    if (!config.apiKey || typeof config.apiKey !== 'string') {
+      throw new Error(
+        'AnthropicProvider: apiKey is required (set ANTHROPIC_API_KEY).'
+      );
+    }
     this.config = config;
-    // Pricing approximations (USD per 1k tokens) as of 2026. These drive
-    // governance-service cost tracking; they are conservative upper bounds and
-    // should be overridden by the central billing config when available.
     this.modelInfoMap = new Map([
       [
         ANTHROPIC_MODELS.OPUS_4_6,
@@ -117,13 +122,6 @@ export class AnthropicProvider implements AIProvider {
     ]);
   }
 
-  /**
-   * Execute a completion against the Anthropic Messages API.
-   *
-   * The API expects `system` as a top-level field (not a role-prefixed message)
-   * and a `messages` array of `{ role, content }`. We translate our internal
-   * CompiledPrompt shape accordingly.
-   */
   async complete(
     request: AICompletionRequest
   ): Promise<AIResult<AICompletionResponse, AIProviderError>> {
@@ -135,31 +133,111 @@ export class AnthropicProvider implements AIProvider {
       ANTHROPIC_MODELS.SONNET_4_6;
     const timeoutMs = request.timeoutMs ?? this.config.defaultTimeoutMs ?? 60_000;
 
-    const userContent = request.additionalContext
-      ? `${request.prompt.userPrompt}\n\n${request.additionalContext}`
-      : request.prompt.userPrompt;
+    // Build messages — either use priorMessages (multi-turn / tool loop) or
+    // construct a single-shot user message from the prompt.
+    const messages: Array<{
+      role: 'user' | 'assistant';
+      content: string | AIContentBlock[];
+    }> = request.priorMessages
+      ? request.priorMessages.map((m) => ({ role: m.role, content: m.content }))
+      : [
+          {
+            role: 'user',
+            content: request.additionalContext
+              ? `${request.prompt.userPrompt}\n\n${request.additionalContext}`
+              : request.prompt.userPrompt,
+          },
+        ];
 
     const body: Record<string, unknown> = {
       model: modelId,
       max_tokens: request.prompt.modelConfig.maxTokens ?? 4096,
       temperature:
-        request.temperatureOverride ?? request.prompt.modelConfig.temperature ?? 0.7,
-      messages: [{ role: 'user', content: userContent }],
+        request.temperatureOverride ??
+        request.prompt.modelConfig.temperature ??
+        0.7,
+      messages,
     };
-
-    if (request.prompt.systemPrompt) {
-      body.system = request.prompt.systemPrompt;
-    }
-    if (request.prompt.modelConfig.topP !== undefined) {
+    if (request.prompt.systemPrompt) body.system = request.prompt.systemPrompt;
+    if (request.prompt.modelConfig.topP !== undefined)
       body.top_p = request.prompt.modelConfig.topP;
-    }
-    // Anthropic does not have an OpenAI-style json_object mode; callers that
-    // need strict JSON should instruct the model in the system prompt and we
-    // will attempt JSON.parse on the response.
 
+    if (request.tools && request.tools.length > 0) {
+      body.tools = request.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.inputSchema,
+      }));
+    }
+
+    const result = await this.requestWithRetry(body, timeoutMs);
+    if (!result.success) {
+      const e = (result as { success: false; error: AIProviderError }).error;
+      return aiErr(e);
+    }
+    const data = result.data;
+
+    const rawContent: AIContentBlock[] = Array.isArray(data.content)
+      ? data.content.map((b) => normalizeContentBlock(b))
+      : [];
+
+    const content = rawContent
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+
+    const toolCalls = rawContent.filter(
+      (b): b is { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> } =>
+        b.type === 'tool_use'
+    );
+
+    let parsedJson: unknown = undefined;
+    if (request.jsonMode) parsedJson = safeJsonParse(content);
+
+    const finishReason = mapStopReason(data.stop_reason);
+    const promptTokens = data.usage?.input_tokens ?? 0;
+    const completionTokens = data.usage?.output_tokens ?? 0;
+
+    return aiOk({
+      content,
+      parsedJson,
+      modelId: asModelId(modelId),
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+      },
+      processingTimeMs: Date.now() - startTime,
+      finishReason,
+      toolCalls: toolCalls.length
+        ? toolCalls.map((c) => ({
+            id: c.id,
+            name: c.name,
+            input: c.input,
+          }))
+        : undefined,
+      rawContent,
+    });
+  }
+
+  /**
+   * Single fetch with timeout. Caller wraps in retry loop.
+   */
+  private async requestOnce(
+    body: Record<string, unknown>,
+    timeoutMs: number
+  ): Promise<
+    AIResult<
+      {
+        content?: Array<Record<string, unknown>>;
+        stop_reason?: string;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      },
+      AIProviderError
+    >
+  > {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
     try {
       const response = await fetch(
         `${this.config.baseUrl ?? 'https://api.anthropic.com'}/v1/messages`,
@@ -168,54 +246,25 @@ export class AnthropicProvider implements AIProvider {
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': this.config.apiKey,
-            'anthropic-version': this.config.apiVersion ?? '2023-06-01',
+            'anthropic-version': this.config.apiVersion ?? DEFAULT_API_VERSION,
           },
           body: JSON.stringify(body),
           signal: controller.signal,
         }
       );
       clearTimeout(timeoutId);
-
       if (!response.ok) {
         const errorBody = (await response
           .json()
           .catch(() => ({}))) as Record<string, unknown>;
         return this.handleApiError(response.status, errorBody);
       }
-
       const data = (await response.json()) as {
-        content?: Array<{ type: string; text?: string }>;
+        content?: Array<Record<string, unknown>>;
         stop_reason?: string;
         usage?: { input_tokens?: number; output_tokens?: number };
       };
-
-      const content =
-        data.content
-          ?.filter((b) => b.type === 'text')
-          .map((b) => b.text ?? '')
-          .join('') ?? '';
-
-      let parsedJson: unknown = undefined;
-      if (request.jsonMode) {
-        parsedJson = safeJsonParse(content);
-      }
-
-      const finishReason = mapStopReason(data.stop_reason);
-      const promptTokens = data.usage?.input_tokens ?? 0;
-      const completionTokens = data.usage?.output_tokens ?? 0;
-
-      return aiOk({
-        content,
-        parsedJson,
-        modelId: asModelId(modelId),
-        usage: {
-          promptTokens,
-          completionTokens,
-          totalTokens: promptTokens + completionTokens,
-        },
-        processingTimeMs: Date.now() - startTime,
-        finishReason,
-      });
+      return aiOk(data);
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
@@ -235,6 +284,46 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 
+  /**
+   * Retry wrapper. Exponential backoff on retryable errors only.
+   */
+  private async requestWithRetry(
+    body: Record<string, unknown>,
+    timeoutMs: number
+  ): Promise<
+    AIResult<
+      {
+        content?: Array<Record<string, unknown>>;
+        stop_reason?: string;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      },
+      AIProviderError
+    >
+  > {
+    const maxRetries = this.config.maxRetries ?? 4;
+    const baseMs = this.config.retryBaseMs ?? 500;
+    let lastErr: AIProviderError | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const result = await this.requestOnce(body, timeoutMs);
+      if (result.success) return result;
+      const err = (result as { success: false; error: AIProviderError }).error;
+      lastErr = err;
+      if (!err.retryable || attempt === maxRetries) return aiErr(err);
+      // Exponential backoff with jitter
+      const wait = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+    return aiErr(
+      lastErr ?? {
+        code: 'PROVIDER_ERROR',
+        message: 'unknown anthropic failure',
+        provider: this.providerId,
+        retryable: false,
+      }
+    );
+  }
+
   private handleApiError(
     statusCode: number,
     errorBody: Record<string, unknown>
@@ -251,10 +340,7 @@ export class AnthropicProvider implements AIProvider {
         retryable: true,
       });
     }
-    if (
-      statusCode === 400 &&
-      /context|token|length/i.test(errorMessage)
-    ) {
+    if (statusCode === 400 && /context|token|length/i.test(errorMessage)) {
       return aiErr({
         code: 'CONTEXT_LENGTH',
         message: `Anthropic context length exceeded: ${errorMessage}`,
@@ -280,31 +366,70 @@ export class AnthropicProvider implements AIProvider {
     return this.modelInfoMap.get(modelId) ?? null;
   }
 
+  /**
+   * Honest health check — issues a tiny `messages` call. Returns false on
+   * any non-2xx so callers can route around an outage. Costs ~5 tokens.
+   */
   async healthCheck(): Promise<boolean> {
-    // Anthropic has no cheap GET; a lightweight well-formed messages call is
-    // the canonical health probe, but we avoid billing on health checks by
-    // returning true when config is present. Real liveness is observed via
-    // completion success/failure in the governance service.
-    return Boolean(this.config.apiKey);
+    if (!this.config.apiKey) return false;
+    const probe = await this.requestOnce(
+      {
+        model:
+          this.config.defaultModel ?? ANTHROPIC_MODELS.HAIKU_4_5,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'ping' }],
+      },
+      this.config.defaultTimeoutMs ?? 5_000
+    );
+    return probe.success;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function normalizeContentBlock(b: Record<string, unknown>): AIContentBlock {
+  const type = String(b.type ?? '');
+  if (type === 'text') {
+    return { type: 'text', text: String(b.text ?? '') };
+  }
+  if (type === 'tool_use') {
+    return {
+      type: 'tool_use',
+      id: String(b.id ?? ''),
+      name: String(b.name ?? ''),
+      input: (b.input as Record<string, unknown>) ?? {},
+    };
+  }
+  if (type === 'tool_result') {
+    return {
+      type: 'tool_result',
+      tool_use_id: String(b.tool_use_id ?? ''),
+      content: typeof b.content === 'string' ? b.content : JSON.stringify(b.content),
+      is_error: Boolean(b.is_error),
+    };
+  }
+  return { type: 'text', text: '' };
 }
 
 function mapStopReason(
   raw: string | undefined
-): 'stop' | 'length' | 'content_filter' | 'error' {
+): 'stop' | 'length' | 'content_filter' | 'error' | 'tool_use' {
   switch (raw) {
     case 'end_turn':
     case 'stop_sequence':
       return 'stop';
     case 'max_tokens':
       return 'length';
+    case 'tool_use':
+      return 'tool_use';
     default:
       return 'stop';
   }
 }
 
 function safeJsonParse(content: string): unknown {
-  // Tolerate fenced code blocks like ```json ... ```
   const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = fenceMatch ? fenceMatch[1] : content;
   try {
@@ -312,4 +437,22 @@ function safeJsonParse(content: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Helper: build a `tool_result` user-message turn to feed back into the model
+ * after dispatching tool calls. Used by the orchestrator's tool-call loop.
+ */
+export function buildToolResultMessage(
+  results: Array<{ toolUseId: string; content: string; isError?: boolean }>
+): AIMessage {
+  return {
+    role: 'user',
+    content: results.map((r) => ({
+      type: 'tool_result',
+      tool_use_id: r.toolUseId,
+      content: r.content,
+      is_error: r.isError,
+    })),
+  };
 }

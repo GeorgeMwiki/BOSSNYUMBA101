@@ -136,6 +136,9 @@ importers:
 
   apps/estate-manager-app:
     dependencies:
+      '@bossnyumba/ai-copilot':
+        specifier: workspace:*
+        version: link:../../packages/ai-copilot
       '@bossnyumba/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -258,6 +261,9 @@ importers:
       '@bossnyumba/observability':
         specifier: '*'
         version: link:../observability
+      jose:
+        specifier: ^5.2.0
+        version: 5.10.0
       openai:
         specifier: ^4.28.0
         version: 4.104.0(zod@3.25.76)
@@ -634,6 +640,9 @@ importers:
 
   services/api-gateway:
     dependencies:
+      '@bossnyumba/ai-copilot':
+        specifier: workspace:*
+        version: link:../../packages/ai-copilot
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy

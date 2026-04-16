@@ -23,13 +23,45 @@ export interface AICompletionRequest {
   jsonMode?: boolean;
   /** Request timeout in ms */
   timeoutMs?: number;
+  /** Tool definitions the model may call (Anthropic tool-use). */
+  tools?: AIToolDefinition[];
+  /**
+   * Optional prior turn history. When provided, the provider sends the
+   * full conversation including tool_use / tool_result blocks rather than
+   * the single-shot user prompt. Required for the orchestrator's
+   * tool-call loop to feed results back to the model.
+   */
+  priorMessages?: AIMessage[];
 }
+
+/**
+ * Definition of a tool the model may invoke.
+ */
+export interface AIToolDefinition {
+  name: string;
+  description: string;
+  /** JSON Schema for the tool's parameters. */
+  inputSchema: Record<string, unknown>;
+}
+
+/**
+ * Conversation message — used to feed history back to the model when
+ * iterating a tool-call loop.
+ */
+export type AIMessage =
+  | { role: 'user'; content: string | AIContentBlock[] }
+  | { role: 'assistant'; content: string | AIContentBlock[] };
+
+export type AIContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean };
 
 /**
  * AI completion response
  */
 export interface AICompletionResponse {
-  /** Generated content */
+  /** Generated content (text concatenation across text blocks). */
   content: string;
   /** Parsed JSON if jsonMode was true */
   parsedJson?: unknown;
@@ -43,8 +75,19 @@ export interface AICompletionResponse {
   };
   /** Processing time in ms */
   processingTimeMs: number;
-  /** Finish reason */
-  finishReason: 'stop' | 'length' | 'content_filter' | 'error';
+  /** Finish reason — `tool_use` is added for Anthropic tool-use turns. */
+  finishReason: 'stop' | 'length' | 'content_filter' | 'error' | 'tool_use';
+  /** Tool calls the model wants executed (Anthropic tool-use). */
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+  }>;
+  /**
+   * Raw content blocks (text + tool_use). Required when feeding the model's
+   * own turn back into a multi-turn conversation alongside tool_result blocks.
+   */
+  rawContent?: AIContentBlock[];
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   index,
   uniqueIndex,
   pgEnum,
+  decimal,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { tenants } from './tenant.schema.js';
@@ -682,68 +683,8 @@ export const assets = pgTable(
   })
 );
 
-// ============================================================================
-// Vendor Scorecards Table
-// ============================================================================
-
-export const vendorScorecards = pgTable(
-  'vendor_scorecards',
-  {
-    id: text('id').primaryKey(),
-    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    vendorId: text('vendor_id').notNull().references(() => vendors.id, { onDelete: 'cascade' }),
-    
-    // Period
-    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
-    periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
-    
-    // Metrics
-    totalJobs: integer('total_jobs').notNull().default(0),
-    completedJobs: integer('completed_jobs').notNull().default(0),
-    cancelledJobs: integer('cancelled_jobs').notNull().default(0),
-    
-    // Quality
-    avgRating: decimal('avg_rating', { precision: 3, scale: 2 }),
-    ratingCount: integer('rating_count').default(0),
-    firstTimeFixRate: decimal('first_time_fix_rate', { precision: 5, scale: 2 }),
-    
-    // Timeliness
-    onTimeArrivalRate: decimal('on_time_arrival_rate', { precision: 5, scale: 2 }),
-    avgResponseTimeMinutes: integer('avg_response_time_minutes'),
-    slaComplianceRate: decimal('sla_compliance_rate', { precision: 5, scale: 2 }),
-    
-    // Cost
-    avgJobCost: integer('avg_job_cost'),
-    costVariance: decimal('cost_variance', { precision: 5, scale: 2 }),
-    
-    // Communication
-    communicationScore: decimal('communication_score', { precision: 3, scale: 2 }),
-    
-    // Complaints
-    complaintCount: integer('complaint_count').default(0),
-    resolvedComplaints: integer('resolved_complaints').default(0),
-    
-    // Overall
-    overallScore: decimal('overall_score', { precision: 5, scale: 2 }),
-    trend: text('trend'),
-    
-    // Recommendations
-    recommendations: jsonb('recommendations').default([]),
-    
-    // Status
-    isLatest: boolean('is_latest').notNull().default(true),
-    
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    tenantIdx: index('vendor_scorecards_tenant_idx').on(table.tenantId),
-    vendorIdx: index('vendor_scorecards_vendor_idx').on(table.vendorId),
-    periodIdx: index('vendor_scorecards_period_idx').on(table.periodStart, table.periodEnd),
-    latestIdx: index('vendor_scorecards_latest_idx').on(table.vendorId, table.isLatest),
-    overallScoreIdx: index('vendor_scorecards_overall_score_idx').on(table.overallScore),
-  })
-);
+// (Duplicate vendorScorecards table block removed —
+//  the canonical declaration is at the top of this file near vendors.)
 
 // ============================================================================
 // Vendor Assignments Table
@@ -890,16 +831,7 @@ export const assetsRelations = relations(assets, ({ one }) => ({
   }),
 }));
 
-export const vendorScorecardsRelations = relations(vendorScorecards, ({ one }) => ({
-  tenant: one(tenants, {
-    fields: [vendorScorecards.tenantId],
-    references: [tenants.id],
-  }),
-  vendor: one(vendors, {
-    fields: [vendorScorecards.vendorId],
-    references: [vendors.id],
-  }),
-}));
+// (Duplicate vendorScorecardsRelations removed — canonical version above.)
 
 export const vendorAssignmentsRelations = relations(vendorAssignments, ({ one }) => ({
   tenant: one(tenants, {
