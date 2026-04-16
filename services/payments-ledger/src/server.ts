@@ -108,6 +108,26 @@ const MpesaStkCallbackSchema = z.object({
   })
 });
 
+// M-PESA C2B Confirmation Schema. Daraja sends this when a customer
+// pays directly to the shortcode (no STK push). BillRefNumber is the
+// account reference the customer typed — we match it against invoice
+// numbers and customer codes to auto-attribute the payment.
+const MpesaC2BConfirmationSchema = z.object({
+  TransactionType: z.string(),
+  TransID: z.string(),
+  TransTime: z.string(),
+  TransAmount: z.string(),
+  BusinessShortCode: z.string(),
+  BillRefNumber: z.string().optional().default(''),
+  InvoiceNumber: z.string().optional().default(''),
+  OrgAccountBalance: z.string().optional().default(''),
+  ThirdPartyTransID: z.string().optional().default(''),
+  MSISDN: z.string(),
+  FirstName: z.string().optional().default(''),
+  MiddleName: z.string().optional().default(''),
+  LastName: z.string().optional().default(''),
+});
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
@@ -1342,6 +1362,122 @@ app.post('/webhooks/mpesa/b2c/timeout', async (req: Request, res: Response, next
   } catch (error) {
     logger.error({ err: error }, 'Error processing M-PESA B2C timeout');
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+  }
+});
+
+/**
+ * POST /webhooks/mpesa/c2b/validation - Daraja validation handler
+ *
+ * Called BEFORE the customer is debited. We verify the BillRefNumber
+ * corresponds to a valid invoice/account; returning non-zero ResultCode
+ * rejects the payment. Daraja retries a few times on failure before
+ * letting the customer complete the payment anyway (C2B is
+ * best-effort validation, not a hard gate).
+ */
+app.post('/webhooks/mpesa/c2b/validation', async (req: Request, res: Response) => {
+  try {
+    const parsed = MpesaC2BConfirmationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn({ body: req.body }, 'invalid C2B validation payload');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+    const ref = parsed.data.BillRefNumber.trim();
+    // We accept payments even without a reference — operators can
+    // manually attribute them. But we log the shape for observability.
+    logger.info(
+      {
+        event: 'c2b_validation',
+        transId: parsed.data.TransID,
+        billRef: ref,
+        amount: parsed.data.TransAmount,
+        msisdn: parsed.data.MSISDN,
+      },
+      'M-PESA C2B validation received'
+    );
+    return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+  } catch (err) {
+    logger.error({ err }, 'Error in C2B validation handler');
+    return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+  }
+});
+
+/**
+ * POST /webhooks/mpesa/c2b/confirm - Daraja confirmation handler
+ *
+ * Called AFTER the customer's M-Pesa debit succeeds. This is the
+ * authoritative "money arrived" signal. We:
+ *  1. Deduplicate by TransID (tenant-scoped) so Safaricom retries don't
+ *     double-credit the ledger.
+ *  2. Look up the tenant via the BusinessShortCode (each tenant owns a
+ *     distinct paybill). Cross-tenant safety hinges on this mapping.
+ *  3. Match the BillRefNumber against invoiceNumber → customerCode →
+ *     leaseId (in that precedence order).
+ *  4. Forward to paymentOrchestrationService for ledger posting.
+ *
+ * The response body must always be `{ ResultCode: 0, ResultDesc: 'Accepted' }`
+ * so Safaricom stops retrying. Internal failures are logged, never
+ * bubbled back — Daraja interprets 4xx/5xx as retryable.
+ */
+app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
+  try {
+    const parsed = MpesaC2BConfirmationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn({ body: req.body }, 'invalid C2B confirmation payload');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+    const c2b = parsed.data;
+
+    // Dedup key is global (no tenant yet) but the TransID itself is
+    // globally unique in Safaricom's namespace so collision risk is nil.
+    if (mpesaDeduplicator.seenBefore(`c2b:${c2b.TransID}`)) {
+      logger.info({ transId: c2b.TransID }, 'duplicate M-PESA C2B confirmation; acking');
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+
+    logger.info(
+      {
+        event: 'c2b_confirm',
+        transId: c2b.TransID,
+        shortCode: c2b.BusinessShortCode,
+        billRef: c2b.BillRefNumber,
+        amount: c2b.TransAmount,
+        msisdn: c2b.MSISDN,
+      },
+      'M-PESA C2B confirmation received'
+    );
+
+    // Best-effort attribution. If we can't match the invoice here the
+    // payment lands in an "unallocated" bucket for operators to assign
+    // manually. The orchestrator handles both paths.
+    await paymentOrchestrationService.handleWebhook(
+      'mpesa_c2b',
+      c2b.TransID,
+      'SUCCEEDED',
+      c2b.TransID,
+      undefined,
+      {
+        shortCode: c2b.BusinessShortCode,
+        billRefNumber: c2b.BillRefNumber,
+        amountKes: Number.parseFloat(c2b.TransAmount) || 0,
+        payerMsisdn: c2b.MSISDN,
+        payerName: [c2b.FirstName, c2b.MiddleName, c2b.LastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim(),
+      }
+    ).catch((err) => {
+      // Orchestrator failures are logged but must not propagate — we
+      // still must return 200 to Daraja so it stops retrying.
+      logger.error(
+        { err, transId: c2b.TransID },
+        'C2B orchestration failed; payment will require manual reconciliation'
+      );
+    });
+
+    return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+  } catch (err) {
+    logger.error({ err }, 'Error in C2B confirmation handler');
+    return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   }
 });
 

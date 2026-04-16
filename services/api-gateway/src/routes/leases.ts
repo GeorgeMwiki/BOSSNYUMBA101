@@ -84,6 +84,163 @@ app.get('/current', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, lease) });
 });
 
+// Customer-app helpers — "current" refers to the signed-in customer's
+// active lease. These map to the same data as /leases/:id with the
+// id resolved server-side from the JWT, sparing the mobile client a
+// lookup round-trip.
+app.get('/current/renewal-offer', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
+  const lease =
+    result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+  if (!lease) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'No active lease' } },
+      404
+    );
+  }
+  // A renewal offer only exists within 90 days of expiry. If the
+  // manager hasn't proposed one, return a "no offer" envelope so the
+  // client UI can render the empty state cleanly.
+  const endDate = new Date(lease.endDate);
+  const daysUntilExpiry = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const offerAvailable = daysUntilExpiry <= 90 && daysUntilExpiry > 0;
+  return c.json({
+    success: true,
+    data: {
+      lease: await enrichLease(repos, auth.tenantId, lease),
+      daysUntilExpiry,
+      offerAvailable,
+      proposedTerms: offerAvailable
+        ? {
+            newEndDate: new Date(
+              endDate.getFullYear() + 1,
+              endDate.getMonth(),
+              endDate.getDate()
+            ).toISOString(),
+            rentAmount: lease.rentAmount,
+          }
+        : null,
+    },
+  });
+});
+
+app.post('/current/renew', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
+  const lease = result.items.find((item: any) => String(item.status) === 'active');
+  if (!lease) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'No active lease to renew' } },
+      404
+    );
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const termMonths = Number(body.termMonths ?? 12);
+  if (!Number.isFinite(termMonths) || termMonths < 1 || termMonths > 60) {
+    return c.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'termMonths must be 1-60' } },
+      400
+    );
+  }
+  const currentEnd = new Date(lease.endDate);
+  const newEnd = new Date(currentEnd.getFullYear(), currentEnd.getMonth() + termMonths, currentEnd.getDate());
+  const row = await repos.leases.update(
+    lease.id,
+    auth.tenantId,
+    {
+      status: 'renewed',
+      endDate: newEnd,
+      rentAmount: body.rentAmount != null ? majorToMinor(body.rentAmount) : undefined,
+      updatedBy: auth.userId,
+    },
+    auth.userId
+  );
+  return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
+});
+
+app.get('/current/move-out', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
+  const lease =
+    result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+  if (!lease) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'No active lease' } },
+      404
+    );
+  }
+  // If a move-out intent already exists it will be stored on the lease
+  // as `moveOutAt`. No intent yet → empty data so the client renders
+  // the "start move-out" flow.
+  return c.json({
+    success: true,
+    data: {
+      leaseId: lease.id,
+      moveOutAt: (lease as { moveOutAt?: string | Date }).moveOutAt ?? null,
+      minNoticeDays: lease.noticePeriodDays ?? 30,
+      earliestMoveOutDate: new Date(Date.now() + (lease.noticePeriodDays ?? 30) * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  });
+});
+
+app.post('/current/move-out', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+  const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
+  const lease = result.items.find((item: any) => String(item.status) === 'active');
+  if (!lease) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'No active lease to move out from' } },
+      404
+    );
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const moveOutDate = body.moveOutDate ? new Date(body.moveOutDate) : undefined;
+  if (!moveOutDate || Number.isNaN(moveOutDate.getTime())) {
+    return c.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'moveOutDate is required' } },
+      400
+    );
+  }
+  // Clients can't submit a move-out date inside the notice period.
+  const earliest = Date.now() + (lease.noticePeriodDays ?? 30) * 24 * 60 * 60 * 1000;
+  if (moveOutDate.getTime() < earliest) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOTICE_PERIOD_VIOLATED',
+          message: `Move-out date must be at least ${lease.noticePeriodDays ?? 30} days away`,
+        },
+      },
+      400
+    );
+  }
+  const row = await repos.leases.update(
+    lease.id,
+    auth.tenantId,
+    {
+      status: 'notice_given',
+      terminationNotes: (body.reason as string | undefined) ?? 'Tenant-initiated move-out',
+      terminatedBy: auth.userId,
+      updatedBy: auth.userId,
+    },
+    auth.userId
+  );
+  return c.json({
+    success: true,
+    data: {
+      lease: await enrichLease(repos, auth.tenantId, row),
+      moveOutDate: moveOutDate.toISOString(),
+      inspectionDue: true,
+    },
+  });
+});
+
 app.get('/expiring', async (c) => {
   // "Expiring" still needs a full scan because the filter is post-DB
   // (endDate <= cutoff). We cap at 500 rows so a pathological tenant

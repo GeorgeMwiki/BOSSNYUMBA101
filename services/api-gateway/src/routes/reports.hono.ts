@@ -37,9 +37,9 @@ function monthLabel(key) {
 async function getScope(auth, repos) {
   const [propertiesResult, unitsResult, leasesResult, invoicesResult, paymentsResult, workOrdersResult] =
     await Promise.all([
-      repos.properties.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.units.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.leases.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.properties.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
       repos.invoices.findMany(auth.tenantId, 5000, 0),
       repos.payments.findMany(auth.tenantId, 5000, 0),
       repos.workOrders.findMany(auth.tenantId, 5000, 0),

@@ -6,9 +6,38 @@ import { logger } from '../../common/logger';
 import { withRetry } from '../../common/retry';
 import type { Money } from '../../common/types';
 import { getMpesaAccessToken } from './auth';
+import { generateSecurityCredential } from './security-credential';
 import type { MpesaConfig } from './types';
 
 const B2C_PATH = '/mpesa/b2c/v1/paymentrequest';
+
+/**
+ * Accept either a pre-built credential or a plaintext password.
+ * Heuristic: base64 ciphertext is ≥ 172 chars with no whitespace for a
+ * 2048-bit RSA key. Anything shorter is the password.
+ */
+function buildCredential(
+  input: string | undefined,
+  config: MpesaConfig
+): string {
+  const pwd =
+    input && (input.length < 160 || /\s/.test(input))
+      ? input
+      : undefined;
+  if (input && !pwd) return input;
+  const password = pwd ?? process.env.MPESA_INITIATOR_PASSWORD?.trim();
+  if (!password) {
+    throw new ValidationError(
+      'M-Pesa B2C requires an initiator password (MPESA_INITIATOR_PASSWORD) ' +
+        'or a pre-built SecurityCredential.',
+      'mpesa'
+    );
+  }
+  return generateSecurityCredential(
+    password,
+    (config.environment ?? 'sandbox') as 'sandbox' | 'production'
+  );
+}
 
 function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/\D/g, '');
@@ -39,8 +68,16 @@ export interface B2CResult {
 export async function initiateB2C(
   config: MpesaConfig,
   params: B2CParams,
-  securityCredential: string
+  // Accept either a pre-built credential (for back-compat with callers
+  // that build their own) OR the plaintext initiator password which we
+  // RSA-encrypt here. This is the path production should take; passing
+  // a pre-built credential is an escape hatch for testing.
+  credentialOrPassword?: string
 ): Promise<B2CResult> {
+  // If the caller supplied a string that already looks like base64
+  // ciphertext (long + no whitespace) use it directly; otherwise treat
+  // it as the plaintext initiator password and encrypt now.
+  const securityCredential = buildCredential(credentialOrPassword, config);
   if (params.amount.currency !== 'KES') {
     throw new ValidationError('M-Pesa B2C only supports KES', 'mpesa');
   }

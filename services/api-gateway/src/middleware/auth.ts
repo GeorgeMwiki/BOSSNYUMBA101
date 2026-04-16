@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
 import { UserRole } from '../types/user-role';
 import { getJwtSecret } from '../config/jwt';
+import { tokenBlocklist } from './token-blocklist';
 
 // Simplified AuthContext for the API gateway
 export interface AuthContext {
@@ -24,6 +26,8 @@ export interface JWTPayload {
   role: UserRole;
   permissions: string[];
   propertyAccess: string[];
+  /** JWT ID — used for revocation via tokenBlocklist. */
+  jti?: string;
   exp: number;
   iat: number;
 }
@@ -56,6 +60,17 @@ export const authMiddleware = (
       const decoded = jwt.verify(token, JWT_SECRET, {
         algorithms: ['HS256'],
       }) as JWTPayload;
+
+      // Check revocation blocklist (logout + refresh-rotation flow).
+      if (decoded.jti && tokenBlocklist.isRevoked(decoded.jti)) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'TOKEN_REVOKED',
+            message: 'Authentication token has been revoked',
+          },
+        });
+      }
 
       (req as AuthenticatedRequest).auth = {
         userId: decoded.userId,
@@ -150,8 +165,17 @@ export const requirePermission = (...permissions: string[]) => {
   };
 };
 
-export const generateToken = (payload: Omit<JWTPayload, 'exp' | 'iat'>): string => {
+export const generateToken = (payload: Omit<JWTPayload, 'exp' | 'iat' | 'jti'>): string => {
   // 1-hour access token TTL. Use /auth/refresh to extend sessions. This limits
   // blast radius on token theft — a stolen token is useful for at most an hour.
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+  //
+  // Inject a fresh jti per token so /auth/logout and /auth/refresh can
+  // revoke the specific issued token via the blocklist. Two tabs that
+  // each mint a token get distinct jtis — revocation is scoped to the
+  // one that requested it, not the whole user.
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: '1h',
+    jwtid: randomUUID(),
+    algorithm: 'HS256',
+  });
 };

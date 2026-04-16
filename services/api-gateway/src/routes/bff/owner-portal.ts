@@ -22,7 +22,7 @@ function toDataUrl(content, mimeType = 'text/plain') {
 
 async function getOwnerScope(auth, repos) {
   const propertiesResult = await repos.properties.findMany(auth.tenantId, {
-    limit: 2000,
+    limit: 1000,
     offset: 0,
   });
   const properties = auth.propertyAccess?.includes('*')
@@ -32,12 +32,12 @@ async function getOwnerScope(auth, repos) {
 
   const [unitsResult, leasesResult, customersResult, invoicesResult, paymentsResult, workOrdersResult] =
     await Promise.all([
-      repos.units.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.leases.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.customers.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.invoices.findMany(auth.tenantId, 5000, 0),
-      repos.payments.findMany(auth.tenantId, 5000, 0),
-      repos.workOrders.findMany(auth.tenantId, 5000, 0),
+      repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.customers.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.invoices.findMany(auth.tenantId, 1000, 0),
+      repos.payments.findMany(auth.tenantId, 1000, 0),
+      repos.workOrders.findMany(auth.tenantId, 1000, 0),
     ]);
 
   const units = unitsResult.items.filter((unit) => propertyIds.has(unit.propertyId));

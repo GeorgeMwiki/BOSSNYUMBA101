@@ -8,6 +8,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
+import { tokenBlocklist } from '../middleware/token-blocklist';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
 
@@ -280,6 +281,12 @@ app.get('/me', authMiddleware, async (c) => {
 
 app.post('/refresh', authMiddleware, async (c) => {
   const auth = c.get('auth');
+  // Refresh-token rotation: the OLD token is added to the blocklist so
+  // a compromised refresh cannot be replayed once the legitimate user
+  // has rotated to a fresh token. Each refresh mints a new jti.
+  if (auth.jti && auth.exp) {
+    tokenBlocklist.revoke(auth.jti, auth.exp);
+  }
   const token = generateToken({
     userId: auth.userId,
     tenantId: auth.tenantId,
@@ -296,8 +303,14 @@ app.post('/refresh', authMiddleware, async (c) => {
   });
 });
 
-app.post('/logout', (_c) => {
-  return _c.json({ success: true, data: { loggedOut: true } });
+app.post('/logout', authMiddleware, async (c) => {
+  const auth = c.get('auth');
+  // Stateless JWTs can't self-invalidate; the blocklist is the
+  // authoritative "this token is dead" signal for the remaining TTL.
+  if (auth.jti && auth.exp) {
+    tokenBlocklist.revoke(auth.jti, auth.exp);
+  }
+  return c.json({ success: true, data: { loggedOut: true } });
 });
 
 app.post('/register', (c) =>

@@ -8,6 +8,7 @@ import { createMiddleware } from 'hono/factory';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
 import { getJwtSecret } from '../config/jwt';
+import { tokenBlocklist } from './token-blocklist';
 
 const JWT_SECRET = getJwtSecret();
 
@@ -17,6 +18,10 @@ export interface AuthContext {
   role: UserRole;
   permissions: string[];
   propertyAccess: string[];
+  /** JWT ID of the current token — needed for /auth/logout revocation. */
+  jti?: string;
+  /** Token expiry epoch seconds — paired with jti for blocklist TTL. */
+  exp?: number;
 }
 
 export interface JWTPayload {
@@ -25,6 +30,7 @@ export interface JWTPayload {
   role: UserRole;
   permissions: string[];
   propertyAccess: string[];
+  jti?: string;
   exp: number;
   iat: number;
 }
@@ -59,12 +65,27 @@ export const authMiddleware = createMiddleware(async (c, next) => {
       algorithms: ['HS256'],
     }) as JWTPayload;
 
+    if (decoded.jti && tokenBlocklist.isRevoked(decoded.jti)) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'TOKEN_REVOKED',
+            message: 'Authentication token has been revoked',
+          },
+        },
+        401
+      );
+    }
+
     c.set('auth', {
       userId: decoded.userId,
       tenantId: decoded.tenantId,
       role: decoded.role,
       permissions: decoded.permissions,
       propertyAccess: decoded.propertyAccess,
+      jti: decoded.jti,
+      exp: decoded.exp,
     });
 
     await next();

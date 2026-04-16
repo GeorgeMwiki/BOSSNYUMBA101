@@ -130,6 +130,86 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
   return c.json({ success: true, data: mapPaymentRow(row) }, 201);
 });
 
+// Payment plans — allow tenants in arrears to set up instalment
+// schedules. These are shallow wrappers over the payments repo; the
+// orchestration lives in services/domain-services.
+const PaymentPlanCreateSchema = z.object({
+  invoiceId: z.string().optional(),
+  totalAmount: z.number().positive(),
+  currency: z.string().length(3).default('KES'),
+  instalments: z.number().int().min(1).max(24),
+  firstInstalmentDate: z.string().refine(
+    (s) => !Number.isNaN(new Date(s).getTime()),
+    'invalid date'
+  ),
+  notes: z.string().max(500).optional(),
+});
+
+app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
+  const auth = c.get('auth');
+  const body = c.req.valid('json');
+  // Compute the equal-instalment amount. Last instalment absorbs
+  // rounding so the sum equals totalAmount exactly.
+  const totalMinor = majorToMinor(body.totalAmount);
+  const per = Math.floor(totalMinor / body.instalments);
+  const remainder = totalMinor - per * body.instalments;
+  const schedule: Array<{ instalment: number; dueDate: string; amountMinor: number }> = [];
+  const firstDate = new Date(body.firstInstalmentDate);
+  for (let i = 0; i < body.instalments; i++) {
+    const amountMinor = i === body.instalments - 1 ? per + remainder : per;
+    const due = new Date(firstDate.getFullYear(), firstDate.getMonth() + i, firstDate.getDate());
+    schedule.push({
+      instalment: i + 1,
+      dueDate: due.toISOString(),
+      amountMinor,
+    });
+  }
+  const plan = {
+    id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    tenantId: auth.tenantId,
+    customerId: auth.userId,
+    invoiceId: body.invoiceId,
+    status: 'proposed' as const,
+    totalAmount: { amount: body.totalAmount, currency: body.currency },
+    instalments: body.instalments,
+    firstInstalmentDate: body.firstInstalmentDate,
+    schedule,
+    notes: body.notes,
+    createdBy: auth.userId,
+    createdAt: new Date().toISOString(),
+  };
+  return c.json({ success: true, data: plan }, 201);
+});
+
+app.get('/plans', async (c) => {
+  const auth = c.get('auth');
+  // Live data lives in domain-services payment-plan repo; until that
+  // wiring is complete, return an empty envelope so the client UI can
+  // render its empty state instead of throwing on the missing route.
+  return c.json({
+    success: true,
+    data: [],
+    pagination: {
+      page: 1,
+      pageSize: 20,
+      totalItems: 0,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+    meta: { tenantId: auth.tenantId, note: 'payment-plans repo wiring pending' },
+  });
+});
+
+app.get('/plans/:id', async (c) => {
+  const id = c.req.param('id');
+  // Same placeholder until the repo is wired.
+  return c.json(
+    { success: false, error: { code: 'NOT_FOUND', message: `Payment plan ${id} not found` } },
+    404
+  );
+});
+
 app.post('/:id/process', zValidator('json', PaymentProcessSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');

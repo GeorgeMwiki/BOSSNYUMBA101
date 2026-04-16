@@ -70,7 +70,7 @@ function buildMonthSeries(items, getDate, getValue, months = 7) {
 
 async function getScopedOwnerData(auth, repos) {
   const propertyResult = await repos.properties.findMany(auth.tenantId, {
-    limit: 2000,
+    limit: 1000,
     offset: 0,
   });
   const allProperties = propertyResult.items;
@@ -82,8 +82,8 @@ async function getScopedOwnerData(auth, repos) {
 
   const [unitsResult, leasesResult, invoicesResult, paymentsResult, workOrdersResult] =
     await Promise.all([
-      repos.units.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
-      repos.leases.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
       repos.invoices.findMany(auth.tenantId, 5000, 0),
       repos.payments.findMany(auth.tenantId, 5000, 0),
       repos.workOrders.findMany(auth.tenantId, 5000, 0),
@@ -359,8 +359,8 @@ async function getAdminDashboardData(auth, repos) {
     const [usersResult, propertiesResult, unitsResult, paymentsResult, invoicesResult] =
       await Promise.all([
         repos.users.findMany(tenant.id, 5000, 0),
-        repos.properties.findMany(tenant.id, { limit: 5000, offset: 0 }),
-        repos.units.findMany(tenant.id, { limit: 5000, offset: 0 }),
+        repos.properties.findMany(tenant.id, { limit: 1000, offset: 0 }),
+        repos.units.findMany(tenant.id, { limit: 1000, offset: 0 }),
         repos.payments.findMany(tenant.id, 5000, 0),
         repos.invoices.findMany(tenant.id, 5000, 0),
       ]);

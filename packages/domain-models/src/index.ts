@@ -76,6 +76,7 @@ export * from './common/money';
 // Tenant/Organization
 export * from './tenant/tenant';
 export * from './tenant/organization';
+export * from './tenant/kenya-identifiers';
 
 // Identity (Users, Roles, Sessions, Policies)
 export * from './identity/user';

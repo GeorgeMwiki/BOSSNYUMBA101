@@ -1,10 +1,12 @@
 /**
  * M-PESA Payment Provider Implementation
  * Implements the payment provider interface for Safaricom M-PESA
- * 
+ *
  * Note: This is a skeleton implementation. Actual M-PESA integration
  * requires registration with Safaricom and access to the Daraja API.
  */
+import { publicEncrypt, constants, createPublicKey } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   Money,
   PaymentStatus,
@@ -12,6 +14,44 @@ import {
   CustomerId,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+
+/**
+ * RSA-encrypt the initiator password with Safaricom's public cert so
+ * Daraja accepts the B2C request. PKCS1 v1.5 padding is the spec.
+ */
+function buildSecurityCredential(
+  initiatorPassword: string,
+  env: 'sandbox' | 'production'
+): string {
+  const envVar = env === 'production' ? 'MPESA_PRODUCTION_CERT' : 'MPESA_SANDBOX_CERT';
+  let pem = process.env[envVar]?.trim();
+  if (!pem) {
+    const certPath = process.env.MPESA_CERT_PATH?.trim();
+    if (certPath) {
+      try {
+        pem = readFileSync(certPath, 'utf-8');
+      } catch (err) {
+        throw new Error(
+          `Failed to read MPESA_CERT_PATH ${certPath}: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+    }
+  }
+  if (!pem) {
+    throw new Error(
+      `Missing M-Pesa ${env} certificate. Set ${envVar} (PEM) or MPESA_CERT_PATH. ` +
+        'Download from https://developer.safaricom.co.ke/.'
+    );
+  }
+  const key = createPublicKey(pem);
+  const ciphertext = publicEncrypt(
+    { key, padding: constants.RSA_PKCS1_PADDING },
+    Buffer.from(initiatorPassword, 'utf-8')
+  );
+  return ciphertext.toString('base64');
+}
 import {
   BasePaymentProvider,
   CreatePaymentResult,
@@ -315,9 +355,28 @@ export class MpesaPaymentProvider extends BasePaymentProvider {
       phoneNumber = '254' + phoneNumber.substring(1);
     }
 
+    // Build the SecurityCredential from the initiator password. Daraja
+    // rejects B2C calls without a properly RSA-encrypted credential,
+    // so an explicit failure here is preferable to sending a broken
+    // request and interpreting the generic auth error downstream.
+    const initiatorPassword =
+      (params.metadata?.initiatorPassword as string | undefined) ??
+      process.env.MPESA_INITIATOR_PASSWORD?.trim() ??
+      '';
+    if (!initiatorPassword) {
+      throw new Error(
+        'MPESA_INITIATOR_PASSWORD is required for B2C disbursement. ' +
+          'Configure the initiator password in env or pass via metadata.initiatorPassword.'
+      );
+    }
+    const securityCredential = buildSecurityCredential(
+      initiatorPassword,
+      (this.config.environment ?? 'sandbox') as 'sandbox' | 'production'
+    );
+
     const b2cRequest = {
       InitiatorName: params.metadata?.initiator || 'BOSSNYUMBA',
-      SecurityCredential: '', // Would need encrypted credential
+      SecurityCredential: securityCredential,
       CommandID: 'BusinessPayment',
       Amount: Math.round(params.amount.amountMajorUnits),
       PartyA: this.config.shortCode,
