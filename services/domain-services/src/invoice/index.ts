@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Invoice domain service.
  * Handles invoice generation, sending, payment tracking, and outstanding balance management.
@@ -193,7 +194,7 @@ export class InvoiceService {
     }
 
     const invoiceNumber = await this.generateInvoiceNumber(tenantId);
-    const invoiceId = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` as InvoiceId;
+    const invoiceId = `inv_${Date.now()}_${randomHex(4)}` as InvoiceId;
 
     const invoice = createInvoice(invoiceId, {
       tenantId,

@@ -1,4 +1,5 @@
 // @ts-nocheck — local type drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Document Management Service
  * Multi-tenant document handling with storage, versioning, sharing, and search.
@@ -87,7 +88,7 @@ export class DocumentService {
     correlationId = ''
   ): Promise<Result<Document, DocumentServiceErrorResult>> {
     const now = new Date().toISOString();
-    const docId = asDocumentId(`doc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+    const docId = asDocumentId(`doc_${Date.now()}_${randomHex(4)}`);
     const storageKey = `${category}/${docId}/${file.originalName}`;
 
     const content = file.buffer instanceof Blob
@@ -700,7 +701,7 @@ export class DocumentService {
       sortOrder: index + 1,
     }));
 
-    const packId = `ep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const packId = `ep_${Date.now()}_${randomHex(4)}`;
     const evidencePack: EvidencePack = {
       id: packId,
       tenantId,

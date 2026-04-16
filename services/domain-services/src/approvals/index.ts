@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Approvals Workflow Service
  * Handles approval requests for leases, expenses, refunds, maintenance costs,
@@ -236,7 +237,7 @@ export class ApprovalService {
     amount: number,
     reason: string
   ): Promise<Result<ApprovalRequest, ApprovalServiceErrorResult>> {
-    const id = `apr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const id = `apr_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
 
     const request: ApprovalRequest = {

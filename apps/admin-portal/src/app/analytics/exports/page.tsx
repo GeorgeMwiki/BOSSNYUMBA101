@@ -128,10 +128,10 @@ export default function AnalyticsExportsPage() {
             <option value="last90">Last 90 days</option>
             <option value="custom">Custom range</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <Filter className="h-4 w-4" />
-            Filters
-          </button>
+          {/* The dateRange select above is the sole filter today. The
+              standalone Filters button was removed because it opened
+              nothing — clicking it was dishonest. When additional filter
+              dimensions land, reintroduce as a panel. */}
         </div>
       </div>
 

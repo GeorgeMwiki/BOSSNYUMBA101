@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Scheduling/Calendar Service
  *
@@ -146,7 +147,7 @@ export class SchedulingService {
 
     const now = new Date().toISOString();
     const eventId = asScheduleEventId(
-      `evt_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+      `evt_${Date.now()}_${randomHex(4)}`
     );
 
     const event: ScheduleEvent = {

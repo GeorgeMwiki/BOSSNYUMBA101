@@ -1,3 +1,4 @@
+import { randomHex } from '../common/id-generator.js';
 /**
  * Onboarding Service - Tenant Onboarding Workflow
  * Module A per BOSSNYUMBA_SPEC.md
@@ -137,7 +138,7 @@ export class OnboardingService {
     createdBy: UserId,
     correlationId: string
   ): Promise<Result<OnboardingSession, OnboardingServiceErrorResult>> {
-    const sessionId = asOnboardingSessionId(`onb_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const sessionId = asOnboardingSessionId(`onb_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
     const lang = options.language ?? 'en';
     const channel = options.preferredChannel ?? 'whatsapp';
@@ -359,7 +360,7 @@ export class OnboardingService {
     if (!session) return err({ code: OnboardingServiceError.SESSION_NOT_FOUND, message: 'Session not found' });
     if (session.moveInConditionReport) return err({ code: OnboardingServiceError.INVALID_REPORT, message: 'Move-in report already submitted' });
 
-    const reportId = `mir_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const reportId = `mir_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
     const fullReport: MoveInConditionReport = {
       ...report,

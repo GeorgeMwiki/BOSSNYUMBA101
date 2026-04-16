@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Feedback Engine service (Module B)
  *
@@ -411,7 +412,7 @@ export class FeedbackService {
     context: FeedbackRequestContext,
     options?: { channel?: FeedbackRequest['channel']; correlationId?: string }
   ): Promise<Result<FeedbackRequest, FeedbackServiceErrorResult>> {
-    const id = asFeedbackRequestId(`fr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const id = asFeedbackRequestId(`fr_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
 
     const expiresAt = this.getExpiryForType(type);
@@ -476,7 +477,7 @@ export class FeedbackService {
       }
     }
 
-    const responseId = `fresp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` as FeedbackResponseId;
+    const responseId = `fresp_${Date.now()}_${randomHex(4)}` as FeedbackResponseId;
     const now = new Date().toISOString();
 
     const response: FeedbackResponse = {
@@ -546,7 +547,7 @@ export class FeedbackService {
       correlationId?: string;
     }
   ): Promise<Result<Complaint, FeedbackServiceErrorResult>> {
-    const id = asComplaintId(`complaint_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const id = asComplaintId(`complaint_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
 
     let sentimentAnalysis: SentimentAnalysis | null = null;
@@ -622,7 +623,7 @@ export class FeedbackService {
       return ok(existingCase);
     }
 
-    const id = asServiceRecoveryCaseId(`src_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const id = asServiceRecoveryCaseId(`src_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
 
     const case_: ServiceRecoveryCase = {

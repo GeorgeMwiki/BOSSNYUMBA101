@@ -25,6 +25,10 @@ interface PaymentOption {
   processingTime: string;
   fee: string;
   popular?: boolean;
+  /** When true the option is rendered but not selectable. */
+  disabled?: boolean;
+  /** Optional reason shown next to the disabled option. */
+  disabledReason?: string;
 }
 
 const paymentOptions: PaymentOption[] = [
@@ -52,6 +56,8 @@ const paymentOptions: PaymentOption[] = [
     icon: CreditCard,
     processingTime: 'Instant',
     fee: '2.5% processing fee',
+    disabled: true,
+    disabledReason: 'Card payments launch Q2 2026',
   },
 ];
 
@@ -69,15 +75,15 @@ export default function PayPage() {
 
   const handleContinue = () => {
     if (!selectedMethod) return;
-    
+
     if (selectedMethod === 'mpesa') {
       router.push(`/payments/mpesa?amount=${paymentAmount}`);
     } else if (selectedMethod === 'bank') {
       router.push(`/payments/bank-transfer?amount=${paymentAmount}`);
-    } else {
-      // Card payment - would implement card form
-      alert('Card payments coming soon!');
     }
+    // Card is marked `disabled: true` in paymentOptions so it cannot be
+    // selected from the UI. The type-level 'card' branch is unreachable
+    // here until we wire Stripe/Pesapal into /payments/card.
   };
 
   return (

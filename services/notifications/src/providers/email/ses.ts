@@ -59,8 +59,20 @@ export class SesProvider implements INotificationProvider {
       return { success: false, error: 'SES not configured for tenant' };
     }
 
-    const from = config.fromEmail ?? process.env.RESEND_FROM_EMAIL ?? process.env.NOTIFICATIONS_FROM_EMAIL ?? 'noreply@bossnyumba.com';
-    const fromName = config.fromName ?? 'BOSSNYUMBA';
+    // fromEmail is tenant-configurable; falls through to env; otherwise
+    // refuse to send so we never misattribute mail from an unowned domain.
+    const from =
+      config.fromEmail ??
+      process.env.RESEND_FROM_EMAIL?.trim() ??
+      process.env.NOTIFICATIONS_FROM_EMAIL?.trim() ??
+      null;
+    if (!from) {
+      return {
+        success: false,
+        error: 'SES fromEmail not configured (set tenant fromEmail or NOTIFICATIONS_FROM_EMAIL env)',
+      };
+    }
+    const fromName = config.fromName ?? process.env.NOTIFICATIONS_FROM_NAME ?? 'BOSSNYUMBA';
 
     try {
       const client = await getSesClient(config);

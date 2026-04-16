@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Utilities Tracking Service
  *
@@ -232,7 +233,7 @@ export class UtilitiesService {
     responsibility: UtilityResponsibility = 'tenant',
     meterNumber?: string | null
   ): Promise<Result<UtilityAccount, UtilityServiceErrorResult>> {
-    const id = `ua_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `ua_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
 
     const account: UtilityAccount = {
@@ -275,7 +276,7 @@ export class UtilitiesService {
     const accounts = await this.accountStore.findByUnit(tenantId, unitId, utilityType);
     const meterNumber = accounts[0]?.meterNumber ?? '';
 
-    const id = `mr_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `mr_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
 
     const meterReading: MeterReading = {
@@ -435,7 +436,7 @@ export class UtilitiesService {
       });
     }
 
-    const id = `ub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `ub_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
 
     const bill: UtilityBill = {

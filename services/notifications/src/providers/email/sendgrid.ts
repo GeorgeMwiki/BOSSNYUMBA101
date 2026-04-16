@@ -33,8 +33,17 @@ export class SendGridProvider implements INotificationProvider {
       return { success: false, error: 'SendGrid not configured for tenant' };
     }
 
-    const from = config.fromEmail ?? 'noreply@bossnyumba.com';
-    const fromName = config.fromName ?? 'BOSSNYUMBA';
+    const from =
+      config.fromEmail ??
+      process.env.NOTIFICATIONS_FROM_EMAIL?.trim() ??
+      null;
+    if (!from) {
+      return {
+        success: false,
+        error: 'SendGrid fromEmail not configured (set tenant fromEmail or NOTIFICATIONS_FROM_EMAIL env)',
+      };
+    }
+    const fromName = config.fromName ?? process.env.NOTIFICATIONS_FROM_NAME ?? 'BOSSNYUMBA';
 
     try {
       sgMail.setApiKey(config.apiKey);

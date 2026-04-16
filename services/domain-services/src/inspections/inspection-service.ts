@@ -1,3 +1,4 @@
+import { randomHex } from '../common/id-generator.js';
 /**
  * Inspection Service
  * Property inspection workflow for move-in, move-out, periodic, maintenance, and pre-listing inspections.
@@ -154,7 +155,7 @@ export class InspectionService {
       });
     }
 
-    const id = asInspectionId(`insp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const id = asInspectionId(`insp_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
     const createdBy = options?.createdBy ?? assignedTo;
     const correlationId = options?.correlationId ?? `corr_${Date.now()}`;
@@ -274,7 +275,7 @@ export class InspectionService {
     const template = getRoomTemplateById(asRoomId(roomId));
     const roomName = template?.name ?? roomId;
 
-    const itemId = asInspectionItemId(`item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const itemId = asInspectionItemId(`item_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString();
     const inspectionItem: InspectionItem = {
       id: itemId,

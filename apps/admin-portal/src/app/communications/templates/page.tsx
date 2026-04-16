@@ -128,10 +128,9 @@ export default function CommunicationsTemplatesPage() {
           <option value="email">Email</option>
           <option value="sms">SMS</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          Category
-        </button>
+        {/* "Category" filter button removed until we model template
+            categories server-side. The type select above is the only
+            actual filter today. */}
       </div>
 
       {/* Templates Grid */}

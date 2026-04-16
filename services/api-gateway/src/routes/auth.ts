@@ -1,6 +1,8 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
@@ -8,6 +10,12 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
 import { tenants, users, roles, userRoles } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
+
+// Request schemas — enforced server-side so clients cannot bypass.
+const LoginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(200),
+});
 
 const app = new Hono();
 
@@ -154,7 +162,7 @@ async function buildMePayload(auth: any) {
   };
 }
 
-app.post('/login', async (c) => {
+app.post('/login', zValidator('json', LoginSchema), async (c) => {
   const db = getDatabaseClient();
   if (!db) {
     return c.json(
@@ -169,7 +177,7 @@ app.post('/login', async (c) => {
     );
   }
 
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const record = await resolveAuthUser(body.email);
   if (!record?.passwordHash) {
     return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);

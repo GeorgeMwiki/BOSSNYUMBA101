@@ -115,6 +115,7 @@ export default function ConductInspectionPage() {
   const [showSignatureStep, setShowSignatureStep] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -287,22 +288,29 @@ export default function ConductInspectionPage() {
     }
 
     setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Save inspection data
-    const inspectionData = {
-      id: params.id,
-      type: inspectionType,
-      areas,
-      meterReadings,
-      signature,
-      completedAt: new Date().toISOString(),
-    };
-    console.log('Inspection data:', inspectionData);
-
-    router.push(`/inspections/${params.id}?completed=true`);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/inspections/${params.id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: inspectionType,
+          areas,
+          meterReadings,
+          signature,
+          completedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? `submit failed: ${res.status}`);
+      }
+      router.push(`/inspections/${params.id}?completed=true`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit inspection.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -577,6 +585,12 @@ export default function ConductInspectionPage() {
             Previous
           </button>
           {showSignatureStep ? (
+            <>
+            {submitError && (
+              <div className="absolute -top-10 left-0 right-0 text-center">
+                <p className="text-sm text-red-600" role="alert">{submitError}</p>
+              </div>
+            )}
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !signature}
@@ -591,6 +605,7 @@ export default function ConductInspectionPage() {
                 </>
               )}
             </button>
+            </>
           ) : showMeterStep ? (
             <button
               onClick={() => setShowSignatureStep(true)}

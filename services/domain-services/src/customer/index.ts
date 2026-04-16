@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Customer domain service.
  * Handles customer onboarding, profile management, KYC verification,
@@ -152,7 +153,7 @@ export class CustomerService {
     }
 
     const customerNumber = await this.generateCustomerNumber(tenantId);
-    const customerId = asCustomerId(`cust_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const customerId = asCustomerId(`cust_${Date.now()}_${randomHex(4)}`);
 
     const customer = createCustomer(customerId, {
       tenantId, customerNumber, profile: input.profile,

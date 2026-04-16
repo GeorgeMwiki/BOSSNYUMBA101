@@ -175,7 +175,36 @@ export default function PermissionMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={() => {
+              // Export the current matrix as CSV. Header row: permission,module,
+              // then one column per role. Body rows: permission checks.
+              const header = ['permission_id', 'module', ...roles.map((r) => r.name)];
+              const rows: string[][] = [];
+              for (const mod of modules) {
+                for (const perm of mod.permissions) {
+                  rows.push([
+                    perm.id,
+                    mod.name,
+                    ...roles.map((r) => (r.permissions.has(perm.id) ? 'yes' : 'no')),
+                  ]);
+                }
+              }
+              const csv = [header, ...rows]
+                .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `permission-matrix-${new Date().toISOString().slice(0, 10)}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             <Download className="h-4 w-4" />
             Export
           </button>

@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Compliance/Legal Service
  * Handles compliance items (lease expiry, license renewal, insurance, safety inspection, tax filing),
@@ -474,7 +475,7 @@ export class ComplianceService {
     dueDate: string,
     notes?: string
   ): Promise<Result<ComplianceItem, ComplianceServiceErrorResult>> {
-    const id = `cmp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const id = `cmp_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
     const status = computeStatus(dueDate);
 
@@ -686,7 +687,7 @@ export class ComplianceService {
       assignedTo?: UserId;
     }
   ): Promise<Result<LegalCase, ComplianceServiceErrorResult>> {
-    const id = `lgl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const id = `lgl_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
     const caseNumber = await this.generateCaseNumber(tenantId);
 
@@ -959,7 +960,7 @@ export class ComplianceService {
 
     const now = new Date().toISOString();
     const entry: CaseTimelineEntry = {
-      id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `evt_${Date.now()}_${randomHex(4)}`,
       event: eventType,
       timestamp: now,
       details,
@@ -1122,7 +1123,7 @@ export class ComplianceService {
     servedBy: UserId,
     caseId?: string
   ): Promise<Result<Notice, ComplianceServiceErrorResult>> {
-    const id = `ntc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const id = `ntc_${Date.now()}_${randomHex(4)}`;
     const now = new Date().toISOString();
 
     const notice: Notice = {

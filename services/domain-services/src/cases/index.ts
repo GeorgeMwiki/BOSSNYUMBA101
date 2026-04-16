@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Cases domain service.
  *
@@ -287,7 +288,7 @@ export class CaseService {
     }
 
     const caseNumber = await this.generateCaseNumber(tenantId);
-    const caseId = asCaseId(`case_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const caseId = asCaseId(`case_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString() as ISOTimestamp;
 
     const newCase: Case = {

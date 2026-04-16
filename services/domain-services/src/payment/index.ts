@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Payment domain service.
  *
@@ -452,7 +453,7 @@ export class PaymentService {
   ): Promise<Result<Invoice, PaymentServiceErrorResult>> {
     const now = new Date().toISOString();
     const invoiceNumber = await this.generateInvoiceNumber(tenantId);
-    const invoiceId = asInvoiceId(`inv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const invoiceId = asInvoiceId(`inv_${Date.now()}_${randomHex(4)}`);
 
     // Calculate line items with tax
     const currency = input.lineItems[0]?.unitPrice.currency ?? 'KES';
@@ -680,7 +681,7 @@ export class PaymentService {
 
     const now = new Date().toISOString();
     const paymentNumber = await this.generatePaymentNumber(tenantId);
-    const paymentId = asPaymentId(`pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const paymentId = asPaymentId(`pay_${Date.now()}_${randomHex(4)}`);
 
     const fee = zeroMoney(input.amount.currency);
     const netAmount = subtractMoney(input.amount, fee);
@@ -792,7 +793,7 @@ export class PaymentService {
 
     const now = new Date().toISOString();
     const paymentNumber = await this.generatePaymentNumber(tenantId);
-    const paymentId = asPaymentId(`pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const paymentId = asPaymentId(`pay_${Date.now()}_${randomHex(4)}`);
 
     // Create pending payment record
     const payment: Payment = {
@@ -1033,7 +1034,7 @@ export class PaymentService {
   ): Promise<Transaction> {
     const now = new Date().toISOString();
     const transactionNumber = await this.generateTransactionNumber(tenantId);
-    const transactionId = asTransactionId(`txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const transactionId = asTransactionId(`txn_${Date.now()}_${randomHex(4)}`);
 
     // Get running balance (simplified - in production would lock for consistency)
     let runningBalance = zeroMoney(input.amount.currency);

@@ -36,8 +36,20 @@ export class SmtpProvider implements INotificationProvider {
       return { success: false, error: 'SMTP not configured for tenant' };
     }
 
-    const from = config.fromEmail ?? 'noreply@bossnyumba.com';
-    const fromName = config.fromName ?? 'BOSSNYUMBA';
+    // fromEmail MUST be explicit per tenant — refusing to fall back to a
+    // shared default prevents misattributed outbound mail (and accidental
+    // spoofing of an unowned domain).
+    const from =
+      config.fromEmail ??
+      process.env.NOTIFICATIONS_FROM_EMAIL?.trim() ??
+      null;
+    if (!from) {
+      return {
+        success: false,
+        error: 'SMTP fromEmail not configured (set tenant fromEmail or NOTIFICATIONS_FROM_EMAIL env)',
+      };
+    }
+    const fromName = config.fromName ?? process.env.NOTIFICATIONS_FROM_NAME ?? 'BOSSNYUMBA';
 
     try {
       const transporter = nodemailer.createTransport({

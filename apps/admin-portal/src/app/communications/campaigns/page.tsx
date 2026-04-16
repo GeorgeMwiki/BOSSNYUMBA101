@@ -180,10 +180,9 @@ export default function CommunicationsCampaignsPage() {
           <option value="completed">Completed</option>
           <option value="paused">Paused</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          More Filters
-        </button>
+        {/* "More Filters" button removed — the status select is the only
+            real filter dimension today. Re-add as a panel when we add
+            channel/owner/date filters. */}
       </div>
 
       {/* Campaigns Table */}

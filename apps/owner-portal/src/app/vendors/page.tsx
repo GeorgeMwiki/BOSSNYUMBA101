@@ -49,11 +49,9 @@ export default function VendorsPage() {
     );
   }
 
-  const displayVendors = filtered.length ? filtered : [
-    { id: '1', name: 'QuickFix Plumbing', type: 'Plumbing', email: 'contact@quickfix.co.ke', phone: '+254 700 123 456', status: 'ACTIVE', propertiesCount: 3 },
-    { id: '2', name: 'SafeElectric Ltd', type: 'Electrical', email: 'info@safeelectric.co.ke', phone: '+254 722 987 654', status: 'ACTIVE', propertiesCount: 2 },
-    { id: '3', name: 'CleanPro Services', type: 'Cleaning', email: 'hello@cleanpro.co.ke', phone: '+254 733 456 789', status: 'ACTIVE', propertiesCount: 3 },
-  ];
+  // Live-data only — no hardcoded fallback vendors. Empty state is
+  // rendered below when filtered.length === 0.
+  const displayVendors = filtered;
 
   return (
     <div className="space-y-6">
@@ -96,6 +94,15 @@ export default function VendorsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
+              {displayVendors.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-500">
+                    {search
+                      ? `No vendors match "${search}".`
+                      : 'No vendors yet — add one from the contracts page.'}
+                  </td>
+                </tr>
+              )}
               {displayVendors.map((vendor) => (
                 <tr key={vendor.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">

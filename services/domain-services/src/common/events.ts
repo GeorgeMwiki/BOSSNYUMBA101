@@ -1,6 +1,8 @@
+import { randomHex } from './id-generator.js';
+
 /**
  * Domain Events
- * 
+ *
  * Event definitions for domain-driven design patterns.
  * Events are published when significant domain actions occur.
  */
@@ -268,5 +270,5 @@ export function createEventEnvelope<T extends DomainEvent>(
 
 /** Generate event ID */
 export function generateEventId(): string {
-  return `evt_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  return `evt_${Date.now()}_${randomHex(4)}`;
 }

@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Lease domain service.
  *
@@ -369,7 +370,7 @@ export class LeaseService {
     }
 
     const customerNumber = await this.generateCustomerNumber(tenantId);
-    const customerId = asCustomerId(`cust_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const customerId = asCustomerId(`cust_${Date.now()}_${randomHex(4)}`);
 
     const customer = createCustomer(customerId, {
       tenantId,
@@ -550,7 +551,7 @@ export class LeaseService {
     }
 
     const leaseNumber = await this.generateLeaseNumber(tenantId);
-    const leaseId = asLeaseId(`lease_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const leaseId = asLeaseId(`lease_${Date.now()}_${randomHex(4)}`);
 
     const lease = createLease(leaseId, {
       tenantId,
@@ -843,7 +844,7 @@ export class LeaseService {
 
     // Create new lease
     const newLeaseNumber = await this.generateLeaseNumber(tenantId);
-    const newLeaseId = asLeaseId(`lease_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const newLeaseId = asLeaseId(`lease_${Date.now()}_${randomHex(4)}`);
 
     const newLease = createLease(newLeaseId, {
       tenantId,
@@ -1071,7 +1072,7 @@ export class LeaseService {
 
     const now = new Date().toISOString();
     const report: ConditionReport = {
-      id: `cond_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      id: `cond_${Date.now()}_${randomHex(4)}`,
       tenantId,
       leaseId,
       unitId: lease.unitId,

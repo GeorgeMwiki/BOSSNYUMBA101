@@ -161,10 +161,8 @@ export default function IntegrationsWebhooksPage() {
           <option value="inactive">Inactive</option>
           <option value="failing">Failing</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          More Filters
-        </button>
+        {/* "More Filters" button removed; status select is the only
+            honest filter dimension currently. */}
       </div>
 
       {/* Webhooks Table */}

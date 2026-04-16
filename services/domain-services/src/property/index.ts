@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Property domain service.
  *
@@ -367,7 +368,7 @@ export class PropertyService {
       });
     }
 
-    const propertyId = asPropertyId(`prop_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const propertyId = asPropertyId(`prop_${Date.now()}_${randomHex(4)}`);
 
     const property = createProperty(propertyId, {
       tenantId,
@@ -626,7 +627,7 @@ export class PropertyService {
       });
     }
 
-    const unitId = asUnitId(`unit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const unitId = asUnitId(`unit_${Date.now()}_${randomHex(4)}`);
 
     const unit = createUnit(unitId, {
       tenantId,
@@ -847,7 +848,7 @@ export class PropertyService {
       return err({ code: PropertyServiceError.PROPERTY_CODE_EXISTS, message: `Block code ${blockCode} already exists` });
     }
 
-    const blockId = asBlockId(`blk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const blockId = asBlockId(`blk_${Date.now()}_${randomHex(4)}`);
     const block = createBlock(blockId, {
       tenantId,
       propertyId,
@@ -1085,7 +1086,7 @@ export class PropertyService {
         });
       }
 
-      const unitId = asUnitId(`unit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`);
+      const unitId = asUnitId(`unit_${Date.now()}_${randomHex(4)}_${i}`);
       const unit = createUnit(unitId, {
         tenantId,
         propertyId,

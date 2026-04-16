@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Vendor domain service.
  *
@@ -262,7 +263,7 @@ export class VendorService {
     }
 
     const vendorCode = await this.generateVendorCode(tenantId);
-    const vendorId = asVendorId(`vendor_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const vendorId = asVendorId(`vendor_${Date.now()}_${randomHex(4)}`);
     const now = new Date().toISOString() as ISOTimestamp;
 
     const vendor: Vendor = {

@@ -1,4 +1,5 @@
 // @ts-nocheck — local type drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Approval Workflow Service
  * Handles approval requests for maintenance costs, lease exceptions, refunds, discounts
@@ -94,7 +95,7 @@ export class ApprovalService {
     const currency = extractCurrency(details, type);
 
     const now = new Date().toISOString();
-    const requestId = asApprovalRequestId(`apr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const requestId = asApprovalRequestId(`apr_${Date.now()}_${randomHex(4)}`);
 
     let approverId: UserId | null = null;
     let approvalLevel = 1;

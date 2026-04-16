@@ -13,6 +13,7 @@ import type {
 } from './types.js';
 
 import type { AuditRepository } from './audit-repository.interface.js';
+import { randomHex } from '../common/id-generator.js';
 
 export class MemoryAuditRepository implements AuditRepository {
   private entries: AuditEntry[] = [];
@@ -21,7 +22,7 @@ export class MemoryAuditRepository implements AuditRepository {
   async create(
     input: Omit<AuditEntry, 'id' | 'timestamp'>
   ): Promise<AuditEntry> {
-    const id = `audit_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `audit_${Date.now()}_${randomHex(4)}`;
     const timestamp = new Date().toISOString();
     const entry: AuditEntry = {
       ...input,

@@ -48,23 +48,22 @@ export default function VendorDetailPage() {
     );
   }
 
-  const displayVendor = vendor || {
-    id: id!,
-    name: 'QuickFix Plumbing',
-    type: 'Plumbing',
-    email: 'contact@quickfix.co.ke',
-    phone: '+254 700 123 456',
-    address: 'Nairobi, Kenya',
-    status: 'ACTIVE',
-    properties: [
-      { id: '1', name: 'Westlands Apartments' },
-      { id: '2', name: 'Kilimani Complex' },
-    ],
-    recentWorkOrders: [
-      { id: '1', description: 'Pipe repair - Unit 4B', status: 'COMPLETED', createdAt: '2024-02-10' },
-      { id: '2', description: 'Water heater replacement', status: 'IN_PROGRESS', createdAt: '2024-02-12' },
-    ],
-  };
+  if (!vendor) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <p className="text-gray-600">Vendor not found.</p>
+        <Link
+          to="/vendors"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to vendors
+        </Link>
+      </div>
+    );
+  }
+
+  const displayVendor = vendor;
 
   return (
     <div className="space-y-6">

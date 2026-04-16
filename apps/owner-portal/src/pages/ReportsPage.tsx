@@ -69,6 +69,12 @@ export function ReportsPage() {
   const [occupancy, setOccupancy] = useState<OccupancyReport | null>(null);
   const [maintenance, setMaintenance] = useState<MaintenanceReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportState, setExportState] = useState<
+    | { status: 'idle' }
+    | { status: 'pending'; type: string }
+    | { status: 'success'; type: string; message: string }
+    | { status: 'error'; type: string; message: string }
+  >({ status: 'idle' });
 
   useEffect(() => {
     Promise.all([
@@ -84,9 +90,28 @@ export function ReportsPage() {
   }, []);
 
   const handleExport = async (type: string) => {
-    const response = await api.get(`/reports/export/${type}`);
-    if (response.success) {
-      alert(`Export initiated. Download link will be available shortly.`);
+    setExportState({ status: 'pending', type });
+    try {
+      const response = await api.get(`/reports/export/${type}`);
+      if (response.success) {
+        setExportState({
+          status: 'success',
+          type,
+          message: 'Export queued. You will receive an email when it is ready.',
+        });
+      } else {
+        setExportState({
+          status: 'error',
+          type,
+          message: response.error?.message ?? 'Export failed.',
+        });
+      }
+    } catch (err) {
+      setExportState({
+        status: 'error',
+        type,
+        message: err instanceof Error ? err.message : 'Export failed.',
+      });
     }
   };
 
@@ -111,13 +136,22 @@ export function ReportsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
           <p className="text-gray-500">Detailed analytics and insights</p>
         </div>
-        <button
-          onClick={() => handleExport(activeReport)}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
-        >
-          <Download className="h-4 w-4" />
-          Export
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => handleExport(activeReport)}
+            disabled={exportState.status === 'pending'}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            {exportState.status === 'pending' ? 'Exporting…' : 'Export'}
+          </button>
+          {exportState.status === 'success' && (
+            <p className="text-xs text-green-600" role="status">{exportState.message}</p>
+          )}
+          {exportState.status === 'error' && (
+            <p className="text-xs text-red-600" role="alert">{exportState.message}</p>
+          )}
+        </div>
       </div>
 
       {/* Report tabs */}

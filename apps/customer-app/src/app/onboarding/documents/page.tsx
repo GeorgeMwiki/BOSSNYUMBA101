@@ -81,6 +81,7 @@ export default function OnboardingDocumentsPage() {
   );
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
 
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
@@ -224,9 +225,14 @@ export default function OnboardingDocumentsPage() {
     const missingDocs = requiredDocs.filter((d) => d.status !== 'uploaded');
 
     if (missingDocs.length > 0) {
-      alert('Please upload all required documents');
+      // Set inline error instead of native alert() — inline messages are
+      // accessible, translatable, and don't interrupt screen readers mid-flow.
+      setSubmitError(
+        `Please upload: ${missingDocs.map((d) => d.name).join(', ')}`
+      );
       return;
     }
+    setSubmitError(null);
 
     setIsSubmitting(true);
 
@@ -478,7 +484,10 @@ export default function OnboardingDocumentsPage() {
       `}</style>
 
       {/* Fixed bottom button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 space-y-2">
+        {submitError && (
+          <p className="text-sm text-red-600" role="alert">{submitError}</p>
+        )}
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || isSubmitting}

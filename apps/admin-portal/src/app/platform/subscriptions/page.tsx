@@ -171,10 +171,8 @@ export default function PlatformSubscriptionsPage() {
           <option value="past_due">Past Due</option>
           <option value="canceled">Canceled</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          More Filters
-        </button>
+        {/* "More Filters" button removed; status select is the only
+            honest filter dimension currently. */}
       </div>
 
       {/* Subscriptions Table */}

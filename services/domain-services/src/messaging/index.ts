@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Messaging/Chat Service
  *
@@ -254,7 +255,7 @@ export class MessagingService {
     metadata?: Record<string, unknown>
   ): Promise<Result<Conversation, MessagingServiceErrorResult>> {
     const now = new Date().toISOString();
-    const id = `conv_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `conv_${Date.now()}_${randomHex(4)}`;
 
     const participantRecords: Participant[] = participants.map((p) => ({
       userId: p.userId,
@@ -346,7 +347,7 @@ export class MessagingService {
     }
 
     const now = new Date().toISOString();
-    const id = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const id = `msg_${Date.now()}_${randomHex(4)}`;
 
     const message: Message = {
       id,

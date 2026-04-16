@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Maintenance domain service.
  *
@@ -348,7 +349,7 @@ export class MaintenanceService {
     }
 
     const workOrderNumber = await this.generateWorkOrderNumber(tenantId);
-    const workOrderId = asWorkOrderId(`wo_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const workOrderId = asWorkOrderId(`wo_${Date.now()}_${randomHex(4)}`);
 
     const workOrder = createWorkOrder(workOrderId, {
       tenantId,
@@ -993,7 +994,7 @@ export class MaintenanceService {
     }
 
     const vendorCode = await this.generateVendorCode(tenantId);
-    const vendorId = asVendorId(`vendor_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const vendorId = asVendorId(`vendor_${Date.now()}_${randomHex(4)}`);
 
     const now = new Date().toISOString();
     const vendor: VendorEntity = {

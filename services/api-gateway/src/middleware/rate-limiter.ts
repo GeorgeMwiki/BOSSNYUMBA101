@@ -12,6 +12,7 @@
 
 import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
+import { randomUUID } from 'node:crypto';
 import type { UserRole } from '../types/user-role';
 import type { AuthContext } from './hono-auth';
 
@@ -587,14 +588,22 @@ export const sanitizeRequest = createMiddleware(async (c, next) => {
  * CORS middleware
  */
 export const corsMiddleware = (options: {
-  origins?: string[];
+  origins: string[];
   methods?: string[];
   headers?: string[];
   credentials?: boolean;
   maxAge?: number;
-} = {}) => {
+}) => {
+  // `origins` is required (no default) — a wildcard default combined
+  // with credentials=true below would enable CSRF. Callers must pass an
+  // explicit allowlist; production CORS is handled at the Express layer
+  // in services/api-gateway/src/index.ts, so this helper is reserved for
+  // isolated sub-apps that want their own policy.
+  if (!options.origins || options.origins.length === 0) {
+    throw new Error('corsMiddleware: options.origins allowlist is required');
+  }
   const {
-    origins = ['*'],
+    origins,
     methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     headers = ['Content-Type', 'Authorization', 'X-Request-ID'],
     credentials = true,
@@ -633,11 +642,13 @@ export const corsMiddleware = (options: {
  */
 export const requestIdMiddleware = createMiddleware(async (c, next) => {
   let requestId = c.req.header('X-Request-ID');
-  
+
   if (!requestId) {
-    requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    // crypto.randomUUID is a CSPRNG-backed v4 UUID — safe for correlation
+    // IDs that may appear in logs, rate-limit buckets, and traces.
+    requestId = `req_${randomUUID()}`;
   }
-  
+
   c.header('X-Request-ID', requestId);
   c.set('requestId', requestId);
   

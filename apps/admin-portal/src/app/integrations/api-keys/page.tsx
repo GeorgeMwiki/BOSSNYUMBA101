@@ -127,10 +127,9 @@ export default function IntegrationsApiKeysPage() {
           <option value="platform">Platform</option>
           <option value="tenant">Tenant</option>
         </select>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Filter className="h-4 w-4" />
-          More Filters
-        </button>
+        {/* "More Filters" button removed — scope select above is the
+            only honest filter. Add back as a panel when created-by /
+            expires-in filters are wired. */}
       </div>
 
       {/* API Keys Table */}

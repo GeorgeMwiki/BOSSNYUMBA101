@@ -1,4 +1,5 @@
 // @ts-nocheck — domain-models namespace drift; tracked
+import { randomHex } from '../common/id-generator.js';
 /**
  * Document domain service.
  * Handles document upload, verification, OCR extraction, evidence pack compilation,
@@ -321,7 +322,7 @@ export class DocumentService {
     correlationId: string
   ): Promise<Result<Document, DocumentServiceErrorResult>> {
     const now = new Date().toISOString();
-    const docId = asDocumentId(`doc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+    const docId = asDocumentId(`doc_${Date.now()}_${randomHex(4)}`);
     const storageKey = `${input.category}/${docId}/${input.file.originalName}`;
 
     try {
@@ -662,7 +663,7 @@ export class DocumentService {
       addedAt: now, addedBy: compiledBy, sortOrder: index + 1,
     }));
 
-    const packId = `ep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const packId = `ep_${Date.now()}_${randomHex(4)}`;
     const evidencePack: EvidencePack = {
       id: packId, tenantId, title,
       description: options?.description ?? null,
