@@ -129,6 +129,11 @@ export function FinancialPage() {
   const [stats, setStats] = useState<FinancialStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // React-owned state for the export dropdown. Replaces the previous
+  // `document.getElementById('export-menu').classList.toggle(...)` DOM
+  // manipulation — brittle, defeats React rendering, and breaks if
+  // multiple FinancialPage instances ever mount.
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [selectedMonth, setSelectedMonth] = useState('Feb 2026');
   const [selectedProperty, setSelectedProperty] = useState('all');
@@ -290,22 +295,26 @@ export function FinancialPage() {
           </button>
           <div className="relative">
             <button
-              onClick={() => document.getElementById('export-menu')?.classList.toggle('hidden')}
+              onClick={() => setExportMenuOpen((v) => !v)}
               disabled={exporting}
+              aria-expanded={exportMenuOpen}
+              aria-haspopup="menu"
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Export
               <ChevronDown className="h-4 w-4" />
             </button>
-            <div id="export-menu" className="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-              <button onClick={() => { handleExport('pdf'); document.getElementById('export-menu')?.classList.add('hidden'); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Export as PDF
-              </button>
-              <button onClick={() => { handleExport('excel'); document.getElementById('export-menu')?.classList.add('hidden'); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Export as Excel
-              </button>
-            </div>
+            {exportMenuOpen && (
+              <div role="menu" className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <button role="menuitem" onClick={() => { handleExport('pdf'); setExportMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Export as PDF
+                </button>
+                <button role="menuitem" onClick={() => { handleExport('excel'); setExportMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Export as Excel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

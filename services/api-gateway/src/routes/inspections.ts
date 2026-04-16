@@ -21,7 +21,9 @@ const app = new Hono();
 const scheduleInspectionSchema = z.object({
   propertyId: z.string().min(1, 'Property ID is required'),
   unitId: z.string().min(1, 'Unit ID is required'),
-  type: z.enum(['move_in', 'move_out', 'periodic', 'maintenance']),
+  // Accept both 'routine' (canonical) and 'periodic' (legacy alias).
+  // The customer-app onboarding flow submits 'routine'.
+  type: z.enum(['move_in', 'move_out', 'routine', 'periodic', 'maintenance']),
   scheduledAt: z.union([z.string(), z.coerce.date()]),
   customerId: z.string().optional(),
   notes: z.string().max(1000).optional(),
@@ -54,7 +56,7 @@ const listInspectionsQuerySchema = paginationQuerySchema.extend({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
   propertyId: z.string().optional(),
   unitId: z.string().optional(),
-  type: z.enum(['move_in', 'move_out', 'periodic', 'maintenance']).optional(),
+  type: z.enum(['move_in', 'move_out', 'routine', 'periodic', 'maintenance']).optional(),
 });
 
 app.use('*', authMiddleware);

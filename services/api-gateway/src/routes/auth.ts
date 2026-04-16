@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { getDatabaseClient } from '../middleware/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
@@ -67,7 +67,17 @@ async function resolveAuthUser(email: string) {
     })
     .from(users)
     .innerJoin(tenants, eq(tenants.id, users.tenantId))
-    .where(and(eq(users.email, email), isNull(users.deletedAt), isNull(tenants.deletedAt)))
+    // Case-insensitive email match. Callers normalize to lowercase
+    // before calling this helper; the LOWER() on the column makes the
+    // match resilient to historically-cased rows pre-dating the
+    // normalization.
+    .where(
+      and(
+        sql`LOWER(${users.email}) = LOWER(${email})`,
+        isNull(users.deletedAt),
+        isNull(tenants.deletedAt)
+      )
+    )
     .limit(1);
 
   const user = rows[0];
@@ -178,9 +188,52 @@ app.post('/login', zValidator('json', LoginSchema), async (c) => {
   }
 
   const body = c.req.valid('json');
-  const record = await resolveAuthUser(body.email);
+  // Normalize email to lowercase so User@Example.com and user@example.com
+  // resolve to the same account. Without this, case variants enable
+  // duplicate signups AND email enumeration via the case-sensitivity
+  // channel.
+  const normalizedEmail = body.email.trim().toLowerCase();
+  const record = await resolveAuthUser(normalizedEmail);
   if (!record?.passwordHash) {
     return c.json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } }, 401);
+  }
+
+  // Block suspended/deactivated/pending accounts BEFORE password check so
+  // attackers can't use the response-timing channel to infer status. The
+  // status column is lowercased at storage time.
+  const status = String(record.status ?? '').toLowerCase();
+  if (status && status !== 'active') {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'ACCOUNT_NOT_ACTIVE',
+          message:
+            status === 'suspended'
+              ? 'Account suspended. Contact your administrator.'
+              : status === 'deactivated'
+                ? 'Account has been deactivated.'
+                : 'Account is not yet active. Check your email for activation.',
+        },
+      },
+      403
+    );
+  }
+
+  // Same check for the tenant the user belongs to — a suspended tenant
+  // means no one under it can log in (billing delinquency / compliance).
+  const tenantStatus = String(record.tenantStatus ?? '').toLowerCase();
+  if (tenantStatus && tenantStatus !== 'active' && tenantStatus !== 'trial') {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'TENANT_NOT_ACTIVE',
+          message: 'Organization account is not active. Please contact support.',
+        },
+      },
+      403
+    );
   }
 
   const valid = await bcrypt.compare(body.password, record.passwordHash);

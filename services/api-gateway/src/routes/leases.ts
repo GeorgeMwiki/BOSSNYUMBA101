@@ -229,7 +229,14 @@ app.post('/:id/renew', zValidator('json', RenewLeaseSchema), async (c) => {
     {
       status: 'renewed',
       endDate: newEnd,
-      rentAmount: body.newRentAmount != null ? majorToMinor(body.newRentAmount) : undefined,
+      // Schema accepts `rentAmount`; also accept `newRentAmount` as a
+      // back-compat alias for older clients. Either one (or neither)
+      // is fine — absent means "keep existing rent".
+      rentAmount: body.rentAmount != null
+        ? majorToMinor(body.rentAmount)
+        : (body as { newRentAmount?: number }).newRentAmount != null
+          ? majorToMinor((body as { newRentAmount: number }).newRentAmount)
+          : undefined,
       updatedBy: auth.userId,
     },
     auth.userId

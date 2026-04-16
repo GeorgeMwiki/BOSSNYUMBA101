@@ -181,7 +181,7 @@ export default function PropertyEditPage() {
               type="number"
               className="input"
               min={0}
-              value={formData.totalUnits || ''}
+              value={formData.totalUnits ?? ''}
               onChange={(e) =>
                 setFormData({ ...formData, totalUnits: parseInt(e.target.value, 10) || 0 })
               }

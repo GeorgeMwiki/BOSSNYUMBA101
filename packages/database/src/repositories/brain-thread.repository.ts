@@ -96,11 +96,18 @@ export class BrainThreadRepository {
     };
   }
 
-  async getThread(threadId: string): Promise<BrainThread | null> {
+  async getThread(threadId: string, tenantId?: string): Promise<BrainThread | null> {
+    // Tenant filter is now REQUIRED at the query level to prevent
+    // cross-tenant thread reads if a route forgets to check. The
+    // parameter is technically optional for back-compat with old
+    // call sites, but in practice every caller should pass it —
+    // RLS is the backstop but belt-and-braces here.
+    const conds = [eq(threads.id, threadId)];
+    if (tenantId) conds.push(eq(threads.tenantId, tenantId));
     const row = await this.db
       .select()
       .from(threads)
-      .where(eq(threads.id, threadId))
+      .where(and(...conds))
       .limit(1);
     const r = row[0];
     if (!r) return null;
@@ -126,11 +133,16 @@ export class BrainThreadRepository {
     return rows.map(rowToThread);
   }
 
-  async archiveThread(threadId: string): Promise<void> {
+  async archiveThread(threadId: string, tenantId?: string): Promise<void> {
+    // Same tenant-scoped contract as getThread. RLS catches the
+    // escape but the app-level filter prevents the query from ever
+    // being issued cross-tenant.
+    const conds = [eq(threads.id, threadId)];
+    if (tenantId) conds.push(eq(threads.tenantId, tenantId));
     await this.db
       .update(threads)
       .set({ status: 'archived', updatedAt: new Date() })
-      .where(eq(threads.id, threadId));
+      .where(and(...conds));
   }
 
   // -------------------------------------------------------------------------
@@ -202,11 +214,17 @@ export class BrainThreadRepository {
     }
   }
 
-  async listEvents(threadId: string): Promise<BrainThreadEvent[]> {
+  async listEvents(threadId: string, tenantId?: string): Promise<BrainThreadEvent[]> {
+    // threadEvents is tenant-scoped via thread FK. We additionally
+    // filter on tenantId directly so the query never returns another
+    // tenant's events even if a caller forgets to gate the thread
+    // lookup first.
+    const conds = [eq(threadEvents.threadId, threadId)];
+    if (tenantId) conds.push(eq(threadEvents.tenantId, tenantId));
     const rows = await this.db
       .select()
       .from(threadEvents)
-      .where(eq(threadEvents.threadId, threadId))
+      .where(and(...conds))
       .orderBy(threadEvents.createdAt);
     return rows.map((r) => ({
       id: r.id,

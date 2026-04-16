@@ -119,7 +119,10 @@ export default function PayPage() {
                   type="number"
                   className="input pl-14"
                   placeholder={amount.toString()}
-                  value={customAmount || ''}
+                  // `value ?? ''` (not `|| ''`) so the input can accept 0
+                  // and other falsy-but-valid numbers without flipping
+                  // between controlled and uncontrolled on every keystroke.
+                  value={customAmount ?? ''}
                   onChange={(e) => setCustomAmount(e.target.value ? parseInt(e.target.value, 10) : null)}
                   min={1}
                   max={amount}

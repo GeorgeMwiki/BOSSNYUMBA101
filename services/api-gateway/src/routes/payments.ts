@@ -18,11 +18,27 @@ const PaymentCreateSchema = z.object({
   amount: MoneySchema,
   description: z.string().max(500).optional(),
 });
+// Payment channel values must align with the DB enum
+// (packages/database/src/schemas/payment.schema.ts:payment_method). Legacy
+// client values 'bank' and 'manual' are accepted and normalized to the
+// canonical 'bank_transfer' / 'cheque' before persistence.
+const PAYMENT_CHANNEL_VALUES = ['mpesa', 'bank_transfer', 'card', 'cash', 'cheque', 'other'] as const;
 const PaymentProcessSchema = z.object({
-  channel: z.enum(['mpesa', 'bank', 'card', 'cash', 'manual', 'other']).optional(),
+  channel: z
+    .union([
+      z.enum(PAYMENT_CHANNEL_VALUES),
+      z.enum(['bank', 'manual']), // legacy aliases
+    ])
+    .optional(),
   paymentMethodId: z.string().optional(),
   phoneNumber: z.string().regex(/^[+0-9 \-()]+$/).max(24).optional(),
 });
+function normalizeChannel(raw: string | undefined): string {
+  if (!raw) return 'other';
+  if (raw === 'bank') return 'bank_transfer';
+  if (raw === 'manual') return 'cheque';
+  return raw;
+}
 
 function paymentNumber() {
   return `PAY-${Date.now().toString().slice(-6)}`;
@@ -117,7 +133,8 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
 app.post('/:id/process', zValidator('json', PaymentProcessSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = c.req.valid('json');
+  const raw = c.req.valid('json');
+  const body = { ...raw, channel: normalizeChannel(String(raw.channel ?? '')) };
   const row = await repos.payments.update(c.req.param('id'), auth.tenantId, {
     status: 'processing',
     paymentMethod: String(body.channel || body.paymentMethodId || 'other').toLowerCase(),

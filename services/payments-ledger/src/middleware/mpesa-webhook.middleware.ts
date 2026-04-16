@@ -71,8 +71,15 @@ export function mpesaIpAllowlistMiddleware(logger: {
 }
 
 /**
- * Process-local idempotency cache keyed by CheckoutRequestID (STK) or
- * TransID (C2B). 24h TTL matches Safaricom's retry window.
+ * Process-local idempotency cache keyed by
+ *   `{tenantId}:{type}:{CheckoutRequestID-or-TransID}`
+ * so a replay across tenants (e.g. a shared paybill in staging)
+ * cannot collide. 24h TTL matches Safaricom's retry window.
+ *
+ * Pass tenantId=null only for callbacks that arrive before the tenant
+ * context is resolved (e.g. an unattributed paybill confirmation);
+ * those use a dedicated "global" namespace and must not be used for
+ * state-changing writes without a secondary tenant check.
  */
 export class CallbackDeduplicator {
   private readonly seen = new Map<string, number>();
@@ -87,6 +94,10 @@ export class CallbackDeduplicator {
   /**
    * Returns true if this key was seen before (callback is a duplicate).
    * Returns false and records the key on first sight.
+   *
+   * @param key  the deduplication key. Callers SHOULD namespace by
+   *   tenantId using {@link tenantKey} below rather than passing a
+   *   raw TransID to prevent cross-tenant collisions.
    */
   seenBefore(key: string): boolean {
     const now = Date.now();
@@ -94,6 +105,19 @@ export class CallbackDeduplicator {
     if (existing && existing > now) return true;
     this.seen.set(key, now + this.ttlMs);
     return false;
+  }
+
+  /**
+   * Build a tenant-scoped deduplication key. Prefer this over raw
+   * string concatenation at callsites so the shape stays consistent.
+   */
+  static tenantKey(
+    tenantId: string | null,
+    type: 'stk' | 'c2b' | 'b2c',
+    externalId: string
+  ): string {
+    const tenant = tenantId ?? 'global';
+    return `${tenant}:${type}:${externalId}`;
   }
 
   private reap(): void {

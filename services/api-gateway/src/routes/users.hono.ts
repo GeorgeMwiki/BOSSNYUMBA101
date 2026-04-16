@@ -90,11 +90,40 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapUser(row, roleMap.get(row.id)) });
 });
 
+// Roles that are allowed to create/manage users. Critical defense:
+// without this check any authenticated user could POST /users with
+// role=SUPER_ADMIN and escalate immediately.
+const USER_WRITE_ROLES = new Set(['super_admin', 'admin', 'tenant_admin']);
+// Only super_admin may create other super_admins or cross-tenant admins.
+const SUPER_ADMIN_ONLY_ROLES = new Set(['super_admin']);
+
 app.post('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const db = c.get('db');
+
+  // Authorization gate: only admins can create users.
+  const callerRole = String(auth.role ?? '').toLowerCase();
+  if (!USER_WRITE_ROLES.has(callerRole)) {
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'insufficient role to create users' } },
+      403
+    );
+  }
+
   const body = await c.req.json();
+
+  // A non-super-admin cannot mint a super-admin. This is the role-
+  // escalation defense — previously POST /users trusted body.role
+  // unconditionally.
+  const requestedRole = String(body.role ?? '').toLowerCase();
+  if (requestedRole && SUPER_ADMIN_ONLY_ROLES.has(requestedRole) && callerRole !== 'super_admin') {
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'only super_admin can assign super_admin role' } },
+      403
+    );
+  }
+
   // bcrypt cost factor 12 — roughly 250ms/hash on modern hardware. Higher
   // than the historical default of 10 which is now considered weak.
   const passwordHash = body.password ? await bcrypt.hash(body.password, 12) : undefined;

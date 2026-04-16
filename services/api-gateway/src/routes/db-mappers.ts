@@ -1,5 +1,24 @@
 // @ts-nocheck
 
+/**
+ * Money conversion helpers.
+ *
+ * IMPORTANT: this codebase treats money as integer MINOR UNITS
+ * (e.g. KES cents) at every layer — DB columns, API payloads, tests,
+ * fixtures. There is no "major units" conversion in the request path;
+ * clients submit minor-unit integers directly, and the formatCurrency
+ * helper at display time divides by 100.
+ *
+ * These helpers therefore normalize/round incoming values WITHOUT
+ * multiplying — they exist so a client that accidentally submits a
+ * float (e.g. 50000.4) gets truncated to a safe integer before hitting
+ * the DB integer column.
+ *
+ * Do NOT change these to multiply/divide by 100 without coordinating
+ * a breaking-change migration of every fixture, integration test,
+ * and client payload. A mass-rename pass is tracked separately.
+ */
+
 function asNumber(value: unknown): number | undefined {
   if (value === null || value === undefined) return undefined;
   if (typeof value === 'number') return value;
@@ -7,12 +26,25 @@ function asNumber(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+/**
+ * Normalize an incoming money value to an integer minor-unit amount.
+ * Clients submit minor-units directly; this is effectively a safe-int
+ * coerce that rejects NaN / undefined as 0 and rounds floats.
+ */
 export function majorToMinor(amount: number | undefined | null): number {
-  return Math.round(Number(amount ?? 0));
+  const n = Number(amount ?? 0);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n);
 }
 
+/**
+ * Read a minor-unit amount from the DB. Identity today — kept as a
+ * seam for future major/minor migration so callsites are already
+ * wrapping their reads.
+ */
 export function minorToMajor(amount: number | undefined | null): number {
-  return Number(amount ?? 0);
+  const n = Number(amount ?? 0);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function paginateArray(items: any[], page = 1, pageSize = 20) {

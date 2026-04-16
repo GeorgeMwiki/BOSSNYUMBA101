@@ -54,7 +54,10 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    // Pin algorithm to prevent alg=none / RS256-vs-HS256 confusion.
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ['HS256'],
+    }) as JWTPayload;
 
     c.set('auth', {
       userId: decoded.userId,

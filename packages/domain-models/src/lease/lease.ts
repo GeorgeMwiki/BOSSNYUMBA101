@@ -192,18 +192,41 @@ export function generateLeaseNumber(year: number, sequence: number): string {
 }
 
 /** Get days until rent due for current period */
+/**
+ * Clamp a requested day-of-month to the actual last day of that month.
+ * Prevents the Date constructor's silent rollover: new Date(2026, 1, 31)
+ * would otherwise become March 3 instead of "as late as possible in Feb".
+ */
+function clampDayToMonth(year: number, month: number, day: number): number {
+  // Day 0 of (month+1) is the last day of `month`.
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return Math.min(Math.max(1, day), lastDay);
+}
+
 export function getDaysUntilRentDue(lease: Lease): number {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  
-  let dueDate = new Date(currentYear, currentMonth, lease.rentDueDay);
-  
+
+  // Handle months with fewer days than rentDueDay (Feb with rentDueDay=31).
+  // Without this clamp, a lease rentDueDay=31 on Feb 15 would compute a due
+  // date of March 3 (a rollover artifact), inflating "days until due".
+  let dueDate = new Date(
+    currentYear,
+    currentMonth,
+    clampDayToMonth(currentYear, currentMonth, lease.rentDueDay)
+  );
+
   // If due date has passed this month, get next month's due date
   if (dueDate < now) {
-    dueDate = new Date(currentYear, currentMonth + 1, lease.rentDueDay);
+    const nextMonth = currentMonth + 1;
+    dueDate = new Date(
+      currentYear,
+      nextMonth,
+      clampDayToMonth(currentYear, nextMonth, lease.rentDueDay)
+    );
   }
-  
+
   const diffTime = dueDate.getTime() - now.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }

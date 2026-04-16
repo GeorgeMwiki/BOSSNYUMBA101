@@ -49,7 +49,13 @@ export const authMiddleware = (
     const token = authHeader.split(' ')[1];
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      // Pin the algorithm explicitly. Without this, jsonwebtoken accepts
+      // any algorithm supported by the key — the classic "alg=none" and
+      // RS256-vs-HS256 confusion attacks both become possible. HS256 is
+      // the only algorithm we sign with (generateToken below).
+      const decoded = jwt.verify(token, JWT_SECRET, {
+        algorithms: ['HS256'],
+      }) as JWTPayload;
 
       (req as AuthenticatedRequest).auth = {
         userId: decoded.userId,

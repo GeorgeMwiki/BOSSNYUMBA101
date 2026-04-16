@@ -104,7 +104,7 @@ export default function UnitFormPage() {
                 type="number"
                 className="input"
                 min={0}
-                value={formData.floor || ''}
+                value={formData.floor ?? ''}
                 onChange={(e) =>
                   setFormData({ ...formData, floor: parseInt(e.target.value, 10) || 0 })
                 }
