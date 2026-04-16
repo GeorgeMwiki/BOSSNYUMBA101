@@ -29,10 +29,6 @@ import {
   type PropertyId,
   type UnitId,
   type Money,
-  createLease,
-  activateLease,
-  terminateLease,
-  generateLeaseNumber,
   createCustomer,
   generateCustomerNumber,
   asLeaseId,
@@ -40,6 +36,11 @@ import {
   ok,
   err,
 } from '@bossnyumba/domain-models';
+// Lease domain functions live under a namespace to avoid symbol
+// collisions with other modules (e.g. `createLease` is declared in
+// both lease.ts and some tests). Pull them out explicitly.
+import { Lease as LeaseFns } from '@bossnyumba/domain-models';
+const { createLease, activateLease, terminateLease, generateLeaseNumber } = LeaseFns;
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
 

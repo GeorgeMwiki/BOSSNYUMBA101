@@ -30,6 +30,16 @@ import {
   type PropertyId,
   type UnitId,
   type Money,
+  asVendorId,
+  ok,
+  err,
+} from '@bossnyumba/domain-models';
+// Work-order functions are exported under the `WorkOrder` namespace
+// (see domain-models/src/index.ts — work-order.ts re-exports VendorId
+// which would collide with vendor.ts in a flat re-export). Destructure
+// the specific value helpers we need.
+import { WorkOrder as WO } from '@bossnyumba/domain-models';
+const {
   createWorkOrder,
   triageWorkOrder,
   assignWorkOrder,
@@ -45,10 +55,7 @@ import {
   isResolutionSLABreached,
   DEFAULT_SLA_CONFIG,
   asWorkOrderId,
-  asVendorId,
-  ok,
-  err,
-} from '@bossnyumba/domain-models';
+} = WO;
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
 

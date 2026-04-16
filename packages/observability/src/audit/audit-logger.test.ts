@@ -331,7 +331,11 @@ describe('MemoryAuditStore', () => {
         .byUser('user-1')
         .inTenant('tenant-a')
         .record();
-      
+      // 1ms gap so each record has a distinct timestampMs — the sort
+      // test below needs strictly-increasing timestamps, and these
+      // synchronous awaits otherwise complete within the same ms tick.
+      await new Promise((r) => setTimeout(r, 2));
+
       await logger
         .event(AuditCategory.AUTH, 'LOGIN')
         .describe('User 2 login')
@@ -339,7 +343,8 @@ describe('MemoryAuditStore', () => {
         .byUser('user-2')
         .inTenant('tenant-b')
         .record();
-      
+      await new Promise((r) => setTimeout(r, 2));
+
       await logger
         .event(AuditCategory.PROPERTY, 'CREATE')
         .describe('Property created')
@@ -348,8 +353,11 @@ describe('MemoryAuditStore', () => {
         .inTenant('tenant-a')
         .on('Property', 'prop-1')
         .record();
-      
-      await logger.close();
+
+      // Flush pending writes without closing the shared store — close()
+      // cascades to MemoryAuditStore.close() which clears every event,
+      // defeating the query tests that run next.
+      await logger.flush();
     });
 
     it('should filter by tenant', async () => {
@@ -412,7 +420,9 @@ describe('MemoryAuditStore', () => {
         .success()
         .byUser('user-1')
         .record();
-      await logger.close();
+      // flush but do NOT close — close() cascades to the shared store
+      // and clears all events, which would defeat getById below.
+      await logger.flush();
 
       const retrieved = await store.getById(created.id);
       expect(retrieved).toEqual(created);

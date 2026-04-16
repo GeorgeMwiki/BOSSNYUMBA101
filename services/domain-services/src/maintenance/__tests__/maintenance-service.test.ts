@@ -13,9 +13,12 @@ import {
   type VendorId,
   asPropertyId,
   asUnitId,
-  asWorkOrderId,
   asVendorId,
 } from '@bossnyumba/domain-models';
+// asWorkOrderId is exported via the WorkOrder namespace (domain-models
+// namespaces work-order.ts to avoid symbol collision with vendor.ts).
+import { WorkOrder as WO } from '@bossnyumba/domain-models';
+const asWorkOrderId = WO.asWorkOrderId;
 import type { WorkOrderRepository, VendorRepository, VendorEntity } from '../index.js';
 import type { EventBus } from '../../common/events.js';
 import {
