@@ -10,6 +10,9 @@ export default defineConfig({
     'maintenance/index': 'src/maintenance/index.ts',
   },
   format: ['cjs', 'esm'],
+  // dts generation is delegated to `tsc --declaration --emitDeclarationOnly`
+  // via the package's `build:types` script (see package.json). tsup's
+  // rollup-based dts emitter trips on our composite project config.
   dts: false,
   clean: true,
   splitting: false,

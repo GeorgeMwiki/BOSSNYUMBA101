@@ -184,86 +184,8 @@ export function RolesPage() {
     };
   }, []);
 
-  // Legacy hardcoded seed kept disabled — useful as a permissions-shape
-  // reference but never assigned to state. The real list is loaded via the
-  // API call above; missing endpoint returns an empty list.
-  const _legacyRoleSeedReference = () => {
-    const _ = [
-      {
-        id: '1',
-        name: 'Super Admin',
-        description: 'Full system access with all permissions',
-        permissions: permissionCategories.flatMap(c => c.permissions.map(p => p.id)),
-        userCount: 3,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '2',
-        name: 'Support Agent',
-        description: 'Customer support with read access and impersonation',
-        permissions: [
-          'tenants.view', 'users.view', 'users.impersonate',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.audit',
-        ],
-        userCount: 8,
-        isSystem: true,
-        createdAt: '2024-01-01',
-        createdBy: 'System',
-      },
-      {
-        id: '3',
-        name: 'Finance Manager',
-        description: 'Full access to financial operations',
-        permissions: [
-          'tenants.view', 'users.view',
-          'finance.view', 'finance.invoices', 'finance.payments', 'finance.disbursements', 'finance.adjustments',
-        ],
-        userCount: 5,
-        isSystem: false,
-        createdAt: '2024-06-15',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '4',
-        name: 'Operations Lead',
-        description: 'Manages daily operations and workflows',
-        permissions: [
-          'tenants.view', 'users.view',
-          'maintenance.view', 'maintenance.create', 'maintenance.assign', 'maintenance.approve', 'maintenance.complete',
-          'documents.view', 'documents.upload',
-        ],
-        userCount: 4,
-        isSystem: false,
-        createdAt: '2024-08-20',
-        createdBy: 'admin@bossnyumba.com',
-      },
-      {
-        id: '5',
-        name: 'Read Only',
-        description: 'View-only access to all modules',
-        permissions: [
-          'properties.view', 'units.view', 'tenants.view', 'users.view',
-          'finance.view', 'maintenance.view', 'documents.view', 'settings.view',
-        ],
-        userCount: 12,
-        isSystem: false,
-        createdAt: '2024-09-10',
-        createdBy: 'admin@bossnyumba.com',
-      },
-    ]);
-
-    setAuditLog([
-      { id: '1', action: 'Role Created', actor: 'admin@bossnyumba.com', target: 'Operations Lead', changes: 'New role with 7 permissions', timestamp: '2026-02-13T10:30:00Z' },
-      { id: '2', action: 'Permission Added', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added finance.adjustments', timestamp: '2026-02-12T15:45:00Z' },
-      { id: '3', action: 'Permission Removed', actor: 'super@bossnyumba.com', target: 'Support Agent', changes: 'Removed users.edit', timestamp: '2026-02-11T09:20:00Z' },
-      { id: '4', action: 'Role Updated', actor: 'admin@bossnyumba.com', target: 'Read Only', changes: 'Updated description', timestamp: '2026-02-10T14:00:00Z' },
-      { id: '5', action: 'User Assigned', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added john@tenant.com to role', timestamp: '2026-02-09T11:30:00Z' },
-    ];
-    void _;
-  };
-  void _legacyRoleSeedReference;
+  // Legacy hardcoded role seed removed — the real list is loaded via
+  // rolesService.list() above; missing endpoint returns an empty list.
 
   const filteredRoles = roles.filter(role =>
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -974,19 +974,7 @@ export function paginate<T>(
   };
 }
 
-if (!RUNTIME_DEMO_DATA_ALLOWED) {
-  DEMO_TENANT = blockRuntimeDemoData('DEMO_TENANT', DEMO_TENANT);
-  PLATFORM_ADMIN_USERS = blockRuntimeDemoData('PLATFORM_ADMIN_USERS', PLATFORM_ADMIN_USERS);
-  DEMO_USERS = blockRuntimeDemoData('DEMO_USERS', DEMO_USERS);
-  DEMO_TENANT_USERS = blockRuntimeDemoData('DEMO_TENANT_USERS', DEMO_TENANT_USERS);
-  DEMO_PROPERTIES = blockRuntimeDemoData('DEMO_PROPERTIES', DEMO_PROPERTIES);
-  DEMO_UNITS = blockRuntimeDemoData('DEMO_UNITS', DEMO_UNITS);
-  DEMO_CUSTOMERS = blockRuntimeDemoData('DEMO_CUSTOMERS', DEMO_CUSTOMERS);
-  DEMO_LEASES = blockRuntimeDemoData('DEMO_LEASES', DEMO_LEASES);
-  DEMO_VENDORS = blockRuntimeDemoData('DEMO_VENDORS', DEMO_VENDORS);
-  DEMO_WORK_ORDERS = blockRuntimeDemoData('DEMO_WORK_ORDERS', DEMO_WORK_ORDERS);
-  DEMO_INVOICES = blockRuntimeDemoData('DEMO_INVOICES', DEMO_INVOICES);
-  DEMO_PAYMENTS = blockRuntimeDemoData('DEMO_PAYMENTS', DEMO_PAYMENTS);
-  DEMO_DOCUMENTS = blockRuntimeDemoData('DEMO_DOCUMENTS', DEMO_DOCUMENTS);
-  DEMO_APPROVALS = blockRuntimeDemoData('DEMO_APPROVALS', DEMO_APPROVALS);
-}
+// Runtime guard removed — the previous implementation referenced
+// `RUNTIME_DEMO_DATA_ALLOWED` / `blockRuntimeDemoData` which were never
+// defined. Location under `__tests__/fixtures/` is already the enforcement
+// mechanism: production builds of `src/` cannot import this module.

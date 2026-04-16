@@ -95,7 +95,9 @@ app.post('/', async (c) => {
   const repos = c.get('repos');
   const db = c.get('db');
   const body = await c.req.json();
-  const passwordHash = body.password ? await bcrypt.hash(body.password, 10) : undefined;
+  // bcrypt cost factor 12 — roughly 250ms/hash on modern hardware. Higher
+  // than the historical default of 10 which is now considered weak.
+  const passwordHash = body.password ? await bcrypt.hash(body.password, 12) : undefined;
   const row = await repos.users.create({
     id: crypto.randomUUID(),
     tenantId: auth.tenantId,

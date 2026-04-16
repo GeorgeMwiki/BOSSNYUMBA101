@@ -220,7 +220,12 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input type="tel" defaultValue="+255712345678" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="tel"
+                  defaultValue={(user as { phone?: string } | null)?.phone ?? ''}
+                  placeholder="e.g. +254712345678"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div>

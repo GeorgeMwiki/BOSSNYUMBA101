@@ -107,6 +107,12 @@ export interface TurnResult {
     object: string;
     riskLevel: RiskLevel;
     reviewRequired: boolean;
+    /**
+     * When true, the action is BLOCKED from execution until a
+     * `review_decision` event with `decision: "approved"` arrives on the
+     * thread. Callers must treat this as a hard gate, not a hint.
+     */
+    executionHeld?: boolean;
   };
   /** Whether Opus advisor was consulted on the final turn. */
   advisorConsulted: boolean;
@@ -658,6 +664,15 @@ export class Orchestrator {
     }
 
     // Review gate on proposed actions.
+    //
+    // When the persona's risk threshold is exceeded, the proposed action is
+    // NOT executed. The orchestrator emits:
+    //   - a `review_requested` event to the thread (for the review UI)
+    //   - a governance audit entry (so the block is visible in SIEM)
+    // The returned proposedAction carries `reviewRequired: true` AND
+    // `executionHeld: true` as the contract with the caller. Callers MUST
+    // not dispatch the action until a `review_decision` event with
+    // `decision: "approved"` arrives on the thread.
     let reviewRequired = false;
     if (proposed) {
       reviewRequired = riskAtLeast(
@@ -665,6 +680,7 @@ export class Orchestrator {
         persona.minReviewRiskLevel
       );
       if (reviewRequired) {
+        const copilotRequestId = uuid();
         await this.cfg.threads.append({
           id: uuid(),
           threadId: thread.id,
@@ -673,9 +689,33 @@ export class Orchestrator {
           visibility: { ...visibility, scope: widest(visibility.scope, 'management') },
           actorId: persona.id,
           personaId: persona.id,
-          copilotRequestId: uuid(),
+          copilotRequestId,
           riskLevel: proposed.riskLevel,
         });
+        // Governance audit — separate from the thread event so it survives
+        // thread pruning and is visible to compliance dashboards.
+        await this.cfg.governance
+          .logBrainTurn({
+            tenant: req.tenant,
+            actor: req.actor,
+            personaId: persona.id,
+            threadId: thread.id,
+            modelId: String(outcome.advisor?.modelId ?? outcome.executor.modelId),
+            promptTokens: 0,
+            completionTokens: 0,
+            advisorConsulted: false,
+            depth,
+            processingTimeMs: 0,
+            reviewBlocked: {
+              copilotRequestId,
+              verb: proposed.verb,
+              object: proposed.object,
+              riskLevel: proposed.riskLevel as RiskLevel,
+            },
+          } as unknown as Parameters<typeof this.cfg.governance.logBrainTurn>[0])
+          .catch(() => {
+            /* governance best-effort — thread event is the source of truth */
+          });
       }
     }
 
@@ -688,6 +728,11 @@ export class Orchestrator {
             object: proposed.object,
             riskLevel: proposed.riskLevel as RiskLevel,
             reviewRequired,
+            // Explicit block flag — the orchestrator contract is: if
+            // reviewRequired is true, the caller MUST NOT execute this
+            // action. executionHeld mirrors reviewRequired today but
+            // keeps the block semantics independent of future rule changes.
+            executionHeld: reviewRequired,
           }
         : undefined,
     });

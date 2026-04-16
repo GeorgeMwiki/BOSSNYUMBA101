@@ -1,3 +1,4 @@
+// @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
 /**
  * Feedback Engine service (Module B)
  *

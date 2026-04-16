@@ -207,7 +207,7 @@ app.post('/login', async (c) => {
       role: record.role,
       permissions: record.permissions,
       properties: record.propertyAccess,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
   });
 });
@@ -230,7 +230,7 @@ app.post('/refresh', authMiddleware, async (c) => {
     success: true,
     data: {
       token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
   });
 });

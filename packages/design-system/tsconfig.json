@@ -11,6 +11,12 @@
       ]
     },
     "skipLibCheck": true,
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "exactOptionalPropertyTypes": false,
     "types": [
       "node",
       "react",

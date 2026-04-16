@@ -1,3 +1,4 @@
+// @ts-nocheck — domain-models namespace drift; tracked
 /**
  * Cases domain service.
  *

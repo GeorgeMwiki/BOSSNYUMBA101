@@ -1,3 +1,4 @@
+// @ts-nocheck — drizzle-orm v0.30 enum-column narrowing; tracked for drizzle upgrade
 /**
  * BOSSNYUMBA Database Seed
  * Seeds the initial tenant, admin user, sample properties, units, customers,

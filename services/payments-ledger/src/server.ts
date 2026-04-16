@@ -312,10 +312,19 @@ app.use(pinoHttp({ logger }));
 // Verify Supabase JWT on every protected request. Health check + webhooks
 // (which carry their own signature verification) are excluded.
 import { verifySupabaseAuthMiddleware } from './middleware/auth.middleware';
+import { mpesaIpAllowlistMiddleware, mpesaDeduplicator } from './middleware/mpesa-webhook.middleware';
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path.startsWith('/webhooks/')) return next();
   return verifySupabaseAuthMiddleware(req, res, next);
 });
+
+// M-Pesa webhooks come from a known set of Safaricom IPs. Reject anything
+// else before it reaches the handler.
+const mpesaAllowlist = mpesaIpAllowlistMiddleware({
+  warn: (ctx, msg) => logger.warn(ctx, msg),
+});
+app.use('/webhooks/mpesa', mpesaAllowlist);
+app.use('/api/v1/payments/webhook/mpesa', mpesaAllowlist);
 
 // =============================================================================
 // Health Check Endpoint
@@ -1229,6 +1238,17 @@ app.post('/webhooks/mpesa/stk', async (req: Request, res: Response, next: NextFu
       resultDesc: callback.ResultDesc
     }, 'M-PESA STK callback received');
 
+    // Idempotency — Safaricom retries every few minutes until it gets a
+    // 200 with {ResultCode: 0}. If we've already processed this
+    // CheckoutRequestID, ack and exit so we don't double-credit the ledger.
+    if (mpesaDeduplicator.seenBefore(`stk:${callback.CheckoutRequestID}`)) {
+      logger.info(
+        { checkoutRequestId: callback.CheckoutRequestID },
+        'Duplicate M-PESA STK callback — acking without reprocessing'
+      );
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+
     // ResultCode 0 means success
     const isSuccess = callback.ResultCode === 0;
 
@@ -1422,6 +1442,15 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
       resultCode: callback.ResultCode,
       resultDesc: callback.ResultDesc
     }, 'M-PESA STK callback received via API path');
+
+    // Idempotency — same reasoning as /webhooks/mpesa/stk above.
+    if (mpesaDeduplicator.seenBefore(`stk:${callback.CheckoutRequestID}`)) {
+      logger.info(
+        { checkoutRequestId: callback.CheckoutRequestID },
+        'Duplicate M-PESA STK callback (API path) — acking without reprocessing'
+      );
+      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
 
     const isSuccess = callback.ResultCode === 0;
 

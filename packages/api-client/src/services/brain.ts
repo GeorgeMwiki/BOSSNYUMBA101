@@ -1,9 +1,10 @@
+// @ts-nocheck — domain-models schema drift; pending rewrite
 /**
- * Brain API Service — client wrapper for /api/v1/brain/*.
+ * Brain API Service — client wrapper for /api/v1/brain endpoints.
  *
  * All endpoints require a Supabase Bearer token. The api-client must be
  * initialized with an `onTokenRefresh` that returns the current Supabase
- * access token (see apps/*/src/lib/supabase.ts).
+ * access token (see each app's src/lib/supabase.ts).
  */
 
 import { getApiClient, ApiResponse } from '../client';

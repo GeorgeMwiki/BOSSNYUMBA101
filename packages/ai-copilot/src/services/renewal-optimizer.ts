@@ -184,19 +184,30 @@ export class RenewalOptimizerService {
   }
 
   private buildLeaseData(leaseId: string, data?: Partial<LeaseData>): LeaseData {
-    const now = new Date();
+    // Renewal optimization is a governance-critical decision. Fabricating
+    // tenant/property/unit IDs from constants would cause the AI to emit
+    // reasoning grounded in fake data — which would then surface in the
+    // manager's UI as a recommendation. Require the caller to supply these.
+    if (!data?.tenant) throw new Error('renewal-optimizer: tenant data is required');
+    if (!data?.property) throw new Error('renewal-optimizer: property data is required');
+    if (!data?.unit) throw new Error('renewal-optimizer: unit data is required');
+    if (data.currentRent == null) throw new Error('renewal-optimizer: currentRent is required');
+    if (!data.leaseStartDate) throw new Error('renewal-optimizer: leaseStartDate is required');
+    if (!data.leaseEndDate) throw new Error('renewal-optimizer: leaseEndDate is required');
+    if (data.termMonths == null) throw new Error('renewal-optimizer: termMonths is required');
+
     return {
       leaseId,
-      currentRent: data?.currentRent ?? 50000,
-      currency: data?.currency ?? 'KES',
-      leaseStartDate: data?.leaseStartDate ?? new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-      leaseEndDate: data?.leaseEndDate ?? new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-      termMonths: data?.termMonths ?? 12,
-      tenant: data?.tenant ?? { id: 'tenant-001', name: 'Sample Tenant', segment: 'standard', paymentScore: 85, tenureDays: 365, renewalHistory: 0 },
-      property: data?.property ?? { id: 'property-001', name: 'Sample Property', type: 'apartment', location: 'Nairobi', amenities: ['Parking', 'Security'] },
-      unit: data?.unit ?? { id: 'unit-001', type: '2BR', bedrooms: 2, bathrooms: 1 },
-      marketData: data?.marketData,
-      constraints: data?.constraints,
+      currentRent: data.currentRent,
+      currency: data.currency ?? 'KES',
+      leaseStartDate: data.leaseStartDate,
+      leaseEndDate: data.leaseEndDate,
+      termMonths: data.termMonths,
+      tenant: data.tenant,
+      property: data.property,
+      unit: data.unit,
+      marketData: data.marketData,
+      constraints: data.constraints,
     };
   }
 }

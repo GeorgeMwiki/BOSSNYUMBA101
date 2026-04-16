@@ -52,8 +52,50 @@ const port = process.env.PORT || 4000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+
+// CORS — restrict to allowed origins. Wildcard CORS combined with cookie
+// auth would enable CSRF; header-based auth alone is defensible, but we
+// whitelist anyway so the attack surface is minimal. Origins come from the
+// env var; absence is fatal in production.
+const allowedOrigins = (() => {
+  const raw = process.env.ALLOWED_ORIGINS?.trim();
+  if (raw) return raw.split(',').map((o) => o.trim()).filter(Boolean);
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'api-gateway: ALLOWED_ORIGINS env var is required in production ' +
+        '(comma-separated list of https://... origins).'
+    );
+  }
+  return [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:3003',
+  ];
+})();
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow server-to-server calls (no Origin) and explicitly whitelisted
+      // browser origins. Deny everything else.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Tenant-ID',
+      'Idempotency-Key',
+    ],
+    exposedHeaders: ['X-Request-Id', 'X-RateLimit-Remaining'],
+    maxAge: 86_400,
+  })
+);
+app.use(express.json({ limit: '2mb' }));
 app.use(pinoHttp({ logger }));
 app.use(rateLimitMiddleware());
 

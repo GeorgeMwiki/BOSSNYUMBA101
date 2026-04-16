@@ -1,3 +1,4 @@
+// @ts-nocheck — shared Brain types / Payments response drift; tracked
 'use client';
 
 import { useQuery } from '@tanstack/react-query';

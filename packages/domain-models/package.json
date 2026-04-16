@@ -5,35 +5,35 @@
   "description": "Core domain models and types for BOSSNYUMBA platform",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./tenant": {
-      "types": "./dist/tenant/index.d.ts",
+      "types": "./src/tenant/index.ts",
       "import": "./dist/tenant/index.mjs",
       "require": "./dist/tenant/index.js"
     },
     "./property": {
-      "types": "./dist/property/index.d.ts",
+      "types": "./src/property/index.ts",
       "import": "./dist/property/index.mjs",
       "require": "./dist/property/index.js"
     },
     "./lease": {
-      "types": "./dist/lease/index.d.ts",
+      "types": "./src/lease/index.ts",
       "import": "./dist/lease/index.mjs",
       "require": "./dist/lease/index.js"
     },
     "./payment": {
-      "types": "./dist/payment/index.d.ts",
+      "types": "./src/payment/index.ts",
       "import": "./dist/payment/index.mjs",
       "require": "./dist/payment/index.js"
     },
     "./maintenance": {
-      "types": "./dist/maintenance/index.d.ts",
+      "types": "./src/maintenance/index.ts",
       "import": "./dist/maintenance/index.mjs",
       "require": "./dist/maintenance/index.js"
     }

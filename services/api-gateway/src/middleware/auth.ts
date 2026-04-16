@@ -145,5 +145,7 @@ export const requirePermission = (...permissions: string[]) => {
 };
 
 export const generateToken = (payload: Omit<JWTPayload, 'exp' | 'iat'>): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  // 1-hour access token TTL. Use /auth/refresh to extend sessions. This limits
+  // blast radius on token theft — a stolen token is useful for at most an hour.
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 };

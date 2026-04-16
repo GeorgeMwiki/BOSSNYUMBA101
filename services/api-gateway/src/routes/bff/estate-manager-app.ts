@@ -16,6 +16,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole, requirePermission, requirePropertyAccess } from '../../middleware/authorization';
+import { liveDataRequired } from '../../middleware/live-data';
 import { UserRole } from '../../types/user-role';
 
 // ============================================================================
@@ -136,7 +137,12 @@ export const estateManagerAppRouter = new Hono()
     UserRole.MAINTENANCE_STAFF,
     UserRole.TENANT_ADMIN,
     UserRole.ADMIN
-  ));
+  ))
+  // Every route below returns demo data. Until the BFF is rewired to the
+  // domain services, gate the whole router behind liveDataRequired so
+  // production clients receive a 503 LIVE_DATA_NOT_IMPLEMENTED rather than
+  // hardcoded mocks (cust-001, vendor-001, +255700000010, etc.).
+  .use('*', liveDataRequired('Estate manager BFF'));
 
 // ============================================================================
 // Dashboard & Home

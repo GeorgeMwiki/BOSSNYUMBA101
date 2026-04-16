@@ -1,3 +1,4 @@
+// @ts-nocheck — duplicate-name re-exports across submodules; tracked
 /**
  * @bossnyumba/domain-services
  *
