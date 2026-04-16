@@ -5,11 +5,16 @@ function getApiBase(): string {
       ? configured.replace(/\/$/, '')
       : `${configured.replace(/\/$/, '')}/api/v1`;
   }
-
+  // Production requires an explicit VITE_API_URL — no silent localhost fallback.
+  if (import.meta.env.PROD) {
+    throw new Error(
+      'admin-portal: VITE_API_URL is required in production builds.'
+    );
+  }
+  // Dev convenience only — the env condition above guarantees this never runs in prod bundles.
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return 'http://localhost:4000/api/v1';
   }
-
   return '/api/v1';
 }
 

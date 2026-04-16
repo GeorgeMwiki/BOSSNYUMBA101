@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User,
   Bell,
@@ -20,7 +20,7 @@ import {
   Key,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { formatDate } from '../lib/api';
+import { api, formatDate } from '../lib/api';
 
 interface CoOwner {
   id: string;
@@ -39,41 +39,35 @@ export function SettingsPage() {
   const { user, tenant } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [coOwners, setCoOwners] = useState<CoOwner[]>([
-    {
-      id: '1',
-      email: user?.email || 'owner@example.com',
-      firstName: user?.firstName || 'John',
-      lastName: user?.lastName || 'Doe',
-      phone: '+255712345678',
-      role: 'OWNER',
-      status: 'ACTIVE',
-      lastLogin: new Date().toISOString(),
-      properties: ['Palm Gardens', 'Ocean View Apartments'],
-    },
-    {
-      id: '2',
-      email: 'sarah.coowner@example.com',
-      firstName: 'Sarah',
-      lastName: 'Wilson',
-      phone: '+255723456789',
-      role: 'CO_OWNER',
-      status: 'ACTIVE',
-      invitedAt: '2026-01-15T10:00:00Z',
-      lastLogin: '2026-02-10T14:30:00Z',
-      properties: ['Palm Gardens'],
-    },
-    {
-      id: '3',
-      email: 'david.viewer@example.com',
-      firstName: 'David',
-      lastName: 'Brown',
-      role: 'VIEWER',
-      status: 'PENDING',
-      invitedAt: '2026-02-08T09:00:00Z',
-      properties: ['Ocean View Apartments'],
-    },
-  ]);
+  // Live data only — co-owners load from the API. The signed-in owner
+  // is seeded into the local list from the auth context (no fake fallback).
+  const [coOwners, setCoOwners] = useState<CoOwner[]>(() =>
+    user
+      ? [
+          {
+            id: String(user.id ?? 'self'),
+            email: user.email ?? '',
+            firstName: user.firstName ?? '',
+            lastName: user.lastName ?? '',
+            role: 'OWNER',
+            status: 'ACTIVE',
+            lastLogin: new Date().toISOString(),
+            properties: [],
+          },
+        ]
+      : []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<CoOwner[]>('/owner/co-owners').then((res) => {
+      if (cancelled) return;
+      if (res.success && res.data) setCoOwners(res.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [inviteForm, setInviteForm] = useState({
     email: '',

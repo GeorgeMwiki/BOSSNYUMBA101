@@ -214,15 +214,28 @@ export class AICopilot {
     // Copilot events
     const copilotListener: CopilotEventListener = {
       onRequestCompleted: (requestId, output, processingTimeMs) => {
-        // Log to governance (fire and forget)
+        // Log to governance (fire and forget — but log the error if it
+        // fails so audit gaps surface in process logs).
         const tenant = (output as unknown as { tenant?: AITenantContext }).tenant;
         if (tenant) {
-          this.governanceService.logCopilotInvocation(
-            output,
-            tenant,
-            { type: 'system', id: 'copilot' },
-            'success'
-          ).catch(() => {});
+          this.governanceService
+            .logCopilotInvocation(
+              output,
+              tenant,
+              { type: 'system', id: 'copilot' },
+              'success'
+            )
+            .catch((err: unknown) => {
+              // eslint-disable-next-line no-console
+              console.error(
+                'AICopilot.governance.logCopilotInvocation failed',
+                {
+                  requestId,
+                  tenantId: tenant.tenantId,
+                  err: err instanceof Error ? err.message : String(err),
+                }
+              );
+            });
         }
       },
       onAutoApproved: (requestId, reason) => {
@@ -234,11 +247,18 @@ export class AICopilot {
     // Prediction events
     const predictionListener: PredictionEventListener = {
       onHighRiskDetected: (prediction) => {
-        this.governanceService.logPrediction(
-          prediction,
-          prediction.tenant,
-          { type: 'system', id: 'prediction-engine' }
-        ).catch(() => {});
+        this.governanceService
+          .logPrediction(prediction, prediction.tenant, {
+            type: 'system',
+            id: 'prediction-engine',
+          })
+          .catch((err: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('AICopilot.governance.logPrediction failed', {
+              tenantId: prediction.tenant.tenantId,
+              err: err instanceof Error ? err.message : String(err),
+            });
+          });
       },
     };
     this.predictionEngine.addEventListener(predictionListener);
@@ -462,7 +482,14 @@ export class AICopilot {
         tenant,
         actor,
         'success'
-      ).catch(() => {});
+      ).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('AICopilot.executeGraphTool governance log failed', {
+          toolName,
+          tenantId: tenant.tenantId,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      });
 
       return {
         success: true,

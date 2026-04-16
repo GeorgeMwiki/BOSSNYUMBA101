@@ -28,6 +28,11 @@ import {
   createDatabaseClient,
   BrainThreadRepository,
 } from '@bossnyumba/database';
+import {
+  createNeo4jClient,
+  createGraphQueryService,
+  createGraphAgentToolkit,
+} from '@bossnyumba/graph-sync';
 
 let envCache: ReturnType<typeof loadBrainEnv> | null = null;
 let registryCache: BrainRegistry | null = null;
@@ -44,6 +49,23 @@ function brainRegistry(): BrainRegistry {
   // Single shared Postgres connection. Per-tenant Brain caching is at the
   // ThreadStore-facade level, not the connection level.
   const db = createDatabaseClient(e.DATABASE_URL);
+
+  // Neo4j graph toolkit — wired only when NEO4J_URI is configured. Without
+  // it, the 9 graph tools are not registered in the Brain dispatcher and
+  // any persona that references them gets a TOOL_NOT_FOUND error (loud).
+  const graphToolkit = (() => {
+    if (!process.env.NEO4J_URI?.trim()) return undefined;
+    try {
+      const neo4j = createNeo4jClient();
+      const queryService = createGraphQueryService(neo4j);
+      return createGraphAgentToolkit(queryService);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('brain-server: failed to construct graph toolkit', err);
+      return undefined;
+    }
+  })();
+
   registryCache = new BrainRegistry((tenantId) => {
     const repo = new BrainThreadRepository(db);
     const backend = new PostgresThreadStoreBackend(repo, () => tenantId);
@@ -54,6 +76,7 @@ function brainRegistry(): BrainRegistry {
         defaultModel: e.ANTHROPIC_MODEL_DEFAULT,
       },
       threadStoreBackend: backend,
+      graphToolkit,
     });
   });
   return registryCache;

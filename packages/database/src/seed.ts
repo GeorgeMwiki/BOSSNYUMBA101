@@ -1,7 +1,12 @@
 /**
  * BOSSNYUMBA Database Seed
- * Seeds demo tenant, admin user, sample properties, units, customers, and leases.
- * Admin: set SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD in .env (dev default: admin@bossnyumba.com / admin123)
+ * Seeds the initial tenant, admin user, sample properties, units, customers,
+ * and leases.
+ *
+ * Production policy: NO hardcoded fallbacks. All required env vars must be
+ * provided (DATABASE_URL, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD,
+ * SEED_TENANT_NAME, SEED_TENANT_EMAIL). The seed will refuse to run in any
+ * environment without them — even local development.
  */
 
 import { eq } from 'drizzle-orm';
@@ -19,19 +24,39 @@ import {
   leases,
 } from './schemas/index.js';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  (process.env.NODE_ENV === 'production'
-    ? (() => {
-        throw new Error('DATABASE_URL is required in production. Set it in .env');
-      })()
-    : 'postgresql://localhost:5432/bossnyumba');
+function requireEnv(name: string): string {
+  const v = process.env[name]?.trim();
+  if (!v) {
+    throw new Error(
+      `Seed: required env var ${name} is not set. ` +
+        'See packages/database/.env.example for the full list.'
+    );
+  }
+  return v;
+}
+
+const DATABASE_URL = requireEnv('DATABASE_URL');
 
 async function seed() {
+  // Hard gate — demo seed must be opted into explicitly.
+  if (process.env.SEED_DEMO !== 'true') {
+    throw new Error(
+      'Refusing to run demo seed: set SEED_DEMO=true to acknowledge this ' +
+        'will write a demo tenant + admin + sample property/units/leases. ' +
+        'For production tenant onboarding use the Migration Wizard.'
+    );
+  }
   const db = createDatabaseClient(DATABASE_URL);
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? (process.env.NODE_ENV === 'production' ? (() => { throw new Error('SEED_ADMIN_EMAIL required in production'); })() : 'admin@bossnyumba.com');
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (process.env.NODE_ENV === 'production' ? (() => { throw new Error('SEED_ADMIN_PASSWORD required in production'); })() : 'admin123');
+  const adminEmail = requireEnv('SEED_ADMIN_EMAIL');
+  const adminPassword = requireEnv('SEED_ADMIN_PASSWORD');
   const ADMIN_PASSWORD_HASH = await bcrypt.hash(adminPassword, 10);
+  const tenantName = requireEnv('SEED_TENANT_NAME');
+  const tenantSlug = requireEnv('SEED_TENANT_SLUG');
+  const tenantEmail = requireEnv('SEED_TENANT_EMAIL');
+  const tenantPhone = process.env.SEED_TENANT_PHONE?.trim() ?? '';
+  const propertyName = requireEnv('SEED_PROPERTY_NAME');
+  const propertyAddress = requireEnv('SEED_PROPERTY_ADDRESS');
+  const propertyCity = process.env.SEED_PROPERTY_CITY?.trim() ?? 'Nairobi';
 
   const tenantId = crypto.randomUUID();
   const orgId = crypto.randomUUID();
@@ -52,14 +77,14 @@ async function seed() {
   try {
     await db.insert(tenants).values({
       id: tenantId,
-      name: 'BOSSNYUMBA Demo',
-      slug: 'demo',
+      name: tenantName,
+      slug: tenantSlug,
       status: 'active',
       subscriptionTier: 'professional',
-      primaryEmail: 'demo@bossnyumba.com',
-      primaryPhone: '+254700000000',
-      addressLine1: 'Demo Estate, Westlands',
-      city: 'Nairobi',
+      primaryEmail: tenantEmail,
+      primaryPhone: tenantPhone || null,
+      addressLine1: propertyAddress,
+      city: propertyCity,
       country: 'KE',
       currentUsers: 1,
       currentProperties: 1,
@@ -112,12 +137,12 @@ async function seed() {
       id: propertyId,
       tenantId,
       ownerId: adminUserId,
-      propertyCode: 'DEMO-001',
-      name: 'Sunrise Apartments',
+      propertyCode: `${tenantSlug.toUpperCase()}-001`,
+      name: propertyName,
       type: 'apartment_complex',
       status: 'active',
-      addressLine1: 'Moi Avenue 100',
-      city: 'Nairobi',
+      addressLine1: propertyAddress,
+      city: propertyCity,
       country: 'KE',
       totalUnits: 2,
       occupiedUnits: 2,
@@ -147,26 +172,34 @@ async function seed() {
       },
     ]);
 
+    const customer1Email = requireEnv('SEED_CUSTOMER1_EMAIL');
+    const customer1Phone = requireEnv('SEED_CUSTOMER1_PHONE');
+    const customer1First = requireEnv('SEED_CUSTOMER1_FIRST');
+    const customer1Last = requireEnv('SEED_CUSTOMER1_LAST');
+    const customer2Email = requireEnv('SEED_CUSTOMER2_EMAIL');
+    const customer2Phone = requireEnv('SEED_CUSTOMER2_PHONE');
+    const customer2First = requireEnv('SEED_CUSTOMER2_FIRST');
+    const customer2Last = requireEnv('SEED_CUSTOMER2_LAST');
     await db.insert(customers).values([
       {
         id: customer1Id,
         tenantId,
-        customerCode: 'CUST-001',
-        email: 'john.doe@example.com',
-        phone: '+254712345678',
-        firstName: 'John',
-        lastName: 'Doe',
+        customerCode: `${tenantSlug.toUpperCase()}-CUST-001`,
+        email: customer1Email,
+        phone: customer1Phone,
+        firstName: customer1First,
+        lastName: customer1Last,
         status: 'active',
         kycStatus: 'verified',
       },
       {
         id: customer2Id,
         tenantId,
-        customerCode: 'CUST-002',
-        email: 'jane.smith@example.com',
-        phone: '+254712345679',
-        firstName: 'Jane',
-        lastName: 'Smith',
+        customerCode: `${tenantSlug.toUpperCase()}-CUST-002`,
+        email: customer2Email,
+        phone: customer2Phone,
+        firstName: customer2First,
+        lastName: customer2Last,
         status: 'active',
         kycStatus: 'verified',
       },
@@ -189,7 +222,7 @@ async function seed() {
         rentDueDay: 1,
         securityDepositAmount: 90000,
         securityDepositPaid: 90000,
-        primaryOccupant: { name: 'John Doe', relationship: 'self', idNumber: '12345678' },
+        primaryOccupant: { name: `${customer1First} ${customer1Last}`, relationship: 'self' },
       },
       {
         id: lease2Id,
@@ -207,7 +240,7 @@ async function seed() {
         rentDueDay: 1,
         securityDepositAmount: 110000,
         securityDepositPaid: 110000,
-        primaryOccupant: { name: 'Jane Smith', relationship: 'self', idNumber: '87654321' },
+        primaryOccupant: { name: `${customer2First} ${customer2Last}`, relationship: 'self' },
       },
     ]);
 

@@ -302,14 +302,25 @@ export class AIGovernanceService {
 
   constructor(storage?: AIGovernanceStorageBackend) {
     this.storage = storage ?? new InMemoryGovernanceStorage();
-    
-    // Default cost per 1K tokens (USD)
+
+    // Default cost per 1K tokens (USD).
+    // Anthropic Claude rates are first-class — they are the Brain's primary
+    // executor. OpenAI rates remain for any legacy copilot still routed via
+    // the OpenAIProvider. The 'default' entry mirrors Sonnet 4.6 since most
+    // Brain turns run through that tier.
     this.costPerToken = {
+      // Anthropic
+      'claude-opus-4-6': { prompt: 0.015, completion: 0.075 },
+      'claude-sonnet-4-6': { prompt: 0.003, completion: 0.015 },
+      'claude-haiku-4-5-20251001': { prompt: 0.0008, completion: 0.004 },
+      'claude-haiku-4-5': { prompt: 0.0008, completion: 0.004 },
+      // OpenAI (legacy copilot path)
       'gpt-4-turbo-preview': { prompt: 0.01, completion: 0.03 },
       'gpt-4-turbo': { prompt: 0.01, completion: 0.03 },
       'gpt-4': { prompt: 0.03, completion: 0.06 },
       'gpt-3.5-turbo': { prompt: 0.0005, completion: 0.0015 },
-      'default': { prompt: 0.01, completion: 0.03 },
+      // Fallback — Sonnet rates so unknown models don't silently overcharge
+      'default': { prompt: 0.003, completion: 0.015 },
     };
   }
 

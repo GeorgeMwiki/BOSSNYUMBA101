@@ -18,7 +18,7 @@ import {
   DEMO_TENANT,
   DEMO_USERS,
   DEMO_TENANT_USERS,
-} from '../data/mock-data';
+} from './fixtures/demo-data';
 
 const BASE_PATH = '/api/v1';
 

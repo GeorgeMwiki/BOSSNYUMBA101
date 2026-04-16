@@ -32,6 +32,11 @@ import {
   BrainThreadRepository,
   MigrationWriterService,
 } from '@bossnyumba/database';
+import {
+  createNeo4jClient,
+  createGraphQueryService,
+  createGraphAgentToolkit,
+} from '@bossnyumba/graph-sync';
 
 // ---------------------------------------------------------------------------
 // Lazy boot — fail fast on missing env, but defer until first request so the
@@ -58,6 +63,22 @@ function db() {
 function registry() {
   if (registryCache) return registryCache;
   const e = env();
+  // Lazily-constructed graph toolkit — present only when NEO4J_URI is set.
+  // Otherwise graph tools are not registered (and any persona that references
+  // one will surface a loud TOOL_NOT_FOUND).
+  const graphToolkit = (() => {
+    if (!process.env.NEO4J_URI?.trim()) return undefined;
+    try {
+      const neo4j = createNeo4jClient();
+      const queryService = createGraphQueryService(neo4j);
+      return createGraphAgentToolkit(queryService);
+    } catch (err) {
+      // Use the gateway's pino logger if exposed, else fall back to console.
+      // eslint-disable-next-line no-console
+      console.error('brain.hono: failed to construct graph toolkit', err);
+      return undefined;
+    }
+  })();
   registryCache = new BrainRegistry((tenantId) => {
     const repo = new BrainThreadRepository(db());
     const backend = new PostgresThreadStoreBackend(repo, () => tenantId);
@@ -68,6 +89,7 @@ function registry() {
         defaultModel: e.ANTHROPIC_MODEL_DEFAULT,
       },
       threadStoreBackend: backend,
+      graphToolkit,
     });
   });
   return registryCache;

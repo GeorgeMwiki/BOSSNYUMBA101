@@ -14,7 +14,7 @@ import {
   getSuperAdminToken,
   authHeader,
 } from './setup';
-import { DEMO_TENANT } from '../data/mock-data';
+import { DEMO_TENANT } from './fixtures/demo-data';
 
 const agent = createTestAgent();
 

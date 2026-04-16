@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../lib/api';
 import {
   Shield,
   Plus,
@@ -168,8 +169,26 @@ export function RolesPage() {
   });
 
   useEffect(() => {
-    // Mock data
-    setRoles([
+    let cancelled = false;
+    Promise.all([
+      api.get<Role[]>('/admin/roles'),
+      api.get<AuditEntry[]>('/admin/roles/audit'),
+    ]).then(([rolesRes, auditRes]) => {
+      if (cancelled) return;
+      if (rolesRes.success && rolesRes.data) setRoles(rolesRes.data);
+      if (auditRes.success && auditRes.data) setAuditLog(auditRes.data);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Legacy hardcoded seed kept disabled — useful as a permissions-shape
+  // reference but never assigned to state. The real list is loaded via the
+  // API call above; missing endpoint returns an empty list.
+  const _legacyRoleSeedReference = () => {
+    const _ = [
       {
         id: '1',
         name: 'Super Admin',
@@ -241,10 +260,10 @@ export function RolesPage() {
       { id: '3', action: 'Permission Removed', actor: 'super@bossnyumba.com', target: 'Support Agent', changes: 'Removed users.edit', timestamp: '2026-02-11T09:20:00Z' },
       { id: '4', action: 'Role Updated', actor: 'admin@bossnyumba.com', target: 'Read Only', changes: 'Updated description', timestamp: '2026-02-10T14:00:00Z' },
       { id: '5', action: 'User Assigned', actor: 'admin@bossnyumba.com', target: 'Finance Manager', changes: 'Added john@tenant.com to role', timestamp: '2026-02-09T11:30:00Z' },
-    ]);
-
-    setLoading(false);
-  }, []);
+    ];
+    void _;
+  };
+  void _legacyRoleSeedReference;
 
   const filteredRoles = roles.filter(role =>
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

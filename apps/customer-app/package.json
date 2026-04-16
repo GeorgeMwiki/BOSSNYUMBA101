@@ -14,10 +14,13 @@
     "generate-icons": "./scripts/generate-icons.sh"
   },
   "dependencies": {
+    "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/api-client": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/database": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.24.0",
     "lucide-react": "^0.344.0",
     "next": "^14.1.0",

@@ -15,7 +15,7 @@ import {
   getAuthToken,
   authHeader,
 } from './setup';
-import { DEMO_PROPERTIES } from '../data/mock-data';
+import { DEMO_PROPERTIES } from './fixtures/demo-data';
 
 const agent = createTestAgent();
 const existingProperty = DEMO_PROPERTIES[0];

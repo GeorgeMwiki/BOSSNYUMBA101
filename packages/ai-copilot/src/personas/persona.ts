@@ -36,6 +36,8 @@ export const PERSONA_IDS = {
   JUNIOR_COMMUNICATIONS: 'junior.communications',
   COWORKER_FAMILY: 'coworker',
   MIGRATION_WIZARD: 'migration-wizard',
+  TENANT_ASSISTANT: 'tenant-assistant',
+  OWNER_ADVISOR: 'owner-advisor',
 } as const;
 
 /**

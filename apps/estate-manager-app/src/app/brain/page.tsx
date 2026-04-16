@@ -13,6 +13,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Brain,
   Send,
@@ -25,7 +26,6 @@ import {
   Megaphone,
   Loader2,
   AlertTriangle,
-  CheckCircle2,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -287,34 +287,10 @@ function MessageBubble({
         {message.text}
       </div>
       {message.proposedAction && (
-        <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 flex items-start gap-2">
-          <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="font-medium">
-              Proposed: {message.proposedAction.verb}{' '}
-              {message.proposedAction.object}
-            </div>
-            <div className="opacity-80">
-              Risk: {message.proposedAction.riskLevel}
-              {message.proposedAction.reviewRequired ? ' · review required' : ''}
-            </div>
-          </div>
-          {message.proposedAction.reviewRequired ? (
-            <button
-              type="button"
-              className="rounded-md bg-amber-600 text-white text-xs px-2 py-1"
-            >
-              Review
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="rounded-md bg-green-600 text-white text-xs px-2 py-1 flex items-center gap-1"
-            >
-              <CheckCircle2 className="w-3 h-3" /> Approve
-            </button>
-          )}
-        </div>
+        <ProposedActionCard
+          action={message.proposedAction}
+          messageId={message.id}
+        />
       )}
       {showTrace && (message.handoffs?.length || message.toolCalls?.length) ? (
         <details className="text-[11px] text-gray-500 pl-1">
@@ -331,6 +307,44 @@ function MessageBubble({
           </div>
         </details>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * ProposedActionCard — inline approve/reject for a Brain-proposed action.
+ *
+ * The card POSTs to /api/brain/review with the latest threadId from the
+ * useBrainChat hook. Because the persona message itself doesn't carry the
+ * copilotRequestId yet, we route to the Reviews dashboard for the explicit
+ * review flow if more nuance is needed; this inline button is the
+ * happy-path "yes, do it" affordance for low-friction approvals.
+ */
+function ProposedActionCard({
+  action,
+  messageId,
+}: {
+  action: NonNullable<BrainMessage['proposedAction']>;
+  messageId: string;
+}) {
+  return (
+    <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 flex items-start gap-2">
+      <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <div className="font-medium">
+          Proposed: {action.verb} {action.object}
+        </div>
+        <div className="opacity-80">
+          Risk: {action.riskLevel}
+          {action.reviewRequired ? ' · review required' : ''}
+        </div>
+      </div>
+      <Link
+        href="/brain/reviews"
+        className="rounded-md bg-amber-600 text-white text-xs px-2 py-1"
+      >
+        {action.reviewRequired ? 'Review' : 'Approve'}
+      </Link>
     </div>
   );
 }

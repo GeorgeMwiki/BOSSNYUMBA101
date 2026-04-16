@@ -6,11 +6,12 @@ import { Mail, Phone, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
 
-// Mock initial data
+// Empty initial data — populated from `useCurrentCustomer()` when the auth
+// context resolves. No fabricated demo identity.
 const initialData = {
-  firstName: 'John',
-  lastName: 'Kamau',
-  email: 'john.kamau@example.com',
+  firstName: '',
+  lastName: '',
+  email: '',
   phone: '',
   emergencyContactName: '',
   emergencyContactPhone: '',

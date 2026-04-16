@@ -21,6 +21,7 @@
     "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
+    "@bossnyumba/graph-sync": "workspace:*",
     "@hono/node-server": "^1.11.0",
     "@hono/zod-validator": "^0.4.0",
     "cors": "^2.8.5",

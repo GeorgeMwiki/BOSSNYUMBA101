@@ -113,12 +113,16 @@ const MpesaStkCallbackSchema = z.object({
 // =============================================================================
 
 /**
- * Extract tenant ID from request headers or query
+ * Extract tenant ID from the verified Supabase JWT principal attached by
+ * `verifySupabaseAuthMiddleware`. Header / query trust has been removed —
+ * the tenant id can no longer be set client-side.
  */
 function getTenantId(req: Request): TenantId {
-  const tenantId = req.headers['x-tenant-id'] as string || req.query.tenantId as string;
+  const tenantId = req.principal?.tenantId;
   if (!tenantId) {
-    throw new Error('Tenant ID required');
+    throw new Error(
+      'getTenantId: no verified principal — verifySupabaseAuthMiddleware must run first'
+    );
   }
   return asTenantId(tenantId);
 }
@@ -304,6 +308,14 @@ app.use((req, res, next) => {
 });
 
 app.use(pinoHttp({ logger }));
+
+// Verify Supabase JWT on every protected request. Health check + webhooks
+// (which carry their own signature verification) are excluded.
+import { verifySupabaseAuthMiddleware } from './middleware/auth.middleware';
+app.use((req, res, next) => {
+  if (req.path === '/health' || req.path.startsWith('/webhooks/')) return next();
+  return verifySupabaseAuthMiddleware(req, res, next);
+});
 
 // =============================================================================
 // Health Check Endpoint

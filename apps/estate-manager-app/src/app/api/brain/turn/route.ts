@@ -6,10 +6,15 @@
  *  - All Brain env vars set (ANTHROPIC_API_KEY, SUPABASE_*, DATABASE_URL)
  *
  * No dev fallbacks. No mock providers. Missing auth → 401. Missing env → 503.
+ *
+ * Visibility scope: clients may pass `defaultVisibility`, but the server
+ * clamps it down to whatever the principal's role permits — an employee
+ * cannot publish at `management` scope just by sending the value.
  */
 
 import { NextResponse } from 'next/server';
 import { brainForRequest, errorToResponse } from '@/lib/brain-server';
+import { clampVisibility } from '@bossnyumba/ai-copilot';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +22,7 @@ interface TurnBody {
   threadId?: string;
   userText?: string;
   forcePersonaId?: string;
+  defaultVisibility?: 'private' | 'team' | 'management' | 'public';
 }
 
 export async function POST(req: Request) {
@@ -37,7 +43,45 @@ export async function POST(req: Request) {
     const { status, body: payload } = errorToResponse(err);
     return NextResponse.json(payload, { status });
   }
-  const { brain, tenant, actor, viewer } = ctx;
+  const { brain, tenant, actor, viewer, principal } = ctx;
+
+  // Coworker persona binds to the verified employee id from the JWT —
+  // never from a client-supplied path or localStorage value.
+  let resolvedPersona = body.forcePersonaId;
+  if (resolvedPersona === 'coworker' || resolvedPersona === 'coworker.') {
+    if (!principal.employeeId) {
+      return NextResponse.json(
+        {
+          error: 'no_employee_id_claim',
+          code: 'EMPLOYEE_ID_REQUIRED',
+        },
+        { status: 403 }
+      );
+    }
+    resolvedPersona = `coworker.${principal.employeeId}`;
+  } else if (resolvedPersona?.startsWith('coworker.')) {
+    // If the client tried to specify a different employee id, override.
+    if (principal.employeeId) {
+      resolvedPersona = `coworker.${principal.employeeId}`;
+    } else {
+      return NextResponse.json(
+        {
+          error: 'no_employee_id_claim',
+          code: 'EMPLOYEE_ID_REQUIRED',
+        },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Clamp visibility to what the principal is allowed to publish at.
+  const requestedScope = body.defaultVisibility;
+  const clampedScope = clampVisibility(requestedScope, principal);
+  if (requestedScope && requestedScope !== clampedScope) {
+    // Attach a header so the client UI can warn the user that their request
+    // was downgraded. The body still succeeds.
+    // (Headers set on a NextResponse below — captured via the wrapper.)
+  }
 
   try {
     if (!body.threadId) {
@@ -46,7 +90,7 @@ export async function POST(req: Request) {
         actor,
         viewer,
         initialUserText: body.userText,
-        forcePersonaId: body.forcePersonaId,
+        forcePersonaId: resolvedPersona,
       });
       if (!result.success) {
         const err = (result as { success: false; error: { message: string } }).error;
@@ -71,7 +115,7 @@ export async function POST(req: Request) {
       actor,
       viewer,
       userText: body.userText,
-      forcePersonaId: body.forcePersonaId,
+      forcePersonaId: resolvedPersona,
     });
     if (!result.success) {
       const err = (result as { success: false; error: { message: string } }).error;

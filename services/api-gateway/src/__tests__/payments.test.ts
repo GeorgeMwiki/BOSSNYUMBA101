@@ -13,7 +13,7 @@ import {
   getAuthToken,
   authHeader,
 } from './setup';
-import { DEMO_INVOICES, DEMO_CUSTOMERS } from '../data/mock-data';
+import { DEMO_INVOICES, DEMO_CUSTOMERS } from './fixtures/demo-data';
 
 const agent = createTestAgent();
 

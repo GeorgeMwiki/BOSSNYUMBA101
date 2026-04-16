@@ -109,15 +109,22 @@ export interface HandoffDirective {
 /**
  * Parse `HANDOFF_TO: <id>` + `OBJECTIVE: <sentence>` directives from a
  * persona response. Returns null if no directive present.
+ *
+ * Tolerant to formatting drift: the directive may appear anywhere in the
+ * response (not strictly on its own line) so a model that wraps the
+ * delimiter in punctuation or backticks still routes correctly. The
+ * objective grabs everything to end-of-line.
  */
 export function parseHandoffDirective(
   text: string
 ): HandoffDirective | null {
-  const handoffMatch = text.match(/^\s*HANDOFF_TO:\s*([a-z0-9._-]+)\s*$/im);
-  const objectiveMatch = text.match(/^\s*OBJECTIVE:\s*(.+?)\s*$/im);
+  const handoffMatch = text.match(/HANDOFF_TO:\s*([a-zA-Z0-9._-]+)/);
+  const objectiveMatch = text.match(/OBJECTIVE:\s*([^\n\r]+)/);
   if (!handoffMatch) return null;
   const targetPersonaId = handoffMatch[1];
-  const objective = objectiveMatch ? objectiveMatch[1] : '(no explicit objective)';
+  const objective = objectiveMatch
+    ? objectiveMatch[1].trim()
+    : '(no explicit objective)';
   return { targetPersonaId, objective };
 }
 
@@ -129,16 +136,17 @@ export interface ProposedAction {
 
 /**
  * Parse `PROPOSED_ACTION: <verb> <object> [risk:<level>]` from a persona
- * response. Returns null if none.
+ * response. Returns null if none. Tolerant to drift: directive may appear
+ * anywhere in the response; risk bracket is optional and case-insensitive.
  */
 export function parseProposedAction(text: string): ProposedAction | null {
   const m = text.match(
-    /^\s*PROPOSED_ACTION:\s*(\S+)\s+(.+?)(?:\s*\[risk:(LOW|MEDIUM|HIGH|CRITICAL)\])?\s*$/im
+    /PROPOSED_ACTION:\s*(\S+)\s+([^\n\r]+?)(?:\s*\[risk:(LOW|MEDIUM|HIGH|CRITICAL)\])?\s*(?:\r?\n|$)/i
   );
   if (!m) return null;
   return {
     verb: m[1],
     object: m[2].trim(),
-    riskLevel: (m[3] as ProposedAction['riskLevel']) ?? 'MEDIUM',
+    riskLevel: (m[3]?.toUpperCase() as ProposedAction['riskLevel']) ?? 'MEDIUM',
   };
 }

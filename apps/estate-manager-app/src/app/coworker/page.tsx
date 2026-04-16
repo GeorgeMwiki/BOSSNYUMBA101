@@ -5,11 +5,12 @@
  *
  * Same Brain intelligence as the Estate Manager and Juniors, but bound to
  * the signed-in employee. Default visibility is `private` — only the
- * employee and the Brain itself see the messages. The employee can promote
- * to `team` or `management` with an explicit share action.
+ * employee and the Brain itself see the messages.
  *
- * Surveillance-guard: the visibility badge and "who can see this?" panel
- * are always visible. Employees must be able to trust this surface.
+ * Identity resolution: the employee id is derived server-side from the
+ * verified Supabase JWT (`app_metadata.employee_id`). The client never
+ * sends an employee id. Passing `forcePersonaId: 'coworker'` is enough —
+ * the API route appends the verified id and rejects with 403 if absent.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,33 +21,19 @@ import {
   ShieldCheck,
   EyeOff,
   Eye,
-  Share2,
   AlertTriangle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useBrainChat, type BrainMessage } from '@/lib/brain-client';
 
 type Scope = 'private' | 'team' | 'management' | 'public';
 
-interface CoworkerMessage {
-  id: string;
-  role: 'user' | 'persona';
-  text: string;
-  visibility?: Scope;
-  advisorConsulted?: boolean;
-  createdAt: string;
-}
-
 export default function CoworkerPage() {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<CoworkerMessage[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // The employee sets a default scope for their session. Defaults to private.
   const [defaultScope, setDefaultScope] = useState<Scope>('private');
-  // In dev we need to know who the employee is — this would come from auth
-  // in production. For Phase 1 we read from localStorage.
-  const [employeeId, setEmployeeId] = useState<string>('EMP-001');
+  const { messages, sending, error, sendMessage } = useBrainChat({
+    forcePersonaId: 'coworker',
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -56,79 +43,11 @@ export default function CoworkerPage() {
     });
   }, [messages, sending]);
 
-  useEffect(() => {
-    const saved = typeof window !== 'undefined'
-      ? window.localStorage.getItem('bn_employee_id')
-      : null;
-    if (saved) setEmployeeId(saved);
-  }, []);
-
   async function send() {
     const text = input.trim();
     if (!text || sending) return;
     setInput('');
-    setError(null);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `u-${Date.now()}`,
-        role: 'user',
-        text,
-        visibility: defaultScope,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    setSending(true);
-    try {
-      const body: Record<string, unknown> = {
-        userText: text,
-        forcePersonaId: `coworker.${employeeId}`,
-        defaultVisibility: defaultScope,
-      };
-      if (threadId) body.threadId = threadId;
-      const res = await fetch('/api/brain/turn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || `HTTP ${res.status}`);
-      }
-      const data = (await res.json()) as {
-        threadId: string;
-        finalPersonaId: string;
-        responseText: string;
-        advisorConsulted: boolean;
-        visibilityScope?: Scope;
-      };
-      if (!threadId) setThreadId(data.threadId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `p-${Date.now()}`,
-          role: 'persona',
-          text: data.responseText,
-          visibility: data.visibilityScope ?? 'private',
-          advisorConsulted: data.advisorConsulted,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'coworker backend unavailable');
-    } finally {
-      setSending(false);
-    }
-  }
-
-  function promoteLastToTeam() {
-    setMessages((prev) => {
-      if (!prev.length) return prev;
-      const copy = prev.slice();
-      const last = copy[copy.length - 1];
-      copy[copy.length - 1] = { ...last, visibility: 'team' };
-      return copy;
-    });
+    await sendMessage(text);
   }
 
   return (
@@ -139,13 +58,10 @@ export default function CoworkerPage() {
         showBack
       />
 
-      {/* Visibility contract banner */}
       <div className="px-4 pt-2">
         <VisibilityBanner
           defaultScope={defaultScope}
           onChangeScope={setDefaultScope}
-          employeeId={employeeId}
-          setEmployeeId={setEmployeeId}
         />
       </div>
 
@@ -155,11 +71,7 @@ export default function CoworkerPage() {
       >
         {messages.length === 0 && <EmptyState />}
         {messages.map((m) => (
-          <Bubble
-            key={m.id}
-            msg={m}
-            onPromote={m.role === 'persona' ? promoteLastToTeam : undefined}
-          />
+          <Bubble key={m.id} msg={m} />
         ))}
         {sending && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
@@ -212,13 +124,9 @@ export default function CoworkerPage() {
 function VisibilityBanner({
   defaultScope,
   onChangeScope,
-  employeeId,
-  setEmployeeId,
 }: {
   defaultScope: Scope;
   onChangeScope: (s: Scope) => void;
-  employeeId: string;
-  setEmployeeId: (id: string) => void;
 }) {
   const tones: Record<Scope, string> = {
     private: 'bg-gray-100 text-gray-800',
@@ -234,7 +142,14 @@ function VisibilityBanner({
         {defaultScope}
       </span>
       <span className="text-gray-500">
-        — {defaultScope === 'private' ? 'only you' : defaultScope === 'team' ? 'your team + management' : defaultScope === 'management' ? 'your managers' : 'tenant-wide'} can see messages.
+        — {defaultScope === 'private'
+          ? 'only you'
+          : defaultScope === 'team'
+            ? 'your team + management'
+            : defaultScope === 'management'
+              ? 'your managers'
+              : 'tenant-wide'}{' '}
+        can see messages.
       </span>
       <div className="ml-auto flex items-center gap-1">
         <label className="text-gray-500">Default:</label>
@@ -247,17 +162,11 @@ function VisibilityBanner({
           <option value="team">Team</option>
           <option value="management">Management</option>
         </select>
-        <input
-          className="w-24 rounded-md border border-gray-200 px-1.5 py-0.5 text-xs"
-          value={employeeId}
-          onChange={(e) => {
-            setEmployeeId(e.target.value);
-            if (typeof window !== 'undefined')
-              window.localStorage.setItem('bn_employee_id', e.target.value);
-          }}
-          title="Your employee id (dev override)"
-        />
       </div>
+      <span className="basis-full text-gray-400 text-[10px]">
+        Server enforces your role's max scope — promotion requests above your
+        permission are clamped automatically.
+      </span>
     </div>
   );
 }
@@ -279,7 +188,7 @@ function EmptyState() {
           'How do I log an emergency water leak?',
           'Draft a Swahili reply confirming 10am plumber visit.',
           'Ask my manager to authorize KES 12,000 repair.',
-          'Explain the late-fee clause in my tenant\'s lease.',
+          "Explain the late-fee clause in my tenant's lease.",
         ].map((p) => (
           <span
             key={p}
@@ -293,20 +202,11 @@ function EmptyState() {
   );
 }
 
-function Bubble({
-  msg,
-  onPromote,
-}: {
-  msg: CoworkerMessage;
-  onPromote?: () => void;
-}) {
+function Bubble({ msg }: { msg: BrainMessage }) {
   if (msg.role === 'user') {
     return (
-      <div className="self-end max-w-[85%] flex flex-col items-end gap-1">
-        <div className="rounded-2xl rounded-br-sm bg-sky-500 text-white px-3 py-2 text-sm whitespace-pre-wrap">
-          {msg.text}
-        </div>
-        {msg.visibility && <ScopePill scope={msg.visibility} />}
+      <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-sky-500 text-white px-3 py-2 text-sm whitespace-pre-wrap">
+        {msg.text}
       </div>
     );
   }
@@ -320,31 +220,16 @@ function Bubble({
             +advisor
           </span>
         )}
-        {msg.visibility && <ScopePill scope={msg.visibility} size="xs" />}
+        {msg.visibilityScope && <ScopePill scope={msg.visibilityScope} />}
       </div>
       <div className="rounded-2xl rounded-bl-sm bg-white border border-gray-100 px-3 py-2 text-sm text-gray-900 whitespace-pre-wrap">
         {msg.text}
       </div>
-      {onPromote && msg.visibility === 'private' && (
-        <button
-          type="button"
-          onClick={onPromote}
-          className="self-start text-[11px] rounded-full border border-gray-200 px-2 py-0.5 hover:bg-gray-50 flex items-center gap-1"
-        >
-          <Share2 className="w-3 h-3" /> Share this with my team
-        </button>
-      )}
     </div>
   );
 }
 
-function ScopePill({
-  scope,
-  size = 'sm',
-}: {
-  scope: Scope;
-  size?: 'xs' | 'sm';
-}) {
+function ScopePill({ scope }: { scope: Scope }) {
   const tones: Record<Scope, string> = {
     private: 'bg-gray-100 text-gray-700',
     team: 'bg-sky-100 text-sky-800',
@@ -354,9 +239,9 @@ function ScopePill({
   const Icon = scope === 'private' ? EyeOff : Eye;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full ${size === 'xs' ? 'text-[10px] px-1.5 py-px' : 'text-[11px] px-2 py-0.5'} ${tones[scope]}`}
+      className={`inline-flex items-center gap-1 rounded-full text-[10px] px-1.5 py-px ${tones[scope]}`}
     >
-      <Icon className={size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+      <Icon className="w-3 h-3" />
       {scope}
     </span>
   );

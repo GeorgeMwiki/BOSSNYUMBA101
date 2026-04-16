@@ -45,13 +45,9 @@ export default function TenantsPage() {
       t.unitNumber?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const displayTenants = filtered.length
-    ? filtered
-    : [
-        { id: '1', name: 'John Kamau', email: 'john@example.com', phone: '+254 700 111 222', propertyId: '1', propertyName: 'Westlands Apartments', unitNumber: '4B', leaseEndDate: '2024-12-31', rentAmount: 65000, status: 'ACTIVE' },
-        { id: '2', name: 'Mary Wanjiku', email: 'mary@example.com', phone: '+254 722 333 444', propertyId: '1', propertyName: 'Westlands Apartments', unitNumber: '2A', leaseEndDate: '2024-06-30', rentAmount: 55000, status: 'ACTIVE' },
-        { id: '3', name: 'Peter Ochieng', email: 'peter@example.com', phone: '+254 733 555 666', propertyId: '2', propertyName: 'Kilimani Complex', unitNumber: '101', leaseEndDate: '2024-09-15', rentAmount: 85000, status: 'ACTIVE' },
-      ];
+  // Live data only — no hardcoded fallback tenants. If the API returns
+  // nothing the empty-state below is what the user sees, by design.
+  const displayTenants = filtered;
 
   if (loading) {
     return (

@@ -10,7 +10,14 @@ export const metadata: Metadata = {
   title: 'BOSSNYUMBA',
   description: 'Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.',
   manifest: '/manifest.json',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3002'),
+  metadataBase: (() => {
+    const url = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (url) return new URL(url);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('customer-app: NEXT_PUBLIC_APP_URL is required in production builds.');
+    }
+    return new URL('http://localhost:3002');
+  })(),
   openGraph: {
     title: 'BOSSNYUMBA - Tenant App',
     description: 'Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.',

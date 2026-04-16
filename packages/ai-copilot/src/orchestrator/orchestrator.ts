@@ -566,8 +566,25 @@ export class Orchestrator {
         depth,
         processingTimeMs: outcome.totalProcessingTimeMs,
       })
-      .catch(() => {
-        /* governance is best-effort; errors never fail the turn */
+      .catch((err: unknown) => {
+        // Governance is best-effort but failures must be visible in the
+        // thread itself so operators see the gap rather than discovering
+        // missing audit events later.
+        const msg = err instanceof Error ? err.message : String(err);
+        void this.cfg.threads
+          .append({
+            id: uuid(),
+            threadId: thread.id,
+            kind: 'system_note',
+            noteKind: 'governance',
+            createdAt: new Date().toISOString(),
+            visibility: { ...visibility, scope: 'management' },
+            actorId: 'orchestrator',
+            text: `governance.logBrainTurn failed: ${msg}`,
+          })
+          .catch(() => {
+            /* last-resort: thread store unreachable too — there is nowhere left to log */
+          });
       });
 
     // Parse directives emitted by the persona.

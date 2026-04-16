@@ -45,7 +45,6 @@ jobs:
 
       - name: Run ESLint
         run: pnpm lint
-        continue-on-error: true
 
   # ============================================
   # Quality Gate 2: Type Check
@@ -71,7 +70,6 @@ jobs:
 
       - name: Run TypeScript type check
         run: pnpm typecheck
-        continue-on-error: true
 
   # ============================================
   # Quality Gate 3: Unit Tests (parallel matrix)
@@ -104,7 +102,6 @@ jobs:
 
       - name: Run unit tests (${{ matrix.workspace }})
         run: pnpm -r --filter="./${{ matrix.workspace }}/*" test
-        continue-on-error: true
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -139,7 +136,6 @@ jobs:
 
       - name: Build all packages
         run: pnpm build
-        continue-on-error: true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -196,7 +192,6 @@ jobs:
         run: pnpm test:e2e -- --project=customer-app
         env:
           CUSTOMER_APP_URL: http://localhost:3002
-        continue-on-error: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

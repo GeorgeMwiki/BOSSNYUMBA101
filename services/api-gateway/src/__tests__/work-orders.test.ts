@@ -19,7 +19,7 @@ import {
   DEMO_PROPERTIES,
   DEMO_CUSTOMERS,
   DEMO_VENDORS,
-} from '../data/mock-data';
+} from './fixtures/demo-data';
 
 const agent = createTestAgent();
 

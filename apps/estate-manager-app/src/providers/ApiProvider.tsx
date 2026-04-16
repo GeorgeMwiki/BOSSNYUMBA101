@@ -6,7 +6,11 @@ import { initializeApiClient, getApiClient } from '@bossnyumba/api-client';
 function getApiBase(): string {
   const url = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (url) return url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`;
-  if (process.env.NODE_ENV === 'production') return '';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'estate-manager-app: NEXT_PUBLIC_API_URL is required in production builds.'
+    );
+  }
   return 'http://localhost:4000/api/v1';
 }
 const API_BASE = getApiBase();

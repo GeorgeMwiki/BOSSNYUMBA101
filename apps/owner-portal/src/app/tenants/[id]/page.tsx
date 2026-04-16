@@ -53,24 +53,19 @@ export default function TenantDetailPage() {
     );
   }
 
-  const displayTenant = tenant || {
-    id: id!,
-    name: 'John Kamau',
-    email: 'john@example.com',
-    phone: '+254 700 111 222',
-    propertyId: '1',
-    propertyName: 'Westlands Apartments',
-    unitNumber: '4B',
-    leaseStartDate: '2024-01-01',
-    leaseEndDate: '2024-12-31',
-    rentAmount: 65000,
-    status: 'ACTIVE',
-    balance: 0,
-    payments: [
-      { id: '1', amount: 65000, date: '2024-02-01', status: 'COMPLETED' },
-      { id: '2', amount: 65000, date: '2024-01-01', status: 'COMPLETED' },
-    ],
-  };
+  // Live data only — render an empty state instead of fabricating a tenant.
+  if (!tenant) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        <p className="font-medium">Tenant not found</p>
+        <p className="text-sm mt-1">
+          We could not load tenant <code>{id}</code>. They may have been moved
+          out or the lookup failed.
+        </p>
+      </div>
+    );
+  }
+  const displayTenant = tenant;
 
   return (
     <div className="space-y-6">

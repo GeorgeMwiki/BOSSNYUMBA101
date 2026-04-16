@@ -190,3 +190,49 @@ export function principalToBrainContexts(p: BrainAuthPrincipal): {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Visibility scope authorization
+// ---------------------------------------------------------------------------
+
+export type VisibilityRequest = 'private' | 'team' | 'management' | 'public';
+
+/**
+ * Decide whether a principal is authorized to publish at a requested
+ * visibility scope. Used by Brain routes to clamp client-supplied
+ * `defaultVisibility` so an employee cannot promote a coworker thread to
+ * `management` without permission.
+ *
+ * Rules:
+ *  - Admin: anything.
+ *  - Manager / team_leader: private | team | management.
+ *  - Employee (no special role): private | team only.
+ *  - Anyone explicitly requesting `public` requires admin or a tenant-level
+ *    "publish_public" role — `public` is the broadcast tier and rarely
+ *    appropriate for a single-thread message.
+ */
+export function maxPermittedVisibility(
+  p: Pick<BrainAuthPrincipal, 'roles'>
+): VisibilityRequest {
+  if (p.roles.includes('admin') || p.roles.includes('publish_public'))
+    return 'public';
+  if (p.roles.includes('manager') || p.roles.includes('team_leader'))
+    return 'management';
+  return 'team';
+}
+
+const SCOPE_ORDER: Record<VisibilityRequest, number> = {
+  private: 0,
+  team: 1,
+  management: 2,
+  public: 3,
+};
+
+export function clampVisibility(
+  requested: VisibilityRequest | undefined,
+  p: Pick<BrainAuthPrincipal, 'roles'>
+): VisibilityRequest {
+  const cap = maxPermittedVisibility(p);
+  if (!requested) return 'private';
+  return SCOPE_ORDER[requested] <= SCOPE_ORDER[cap] ? requested : cap;
+}

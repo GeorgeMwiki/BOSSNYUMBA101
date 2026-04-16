@@ -84,6 +84,8 @@ export const DEFAULT_PERSONAE: PersonaInfo[] = [
 ];
 
 export function usePersonae(): { personae: PersonaInfo[]; loading: boolean } {
+  // Default catalog is the initial state — replaced by the API roster
+  // (which may include tenant-specific overrides) once the request resolves.
   const [personae, setPersonae] = useState<PersonaInfo[]>(DEFAULT_PERSONAE);
   const [loading, setLoading] = useState(false);
 
@@ -92,21 +94,19 @@ export function usePersonae(): { personae: PersonaInfo[]; loading: boolean } {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/brain/personae');
-        if (!res.ok) return;
-        const data = (await res.json()) as { personae?: PersonaInfo[] };
+        const data = await brainFetch<{ personae?: PersonaInfo[] }>(
+          '/api/brain/personae'
+        );
         if (!cancelled && Array.isArray(data.personae)) {
           setPersonae(data.personae);
         }
       } catch {
-        // fall back to defaults silently
+        // Soft-degrade to defaults — the chat still works because the
+        // server-side persona catalog is identical.
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   return { personae, loading };
@@ -144,7 +144,14 @@ function labelFor(id: string): string {
   return PERSONA_LABELS[id] ?? id;
 }
 
-export function useBrainChat() {
+import { authedHeaders } from './supabase';
+
+export interface UseBrainChatOptions {
+  /** Optional persona override — passed as forcePersonaId to the API. */
+  forcePersonaId?: string;
+}
+
+export function useBrainChat(opts: UseBrainChatOptions = {}) {
   const [messages, setMessages] = useState<BrainMessage[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -163,12 +170,13 @@ export function useBrainChat() {
       setSending(true);
       setError(null);
       try {
-        const body = threadId
-          ? { threadId, userText: text }
-          : { userText: text };
+        const body: Record<string, unknown> = { userText: text };
+        if (threadId) body.threadId = threadId;
+        if (opts.forcePersonaId) body.forcePersonaId = opts.forcePersonaId;
+        const headers = await authedHeaders();
         const res = await fetch('/api/brain/turn', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body),
         });
         if (!res.ok) {
@@ -205,8 +213,31 @@ export function useBrainChat() {
         setSending(false);
       }
     },
-    [threadId]
+    [threadId, opts.forcePersonaId]
   );
 
   return { messages, threadId, sending, error, sendMessage };
+}
+
+/**
+ * Authenticated fetch wrapper for any direct Brain API call (threads,
+ * reviews, health, etc.). Always sends the current Supabase access token.
+ * Throws on missing session — callers should redirect to sign-in.
+ */
+export async function brainFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = await authedHeaders(
+    (init.headers as Record<string, string>) ?? {}
+  );
+  const res = await fetch(path, { ...init, headers });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const j = (await res.json()) as { error?: string };
+      if (j.error) detail = j.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as T;
 }

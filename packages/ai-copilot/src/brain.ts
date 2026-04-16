@@ -222,6 +222,12 @@ export interface BrainHealth {
   toolCount: number;
   /** Persona templates registered. */
   personaCount: number;
+  /**
+   * Per-persona warnings: tools the persona's `allowedTools` references but
+   * which are NOT currently registered with the dispatcher (would surface as
+   * silent TOOL_NOT_FOUND at runtime if the model ever called them).
+   */
+  toolGaps: Array<{ personaId: string; missingTools: string[] }>;
   /** Last checked. */
   checkedAt: string;
   /** First failure message (if any). */
@@ -244,13 +250,29 @@ export async function checkBrainHealth(brain: Brain): Promise<BrainHealth> {
   } catch (e) {
     failure = failure ?? `thread_store: ${e instanceof Error ? e.message : String(e)}`;
   }
-  const ok = anthropicReachable && threadStoreReachable;
+
+  // Validate every persona's declared tool set against the dispatcher.
+  const registeredTools = new Set(brain.tools.list().map((t) => t.name));
+  const toolGaps: BrainHealth['toolGaps'] = [];
+  for (const persona of brain.personas.list()) {
+    const missing = persona.allowedTools.filter((t) => !registeredTools.has(t));
+    if (missing.length > 0) {
+      toolGaps.push({ personaId: persona.id, missingTools: missing });
+    }
+  }
+  if (toolGaps.length > 0 && !failure) {
+    failure = `tool_gaps: ${toolGaps.length} persona(s) reference unregistered tools (likely missing graphToolkit)`;
+  }
+
+  const ok =
+    anthropicReachable && threadStoreReachable && toolGaps.length === 0;
   return {
     ok,
     anthropicReachable,
     threadStoreReachable,
-    toolCount: brain.tools.list().length,
+    toolCount: registeredTools.size,
     personaCount: brain.personas.list().length,
+    toolGaps,
     checkedAt: new Date().toISOString(),
     failure,
   };

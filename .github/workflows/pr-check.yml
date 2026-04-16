@@ -73,15 +73,12 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
 
       - name: Type check
         run: pnpm typecheck
-        continue-on-error: true
 
       - name: Test
         run: pnpm test:coverage
-        continue-on-error: true
 
       - name: Build
         run: pnpm build
@@ -93,7 +90,6 @@ jobs:
             echo "Coverage thresholds not met!"
             exit 1
           fi
-        continue-on-error: true
 
   # ============================================
   # Security
