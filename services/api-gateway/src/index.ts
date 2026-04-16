@@ -35,6 +35,8 @@ import { schedulingRouter } from './routes/scheduling';
 import { messagingRouter } from './routes/messaging';
 import { casesRouter } from './routes/cases.hono';
 import { brainRouter } from './routes/brain.hono';
+import { maintenanceRouter } from './routes/maintenance.hono';
+import { hrRouter } from './routes/hr.hono';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
@@ -89,6 +91,8 @@ api.route('/scheduling', schedulingRouter);
 api.route('/messaging', messagingRouter);
 api.route('/cases', casesRouter);
 api.route('/brain', brainRouter);
+api.route('/maintenance', maintenanceRouter);
+api.route('/hr', hrRouter);
 api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
@@ -122,6 +126,8 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/messaging',
       '/api/v1/cases',
       '/api/v1/brain',
+      '/api/v1/maintenance',
+      '/api/v1/hr',
     ],
   });
 });

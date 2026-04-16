@@ -231,11 +231,12 @@ function getHighestSeverityIndicator(
     low: 1,
   };
 
-  return indicators.reduce((highest, current) => {
+  const first = indicators[0]!; // length > 0 checked above
+  return indicators.reduce<FraudIndicator>((highest, current) => {
     const currentSeverity = severityOrder[current.severity] ?? 0;
     const highestSeverity = severityOrder[highest.severity] ?? 0;
     return currentSeverity > highestSeverity ? current : highest;
-  }, indicators[0]);
+  }, first);
 }
 
 /** Get risk level display color */

@@ -68,12 +68,47 @@ export class AfricasTalkingSms {
 
     this.client = axios.create({
       baseURL,
+      // Production-hardening: request timeout so hung connections don't pin
+      // worker threads. Retries happen inside the SMS send method using a
+      // small backoff loop.
+      timeout: 15_000,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded',
         apiKey: this.config.apiKey,
       },
     });
+  }
+
+  /**
+   * Issue a request with exponential-backoff retry on network errors /
+   * 429 / 5xx. Callers that want no retry pass `retries: 0`.
+   */
+  protected async requestWithRetry<T>(
+    fn: () => Promise<{ data: T; status: number }>,
+    opts: { retries?: number; baseMs?: number } = {}
+  ): Promise<T> {
+    const maxAttempts = Math.max(1, (opts.retries ?? 3) + 1);
+    const baseMs = opts.baseMs ?? 500;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fn();
+        return res.data;
+      } catch (err) {
+        lastErr = err;
+        const status = (err as { response?: { status?: number } }).response?.status;
+        const retryable =
+          status === undefined ||
+          status === 408 ||
+          status === 429 ||
+          (status >= 500 && status < 600);
+        if (!retryable || attempt === maxAttempts - 1) throw err;
+        const backoff = baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+      }
+    }
+    throw lastErr ?? new Error('unknown_error');
   }
 
   /**

@@ -499,16 +499,20 @@ export function isSlaBreached(caseItem: Case): { response: boolean; resolution: 
   if (!caseItem.slaDetails) return { response: false, resolution: false };
   
   const now = new Date();
-  const responseBreached = caseItem.slaDetails.responseBreached || 
-    (!caseItem.slaDetails.firstResponseAt && 
-     caseItem.slaDetails.responseDeadline && 
-     now > new Date(caseItem.slaDetails.responseDeadline));
-  
-  const resolutionBreached = caseItem.slaDetails.resolutionBreached ||
-    (!caseItem.resolvedAt &&
-     caseItem.slaDetails.resolutionDeadline &&
-     now > new Date(caseItem.slaDetails.resolutionDeadline));
-  
+  const responseBreached = Boolean(
+    caseItem.slaDetails.responseBreached ||
+      (!caseItem.slaDetails.firstResponseAt &&
+        caseItem.slaDetails.responseDeadline &&
+        now > new Date(caseItem.slaDetails.responseDeadline))
+  );
+
+  const resolutionBreached = Boolean(
+    caseItem.slaDetails.resolutionBreached ||
+      (!caseItem.resolvedAt &&
+        caseItem.slaDetails.resolutionDeadline &&
+        now > new Date(caseItem.slaDetails.resolutionDeadline))
+  );
+
   return { response: responseBreached, resolution: resolutionBreached };
 }
 

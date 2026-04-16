@@ -286,7 +286,9 @@ export function isVerified(evidence: EvidenceAttachment): boolean {
 
 export function getFileExtension(evidence: EvidenceAttachment): string {
   const parts = evidence.fileName.split('.');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+  if (parts.length < 2) return '';
+  const last = parts[parts.length - 1];
+  return last ? last.toLowerCase() : '';
 }
 
 export function isImageEvidence(evidence: EvidenceAttachment): boolean {

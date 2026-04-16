@@ -101,10 +101,30 @@ export class MetaWhatsAppClient {
       timeout: 30000,
     });
 
-    // Add response interceptor for error handling
+    // Retry interceptor — exponential backoff on 429 / 5xx / network errors.
+    // Adds `_retryCount` to the config so we cap at 3 retries.
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => this.handleAPIError(error)
+      async (error: AxiosError & { config?: { _retryCount?: number } }) => {
+        const cfg = (error.config ?? {}) as typeof error.config & {
+          _retryCount?: number;
+        };
+        const status = error.response?.status;
+        const retryable =
+          status === undefined ||
+          status === 408 ||
+          status === 429 ||
+          (status >= 500 && status < 600);
+        const max = 3;
+        const attempt = (cfg._retryCount ?? 0) + 1;
+        if (retryable && attempt <= max) {
+          cfg._retryCount = attempt;
+          const backoff = 500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+          return this.client.request(cfg);
+        }
+        return this.handleAPIError(error);
+      }
     );
   }
 

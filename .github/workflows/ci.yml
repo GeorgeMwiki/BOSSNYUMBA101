@@ -112,6 +112,33 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================
+  # Brain Eval — ALL_SCENARIOS against the mock Brain
+  # ============================================
+  brain-eval:
+    name: Brain Eval
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: '8.15.0'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Brain eval
+        run: pnpm eval
+
+  # ============================================
   # Quality Gate 4: Build All Packages
   # ============================================
   build:

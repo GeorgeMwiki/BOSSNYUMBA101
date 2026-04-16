@@ -350,8 +350,9 @@ export interface TenantScopedEntity {
   readonly tenantId: TenantId;
   readonly createdAt: Date;
   readonly createdBy: string;
-  readonly updatedAt: Date;
-  readonly updatedBy: string;
+  // updatedAt / updatedBy are mutable because domain methods update them.
+  updatedAt: Date;
+  updatedBy: string;
 }
 
 /** ISO 8601 timestamp string */

@@ -1,10 +1,12 @@
 /**
  * Legal domain models
- * Exports for cases, timeline events, evidence, notices, and service receipts
+ *
+ * Case, EvidenceAttachment, and Notice each declare their own
+ * CaseId/NoticeId/helpers. Namespaced to avoid duplicate exports.
  */
 
-export * from './case';
+export * as Case from './case';
 export * from './timeline-event';
-export * from './evidence-attachment';
-export * from './notice';
+export * as EvidenceAttachment from './evidence-attachment';
+export * as Notice from './notice';
 export * from './notice-service-receipt';

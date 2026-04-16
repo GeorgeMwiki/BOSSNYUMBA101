@@ -443,5 +443,7 @@ export function isPdf(doc: DocumentUpload): boolean {
 
 export function getFileExtension(doc: DocumentUpload): string {
   const parts = doc.fileName.split('.');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+  if (parts.length < 2) return '';
+  const last = parts[parts.length - 1];
+  return last ? last.toLowerCase() : '';
 }

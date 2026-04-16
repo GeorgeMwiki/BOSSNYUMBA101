@@ -5,6 +5,7 @@
 
 export * from './maintenance-request';
 export * from './dispatch-event';
-export * from './completion-proof';
-export * from './dual-signoff';
+// completion-proof + dual-signoff share helper names; namespace them.
+export * as CompletionProof from './completion-proof';
+export * as DualSignoff from './dual-signoff';
 export * from './asset';

@@ -32,6 +32,13 @@ export { SchedulingRepository } from './scheduling.repository.js';
 export { UtilitiesRepository } from './utilities.repository.js';
 export { ComplianceRepository, DocumentRepository } from './compliance.repository.js';
 
+// Operations — dispatch events, completion proofs, vendor assignments
+export {
+  DispatchEventRepository,
+  CompletionProofRepository,
+  VendorAssignmentRepository,
+} from './operations.repository.js';
+
 // Brain — Thread Store + HR
 export { BrainThreadRepository } from './brain-thread.repository.js';
 export type {

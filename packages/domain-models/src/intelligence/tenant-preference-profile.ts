@@ -313,8 +313,12 @@ export function isInQuietHours(profile: TenantPreferenceProfile): boolean {
   if (!profile.quietHoursStart || !profile.quietHoursEnd) return false;
 
   const now = new Date();
-  const [startHour, startMin] = profile.quietHoursStart.split(':').map(Number);
-  const [endHour, endMin] = profile.quietHoursEnd.split(':').map(Number);
+  const [sH, sM] = profile.quietHoursStart.split(':').map(Number);
+  const [eH, eM] = profile.quietHoursEnd.split(':').map(Number);
+  const startHour = sH ?? 0;
+  const startMin = sM ?? 0;
+  const endHour = eH ?? 0;
+  const endMin = eM ?? 0;
 
   const currentHour = now.getHours();
   const currentMin = now.getMinutes();

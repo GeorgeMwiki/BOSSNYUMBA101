@@ -8,9 +8,12 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import pino from 'pino';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { liveDataRequired } from '../../middleware/live-data';
 import { validationErrorHook } from '../validators';
+
+const logger = pino({ level: process.env.LOG_LEVEL || 'info', name: 'payments.routes' });
 
 const app = new Hono();
 
@@ -212,9 +215,18 @@ paymentsApp.post('/callback', async (c) => {
   }
 
   const callback = result.data;
-  
-  // In production, find payment by transactionId and update
-  console.log('Payment callback received:', callback);
+
+  // Structured audit log — payment callbacks must be traceable. Never emit
+  // to stdout unstructured; pino writes JSON so the shipping pipeline
+  // (Datadog / Loki / etc.) can ingest it.
+  logger.info(
+    {
+      event: 'payment_callback_received',
+      transactionId: (callback as { transactionId?: string }).transactionId,
+      status: (callback as { status?: string }).status,
+    },
+    'Payment callback received'
+  );
 
   return c.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 });

@@ -15,10 +15,9 @@ import {
   LedgerEntryType,
   LedgerEntryTypeSchema,
   TenantScopedEntity,
-  CurrencyCodeSchema,
-  CurrencyCode,
   createId
 } from '../common/types';
+import { CurrencyCodeSchema, CurrencyCode } from '../common/enums';
 import { Money, MoneySchema } from '../common/money';
 
 /**
@@ -70,7 +69,11 @@ export const LedgerEntrySchema = z.object({
 
 export type LedgerEntryData = z.infer<typeof LedgerEntrySchema>;
 
-export interface LedgerEntry extends Omit<LedgerEntryData, 'amount' | 'balanceAfter'>, TenantScopedEntity {
+// LedgerEntry derives its shape by composition rather than multi-interface
+// extension — Omit+extend conflicted with TenantScopedEntity's audit fields.
+export type LedgerEntry =
+  Omit<LedgerEntryData, 'amount' | 'balanceAfter' | 'id' | 'tenantId' | 'createdBy'> &
+  TenantScopedEntity & {
   id: LedgerEntryId;
   tenantId: TenantId;
   accountId: AccountId;
@@ -80,7 +83,7 @@ export interface LedgerEntry extends Omit<LedgerEntryData, 'amount' | 'balanceAf
   unitId?: UnitId;
   amount: Money;
   balanceAfter: Money;
-}
+};
 
 /**
  * Journal entry request - used to create balanced entries
