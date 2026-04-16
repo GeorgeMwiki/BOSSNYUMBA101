@@ -7,7 +7,10 @@ export default defineConfig({
     'src/repositories/index.ts',
   ],
   format: ['esm'],
-  dts: true,
+  // dts generation fails against the drizzle v0.30 type surface until
+  // we upgrade drizzle (tracked). package.json points `types` at
+  // `./src/index.ts` so consumers get accurate types from source.
+  dts: false,
   splitting: false,
   sourcemap: true,
   clean: true,

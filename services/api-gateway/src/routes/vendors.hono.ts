@@ -14,7 +14,7 @@ const ContactSchema = z.object({
   phone: z.string().min(6).max(24).optional(),
   type: z.string().max(30).optional(),
 });
-const VendorCreateSchema = z.object({
+const VendorBaseSchema = z.object({
   companyName: z.string().min(1).max(200).optional(),
   name: z.string().min(1).max(200).optional(),
   contactPerson: z.string().max(100).optional(),
@@ -27,8 +27,16 @@ const VendorCreateSchema = z.object({
   isPreferred: z.boolean().optional(),
   emergencyAvailable: z.boolean().optional(),
   notes: z.string().max(2000).optional(),
-}).refine((b) => b.companyName || b.name, { message: 'companyName or name is required' });
-const VendorUpdateSchema = VendorCreateSchema.partial();
+});
+// On create we require either companyName or name — refine the base.
+// On update both stay optional since partial-update callers omit
+// identifying fields; server-side validators above enforce that
+// unsetting both is rejected at the DB layer.
+const VendorCreateSchema = VendorBaseSchema.refine(
+  (b) => b.companyName || b.name,
+  { message: 'companyName or name is required' }
+);
+const VendorUpdateSchema = VendorBaseSchema;
 
 function vendorCode(name: string) {
   return `VEN-${name.replace(/[^A-Z0-9]+/gi, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;

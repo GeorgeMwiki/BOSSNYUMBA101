@@ -43,6 +43,11 @@ import {
   stopOutboxWorker,
   type OutboxRunnerLike,
 } from './workers/outbox-worker';
+import {
+  registerDomainEventSubscribers,
+  type SubscribableBus,
+  type NotificationDispatcher,
+} from './workers/event-subscribers';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
@@ -222,10 +227,11 @@ if (require.main === module) {
     logger.info({ port }, 'API Gateway started');
   });
 
-  // Start the outbox drainer. Services that write events transactionally
-  // need this worker to drain them into the in-process bus. Runner is
-  // resolved lazily via the observability event-bus singleton so tests
-  // can stub it out by passing enabled:false in their env.
+  // Start the outbox drainer + register domain-event subscribers. The
+  // outbox publishes events into the in-process bus; the subscribers
+  // turn those events into customer-visible outcomes (notifications,
+  // audit entries). Runner is resolved lazily via the observability
+  // event-bus singleton so tests can stub it out.
   void import('@bossnyumba/observability').then((obs) => {
     const runner = obs.getEventBus?.() ?? (obs as unknown as { eventBus?: OutboxRunnerLike }).eventBus;
     if (runner && typeof (runner as OutboxRunnerLike).processOutbox === 'function') {
@@ -237,6 +243,46 @@ if (require.main === module) {
       });
     } else {
       logger.warn('outbox worker: event bus runner not available; worker not started');
+    }
+
+    // Register event subscribers. Same bus reference as the outbox
+    // drainer so subscribers receive events the drainer publishes.
+    const subscribableBus = runner as unknown as SubscribableBus | undefined;
+    if (subscribableBus && typeof subscribableBus.subscribe === 'function') {
+      // Minimal HTTP-based notification dispatcher. Posts to the
+      // notifications service; a future iteration can swap this for
+      // an in-process transport when services are co-deployed.
+      const notificationsUrl = process.env.NOTIFICATIONS_SERVICE_URL?.trim();
+      const dispatcher: NotificationDispatcher = {
+        async send(params) {
+          if (!notificationsUrl) {
+            // No configured notifications service — log the dispatch so
+            // operators see what would have been sent without crashing.
+            logger.info({ params }, 'notification dispatch skipped (NOTIFICATIONS_SERVICE_URL unset)');
+            return { success: true };
+          }
+          try {
+            const res = await fetch(`${notificationsUrl.replace(/\/$/, '')}/send`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(process.env.INTERNAL_API_KEY ? { 'X-Internal-Key': process.env.INTERNAL_API_KEY } : {}),
+              },
+              body: JSON.stringify(params),
+            });
+            if (!res.ok) {
+              const text = await res.text().catch(() => '');
+              return { success: false, error: `${res.status}: ${text.slice(0, 200)}` };
+            }
+            return { success: true };
+          } catch (err) {
+            return { success: false, error: err instanceof Error ? err.message : String(err) };
+          }
+        },
+      };
+      registerDomainEventSubscribers({ bus: subscribableBus, notifications: dispatcher, logger });
+    } else {
+      logger.warn('event subscribers: bus.subscribe not available; subscribers not registered');
     }
   }).catch((err) => {
     logger.error({ err: err instanceof Error ? err.message : String(err) }, 'failed to load observability for outbox worker');

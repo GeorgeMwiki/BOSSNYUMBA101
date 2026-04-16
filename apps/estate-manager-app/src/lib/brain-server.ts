@@ -61,8 +61,19 @@ function brainRegistry(): BrainRegistry {
       const queryService = createGraphQueryService(neo4j);
       return createGraphAgentToolkit(queryService);
     } catch (err) {
+      // Logged via stderr so Next.js route logs capture it; deliberately
+      // non-fatal so the Brain still boots without graph tools. Operators
+      // should treat this as HIGH severity — graph-dependent personas
+      // will return TOOL_NOT_FOUND.
       // eslint-disable-next-line no-console
-      console.error('brain-server: failed to construct graph toolkit', err);
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          module: 'brain-server',
+          msg: 'failed to construct graph toolkit',
+          err: err instanceof Error ? err.message : String(err),
+        })
+      );
       return undefined;
     }
   })();

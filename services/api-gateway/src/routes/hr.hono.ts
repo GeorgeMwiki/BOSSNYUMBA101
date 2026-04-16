@@ -330,7 +330,9 @@ app.post(
     const input = c.req.valid('json');
     const repo = new AssignmentRepository(db(c));
     await repo.updateStatus(id, input.status, userId);
-    return c.json({ success: true });
+    // Maintain the standard envelope so clients can unpack response.data
+    // uniformly across all endpoints.
+    return c.json({ success: true, data: { id, status: input.status } });
   }
 );
 

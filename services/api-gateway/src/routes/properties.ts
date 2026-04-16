@@ -14,13 +14,17 @@ import {
 } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+// Country accepts either ISO-3166 alpha-2 codes ("KE", "TZ") OR the
+// full country name — the mobile UI submits either, depending on which
+// dropdown the user last touched. Normalization to a code happens in
+// the persistence layer.
 const AddressSchema = z.object({
   line1: z.string().max(200).optional(),
   line2: z.string().max(200).optional(),
   city: z.string().max(100).optional(),
   region: z.string().max(100).optional(),
   postalCode: z.string().max(20).optional(),
-  country: z.string().length(2).optional(),
+  country: z.string().min(2).max(100).optional(),
   coordinates: z.object({
     latitude: z.number().min(-90).max(90),
     longitude: z.number().min(-180).max(180),

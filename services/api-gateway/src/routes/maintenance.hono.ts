@@ -315,7 +315,10 @@ app.post('/requests/:id/complete', zValidator('json', CompletionSchema), async (
   return c.json({ success: true, data: proof }, 201);
 });
 
-app.post('/completion-proofs/:id/verify', async (c) => {
+const VerifyProofSchema = z.object({ notes: z.string().max(2000).optional() });
+const RejectProofSchema = z.object({ reason: z.string().min(1).max(1000) });
+
+app.post('/completion-proofs/:id/verify', zValidator('json', VerifyProofSchema), async (c) => {
   const { userId, tenantId } = auth(c);
   const id = c.req.param('id');
   const repo = new CompletionProofRepository(db(c));
@@ -324,17 +327,12 @@ app.post('/completion-proofs/:id/verify', async (c) => {
   return c.json({ success: true, data: row });
 });
 
-app.post('/completion-proofs/:id/reject', async (c) => {
+app.post('/completion-proofs/:id/reject', zValidator('json', RejectProofSchema), async (c) => {
   const { tenantId } = auth(c);
   const id = c.req.param('id');
-  let body: { reason?: string };
-  try {
-    body = await c.req.json();
-  } catch {
-    body = {};
-  }
+  const body = c.req.valid('json');
   const repo = new CompletionProofRepository(db(c));
-  const row = await repo.reject(id, tenantId, body.reason ?? 'no reason given');
+  const row = await repo.reject(id, tenantId, body.reason);
   if (!row) return c.json({ error: 'not_found' }, 404);
   return c.json({ success: true, data: row });
 });
