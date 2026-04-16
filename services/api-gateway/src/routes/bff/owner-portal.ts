@@ -589,7 +589,9 @@ app.get('/documents/signatures', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const scope = await getOwnerScope(auth, repos);
-  const docs = (await repos.documents.findMany(auth.tenantId, { limit: 1000, offset: 0 })).items;
+  // Pending-signatures is a small working set; cap fetch at 500 and
+  // filter in-memory. Move to repo-level filter when doc volume grows.
+  const docs = (await repos.documents.findMany(auth.tenantId, { limit: 500, offset: 0 })).items;
   const propertyMap = new Map(scope.properties.map((property) => [property.id, property]));
   const unitMap = new Map(scope.units.map((unit) => [unit.id, unit]));
   const customerMap = new Map(scope.customers.map((customer) => [customer.id, customer]));

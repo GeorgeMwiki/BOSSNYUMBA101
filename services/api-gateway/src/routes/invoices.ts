@@ -1,9 +1,33 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapInvoiceRow, paginateArray } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const isoDate = z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), 'invalid date');
+const LineItemSchema = z.object({
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive().optional(),
+  unitAmount: z.number().nonnegative().optional(),
+  amount: z.number().nonnegative().optional(),
+});
+const InvoiceCreateSchema = z.object({
+  customerId: z.string().min(1),
+  leaseId: z.string().optional(),
+  type: z.string().optional(),
+  dueDate: isoDate,
+  periodStart: isoDate.optional(),
+  periodEnd: isoDate.optional(),
+  subtotal: z.number().nonnegative(),
+  tax: z.number().nonnegative().optional(),
+  currency: z.string().length(3).optional(),
+  lineItems: z.array(LineItemSchema).optional(),
+});
+const InvoiceUpdateSchema = InvoiceCreateSchema.partial();
 
 function invoiceNumber() {
   return `INV-${Date.now().toString().slice(-6)}`;
@@ -31,32 +55,30 @@ app.use('*', databaseMiddleware);
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const status = c.req.query('status')?.toLowerCase();
   const customerId = c.req.query('customerId');
   const leaseId = c.req.query('leaseId');
 
   let result;
-  if (customerId) result = await repos.invoices.findByCustomer(customerId, auth.tenantId, 1000, 0);
-  else if (leaseId) result = await repos.invoices.findByLease(leaseId, auth.tenantId, 1000, 0);
-  else if (status) result = await repos.invoices.findByStatus(status, auth.tenantId, 1000, 0);
-  else result = await repos.invoices.findMany(auth.tenantId, 1000, 0);
+  if (customerId) result = await repos.invoices.findByCustomer(customerId, auth.tenantId, p.limit, p.offset);
+  else if (leaseId) result = await repos.invoices.findByLease(leaseId, auth.tenantId, p.limit, p.offset);
+  else if (status) result = await repos.invoices.findByStatus(status, auth.tenantId, p.limit, p.offset);
+  else result = await repos.invoices.findMany(auth.tenantId, p.limit, p.offset);
 
   const items = await Promise.all(result.items.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  return c.json({ success: true, ...buildListResponse(items, result.total ?? items.length, p) });
 });
 
 app.get('/overdue', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
+  // findOverdue returns the full set; slice to the requested page.
   const rows = await repos.invoices.findOverdue(auth.tenantId);
   const items = await Promise.all(rows.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  const pageSlice = items.slice(p.offset, p.offset + p.limit);
+  return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
 });
 
 app.get('/:id', async (c) => {
@@ -67,10 +89,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', InvoiceCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const lease = body.leaseId ? await repos.leases.findById(body.leaseId, auth.tenantId) : null;
   const unit = lease?.unitId ? await repos.units.findById(lease.unitId, auth.tenantId) : null;
   const subtotal = majorToMinor(body.subtotal);
@@ -103,10 +125,10 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', InvoiceUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const existing = await repos.invoices.findById(c.req.param('id'), auth.tenantId);
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Invoice not found' } }, 404);
   const subtotal = body.subtotal != null ? majorToMinor(body.subtotal) : undefined;

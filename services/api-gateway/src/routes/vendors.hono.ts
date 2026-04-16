@@ -1,9 +1,34 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { mapVendorRow, paginateArray } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const ContactSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email().optional(),
+  phone: z.string().min(6).max(24).optional(),
+  type: z.string().max(30).optional(),
+});
+const VendorCreateSchema = z.object({
+  companyName: z.string().min(1).max(200).optional(),
+  name: z.string().min(1).max(200).optional(),
+  contactPerson: z.string().max(100).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().min(6).max(24).optional(),
+  status: z.string().max(30).optional(),
+  specializations: z.array(z.string()).optional(),
+  serviceAreas: z.array(z.string()).optional(),
+  contacts: z.array(ContactSchema).optional(),
+  isPreferred: z.boolean().optional(),
+  emergencyAvailable: z.boolean().optional(),
+  notes: z.string().max(2000).optional(),
+}).refine((b) => b.companyName || b.name, { message: 'companyName or name is required' });
+const VendorUpdateSchema = VendorCreateSchema.partial();
 
 function vendorCode(name: string) {
   return `VEN-${name.replace(/[^A-Z0-9]+/gi, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
@@ -16,18 +41,19 @@ app.use('*', databaseMiddleware);
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const status = c.req.query('status')?.toLowerCase();
   const specialization = c.req.query('specialization');
+  // Specialization/status are in-memory filters; cap fetch at 500.
+  // TODO: push filters into repos.vendors.findMany.
   const rows = specialization
     ? await repos.vendors.findBySpecialization(specialization, auth.tenantId)
     : (status
-        ? (await repos.vendors.findMany(auth.tenantId, 1000, 0)).items.filter((row: any) => row.status === status)
-        : (await repos.vendors.findMany(auth.tenantId, 1000, 0)).items);
+        ? (await repos.vendors.findMany(auth.tenantId, 500, 0)).items.filter((row: any) => row.status === status)
+        : (await repos.vendors.findMany(auth.tenantId, 500, 0)).items);
   const items = rows.map(mapVendorRow);
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  const pageSlice = items.slice(p.offset, p.offset + p.limit);
+  return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
 });
 
 app.get('/available', async (c) => {
@@ -48,10 +74,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapVendorRow(row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', VendorCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.vendors.create({
     id: crypto.randomUUID(),
     tenantId: auth.tenantId,
@@ -75,10 +101,10 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapVendorRow(row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', VendorUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.vendors.update(c.req.param('id'), auth.tenantId, {
     companyName: body.companyName || body.name,
     status: body.status ? String(body.status).toLowerCase() : undefined,

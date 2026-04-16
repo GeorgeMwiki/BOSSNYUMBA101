@@ -1,6 +1,8 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import {
@@ -10,6 +12,25 @@ import {
   paginateArray,
   majorToMinor,
 } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const UnitCreateSchema = z.object({
+  propertyId: z.string().min(1),
+  unitNumber: z.string().min(1).max(50),
+  name: z.string().max(100).optional(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  floor: z.number().int().optional(),
+  bedrooms: z.number().int().nonnegative().optional(),
+  bathrooms: z.number().nonnegative().optional(),
+  squareMeters: z.number().nonnegative().optional(),
+  rentAmount: z.number().nonnegative().optional(),
+  depositAmount: z.number().nonnegative().optional(),
+  amenities: z.array(z.string()).optional(),
+  images: z.array(z.string().url()).optional(),
+});
+const UnitUpdateSchema = UnitCreateSchema.partial();
+const UnitStatusSchema = z.object({ status: z.string().min(1) });
 
 function hasPropertyAccess(auth: any, propertyId: string) {
   return auth.propertyAccess?.includes('*') || auth.propertyAccess?.includes(propertyId);
@@ -22,15 +43,15 @@ app.use('*', databaseMiddleware);
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const propertyId = c.req.query('propertyId');
   const status = c.req.query('status');
   const search = (c.req.query('search') || '').toLowerCase();
 
+  // status/search are in-memory filters; cap the fetch at 500.
   const result = propertyId
-    ? await repos.units.findByProperty(propertyId, auth.tenantId, { limit: 1000, offset: 0 })
-    : await repos.units.findMany(auth.tenantId, { limit: 1000, offset: 0 });
+    ? await repos.units.findByProperty(propertyId, auth.tenantId, { limit: 500, offset: 0 })
+    : await repos.units.findMany(auth.tenantId, { limit: 500, offset: 0 });
 
   let items = result.items
     .filter((row: any) => hasPropertyAccess(auth, row.propertyId))
@@ -43,8 +64,8 @@ app.get('/', async (c) => {
     );
   }
 
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  const pageSlice = items.slice(p.offset, p.offset + p.limit);
+  return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
 });
 
 app.get('/:id', async (c) => {
@@ -58,10 +79,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', UnitCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   if (!hasPropertyAccess(auth, body.propertyId)) {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Insufficient property access' } }, 403);
   }
@@ -92,7 +113,7 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', UnitUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -101,7 +122,7 @@ app.put('/:id', async (c) => {
   if (!hasPropertyAccess(auth, existing.propertyId)) {
     return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Insufficient property access' } }, 403);
   }
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.units.update(
     id,
     auth.tenantId,
@@ -125,13 +146,13 @@ app.put('/:id', async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.put('/:id/status', async (c) => {
+app.put('/:id/status', zValidator('json', UnitStatusSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
   const existing = await repos.units.findById(id, auth.tenantId);
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Unit not found' } }, 404);
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.units.update(id, auth.tenantId, { status: normalizeUnitStatusToDb(body.status) }, auth.userId);
   return c.json({ success: true, data: mapUnitRow(row) });
 });

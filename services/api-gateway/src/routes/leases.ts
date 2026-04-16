@@ -1,9 +1,53 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const isoDate = z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), 'invalid date');
+const CreateLeaseSchema = z.object({
+  unitId: z.string().min(1),
+  customerId: z.string().min(1),
+  startDate: isoDate,
+  endDate: isoDate,
+  rentAmount: z.number().nonnegative(),
+  depositAmount: z.number().nonnegative().optional(),
+  paymentDueDay: z.number().int().min(1).max(31).optional(),
+  terms: z.object({
+    gracePeriodDays: z.number().int().nonnegative().optional(),
+    noticePeriodDays: z.number().int().nonnegative().optional(),
+    utilitiesIncluded: z.array(z.string()).optional(),
+  }).optional(),
+}).refine((b) => new Date(b.endDate) >= new Date(b.startDate), {
+  message: 'endDate must be on or after startDate',
+  path: ['endDate'],
+});
+const UpdateLeaseSchema = z.object({
+  startDate: isoDate.optional(),
+  endDate: isoDate.optional(),
+  rentAmount: z.number().nonnegative().optional(),
+  depositAmount: z.number().nonnegative().optional(),
+  paymentDueDay: z.number().int().min(1).max(31).optional(),
+  terms: z.object({
+    gracePeriodDays: z.number().int().nonnegative().optional(),
+    noticePeriodDays: z.number().int().nonnegative().optional(),
+    utilitiesIncluded: z.array(z.string()).optional(),
+  }).optional(),
+});
+const TerminateLeaseSchema = z.object({
+  reason: z.string().min(1).max(1000).optional(),
+});
+const RenewLeaseSchema = z.object({
+  newEndDate: isoDate.optional(),
+  extendMonths: z.number().int().min(1).max(60).optional(),
+  rentAmount: z.number().nonnegative().optional(),
+}).refine((b) => b.newEndDate || b.extendMonths, {
+  message: 'either newEndDate or extendMonths is required',
+});
 
 function leaseNumber() {
   return `LSE-${Date.now().toString().slice(-6)}`;
@@ -41,34 +85,34 @@ app.get('/current', async (c) => {
 });
 
 app.get('/expiring', async (c) => {
+  // "Expiring" still needs a full scan because the filter is post-DB
+  // (endDate <= cutoff). We cap at 500 rows so a pathological tenant
+  // with tens of thousands of active leases can't blow memory.
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const days = Number(c.req.query('days') || '60');
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
-  const result = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, { status: 'active' });
+  const result = await repos.leases.findMany(auth.tenantId, { limit: 500, offset: 0 }, { status: 'active' });
   const expiring = result.items.filter((row: any) => new Date(row.endDate) <= cutoff);
   const enriched = await Promise.all(expiring.map((row: any) => enrichLease(repos, auth.tenantId, row)));
-  const paginated = paginateArray(enriched, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  const pageSlice = enriched.slice(p.offset, p.offset + p.limit);
+  return c.json({ success: true, ...buildListResponse(pageSlice, enriched.length, p) });
 });
 
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const filters = {
     status: c.req.query('status')?.toLowerCase(),
     propertyId: c.req.query('propertyId'),
     customerId: c.req.query('customerId'),
   };
-  const result = await repos.leases.findMany(auth.tenantId, { limit: 1000, offset: 0 }, filters);
+  const result = await repos.leases.findMany(auth.tenantId, { limit: p.limit, offset: p.offset }, filters);
   const enriched = await Promise.all(result.items.map((row: any) => enrichLease(repos, auth.tenantId, row)));
-  const paginated = paginateArray(enriched, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });
 
 app.get('/:id', async (c) => {
@@ -79,10 +123,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', CreateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const unit = await repos.units.findById(body.unitId, auth.tenantId);
   if (!unit) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Unit not found' } }, 404);
 
@@ -115,13 +159,13 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', UpdateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
   const existing = await repos.leases.findById(id, auth.tenantId);
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Lease not found' } }, 404);
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.leases.update(
     id,
     auth.tenantId,
@@ -148,10 +192,10 @@ app.post('/:id/activate', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/terminate', async (c) => {
+app.post('/:id/terminate', zValidator('json', TerminateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json().catch(() => ({}));
+  const body = c.req.valid('json');
   const row = await repos.leases.update(
     c.req.param('id'),
     auth.tenantId,
@@ -167,13 +211,13 @@ app.post('/:id/terminate', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/renew', async (c) => {
+app.post('/:id/renew', zValidator('json', RenewLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
   const existing = await repos.leases.findById(id, auth.tenantId);
   if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Lease not found' } }, 404);
-  const body = await c.req.json().catch(() => ({}));
+  const body = c.req.valid('json');
   const currentEnd = new Date(existing.endDate);
   const newEnd = body.newEndDate
     ? new Date(body.newEndDate)

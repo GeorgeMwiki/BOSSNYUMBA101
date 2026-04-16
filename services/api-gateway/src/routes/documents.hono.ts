@@ -1,9 +1,49 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { paginateArray } from './db-mappers';
+
+// Document uploads are metadata records; the blob itself is uploaded to
+// object storage beforehand and referenced by `url`. We cap size at 50MB
+// (matches most WhatsApp/document gateway limits) and enforce a mime
+// allowlist server-side so clients can't sneak executables past the UI.
+const MAX_DOC_SIZE_BYTES = 50 * 1024 * 1024;
+const ALLOWED_MIMES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/heic',
+  'image/webp',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'text/plain',
+];
+const DocumentCreateSchema = z.object({
+  name: z.string().min(1).max(255),
+  mimeType: z.string().refine((m) => ALLOWED_MIMES.includes(m), 'mime type not allowed'),
+  size: z.number().int().positive().max(MAX_DOC_SIZE_BYTES),
+  url: z.string().url(),
+  type: z.string().max(50).optional(),
+  customerId: z.string().optional(),
+  relatedEntityType: z.string().max(50).optional(),
+  relatedEntityId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+const DocumentUpdateSchema = z.object({
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+  status: z.string().optional(),
+  relatedEntityType: z.string().max(50).optional(),
+  relatedEntityId: z.string().optional(),
+});
 
 function mapDocumentStatus(status) {
   switch (String(status || '').toLowerCase()) {
@@ -145,10 +185,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapDocumentRow(row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', DocumentCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const documentType =
     body.type === 'LEASE'
       ? 'lease_agreement'
@@ -178,10 +218,10 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapDocumentRow(row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', DocumentUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const existing = await repos.documents.findById(c.req.param('id'), auth.tenantId);
 
   if (!existing) {

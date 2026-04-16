@@ -1,9 +1,49 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { majorToMinor, mapWorkOrderRow, paginateArray } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const WorkOrderCreateSchema = z.object({
+  propertyId: z.string().min(1),
+  unitId: z.string().optional(),
+  customerId: z.string().optional(),
+  vendorId: z.string().optional(),
+  priority: z.enum(['emergency', 'high', 'medium', 'low']).optional(),
+  category: z.string().max(50).optional(),
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  location: z.string().max(200).optional(),
+  attachments: z.array(z.string().url()).optional(),
+  estimatedCost: z.number().nonnegative().optional(),
+  currency: z.string().length(3).optional(),
+});
+const WorkOrderUpdateSchema = z.object({
+  vendorId: z.string().optional(),
+  priority: z.string().optional(),
+  status: z.string().optional(),
+  category: z.string().optional(),
+  title: z.string().max(200).optional(),
+  description: z.string().max(5000).optional(),
+  location: z.string().max(200).optional(),
+  attachments: z.array(z.string().url()).optional(),
+  estimatedCost: z.union([
+    z.number().nonnegative(),
+    z.object({ amount: z.number().nonnegative() }),
+  ]).optional(),
+  actualCost: z.union([
+    z.number().nonnegative(),
+    z.object({ amount: z.number().nonnegative() }),
+  ]).optional(),
+  scheduledAt: z.string().optional(),
+  scheduledDate: z.string().optional(),
+  completedAt: z.string().optional(),
+  completionNotes: z.string().max(5000).optional(),
+});
 
 function workOrderNumber() {
   return `WO-${Date.now().toString().slice(-6)}`;
@@ -16,7 +56,8 @@ app.use('*', databaseMiddleware);
 async function updateWorkOrder(c: any) {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  // Caller pre-validated via zValidator middleware; we re-use valid('json').
+  const body = c.req.valid('json');
   const estimatedCost =
     body.estimatedCost && typeof body.estimatedCost === 'object'
       ? body.estimatedCost.amount
@@ -49,30 +90,32 @@ async function updateWorkOrder(c: any) {
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const propertyId = c.req.query('propertyId');
   const customerId = c.req.query('customerId');
   const vendorId = c.req.query('vendorId');
   const status = c.req.query('status')?.toLowerCase();
 
   let result;
-  if (propertyId) result = await repos.workOrders.findByProperty(propertyId, auth.tenantId, 1000, 0);
-  else if (customerId) result = await repos.workOrders.findByCustomer(customerId, auth.tenantId, 1000, 0);
-  else if (vendorId) result = await repos.workOrders.findByVendor(vendorId, auth.tenantId, 1000, 0);
-  else if (status) result = await repos.workOrders.findByStatus(status, auth.tenantId, 1000, 0);
-  else result = await repos.workOrders.findMany(auth.tenantId, 1000, 0);
+  if (propertyId) result = await repos.workOrders.findByProperty(propertyId, auth.tenantId, p.limit, p.offset);
+  else if (customerId) result = await repos.workOrders.findByCustomer(customerId, auth.tenantId, p.limit, p.offset);
+  else if (vendorId) result = await repos.workOrders.findByVendor(vendorId, auth.tenantId, p.limit, p.offset);
+  else if (status) result = await repos.workOrders.findByStatus(status, auth.tenantId, p.limit, p.offset);
+  else result = await repos.workOrders.findMany(auth.tenantId, p.limit, p.offset);
 
   const items = result.items.map(mapWorkOrderRow);
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  return c.json({ success: true, ...buildListResponse(items, result.total ?? items.length, p) });
 });
 
 app.get('/my-tasks', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const result = await repos.workOrders.findMany(auth.tenantId, 1000, 0);
-  return c.json({ success: true, data: result.items.map(mapWorkOrderRow) });
+  const p = parseListPagination(c);
+  const result = await repos.workOrders.findMany(auth.tenantId, p.limit, p.offset);
+  return c.json({
+    success: true,
+    ...buildListResponse(result.items.map(mapWorkOrderRow), result.total ?? result.items.length, p),
+  });
 });
 
 app.get('/my-requests', async (c) => {
@@ -90,10 +133,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapWorkOrderRow(row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.workOrders.create({
     id: crypto.randomUUID(),
     tenantId: auth.tenantId,
@@ -119,11 +162,11 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapWorkOrderRow(row) }, 201);
 });
 
-app.put('/:id', async (c) => {
+app.put('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
   return updateWorkOrder(c);
 });
 
-app.patch('/:id', async (c) => {
+app.patch('/:id', zValidator('json', WorkOrderUpdateSchema), async (c) => {
   return updateWorkOrder(c);
 });
 

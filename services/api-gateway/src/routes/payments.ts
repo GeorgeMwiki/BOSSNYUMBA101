@@ -1,9 +1,28 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { mapPaymentRow, majorToMinor, minorToMajor, paginateArray } from './db-mappers';
+import { parseListPagination, buildListResponse } from './pagination';
+
+const MoneySchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().length(3).optional(),
+});
+const PaymentCreateSchema = z.object({
+  customerId: z.string().optional(),
+  leaseId: z.string().optional(),
+  amount: MoneySchema,
+  description: z.string().max(500).optional(),
+});
+const PaymentProcessSchema = z.object({
+  channel: z.enum(['mpesa', 'bank', 'card', 'cash', 'manual', 'other']).optional(),
+  paymentMethodId: z.string().optional(),
+  phoneNumber: z.string().regex(/^[+0-9 \-()]+$/).max(24).optional(),
+});
 
 function paymentNumber() {
   return `PAY-${Date.now().toString().slice(-6)}`;
@@ -16,23 +35,22 @@ app.use('*', databaseMiddleware);
 app.get('/', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('limit') || c.req.query('pageSize') || '20');
+  const p = parseListPagination(c);
   const customerId = c.req.query('customerId');
   const status = c.req.query('status')?.toLowerCase();
   let result;
-  if (customerId) result = await repos.payments.findByCustomer(customerId, auth.tenantId, 1000, 0);
-  else if (status) result = await repos.payments.findByStatus(status, auth.tenantId, 1000, 0);
-  else result = await repos.payments.findMany(auth.tenantId, 1000, 0);
+  if (customerId) result = await repos.payments.findByCustomer(customerId, auth.tenantId, p.limit, p.offset);
+  else if (status) result = await repos.payments.findByStatus(status, auth.tenantId, p.limit, p.offset);
+  else result = await repos.payments.findMany(auth.tenantId, p.limit, p.offset);
   const items = result.items.map(mapPaymentRow);
-  const paginated = paginateArray(items, page, pageSize);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  return c.json({ success: true, ...buildListResponse(items, result.total ?? items.length, p) });
 });
 
 app.get('/pending', async (c) => {
+  // Pending/processing is a small window per customer; cap at 100.
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const result = await repos.payments.findByCustomer(auth.userId, auth.tenantId, 1000, 0);
+  const result = await repos.payments.findByCustomer(auth.userId, auth.tenantId, 100, 0);
   const items = result.items.filter((row: any) => ['pending', 'processing'].includes(String(row.status))).map(mapPaymentRow);
   return c.json({ success: true, data: items });
 });
@@ -40,12 +58,10 @@ app.get('/pending', async (c) => {
 app.get('/history', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const limit = Number(c.req.query('limit') || '20');
-  const result = await repos.payments.findByCustomer(auth.userId, auth.tenantId, 1000, 0);
+  const p = parseListPagination(c);
+  const result = await repos.payments.findByCustomer(auth.userId, auth.tenantId, p.limit, p.offset);
   const items = result.items.map(mapPaymentRow);
-  const paginated = paginateArray(items, page, limit);
-  return c.json({ success: true, data: paginated.data, pagination: paginated.pagination });
+  return c.json({ success: true, ...buildListResponse(items, result.total ?? items.length, p) });
 });
 
 app.get('/balance', async (c) => {
@@ -73,10 +89,10 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapPaymentRow(row) });
 });
 
-app.post('/', async (c) => {
+app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const currency = body.amount?.currency || 'KES';
   const amountMinor = majorToMinor(body.amount?.amount);
   const row = await repos.payments.create({
@@ -98,10 +114,10 @@ app.post('/', async (c) => {
   return c.json({ success: true, data: mapPaymentRow(row) }, 201);
 });
 
-app.post('/:id/process', async (c) => {
+app.post('/:id/process', zValidator('json', PaymentProcessSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const row = await repos.payments.update(c.req.param('id'), auth.tenantId, {
     status: 'processing',
     paymentMethod: String(body.channel || body.paymentMethodId || 'other').toLowerCase(),

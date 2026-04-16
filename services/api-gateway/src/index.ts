@@ -38,6 +38,11 @@ import { brainRouter } from './routes/brain.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
+import {
+  startOutboxWorker,
+  stopOutboxWorker,
+  type OutboxRunnerLike,
+} from './workers/outbox-worker';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
@@ -198,6 +203,7 @@ app.use((_req, res) => {
 // Graceful shutdown
 function gracefulShutdown(signal: string) {
   logger.info({ signal }, 'Received shutdown signal, closing server...');
+  stopOutboxWorker();
   server?.close(() => {
     logger.info('Server closed');
     process.exit(0);
@@ -214,6 +220,26 @@ let server: ReturnType<typeof app.listen> | null = null;
 if (require.main === module) {
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
+  });
+
+  // Start the outbox drainer. Services that write events transactionally
+  // need this worker to drain them into the in-process bus. Runner is
+  // resolved lazily via the observability event-bus singleton so tests
+  // can stub it out by passing enabled:false in their env.
+  void import('@bossnyumba/observability').then((obs) => {
+    const runner = obs.getEventBus?.() ?? (obs as unknown as { eventBus?: OutboxRunnerLike }).eventBus;
+    if (runner && typeof (runner as OutboxRunnerLike).processOutbox === 'function') {
+      startOutboxWorker(runner as OutboxRunnerLike, {
+        logger,
+        enabled: process.env.NODE_ENV !== 'test' && process.env.OUTBOX_WORKER_DISABLED !== 'true',
+        intervalMs: Number(process.env.OUTBOX_INTERVAL_MS || '5000') || 5000,
+        batchSize: Number(process.env.OUTBOX_BATCH_SIZE || '50') || 50,
+      });
+    } else {
+      logger.warn('outbox worker: event bus runner not available; worker not started');
+    }
+  }).catch((err) => {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'failed to load observability for outbox worker');
   });
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
