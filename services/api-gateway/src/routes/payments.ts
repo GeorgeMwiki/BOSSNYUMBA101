@@ -165,7 +165,7 @@ app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
     });
   }
   const plan = {
-    id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    id: `plan_${crypto.randomUUID()}`,
     tenantId: auth.tenantId,
     customerId: auth.userId,
     invoiceId: body.invoiceId,

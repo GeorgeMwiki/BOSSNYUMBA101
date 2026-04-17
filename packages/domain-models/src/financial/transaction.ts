@@ -412,6 +412,10 @@ export function generateTransactionRef(prefix: string, timestamp: Date): string 
   const year = timestamp.getFullYear();
   const month = String(timestamp.getMonth() + 1).padStart(2, '0');
   const day = String(timestamp.getDate()).padStart(2, '0');
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Crypto-strength random suffix — financial transaction refs must be
+  // unguessable to prevent ID enumeration. Previously used Math.random()
+  // which is not a CSPRNG.
+  const { randomBytes } = require('node:crypto') as typeof import('node:crypto');
+  const random = randomBytes(4).toString('hex').toUpperCase();
   return `${prefix}${year}${month}${day}${random}`;
 }

@@ -109,10 +109,23 @@ export default function ApprovalMatrix() {
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaving(false);
-    setNotification({ type: 'success', message: 'Approval matrix saved successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    try {
+      const res = await fetch('/api/v1/roles/approvals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules }),
+      });
+      if (!res.ok) throw new Error(`save failed: ${res.status}`);
+      setNotification({ type: 'success', message: 'Approval matrix saved successfully' });
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save',
+      });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
   const addNewRule = () => {

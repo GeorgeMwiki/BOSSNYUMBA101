@@ -93,7 +93,7 @@ app.put('/me', zValidator('json', CustomerUpdateSchema), async (c) => {
     {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
+      email: body.email?.trim().toLowerCase(),
       phone: body.phone,
       alternatePhone: body.alternatePhone,
       preferredContactMethod: body.preferredContactMethod,
@@ -140,7 +140,7 @@ app.post('/', zValidator('json', CustomerCreateSchema), async (c) => {
       id: crypto.randomUUID(),
       tenantId: auth.tenantId,
       customerCode: customerCode(body.email || body.phone || 'customer'),
-      email: body.email,
+      email: body.email?.trim().toLowerCase(),
       phone: body.phone,
       firstName: body.firstName,
       lastName: body.lastName,
@@ -167,7 +167,7 @@ app.put('/:id', zValidator('json', CustomerUpdateSchema), async (c) => {
     {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
+      email: body.email?.trim().toLowerCase(),
       phone: body.phone,
       alternatePhone: body.alternatePhone,
       status: body.status?.toLowerCase(),

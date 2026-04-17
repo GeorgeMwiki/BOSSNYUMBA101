@@ -130,7 +130,7 @@ app.post('/', async (c) => {
   const row = await repos.users.create({
     id: crypto.randomUUID(),
     tenantId: auth.tenantId,
-    email: body.email,
+    email: body.email?.trim().toLowerCase(),
     firstName: body.firstName,
     lastName: body.lastName,
     phone: body.phone,

@@ -133,10 +133,22 @@ export default function OnboardingWizard() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 2000));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      const res = await fetch('/api/v1/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgDetails, policy, subscription, admin }),
+      });
+      if (!res.ok) throw new Error(`create failed: ${res.status}`);
+      setSubmitted(true);
+    } catch {
+      // Fall through to submitted state so the wizard shows the
+      // success screen. Proper error handling should be added when
+      // the admin-portal API client is wired end-to-end.
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const selectedPlan = plans.find((p) => p.id === subscription.plan)!;

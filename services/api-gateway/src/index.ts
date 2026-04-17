@@ -159,10 +159,12 @@ app.get('/api/v1', (_req, res) => {
     version: '1.0.0',
     endpoints: [
       '/api/v1/auth',
+      '/api/v1/auth/mfa',
       '/api/v1/tenants',
       '/api/v1/users',
       '/api/v1/properties',
       '/api/v1/units',
+      '/api/v1/customers',
       '/api/v1/leases',
       '/api/v1/invoices',
       '/api/v1/payments',
@@ -182,6 +184,10 @@ app.get('/api/v1', (_req, res) => {
       '/api/v1/brain',
       '/api/v1/maintenance',
       '/api/v1/hr',
+      '/api/v1/customer',
+      '/api/v1/owner',
+      '/api/v1/manager',
+      '/api/v1/admin',
     ],
   });
 });
