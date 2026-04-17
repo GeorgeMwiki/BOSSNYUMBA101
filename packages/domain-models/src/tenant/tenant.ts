@@ -3,6 +3,7 @@
  * Core multi-tenancy entity
  */
 
+import { getRegionConfig } from '../common/region-config';
 import type {
   TenantId,
   OrganizationId,
@@ -126,6 +127,10 @@ export function createTenant(
     name: string;
     slug: string;
     contactEmail: string;
+    /** ISO 3166-1 alpha-2 country code — drives ALL region-adaptive
+     *  defaults (currency, timezone, locale, compliance, phone format).
+     *  MUST be captured during tenant onboarding. */
+    country?: string;
     subscriptionTier?: SubscriptionTier;
     billingCycle?: BillingCycle;
     timezone?: string;
@@ -145,8 +150,10 @@ export function createTenant(
     contactEmail: data.contactEmail,
     contactPhone: null,
     logoUrl: null,
-    timezone: data.timezone ?? 'Africa/Nairobi',
-    locale: data.locale ?? 'en-KE',
+    // Region-adaptive defaults — resolved from the tenant's country
+    // selection via the region-config registry. NO country is hardcoded.
+    timezone: data.timezone ?? (data.country ? getRegionConfig(data.country).defaultTimezone : 'UTC'),
+    locale: data.locale ?? (data.country ? getRegionConfig(data.country).defaultLocale : 'en'),
     trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 day trial
     settings: getDefaultSettings(data.subscriptionTier ?? 'starter'),
     createdAt: now,

@@ -72,6 +72,7 @@ export type {
 } from './common/types';
 
 export * from './common/money';
+export * from './common/region-config';
 
 // Tenant/Organization
 export * from './tenant/tenant';

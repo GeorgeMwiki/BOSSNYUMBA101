@@ -69,7 +69,10 @@ export interface SchedulingServiceErrorResult {
 // Default timezone
 // ============================================================================
 
-export const DEFAULT_TIMEZONE = 'Africa/Nairobi';
+// No country hardcoded — when a tenant's timezone is not set, fall
+// back to UTC. The region-config registry resolves the proper default
+// from tenant.country at creation time (see createTenant in domain-models).
+export const DEFAULT_TIMEZONE = 'UTC';
 
 // ============================================================================
 // Scheduling Service

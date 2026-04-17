@@ -10,22 +10,31 @@ export function cn(...inputs: ClassValue[]): string {
 
 /**
  * Format a number as currency.
+ *
+ * Callers should pass the tenant's currency and locale from the
+ * region-config registry. The defaults are intentionally generic
+ * (USD / en) so no country is hardcoded — the UI layer resolves
+ * the tenant's country at render time and passes it in.
  */
 export function formatCurrency(
   amount: number,
-  currency = 'KES',
-  locale = 'en-KE'
+  currency = 'USD',
+  locale = 'en',
+  minorUnits = 2
 ): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount / 100); // Assuming amount is in minor units
+    maximumFractionDigits: minorUnits > 0 ? 2 : 0,
+  }).format(minorUnits > 0 ? amount / (10 ** minorUnits) : amount);
 }
 
 /**
  * Format a date for display.
+ *
+ * Defaults to generic 'en' locale — UI layers resolve the tenant's
+ * locale from region-config and pass it in.
  */
 export function formatDate(
   date: Date | string,
@@ -34,7 +43,7 @@ export function formatDate(
     month: 'short',
     day: 'numeric',
   },
-  locale = 'en-KE'
+  locale = 'en'
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, options).format(d);

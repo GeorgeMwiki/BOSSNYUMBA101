@@ -82,12 +82,12 @@ export const api = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 
-// Utility functions for formatting
-const DEFAULT_LOCALE = 'en-KE';
-const DEFAULT_CURRENCY = 'KES';
-
-export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): string {
-  return new Intl.NumberFormat(DEFAULT_LOCALE, {
+// Formatting utilities — locale and currency come from the tenant's
+// region config at render time. Defaults are generic so no country is
+// hardcoded. UI components should call useAuth() or read tenant context
+// to get the actual locale/currency and pass them in.
+export function formatCurrency(amount: number, currency = 'USD', locale = 'en'): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -95,16 +95,16 @@ export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): str
   }).format(amount);
 }
 
-export function formatDate(date: Date | string): string {
-  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
+export function formatDate(date: Date | string, locale = 'en'): string {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   }).format(new Date(date));
 }
 
-export function formatDateTime(date: Date | string): string {
-  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
+export function formatDateTime(date: Date | string, locale = 'en'): string {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
