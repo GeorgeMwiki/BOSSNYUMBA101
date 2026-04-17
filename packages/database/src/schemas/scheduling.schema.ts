@@ -66,7 +66,7 @@ export const scheduledEvents = pgTable(
     startAt: timestamp('start_at', { withTimezone: true }).notNull(),
     endAt: timestamp('end_at', { withTimezone: true }).notNull(),
     allDay: boolean('all_day').notNull().default(false),
-    timezone: text('timezone').default('Africa/Nairobi'),
+    timezone: text('timezone').default('UTC'),
     entityType: text('entity_type'),
     entityId: text('entity_id'),
     location: text('location'),

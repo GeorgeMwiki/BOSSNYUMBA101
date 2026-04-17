@@ -73,7 +73,7 @@ export const ReceiptSchema = z.object({
   
   // Amounts
   amount: z.number(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   
   // Dates
   paymentDate: z.string().datetime(),
@@ -230,7 +230,7 @@ export function createReceipt(
     paymentReference: data.paymentReference ?? null,
     
     amount: data.amount,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     
     paymentDate: data.paymentDate.toISOString(),
     issueDate: now,

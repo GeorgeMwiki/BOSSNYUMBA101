@@ -117,7 +117,7 @@ export const accounts = pgTable(
     name: text('name').notNull(),
     type: accountTypeEnum('type').notNull(),
     status: accountStatusEnum('status').notNull().default('ACTIVE'),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Balance tracking
     balanceMinorUnits: integer('balance_minor_units').notNull().default(0),
@@ -169,7 +169,7 @@ export const ledgerEntries = pgTable(
     
     // Amount
     amountMinorUnits: integer('amount_minor_units').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Balance after this entry (running balance)
     balanceAfterMinorUnits: integer('balance_after_minor_units').notNull(),
@@ -237,7 +237,7 @@ export const statements = pgTable(
     periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
     
     // Currency
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Balances
     openingBalanceMinorUnits: integer('opening_balance_minor_units').notNull(),
@@ -292,7 +292,7 @@ export const disbursements = pgTable(
     
     // Amount
     amountMinorUnits: integer('amount_minor_units').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Status
     status: disbursementStatusEnum('status').notNull().default('PENDING'),
@@ -364,7 +364,7 @@ export const paymentIntents = pgTable(
     
     // Amount
     amountMinorUnits: integer('amount_minor_units').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     platformFeeMinorUnits: integer('platform_fee_minor_units'),
     netAmountMinorUnits: integer('net_amount_minor_units'),
     

@@ -73,7 +73,7 @@ export const customers = pgTable(
     employer: text('employer'),
     employerAddress: text('employer_address'),
     monthlyIncome: integer('monthly_income'), // In minor units
-    incomeCurrency: text('income_currency').default('KES'),
+    incomeCurrency: text('income_currency'),
     
     // Status
     status: customerStatusEnum('status').notNull().default('prospect'),

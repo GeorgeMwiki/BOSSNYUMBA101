@@ -99,7 +99,7 @@ export default function OnboardingWizard() {
   const [submitted, setSubmitted] = useState(false);
 
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails>({
-    name: '', industry: 'real_estate', address: '', city: '', country: 'Kenya', phone: '', website: '', registrationNumber: '',
+    name: '', industry: 'real_estate', address: '', city: '', country: '', phone: '', website: '', registrationNumber: '',
   });
 
   const [policy, setPolicy] = useState<PolicyConstitution>({
@@ -180,7 +180,7 @@ export default function OnboardingWizard() {
           <button onClick={() => navigate('/tenants')} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
             Back to Tenants
           </button>
-          <button onClick={() => { setSubmitted(false); setCurrentStep(0); setOrgDetails({ name: '', industry: 'real_estate', address: '', city: '', country: 'Kenya', phone: '', website: '', registrationNumber: '' }); setAdmin({ firstName: '', lastName: '', email: '', phone: '', role: 'TENANT_ADMIN', sendInvite: true }); }} className="px-6 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium">
+          <button onClick={() => { setSubmitted(false); setCurrentStep(0); setOrgDetails({ name: '', industry: 'real_estate', address: '', city: '', country: '', phone: '', website: '', registrationNumber: '' }); setAdmin({ firstName: '', lastName: '', email: '', phone: '', role: 'TENANT_ADMIN', sendInvite: true }); }} className="px-6 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium">
             Onboard Another
           </button>
         </div>
@@ -283,7 +283,7 @@ export default function OnboardingWizard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                <input type="tel" value={orgDetails.phone} onChange={(e) => setOrgDetails({ ...orgDetails, phone: e.target.value })} placeholder="+254 7XX XXX XXX" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+                <input type="tel" value={orgDetails.phone} onChange={(e) => setOrgDetails({ ...orgDetails, phone: e.target.value })} placeholder="+XXX XXX XXX XXX" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
@@ -456,7 +456,7 @@ export default function OnboardingWizard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input type="tel" value={admin.phone} onChange={(e) => setAdmin({ ...admin, phone: e.target.value })} placeholder="+254 7XX XXX XXX" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
+                <input type="tel" value={admin.phone} onChange={(e) => setAdmin({ ...admin, phone: e.target.value })} placeholder="+XXX XXX XXX XXX" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>

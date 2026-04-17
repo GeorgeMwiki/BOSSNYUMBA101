@@ -102,7 +102,7 @@ export const MaintenanceRecordSchema = z.object({
   vendorId: z.string().optional(),
   workOrderId: z.string().optional(),
   cost: z.number().optional(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   notes: z.string().optional(),
 });
 export type MaintenanceRecord = z.infer<typeof MaintenanceRecordSchema>;
@@ -154,7 +154,7 @@ export const AssetSchema = z.object({
   // Purchase Information
   purchaseDate: z.string().datetime().nullable(),
   purchasePrice: z.number().nullable(),
-  purchaseCurrency: z.string().default('KES'),
+  purchaseCurrency: z.string().default('USD'),
   supplier: z.string().nullable(),
   purchaseOrderNumber: z.string().nullable(),
   receiptUrl: z.string().url().nullable(),
@@ -333,7 +333,7 @@ export function createAsset(
     
     purchaseDate: data.purchaseDate?.toISOString() ?? null,
     purchasePrice: data.purchasePrice ?? null,
-    purchaseCurrency: data.purchaseCurrency ?? 'KES',
+    purchaseCurrency: data.purchaseCurrency ?? 'USD',
     supplier: data.supplier ?? null,
     purchaseOrderNumber: null,
     receiptUrl: null,

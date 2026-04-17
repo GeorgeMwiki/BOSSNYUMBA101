@@ -575,11 +575,11 @@ export class PropertyService {
       occupancyRate,
       potentialMonthlyRevenue: {
         amount: potentialMonthlyRevenue,
-        currency: units.items[0]?.monthlyRent.currency ?? 'KES',
+        currency: units.items[0]?.monthlyRent.currency ?? 'USD',
       },
       actualMonthlyRevenue: {
         amount: actualMonthlyRevenue,
-        currency: units.items[0]?.monthlyRent.currency ?? 'KES',
+        currency: units.items[0]?.monthlyRent.currency ?? 'USD',
       },
       revenueEfficiency: potentialMonthlyRevenue > 0 
         ? Math.round((actualMonthlyRevenue / potentialMonthlyRevenue) * 100)

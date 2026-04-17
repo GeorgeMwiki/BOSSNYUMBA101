@@ -65,7 +65,7 @@ export const MaterialUsedSchema = z.object({
   unit: z.string(),
   unitCost: z.number().optional(),
   totalCost: z.number().optional(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   supplier: z.string().optional(),
   warrantyInfo: z.string().optional(),
 });
@@ -103,7 +103,7 @@ export const CompletionProofSchema = z.object({
   // Materials
   materialsUsed: z.array(MaterialUsedSchema).default([]),
   totalMaterialsCost: z.number().default(0),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   
   // Technician
   technicianName: z.string(),

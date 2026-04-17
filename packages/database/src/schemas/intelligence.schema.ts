@@ -221,7 +221,7 @@ export const tenantPreferences = pgTable(
     preferredContactTime: text('preferred_contact_time'),
     quietHoursStart: text('quiet_hours_start'),
     quietHoursEnd: text('quiet_hours_end'),
-    timezone: text('timezone').default('Africa/Nairobi'),
+    timezone: text('timezone').default('UTC'),
     
     // Notification preferences
     paymentReminders: boolean('payment_reminders').notNull().default(true),
@@ -534,7 +534,7 @@ export const interventionLogs = pgTable(
     
     // Cost
     cost: integer('cost'),
-    costCurrency: text('cost_currency').default('KES'),
+    costCurrency: text('cost_currency'),
     
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -73,7 +73,7 @@ export const ArrearsCaseSchema = z.object({
   // Amounts
   totalArrearsAmount: z.number(),
   currentBalance: z.number(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   
   // Age
   oldestInvoiceDate: z.string().datetime(),
@@ -246,7 +246,7 @@ export function createArrearsCase(
     
     totalArrearsAmount: data.totalArrearsAmount,
     currentBalance: data.totalArrearsAmount,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     
     oldestInvoiceDate: data.oldestInvoiceDate.toISOString(),
     daysOverdue: data.daysOverdue,

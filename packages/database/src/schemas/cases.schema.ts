@@ -131,7 +131,7 @@ export const cases = pgTable(
     
     // Financial (for arrears/billing disputes)
     amountInDispute: integer('amount_in_dispute'),
-    currency: text('currency').default('KES'),
+    currency: text('currency'),
     
     // SLA
     responseDueAt: timestamp('response_due_at', { withTimezone: true }),
@@ -307,7 +307,7 @@ export const caseResolutions = pgTable(
     // Financial resolution
     amountResolved: integer('amount_resolved'),
     amountWaived: integer('amount_waived'),
-    currency: text('currency').default('KES'),
+    currency: text('currency'),
     
     // Payment plan (if applicable)
     paymentPlanId: text('payment_plan_id'),
@@ -496,7 +496,7 @@ export const notices = pgTable(
     
     // Amounts (for financial notices)
     amountDue: integer('amount_due'),
-    currency: text('currency').default('KES'),
+    currency: text('currency'),
     
     // Dates
     effectiveDate: timestamp('effective_date', { withTimezone: true }),

@@ -123,7 +123,7 @@ export const InterventionLogSchema = z.object({
 
   // Cost
   cost: z.number().nullable(),
-  costCurrency: z.string().default('KES'),
+  costCurrency: z.string().default('USD'),
 });
 
 export type InterventionLogData = z.infer<typeof InterventionLogSchema>;
@@ -224,7 +224,7 @@ export function createInterventionLog(
     successMetrics: [],
 
     cost: data.cost ?? null,
-    costCurrency: data.costCurrency ?? 'KES',
+    costCurrency: data.costCurrency ?? 'USD',
 
     createdAt: now,
   };

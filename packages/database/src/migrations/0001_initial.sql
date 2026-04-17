@@ -148,7 +148,7 @@ CREATE TABLE users (
   last_activity_at TIMESTAMPTZ,
   last_login_ip TEXT,
   preferences JSONB DEFAULT '{}',
-  timezone TEXT DEFAULT 'Africa/Nairobi',
+  timezone TEXT DEFAULT 'UTC',
   locale TEXT DEFAULT 'en',
   activated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

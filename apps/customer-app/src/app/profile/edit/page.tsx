@@ -145,7 +145,7 @@ export default function EditProfilePage() {
               value={formData.phone}
               onChange={handleChange}
               className="input pl-10"
-              placeholder="+254 7XX XXX XXX"
+              placeholder="+XXX XXX XXX XXX"
             />
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             {phoneVerified && (
@@ -189,7 +189,7 @@ export default function EditProfilePage() {
               value={formData.emergencyContactPhone}
               onChange={handleChange}
               className="input"
-              placeholder="+254 7XX XXX XXX"
+              placeholder="+XXX XXX XXX XXX"
             />
           </div>
         </section>

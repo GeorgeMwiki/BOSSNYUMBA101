@@ -170,7 +170,7 @@ export const workOrders = pgTable(
     // Cost
     estimatedCost: integer('estimated_cost'), // In minor units
     actualCost: integer('actual_cost'), // In minor units
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
 
     // Completion
     completedAt: timestamp('completed_at', { withTimezone: true }),
@@ -522,7 +522,7 @@ export const completionProofs = pgTable(
     laborCost: integer('labor_cost'),
     materialsCost: integer('materials_cost'),
     totalCost: integer('total_cost'),
-    currency: text('currency').default('KES'),
+    currency: text('currency'),
     
     // Technician details
     technicianId: text('technician_id'),
@@ -630,7 +630,7 @@ export const assets = pgTable(
     // Purchase info
     purchaseDate: timestamp('purchase_date', { withTimezone: true }),
     purchasePrice: integer('purchase_price'),
-    purchaseCurrency: text('purchase_currency').default('KES'),
+    purchaseCurrency: text('purchase_currency'),
     supplier: text('supplier'),
     warrantyExpiresAt: timestamp('warranty_expires_at', { withTimezone: true }),
     
@@ -715,7 +715,7 @@ export const vendorAssignments = pgTable(
     // Rate
     agreedRate: integer('agreed_rate'),
     rateType: text('rate_type'),
-    rateCurrency: text('rate_currency').default('KES'),
+    rateCurrency: text('rate_currency'),
     
     // Availability
     availableDays: jsonb('available_days').default([]),

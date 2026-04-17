@@ -8,7 +8,7 @@ import type { CurrencyCode } from './types';
 
 export const MoneySchema = z.object({
   amount: z.number().int(),
-  currency: z.enum(['KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX']),
+  currency: z.enum(['KES', 'TZS', 'UGX', 'RWF', 'USD', 'EUR', 'GBP']),
 });
 
 /** Re-export for consumers that import from money */
@@ -21,7 +21,7 @@ export class Money {
   readonly amount: number; // Always stored in smallest unit (cents)
   readonly currency: CurrencyCode;
 
-  constructor(amount: number, currency: CurrencyCode = 'KES') {
+  constructor(amount: number, currency: CurrencyCode = 'USD') {
     if (!Number.isInteger(amount)) {
       throw new Error('Money amount must be an integer (smallest currency unit)');
     }
@@ -33,11 +33,11 @@ export class Money {
     return this.amount;
   }
 
-  static zero(currency: CurrencyCode = 'KES'): Money {
+  static zero(currency: CurrencyCode = 'USD'): Money {
     return new Money(0, currency);
   }
 
-  static fromMinorUnits(amount: number, currency: CurrencyCode = 'KES'): Money {
+  static fromMinorUnits(amount: number, currency: CurrencyCode = 'USD'): Money {
     return new Money(amount, currency);
   }
 
@@ -76,14 +76,14 @@ export class Money {
  * @param amount Amount in smallest currency unit (e.g., cents)
  * @param currency ISO 4217 currency code
  */
-export function money(amount: number, currency: CurrencyCode = 'KES'): Money {
+export function money(amount: number, currency: CurrencyCode = 'USD'): Money {
   return new Money(amount, currency);
 }
 
 /**
  * Create Money from a decimal amount (e.g., 10.50 becomes 1050 cents)
  */
-export function moneyFromDecimal(decimal: number, currency: CurrencyCode = 'KES'): Money {
+export function moneyFromDecimal(decimal: number, currency: CurrencyCode = 'USD'): Money {
   return money(Math.round(decimal * 100), currency);
 }
 
@@ -157,6 +157,6 @@ export function isNegative(m: Money): boolean {
 /**
  * Zero money in a given currency
  */
-export function zeroMoney(currency: CurrencyCode = 'KES'): Money {
+export function zeroMoney(currency: CurrencyCode = 'USD'): Money {
   return money(0, currency);
 }

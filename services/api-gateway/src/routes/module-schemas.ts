@@ -123,7 +123,7 @@ export const initiatePaymentSchema = z.object({
   customerId: z.string().min(1, 'Customer ID is required'),
   leaseId: z.string().optional(),
   amount: z.number().positive('Amount must be positive'),
-  currency: z.string().length(3).default('KES'),
+  currency: z.string().length(3).default('USD'),
   method: z.enum(['mpesa', 'bank_transfer', 'card', 'cash', 'mobile_money']),
   phone: z.string().optional(),
   description: z.string().max(255).optional(),

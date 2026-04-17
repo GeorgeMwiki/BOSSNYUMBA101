@@ -318,7 +318,7 @@ export class ReportService {
         this.dataProvider.getArrearsMetrics(tenantId),
       ]);
 
-      const currency = financialMetrics.currency || 'KES';
+      const currency = financialMetrics.currency || 'USD';
       const occupancyRate = propertyMetrics.totalUnits > 0
         ? Math.round((propertyMetrics.occupiedUnits / propertyMetrics.totalUnits) * 100)
         : 0;

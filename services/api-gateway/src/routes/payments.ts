@@ -88,10 +88,10 @@ app.get('/balance', async (c) => {
   return c.json({
     success: true,
     data: {
-      totalDue: { amount: minorToMajor(totalDueMinor), currency: invoices.items[0]?.currency || 'KES' },
+      totalDue: { amount: minorToMajor(totalDueMinor), currency: invoices.items[0]?.currency || 'USD' },
       breakdown: invoices.items.map((invoice: any) => ({
         type: String(invoice.invoiceType || 'rent').toUpperCase(),
-        amount: { amount: minorToMajor(invoice.balanceAmount), currency: invoice.currency || 'KES' },
+        amount: { amount: minorToMajor(invoice.balanceAmount), currency: invoice.currency || 'USD' },
       })),
     },
   });
@@ -109,7 +109,7 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
-  const currency = body.amount?.currency || 'KES';
+  const currency = body.amount?.currency || 'USD';
   const amountMinor = majorToMinor(body.amount?.amount);
   const row = await repos.payments.create({
     id: crypto.randomUUID(),
@@ -136,7 +136,7 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
 const PaymentPlanCreateSchema = z.object({
   invoiceId: z.string().optional(),
   totalAmount: z.number().positive(),
-  currency: z.string().length(3).default('KES'),
+  currency: z.string().length(3).default('USD'),
   instalments: z.number().int().min(1).max(24),
   firstInstalmentDate: z.string().refine(
     (s) => !Number.isNaN(new Date(s).getTime()),

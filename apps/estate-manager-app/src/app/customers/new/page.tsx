@@ -97,7 +97,7 @@ export default function CustomerFormPage() {
               className="input"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+254..."
+              placeholder="+XXX..."
             />
           </div>
         </div>

@@ -211,7 +211,7 @@ export const messageInstances = pgTable(
     
     // Cost
     cost: integer('cost'),
-    costCurrency: text('cost_currency').default('KES'),
+    costCurrency: text('cost_currency'),
     
     // Retry
     retryCount: integer('retry_count').notNull().default(0),

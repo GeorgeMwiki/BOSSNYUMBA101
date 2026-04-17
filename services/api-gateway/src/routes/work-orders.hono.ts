@@ -154,7 +154,7 @@ app.post('/', zValidator('json', WorkOrderCreateSchema), async (c) => {
     location: body.location,
     attachments: body.attachments || [],
     estimatedCost: body.estimatedCost != null ? majorToMinor(body.estimatedCost) : undefined,
-    currency: body.currency || 'KES',
+    currency: body.currency || 'USD',
     timeline: [{ at: new Date().toISOString(), status: 'submitted', by: auth.userId }],
     createdBy: auth.userId,
     updatedBy: auth.userId,

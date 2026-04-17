@@ -94,7 +94,7 @@ export const leases = pgTable(
     
     // Rent
     rentAmount: integer('rent_amount').notNull(), // In minor units
-    rentCurrency: text('rent_currency').notNull().default('KES'),
+    rentCurrency: text('rent_currency').notNull(),
     rentFrequency: rentFrequencyEnum('rent_frequency').notNull().default('monthly'),
     rentDueDay: integer('rent_due_day').notNull().default(1),
     gracePeriodDays: integer('grace_period_days').notNull().default(5),

@@ -99,7 +99,7 @@ export default function VendorForm() {
           <input
             type="tel"
             className="input"
-            placeholder="+254 7XX XXX XXX"
+            placeholder="+XXX XXX XXX XXX"
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })

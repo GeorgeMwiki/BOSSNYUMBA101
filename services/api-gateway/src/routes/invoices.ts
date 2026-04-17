@@ -117,7 +117,7 @@ app.post('/', zValidator('json', InvoiceCreateSchema), async (c) => {
     totalAmount: total,
     paidAmount: 0,
     balanceAmount: total,
-    currency: body.currency || 'KES',
+    currency: body.currency || 'USD',
     lineItems: body.lineItems || [],
     createdBy: auth.userId,
     updatedBy: auth.userId,

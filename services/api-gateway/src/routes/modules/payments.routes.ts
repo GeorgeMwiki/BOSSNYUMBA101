@@ -53,7 +53,7 @@ const initiatePaymentSchema = z.object({
   invoiceId: z.string().optional(),
   customerId: z.string().min(1),
   amount: z.number().positive(),
-  currency: z.string().length(3).default('KES'),
+  currency: z.string().length(3).default('USD'),
   method: z.enum(['mpesa', 'bank_transfer', 'card', 'cash']),
   phone: z.string().optional(),
   description: z.string().max(255).optional(),

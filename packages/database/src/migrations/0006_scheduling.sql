@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS scheduled_events (
   start_at TIMESTAMPTZ NOT NULL,
   end_at TIMESTAMPTZ NOT NULL,
   all_day BOOLEAN NOT NULL DEFAULT FALSE,
-  timezone TEXT DEFAULT 'Africa/Nairobi',
+  timezone TEXT DEFAULT 'UTC',
 
   -- Related entity
   entity_type TEXT,

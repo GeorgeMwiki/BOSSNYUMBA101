@@ -99,7 +99,7 @@ export default function RegisterPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="+254 7XX XXX XXX"
+                placeholder="+XXX XXX XXX XXX"
                 className="input pl-12"
                 required
                 autoComplete="tel"

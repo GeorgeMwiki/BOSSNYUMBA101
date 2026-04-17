@@ -110,7 +110,7 @@ export const invoices = pgTable(
     totalAmount: integer('total_amount').notNull(), // In minor units
     paidAmount: integer('paid_amount').notNull().default(0),
     balanceAmount: integer('balance_amount').notNull(), // totalAmount - paidAmount
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Tax
     taxRate: decimal('tax_rate', { precision: 5, scale: 2 }).default('0'),
@@ -185,7 +185,7 @@ export const payments = pgTable(
     
     // Amount
     amount: integer('amount').notNull(), // In minor units
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     feeAmount: integer('fee_amount').default(0), // Transaction fees
     netAmount: integer('net_amount'), // amount - feeAmount
     
@@ -268,7 +268,7 @@ export const transactions = pgTable(
     
     // Amount (positive = charge, negative = credit/payment)
     amount: integer('amount').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Balance
     balanceBefore: integer('balance_before').notNull(),
@@ -451,7 +451,7 @@ export const receipts = pgTable(
     
     // Amount
     amount: integer('amount').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Details
     description: text('description'),
@@ -511,7 +511,7 @@ export const paymentPlans = pgTable(
     totalAmount: integer('total_amount').notNull(),
     paidAmount: integer('paid_amount').notNull().default(0),
     remainingAmount: integer('remaining_amount').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Terms
     numberOfInstallments: integer('number_of_installments').notNull(),
@@ -589,7 +589,7 @@ export const arrearsCases = pgTable(
     // Amounts
     totalArrearsAmount: integer('total_arrears_amount').notNull(),
     currentBalance: integer('current_balance').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Aging
     daysPastDue: integer('days_past_due').notNull(),
@@ -689,7 +689,7 @@ export const ownerStatements = pgTable(
     disbursedAt: timestamp('disbursed_at', { withTimezone: true }),
     disbursementRef: text('disbursement_ref'),
     
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Line items
     incomeLineItems: jsonb('income_line_items').default([]),
@@ -755,7 +755,7 @@ export const ledgerEntries = pgTable(
     // Amount (debit positive, credit negative OR use separate columns)
     debitAmount: integer('debit_amount').notNull().default(0),
     creditAmount: integer('credit_amount').notNull().default(0),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Entity references
     propertyId: text('property_id').references(() => properties.id),

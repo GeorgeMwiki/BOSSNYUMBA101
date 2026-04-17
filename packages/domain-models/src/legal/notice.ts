@@ -75,7 +75,7 @@ export const NoticeSchema = z.object({
   
   // Financial
   amountDue: z.number().nullable(),
-  currency: CurrencyCodeSchema.default('KES'),
+  currency: CurrencyCodeSchema.default('USD'),
   
   // Dates
   issueDate: z.string().datetime(),
@@ -267,7 +267,7 @@ export function createNotice(
     templateVariables: data.templateVariables ?? {},
     
     amountDue: data.amountDue ?? null,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     
     issueDate: now,
     effectiveDate: data.effectiveDate?.toISOString() ?? null,

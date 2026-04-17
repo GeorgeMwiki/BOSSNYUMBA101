@@ -456,7 +456,7 @@ export class PaymentService {
     const invoiceId = asInvoiceId(`inv_${Date.now()}_${randomHex(4)}`);
 
     // Calculate line items with tax
-    const currency = input.lineItems[0]?.unitPrice.currency ?? 'KES';
+    const currency = input.lineItems[0]?.unitPrice.currency ?? 'USD';
     const lineItems: InvoiceLineItem[] = input.lineItems.map((item, index) => {
       const amount = money(item.unitPrice.amount * item.quantity, currency);
       const taxRate = item.taxRate ?? 0;

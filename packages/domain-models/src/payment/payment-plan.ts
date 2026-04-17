@@ -111,7 +111,7 @@ export function createPaymentPlan(
     leaseId: data.leaseId ?? null,
     planNumber: data.planNumber,
     totalAmount: data.totalAmount,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     installments,
     status: 'draft',
     approvedAt: null,

@@ -204,7 +204,7 @@ export const users = pgTable(
     
     // Preferences
     preferences: jsonb('preferences').default({}),
-    timezone: text('timezone').default('Africa/Nairobi'),
+    timezone: text('timezone').default('UTC'),
     locale: text('locale').default('en'),
     
     // Timestamps

@@ -390,7 +390,7 @@ export function mapWorkOrderRow(row: any) {
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
     estimatedCost: minorToMajor(row.estimatedCost),
     actualCost: minorToMajor(row.actualCost),
-    currency: row.currency || 'KES',
+    currency: row.currency || 'USD',
     scheduledAt: row.scheduledAt ?? row.scheduledStartAt ?? undefined,
     scheduledDate: row.scheduledAt ?? row.scheduledStartAt ?? undefined,
     completedAt: row.completedAt ?? undefined,

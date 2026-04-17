@@ -49,7 +49,7 @@ export const paymentPlanAgreements = pgTable(
     
     // Amount
     totalAmount: integer('total_amount').notNull(), // In minor units
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     
     // Installments (JSONB array)
     // Structure: [{ number, amount, dueDate, paidAmount, paidAt, status }]

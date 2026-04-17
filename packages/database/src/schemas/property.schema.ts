@@ -100,7 +100,7 @@ export const properties = pgTable(
     vacantUnits: integer('vacant_units').notNull().default(0),
     
     // Financials
-    defaultCurrency: text('default_currency').notNull().default('KES'),
+    defaultCurrency: text('default_currency').notNull(),
     
     // Amenities & Features
     amenities: jsonb('amenities').default([]),
@@ -167,7 +167,7 @@ export const units = pgTable(
     
     // Pricing
     baseRentAmount: integer('base_rent_amount').notNull(), // In minor units (cents)
-    baseRentCurrency: text('base_rent_currency').notNull().default('KES'),
+    baseRentCurrency: text('base_rent_currency').notNull(),
     depositAmount: integer('deposit_amount'), // In minor units
     
     // Features

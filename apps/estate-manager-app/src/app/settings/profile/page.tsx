@@ -11,7 +11,7 @@ export default function ProfileSettingsPage() {
     firstName: 'John',
     lastName: 'Manager',
     email: 'john.manager@estate.com',
-    phone: '+254 700 123 456',
+    phone: '',
     role: 'Estate Manager',
   });
 
@@ -79,7 +79,7 @@ export default function ProfileSettingsPage() {
               className="input"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+254..."
+              placeholder="+XXX..."
             />
           </div>
 

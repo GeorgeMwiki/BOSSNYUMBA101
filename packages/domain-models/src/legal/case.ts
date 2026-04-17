@@ -77,7 +77,7 @@ export const CaseSchema = z.object({
   
   // Financial
   amountInDispute: z.number().nullable(),
-  currency: CurrencyCodeSchema.default('KES'),
+  currency: CurrencyCodeSchema.default('USD'),
   
   // SLA tracking
   slaDetails: SlaDetailsSchema.nullable(),
@@ -243,7 +243,7 @@ export function createCase(
     description: data.description,
     
     amountInDispute: data.amountInDispute ?? null,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     
     slaDetails: {
       responseDeadline: responseDeadline.toISOString(),

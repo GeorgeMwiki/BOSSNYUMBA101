@@ -223,7 +223,7 @@ export function SettingsPage() {
                 <input
                   type="tel"
                   defaultValue={(user as { phone?: string } | null)?.phone ?? ''}
-                  placeholder="e.g. +254712345678"
+                  placeholder="e.g. +255712345678"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

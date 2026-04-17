@@ -59,7 +59,7 @@ export const VendorAssignmentSchema = z.object({
 
   agreedRate: z.number().nullable(),
   rateType: z.enum(['hourly', 'fixed', 'per_job', 'monthly']).nullable(),
-  rateCurrency: z.string().default('KES'),
+  rateCurrency: z.string().default('USD'),
 
   availableDays: z.array(z.number().min(0).max(6)).default([]),
   availableHours: AvailableHoursSchema.nullable(),
@@ -158,7 +158,7 @@ export function createVendorAssignment(
 
     agreedRate: data.agreedRate ?? null,
     rateType: data.rateType ?? null,
-    rateCurrency: data.rateCurrency ?? 'KES',
+    rateCurrency: data.rateCurrency ?? 'USD',
 
     availableDays: data.availableDays ?? [],
     availableHours: data.availableHours ?? null,

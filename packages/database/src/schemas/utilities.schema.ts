@@ -115,7 +115,7 @@ export const utilityBills = pgTable(
     readingId: text('reading_id').references(() => utilityReadings.id, { onDelete: 'set null' }),
     billNumber: text('bill_number').notNull(),
     amount: integer('amount').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    currency: text('currency').notNull(),
     periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
     periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
     dueDate: timestamp('due_date', { withTimezone: true }).notNull(),

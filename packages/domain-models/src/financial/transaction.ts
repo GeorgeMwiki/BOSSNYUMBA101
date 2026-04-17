@@ -101,7 +101,7 @@ export const TransactionSchema = z.object({
   amount: z.number(),
   fee: z.number().default(0),
   netAmount: z.number(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   exchangeRate: z.number().default(1),
   
   // Payment method
@@ -268,7 +268,7 @@ export function createTransaction(
     amount: data.amount,
     fee,
     netAmount: data.amount - fee,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     exchangeRate: 1,
     
     paymentMethodType: data.paymentMethodType ?? null,

@@ -94,7 +94,7 @@ export const InvoiceSchema = z.object({
   totalAmount: z.number(),
   amountPaid: z.number().default(0),
   amountDue: z.number(),
-  currency: z.string().default('KES'),
+  currency: z.string().default('USD'),
   
   // Payment terms
   paymentTerms: z.string().optional(),
@@ -246,7 +246,7 @@ export function createInvoice(
     totalAmount,
     amountPaid: 0,
     amountDue: totalAmount,
-    currency: data.currency ?? 'KES',
+    currency: data.currency ?? 'USD',
     
     paymentTerms: data.paymentTerms ?? null,
     lateFeePercentage: data.lateFeePercentage ?? 0,
