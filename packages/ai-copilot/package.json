@@ -26,11 +26,11 @@
   "author": "BOSSNYUMBA",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "openai": "^4.28.0",
-    "jose": "^5.2.0",
-    "zod": "^3.22.4",
-    "uuid": "^9.0.0"
+    "@anthropic-ai/sdk": "^0.90.0",
+    "openai": "^6.34.0",
+    "jose": "^6.2.2",
+    "zod": "^4.3.6",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

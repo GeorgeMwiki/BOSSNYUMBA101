@@ -34,7 +34,7 @@
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/database": "workspace:*",
-    "drizzle-orm": "^0.29.3"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
