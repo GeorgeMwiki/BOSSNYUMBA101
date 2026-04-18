@@ -8,15 +8,15 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     },
     "./services/migration/parsers/parse-upload": {
       "types": "./src/services/migration/parsers/parse-upload.ts",
-      "default": "./src/services/migration/parsers/parse-upload.ts"
+      "default": "./dist/services/migration/parsers/parse-upload.js"
     },
     "./providers": {
       "types": "./src/providers/index.ts",
-      "default": "./src/providers/index.ts"
+      "default": "./dist/providers/index.js"
     }
   },
   "scripts": {

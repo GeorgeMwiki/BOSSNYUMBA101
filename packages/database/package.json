@@ -9,15 +9,21 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
     },
     "./schemas": {
       "types": "./src/schemas/index.ts",
-      "import": "./dist/schemas/index.js"
+      "import": "./dist/schemas/index.js",
+      "require": "./dist/schemas/index.cjs",
+      "default": "./dist/schemas/index.js"
     },
     "./repositories": {
       "types": "./src/repositories/index.ts",
-      "import": "./dist/repositories/index.js"
+      "import": "./dist/repositories/index.js",
+      "require": "./dist/repositories/index.cjs",
+      "default": "./dist/repositories/index.js"
     }
   },
   "scripts": {

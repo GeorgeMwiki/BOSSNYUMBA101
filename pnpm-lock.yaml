@@ -685,9 +685,18 @@ importers:
       '@bossnyumba/domain-models':
         specifier: workspace:*
         version: link:../../packages/domain-models
+      '@bossnyumba/domain-services':
+        specifier: workspace:*
+        version: link:../domain-services
       '@bossnyumba/graph-sync':
         specifier: workspace:*
         version: link:../../packages/graph-sync
+      '@bossnyumba/payments-ledger-service':
+        specifier: workspace:*
+        version: link:../payments-ledger
+      '@bossnyumba/payments-service':
+        specifier: workspace:*
+        version: link:../payments
       '@hono/node-server':
         specifier: ^1.11.0
         version: 1.19.9(hono@4.11.9)

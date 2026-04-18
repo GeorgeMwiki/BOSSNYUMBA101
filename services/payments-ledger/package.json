@@ -7,12 +7,12 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/services/payments-ledger/src/index.d.ts",
+      "default": "./dist/services/payments-ledger/src/index.js"
     },
     "./arrears": {
-      "types": "./src/arrears/index.ts",
-      "default": "./src/arrears/index.ts"
+      "types": "./dist/services/payments-ledger/src/arrears/index.d.ts",
+      "default": "./dist/services/payments-ledger/src/arrears/index.js"
     }
   },
   "scripts": {

@@ -20,8 +20,8 @@ import {
   createGepgProvider,
   type GepgConfig,
   type GepgProvider,
-} from '@bossnyumba/payments/providers/gepg';
-import type { GepgSignatureConfig } from '@bossnyumba/payments/providers/gepg';
+} from '@bossnyumba/payments-service/providers/gepg';
+import type { GepgSignatureConfig } from '@bossnyumba/payments-service/providers/gepg';
 
 function loadConfig(): GepgConfig {
   return {

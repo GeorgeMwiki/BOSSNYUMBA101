@@ -10,15 +10,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
-    "./identity": {
-      "types": "./dist/identity/index.d.ts",
-      "import": "./dist/identity/index.js"
-    },
-    "./tenant": {
-      "types": "./dist/tenant/index.d.ts",
-      "import": "./dist/tenant/index.js"
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js",
+      "default": "./dist/*/index.js"
     }
   },
   "scripts": {
