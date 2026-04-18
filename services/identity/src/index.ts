@@ -82,3 +82,6 @@ export type {
 
 // Phone normalization helper
 export { normalizePhoneForCountry } from './phone-normalize.js';
+
+// Notifications-backed SMS dispatcher (for production wiring)
+export { NotificationsSmsDispatcher } from './otp/notifications-sms-dispatcher.js';

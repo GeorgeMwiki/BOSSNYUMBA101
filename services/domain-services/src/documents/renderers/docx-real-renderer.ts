@@ -19,9 +19,9 @@ import type {
   RenderTemplate,
   RenderedMimeType,
   RendererKind,
-} from './renderer-interface';
-import { RendererError } from './renderer-interface';
-import { synthesizeDocxFromText } from './docx-fallback-synthesizer';
+} from './renderer-interface.js';
+import { RendererError } from './renderer-interface.js';
+import { synthesizeDocxFromText } from './docx-fallback-synthesizer.js';
 
 type DocxEngine = 'synthesizer' | 'docxtemplater';
 

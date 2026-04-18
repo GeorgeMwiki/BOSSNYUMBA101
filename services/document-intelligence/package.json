@@ -22,9 +22,9 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
+    "@aws-sdk/client-textract": "^3.989.0",
     "@bossnyumba/domain-models": "workspace:*",
-    "@aws-sdk/client-textract": "^3.500.0",
-    "@google-cloud/vision": "^4.0.0",
+    "@google-cloud/vision": "^4.3.3",
     "crypto-js": "^4.2.0",
     "date-fns": "^3.0.0",
     "pdfkit": "^0.14.0",

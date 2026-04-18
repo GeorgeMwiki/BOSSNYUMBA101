@@ -10,11 +10,11 @@
  *     with context='marketing-imagery' throws
  */
 
-import type { IDocumentRenderer, RendererKind } from './renderer-interface';
-import { RendererError } from './renderer-interface';
-import { DocxRealRenderer } from './docx-real-renderer';
-import { PdfRealRenderer } from './pdf-real-renderer';
-import { TextRenderer } from './text-renderer';
+import type { IDocumentRenderer, RendererKind } from './renderer-interface.js';
+import { RendererError } from './renderer-interface.js';
+import { DocxRealRenderer } from './docx-real-renderer.js';
+import { PdfRealRenderer } from './pdf-real-renderer.js';
+import { TextRenderer } from './text-renderer.js';
 
 export type RendererContext = 'document' | 'marketing-imagery';
 

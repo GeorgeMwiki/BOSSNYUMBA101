@@ -31,13 +31,18 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/database": "workspace:*",
-    "drizzle-orm": "^0.29.3"
+    "@bossnyumba/domain-models": "workspace:*",
+    "@react-pdf/renderer": "^3.4.5",
+    "docxtemplater": "^3.68.5",
+    "drizzle-orm": "^0.29.3",
+    "pizzip": "^3.2.0",
+    "react": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/react": "^19.2.14",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   }

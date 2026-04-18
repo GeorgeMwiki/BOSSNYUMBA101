@@ -44,6 +44,10 @@ export {
   type InfiniteQueryResult,
 } from './hooks';
 
+// Wave 2 — React Query hooks for the new API surface.
+// Re-exported here so callers can `import { useNegotiations } from '@bossnyumba/api-client'`.
+export * from './hooks/index';
+
 // Services
 export * from './services/tenants';
 export * from './services/properties';

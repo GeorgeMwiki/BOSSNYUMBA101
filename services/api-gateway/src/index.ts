@@ -52,7 +52,7 @@ import lettersRouter from './routes/letters.router';
 import { marketplaceRouter } from './routes/marketplace.router';
 import { createMigrationRouter } from './routes/migration.router';
 import { negotiationsRouter } from './routes/negotiations.router';
-import * as notificationPreferencesRouter from './routes/notification-preferences.router';
+import { createNotificationPreferencesRouter } from './routes/notification-preferences.router';
 import { createNotificationWebhookRouter } from './routes/notification-webhooks.router';
 import occupancyTimelineRouter from './routes/occupancy-timeline.router';
 import renewalsRouter from './routes/renewals.router';
@@ -200,6 +200,19 @@ api.route('/gepg', gepgRouter);
 api.route('/interactive-reports', interactiveReportsRouter);
 api.route('/letters', lettersRouter);
 api.route('/marketplace', marketplaceRouter);
+// Routers built via factory — inject stub deps (real wiring resolves at runtime)
+const migrationRouter = createMigrationRouter({
+  getService: () => {
+    throw new Error('MigrationService not yet wired — set getService in composition root');
+  },
+});
+const notificationPreferencesRouter = createNotificationPreferencesRouter({
+  getPreferences: () => ({ channels: {}, templates: {}, quietHoursStart: null, quietHoursEnd: null }),
+  upsertPreferences: (_u, _t, input) => input,
+});
+const notificationWebhooksRouter = createNotificationWebhookRouter({
+  onDeliveryStatus: async () => {},
+});
 api.route('/migration', migrationRouter);
 api.route('/negotiations', negotiationsRouter);
 api.route('/me/notification-preferences', notificationPreferencesRouter);

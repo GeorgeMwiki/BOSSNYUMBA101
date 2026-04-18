@@ -1,0 +1,32 @@
+{
+  "title": "BOSSNYUMBA — Payments",
+  "uid": "bossnyumba-payments",
+  "tags": ["bossnyumba", "payments", "gepg"],
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "GePG webhook success rate (24h)",
+      "targets": [{ "expr": "sum(rate(gepg_callback_success[1d])) / sum(rate(gepg_callback_total[1d]))" }],
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Reconciliation lag (seconds)",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(payment_reconciliation_lag_seconds_bucket[5m])) by (le))" }],
+      "gridPos": { "x": 6, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "stat",
+      "title": "Arrears open cases",
+      "targets": [{ "expr": "sum(arrears_cases_open)" }],
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Payment success rate by provider",
+      "targets": [{ "expr": "sum(rate(payment_success[5m])) by (provider) / sum(rate(payment_total[5m])) by (provider)" }],
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 }
+    }
+  ]
+}

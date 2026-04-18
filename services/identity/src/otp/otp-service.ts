@@ -117,17 +117,69 @@ function generateCode(length: number): string {
   return String(n).padStart(length, '0');
 }
 
+/** Number of total attempts (original + retries) when dispatching an OTP. */
+export const OTP_DEFAULT_SEND_ATTEMPTS = 2;
+
+/** Backoff delay between OTP dispatch retries, in ms. */
+export const OTP_DEFAULT_SEND_BACKOFF_MS = 2000;
+
+export interface OtpServiceOptions {
+  readonly now?: () => number;
+  readonly ttlMs?: number;
+  /** Total send attempts including the first try. Default: 2 (1 retry). */
+  readonly sendAttempts?: number;
+  /** Backoff delay between send attempts, in ms. Default: 2000. */
+  readonly sendBackoffMs?: number;
+  /** Sleep hook — injected for deterministic tests. */
+  readonly sleep?: (ms: number) => Promise<void>;
+}
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class OtpService {
+  private readonly now: () => number;
+  private readonly ttlMs: number;
+  private readonly sendAttempts: number;
+  private readonly sendBackoffMs: number;
+  private readonly sleep: (ms: number) => Promise<void>;
+
   constructor(
     private readonly store: OtpStore = new InMemoryOtpStore(),
     private readonly sms: SmsDispatcher = new NoopSmsDispatcher(),
-    private readonly now: () => number = () => Date.now(),
-    private readonly ttlMs: number = OTP_TTL_MS
-  ) {}
+    nowOrOptions: (() => number) | OtpServiceOptions = () => Date.now(),
+    ttlMs: number = OTP_TTL_MS
+  ) {
+    // Back-compat: the old constructor signature took `now` as a function and
+    // `ttlMs` as the final arg. If callers pass an options object, we prefer
+    // that. Otherwise fall back to the positional form.
+    if (typeof nowOrOptions === 'function') {
+      // Legacy positional form: preserve single-attempt behaviour so existing
+      // callers and their tests are not slowed down by the new retry path.
+      this.now = nowOrOptions;
+      this.ttlMs = ttlMs;
+      this.sendAttempts = 1;
+      this.sendBackoffMs = OTP_DEFAULT_SEND_BACKOFF_MS;
+      this.sleep = defaultSleep;
+    } else {
+      this.now = nowOrOptions.now ?? (() => Date.now());
+      this.ttlMs = nowOrOptions.ttlMs ?? OTP_TTL_MS;
+      this.sendAttempts =
+        nowOrOptions.sendAttempts ?? OTP_DEFAULT_SEND_ATTEMPTS;
+      this.sendBackoffMs =
+        nowOrOptions.sendBackoffMs ?? OTP_DEFAULT_SEND_BACKOFF_MS;
+      this.sleep = nowOrOptions.sleep ?? defaultSleep;
+    }
+  }
 
   /**
    * Generate and send an OTP to the given phone for the given identity.
    * Overwrites any previous in-flight code for this identity.
+   *
+   * SMS dispatch is retried `sendAttempts - 1` times with a fixed backoff
+   * between attempts. If every attempt fails, the stored record is rolled
+   * back so the caller can safely retry without a dangling valid code.
    */
   async send(
     identityId: TenantIdentityId,
@@ -146,20 +198,30 @@ export class OtpService {
       attempts: 0,
     };
     await this.store.set(record);
-    try {
-      await this.sms.send(
-        phone,
-        `Your BOSSNYUMBA verification code is ${code}. It expires in 5 minutes.`
-      );
-    } catch (error) {
-      // Don't leak the raw code. Drop the stored record so the caller can
-      // retry without a dangling valid code.
-      await this.store.delete(identityId);
-      throw new Error(
-        `OtpService.send: failed to dispatch SMS: ${(error as Error).message}`
-      );
+
+    const message = `Your BOSSNYUMBA verification code is ${code}. It expires in 5 minutes.`;
+    const totalAttempts = Math.max(1, this.sendAttempts);
+    let lastError: Error | undefined;
+    for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+      try {
+        await this.sms.send(phone, message);
+        return { expiresAt };
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt < totalAttempts) {
+          await this.sleep(this.sendBackoffMs);
+        }
+      }
     }
-    return { expiresAt };
+
+    // All attempts failed. Don't leak the raw code — drop the stored record
+    // so the caller can retry without a dangling valid code.
+    await this.store.delete(identityId);
+    throw new Error(
+      `OtpService.send: failed to dispatch SMS after ${totalAttempts} attempt(s): ${
+        lastError ? lastError.message : 'unknown error'
+      }`
+    );
   }
 
   /**

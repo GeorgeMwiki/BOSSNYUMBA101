@@ -1,0 +1,35 @@
+{
+  "title": "BOSSNYUMBA — AI / LLM",
+  "uid": "bossnyumba-ai",
+  "tags": ["bossnyumba", "ai", "llm"],
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "LLM calls per minute",
+      "targets": [{ "expr": "sum(rate(llm_calls[1m])) by (model)" }],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM token usage (input + output)",
+      "targets": [
+        { "expr": "sum(rate(llm_input_tokens_sum[5m])) by (model)", "legendFormat": "{{model}} input" },
+        { "expr": "sum(rate(llm_output_tokens_sum[5m])) by (model)", "legendFormat": "{{model}} output" }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "stat",
+      "title": "Opus advisor gate invocations (1h)",
+      "targets": [{ "expr": "sum(rate(llm_calls{model=\"claude-opus-4-6\",advisor_gate=\"true\"}[1h]))" }],
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 }
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM error rate by model",
+      "targets": [{ "expr": "sum(rate(llm_errors[5m])) by (model)" }],
+      "gridPos": { "x": 6, "y": 8, "w": 18, "h": 8 }
+    }
+  ]
+}

@@ -17,8 +17,8 @@ import type {
   RenderTemplate,
   RenderedMimeType,
   RendererKind,
-} from './renderer-interface';
-import { RendererError } from './renderer-interface';
+} from './renderer-interface.js';
+import { RendererError } from './renderer-interface.js';
 
 type PdfEngine = 'builtin' | 'react-pdf';
 
