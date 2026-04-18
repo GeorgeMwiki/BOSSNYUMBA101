@@ -659,4 +659,108 @@ export class InspectionService {
       pagination
     );
   }
+
+  // ==========================================================================
+  // NEW: kind-dispatching factory (additive)
+  // ==========================================================================
+
+  /**
+   * Create an inspection by high-level `kind`. This is an additive router
+   * that picks the right underlying inspection `type` and delegates to the
+   * existing `scheduleInspection` method.
+   *
+   * `kind` is a higher-level grouping than `type`:
+   *   - 'move_in'             -> type 'move_in'
+   *   - 'move_out'            -> type 'move_out'
+   *   - 'routine'             -> type 'periodic'
+   *   - 'conditional_survey'  -> type 'periodic' (flag only; survey body lives
+   *                              in ConditionalSurveyService)
+   */
+  async createByKind(
+    kind: 'move_in' | 'move_out' | 'routine' | 'conditional_survey',
+    tenantId: TenantId,
+    propertyId: PropertyId,
+    unitId: UnitId,
+    scheduledDate: string,
+    inspectorId?: UserId,
+    options?: {
+      createdBy?: UserId;
+      correlationId?: string;
+      scheduledTimeSlot?: string;
+    }
+  ): Promise<Result<Inspection, InspectionServiceErrorResult>> {
+    const kindToType: Record<
+      'move_in' | 'move_out' | 'routine' | 'conditional_survey',
+      (typeof INSPECTION_TYPES)[number]
+    > = {
+      move_in: 'move_in',
+      move_out: 'move_out',
+      routine: 'periodic',
+      conditional_survey: 'periodic',
+    };
+    const type = kindToType[kind];
+    if (!type) {
+      return err({
+        code: InspectionServiceError.INVALID_TYPE,
+        message: `Invalid kind: ${kind}`,
+      });
+    }
+    return this.scheduleInspection(
+      tenantId,
+      propertyId,
+      unitId,
+      type,
+      scheduledDate,
+      inspectorId,
+      options
+    );
+  }
+
+  /**
+   * Mark a routine inspection as transitioning into a conditional survey.
+   * This does NOT alter the underlying inspection record; it cancels the
+   * in-progress inspection and returns a descriptor the caller can use to
+   * create the conditional survey via `ConditionalSurveyService.scheduleSurvey`.
+   */
+  async transitionToConditionalSurvey(
+    inspectionId: InspectionId,
+    tenantId: TenantId,
+    updatedBy: UserId
+  ): Promise<
+    Result<
+      {
+        readonly inspection: Inspection;
+        readonly transitionedAt: string;
+      },
+      InspectionServiceErrorResult
+    >
+  > {
+    const inspection = await this.repo.findById(inspectionId, tenantId);
+    if (!inspection) {
+      return err({
+        code: InspectionServiceError.INSPECTION_NOT_FOUND,
+        message: 'Inspection not found',
+      });
+    }
+    if (
+      inspection.status !== 'in_progress' &&
+      inspection.status !== 'scheduled'
+    ) {
+      return err({
+        code: InspectionServiceError.INVALID_STATUS,
+        message: `Cannot transition inspection in status: ${inspection.status}`,
+      });
+    }
+
+    const now = new Date().toISOString();
+    const updated: Inspection = {
+      ...inspection,
+      status: 'cancelled',
+      updatedAt: now,
+      updatedBy,
+    };
+    const saved = await this.repo.update(withConvenienceFields(updated));
+
+    return ok({ inspection: saved, transitionedAt: now });
+  }
 }

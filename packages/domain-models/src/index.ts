@@ -88,6 +88,9 @@ export * from './identity/policy';
 // Audit
 export * from './audit/audit-event';
 
+// Geo — per-org elastic geo-hierarchy (NOT the country registry).
+export * from './geo';
+
 // Property management — property.ts and block.ts each declare their own
 // calculateOccupancyRate. Expose block under a namespace.
 export * from './property/property';

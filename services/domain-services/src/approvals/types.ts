@@ -24,6 +24,7 @@ export const APPROVAL_TYPES = [
   'lease_exception',
   'refund',
   'discount',
+  'payment_flexibility',
 ] as const;
 
 export type ApprovalType = (typeof APPROVAL_TYPES)[number];
@@ -78,11 +79,28 @@ export interface DiscountDetails {
   readonly validUntil?: ISOTimestamp;
 }
 
+export interface PaymentFlexibilityDetails {
+  readonly customerId: string;
+  readonly leaseId: string;
+  readonly requestedArrangement:
+    | 'payment_plan'
+    | 'grace_period_extension'
+    | 'late_fee_waiver'
+    | 'partial_payment_acceptance'
+    | 'deferral';
+  readonly amount: number;
+  readonly currency: string;
+  readonly durationDays: number;
+  readonly reason: string;
+  readonly riskScore?: number;
+}
+
 export type ApprovalRequestDetails =
   | MaintenanceCostDetails
   | LeaseExceptionDetails
   | RefundDetails
-  | DiscountDetails;
+  | DiscountDetails
+  | PaymentFlexibilityDetails;
 
 // ============================================================================
 // Approval Request Entity

@@ -23,6 +23,9 @@ export {
 export * as PaymentPlan from './payment-plan.schema.js';
 export * from './maintenance.schema.js';
 export * from './inspections.schema.js';
+export * from './inspections-extensions.schema.js';
+export * from './conditional-survey.schema.js';
+export * from './asset-components.schema.js';
 export * from './messaging.schema.js';
 export * from './scheduling.schema.js';
 export * from './utilities.schema.js';
@@ -90,3 +93,35 @@ export * from './hr.schema.js';
 
 // Conversation / Thread Store (Brain)
 export * from './conversation.schema.js';
+
+// Marketplace bundle (Negotiation / Marketplace / Waitlist)
+export * from './negotiation.schema.js';
+export * from './marketplace.schema.js';
+export * from './waitlist.schema.js';
+
+// Approval Policies (per-tenant overrides; defaults in domain-services)
+export * from './approval-policy.schema.js';
+
+// Payments bundle
+// GePG — Tanzania Government e-Payment Gateway (NEW 3)
+export * from './gepg.schema.js';
+// Arrears Ledger (NEW 4) — arrearsCases already exported from payment.schema,
+// so we expose the richer module under `ArrearsLedger` namespace.
+export * as ArrearsLedger from './arrears-cases.schema.js';
+// Gamification (NEW 9)
+export * from './gamification.schema.js';
+
+// Documents bundle — render jobs, letter requests, scan bundles, doc-chat
+export * from './document-render-jobs.schema.js';
+export * from './letter-requests.schema.js';
+export * from './scan-bundles.schema.js';
+export * from './document-embeddings.schema.js';
+export * from './doc-chat-sessions.schema.js';
+export * from './doc-chat-messages.schema.js';
+export * from './migration-runs.schema.js';
+
+// Lease + Risk + Compliance bundle (additive)
+export * from './tenant-finance.schema.js';
+export * from './intelligence-history.schema.js';
+export * from './tenant-risk-reports.schema.js';
+export * from './compliance-exports.schema.js';

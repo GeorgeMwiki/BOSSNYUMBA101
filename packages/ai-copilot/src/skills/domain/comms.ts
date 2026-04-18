@@ -271,7 +271,313 @@ export const draftCampaignTool: ToolHandler = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// skill.comms.draft_tenant_letter  (NEW 10 — on-demand letters)
+// ---------------------------------------------------------------------------
+
+export const LetterTypeSchema = z.enum([
+  'residency_proof',
+  'tenancy_confirmation',
+  'payment_confirmation',
+  'tenant_reference',
+]);
+export type LetterType = z.infer<typeof LetterTypeSchema>;
+
+export const DraftTenantLetterParamsSchema = z.object({
+  letterType: LetterTypeSchema,
+  tenantName: z.string().min(1),
+  tenantIdNumber: z.string().optional(),
+  propertyAddress: z.string().min(1),
+  unitIdentifier: z.string().min(1),
+  landlordName: z.string().min(1),
+  organizationName: z.string().optional(),
+  context: z
+    .object({
+      leaseStartDate: z.string().optional(),
+      leaseEndDate: z.string().optional(),
+      monthlyRent: z.number().optional(),
+      currency: z.string().default('KES'),
+      residentSince: z.string().optional(),
+      purposeNote: z.string().optional(),
+      requestedBy: z.string().optional(),
+      payments: z
+        .array(
+          z.object({
+            paidOn: z.string(),
+            description: z.string(),
+            amount: z.number(),
+            method: z.string(),
+            reference: z.string().optional(),
+          })
+        )
+        .optional(),
+      paymentRecord: z.enum(['excellent', 'good', 'satisfactory', 'poor']).optional(),
+      propertyCondition: z.enum(['excellent', 'good', 'satisfactory', 'poor']).optional(),
+      recommend: z.boolean().optional(),
+      conductNotes: z.string().optional(),
+    })
+    .default({}),
+});
+
+export interface TenantLetterDraft {
+  readonly letterType: LetterType;
+  readonly templateId: string;
+  readonly subject: string;
+  readonly preview: string;
+  readonly renderJobRequest: {
+    readonly rendererKind: 'text' | 'docxtemplater' | 'react-pdf' | 'typst';
+    readonly templateId: string;
+    readonly inputs: Record<string, unknown>;
+  };
+  readonly needsApproval: true;
+}
+
+/** Pure planner — does NOT render the final artifact; returns a render-job
+ *  request that LetterService + RendererFactory will fulfill. */
+export function planTenantLetter(
+  params: z.infer<typeof DraftTenantLetterParamsSchema>
+): TenantLetterDraft {
+  const now = new Date().toISOString().slice(0, 10);
+  const ref = `LTR-${Date.now().toString(36).toUpperCase()}`;
+  const base = {
+    letterReference: ref,
+    issueDate: now,
+    tenantName: params.tenantName,
+    tenantIdNumber: params.tenantIdNumber,
+    propertyAddress: params.propertyAddress,
+    unitIdentifier: params.unitIdentifier,
+    landlordName: params.landlordName,
+    organizationName: params.organizationName,
+  };
+
+  let templateId: string;
+  let subject: string;
+  let preview: string;
+  let inputs: Record<string, unknown>;
+
+  switch (params.letterType) {
+    case 'residency_proof':
+      templateId = 'residency-proof-v1';
+      subject = `Residency proof for ${params.tenantName}`;
+      preview = `Confirms ${params.tenantName} resides at ${params.propertyAddress} (Unit ${params.unitIdentifier}).`;
+      inputs = {
+        ...base,
+        residentSince: params.context.residentSince ?? params.context.leaseStartDate ?? now,
+        purposeNote: params.context.purposeNote,
+      };
+      break;
+    case 'tenancy_confirmation':
+      templateId = 'tenancy-confirmation-v1';
+      subject = `Tenancy confirmation for ${params.tenantName}`;
+      preview = `Confirms active tenancy, rent ${params.context.currency} ${params.context.monthlyRent ?? '?'}.`;
+      inputs = {
+        ...base,
+        leaseStartDate: params.context.leaseStartDate ?? now,
+        leaseEndDate: params.context.leaseEndDate,
+        monthlyRent: params.context.monthlyRent ?? 0,
+        currency: params.context.currency,
+        requestedBy: params.context.requestedBy,
+      };
+      break;
+    case 'payment_confirmation':
+      templateId = 'payment-confirmation-v1';
+      subject = `Payment confirmation for ${params.tenantName}`;
+      preview = `Confirms ${params.context.payments?.length ?? 0} payment(s) received.`;
+      inputs = {
+        ...base,
+        payments: params.context.payments ?? [],
+        currency: params.context.currency,
+        note: params.context.purposeNote,
+      };
+      break;
+    case 'tenant_reference':
+      templateId = 'tenant-reference-v1';
+      subject = `Tenant reference for ${params.tenantName}`;
+      preview = `Reference letter. Payment: ${params.context.paymentRecord ?? 'n/a'}; Property: ${params.context.propertyCondition ?? 'n/a'}.`;
+      inputs = {
+        ...base,
+        tenancyStart: params.context.leaseStartDate ?? now,
+        tenancyEnd: params.context.leaseEndDate,
+        paymentRecord: params.context.paymentRecord ?? 'good',
+        propertyCondition: params.context.propertyCondition ?? 'good',
+        conductNotes: params.context.conductNotes,
+        recommend: params.context.recommend ?? true,
+      };
+      break;
+  }
+
+  return {
+    letterType: params.letterType,
+    templateId,
+    subject,
+    preview,
+    renderJobRequest: {
+      rendererKind: 'text',
+      templateId,
+      inputs,
+    },
+    needsApproval: true,
+  };
+}
+
+export const draftTenantLetterTool: ToolHandler = {
+  name: 'skill.comms.draft_tenant_letter',
+  description:
+    'Plan an on-demand tenant letter (residency proof, tenancy confirmation, payment confirmation, tenant reference). Returns a render-job request; actual rendering & approval handled by LetterService.',
+  parameters: {
+    type: 'object',
+    required: [
+      'letterType',
+      'tenantName',
+      'propertyAddress',
+      'unitIdentifier',
+      'landlordName',
+    ],
+    properties: {
+      letterType: { type: 'string' },
+      tenantName: { type: 'string' },
+      tenantIdNumber: { type: 'string' },
+      propertyAddress: { type: 'string' },
+      unitIdentifier: { type: 'string' },
+      landlordName: { type: 'string' },
+      organizationName: { type: 'string' },
+      context: { type: 'object' },
+    },
+  },
+  async execute(params) {
+    const parsed = DraftTenantLetterParamsSchema.safeParse(params);
+    if (!parsed.success) return { ok: false, error: parsed.error.message };
+    const plan = planTenantLetter(parsed.data);
+    return {
+      ok: true,
+      data: plan,
+      evidenceSummary: `Planned ${plan.letterType} letter (${plan.templateId}); requires approval before issuance.`,
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// skill.comms.draft_visual_announcement
+// ---------------------------------------------------------------------------
+// Text-document announcements rendered via the document renderer;
+// OPTIONALLY pair with a Nano Banana marketing cover image. The cover
+// image is MARKETING IMAGERY ONLY and never replaces the text document.
+//
+// This skill returns BOTH a document render-job request (mandatory) and
+// an optional imagery render-job request — strictly separated, per the
+// renderer-factory guardrails.
+
+export const VisualAnnouncementParamsSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().min(1),
+  audience: z.enum(['tenants', 'owners', 'staff', 'public']).default('tenants'),
+  locale: LocaleSchema.default('sw'),
+  coverImagery: z
+    .object({
+      enabled: z.boolean().default(false),
+      prompt: z.string().optional(),
+      style: z.enum(['photo', 'illustration', 'poster', 'flyer']).default('poster'),
+      brandPalette: z.array(z.string()).optional(),
+    })
+    .default({ enabled: false }),
+});
+
+export interface VisualAnnouncementPlan {
+  readonly title: string;
+  readonly audience: string;
+  readonly locale: string;
+  readonly documentRenderJobRequest: {
+    readonly context: 'document';
+    readonly rendererKind: 'text' | 'docxtemplater' | 'react-pdf' | 'typst';
+    readonly templateId: string;
+    readonly inputs: Record<string, unknown>;
+  };
+  readonly imageryRenderJobRequest?: {
+    readonly context: 'marketing-imagery';
+    readonly rendererKind: 'nano-banana';
+    readonly inputs: {
+      readonly prompt: string;
+      readonly style: 'photo' | 'illustration' | 'poster' | 'flyer';
+      readonly brandPalette?: readonly string[];
+    };
+    readonly note: 'MARKETING IMAGERY ONLY — supplemental to the document';
+  };
+}
+
+export function planVisualAnnouncement(
+  params: z.infer<typeof VisualAnnouncementParamsSchema>
+): VisualAnnouncementPlan {
+  const plan: VisualAnnouncementPlan = {
+    title: params.title,
+    audience: params.audience,
+    locale: params.locale,
+    documentRenderJobRequest: {
+      context: 'document',
+      rendererKind: 'text',
+      templateId: 'announcement-v1',
+      inputs: {
+        title: params.title,
+        body: params.body,
+        audience: params.audience,
+        locale: params.locale,
+        issuedAt: new Date().toISOString(),
+      },
+    },
+  };
+
+  if (params.coverImagery.enabled) {
+    const prompt =
+      params.coverImagery.prompt ??
+      `${params.title} — ${params.audience} audience, Kenyan property-management brand tone`;
+    return {
+      ...plan,
+      imageryRenderJobRequest: {
+        context: 'marketing-imagery',
+        rendererKind: 'nano-banana',
+        inputs: {
+          prompt,
+          style: params.coverImagery.style,
+          brandPalette: params.coverImagery.brandPalette,
+        },
+        note: 'MARKETING IMAGERY ONLY — supplemental to the document',
+      },
+    };
+  }
+  return plan;
+}
+
+export const draftVisualAnnouncementTool: ToolHandler = {
+  name: 'skill.comms.draft_visual_announcement',
+  description:
+    'Plan a text-document announcement (rendered via the document renderer) with an OPTIONAL Nano Banana marketing cover image. Imagery is strictly supplemental; never replaces the document.',
+  parameters: {
+    type: 'object',
+    required: ['title', 'body'],
+    properties: {
+      title: { type: 'string' },
+      body: { type: 'string' },
+      audience: { type: 'string' },
+      locale: { type: 'string' },
+      coverImagery: { type: 'object' },
+    },
+  },
+  async execute(params) {
+    const parsed = VisualAnnouncementParamsSchema.safeParse(params);
+    if (!parsed.success) return { ok: false, error: parsed.error.message };
+    const plan = planVisualAnnouncement(parsed.data);
+    return {
+      ok: true,
+      data: plan,
+      evidenceSummary: `Planned announcement '${plan.title}' (${plan.audience}, ${plan.locale})${
+        plan.imageryRenderJobRequest ? ' + marketing cover imagery' : ''
+      }.`,
+    };
+  },
+};
+
 export const COMMS_SKILL_TOOLS: ToolHandler[] = [
   draftTenantNoticeTool,
   draftCampaignTool,
+  draftTenantLetterTool,
+  draftVisualAnnouncementTool,
 ];

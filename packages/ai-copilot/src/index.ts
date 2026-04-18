@@ -100,6 +100,25 @@ export type {
   ModelInfo,
 } from './providers/ai-provider.js';
 
+// Shared Anthropic client (used by services migrating off OpenAI)
+export {
+  ModelTier,
+  createAnthropicClient,
+  generateStructured,
+  StructuredGenerationFailedError,
+} from './providers/anthropic-client.js';
+
+export type {
+  ModelTierId,
+  AnthropicClient,
+  AnthropicClientConfig,
+  AnthropicSdkLike,
+  AnthropicMessageRequest,
+  AnthropicMessageResponse,
+  GenerateStructuredOptions,
+  GenerateStructuredResult,
+} from './providers/anthropic-client.js';
+
 // Services
 export {
   BaseCopilot,

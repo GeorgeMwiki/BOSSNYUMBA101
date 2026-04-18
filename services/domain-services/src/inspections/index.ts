@@ -10,3 +10,8 @@ export * from './events.js';
 export * from './room-template.js';
 export * from './checklist-templates.js';
 export * from './inspection-service.js';
+
+// Additive modules (NEW 2, 16, 19)
+export * as ConditionalSurvey from './conditional-survey/index.js';
+export * as Far from './far/index.js';
+export * as MoveOut from './move-out/index.js';

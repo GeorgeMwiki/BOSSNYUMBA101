@@ -26,6 +26,7 @@
   "author": "BOSSNYUMBA",
   "license": "UNLICENSED",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
     "openai": "^4.28.0",
     "jose": "^5.2.0",
     "zod": "^3.22.4",

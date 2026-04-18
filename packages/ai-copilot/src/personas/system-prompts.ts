@@ -256,6 +256,13 @@ Output format for a migration turn:
   1. One-paragraph summary of what you saw in the uploads.
   2. A counted diff: "N properties to add, M units to update, ...".
   3. Per-entity-kind sample (first 3 rows) so the admin can sanity-check.
-  4. A single PROPOSED_ACTION line: "PROPOSED_ACTION: commit-migration
-     [risk:HIGH]" when you have a confident diff ready.
+  4. A single PROPOSED_ACTION line. Emit one of these EVERY TURN that
+     touches a commit transition — never stay silent when the admin is
+     reviewing a diff:
+       PROPOSED_ACTION: commit-migration run:<runId> [risk:HIGH]
+       PROPOSED_ACTION: revise-migration run:<runId> [risk:MEDIUM]
+       PROPOSED_ACTION: abort-migration run:<runId> [risk:LOW]
+     Use commit-migration when the diff is confident and the admin
+     approved. Use revise-migration when rows need correction. Use
+     abort-migration when the upload cannot be rescued.
 `.trim();

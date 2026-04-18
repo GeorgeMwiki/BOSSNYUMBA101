@@ -66,6 +66,17 @@ export const terminationReasonEnum = pgEnum('termination_reason', [
   'other',
 ]);
 
+// Renewal workflow status (migration 0017)
+export const renewalStatusEnum = pgEnum('renewal_status', [
+  'not_started',
+  'window_opened',
+  'proposed',
+  'accepted',
+  'declined',
+  'terminated',
+  'expired',
+]);
+
 // ============================================================================
 // Leases Table
 // ============================================================================
@@ -157,6 +168,16 @@ export const leases = pgTable(
     
     // Previous lease (for renewals)
     previousLeaseId: text('previous_lease_id'),
+
+    // Renewal workflow (migration 0017 — additive)
+    renewalStatus: renewalStatusEnum('renewal_status').notNull().default('not_started'),
+    renewalWindowOpenedAt: timestamp('renewal_window_opened_at', { withTimezone: true }),
+    renewalProposedAt: timestamp('renewal_proposed_at', { withTimezone: true }),
+    renewalProposedRent: integer('renewal_proposed_rent'),
+    renewalDecidedAt: timestamp('renewal_decided_at', { withTimezone: true }),
+    renewalDecisionBy: text('renewal_decision_by'),
+    terminationDate: timestamp('termination_date', { withTimezone: true }),
+    terminationReasonNotes: text('termination_reason_notes'),
     
     // Special terms
     specialTerms: text('special_terms'),
@@ -195,6 +216,10 @@ export const leases = pgTable(
     statusIdx: index('leases_status_idx').on(table.status),
     startDateIdx: index('leases_start_date_idx').on(table.startDate),
     endDateIdx: index('leases_end_date_idx').on(table.endDate),
+    renewalStatusIdx: index('leases_renewal_status_idx').on(table.renewalStatus),
+    renewalWindowOpenedAtIdx: index('leases_renewal_window_opened_at_idx').on(
+      table.renewalWindowOpenedAt,
+    ),
   })
 );
 

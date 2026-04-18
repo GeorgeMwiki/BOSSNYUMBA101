@@ -7,6 +7,17 @@ export interface Payment {
   customerName?: string;
   transactionDate: Date;
   status: 'pending' | 'matched' | 'unmatched' | 'partial';
+  /**
+   * GePG control number (Tanzania). When present, the
+   * `matchByGepgControlNumber` matcher should be preferred because it
+   * is a deterministic 1:1 link.
+   */
+  gepgControlNumber?: string;
+  /**
+   * Provider channel: useful for disambiguating matchers. E.g. 'gepg',
+   * 'mpesa', 'airtel'.
+   */
+  provider?: string;
 }
 
 export interface Invoice {
@@ -21,6 +32,55 @@ export interface Invoice {
   balance: number;
   dueDate: Date;
   status: 'pending' | 'partial' | 'paid' | 'overdue';
+  /**
+   * GePG control number bound to this invoice (if one was issued).
+   */
+  gepgControlNumber?: string;
+}
+
+export interface GepgMatchResult {
+  readonly matched: boolean;
+  readonly confidence: number;
+  readonly reason: string;
+}
+
+/**
+ * Match a payment to an invoice by GePG control number.
+ *
+ * Deterministic match — if both sides carry the same control number
+ * and the invoice belongs to the same tenant, it is an exact match
+ * with 100% confidence regardless of amount (partial payments are
+ * allowed; amount diff is reported but does not fail the match).
+ *
+ * Cross-tenant protection: the caller MUST have already filtered
+ * invoices by tenantId. This function does not read tenantId from
+ * the payment because payments table uses a separate tenant scope.
+ */
+export function matchByGepgControlNumber(
+  payment: Payment,
+  invoice: Invoice
+): GepgMatchResult {
+  if (!payment.gepgControlNumber) {
+    return { matched: false, confidence: 0, reason: 'no_control_number_on_payment' };
+  }
+  if (!invoice.gepgControlNumber) {
+    return { matched: false, confidence: 0, reason: 'no_control_number_on_invoice' };
+  }
+  if (payment.gepgControlNumber.trim() !== invoice.gepgControlNumber.trim()) {
+    return { matched: false, confidence: 0, reason: 'control_number_mismatch' };
+  }
+  if (invoice.status === 'paid' || invoice.balance <= 0) {
+    return {
+      matched: true,
+      confidence: 1,
+      reason: 'control_number_match_invoice_already_paid',
+    };
+  }
+  return {
+    matched: true,
+    confidence: 1,
+    reason: 'control_number_exact_match',
+  };
 }
 
 export interface MatchResult {

@@ -15,6 +15,7 @@ import type {
   TenantScoped,
   ISOTimestamp,
 } from '../common/types.js';
+import type { AuthorityLevelId, WorkerTag } from './authority-level.js';
 
 /** User status lifecycle */
 export const UserStatus = {
@@ -115,6 +116,19 @@ export interface UserRoleAssignment {
   readonly assignedBy: UserId;
   /** Optional expiration for temporary assignments */
   readonly expiresAt: ISOTimestamp | null;
+  /**
+   * Orthogonal chain-of-command tier. Optional for backwards compatibility:
+   * legacy rows without an explicit value are treated as
+   * `DEFAULT_AUTHORITY_FOR_ROLE[roleId]` at read time and backfilled by a
+   * one-time migration. See `./authority-level.ts`.
+   */
+  readonly authorityLevel?: AuthorityLevelId;
+  /**
+   * Tags that route workflows to this user (e.g. station-master, surveyor).
+   * Absent or empty array means no tag-based routing applies. See
+   * `./authority-level.ts` for the `WorkerTag` shape.
+   */
+  readonly workerTags?: readonly WorkerTag[];
 }
 
 /** Core User entity */

@@ -29,6 +29,7 @@ import type {
   ApprovalRequestRepository,
   ApprovalPolicyRepository,
 } from './approval-repository.interface.js';
+import type { ApprovalPolicyOverrideRepository } from './approval-policy-repository.interface.js';
 
 /** Resolves approver UserId from role. Used to assign pending requests to users. */
 export type ApproverResolver = (tenantId: TenantId, role: string) => Promise<UserId | null>;
@@ -78,7 +79,15 @@ export class ApprovalService {
     private readonly requestRepo: ApprovalRequestRepository,
     private readonly policyRepo: ApprovalPolicyRepository,
     private readonly eventBus: EventBus,
-    private readonly approverResolver?: ApproverResolver
+    private readonly approverResolver?: ApproverResolver,
+    /**
+     * Optional per-org override repository (scaffolded item #12).
+     * When provided, the service consults it FIRST for any policy lookup; if
+     * no override is found, it falls back to getDefaultPolicyForType. Absence
+     * of this dependency preserves the previous behavior (defaults only,
+     * persisted via policyRepo).
+     */
+    private readonly policyOverrideRepo?: ApprovalPolicyOverrideRepository
   ) {}
 
   async createApprovalRequest(
@@ -328,6 +337,11 @@ export class ApprovalService {
   }
 
   async getApprovalPolicy(tenantId: TenantId, type: ApprovalType): Promise<Result<ApprovalPolicy, ApprovalServiceErrorResult>> {
+    // Per-org override path (scaffolded item #12): consult the override repo
+    // first. When no override exists, fall back to the legacy policy repo,
+    // and finally to the hardcoded defaults floor.
+    const override = (await this.policyOverrideRepo?.findPolicy(tenantId, type)) ?? null;
+    if (override) return ok(override);
     const policy = await this.policyRepo.findByTenantAndType(tenantId, type);
     if (!policy) {
       const defaultPolicy = getDefaultPolicyForType(type, tenantId, '' as UserId);
@@ -369,6 +383,11 @@ export class ApprovalService {
   }
 
   private async getOrCreatePolicy(tenantId: TenantId, type: ApprovalType, updatedBy: UserId): Promise<ApprovalPolicy> {
+    // Scaffolded item #12: per-org override wins over both the legacy policy
+    // repo and the hardcoded defaults. Defaults remain the floor and are
+    // never removed from default-policies.ts.
+    const override = (await this.policyOverrideRepo?.findPolicy(tenantId, type)) ?? null;
+    if (override) return override;
     const existing = await this.policyRepo.findByTenantAndType(tenantId, type);
     if (existing) return existing;
     const def = getDefaultPolicyForType(type, tenantId, updatedBy);

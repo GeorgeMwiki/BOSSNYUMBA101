@@ -1,6 +1,11 @@
 /**
  * Region-adaptive configuration registry.
  *
+ * RegionConfig is country/currency/compliance only. It is NOT the location
+ * hierarchy. For org-defined geographic trees (districts, regions, wards,
+ * estates — with arbitrary depth and org-specific label vocabulary), see
+ * `packages/domain-models/src/geo/geo-node.ts`.
+ *
  * BOSSNYUMBA is a GLOBAL platform. When a tenant signs up they select
  * their country/region, and everything — currency, phone format, tax
  * rates, compliance rules, timezone, locale — adapts to that selection.

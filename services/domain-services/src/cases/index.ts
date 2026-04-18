@@ -11,6 +11,8 @@ import type { TenantId, UserId, PaginationParams, PaginatedResult, Result, ISOTi
 import { ok, err } from '@bossnyumba/domain-models';
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
+import { assertTransition, type CaseStatusValue } from './state-machine.js';
+import type { CaseStatusChangedEvent } from './events.js';
 
 // ============================================================================
 // Types
@@ -479,6 +481,80 @@ export class CaseService {
       resolution: caseEntity.resolution,
     };
     return ok(evidencePack);
+  }
+
+  /**
+   * transitionCase — state-machine-guarded status change.
+   *
+   * Additive method (SCAFFOLDED_COMPLETION.md §3). Does NOT replace
+   * the existing escalateCase/resolveCase/closeCase methods; those
+   * remain the canonical path for their respective side effects
+   * (escalation level bumps, resolution payload, closure reason).
+   *
+   * Use this method for intermediate transitions, e.g.
+   * OPEN -> IN_PROGRESS, IN_PROGRESS -> PENDING_RESPONSE.
+   */
+  async transitionCase(
+    caseId: CaseId,
+    tenantId: TenantId,
+    nextStatus: CaseStatusValue,
+    reason: string,
+    actor: UserId,
+    correlationId?: string
+  ): Promise<Result<Case, CaseServiceErrorResult>> {
+    const caseEntity = await this.caseRepo.findById(caseId, tenantId);
+    if (!caseEntity) {
+      return err({ code: CaseServiceError.CASE_NOT_FOUND, message: 'Case not found' });
+    }
+
+    const currentStatus = caseEntity.status as CaseStatusValue;
+    const check = assertTransition(currentStatus, nextStatus);
+    if (!check.success) {
+      return err({
+        code: CaseServiceError.INVALID_STATUS_TRANSITION,
+        message: check.error.message,
+      });
+    }
+
+    const now = new Date().toISOString() as ISOTimestamp;
+    const timelineEvent: CaseTimelineEvent = {
+      id: `event_${Date.now()}`,
+      type: 'STATUS_CHANGED',
+      description: `Status changed ${currentStatus} -> ${nextStatus}: ${reason}`,
+      metadata: { from: currentStatus, to: nextStatus, reason },
+      createdAt: now,
+      createdBy: actor,
+    };
+
+    const updatedCase: Case = {
+      ...caseEntity,
+      status: nextStatus as CaseStatus,
+      timeline: [...caseEntity.timeline, timelineEvent],
+      updatedAt: now,
+      updatedBy: actor,
+    };
+    const savedCase = await this.caseRepo.update(updatedCase);
+
+    const event: CaseStatusChangedEvent = {
+      eventId: generateEventId(),
+      eventType: 'CaseStatusChanged',
+      timestamp: now,
+      tenantId,
+      correlationId: correlationId ?? generateEventId(),
+      causationId: null,
+      metadata: {},
+      payload: {
+        caseId: savedCase.id,
+        caseNumber: savedCase.caseNumber,
+        from: currentStatus,
+        to: nextStatus,
+        reason,
+        actor,
+      },
+    };
+    await this.eventBus.publish(createEventEnvelope(event, savedCase.id, 'Case'));
+
+    return ok(savedCase);
   }
 
   private async generateCaseNumber(tenantId: TenantId): Promise<string> {

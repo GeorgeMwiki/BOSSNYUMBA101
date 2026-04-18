@@ -473,3 +473,15 @@ export class MemoryApprovalRuleStore implements ApprovalRuleStore {
     ruleMap.clear();
   }
 }
+
+// ============================================================================
+// Per-org Policy Overrides (Scaffolded item #12) — additive re-exports
+// ============================================================================
+// The newer approval-service.ts / default-policies.ts / types.ts pipeline
+// supports per-tenant policy overrides that fall back to the hardcoded
+// defaults floor. These exports expose the interface + Postgres implementation
+// alongside the legacy in-file service above.
+
+export type { ApprovalPolicyOverrideRepository } from './approval-policy-repository.interface.js';
+export { PostgresApprovalPolicyRepository } from './postgres-approval-policy-repository.js';
+export type { PostgresApprovalPolicyRepositoryClient } from './postgres-approval-policy-repository.js';

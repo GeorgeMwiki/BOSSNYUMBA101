@@ -6,6 +6,36 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { CHURN_PREDICTION_PROMPT } from '../prompts/index.js';
+import {
+  type AnthropicClient,
+  createAnthropicClient,
+  generateStructured,
+  ModelTier,
+} from '../providers/anthropic-client.js';
+import {
+  calculateChurnBaseline,
+  type ChurnBaselineInput,
+  type DeterministicChurnResult,
+} from './risk/churn-baseline-calculator.js';
+
+/**
+ * Pluggable churn model contract. The default implementation
+ * (`DeterministicChurnModel`) uses the weighted calculator; future ML models
+ * (e.g. XGBoost, gradient-boosted trees) can implement the same interface.
+ */
+export interface IChurnModel {
+  readonly name: string;
+  predict(input: ChurnBaselineInput): Promise<DeterministicChurnResult>;
+}
+
+export class DeterministicChurnModel implements IChurnModel {
+  readonly name = 'deterministic-weighted-v1';
+  async predict(
+    input: ChurnBaselineInput,
+  ): Promise<DeterministicChurnResult> {
+    return calculateChurnBaseline(input);
+  }
+}
 
 export const ChurnRiskLevel = {
   VERY_HIGH: 'VERY_HIGH',
@@ -105,43 +135,125 @@ const ChurnPredictionResultSchema = z.object({
 });
 
 export interface ChurnPredictorConfig {
-  openaiApiKey: string;
+  /** @deprecated Kept for backwards compatibility during migration. */
+  openaiApiKey?: string;
+  /** Preferred: Anthropic API key (ANTHROPIC_API_KEY). */
+  anthropicApiKey?: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  anthropicClient?: AnthropicClient;
+  /** Pluggable deterministic / ML model (defaults to weighted baseline). */
+  churnModel?: IChurnModel;
 }
 
 export class ChurnPredictorService {
-  private openai: OpenAI;
+  private anthropic: AnthropicClient;
   private model: string;
   private temperature: number;
   private maxTokens: number;
+  private churnModel: IChurnModel;
 
   constructor(config: ChurnPredictorConfig) {
-    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.model = config.model ?? 'gpt-4-turbo-preview';
+    this.model = config.model ?? ModelTier.SONNET;
     this.temperature = config.temperature ?? 0.3;
     this.maxTokens = config.maxTokens ?? 2048;
+    this.churnModel = config.churnModel ?? new DeterministicChurnModel();
+
+    if (config.anthropicClient) {
+      this.anthropic = config.anthropicClient;
+    } else {
+      const apiKey =
+        config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY ?? '';
+      if (!apiKey) {
+        throw new Error(
+          'ChurnPredictorService: ANTHROPIC_API_KEY or anthropicClient is required',
+        );
+      }
+      this.anthropic = createAnthropicClient({
+        apiKey,
+        defaultModel: this.model,
+      });
+    }
   }
 
-  async predictChurnRisk(customerId: string, data?: Partial<CustomerData>): Promise<ChurnPredictionResult> {
+  async predictChurnRisk(
+    customerId: string,
+    data?: Partial<CustomerData>,
+    baselineInput?: ChurnBaselineInput,
+  ): Promise<ChurnPredictionResult> {
     const customerContext = this.buildCustomerContext(customerId, data);
 
-    const response = await this.openai.chat.completions.create({
+    // DETERMINISTIC FIRST — compute baseline, pass to LLM for narration.
+    const deterministic = await this.churnModel.predict(
+      baselineInput ?? this.deriveBaselineFromCustomerData(customerContext),
+    );
+
+    const userContent = `${CHURN_PREDICTION_PROMPT.user}
+
+Customer Data:
+${JSON.stringify(customerContext, null, 2)}
+
+DETERMINISTIC CHURN BASELINE (authoritative — narrate, do not override):
+${JSON.stringify(deterministic, null, 2)}`;
+
+    const result = await generateStructured(this.anthropic, {
+      systemPrompt: CHURN_PREDICTION_PROMPT.system,
+      prompt: userContent,
+      schema: ChurnPredictionResultSchema,
       model: this.model,
-      messages: [
-        { role: 'system', content: CHURN_PREDICTION_PROMPT.system },
-        { role: 'user', content: `${CHURN_PREDICTION_PROMPT.user}\n\nCustomer Data:\n${JSON.stringify(customerContext, null, 2)}` },
-      ],
       temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      response_format: { type: 'json_object' },
+      maxTokens: this.maxTokens,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error('No response from OpenAI');
+    const narrated = result.data as ChurnPredictionResult;
+    // Preserve deterministic score & level
+    return {
+      ...narrated,
+      score: deterministic.score,
+      riskLevel:
+        deterministic.level as unknown as ChurnPredictionResult['riskLevel'],
+    };
+  }
 
-    return ChurnPredictionResultSchema.parse(JSON.parse(content)) as ChurnPredictionResult;
+  private deriveBaselineFromCustomerData(
+    ctx: CustomerData,
+  ): ChurnBaselineInput {
+    const daysUntilLeaseEnd = Math.ceil(
+      (new Date(ctx.leaseEndDate).getTime() - Date.now()) /
+        (1000 * 60 * 60 * 24),
+    );
+    return {
+      lateness: {
+        onTimePayments: ctx.paymentHistory.onTimePayments,
+        latePayments: ctx.paymentHistory.latePayments,
+        missedPayments: ctx.paymentHistory.missedPayments,
+        averageDaysLate: ctx.paymentHistory.averageDaysLate,
+      },
+      complaints: {
+        complaintsCount: ctx.communicationHistory.complaintsCount,
+        inquiriesCount: ctx.communicationHistory.inquiriesCount,
+        sentimentTrend: ctx.communicationHistory.sentimentTrend,
+      },
+      maintenance: {
+        totalRequests: ctx.maintenanceRequests.total,
+        openRequests: ctx.maintenanceRequests.openCount,
+        averageResolutionDays: ctx.maintenanceRequests.averageResolutionDays,
+        satisfactionRating: ctx.maintenanceRequests.satisfactionRating,
+      },
+      recency: {
+        daysUntilLeaseEnd,
+        previousRenewals: ctx.renewalHistory?.previousRenewals ?? 0,
+        declinedOffers: ctx.renewalHistory?.declinedOffers ?? 0,
+      },
+      market: {
+        areaRentTrend: ctx.marketContext?.areaRentTrend ?? 'stable',
+        competitorAvailability:
+          ctx.marketContext?.competitorAvailability ?? 'medium',
+        marketRentComparison:
+          ctx.marketContext?.marketRentComparison ?? 1,
+      },
+    };
   }
 
   private buildCustomerContext(customerId: string, data?: Partial<CustomerData>): CustomerData {
@@ -166,10 +278,16 @@ export function createChurnPredictorService(config: ChurnPredictorConfig): Churn
 export async function predictChurnRisk(
   customerId: string,
   data?: Partial<CustomerData>,
-  config?: Partial<ChurnPredictorConfig>
+  config?: Partial<ChurnPredictorConfig>,
 ): Promise<ChurnPredictionResult> {
-  const apiKey = config?.openaiApiKey ?? process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OpenAI API key is required');
-  const service = createChurnPredictorService({ openaiApiKey: apiKey, ...config });
+  const anthropicApiKey =
+    config?.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!anthropicApiKey && !config?.anthropicClient) {
+    throw new Error('Anthropic API key or client is required');
+  }
+  const service = createChurnPredictorService({
+    anthropicApiKey,
+    ...config,
+  });
   return service.predictChurnRisk(customerId, data);
 }

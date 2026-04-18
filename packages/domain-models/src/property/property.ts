@@ -4,6 +4,7 @@
  */
 
 import type { Brand, TenantId, UserId, EntityMetadata, SoftDeletable, ISOTimestamp } from '../common/types';
+import type { GeoNodeId } from '../geo';
 
 export type PropertyId = Brand<string, 'PropertyId'>;
 export type OwnerId = Brand<string, 'OwnerId'>;
@@ -60,6 +61,13 @@ export interface Property extends EntityMetadata, SoftDeletable {
   readonly description: string | null;
   readonly imageUrls: readonly string[];
   readonly managerId: UserId | null; // Assigned estate manager
+  /** Deepest node in the per-org elastic geo-hierarchy this property belongs to.
+   *  Optional; `undefined` until an admin classifies the property. See
+   *  `packages/domain-models/src/geo/geo-node.ts`. */
+  readonly geoNodeId?: GeoNodeId;
+  /** Canonical street-level pin (GPS). Takes precedence over `address.lat/lng`
+   *  for map rendering and point-in-polygon classification. */
+  readonly pin?: { readonly lat: number; readonly lng: number };
 }
 
 /** Create a new property */

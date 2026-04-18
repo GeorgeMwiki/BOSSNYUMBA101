@@ -6,6 +6,17 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { PAYMENT_RISK_PROMPT } from '../prompts/index.js';
+import {
+  type AnthropicClient,
+  createAnthropicClient,
+  generateStructured,
+  ModelTier,
+} from '../providers/anthropic-client.js';
+import {
+  calculatePaymentRisk,
+  type DeterministicPaymentRiskResult,
+  type PaymentRiskInput as DeterministicPaymentRiskInput,
+} from './risk/payment-risk-calculator.js';
 
 export const PaymentRiskLevel = {
   CRITICAL: 'CRITICAL',
@@ -137,43 +148,130 @@ const PaymentRiskResultSchema = z.object({
 });
 
 export interface PaymentRiskConfig {
-  openaiApiKey: string;
+  /** @deprecated Kept for backwards compatibility during migration. */
+  openaiApiKey?: string;
+  /** Preferred: Anthropic API key (ANTHROPIC_API_KEY). */
+  anthropicApiKey?: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  anthropicClient?: AnthropicClient;
 }
 
 export class PaymentRiskService {
-  private openai: OpenAI;
+  private anthropic: AnthropicClient;
   private model: string;
   private temperature: number;
   private maxTokens: number;
 
   constructor(config: PaymentRiskConfig) {
-    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.model = config.model ?? 'gpt-4-turbo-preview';
+    this.model = config.model ?? ModelTier.SONNET;
     this.temperature = config.temperature ?? 0.2;
     this.maxTokens = config.maxTokens ?? 2048;
+
+    if (config.anthropicClient) {
+      this.anthropic = config.anthropicClient;
+    } else {
+      const apiKey =
+        config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY ?? '';
+      if (!apiKey) {
+        throw new Error(
+          'PaymentRiskService: ANTHROPIC_API_KEY or anthropicClient is required',
+        );
+      }
+      this.anthropic = createAnthropicClient({
+        apiKey,
+        defaultModel: this.model,
+      });
+    }
   }
 
-  async predictPaymentRisk(customerId: string, data?: Partial<PaymentCustomerData>): Promise<PaymentRiskResult> {
+  async predictPaymentRisk(
+    customerId: string,
+    data?: Partial<PaymentCustomerData>,
+    deterministicInput?: DeterministicPaymentRiskInput,
+  ): Promise<PaymentRiskResult> {
     const customerData = this.buildCustomerData(customerId, data);
 
-    const response = await this.openai.chat.completions.create({
+    // DETERMINISTIC FLOOR — compute first, never mutate from LLM output
+    const deterministic = deterministicInput
+      ? calculatePaymentRisk(deterministicInput)
+      : this.deriveDeterministicFromCustomerData(customerData);
+
+    const userContent = `${PAYMENT_RISK_PROMPT.user}
+
+Customer Data:
+${JSON.stringify(customerData, null, 2)}
+
+DETERMINISTIC SCORE (authoritative — narrate, do not override):
+${JSON.stringify(deterministic, null, 2)}`;
+
+    const result = await generateStructured(this.anthropic, {
+      systemPrompt: PAYMENT_RISK_PROMPT.system,
+      prompt: userContent,
+      schema: PaymentRiskResultSchema,
       model: this.model,
-      messages: [
-        { role: 'system', content: PAYMENT_RISK_PROMPT.system },
-        { role: 'user', content: `${PAYMENT_RISK_PROMPT.user}\n\nCustomer Data:\n${JSON.stringify(customerData, null, 2)}` },
-      ],
       temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      response_format: { type: 'json_object' },
+      maxTokens: this.maxTokens,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error('No response from OpenAI');
+    // Enforce: LLM may narrate but NOT overwrite the score/level we computed.
+    const narrated = result.data as PaymentRiskResult;
+    return {
+      ...narrated,
+      score: deterministic.score,
+      riskLevel:
+        deterministic.level as unknown as PaymentRiskResult['riskLevel'],
+    };
+  }
 
-    return PaymentRiskResultSchema.parse(JSON.parse(content)) as PaymentRiskResult;
+  /**
+   * Map the incoming `PaymentCustomerData` to the deterministic calculator's
+   * input shape. Missing fields fall back to neutral values so we always have
+   * a score floor.
+   */
+  private deriveDeterministicFromCustomerData(
+    data: PaymentCustomerData,
+  ): DeterministicPaymentRiskResult {
+    const statusRaw = data.financialIndicators?.employmentStatus ?? 'unknown';
+    const employmentStatus: DeterministicPaymentRiskInput['employment']['status'] =
+      statusRaw === 'employed' ||
+      statusRaw === 'self-employed' ||
+      statusRaw === 'unemployed' ||
+      statusRaw === 'retired'
+        ? statusRaw
+        : 'unknown';
+
+    const input: DeterministicPaymentRiskInput = {
+      history: {
+        totalOnTime: data.paymentHistory.totalOnTime,
+        totalLate: data.paymentHistory.totalLate,
+        totalMissed: data.paymentHistory.totalMissed,
+        averageDaysLate: data.paymentHistory.averageDaysLate,
+      },
+      income: {
+        monthlyNetIncome:
+          data.financialIndicators?.incomeToRentRatio != null && data.monthlyRent
+            ? data.financialIndicators.incomeToRentRatio * data.monthlyRent
+            : 0,
+        monthlyRent: data.monthlyRent,
+      },
+      employment: {
+        status: employmentStatus,
+        monthsAtEmployer: data.financialIndicators?.recentJobChange ? 3 : 24,
+        verified: !data.financialIndicators?.recentJobChange,
+      },
+      arrears: {
+        currentBalance: data.currentBalance,
+        monthlyRent: data.monthlyRent,
+      },
+      litigation: {
+        evictions: 0,
+        judgments: 0,
+        activeLawsuits: 0,
+      },
+    };
+    return calculatePaymentRisk(input);
   }
 
   private buildCustomerData(customerId: string, data?: Partial<PaymentCustomerData>): PaymentCustomerData {
@@ -202,10 +300,16 @@ export function createPaymentRiskService(config: PaymentRiskConfig): PaymentRisk
 export async function predictPaymentRisk(
   customerId: string,
   data?: Partial<PaymentCustomerData>,
-  config?: Partial<PaymentRiskConfig>
+  config?: Partial<PaymentRiskConfig>,
 ): Promise<PaymentRiskResult> {
-  const apiKey = config?.openaiApiKey ?? process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OpenAI API key is required');
-  const service = createPaymentRiskService({ openaiApiKey: apiKey, ...config });
+  const anthropicApiKey =
+    config?.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!anthropicApiKey && !config?.anthropicClient) {
+    throw new Error('Anthropic API key or client is required');
+  }
+  const service = createPaymentRiskService({
+    anthropicApiKey,
+    ...config,
+  });
   return service.predictPaymentRisk(customerId, data);
 }

@@ -13,6 +13,12 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { RENEWAL_STRATEGY_PROMPT } from '../prompts/copilot-prompts.js';
+import {
+  type AnthropicClient,
+  createAnthropicClient,
+  generateStructured,
+  ModelTier,
+} from '../providers/anthropic-client.js';
 
 // ============================================================================
 // Types and Enums
@@ -452,10 +458,18 @@ const RenewalStrategyResultSchema = z.object({
 // ============================================================================
 
 export interface RenewalStrategyConfig {
-  openaiApiKey: string;
+  /** @deprecated Kept for backwards compatibility during migration. */
+  openaiApiKey?: string;
+  /** Preferred: Anthropic API key (ANTHROPIC_API_KEY). */
+  anthropicApiKey?: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Optional: inject a preconfigured Anthropic client. When omitted, a client
+   * is built from `anthropicApiKey` at construction time.
+   */
+  anthropicClient?: AnthropicClient;
 }
 
 // ============================================================================
@@ -463,33 +477,44 @@ export interface RenewalStrategyConfig {
 // ============================================================================
 
 export class RenewalStrategyGenerator {
-  private openai: OpenAI;
+  private anthropic: AnthropicClient;
   private model: string;
   private temperature: number;
   private maxTokens: number;
 
   constructor(config: RenewalStrategyConfig) {
-    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.model = config.model ?? 'gpt-4-turbo-preview';
+    this.model = config.model ?? ModelTier.SONNET;
     this.temperature = config.temperature ?? 0.4;
     this.maxTokens = config.maxTokens ?? 4000;
+
+    if (config.anthropicClient) {
+      this.anthropic = config.anthropicClient;
+    } else {
+      const apiKey =
+        config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY ?? '';
+      if (!apiKey) {
+        throw new Error(
+          'RenewalStrategyGenerator: ANTHROPIC_API_KEY or anthropicClient is required',
+        );
+      }
+      this.anthropic = createAnthropicClient({
+        apiKey,
+        defaultModel: this.model,
+      });
+    }
   }
 
   /**
-   * Generate comprehensive renewal strategy with multiple options
+   * Generate comprehensive renewal strategy with multiple options.
+   * Migrated from OpenAI to Anthropic via the shared client. Zod schema is
+   * unchanged so callers need no updates.
    */
   async generateStrategy(
     tenant: TenantRenewalData,
     market: MarketCompData,
     policies: PropertyPolicies
   ): Promise<RenewalStrategyResult> {
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: RENEWAL_STRATEGY_PROMPT.system },
-        {
-          role: 'user',
-          content: `${RENEWAL_STRATEGY_PROMPT.user}
+    const userPrompt = `${RENEWAL_STRATEGY_PROMPT.user}
 
 Tenant Data:
 ${JSON.stringify(tenant, null, 2)}
@@ -501,18 +526,18 @@ Property Policies:
 ${JSON.stringify(policies, null, 2)}
 
 Generate at least 3-4 distinct renewal options covering different strategies.
-Include detailed NOI impact and churn risk analysis for each option.`,
-        },
-      ],
+Include detailed NOI impact and churn risk analysis for each option.`;
+
+    const result = await generateStructured(this.anthropic, {
+      prompt: userPrompt,
+      systemPrompt: RENEWAL_STRATEGY_PROMPT.system,
+      schema: RenewalStrategyResultSchema,
+      model: this.model,
       temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      response_format: { type: 'json_object' },
+      maxTokens: this.maxTokens,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error('No response from OpenAI');
-
-    return RenewalStrategyResultSchema.parse(JSON.parse(content)) as RenewalStrategyResult;
+    return result.data as RenewalStrategyResult;
   }
 
   /**
@@ -583,16 +608,17 @@ Include detailed NOI impact and churn risk analysis for each option.`,
     maxConcession: number;
     walkAwayAdvice: string;
   }> {
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a renewal negotiation AI. Analyze counteroffers and recommend adjusted strategies.`,
-        },
-        {
-          role: 'user',
-          content: `Original Strategy:
+    const counterofferSchema = z.object({
+      adjustedOptions: z.array(z.any()),
+      recommendation: z.string(),
+      maxConcession: z.number(),
+      walkAwayAdvice: z.string(),
+    });
+
+    const result = await generateStructured(this.anthropic, {
+      systemPrompt:
+        'You are a renewal negotiation AI. Analyze counteroffers and recommend adjusted strategies.',
+      prompt: `Original Strategy:
 ${JSON.stringify(originalResult, null, 2)}
 
 Tenant Counteroffer:
@@ -600,17 +626,13 @@ ${JSON.stringify(counteroffer, null, 2)}
 
 Provide adjusted options that balance tenant requests with property objectives.
 Return JSON with: adjustedOptions (array), recommendation (string), maxConcession (number), walkAwayAdvice (string)`,
-        },
-      ],
+      schema: counterofferSchema,
+      model: this.model,
       temperature: 0.4,
-      max_tokens: 2500,
-      response_format: { type: 'json_object' },
+      maxTokens: 2500,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error('No response from OpenAI');
-
-    return JSON.parse(content) as {
+    return result.data as {
       adjustedOptions: RenewalOption[];
       recommendation: string;
       maxConcession: number;
@@ -635,10 +657,16 @@ export async function generateRenewalStrategy(
   policies: PropertyPolicies,
   config?: Partial<RenewalStrategyConfig>
 ): Promise<RenewalStrategyResult> {
-  const apiKey = config?.openaiApiKey ?? process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OpenAI API key is required');
-  
-  const generator = createRenewalStrategyGenerator({ openaiApiKey: apiKey, ...config });
+  const anthropicApiKey =
+    config?.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  if (!anthropicApiKey && !config?.anthropicClient) {
+    throw new Error('Anthropic API key or client is required');
+  }
+
+  const generator = createRenewalStrategyGenerator({
+    anthropicApiKey,
+    ...config,
+  });
   return generator.generateStrategy(tenant, market, policies);
 }
 

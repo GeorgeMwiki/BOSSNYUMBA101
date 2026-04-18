@@ -37,3 +37,5 @@ export * from './document-service.js';
 export * from './memory-document-repository.js';
 export * from './storage/index.js';
 export * from './templates/index.js';
+export * from './renderers/index.js';
+export * from './letters/index.js';

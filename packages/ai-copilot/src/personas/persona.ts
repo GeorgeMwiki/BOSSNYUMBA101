@@ -38,6 +38,8 @@ export const PERSONA_IDS = {
   MIGRATION_WIZARD: 'migration-wizard',
   TENANT_ASSISTANT: 'tenant-assistant',
   OWNER_ADVISOR: 'owner-advisor',
+  PRICE_NEGOTIATOR: 'junior.price-negotiator',
+  TENDER_NEGOTIATOR: 'coworker.tender-negotiator',
 } as const;
 
 /**

@@ -68,3 +68,9 @@ export * from './cases/index.js';
 
 // Vendor management services
 export * from './vendor/index.js';
+
+// Marketplace bundle: Negotiation (NEW 1), Marketplace + Tenders (NEW 11),
+// Waitlist Auto-Outreach (NEW 12).
+export * as Negotiation from './negotiation/index.js';
+export * as Marketplace from './marketplace/index.js';
+export * as Waitlist from './waitlist/index.js';
