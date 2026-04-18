@@ -390,7 +390,7 @@ CREATE TABLE customers (
   emergency_contact_relationship TEXT,
   emergency_contact_phone TEXT,
   emergency_contact_email TEXT,
-  references JSONB DEFAULT '[]',
+  "references" JSONB DEFAULT '[]',
   blacklisted_at TIMESTAMPTZ,
   blacklisted_reason TEXT,
   blacklisted_by TEXT,

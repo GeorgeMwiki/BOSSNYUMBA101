@@ -2,7 +2,26 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  transpilePackages: ['@bossnyumba/design-system', '@bossnyumba/domain-models', '@bossnyumba/authz-policy'],
+  transpilePackages: [
+    '@bossnyumba/design-system',
+    '@bossnyumba/domain-models',
+    '@bossnyumba/authz-policy',
+    '@bossnyumba/ai-copilot',
+    '@bossnyumba/observability',
+    '@bossnyumba/database',
+    '@bossnyumba/graph-sync',
+    '@bossnyumba/enterprise-hardening',
+    '@bossnyumba/api-client',
+    '@bossnyumba/config',
+  ],
+  // Support `.js` extensions on TS source imports (NodeNext convention).
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias || {}),
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+    };
+    return config;
+  },
   async headers() {
     return [
       {
