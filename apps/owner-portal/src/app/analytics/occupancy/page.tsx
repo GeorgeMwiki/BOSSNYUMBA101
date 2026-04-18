@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Home, Users } from 'lucide-react';
 import {
@@ -13,22 +13,14 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { api, formatPercentage } from '../../../lib/api';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatPercentage } from '../../../lib/api';
+import { useOccupancyAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
 export default function OccupancyPage() {
-  const [trendData, setTrendData] = useState<Array<{ month: string; rate: number }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<typeof trendData>('/analytics/occupancy').then((res) => {
-      if (res.success && res.data) {
-        setTrendData(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: trendData = [], isLoading, error, refetch } = useOccupancyAnalytics();
 
   const displayData = trendData.length
     ? trendData
@@ -48,11 +40,28 @@ export default function OccupancyPage() {
     { name: 'Property C', value: 95 },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-80 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load occupancy analytics'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

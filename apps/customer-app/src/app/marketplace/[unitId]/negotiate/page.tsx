@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Card,
   CardHeader,
   CardTitle,
-  CardContent,
   Button,
   Input,
   Badge,
@@ -30,42 +32,73 @@ interface UnitSummary {
   readonly depositRequired: number;
 }
 
+const sendMessageSchema = z
+  .object({
+    text: z.string().default(''),
+    offer: z.string().default(''),
+  })
+  .refine((v) => v.text.trim().length > 0 || v.offer.trim().length > 0, {
+    message: 'Enter a message or offer',
+    path: ['text'],
+  })
+  .refine(
+    (v) => {
+      if (!v.offer) return true;
+      const n = Number(v.offer);
+      return Number.isFinite(n) && n > 0;
+    },
+    { message: 'Offer must be a positive number.', path: ['offer'] }
+  );
+
+type SendMessageForm = z.infer<typeof sendMessageSchema>;
+
 export default function NegotiatePage(): React.ReactElement {
   const params = useParams();
   const unitId = params?.unitId as string;
 
   const [unit, setUnit] = useState<UnitSummary | null>(null);
   const [messages, setMessages] = useState<ReadonlyArray<NegotiationMessage>>([]);
-  const [text, setText] = useState<string>('');
-  const [offer, setOffer] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [sending, setSending] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      // TODO: wire /api/marketplace/:unitId and /api/marketplace/:unitId/negotiations
-      const [u, m] = await Promise.all([
-        fetch(`/api/marketplace/${unitId}`, { signal }),
-        fetch(`/api/marketplace/${unitId}/negotiations`, { signal }),
-      ]);
-      if (!u.ok) throw new Error(`Unit request failed (${u.status})`);
-      if (!m.ok) throw new Error(`Negotiations request failed (${m.status})`);
-      if (!signal?.aborted) {
-        setUnit((await u.json()) as UnitSummary);
-        setMessages((await m.json()) as ReadonlyArray<NegotiationMessage>);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<SendMessageForm>({
+    resolver: zodResolver(sendMessageSchema),
+    defaultValues: { text: '', offer: '' },
+    mode: 'onSubmit',
+  });
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        // TODO: wire /api/marketplace/:unitId and /api/marketplace/:unitId/negotiations
+        const [u, m] = await Promise.all([
+          fetch(`/api/marketplace/${unitId}`, { signal }),
+          fetch(`/api/marketplace/${unitId}/negotiations`, { signal }),
+        ]);
+        if (!u.ok) throw new Error(`Unit request failed (${u.status})`);
+        if (!m.ok) throw new Error(`Negotiations request failed (${m.status})`);
+        if (!signal?.aborted) {
+          setUnit((await u.json()) as UnitSummary);
+          setMessages((await m.json()) as ReadonlyArray<NegotiationMessage>);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (signal?.aborted) return;
+        setLoadError(err instanceof Error ? err.message : 'Failed to load negotiation');
         setLoading(false);
       }
-    } catch (err) {
-      if (signal?.aborted) return;
-      setLoadError(err instanceof Error ? err.message : 'Failed to load negotiation');
-      setLoading(false);
-    }
-  }, [unitId]);
+    },
+    [unitId]
+  );
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -77,27 +110,18 @@ export default function NegotiatePage(): React.ReactElement {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  const canSend = text.trim().length > 0 || offer.trim().length > 0;
-
-  const send = useCallback(async (): Promise<void> => {
-    if (!canSend || sending) return;
-    const parsedOffer = offer ? Number(offer) : undefined;
-    if (parsedOffer !== undefined && (!Number.isFinite(parsedOffer) || parsedOffer <= 0)) {
-      setSendError('Offer must be a positive number.');
-      return;
-    }
+  const onSubmit = handleSubmit(async (values) => {
+    const parsedOffer = values.offer ? Number(values.offer) : undefined;
     const msg: NegotiationMessage = {
       id: crypto.randomUUID(),
       sender: 'customer',
-      content: text.trim(),
+      content: values.text.trim(),
       offerAmount: parsedOffer,
       sentAt: new Date().toISOString(),
     };
     // Optimistic immutable append.
     setMessages((prev) => [...prev, msg]);
-    setText('');
-    setOffer('');
-    setSending(true);
+    reset({ text: '', offer: '' });
     setSendError(null);
     try {
       // TODO: wire POST /api/marketplace/:unitId/negotiations
@@ -111,10 +135,8 @@ export default function NegotiatePage(): React.ReactElement {
       // Roll back optimistic update on failure.
       setMessages((prev) => prev.filter((x) => x.id !== msg.id));
       setSendError(err instanceof Error ? err.message : 'Failed to send message');
-    } finally {
-      setSending(false);
     }
-  }, [canSend, offer, sending, text, unitId]);
+  });
 
   return (
     <main className="p-6 max-w-3xl mx-auto flex flex-col h-[calc(100vh-3rem)]">
@@ -124,8 +146,7 @@ export default function NegotiatePage(): React.ReactElement {
             <CardTitle>{unit?.label ?? (loading ? 'Loading...' : 'Unit')}</CardTitle>
             {unit && (
               <div className="text-sm">
-                Asking: <strong>{unit.askingRent.toLocaleString()}</strong> · Deposit{' '}
-                {unit.depositRequired.toLocaleString()}
+                Asking: <strong>{unit.askingRent.toLocaleString()}</strong> · Deposit {unit.depositRequired.toLocaleString()}
               </div>
             )}
           </div>
@@ -163,9 +184,7 @@ export default function NegotiatePage(): React.ReactElement {
           messages.map((m) => (
             <div
               key={m.id}
-              className={`p-2 rounded-md max-w-md ${
-                m.sender === 'customer' ? 'bg-brand-100 ml-auto' : 'bg-muted'
-              }`}
+              className={`p-2 rounded-md max-w-md ${m.sender === 'customer' ? 'bg-brand-100 ml-auto' : 'bg-muted'}`}
             >
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Badge>{m.sender}</Badge>
@@ -181,36 +200,46 @@ export default function NegotiatePage(): React.ReactElement {
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-2 pt-2 border-t">
-        <Input
-          placeholder="Message..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          aria-label="Negotiation message"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-        />
-        <Input
-          placeholder="Offer"
-          type="number"
-          className="w-32"
-          value={offer}
-          onChange={(e) => setOffer(e.target.value)}
-          aria-label="Offer amount"
-        />
-        <Button
-          onClick={send}
-          loading={sending}
-          disabled={!canSend || sending}
-          aria-label="Send message"
-        >
-          Send
-        </Button>
-      </div>
+      <form onSubmit={onSubmit} className="pt-2 border-t" noValidate>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Input
+              placeholder="Message..."
+              aria-label="Negotiation message"
+              aria-invalid={!!errors.text}
+              {...register('text')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void onSubmit();
+                }
+              }}
+            />
+            {errors.text && (
+              <p role="alert" className="mt-1 text-xs text-destructive">
+                {errors.text.message}
+              </p>
+            )}
+          </div>
+          <div className="w-32">
+            <Input
+              placeholder="Offer"
+              type="number"
+              aria-label="Offer amount"
+              aria-invalid={!!errors.offer}
+              {...register('offer')}
+            />
+            {errors.offer && (
+              <p role="alert" className="mt-1 text-xs text-destructive">
+                {errors.offer.message}
+              </p>
+            )}
+          </div>
+          <Button type="submit" loading={isSubmitting} disabled={isSubmitting} aria-label="Send message">
+            Send
+          </Button>
+        </div>
+      </form>
     </main>
   );
 }

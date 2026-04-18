@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -36,36 +36,17 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, toast } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatDate, formatPercentage, formatDateTime } from '../lib/api';
+import {
+  useFinancialStats,
+  useOwnerInvoices,
+  useOwnerPayments,
+  type FinancialInvoice as Invoice,
+  type FinancialPayment as Payment,
+} from '../lib/hooks';
 
 // ─── Types ───────────────────────────────────────────────────────
-interface Invoice {
-  id: string;
-  number: string;
-  status: string;
-  type: string;
-  dueDate: string;
-  total: number;
-  amountPaid: number;
-  amountDue: number;
-  customer?: { id: string; name: string };
-  unit?: { id: string; unitNumber: string };
-  property?: { id: string; name: string };
-  lineItems?: { description: string; amount: number }[];
-}
-
-interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  method: string;
-  status: string;
-  reference: string;
-  createdAt: string;
-  customer?: { id: string; name: string };
-  invoiceId?: string;
-}
-
 interface IncomeStatement {
   propertyId: string;
   propertyName: string;
@@ -109,30 +90,39 @@ interface TransactionDetail {
   paymentMethod?: string;
 }
 
-interface FinancialStats {
-  totalInvoiced: number;
-  totalCollected: number;
-  totalOutstanding: number;
-  collectionRate: number;
-  pendingDisbursement: number;
-}
-
 // ─── Main Page ───────────────────────────────────────────────────
 export function FinancialPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [statements, setStatements] = useState<IncomeStatement[]>([]);
-  const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
-  const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
-  const [stats, setStats] = useState<FinancialStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  // React-owned state for the export dropdown. Replaces the previous
-  // `document.getElementById('export-menu').classList.toggle(...)` DOM
-  // manipulation — brittle, defeats React rendering, and breaks if
-  // multiple FinancialPage instances ever mount.
+
+  const statsQuery = useFinancialStats();
+  const invoicesQuery = useOwnerInvoices();
+  const paymentsQuery = useOwnerPayments();
+
+  const stats = statsQuery.data ?? null;
+  const invoices = invoicesQuery.data ?? [];
+  const payments = paymentsQuery.data ?? [];
+  const statements: IncomeStatement[] = [];
+  const disbursements: Disbursement[] = [];
+  const transactions: TransactionDetail[] = [];
+
+  const loading =
+    statsQuery.isLoading && invoicesQuery.isLoading && paymentsQuery.isLoading;
+  const refreshing =
+    !loading &&
+    (statsQuery.isFetching || invoicesQuery.isFetching || paymentsQuery.isFetching);
+
+  // If every one of the three queries failed, surface a single error.
+  const allFailed =
+    statsQuery.isError && invoicesQuery.isError && paymentsQuery.isError;
+  const error = allFailed ? 'Live owner financial data is unavailable.' : null;
+
+  const loadData = (_silent = false) => {
+    statsQuery.refetch();
+    invoicesQuery.refetch();
+    paymentsQuery.refetch();
+  };
+
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [selectedMonth, setSelectedMonth] = useState('Feb 2026');
@@ -140,56 +130,6 @@ export function FinancialPage() {
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetail | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    setError(null);
-
-    try {
-      const [statsRes, invoicesRes, paymentsRes] = await Promise.allSettled([
-        api.get<FinancialStats>('/owner/financial/stats'),
-        api.get<Invoice[]>('/owner/invoices'),
-        api.get<Payment[]>('/owner/payments'),
-      ]);
-
-      if (statsRes.status === 'fulfilled' && statsRes.value.success) {
-        setStats(statsRes.value.data!);
-      } else {
-        setStats(null);
-      }
-      if (invoicesRes.status === 'fulfilled' && invoicesRes.value.success) {
-        setInvoices(invoicesRes.value.data!);
-      } else {
-        setInvoices([]);
-      }
-      if (paymentsRes.status === 'fulfilled' && paymentsRes.value.success) {
-        setPayments(paymentsRes.value.data!);
-      } else {
-        setPayments([]);
-      }
-      if (
-        (statsRes.status !== 'fulfilled' || !statsRes.value.success) &&
-        (invoicesRes.status !== 'fulfilled' || !invoicesRes.value.success) &&
-        (paymentsRes.status !== 'fulfilled' || !paymentsRes.value.success)
-      ) {
-        setError('Live owner financial data is unavailable.');
-      }
-    } catch (err) {
-      setStats(null);
-      setInvoices([]);
-      setPayments([]);
-      setError(err instanceof Error ? err.message : 'Live owner financial data is unavailable.');
-    }
-
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     setExporting(true);
@@ -200,10 +140,10 @@ export function FinancialPage() {
       if (response.success && response.data?.downloadUrl) {
         window.open(response.data.downloadUrl, '_blank');
       } else {
-        setError(response.error?.message ?? 'Financial export is unavailable.');
+        toast.error(response.error?.message ?? 'Financial export is unavailable.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Financial export is unavailable.');
+      toast.error(err instanceof Error ? err.message : 'Financial export is unavailable.');
     }
     setExporting(false);
   };
@@ -251,21 +191,28 @@ export function FinancialPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertCircle className="h-12 w-12 text-red-400" />
-        <p className="text-gray-600">{error}</p>
-        <button onClick={() => loadData()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          Retry
-        </button>
-      </div>
+      <Alert variant="danger">
+        <AlertDescription>
+          {error}
+          <Button size="sm" onClick={() => loadData()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

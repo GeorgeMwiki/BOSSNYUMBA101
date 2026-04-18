@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
@@ -34,15 +35,24 @@ export default function PaymentsPage() {
 
       <div className="space-y-4 px-4 py-4 pb-24">
         {error && (
-          <div className="card border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
-            {(error as Error).message}
-          </div>
+          <Alert variant="danger">
+            <AlertDescription>
+              {(error as Error).message}
+              <Button size="sm" onClick={() => { balanceQuery.refetch(); pendingQuery.refetch(); historyQuery.refetch(); }} className="ml-2">Retry</Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         <div className="card p-4">
           <div className="text-sm text-gray-400">Total balance due</div>
           <div className="mt-2 text-3xl font-semibold text-white">
-            {balance ? `${balance.totalDue.currency} ${Number(balance.totalDue.amount).toLocaleString()}` : 'Loading...'}
+            {balance ? (
+              `${balance.totalDue.currency} ${Number(balance.totalDue.amount).toLocaleString()}`
+            ) : balanceQuery.isLoading ? (
+              <Skeleton className="h-8 w-40" />
+            ) : (
+              '--'
+            )}
           </div>
           <div className="mt-3 text-sm text-gray-400">
             {balance?.breakdown?.length ? `${balance.breakdown.length} active charge(s)` : 'No active charges'}

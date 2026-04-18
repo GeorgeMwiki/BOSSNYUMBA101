@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, ArrowRight, Search } from 'lucide-react';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { formatPercentage } from '../lib/api';
 import { useProperties } from '../lib/hooks';
 
 export function PropertiesPage() {
-  const { data: properties = [], isLoading } = useProperties();
+  const { data: properties = [], isLoading, error, refetch } = useProperties();
   const [search, setSearch] = useState('');
 
   const filteredProperties = properties.filter((p) =>
@@ -15,9 +16,25 @@ export function PropertiesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load properties'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -98,9 +115,15 @@ export function PropertiesPage() {
       </div>
 
       {filteredProperties.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No properties found
-        </div>
+        <EmptyState
+          icon={<Building2 className="h-8 w-8" />}
+          title={search ? 'No matches' : 'No properties yet'}
+          description={
+            search
+              ? 'Try adjusting your search to find what you\u2019re looking for.'
+              : 'When you add properties they\u2019ll appear here.'
+          }
+        />
       )}
     </div>
   );

@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models namespace drift; tracked
 /**
  * Scheduling/Calendar Service
  *

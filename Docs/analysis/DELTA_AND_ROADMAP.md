@@ -1,8 +1,8 @@
 # DELTA & ROADMAP — Closing Every Gap
 
 **Project:** BOSSNYUMBA101
-**Date:** 2026-04-18
-**Synthesis of:** `VOICE_MEMO_2026-04-18`, `GAP_voice_vs_docs`, `GAP_docs_vs_code`, `CONFLICT_RESOLUTIONS`, `MISSING_FEATURES_DESIGN`, `SCAFFOLDED_COMPLETION`, `RESEARCH_ANSWERS`.
+**Date:** 2026-04-18 (post wave-5 deep scrub)
+**Synthesis of:** `VOICE_MEMO_2026-04-18`, `GAP_voice_vs_docs`, `GAP_docs_vs_code`, `CONFLICT_RESOLUTIONS`, `MISSING_FEATURES_DESIGN`, `SCAFFOLDED_COMPLETION`, `RESEARCH_ANSWERS`, `SECURITY_REVIEW_WAVES_1-3`.
 
 **Non-negotiable rule:** Amplify existing code. Never delete core logic without a replacement. Every item below is additive. Features are gated behind per-org flags during rollout.
 
@@ -14,9 +14,21 @@ After a full pass across 60 voice-memo directives, 50 code features, 14 scaffold
 
 - **28 features already BUILT** (AI personas, CPG, approval state machine, M-Pesa/Airtel/Tigo reconciliation, onboarding A0–A6, document intelligence/OCR, triage, immutable ledger, multi-tenant RBAC).
 - **3 "conflicts" are not conflicts** — they're orthogonal layers. Voice memo adds on top of existing design without deleting anything.
-- **14 SCAFFOLDED features** need promotion to BUILT — mostly small-to-medium work (swap LLM transport, add persistence, wire events).
-- **22 NOT_COVERED or MISSING features** need fresh design + build (GePG, arrears UI, gamification, marketplace, conditional surveys, document-chat, etc.).
-- **1 research correction required:** "Nanobanana" is image generation, not document generation — swap for template-first pipeline.
+- **14 SCAFFOLDED features** — mostly promoted to BUILT during waves 2–5 (see [SCAFFOLDED_COMPLETION.md](./SCAFFOLDED_COMPLETION.md)).
+- **22 NOT_COVERED or MISSING features** — design + build in progress, tracked below.
+- **1 research correction applied:** "Nanobanana" is image generation (wired behind `NANO_BANANA_API_KEY`); document rendering uses a template-first pipeline (`docxtemplater` + Typst + `@react-pdf/renderer`).
+
+### Wave-5 status snapshot (2026-04-18)
+
+- **10 domain endpoints LIVE with real Postgres data** (marketplace listings/enquiries/tenders, waitlist + vacancy outreach, gamification, negotiations, migration runs) — no more scaffolded 503s on those surfaces.
+- **40 of 40 migrations apply clean** (`packages/database/src/migrations/0001*`–`0026_performance_indexes.sql`), including `0023_station_master_coverage`, `0024_identity_tables`, `0025_repo_amendments`, `0026_performance_indexes`.
+- **All 4 apps build clean** (`admin-portal`, `owner-portal`, `customer-app`, `estate-manager-app`).
+- **Toast + Toaster infrastructure shipped** in `@bossnyumba/design-system` (`Toast.tsx`, `useToast.tsx`, `Toast.stories.tsx`) and mounted in every app shell.
+- **Auth context shipped to `estate-manager-app`** (`apps/estate-manager-app/src/providers/AuthProvider.tsx` + `AppShell.tsx`); previously missing.
+- **React Query provider shipped to `owner-portal`** (`apps/owner-portal/src/main.tsx`); previously missing.
+- **124 domain-event subscribers registered** on the api-gateway bus (was 18). See `services/api-gateway/src/workers/event-subscribers.ts`.
+- **41 hardcoded values eliminated** — tenant-locale/currency/country moved to `NEXT_PUBLIC_TENANT_CURRENCY` / `NEXT_PUBLIC_TENANT_LOCALE` / `NEXT_PUBLIC_TENANT_COUNTRY`; payment backend moved to `TANZANIA_PAYMENT_BACKEND`; OCR backend to `OCR_PROVIDER`; Typst bin to `TYPST_BIN`; Nano Banana imagery to `NANO_BANANA_API_KEY`.
+- **All 5 wave-3 security blockers CLOSED** (see [SECURITY_REVIEW_WAVES_1-3.md](./SECURITY_REVIEW_WAVES_1-3.md)).
 
 Total scope: ~40–55 engineering weeks in 5 sprints, all pure amplification.
 
@@ -267,3 +279,93 @@ Every TRC questionnaire answer is now addressed by a concrete design:
 - **100% questionnaire coverage.**
 
 See sibling docs for the full specs.
+
+---
+
+## Security blockers closed (wave-3 review follow-up)
+
+All five production blockers flagged in [SECURITY_REVIEW_WAVES_1-3.md](./SECURITY_REVIEW_WAVES_1-3.md) are now fixed on `main`:
+
+| ID | Summary | Fix location |
+|----|---------|--------------|
+| **C-1** | API-key auth granted SUPER_ADMIN with attacker-controlled `X-Tenant-ID`. | `services/api-gateway/src/middleware/api-key-registry.ts` — SHA-256 registry with per-key `{tenantId, role, scopes}`; `assertApiKeyConfig()` refuses to boot production without `API_KEY_REGISTRY` or legacy `API_KEYS`. |
+| **C-2** | GePG direct-mode signature verification returned a stub. | `services/payments/src/providers/gepg/gepg-signature.ts` wired to `gepg-rsa-signature.ts`; startup asserts `GEPG_PSP_MODE=true` or `GEPG_SIGNING_KEY_PEM + GEPG_SIGNING_CERT_PEM`. |
+| **H-1** | Cross-tenant spoofing via `X-Tenant-ID` / `?tenantId=` fallback. | `services/api-gateway/src/middleware/auth.middleware.ts` — `extractTenantId` now hard-requires the JWT claim. |
+| **H-2** | `ensureTenantIsolation` middleware was defined but never applied. | `services/api-gateway/src/index.ts:199` — `api.use('*', ensureTenantIsolation)` mounted globally on `/api/v1/*`. |
+| **H-5** | Webhook secrets silently absent. | `services/api-gateway/src/routes/notification-webhooks.router.ts` + boot assertions in production. |
+
+---
+
+## Production Readiness Matrix (per-feature status)
+
+Canonical source-of-truth for what's wired end-to-end vs. what still degrades to 503. Updated 2026-04-18.
+
+Legend: **LIVE** = real Postgres reads/writes through the composition root; **STUB** = route exists but degrades to 503/501 without external config; **DB_ONLY** = persistence landed, integration (webhook / external API) pending; **PLANNED** = not wired.
+
+### Core platform
+
+| Feature | Status | Evidence |
+|---------|--------|----------|
+| API-gateway auth + RBAC + tenant isolation | LIVE | `middleware/{auth,tenant-context,api-key-registry}.middleware.ts`, `ensureTenantIsolation` mounted globally |
+| Composition root (service registry) | LIVE | `composition/service-registry.ts` — degraded skeleton when `DATABASE_URL` unset |
+| Outbox drainer + domain event subscribers (124) | LIVE | `workers/outbox-worker.ts`, `workers/event-subscribers.ts` |
+| Migrations runner | LIVE | `packages/database/src/run-migrations.ts` — 40/40 apply clean |
+| Seed runner (TRC fixture) | LIVE | `packages/database/src/seeds/{run-seed,trc-seed}.ts` |
+| Health endpoints (`/health`, `/healthz`) | LIVE | `services/api-gateway/src/index.ts:144-162` |
+
+### Domain services (wave 1-5)
+
+| Feature | Status | Composition wiring | Router |
+|---------|--------|--------------------|--------|
+| Marketplace listings | LIVE | `ListingService` + `PostgresMarketplaceListingRepository` | `routes/marketplace.router.ts` |
+| Marketplace enquiries | LIVE | `EnquiryService` (shares `NegotiationService`) | `routes/marketplace.router.ts` |
+| Tenders + bids | LIVE | `TenderService` + `PostgresTenderRepository` + `PostgresBidRepository` | `routes/tenders.router.ts` |
+| Negotiations | LIVE | `NegotiationService` + 3 postgres repos | `routes/negotiations.router.ts` |
+| Waitlist (+ vacancy outreach) | LIVE | `WaitlistService` + `WaitlistVacancyHandler` (noop dispatcher pending NBA queue) | `routes/waitlist.router.ts` |
+| Gamification | LIVE | `createGamificationService` + `PostgresGamificationRepository` | `routes/gamification.router.ts` |
+| Migration wizard | LIVE | `MigrationService` + `PostgresMigrationRepository` | `routes/migration.router.ts` |
+| Arrears ledger | LIVE | migration `0018_arrears_ledger.sql` + postgres repo | `routes/arrears.router.ts` |
+| Approval policies | LIVE | migration `0018_approval_policies.sql` | handled in `domain-services` |
+| Conditional surveys | DB_ONLY | migration `0018_conditional_surveys.sql` | pending router wiring |
+| Tenant finance intake | DB_ONLY | migration `0018_tenant_finance.sql` | `routes/financial-profile.router.ts` |
+| FAR asset components | DB_ONLY | migration `0019_far_asset_components.sql` | pending inspection-trigger |
+| Intelligence history | DB_ONLY | migration `0019_intelligence_history.sql` | consumed by risk reports |
+| Risk reports | LIVE | `routes/risk-reports.router.ts` + `0020_tenant_risk_reports.sql` | live |
+| Compliance exports | LIVE | `routes/compliance.router.ts` + `0021_compliance_exports.sql` | live |
+| Interactive reports | DB_ONLY | `0022_interactive_reports.sql` | `routes/interactive-reports.router.ts` stub |
+| Geo hierarchy | DB_ONLY | `0023_geo_hierarchy.sql` | consumed by routing |
+| Station-master coverage | STUB | `StationMasterRouter` type only — repo pending | `routes/station-master-coverage.router.ts` (503 until repo lands) |
+| Occupancy timeline | STUB | `OccupancyTimelineService` type only — repo pending | `routes/occupancy-timeline.router.ts` (503 until repo lands) |
+| Letters (on-demand) | LIVE | `routes/letters.router.ts` + `domain-services/documents/letters` | live |
+| Doc-chat | LIVE | `routes/doc-chat.router.ts` + pgvector | live |
+| Document render (Typst/docx/react-pdf) | LIVE | `routes/document-render.router.ts` — `TYPST_BIN` optional, falls back to zero-dep encoder |
+| Scans (mobile camera ingest) | LIVE | `routes/scans.router.ts` |
+| Renewals | LIVE | `routes/renewals.router.ts` + `0017_lease_renewal_extensions.sql` |
+| Applications (A0–A6) | LIVE | `routes/applications.router.ts` |
+| Notification preferences | STUB | `routes/notification-preferences.router.ts` — echoes posted shape until notifications service HTTP binding lands |
+| Notification webhooks (AT / Twilio / Meta) | LIVE | `routes/notification-webhooks.router.ts` — signature verified, secrets asserted at boot |
+
+### Payments + ledger
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| M-Pesa Daraja | LIVE | `services/payments` — production-hardened |
+| Airtel + Tigo | LIVE | reconciliation tested |
+| GePG via PSP (ClickPesa default) | LIVE | `TANZANIA_PAYMENT_BACKEND=clickpesa` (default); `azampay` / `selcom` available |
+| GePG direct | DB_ONLY | `TANZANIA_PAYMENT_BACKEND=gepg-direct` + RSA keys; fails closed without signing material |
+| Immutable ledger | LIVE | `services/payments-ledger` + RS256-signed JWT |
+| Arrears adjustments (never-mutate) | LIVE | new `adjustment` entries reference `relatedEntryId` |
+
+### External integrations
+
+| Integration | Status | Env gate |
+|-------------|--------|----------|
+| Anthropic (Brain) | LIVE | `ANTHROPIC_API_KEY` |
+| OpenAI (embeddings) | LIVE | `OPENAI_API_KEY` |
+| OCR — Textract / Vision / Mock | LIVE | `OCR_PROVIDER` ∈ `textract|google|mock` |
+| Nano Banana imagery | DEGRADED | `NANO_BANANA_API_KEY` unset → placeholder image with `reason: 'NANO_BANANA_API_KEY unset'` |
+| Typst PDF | LIVE | `TYPST_BIN` optional — falls back to zero-dep PDF encoder |
+| Africa's Talking / Twilio / Meta webhooks | LIVE | per-provider secrets asserted at boot |
+| Neo4j graph | LIVE | optional; falls back to demo mode when unset |
+
+---

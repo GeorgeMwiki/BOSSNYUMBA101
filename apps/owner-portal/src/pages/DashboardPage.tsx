@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -32,110 +32,40 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { api, formatCurrency, formatDate, formatPercentage } from '../lib/api';
-import { ArrearsAgingChart, ArrearsAgingData } from '../components/charts/ArrearsAgingChart';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { formatCurrency, formatDate, formatPercentage } from '../lib/api';
+import { useProperties, useOwnerDashboard, type DashboardRange } from '../lib/hooks';
+import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
 import { QuickActions } from '../components/QuickActions';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
-interface Property {
-  id: string;
-  name: string;
-}
-
-interface OwnerDashboardData {
-  portfolio: {
-    totalProperties: number;
-    totalUnits: number;
-    portfolioValue: number;
-  };
-  financial: {
-    currentMonthRevenue: number;
-    revenueChange: number;
-    outstandingBalance: number;
-    collectionRate: number;
-    collectionRateChange: number;
-    noi: number;
-  };
-  maintenance: {
-    openRequests: number;
-    inProgress: number;
-    completedThisMonth: number;
-    totalCostThisMonth: number;
-    pendingApprovals: number;
-  };
-  occupancy: {
-    occupancyRate: number;
-    occupancyChange: number;
-    vacantUnits: number;
-    totalTenants: number;
-  };
-  arrears: ArrearsAgingData[];
-  recentActivity: {
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    timestamp: string;
-  }[];
-  alerts: {
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    actionUrl?: string;
-  }[];
-}
-
-type DateRange = '7d' | '30d' | '90d' | '1y';
+type DateRange = DashboardRange;
 
 export function DashboardPage() {
-  const [data, setData] = useState<OwnerDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [dateRange, setDateRange] = useState<DateRange>('30d');
-  const [properties, setProperties] = useState<Property[]>([]);
   const navigate = useNavigate();
 
-  const fetchData = async () => {
-    setError(null);
-    try {
-      const propertiesResponse = await api.get<Property[]>('/properties');
-      if (propertiesResponse.success && propertiesResponse.data) {
-        setProperties(propertiesResponse.data);
-      } else {
-        setProperties([]);
-      }
+  const propertiesQuery = useProperties();
+  const properties = propertiesQuery.data ?? [];
 
-      const queryParams = new URLSearchParams();
-      if (selectedProperty !== 'all') queryParams.append('propertyId', selectedProperty);
-      queryParams.append('dateRange', dateRange);
-
-      const response = await api.get<OwnerDashboardData>(`/dashboard/owner?${queryParams.toString()}`);
-      if (response.success && response.data) {
-        setData(response.data);
-      } else {
-        setData(null);
-        setError(response.error?.message ?? 'Live owner dashboard data is unavailable.');
-      }
-    } catch (err) {
-      setProperties([]);
-      setData(null);
-      setError(err instanceof Error ? err.message : 'Live owner dashboard data is unavailable.');
-    }
-    setLoading(false);
-    setRefreshing(false);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [selectedProperty, dateRange]);
+  const dashboardQuery = useOwnerDashboard({
+    propertyId: selectedProperty,
+    dateRange,
+  });
+  const data = dashboardQuery.data ?? null;
+  const loading = dashboardQuery.isLoading;
+  const refreshing = dashboardQuery.isFetching && !loading;
+  const error = dashboardQuery.error
+    ? dashboardQuery.error instanceof Error
+      ? dashboardQuery.error.message
+      : 'Live owner dashboard data is unavailable.'
+    : null;
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+    dashboardQuery.refetch();
+    propertiesQuery.refetch();
   };
 
   const handleMetricDrillDown = (metricType: string, title: string) => {
@@ -166,24 +96,31 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-64 w-full lg:col-span-2" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">{error ?? 'Failed to load dashboard data'}</p>
-        <button
-          onClick={handleRefresh}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Try Again
-        </button>
-      </div>
+      <Alert variant="danger">
+        <AlertDescription>
+          {error ?? 'Failed to load dashboard data'}
+          <Button size="sm" onClick={handleRefresh} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

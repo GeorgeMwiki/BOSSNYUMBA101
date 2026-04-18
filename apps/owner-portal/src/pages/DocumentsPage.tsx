@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -20,38 +20,9 @@ import {
   Calendar,
   ExternalLink,
 } from 'lucide-react';
-import { api, formatDate, formatDateTime } from '../lib/api';
-
-interface DocumentVersion {
-  id: string;
-  versionNumber: number;
-  uploadedAt: string;
-  uploadedBy: string;
-  changeNote?: string;
-  size: number;
-}
-
-interface Document {
-  id: string;
-  type: string;
-  category: string;
-  name: string;
-  mimeType: string;
-  size: number;
-  verificationStatus: string;
-  verifiedAt?: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  property?: { id: string; name: string };
-  unit?: { id: string; unitNumber: string };
-  customer?: { id: string; name: string };
-  requiresSignature?: boolean;
-  signatureStatus?: 'PENDING' | 'SIGNED' | 'EXPIRED';
-  signedAt?: string;
-  signedBy?: string;
-  versions?: DocumentVersion[];
-}
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { formatDate, formatDateTime } from '../lib/api';
+import { useDocuments, type OwnerDocument as Document } from '../lib/hooks';
 
 interface DocumentCategory {
   id: string;
@@ -63,9 +34,8 @@ interface DocumentCategory {
 
 export function DocumentsPage() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: documents = [], isLoading: loading, error: queryError, refetch } = useDocuments();
+  const error = queryError instanceof Error ? queryError.message : null;
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -81,28 +51,6 @@ export function DocumentsPage() {
     { id: 'identity', name: 'Identity Documents', icon: '🪪', count: 0, description: 'ID copies, verification docs' },
     { id: 'other', name: 'Other', icon: '📁', count: 0, description: 'Miscellaneous documents' },
   ];
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await api.get<Document[]>('/documents');
-      if (response.success && response.data) {
-        setDocuments(response.data);
-      } else {
-        setDocuments([]);
-        setError(response.error?.message ?? 'Live document data is unavailable.');
-      }
-    } catch (err) {
-      setDocuments([]);
-      setError(err instanceof Error ? err.message : 'Live document data is unavailable.');
-    }
-    setLoading(false);
-  };
 
   const getCategoryCount = (categoryId: string) => {
     return documents.filter(doc => doc.category === categoryId).length;
@@ -165,8 +113,17 @@ export function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -174,9 +131,12 @@ export function DocumentsPage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          </AlertDescription>
+        </Alert>
       )}
       <div className="flex items-center justify-between">
         <div>
@@ -350,10 +310,15 @@ export function DocumentsPage() {
       </div>
 
       {filteredDocs.length === 0 && (
-        <div className="text-center py-12">
-          <FolderOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No documents found</p>
-        </div>
+        <EmptyState
+          icon={<FolderOpen className="h-8 w-8" />}
+          title="No documents found"
+          description={
+            search || typeFilter !== 'all' || categoryFilter !== 'all'
+              ? 'Try adjusting your filters to find what you\u2019re looking for.'
+              : 'Upload a document to get started.'
+          }
+        />
       )}
 
       {/* Version History Modal */}

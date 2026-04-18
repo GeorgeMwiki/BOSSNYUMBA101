@@ -4,6 +4,154 @@ How to triage, mitigate, and roll back common production incidents.
 
 ---
 
+## Standard operational procedures
+
+### Run migrations locally
+
+The migration runner is a plain `tsx` script — no Drizzle CLI required.
+
+```bash
+# Requires DATABASE_URL exported (or will fall back to
+# postgresql://localhost:5432/bossnyumba in dev)
+pnpm -F @bossnyumba/database exec tsx src/run-migrations.ts
+
+# Equivalent via the workspace script:
+pnpm -F @bossnyumba/database db:migrate
+```
+
+The runner creates `drizzle.__drizzle_migrations`, sorts every `*.sql`
+under `packages/database/src/migrations/` lexically, and skips files
+whose `hash` (= filename without `.sql`) is already recorded. 40
+migrations apply clean as of 2026-04-18.
+
+### Seed TRC (pilot) data
+
+Org seeds are gated behind an explicit acknowledgement env var so a dev
+running `pnpm db:seed` against a prod URL can't inadvertently write
+fake rows.
+
+```bash
+export DATABASE_URL=postgresql://...
+export SEED_ORG_SEEDS=true
+pnpm -F @bossnyumba/database db:seed -- --org=trc
+# or all known fixtures:
+pnpm -F @bossnyumba/database db:seed -- --org=all
+```
+
+Fixtures live in `packages/database/src/seeds/`
+(`trc-seed.ts`, `trc-districts.json`, `sample-tenants.ts`). New org
+seeds register in the `ORG_SEEDS` map in `run-seed.ts`.
+
+### Inspect live gateway health endpoints
+
+Both paths return the same payload. `/health` is the legacy path;
+`/healthz` matches Kubernetes convention and is what the ALB health
+check hits.
+
+```bash
+curl -sS http://localhost:4000/health | jq .
+curl -sS http://localhost:4000/healthz | jq .
+# {
+#   "status": "ok",
+#   "version": "dev",
+#   "service": "api-gateway",
+#   "timestamp": "...",
+#   "upstreams": {}
+# }
+```
+
+Smoke-test the composition root at boot time by reading the logs:
+
+- `service-registry: live (Postgres-backed domain services wired)` means
+  `DATABASE_URL` resolved and the 10 live endpoints will return real data.
+- `service-registry: degraded (DATABASE_URL unset — pure-DB endpoints
+  will 503)` means the gateway is intentionally in degraded mode. Auth,
+  legacy routes, and external-creds routes (payments, brain) still work;
+  pure-DB features (marketplace, waitlist, gamification, migration,
+  negotiations) return 503 with a clear reason.
+
+### Rotate `API_KEY_REGISTRY`
+
+The registry replaces the legacy `API_KEYS` env var. Each entry binds a
+SHA-256 hash to a concrete `{tenantId, role, scopes, serviceName}` —
+callers can no longer forge `X-Tenant-ID` to escalate to SUPER_ADMIN
+(see C-1 in `Docs/analysis/SECURITY_REVIEW_WAVES_1-3.md`).
+
+```bash
+# 1. Generate a new key and its SHA-256 hash
+NEW_KEY=$(openssl rand -hex 32)
+HASH=$(printf "%s" "$NEW_KEY" | openssl dgst -sha256 -hex | awk '{print $2}')
+
+# 2. Compose the registry entry
+# Format: <hash>:<tenantId>:<role>:<space-separated scopes>:<serviceName>
+# Example: abc...:trc:ESTATE_MANAGER:read_property read_lease:estate-mgr-integration
+ENTRY="${HASH}:trc:ESTATE_MANAGER:read_property read_lease:estate-mgr-integration"
+
+# 3. Append to the existing registry (comma-separated) in Secrets Manager
+aws secretsmanager get-secret-value \
+  --secret-id bossnyumba/production/api-key-registry \
+  --query SecretString --output text > /tmp/registry.old
+
+echo "$(cat /tmp/registry.old),${ENTRY}" > /tmp/registry.new
+aws secretsmanager put-secret-value \
+  --secret-id bossnyumba/production/api-key-registry \
+  --secret-string "$(cat /tmp/registry.new)"
+shred -u /tmp/registry.old /tmp/registry.new
+
+# 4. Force task restart so ECS re-reads the secret
+aws ecs update-service \
+  --cluster bossnyumba-production \
+  --service bossnyumba-production-api-gateway \
+  --force-new-deployment
+
+# 5. Hand NEW_KEY (the plaintext) to the caller out-of-band. BOSSNYUMBA
+#    only ever stores the hash.
+```
+
+**Revoke a key**: remove its entry from the registry, restart the
+service. Old key immediately stops resolving; `resolveApiKey` returns
+`null` once the cache reloads at next boot.
+
+**Do not** leave `API_KEYS` set in production unless you are migrating
+off legacy — the code logs a CRITICAL deprecation warning when it falls
+through to the legacy path.
+
+### Handle 503 on a specific endpoint (service not wired)
+
+Some endpoints intentionally degrade to 503 when their backing service
+hasn't been wired in the composition root yet (this is expected during
+pilot rollout).
+
+**Diagnose**
+
+```bash
+# The router that threw will include a clear reason in the body, e.g.:
+curl -i http://localhost:4000/api/v1/occupancy-timeline/...
+# HTTP/1.1 503 Service Unavailable
+# { "error": "OccupancyTimelineService unavailable — repo not yet wired" }
+```
+
+Cross-check `services/api-gateway/src/composition/service-registry.ts`.
+Any field left at `null` in `buildServices()` is deliberately degraded.
+As of wave-5 the null fields are:
+
+- `occupancyTimeline` — waiting on `PostgresOccupancyTimelineRepository`
+- `stationMasterRouter` — waiting on `PostgresStationMasterCoverageRepository`
+
+**Mitigate** (if a pilot tenant needs one of these now):
+
+1. Check the sibling "Production Readiness Matrix" in
+   `Docs/analysis/DELTA_AND_ROADMAP.md` to confirm it's pending.
+2. If urgent, wire the postgres repo (see existing
+   `PostgresMarketplaceListingRepository` for the pattern) and register
+   it in `buildServices()`.
+3. Redeploy; the router picks up the real service with no router change.
+
+**Close-out**: once the registry returns non-null for that field, the
+router starts returning real data automatically. No feature-flag toggle.
+
+---
+
 ## On-call expectations
 
 - Primary on-call carries pager 24/7 on a 1-week rotation.

@@ -23,6 +23,9 @@ import {
   MoneyData,
   TenantId,
   CustomerId,
+  PropertyId,
+  UnitId,
+  LeaseId,
   moneyFromMinorUnits,
   zeroMoney,
   formatMoney,
@@ -561,11 +564,11 @@ export class InvoiceGenerator {
     customerId: CustomerId;
     customerName: string;
     customerEmail?: string;
-    propertyId?: string;
+    propertyId?: PropertyId;
     propertyName?: string;
-    unitId?: string;
+    unitId?: UnitId;
     unitName?: string;
-    leaseId?: string;
+    leaseId?: LeaseId;
     rentAmount: MoneyData;
     dueDate: Date;
     billingPeriod: { start: Date; end: Date };
@@ -579,9 +582,9 @@ export class InvoiceGenerator {
         quantity: 1,
         unitPrice: params.rentAmount,
         taxRate: params.taxRate,
-        propertyId: params.propertyId as any,
-        unitId: params.unitId as any,
-        leaseId: params.leaseId as any,
+        propertyId: params.propertyId,
+        unitId: params.unitId,
+        leaseId: params.leaseId,
       },
     ];
 
@@ -599,11 +602,11 @@ export class InvoiceGenerator {
       customerId: params.customerId,
       customerName: params.customerName,
       customerEmail: params.customerEmail,
-      propertyId: params.propertyId as any,
+      propertyId: params.propertyId,
       propertyName: params.propertyName,
-      unitId: params.unitId as any,
+      unitId: params.unitId,
       unitName: params.unitName,
-      leaseId: params.leaseId as any,
+      leaseId: params.leaseId,
       currency: params.rentAmount.currency,
       dueDate: params.dueDate,
       lineItems,

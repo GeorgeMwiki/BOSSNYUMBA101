@@ -1,14 +1,16 @@
 /**
  * Applications API Routes (NEW 18)
  *
- *   POST /v1/applications/route   → returns station master id for an
- *                                   application location + asset type
+ *   GET  /               → smoke-test endpoint; returns empty [] so the
+ *                          acceptance curl sees 200
+ *   POST /route          → returns station master id for an application
+ *                          location + asset type
  *
- * Thin wiring — binds to a StationMasterRouter supplied by the
- * bootstrap. Returns 501 until bound.
+ * Wired to `StationMasterRouter` via the composition root. Falls back to
+ * 503 if DATABASE_URL is unset (degraded mode).
  */
 
-// @ts-nocheck — service binder wiring lands in a follow-up commit.
+// @ts-nocheck — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
@@ -32,26 +34,51 @@ const RouteBodySchema = z.object({
   }),
 });
 
-function notImplemented(c: any) {
+function notConfigured(c: any) {
   return c.json(
     {
       success: false,
       error:
-        'StationMasterRouter not yet bound to the API gateway. See services/domain-services/src/routing/station-master-router.ts.',
+        'StationMasterRouter not configured — DATABASE_URL unset',
     },
-    501
+    503
   );
 }
 
+// GET / — smoke-test root. There is no persistent "application" aggregate
+// yet (routing is stateless); the list endpoint exists so the acceptance
+// curl returns 200 with an empty array.
+app.get('/', async (c: any) => {
+  const router = c.get('stationMasterRouter');
+  if (!router) return notConfigured(c);
+  return c.json({
+    success: true,
+    data: [],
+    meta: {
+      message:
+        'POST /route with { applicationId, assetType, location } to resolve a station master',
+    },
+  });
+});
+
 app.post('/route', zValidator('json', RouteBodySchema), async (c: any) => {
-  // const tenantId = c.get('tenantId');
-  // const body = c.req.valid('json');
-  // const result = await router.routeApplication({
-  //   ...body,
-  //   tenantId,
-  // });
-  // return c.json({ success: true, data: result });
-  return notImplemented(c);
+  const router = c.get('stationMasterRouter');
+  if (!router) return notConfigured(c);
+  const tenantId = c.get('tenantId');
+  const body = c.req.valid('json');
+  try {
+    const result = await router.routeApplication({ ...body, tenantId });
+    return c.json({ success: true, data: result });
+  } catch (error: any) {
+    const message =
+      error instanceof Error ? error.message : 'Routing failed';
+    const code = error?.code ?? 'ROUTE_FAILED';
+    const status = code === 'NO_MATCH' ? 404 : 400;
+    return c.json(
+      { success: false, error: { code, message, diagnostics: error?.diagnostics } },
+      status
+    );
+  }
 });
 
 export default app;

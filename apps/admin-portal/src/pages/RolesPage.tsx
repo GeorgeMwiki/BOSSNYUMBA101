@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { Skeleton, Alert, AlertDescription, Button, toast } from '@bossnyumba/design-system';
+import {
+  useRoles,
+  useRolesAudit,
+  type AdminRole as Role,
+  type AdminAuditEntry as AuditEntry,
+} from '../lib/hooks';
 import {
   Shield,
   Plus,
@@ -33,25 +39,6 @@ interface Permission {
   category: string;
 }
 
-interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: string[];
-  userCount: number;
-  isSystem: boolean;
-  createdAt: string;
-  createdBy: string;
-}
-
-interface AuditEntry {
-  id: string;
-  action: string;
-  actor: string;
-  target: string;
-  changes: string;
-  timestamp: string;
-}
 
 const permissionCategories = [
   {
@@ -149,15 +136,23 @@ const permissionCategories = [
 ];
 
 export function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
+  const rolesQuery = useRoles();
+  const auditQuery = useRolesAudit();
+  const roles = rolesQuery.data ?? [];
+  const auditLog = auditQuery.data ?? [];
+  const loading = rolesQuery.isLoading;
+  const queryError = rolesQuery.error;
+
+  // Client-side list used by the create/delete UX (mirrors query result,
+  // then diverges on optimistic local mutation).
+  const [localRoles, setLocalRoles] = useState<Role[] | null>(null);
+  const displayRoles = localRoles ?? roles;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showPermissionAudit, setShowPermissionAudit] = useState(false);
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [saving, setSaving] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [roleForm, setRoleForm] = useState<{
     name: string;
     description: string;
@@ -168,26 +163,10 @@ export function RolesPage() {
     permissions: [],
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      api.get<Role[]>('/admin/roles'),
-      api.get<AuditEntry[]>('/admin/roles/audit'),
-    ]).then(([rolesRes, auditRes]) => {
-      if (cancelled) return;
-      if (rolesRes.success && rolesRes.data) setRoles(rolesRes.data);
-      if (auditRes.success && auditRes.data) setAuditLog(auditRes.data);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Legacy hardcoded role seed removed — the real list is loaded via
   // rolesService.list() above; missing endpoint returns an empty list.
 
-  const filteredRoles = roles.filter(role =>
+  const filteredRoles = displayRoles.filter(role =>
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     role.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -196,7 +175,7 @@ export function RolesPage() {
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     const newRole: Role = {
-      id: String(roles.length + 1),
+      id: String(displayRoles.length + 1),
       name: roleForm.name,
       description: roleForm.description,
       permissions: roleForm.permissions,
@@ -205,19 +184,18 @@ export function RolesPage() {
       createdAt: new Date().toISOString().split('T')[0],
       createdBy: 'admin@bossnyumba.com',
     };
-    setRoles([...roles, newRole]);
+    setLocalRoles([...displayRoles, newRole]);
     setSaving(false);
     setShowCreateModal(false);
     setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role created successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    toast.success('Role created successfully');
   };
 
   const handleUpdateRole = async () => {
     if (!selectedRole) return;
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    setRoles(roles.map(r => r.id === selectedRole.id ? {
+    setLocalRoles(displayRoles.map(r => r.id === selectedRole.id ? {
       ...r,
       name: roleForm.name,
       description: roleForm.description,
@@ -226,24 +204,20 @@ export function RolesPage() {
     setSaving(false);
     setSelectedRole(null);
     setRoleForm({ name: '', description: '', permissions: [] });
-    setNotification({ type: 'success', message: 'Role updated successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    toast.success('Role updated successfully');
   };
 
   const handleDeleteRole = async (role: Role) => {
     if (role.isSystem) {
-      setNotification({ type: 'error', message: 'Cannot delete system roles' });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error('Cannot delete system roles');
       return;
     }
     if (role.userCount > 0) {
-      setNotification({ type: 'error', message: 'Cannot delete role with assigned users' });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error('Cannot delete role with assigned users');
       return;
     }
-    setRoles(roles.filter(r => r.id !== role.id));
-    setNotification({ type: 'success', message: 'Role deleted successfully' });
-    setTimeout(() => setNotification(null), 3000);
+    setLocalRoles(displayRoles.filter(r => r.id !== role.id));
+    toast.success('Role deleted successfully');
   };
 
   const togglePermission = (permissionId: string) => {
@@ -287,9 +261,22 @@ export function RolesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {queryError instanceof Error ? queryError.message : 'Failed to load roles'}
+          <Button size="sm" onClick={() => rolesQuery.refetch()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -333,26 +320,7 @@ export function RolesPage() {
         </div>
       </div>
 
-      {/* Notification */}
-      {notification && (
-        <div className={`p-4 rounded-lg flex items-center justify-between ${
-          notification.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            {notification.type === 'success' ? (
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            ) : (
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            )}
-            <span className={notification.type === 'success' ? 'text-green-800' : 'text-red-800'}>
-              {notification.message}
-            </span>
-          </div>
-          <button onClick={() => setNotification(null)}>
-            <X className="h-4 w-4 text-gray-400" />
-          </button>
-        </div>
-      )}
+      {/* Notifications are shown via the design-system toast (Toaster mounted at app root). */}
 
       {/* Search */}
       <div className="relative max-w-md">

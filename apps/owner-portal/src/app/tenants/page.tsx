@@ -9,11 +9,12 @@ import {
   ArrowRight,
   MessageSquare,
 } from 'lucide-react';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { formatCurrency, formatDate } from '../../lib/api';
 import { useTenants } from '../../lib/hooks';
 
 export default function TenantsPage() {
-  const { data: tenants = [], isLoading } = useTenants();
+  const { data: tenants = [], isLoading, error, refetch } = useTenants();
   const [search, setSearch] = useState('');
 
   const filtered = tenants.filter(
@@ -29,9 +30,22 @@ export default function TenantsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load tenants'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -145,6 +159,18 @@ export default function TenantsPage() {
           </table>
         </div>
       </div>
+
+      {displayTenants.length === 0 && (
+        <EmptyState
+          icon={<Users className="h-8 w-8" />}
+          title={search ? 'No matches' : 'No tenants yet'}
+          description={
+            search
+              ? 'Try adjusting your search to find what you\u2019re looking for.'
+              : 'When tenants are onboarded they\u2019ll appear here.'
+          }
+        />
+      )}
     </div>
   );
 }

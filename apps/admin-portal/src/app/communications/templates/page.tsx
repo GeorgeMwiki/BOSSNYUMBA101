@@ -10,6 +10,7 @@ import {
   Edit,
   Copy,
 } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 
 interface Template {
   id: string;
@@ -184,9 +185,11 @@ export default function CommunicationsTemplatesPage() {
       </div>
 
       {filteredTemplates.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No templates found
-        </div>
+        <EmptyState
+          icon={<FileText className="h-8 w-8" />}
+          title="No templates found"
+          description="Create your first message template."
+        />
       )}
     </div>
   );

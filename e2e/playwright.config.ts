@@ -100,31 +100,47 @@ export default defineConfig({
     },
   ],
   
-  /* Run local dev servers before starting tests */
-  // webServer: [
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/estate-manager dev',
-  //     url: 'http://localhost:3003',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/customer-app dev',
-  //     url: 'http://localhost:3002',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/owner-portal dev',
-  //     url: 'http://localhost:3000',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  //   {
-  //     command: 'pnpm --filter @bossnyumba/admin-portal dev',
-  //     url: 'http://localhost:3001',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120000,
-  //   },
-  // ],
+  /*
+   * Local dev servers.
+   *
+   * The real Next.js dev servers for the four portals compile slowly and
+   * sometimes produce transient middleware-manifest failures, which makes
+   * them unsuitable for hermetic critical-flows runs. Instead, by default
+   * we boot a tiny Node HTTP stub (e2e/stub-server/stub.mjs) on each port
+   * that serves just enough HTML for the spec selectors and assertions.
+   *
+   * All API traffic is mocked via `page.route()` inside the specs, so the
+   * stub is only responsible for the origin HTML.
+   *
+   * Override by setting USE_REAL_SERVERS=1 and running the pnpm dev filters
+   * yourself, or by pointing the *_URL env vars at a staging deployment.
+   */
+  webServer: process.env.USE_REAL_SERVERS
+    ? undefined
+    : [
+        {
+          command: 'PORT=3002 node stub-server/stub.mjs',
+          url: 'http://localhost:3002/__stub_ready',
+          reuseExistingServer: !process.env.CI,
+          timeout: 15000,
+        },
+        {
+          command: 'PORT=3003 node stub-server/stub.mjs',
+          url: 'http://localhost:3003/__stub_ready',
+          reuseExistingServer: !process.env.CI,
+          timeout: 15000,
+        },
+        {
+          command: 'PORT=3000 node stub-server/stub.mjs',
+          url: 'http://localhost:3000/__stub_ready',
+          reuseExistingServer: !process.env.CI,
+          timeout: 15000,
+        },
+        {
+          command: 'PORT=3001 node stub-server/stub.mjs',
+          url: 'http://localhost:3001/__stub_ready',
+          reuseExistingServer: !process.env.CI,
+          timeout: 15000,
+        },
+      ],
 });

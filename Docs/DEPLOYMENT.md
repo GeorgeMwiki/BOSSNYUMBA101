@@ -24,6 +24,31 @@ Populate at minimum:
 - `JWT_SECRET` (32+ chars): `openssl rand -base64 48`
 - `ANTHROPIC_API_KEY` (if you need AI surfaces)
 - `OCR_PROVIDER=mock` (default is fine for local)
+- `API_KEY_REGISTRY=` (empty is fine in dev; required in production)
+- `TANZANIA_PAYMENT_BACKEND=clickpesa` (default PSP shortcut; `azampay`, `selcom`, and `gepg-direct` also supported)
+- `NEXT_PUBLIC_TENANT_CURRENCY=TZS` / `NEXT_PUBLIC_TENANT_LOCALE=sw-TZ` / `NEXT_PUBLIC_TENANT_COUNTRY=TZ` for a Tanzania-first tenant (defaults are `USD` / `en`)
+
+### Environment variable reference (wave-5 additions)
+
+Beyond what `.env.example` already covers, wave-5 added the following
+new variables. See `Docs/ENV.md` for the complete reference.
+
+| Variable | Purpose | Default / required |
+|----------|---------|--------------------|
+| `API_KEY_REGISTRY` | Comma-separated `hash:tenantId:role:scopes:serviceName` entries. Replaces legacy `API_KEYS` (C-1 fix). | Required in production; empty in dev |
+| `TANZANIA_PAYMENT_BACKEND` | Which GePG pathway to use: `clickpesa`, `azampay`, `selcom`, or `gepg-direct`. | `clickpesa` (recommended PSP shortcut) |
+| `OCR_PROVIDER` | OCR backend: `textract`, `google`, or `mock`. | `mock` in dev |
+| `NEXT_PUBLIC_TENANT_CURRENCY` | ISO 4217 code used for `Intl.NumberFormat` across customer/estate-manager apps. Replaces hardcoded `KES`. | `USD` |
+| `NEXT_PUBLIC_TENANT_LOCALE` | BCP-47 locale used for `Intl.*` formatters. Replaces hardcoded `en-KE`. | `en` |
+| `NEXT_PUBLIC_TENANT_COUNTRY` | ISO 3166-1 alpha-2 country code — drives telephony prefix and compliance export selection. | unset (must be provided per-tenant) |
+| `NANO_BANANA_API_KEY` | Nano Banana image-generation provider (marketing imagery only, per RESEARCH_ANSWERS Q8). When unset the renderer returns a placeholder with `reason: 'NANO_BANANA_API_KEY unset'`. | Optional |
+| `NANO_BANANA_API_URL` | Endpoint override. | Optional |
+| `TYPST_BIN` | Absolute path to the `typst` CLI used by the PDF renderer. When unset the renderer tries `typst` on PATH; when absent entirely it falls back to a zero-dep PDF encoder so the code remains callable in CI. | Optional |
+| `GEPG_PSP_MODE` | When `true`, GePG signature check is skipped (delegated to PSP). When `false`, both `GEPG_SIGNING_KEY_PEM` and `GEPG_SIGNING_CERT_PEM` must be set or the service refuses to boot (C-2 fix). | `true` in PSP mode |
+| `GEPG_SIGNING_KEY_PEM` / `GEPG_SIGNING_CERT_PEM` | RSA key + cert for direct GePG signature verification. | Required when `GEPG_PSP_MODE=false` |
+| `OUTBOX_INTERVAL_MS` / `OUTBOX_BATCH_SIZE` / `OUTBOX_WORKER_DISABLED` | Outbox drainer tuning. Ticks every `OUTBOX_INTERVAL_MS` ms (default 5000), drains up to `OUTBOX_BATCH_SIZE` events (default 50). | Defaults safe |
+| `NOTIFICATIONS_SERVICE_URL` | Base URL for the notifications service; when unset, event subscribers log dispatches they would have sent instead of erroring. | Required in production |
+| `INTERNAL_API_KEY` | `X-Internal-Key` header value for internal service-to-service calls. | Required in production |
 
 ### Bring the stack up
 
@@ -200,3 +225,50 @@ Data stores:
 - `/healthz` returns `{status, version, upstreams, workers}` per service
 - Scheduler `/healthz` includes per-worker `lastSuccessAt` and error counts
 - CloudWatch alarms defined in `infra/terraform/alarms.tf` (follow-up wave)
+
+---
+
+## 8. Composition root degraded mode
+
+The api-gateway constructs a single typed `ServiceRegistry` at boot
+(`services/api-gateway/src/composition/service-registry.ts`). This
+registry lazily instantiates the 10 Postgres-backed domain services
+(marketplace, tenders, negotiations, waitlist, gamification, migration,
+etc.). When required inputs are missing it **falls back to degraded
+mode** instead of crashing.
+
+### Boot-time signal
+
+```
+service-registry: live      → DATABASE_URL resolved, all LIVE services wired
+service-registry: degraded  → DATABASE_URL unset, pure-DB endpoints will 503
+```
+
+### What degrades vs. what fails closed
+
+| Missing env var | Behaviour | Why |
+|-----------------|-----------|-----|
+| `DATABASE_URL` | Registry returns skeleton of `null`s; pure-DB routers respond `503 Service Unavailable` with a clear reason. Auth, legacy routes, and external-creds routes still work. | Graceful — developers can run the gateway without booting Postgres. |
+| `API_KEY_REGISTRY` **and** `API_KEYS` | In production (`NODE_ENV=production`) the gateway **refuses to boot** (`assertApiKeyConfig()`). | Prevents misconfigured deploys from silently accepting every request. |
+| `ALLOWED_ORIGINS` | In production the gateway **refuses to boot**. | Wildcard CORS + cookie auth = CSRF risk. |
+| `GEPG_PSP_MODE=false` without `GEPG_SIGNING_KEY_PEM`+`GEPG_SIGNING_CERT_PEM` | Payments service **refuses to boot**. | C-2 fix — no more stub signature verification. |
+| `NOTIFICATIONS_SERVICE_URL` | Event subscribers log "`notification dispatch skipped`" and move on. | Graceful — keeps the outbox drainer healthy during partial outages. |
+| `NANO_BANANA_API_KEY` | Imagery renderer emits a placeholder PNG with `reason: 'NANO_BANANA_API_KEY unset'` in metadata. | Graceful — caller's document pipeline never breaks. |
+| `TYPST_BIN` | PDF renderer falls back to the zero-dep encoder (`react-pdf`). | Graceful — CI still renders valid PDFs. |
+| `OCR_PROVIDER=mock` | `document-intelligence` processes with fixtures. | Graceful — safe for dev, NEVER in production. |
+
+### Pilot-acceptable 503s
+
+Some routers return 503 even when `DATABASE_URL` is set, because their
+Postgres repos haven't landed yet. As of wave-5 these are:
+
+- `/api/v1/occupancy-timeline/*` — awaiting `PostgresOccupancyTimelineRepository`
+- `/api/v1/station-master-coverage/*` — awaiting `PostgresStationMasterCoverageRepository`
+
+Everything else that is pure-DB (marketplace, waitlist, gamification,
+migration, negotiations, tenders, risk reports, compliance exports,
+arrears, applications, renewals, letters, doc-chat, document render,
+scans) returns real data when `DATABASE_URL` is set.
+
+See `Docs/analysis/DELTA_AND_ROADMAP.md` § "Production Readiness Matrix"
+for the full per-feature matrix.

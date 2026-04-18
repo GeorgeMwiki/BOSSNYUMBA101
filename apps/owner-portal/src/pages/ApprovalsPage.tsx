@@ -9,11 +9,12 @@ import {
   Wrench,
   DollarSign,
 } from 'lucide-react';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { formatDate } from '../lib/api';
 import { useApprovals, useApproveRequest, useRejectRequest } from '../lib/hooks';
 
 export function ApprovalsPage() {
-  const { data: approvals = [], isLoading: loading } = useApprovals();
+  const { data: approvals = [], isLoading: loading, error, refetch } = useApprovals();
   const approveMutation = useApproveRequest();
   const rejectMutation = useRejectRequest();
   const [filter, setFilter] = useState<string>('PENDING');
@@ -50,9 +51,23 @@ export function ApprovalsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load approvals'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -176,9 +191,11 @@ export function ApprovalsPage() {
       </div>
 
       {filteredApprovals.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No {filter === 'all' ? '' : filter.toLowerCase()} approvals found
-        </div>
+        <EmptyState
+          icon={<CheckSquare className="h-8 w-8" />}
+          title={`No ${filter === 'all' ? '' : filter.toLowerCase()} approvals`.trim()}
+          description="When requests come in they'll appear here for review."
+        />
       )}
     </div>
   );

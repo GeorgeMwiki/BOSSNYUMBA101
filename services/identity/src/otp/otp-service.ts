@@ -1,4 +1,3 @@
-// @ts-nocheck — node 20 crypto global typing drift; matches repo convention
 /**
  * OTP Service — phone one-time password issuance and verification.
  *

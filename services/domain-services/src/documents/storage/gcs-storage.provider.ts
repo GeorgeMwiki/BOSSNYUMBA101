@@ -1,4 +1,3 @@
-// @ts-nocheck — local type drift; tracked
 /**
  * Google Cloud Storage Provider
  * Production storage using Google Cloud Storage with tenant-prefixed keys.
@@ -21,7 +20,15 @@ export interface GCSBucketLike {
 }
 
 export interface GCSFileLike {
-  save(data: Buffer | string, options?: { metadata?: { contentType?: string } }): Promise<void>;
+  save(
+    data: Buffer | string,
+    options?: {
+      metadata?: {
+        contentType?: string;
+        metadata?: Record<string, string>;
+      };
+    }
+  ): Promise<void>;
   getSignedUrl(config: { action: string; expires: number }): Promise<[string]>;
   delete(): Promise<void>;
   exists(): Promise<[boolean]>;

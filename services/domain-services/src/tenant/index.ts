@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
 /**
  * Tenant domain service.
  *
@@ -26,4 +25,4 @@ export type {
   UpdateOrganizationInput,
 } from '@bossnyumba/domain-models';
 
-export { TenantStatus, SubscriptionTier, OrganizationType, OrganizationStatus } from '@bossnyumba/domain-models';
+export type { TenantStatus, SubscriptionTier, OrganizationType, OrganizationStatus } from '@bossnyumba/domain-models';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, DollarSign, TrendingUp } from 'lucide-react';
 import {
@@ -13,22 +13,14 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { api, formatCurrency } from '../../../lib/api';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency } from '../../../lib/api';
+import { useRevenueAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 
 export default function RevenuePage() {
-  const [data, setData] = useState<Array<{ month: string; rent: number; other: number }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<typeof data>('/analytics/revenue').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data = [], isLoading, error, refetch } = useRevenueAnalytics();
 
   const chartData = data.length
     ? data
@@ -49,11 +41,28 @@ export default function RevenuePage() {
     { name: 'Other', value: 500000 },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-80 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load revenue analytics'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

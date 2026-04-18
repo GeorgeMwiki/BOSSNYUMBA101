@@ -1,4 +1,3 @@
-// @ts-nocheck — matches repo convention in sibling otp-service.ts
 /**
  * NotificationsSmsDispatcher
  *

@@ -11,6 +11,7 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
+import { Skeleton, EmptyState } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatPercentage } from '../lib/api';
 
 interface Property {
@@ -73,15 +74,26 @@ export function PropertyDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   if (!property) {
     return (
-      <div className="text-center py-12 text-gray-500">Property not found</div>
+      <EmptyState
+        icon={<Building2 className="h-8 w-8" />}
+        title="Property not found"
+        description="This property may have been removed or you may not have access."
+      />
     );
   }
 

@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
 import { randomHex } from '../common/id-generator.js';
 /**
  * Vendor domain service.

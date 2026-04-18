@@ -830,8 +830,13 @@ export class KPIEngine {
         }).current;
 
         scores.push({ propertyId: property.id, score });
-      } catch {
-        // Skip properties with errors
+      } catch (err) {
+        // Skip properties with errors; log for observability so silent drops are traceable.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[kpi-engine] skipped property ${property.id}:`,
+          err instanceof Error ? err.message : String(err)
+        );
       }
     }
 

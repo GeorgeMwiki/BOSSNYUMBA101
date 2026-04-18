@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -8,32 +8,13 @@ import {
   Building2,
   Search,
 } from 'lucide-react';
-import { api, formatDateTime } from '../../../lib/api';
-
-interface Conversation {
-  id: string;
-  tenantId: string;
-  tenantName: string;
-  propertyName: string;
-  unitNumber: string;
-  lastMessage: string;
-  lastMessageAt: string;
-  unreadCount?: number;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatDateTime } from '../../../lib/api';
+import { useTenantCommunications } from '../../../lib/hooks';
 
 export default function TenantCommunicationsPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: conversations = [], isLoading, error, refetch } = useTenantCommunications();
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    api.get<Conversation[]>('/tenants/communications').then((res) => {
-      if (res.success && res.data) {
-        setConversations(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
 
   const filtered = conversations.filter(
     (c) =>
@@ -49,11 +30,23 @@ export default function TenantCommunicationsPage() {
         { id: '3', tenantId: '3', tenantName: 'Peter Ochieng', propertyName: 'Kilimani Complex', unitNumber: '101', lastMessage: 'Lease renewal discussion', lastMessageAt: '2024-02-10T09:15:00', unreadCount: 0 },
       ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load tenant communications'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

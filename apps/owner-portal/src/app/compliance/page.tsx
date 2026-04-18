@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Shield,
@@ -8,25 +8,12 @@ import {
   ClipboardList,
   ArrowRight,
 } from 'lucide-react';
-import { api, formatDate } from '../../lib/api';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatDate } from '../../lib/api';
+import { useComplianceSummary } from '../../lib/hooks';
 
 export default function CompliancePage() {
-  const [stats, setStats] = useState<{
-    compliant: number;
-    expiringSoon: number;
-    overdue: number;
-    totalItems: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get('/compliance/summary').then((res) => {
-      if (res.success && res.data) {
-        setStats(res.data as typeof stats);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: stats, isLoading, error, refetch } = useComplianceSummary();
 
   const displayStats = stats || {
     compliant: 12,
@@ -41,11 +28,28 @@ export default function CompliancePage() {
     { type: 'inspection', name: 'Fire Safety Inspection', status: 'DUE', date: '2024-02-28' },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load compliance summary'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

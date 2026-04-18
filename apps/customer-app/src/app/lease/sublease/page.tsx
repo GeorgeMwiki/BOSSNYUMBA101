@@ -1,53 +1,71 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Label,
+  Alert,
+  AlertDescription,
+} from '@bossnyumba/design-system';
 
-interface SubleaseRequest {
-  readonly prospectName: string;
-  readonly prospectEmail: string;
-  readonly prospectPhone: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly proposedRent: number;
-  readonly reason: string;
-}
+const subleaseSchema = z
+  .object({
+    prospectName: z.string().trim().min(1, 'Prospect name is required'),
+    prospectEmail: z.string().trim().email('Please enter a valid email address'),
+    prospectPhone: z
+      .string()
+      .trim()
+      .min(1, 'Phone number is required')
+      .regex(/^\+?[0-9\s-]{7,}$/, 'Please enter a valid phone number'),
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    proposedRent: z.coerce.number().positive('Proposed rent must be positive'),
+    reason: z.string().trim().min(1, 'Reason is required'),
+  })
+  .refine((data) => data.endDate >= data.startDate, {
+    message: 'End date must be on or after start date.',
+    path: ['endDate'],
+  });
+
+type SubleaseForm = z.infer<typeof subleaseSchema>;
 
 export default function SubleaseRequestPage(): React.ReactElement {
-  const [form, setForm] = useState<SubleaseRequest>({
-    prospectName: '',
-    prospectEmail: '',
-    prospectPhone: '',
-    startDate: '',
-    endDate: '',
-    proposedRent: 0,
-    reason: '',
-  });
-  const [submitting, setSubmitting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
-  const update = <K extends keyof SubleaseRequest>(k: K, v: SubleaseRequest[K]): void => {
-    setForm((prev) => ({ ...prev, [k]: v }));
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SubleaseForm>({
+    resolver: zodResolver(subleaseSchema),
+    defaultValues: {
+      prospectName: '',
+      prospectEmail: '',
+      prospectPhone: '',
+      startDate: '',
+      endDate: '',
+      proposedRent: 0,
+      reason: '',
+    },
+    mode: 'onBlur',
+  });
 
-  const submit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      setFeedback({ kind: 'error', message: 'End date must be on or after start date.' });
-      return;
-    }
-    if (form.proposedRent <= 0) {
-      setFeedback({ kind: 'error', message: 'Proposed rent must be positive.' });
-      return;
-    }
-    setSubmitting(true);
+  const onSubmit = handleSubmit(async (values) => {
     setFeedback(null);
     try {
       // TODO: wire POST /api/customer/lease/sublease
       const res = await fetch('/api/customer/lease/sublease', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(values),
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       setFeedback({ kind: 'success', message: 'Sublease request sent for owner approval.' });
@@ -56,10 +74,8 @@ export default function SubleaseRequestPage(): React.ReactElement {
         kind: 'error',
         message: err instanceof Error ? err.message : 'Submission failed',
       });
-    } finally {
-      setSubmitting(false);
     }
-  };
+  });
 
   return (
     <main className="p-6 max-w-xl mx-auto">
@@ -68,7 +84,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
           <CardTitle>Request a sublease</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
             {feedback && (
               <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
                 <AlertDescription>{feedback.message}</AlertDescription>
@@ -77,31 +93,67 @@ export default function SubleaseRequestPage(): React.ReactElement {
 
             <div>
               <Label htmlFor="name">Prospect name</Label>
-              <Input id="name" value={form.prospectName} onChange={(e) => update('prospectName', e.target.value)} required />
+              <Input id="name" error={!!errors.prospectName} {...register('prospectName')} />
+              {errors.prospectName && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {errors.prospectName.message}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="email">Prospect email</Label>
-                <Input id="email" type="email" value={form.prospectEmail} onChange={(e) => update('prospectEmail', e.target.value)} required />
+                <Input id="email" type="email" error={!!errors.prospectEmail} {...register('prospectEmail')} />
+                {errors.prospectEmail && (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {errors.prospectEmail.message}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="phone">Prospect phone</Label>
-                <Input id="phone" value={form.prospectPhone} onChange={(e) => update('prospectPhone', e.target.value)} required />
+                <Input id="phone" error={!!errors.prospectPhone} {...register('prospectPhone')} />
+                {errors.prospectPhone && (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {errors.prospectPhone.message}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="start">Start date</Label>
-                <Input id="start" type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} required />
+                <Input id="start" type="date" error={!!errors.startDate} {...register('startDate')} />
+                {errors.startDate && (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {errors.startDate.message}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="end">End date</Label>
-                <Input id="end" type="date" value={form.endDate} onChange={(e) => update('endDate', e.target.value)} required />
+                <Input id="end" type="date" error={!!errors.endDate} {...register('endDate')} />
+                {errors.endDate && (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {errors.endDate.message}
+                  </p>
+                )}
               </div>
             </div>
             <div>
               <Label htmlFor="rent">Proposed rent</Label>
-              <Input id="rent" type="number" min={0} value={form.proposedRent} onChange={(e) => update('proposedRent', Number(e.target.value))} required />
+              <Input
+                id="rent"
+                type="number"
+                min={0}
+                error={!!errors.proposedRent}
+                {...register('proposedRent', { valueAsNumber: true })}
+              />
+              {errors.proposedRent && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {errors.proposedRent.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="reason">Reason for sublease</Label>
@@ -109,15 +161,19 @@ export default function SubleaseRequestPage(): React.ReactElement {
                 id="reason"
                 className="w-full border rounded-md p-2"
                 rows={3}
-                value={form.reason}
-                onChange={(e) => update('reason', e.target.value)}
-                required
+                aria-invalid={!!errors.reason}
+                {...register('reason')}
               />
+              {errors.reason && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {errors.reason.message}
+                </p>
+              )}
             </div>
             <Button
               type="submit"
-              loading={submitting}
-              disabled={submitting}
+              loading={isSubmitting}
+              disabled={isSubmitting}
               aria-label="Submit sublease request"
             >
               Submit request

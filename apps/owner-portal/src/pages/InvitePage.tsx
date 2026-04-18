@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Home, Loader2, CheckCircle, AlertCircle, Users } from 'lucide-react';
+import { Skeleton } from '@bossnyumba/design-system';
 import { api } from '../lib/api';
 
 interface InviteDetails {
@@ -91,10 +92,11 @@ export function InvitePage() {
 
   if (step === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500">Verifying invitation...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-8">
+        <div aria-busy="true" aria-live="polite" className="w-full max-w-md space-y-4">
+          <Skeleton className="h-8 w-1/2 mx-auto" />
+          <Skeleton className="h-4 w-2/3 mx-auto" />
+          <Skeleton className="h-48 w-full" />
         </div>
       </div>
     );

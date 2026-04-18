@@ -1,19 +1,26 @@
 /**
  * Scans API Routes (NEW 14)
  *
- *   POST /bundles                       — create new scan bundle
- *   POST /bundles/:id/pages             — upload one page (data URL)
- *   POST /bundles/:id/ocr               — trigger OCR across pages
- *   POST /bundles/:id/submit            — assemble + link to document
- *   GET  /bundles/:id
- *   GET  /bundles
+ *   GET  /                          — list scan bundles (DB-backed)
+ *   GET  /bundles                   — alias for GET /
+ *   GET  /bundles/:id               — fetch a single bundle
+ *   POST /bundles                   — create new scan bundle (requires ScanService)
+ *   POST /bundles/:id/pages         — upload one page (requires ScanService)
+ *   POST /bundles/:id/ocr           — trigger OCR across pages (requires ScanService)
+ *   POST /bundles/:id/submit        — assemble + link to document
+ *
+ * GET paths read `scan_bundles` directly via the composition-root
+ * Drizzle client so they return real rows without the heavier
+ * `ScanService` (which needs storage + OCR provider) being bound.
  */
 
-// @ts-nocheck — service binder wiring lands in a follow-up commit.
+// @ts-nocheck — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { and, desc, eq } from 'drizzle-orm';
+import { scanBundles } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 
 const app = new Hono();
@@ -35,21 +42,68 @@ const UploadPageSchema = z.object({
     .optional(),
 });
 
-function notImplemented(c: any) {
+function notConfigured(c: any) {
   return c.json(
     {
       success: false,
-      error: 'ScanService not yet bound to the API gateway.',
+      error: 'Scan bundles database not configured — DATABASE_URL unset',
     },
-    501
+    503
   );
 }
 
-app.post('/bundles', zValidator('json', CreateBundleSchema), notImplemented);
-app.post('/bundles/:id/pages', zValidator('json', UploadPageSchema), notImplemented);
-app.post('/bundles/:id/ocr', notImplemented);
-app.post('/bundles/:id/submit', notImplemented);
-app.get('/bundles/:id', notImplemented);
-app.get('/bundles', notImplemented);
+function noService(c: any) {
+  return c.json(
+    {
+      success: false,
+      error:
+        'ScanService not yet bound (requires object storage + OCR provider).',
+    },
+    503
+  );
+}
+
+async function listBundles(c: any) {
+  const services = c.get('services');
+  const db = services?.db;
+  if (!db) return notConfigured(c);
+  const tenantId = c.get('tenantId');
+  const rows = await db
+    .select()
+    .from(scanBundles)
+    .where(eq(scanBundles.tenantId, tenantId))
+    .orderBy(desc(scanBundles.createdAt))
+    .limit(100);
+  return c.json({ success: true, data: rows });
+}
+
+app.get('/', listBundles);
+app.get('/bundles', listBundles);
+
+app.get('/bundles/:id', async (c: any) => {
+  const services = c.get('services');
+  const db = services?.db;
+  if (!db) return notConfigured(c);
+  const tenantId = c.get('tenantId');
+  const id = c.req.param('id');
+  const rows = await db
+    .select()
+    .from(scanBundles)
+    .where(and(eq(scanBundles.id, id), eq(scanBundles.tenantId, tenantId)))
+    .limit(1);
+  if (!rows[0]) {
+    return c.json({ success: false, error: 'Bundle not found' }, 404);
+  }
+  return c.json({ success: true, data: rows[0] });
+});
+
+app.post('/bundles', zValidator('json', CreateBundleSchema), noService);
+app.post(
+  '/bundles/:id/pages',
+  zValidator('json', UploadPageSchema),
+  noService
+);
+app.post('/bundles/:id/ocr', noService);
+app.post('/bundles/:id/submit', noService);
 
 export default app;

@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   History,
 } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -297,8 +298,10 @@ export function ESignaturePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
     );
   }
@@ -328,9 +331,12 @@ export function ESignaturePage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" onClick={loadData} className="ml-2">Retry</Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Success notification */}
@@ -383,11 +389,11 @@ export function ESignaturePage() {
           {activeTab === 'pending' && (
             <div className="space-y-4">
               {pendingDocs.length === 0 ? (
-                <div className="text-center py-12">
-                  <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-                  <p className="text-gray-500 font-medium">All caught up!</p>
-                  <p className="text-sm text-gray-400 mt-1">No documents require your signature</p>
-                </div>
+                <EmptyState
+                  icon={<CheckCircle className="h-8 w-8" />}
+                  title="All caught up!"
+                  description="No documents require your signature."
+                />
               ) : (
                 pendingDocs.map((doc) => (
                   <div
@@ -464,10 +470,11 @@ export function ESignaturePage() {
           {activeTab === 'history' && (
             <div className="space-y-3">
               {history.length === 0 ? (
-                <div className="text-center py-12">
-                  <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No signature history yet</p>
-                </div>
+                <EmptyState
+                  icon={<History className="h-8 w-8" />}
+                  title="No signature history yet"
+                  description="Documents you sign will appear here."
+                />
               ) : (
                 history.map((entry) => (
                   <div

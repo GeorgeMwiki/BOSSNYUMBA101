@@ -81,20 +81,59 @@ Cross-cutting packages: `@bossnyumba/domain-models` (types), `@bossnyumba/authz-
 
 ## Quick Start
 
+Two supported paths for bringing up local Postgres + Redis — Docker
+(one-liner) or Homebrew (lighter, no container overhead). Pick one.
+
+### Option A — Docker (recommended for first-time setup)
+
 ```bash
 # 1. Install deps
 pnpm install
 
-# 2. Start Postgres + Redis
+# 2. Start Postgres (pgvector) + Redis via docker-compose
 docker compose up -d postgres redis
 
-# 3. Run migrations and seed a demo org
-pnpm --filter @bossnyumba/database migrate
-pnpm --filter @bossnyumba/database seed --org=trc
+# 3. Copy + populate env file
+cp .env.example .env
+# Minimum to fill: JWT_SECRET, DATABASE_URL, REDIS_URL, API_KEY_REGISTRY
+#                  (empty ok in dev), NEXT_PUBLIC_TENANT_CURRENCY,
+#                  NEXT_PUBLIC_TENANT_LOCALE, NEXT_PUBLIC_TENANT_COUNTRY
 
-# 4. Start the full stack
+# 4. Run migrations (40/40 apply clean as of wave 5)
+pnpm -F @bossnyumba/database db:migrate
+
+# 5. Seed the TRC pilot fixture (SEED_ORG_SEEDS=true required)
+SEED_ORG_SEEDS=true pnpm -F @bossnyumba/database db:seed -- --org=trc
+
+# 6. Start the full stack
 docker compose up
 # or for dev mode (hot reload):
+pnpm dev
+```
+
+### Option B — Homebrew (macOS, no Docker)
+
+```bash
+# 1. System services
+brew install postgresql@15 redis
+brew services start postgresql@15
+brew services start redis
+
+# 2. Bootstrap a local database
+createdb bossnyumba
+
+# 3. Enable pgvector (the first migration does this automatically)
+psql bossnyumba -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 4. Copy env + point at local services
+cp .env.example .env
+# Set DATABASE_URL=postgresql://localhost:5432/bossnyumba
+#     REDIS_URL=redis://localhost:6379
+
+# 5. Install deps + migrate + seed + run
+pnpm install
+pnpm -F @bossnyumba/database db:migrate
+SEED_ORG_SEEDS=true pnpm -F @bossnyumba/database db:seed -- --org=trc
 pnpm dev
 ```
 
@@ -102,7 +141,49 @@ pnpm dev
 
 - Node.js >= 20.0.0
 - pnpm >= 8.0.0
-- Docker & Docker Compose
+- Either Docker + Compose, **or** local Postgres 15 (with pgvector) + Redis 7
+
+### Development smoke test
+
+Verifies the full gateway boot + composition root wiring in under a
+minute. Run after migrations + seed.
+
+```bash
+# 1. Boot the api-gateway (separate terminal)
+pnpm -F @bossnyumba/api-gateway dev
+
+# 2. Look for this line in the logs — confirms Postgres-backed domain
+#    services wired successfully:
+#
+#    service-registry: live (Postgres-backed domain services wired)
+#
+#    If you see "service-registry: degraded" instead, DATABASE_URL is
+#    unset and pure-DB endpoints will return 503. Legacy routes still
+#    work. See Docs/DEPLOYMENT.md §8.
+
+# 3. Hit the health endpoints (both paths served)
+curl -sS http://localhost:4000/health  | jq .
+curl -sS http://localhost:4000/healthz | jq .
+# {
+#   "status": "ok",
+#   "version": "dev",
+#   "service": "api-gateway",
+#   "timestamp": "2026-04-18T...",
+#   "upstreams": {}
+# }
+
+# 4. Probe the API versioning endpoint — lists every mounted route
+curl -sS http://localhost:4000/api/v1 | jq .
+
+# 5. Probe one wave-5 LIVE endpoint (requires valid JWT in real use)
+#    Without auth, expect 401. With auth + DATABASE_URL set, expect
+#    real rows from Postgres.
+curl -sS http://localhost:4000/api/v1/marketplace/listings \
+  -H "Authorization: Bearer <jwt>" | jq .
+```
+
+See [Docs/DEPLOYMENT.md](Docs/DEPLOYMENT.md) and
+[Docs/RUNBOOK.md](Docs/RUNBOOK.md) for the full operational reference.
 
 ### Development URLs
 
@@ -183,9 +264,10 @@ See `Makefile` for Docker/Terraform/ECR helpers.
 - [Docs/api/openapi.yaml](Docs/api/openapi.yaml) — OpenAPI spec
 - [Docs/API_CONTRACTS.md](Docs/API_CONTRACTS.md) — contract conventions
 
-### Operations (to be added)
-- `Docs/DEPLOYMENT.md` — deployment runbook (planned)
-- `Docs/RUNBOOK.md` — on-call runbook (planned)
+### Operations
+- [Docs/DEPLOYMENT.md](Docs/DEPLOYMENT.md) — local + staging + production deploy guide, env-var reference, composition root degraded mode
+- [Docs/RUNBOOK.md](Docs/RUNBOOK.md) — on-call runbook, standard operational procedures (migrations, seeds, health checks, API key rotation, 503 triage)
+- [Docs/ENV.md](Docs/ENV.md) — complete environment variable reference
 
 ## Contributing
 

@@ -178,87 +178,242 @@ export class PostgresCaseRepository implements Partial<CaseRepository> {
   }
 
   // -------------------------------------------------------------------------
-  // Not yet implemented (SLA worker does NOT rely on these); throwing surfaces
-  // unplanned usage rather than returning silent empty results.
+  // Query helpers (read-only).
+  //
+  // All filters are tenant-scoped and JS-paginate after the row fetch so the
+  // implementations stay compatible with the test fake that only exposes the
+  // minimal chain surface (select().from().where().limit()). Production
+  // callers drive these through the real Drizzle client which evaluates the
+  // column predicates from the real `cases` schema.
   // -------------------------------------------------------------------------
 
   async findByCaseNumber(
-    _caseNumber: string,
-    _tenantId: TenantId
+    caseNumber: string,
+    tenantId: TenantId
   ): Promise<Case | null> {
-    throw new Error('PostgresCaseRepository.findByCaseNumber: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(
+        and(
+          eq(casesTable.caseNumber, caseNumber),
+          eq(casesTable.tenantId, tenantId as unknown as string)
+        )
+      )
+      .limit(1);
+    return rows[0] ? rowToEntity(rows[0]) : null;
   }
 
   async findMany(
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findMany: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    return paginate(rows.map(rowToEntity), pagination);
   }
 
   async findByCustomer(
-    _customerId: CustomerId,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    customerId: CustomerId,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findByCustomer: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(
+        and(
+          eq(casesTable.tenantId, tenantId as unknown as string),
+          eq(casesTable.customerId, customerId as unknown as string)
+        )
+      );
+    return paginate(rows.map(rowToEntity), pagination);
   }
 
   async findByStatus(
-    _status: CaseStatus,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    status: CaseStatus,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findByStatus: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    const entities = rows.map(rowToEntity).filter((c) => c.status === status);
+    return paginate(entities, pagination);
   }
 
   async findByType(
-    _type: CaseType,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    type: CaseType,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findByType: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    const entities = rows.map(rowToEntity).filter((c) => c.type === type);
+    return paginate(entities, pagination);
   }
 
   async findBySeverity(
-    _severity: CaseSeverity,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    severity: CaseSeverity,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findBySeverity: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    const entities = rows
+      .map(rowToEntity)
+      .filter((c) => c.severity === severity);
+    return paginate(entities, pagination);
   }
 
   async findByAssignee(
-    _assignedTo: UserId,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    assignedTo: UserId,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findByAssignee: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(
+        and(
+          eq(casesTable.tenantId, tenantId as unknown as string),
+          eq(casesTable.assignedTo, assignedTo as unknown as string)
+        )
+      );
+    return paginate(rows.map(rowToEntity), pagination);
   }
 
   async findByProperty(
-    _propertyId: PropertyId,
-    _tenantId: TenantId,
-    _pagination?: PaginationParams
+    propertyId: PropertyId,
+    tenantId: TenantId,
+    pagination?: PaginationParams
   ): Promise<PaginatedResult<Case>> {
-    throw new Error('PostgresCaseRepository.findByProperty: not implemented');
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(
+        and(
+          eq(casesTable.tenantId, tenantId as unknown as string),
+          eq(casesTable.propertyId, propertyId as unknown as string)
+        )
+      );
+    return paginate(rows.map(rowToEntity), pagination);
   }
 
-  async findEscalated(_tenantId: TenantId): Promise<Case[]> {
-    throw new Error('PostgresCaseRepository.findEscalated: not implemented');
+  async findEscalated(tenantId: TenantId): Promise<Case[]> {
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    // `escalated_at IS NOT NULL` isn't portable across our test fake, so
+    // filter in JS — the production dataset is bounded by tenant already.
+    return rows.map(rowToEntity).filter((c) => !!c.escalatedAt);
   }
 
-  async delete(): Promise<void> {
-    throw new Error('PostgresCaseRepository.delete: not implemented');
+  async delete(
+    id: CaseId,
+    tenantId: TenantId,
+    deletedBy: UserId
+  ): Promise<void> {
+    // Soft-delete: stamp `deletedAt` / `deletedBy` so audit trails stay
+    // intact and `findById` filters deleted rows out via the row payload.
+    const now = new Date();
+    await this.db
+      .update(casesTable)
+      .set({
+        deletedAt: now,
+        deletedBy: deletedBy as unknown as string,
+        updatedAt: now,
+        updatedBy: deletedBy as unknown as string,
+      })
+      .where(
+        and(
+          eq(casesTable.id, id as unknown as string),
+          eq(casesTable.tenantId, tenantId as unknown as string)
+        )
+      );
   }
 
-  async getNextSequence(_tenantId: TenantId): Promise<number> {
-    throw new Error('PostgresCaseRepository.getNextSequence: not implemented');
+  /**
+   * Returns the next per-tenant case sequence (1-based). Reads all existing
+   * case numbers scoped to the tenant and extracts the numeric suffix from
+   * the canonical `CASE-YYYY-NNN` format. If no cases exist yet the sequence
+   * starts at 1. A caller race is acceptable here — the `(tenant_id, case_number)`
+   * unique index backstops collisions and the service retries on violation.
+   */
+  async getNextSequence(tenantId: TenantId): Promise<number> {
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    let max = 0;
+    for (const row of rows) {
+      const cn = (row as { caseNumber?: string }).caseNumber;
+      if (!cn) continue;
+      // CASE-2026-017 → 17
+      const match = /(?:^|-)(\d+)$/.exec(cn);
+      if (!match) continue;
+      const n = Number.parseInt(match[1]!, 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    return max + 1;
   }
 
-  async countByStatus(_tenantId: TenantId): Promise<Record<CaseStatus, number>> {
-    throw new Error('PostgresCaseRepository.countByStatus: not implemented');
+  async countByStatus(
+    tenantId: TenantId
+  ): Promise<Record<CaseStatus, number>> {
+    const rows = await this.db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.tenantId, tenantId as unknown as string));
+    const counts: Record<CaseStatus, number> = {
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      PENDING_RESPONSE: 0,
+      ESCALATED: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+    };
+    for (const row of rows) {
+      const entity = rowToEntity(row);
+      counts[entity.status] = (counts[entity.status] ?? 0) + 1;
+    }
+    return counts;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pagination helper (shared across all list queries above)
+// ---------------------------------------------------------------------------
+
+function paginate<T>(
+  items: readonly T[],
+  pagination?: PaginationParams
+): PaginatedResult<T> {
+  const page = Math.max(1, pagination?.page ?? 1);
+  const pageSize = Math.max(1, pagination?.pageSize ?? 50);
+  const totalItems = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const start = (page - 1) * pageSize;
+  const slice = items.slice(start, start + pageSize);
+  return {
+    data: slice as T[],
+    pagination: {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

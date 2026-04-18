@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Building2, TrendingUp, TrendingDown } from 'lucide-react';
 import {
@@ -11,29 +11,12 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { api, formatCurrency, formatPercentage } from '../../../lib/api';
-
-interface PropertyPerformance {
-  id: string;
-  name: string;
-  revenue: number;
-  occupancy: number;
-  noi: number;
-  capRate: number;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency, formatPercentage } from '../../../lib/api';
+import { usePortfolioPerformance } from '../../../lib/hooks';
 
 export default function PortfolioPerformancePage() {
-  const [data, setData] = useState<PropertyPerformance[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<PropertyPerformance[]>('/portfolio/performance').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data = [], isLoading, error, refetch } = usePortfolioPerformance();
 
   const chartData = data.length
     ? data
@@ -43,11 +26,28 @@ export default function PortfolioPerformancePage() {
         { name: 'Property C', revenue: 450000, occupancy: 95, noi: 320000 },
       ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-80 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load portfolio performance'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

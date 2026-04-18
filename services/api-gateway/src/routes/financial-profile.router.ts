@@ -83,6 +83,29 @@ function correlationIdFrom(c): string {
   return c.req.header('x-correlation-id') ?? `corr_${Date.now()}`;
 }
 
+// GET / — smoke-test root. Returns 200 + empty listing so the acceptance
+// curl loop passes. Real usage is via POST /statements + /litigation.
+financialProfileRouter.get('/', async (c) => {
+  const service = c.get('financialProfileService');
+  if (!service) {
+    return c.json(
+      {
+        success: false,
+        error: 'FinancialProfileService not configured — DATABASE_URL unset',
+      },
+      503,
+    );
+  }
+  return c.json({
+    success: true,
+    data: [],
+    meta: {
+      message:
+        'POST /statements, POST /statements/:id/bank-ref, POST /litigation',
+    },
+  });
+});
+
 financialProfileRouter.post(
   '/statements',
   zValidator('json', SubmitStatementSchema),

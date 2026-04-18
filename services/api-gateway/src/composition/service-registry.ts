@@ -50,11 +50,27 @@ import {
   PostgresWaitlistRepository,
   PostgresWaitlistOutreachRepository,
 } from '@bossnyumba/domain-services/waitlist';
-// Occupancy + Routing types are imported for the ServiceRegistry type
-// signature. No postgres-backed repo exists yet — the services are
-// null-initialized and their routers fall back to 503.
-import type { OccupancyTimelineService } from '@bossnyumba/domain-services/occupancy';
-import type { StationMasterRouter } from '@bossnyumba/domain-services/routing';
+import {
+  OccupancyTimelineService,
+  PostgresOccupancyTimelineRepository,
+} from '@bossnyumba/domain-services/occupancy';
+import {
+  StationMasterRouter,
+  PostgresStationMasterCoverageRepository,
+} from '@bossnyumba/domain-services/routing';
+import {
+  RenewalService,
+  PostgresRenewalRepository,
+} from '@bossnyumba/domain-services/lease';
+import {
+  FinancialProfileService,
+  PostgresFinancialStatementRepository,
+  PostgresLitigationRepository,
+  RiskReportService,
+  PostgresRiskReportRepository,
+  PostgresRiskReportInputsProvider,
+  DeterministicRiskNarrator,
+} from '@bossnyumba/domain-services/customer';
 import {
   createGamificationService,
   PostgresGamificationRepository,
@@ -83,6 +99,10 @@ export interface ServiceRegistry {
   };
   readonly occupancyTimeline: OccupancyTimelineService | null;
   readonly stationMasterRouter: StationMasterRouter | null;
+  readonly stationMasterCoverageRepo: PostgresStationMasterCoverageRepository | null;
+  readonly renewal: RenewalService | null;
+  readonly financialProfile: FinancialProfileService | null;
+  readonly riskReport: RiskReportService | null;
   readonly gamification: ReturnType<typeof createGamificationService> | null;
   readonly migration: MigrationService | null;
 
@@ -113,6 +133,10 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     waitlist: { service: null, vacancyHandler: null },
     occupancyTimeline: null,
     stationMasterRouter: null,
+    stationMasterCoverageRepo: null,
+    renewal: null,
+    financialProfile: null,
+    riskReport: null,
     gamification: null,
     migration: null,
     eventBus,
@@ -206,8 +230,42 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     },
   });
 
-  // Occupancy timeline + station master router intentionally left null
-  // until their Postgres repos land. Routers fall back to 503 cleanly.
+  // Occupancy Timeline (NEW 22) — Postgres-backed service over leases/customers.
+  const occupancyTimelineRepo = new PostgresOccupancyTimelineRepository(db);
+  const occupancyTimelineService = new OccupancyTimelineService(
+    occupancyTimelineRepo
+  );
+
+  // Station Master Coverage (NEW 18) — router + coverage repo for applications.
+  const stationMasterCoverageRepo = new PostgresStationMasterCoverageRepository(
+    db
+  );
+  const stationMasterRouter = new StationMasterRouter({
+    repository: stationMasterCoverageRepo,
+  });
+
+  // Lease Renewal workflow — Postgres-backed over leases table.
+  const renewalRepo = new PostgresRenewalRepository(db);
+  const renewalService = new RenewalService(renewalRepo, eventBus);
+
+  // Financial Profile + Risk Reports (SCAFFOLDED-5, NEW-13).
+  const financialStatementRepo = new PostgresFinancialStatementRepository(db);
+  const litigationRepo = new PostgresLitigationRepository(db);
+  const financialProfileService = new FinancialProfileService(
+    financialStatementRepo,
+    litigationRepo,
+    eventBus,
+    null // no bank-reference provider wired yet — service returns a structured
+         // PROVIDER_ERROR instead of crashing on verify-bank-reference
+  );
+  const riskReportRepo = new PostgresRiskReportRepository(db);
+  const riskReportInputsProvider = new PostgresRiskReportInputsProvider(db);
+  const riskReportService = new RiskReportService(
+    riskReportRepo,
+    riskReportInputsProvider,
+    new DeterministicRiskNarrator()
+  );
+
   return {
     marketplace: {
       listing: listingService,
@@ -219,8 +277,12 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
       service: waitlistService,
       vacancyHandler,
     },
-    occupancyTimeline: null,
-    stationMasterRouter: null,
+    occupancyTimeline: occupancyTimelineService,
+    stationMasterRouter,
+    stationMasterCoverageRepo,
+    renewal: renewalService,
+    financialProfile: financialProfileService,
+    riskReport: riskReportService,
     gamification: gamificationService,
     migration: migrationService,
     eventBus,

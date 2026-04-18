@@ -1,31 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Building2, Calendar, CheckCircle } from 'lucide-react';
-import { api, formatDate } from '../../../lib/api';
-
-interface Inspection {
-  id: string;
-  propertyId: string;
-  propertyName: string;
-  type: string;
-  scheduledDate: string;
-  completedDate?: string;
-  status: string;
-  result?: string;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatDate } from '../../../lib/api';
+import { useInspections } from '../../../lib/hooks';
 
 export default function InspectionsPage() {
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<Inspection[]>('/compliance/inspections').then((res) => {
-      if (res.success && res.data) {
-        setInspections(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: inspections = [], isLoading, error, refetch } = useInspections();
 
   const displayInspections = inspections.length
     ? inspections
@@ -39,11 +20,28 @@ export default function InspectionsPage() {
   const upcoming = displayInspections.filter((i) => i.status === 'SCHEDULED');
   const completed = displayInspections.filter((i) => i.status === 'PASSED' || i.status === 'COMPLETED');
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load inspections'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

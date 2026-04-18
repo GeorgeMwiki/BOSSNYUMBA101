@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Query Analyzer
  *
@@ -129,9 +128,13 @@ async function runExplain(
   )
 }
 
+type PostgresJsTx = (s: string, p?: unknown[]) => Promise<unknown>
+
 function isPostgresJsClient(
   c: unknown
-): c is { begin: (fn: (tx: unknown) => Promise<unknown>) => Promise<unknown> } {
+): c is {
+  begin: (fn: (tx: PostgresJsTx) => Promise<unknown>) => Promise<unknown>
+} {
   return (
     typeof c === 'object' &&
     c !== null &&

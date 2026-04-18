@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,42 +9,36 @@ import {
   FileText,
   Shield,
 } from 'lucide-react';
-import { api, formatCurrency } from '../../../lib/api';
-
-interface PropertyBudget {
-  propertyId: string;
-  propertyName: string;
-  totalBudget: number;
-  totalSpent: number;
-  categories: Array<{
-    category: string;
-    budgeted: number;
-    spent: number;
-    variance: number;
-  }>;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency } from '../../../lib/api';
+import { usePropertyBudget } from '../../../lib/hooks';
 
 export default function PropertyBudgetPage() {
   const { propertyId } = useParams<{ propertyId: string }>();
-  const [budget, setBudget] = useState<PropertyBudget | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: budget = null, isLoading, error, refetch } = usePropertyBudget(propertyId || '');
 
-  useEffect(() => {
-    if (propertyId) {
-      api.get<PropertyBudget>(`/budgets/${propertyId}`).then((res) => {
-        if (res.success && res.data) {
-          setBudget(res.data);
-        }
-        setLoading(false);
-      });
-    }
-  }, [propertyId]);
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load property budget'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

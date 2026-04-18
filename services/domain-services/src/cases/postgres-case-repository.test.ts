@@ -36,6 +36,10 @@ vi.mock('@bossnyumba/database', () => {
       tenantId: col('tenantId'),
       resolutionDueAt: col('resolutionDueAt'),
       status: col('status'),
+      caseNumber: col('caseNumber'),
+      customerId: col('customerId'),
+      assignedTo: col('assignedTo'),
+      propertyId: col('propertyId'),
     },
   };
 });
@@ -147,6 +151,68 @@ describe('PostgresCaseRepository', () => {
     await repo.appendTimelineEvent(c.id, TENANT, event, ACTOR);
     const found = await repo.findById(c.id, TENANT);
     expect(found?.timeline).toHaveLength(1);
+  });
+
+  it('findByCaseNumber returns matching case', async () => {
+    await repo.createCase(makeCase('k_fb', { caseNumber: 'CASE-2026-007' }));
+    const found = await repo.findByCaseNumber('CASE-2026-007', TENANT);
+    expect(found?.caseNumber).toBe('CASE-2026-007');
+    const missing = await repo.findByCaseNumber('CASE-2026-999', TENANT);
+    expect(missing).toBeNull();
+  });
+
+  it('findByCustomer filters by customer + paginates', async () => {
+    const other = 'cust_2' as CustomerId;
+    await repo.createCase(makeCase('c1', { customerId: CUSTOMER }));
+    await repo.createCase(makeCase('c2', { customerId: CUSTOMER }));
+    await repo.createCase(makeCase('c3', { customerId: other }));
+    const result = await repo.findByCustomer(CUSTOMER, TENANT, {
+      page: 1,
+      pageSize: 10,
+    });
+    expect(result.data.map((c) => c.id)).toEqual(
+      expect.arrayContaining(['c1', 'c2'])
+    );
+    expect(result.pagination.totalItems).toBe(2);
+    expect(result.pagination.hasNextPage).toBe(false);
+  });
+
+  it('findByStatus narrows to the requested status', async () => {
+    await repo.createCase(makeCase('s1', { status: 'OPEN' }));
+    await repo.createCase(makeCase('s2', { status: 'CLOSED' }));
+    const open = await repo.findByStatus('OPEN', TENANT);
+    expect(open.data.map((c) => c.id)).toEqual(['s1']);
+  });
+
+  it('countByStatus rolls up every case', async () => {
+    await repo.createCase(makeCase('cs1', { status: 'OPEN' }));
+    await repo.createCase(makeCase('cs2', { status: 'OPEN' }));
+    await repo.createCase(makeCase('cs3', { status: 'CLOSED' }));
+    const counts = await repo.countByStatus(TENANT);
+    expect(counts.OPEN).toBe(2);
+    expect(counts.CLOSED).toBe(1);
+    expect(counts.IN_PROGRESS).toBe(0);
+  });
+
+  it('getNextSequence returns 1 when no cases exist', async () => {
+    const n = await repo.getNextSequence(TENANT);
+    expect(n).toBe(1);
+  });
+
+  it('getNextSequence advances past the highest existing case number', async () => {
+    await repo.createCase(makeCase('g1', { caseNumber: 'CASE-2026-003' }));
+    await repo.createCase(makeCase('g2', { caseNumber: 'CASE-2026-011' }));
+    await repo.createCase(makeCase('g3', { caseNumber: 'CASE-2026-007' }));
+    const n = await repo.getNextSequence(TENANT);
+    expect(n).toBe(12);
+  });
+
+  it('findEscalated returns only cases with an escalatedAt stamp', async () => {
+    const now = new Date().toISOString() as ISOTimestamp;
+    await repo.createCase(makeCase('e1', { escalatedAt: now }));
+    await repo.createCase(makeCase('e2'));
+    const rows = await repo.findEscalated(TENANT);
+    expect(rows.map((r) => r.id)).toEqual(['e1']);
   });
 
   it('findOverdue filters out terminal statuses', async () => {

@@ -13,7 +13,6 @@ function getApiBase(): string {
   }
   return 'http://localhost:4000/api/v1';
 }
-const API_BASE = getApiBase();
 
 function resolveTenantId(): string {
   if (typeof window !== 'undefined') {
@@ -21,20 +20,6 @@ function resolveTenantId(): string {
   }
   return process.env.NEXT_PUBLIC_TENANT_ID || '';
 }
-
-(() => {
-  if (typeof window !== 'undefined') {
-    try {
-      getApiClient();
-    } catch {
-      initializeApiClient({
-        baseUrl: API_BASE,
-        tenantId: resolveTenantId(),
-        accessToken: localStorage.getItem('auth_token') || undefined,
-      });
-    }
-  }
-})();
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -44,7 +29,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       if (token) client.setAccessToken(token);
     } catch {
       initializeApiClient({
-        baseUrl: API_BASE,
+        baseUrl: getApiBase(),
         tenantId: resolveTenantId(),
         accessToken: token || undefined,
       });

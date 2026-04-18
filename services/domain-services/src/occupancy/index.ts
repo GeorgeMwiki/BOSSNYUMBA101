@@ -7,3 +7,4 @@ export {
   type PortfolioTimeline,
   type UnitTimeline,
 } from './occupancy-timeline-service.js';
+export { PostgresOccupancyTimelineRepository } from './postgres-occupancy-timeline-repository.js';

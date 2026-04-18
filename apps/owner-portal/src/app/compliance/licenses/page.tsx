@@ -1,32 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileCheck, Building2, Calendar } from 'lucide-react';
-import { api, formatDate } from '../../../lib/api';
-
-interface License {
-  id: string;
-  propertyId: string;
-  propertyName: string;
-  type: string;
-  number: string;
-  issuingAuthority: string;
-  issueDate: string;
-  expiryDate: string;
-  status: string;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatDate } from '../../../lib/api';
+import { useLicenses } from '../../../lib/hooks';
 
 export default function LicensesPage() {
-  const [licenses, setLicenses] = useState<License[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<License[]>('/compliance/licenses').then((res) => {
-      if (res.success && res.data) {
-        setLicenses(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: licenses = [], isLoading, error, refetch } = useLicenses();
 
   const displayLicenses = licenses.length
     ? licenses
@@ -36,11 +16,23 @@ export default function LicensesPage() {
         { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Rental License', number: 'RL-2024-002', issuingAuthority: 'City Council', issueDate: '2024-01-15', expiryDate: '2025-01-15', status: 'ACTIVE' },
       ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load licenses'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

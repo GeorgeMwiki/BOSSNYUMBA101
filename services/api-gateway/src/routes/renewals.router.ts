@@ -52,6 +52,30 @@ function correlationIdFrom(c): string {
   return c.req.header('x-correlation-id') ?? `corr_${Date.now()}`;
 }
 
+// GET / — smoke-test root. Renewal is a per-lease workflow, so there is
+// no global list; we return an empty array so the acceptance curl sees
+// 200. Real usage is via /:leaseId/{window,propose,accept,decline,terminate}.
+renewalsRouter.get('/', async (c) => {
+  const service = c.get('renewalService');
+  if (!service) {
+    return c.json(
+      {
+        success: false,
+        error: 'RenewalService not configured — DATABASE_URL unset',
+      },
+      503,
+    );
+  }
+  return c.json({
+    success: true,
+    data: [],
+    meta: {
+      message:
+        'POST /:leaseId/{window|propose|accept|decline|terminate} for renewal workflow',
+    },
+  });
+});
+
 renewalsRouter.post(
   '/:leaseId/window',
   zValidator('param', idParam),

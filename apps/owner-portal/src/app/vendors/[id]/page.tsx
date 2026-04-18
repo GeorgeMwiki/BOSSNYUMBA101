@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,56 +10,51 @@ import {
   Briefcase,
   Calendar,
 } from 'lucide-react';
-import { api, formatCurrency, formatDate } from '../../../lib/api';
-
-interface VendorDetail {
-  id: string;
-  name: string;
-  type: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  status: string;
-  properties: Array<{ id: string; name: string }>;
-  recentWorkOrders?: Array<{ id: string; description: string; status: string; createdAt: string }>;
-}
+import { Skeleton, EmptyState, Button, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { formatCurrency, formatDate } from '../../../lib/api';
+import { useVendor } from '../../../lib/hooks';
 
 export default function VendorDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [vendor, setVendor] = useState<VendorDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: vendor, isLoading, error, refetch } = useVendor(id || '');
 
-  useEffect(() => {
-    if (id) {
-      api.get<VendorDetail>(`/vendors/${id}`).then((res) => {
-        if (res.success && res.data) {
-          setVendor(res.data);
-        }
-        setLoading(false);
-      });
-    }
-  }, [id]);
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load vendor'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
   if (!vendor) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <p className="text-gray-600">Vendor not found.</p>
-        <Link
-          to="/vendors"
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to vendors
-        </Link>
-      </div>
+      <EmptyState
+        icon={<Building2 className="h-8 w-8" />}
+        title="Vendor not found"
+        description="This vendor may have been removed."
+        action={
+          <Link
+            to="/vendors"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to vendors
+          </Link>
+        }
+      />
     );
   }
 
@@ -137,7 +132,11 @@ export default function VendorDetailPage() {
               </Link>
             ))}
             {(!displayVendor.properties || displayVendor.properties.length === 0) && (
-              <p className="text-gray-500">No properties assigned</p>
+              <EmptyState
+                icon={<Building2 className="h-8 w-8" />}
+                title="No properties assigned"
+                description="Assign this vendor to a property to see it here."
+              />
             )}
           </div>
         </div>
@@ -179,7 +178,11 @@ export default function VendorDetailPage() {
           </table>
         </div>
         {(!displayVendor.recentWorkOrders || displayVendor.recentWorkOrders.length === 0) && (
-          <p className="text-center py-8 text-gray-500">No recent work orders</p>
+          <EmptyState
+            icon={<FileText className="h-8 w-8" />}
+            title="No recent work orders"
+            description="Work orders assigned to this vendor will appear here."
+          />
         )}
       </div>
     </div>

@@ -655,7 +655,7 @@ export class StatementGenerationService {
   }
 
   private formatMoney(money: Money | { amountMinorUnits: number; currency: string }): string {
-    const minor = 'amountMinorUnits' in money ? money.amountMinorUnits : (money as any).amountMinorUnits;
+    const minor = money.amountMinorUnits;
     const curr = 'currency' in money ? money.currency : '';
     return `${curr} ${(minor / 100).toFixed(2)}`;
   }

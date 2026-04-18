@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Building2, Home, Edit, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
 
@@ -12,7 +13,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const id = (params?.id ?? '') as string;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['property', id],
     queryFn: () => propertiesService.get(id),
     retry: false,
@@ -24,7 +25,26 @@ export default function PropertyDetailPage() {
     return (
       <>
         <PageHeader title="Property" showBack />
-        <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+        <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <PageHeader title="Property" showBack />
+        <div className="px-4 py-4">
+          <Alert variant="danger">
+            <AlertDescription>
+              {error instanceof Error ? error.message : 'Failed to load property'}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+            </AlertDescription>
+          </Alert>
+        </div>
       </>
     );
   }
@@ -33,11 +53,17 @@ export default function PropertyDetailPage() {
     return (
       <>
         <PageHeader title="Property" showBack />
-        <div className="px-4 py-8 text-center">
-          <p className="text-gray-500 mb-4">Property not found</p>
-          <button onClick={() => router.back()} className="btn-secondary">
-            Go Back
-          </button>
+        <div className="px-4 py-4">
+          <EmptyState
+            icon={<Building2 className="h-8 w-8" />}
+            title="Property not found"
+            description="This property may have been removed."
+            action={
+              <button onClick={() => router.back()} className="btn-secondary">
+                Go Back
+              </button>
+            }
+          />
         </div>
       </>
     );

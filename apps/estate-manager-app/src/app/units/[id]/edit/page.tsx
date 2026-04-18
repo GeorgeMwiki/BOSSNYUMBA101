@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService } from '@bossnyumba/api-client';
 
@@ -77,7 +78,11 @@ export default function UnitEditPage() {
     return (
       <>
         <PageHeader title="Edit Unit" showBack />
-        <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+        <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </>
     );
   }
@@ -208,9 +213,9 @@ export default function UnitEditPage() {
         </div>
 
         {mutation.isError && (
-          <div className="p-3 bg-danger-50 text-danger-600 rounded-lg text-sm">
-            {(mutation.error as Error).message}
-          </div>
+          <Alert variant="danger">
+            <AlertDescription>{(mutation.error as Error).message}</AlertDescription>
+          </Alert>
         )}
 
         <div className="flex gap-3">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Wrench,
   Clock,
@@ -30,29 +30,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { api, formatDate, formatCurrency, formatDateTime } from '../lib/api';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, toast } from '@bossnyumba/design-system';
+import { formatDate, formatCurrency, formatDateTime } from '../lib/api';
+import {
+  useOwnerWorkOrders,
+  useApproveWorkOrder,
+  useRejectWorkOrder,
+  type OwnerWorkOrder as WorkOrder,
+} from '../lib/hooks';
 import { WorkOrderDetailModal, WorkOrderDetail } from '../components/WorkOrderDetailModal';
-
-// ─── Types ───────────────────────────────────────────────────────
-interface WorkOrder {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  priority: string;
-  status: string;
-  reportedAt: string;
-  scheduledAt?: string;
-  completedAt?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  requiresApproval?: boolean;
-  approvalThreshold?: number;
-  unit?: { id: string; unitNumber: string };
-  property?: { id: string; name: string };
-  customer?: { id: string; name: string; phone?: string };
-  vendor?: { id: string; name: string; phone?: string };
-}
 
 interface CostTrendData {
   month: string;
@@ -66,45 +52,31 @@ interface CostTrendData {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function MaintenancePage() {
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data: workOrders = [],
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useOwnerWorkOrders();
+  const approveMutation = useApproveWorkOrder();
+  const rejectMutation = useRejectWorkOrder();
+  const error = queryError instanceof Error ? queryError.message : null;
+  const refreshing = isFetching && !loading;
+
   const [filter, setFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrderDetail | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showCostTrends, setShowCostTrends] = useState(false);
-  const [costTrendData, setCostTrendData] = useState<CostTrendData[]>([]);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const costTrendData: CostTrendData[] = [];
+  const approvingId = approveMutation.isPending
+    ? (approveMutation.variables as { id: string } | undefined)?.id ?? null
+    : null;
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    setError(null);
-
-    try {
-      const response = await api.get<WorkOrder[]>('/owner/work-orders');
-      if (response.success && response.data) {
-        setWorkOrders(response.data);
-      } else {
-        setWorkOrders([]);
-        setError(response.error?.message ?? 'Live maintenance data is unavailable.');
-      }
-    } catch (err) {
-      setWorkOrders([]);
-      setError(err instanceof Error ? err.message : 'Live maintenance data is unavailable.');
-    }
-
-    setCostTrendData([]);
-
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
+  const loadData = (_silent = false) => {
+    refetch();
+  };
 
   const handleViewDetails = (wo: WorkOrder) => {
     const detail: WorkOrderDetail = {
@@ -120,35 +92,26 @@ export function MaintenancePage() {
     setShowDetailModal(true);
   };
 
-  const handleApprove = async (id: string) => {
-    setApprovingId(id);
-    try {
-      const response = await api.post(`/owner/work-orders/${id}/approve`, { decision: 'APPROVED' });
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Approval failed');
+  const handleApprove = (id: string) => {
+    approveMutation.mutate(
+      { id },
+      {
+        onSuccess: () => toast.success('Work order approved'),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Approval failed'),
       }
-      setWorkOrders(workOrders.map(wo =>
-        wo.id === id ? { ...wo, status: 'APPROVED', requiresApproval: false } : wo
-      ));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Approval failed');
-    } finally {
-      setApprovingId(null);
-    }
+    );
   };
 
-  const handleReject = async (id: string, reason: string) => {
-    try {
-      const response = await api.post(`/owner/work-orders/${id}/reject`, { decision: 'REJECTED', reason });
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Rejection failed');
+  const handleReject = (id: string, reason: string) => {
+    rejectMutation.mutate(
+      { id, reason },
+      {
+        onSuccess: () => toast.success('Work order rejected'),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Rejection failed'),
       }
-      setWorkOrders(workOrders.map(wo =>
-        wo.id === id ? { ...wo, status: 'REJECTED' } : wo
-      ));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Rejection failed');
-    }
+    );
   };
 
   const filteredOrders = workOrders.filter((wo) => {
@@ -204,21 +167,29 @@ export function MaintenancePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertCircle className="h-12 w-12 text-red-400" />
-        <p className="text-gray-600">{error}</p>
-        <button onClick={() => loadData()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          Retry
-        </button>
-      </div>
+      <Alert variant="danger">
+        <AlertDescription>
+          {error}
+          <Button size="sm" onClick={() => loadData()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -528,10 +499,15 @@ export function MaintenancePage() {
       </div>
 
       {filteredOrders.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p>No work orders found</p>
-        </div>
+        <EmptyState
+          icon={<Wrench className="h-8 w-8" />}
+          title="No work orders found"
+          description={
+            filter !== 'all' || categoryFilter !== 'all'
+              ? 'Try adjusting your filters to find what you\u2019re looking for.'
+              : 'When tenants submit maintenance requests they\u2019ll appear here.'
+          }
+        />
       )}
 
       {/* Work Order Detail Modal */}

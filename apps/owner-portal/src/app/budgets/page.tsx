@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -17,34 +17,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { api, formatCurrency } from '../../lib/api';
-
-interface BudgetSummary {
-  totalBudget: number;
-  totalSpent: number;
-  variance: number;
-  byCategory: Array<{ category: string; budgeted: number; spent: number }>;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency } from '../../lib/api';
+import { useBudgetSummary, useProperties } from '../../lib/hooks';
 
 export default function BudgetsPage() {
-  const [budget, setBudget] = useState<BudgetSummary | null>(null);
-  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(true);
+  const budgetQuery = useBudgetSummary();
+  const propertiesQuery = useProperties();
 
-  useEffect(() => {
-    Promise.all([
-      api.get<BudgetSummary>('/budgets/summary'),
-      api.get<typeof properties>('/properties'),
-    ]).then(([budgetRes, propertiesRes]) => {
-      if (budgetRes.success && budgetRes.data) {
-        setBudget(budgetRes.data);
-      }
-      if (propertiesRes.success && propertiesRes.data) {
-        setProperties(propertiesRes.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const budget = budgetQuery.data ?? null;
+  const properties = propertiesQuery.data ?? [];
+  const isLoading = budgetQuery.isLoading || propertiesQuery.isLoading;
+  const error = budgetQuery.error ?? propertiesQuery.error;
 
   const displayBudget = budget || {
     totalBudget: 25000000,
@@ -69,11 +53,38 @@ export default function BudgetsPage() {
     ? (displayBudget.totalSpent / displayBudget.totalBudget) * 100
     : 0;
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load budgets'}
+          <Button
+            size="sm"
+            onClick={() => {
+              budgetQuery.refetch();
+              propertiesQuery.refetch();
+            }}
+            className="ml-2"
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

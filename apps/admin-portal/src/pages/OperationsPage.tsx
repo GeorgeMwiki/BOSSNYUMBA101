@@ -45,6 +45,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { Skeleton } from '@bossnyumba/design-system';
 
 interface SystemHealth {
   service: string;
@@ -213,8 +214,15 @@ export function OperationsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-violet-600 animate-spin" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }

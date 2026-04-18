@@ -238,6 +238,7 @@ export * from './components/layout/Container';
 // ============================================================================
 
 export * from './components/form/FormField';
+export * from './components/form/ZodForm';
 
 // ============================================================================
 // Data Display Components

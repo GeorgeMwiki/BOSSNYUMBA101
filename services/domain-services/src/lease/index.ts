@@ -1263,3 +1263,16 @@ export class LeaseService {
     return generateCustomerNumber(year, sequence);
   }
 }
+
+
+// Renewal (explicit workflow on top of LeaseService)
+export {
+  RenewalService,
+  RenewalServiceError,
+  type RenewalLeaseSnapshot,
+  type RenewalRepository,
+  type RenewalServiceErrorCode,
+  type RenewalServiceErrorResult,
+  type LeaseRenewalStatus,
+} from './renewal-service.js';
+export { PostgresRenewalRepository } from './postgres-renewal-repository.js';

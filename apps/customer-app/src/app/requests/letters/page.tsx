@@ -1,48 +1,71 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Label,
+  Alert,
+  AlertDescription,
+} from '@bossnyumba/design-system';
 
-type LetterType = 'proof_of_residence' | 'rent_statement' | 'no_objection' | 'reference' | 'custom';
+const letterSchema = z
+  .object({
+    type: z.enum(['proof_of_residence', 'rent_statement', 'no_objection', 'reference', 'custom']),
+    recipientName: z.string().trim().min(1, 'Recipient name is required'),
+    reason: z.string().trim().min(1, 'Reason is required'),
+    customText: z.string().optional().default(''),
+  })
+  .refine((data) => data.type !== 'custom' || (data.customText ?? '').trim().length > 0, {
+    message: 'Custom text is required when letter type is custom',
+    path: ['customText'],
+  });
 
-interface LetterRequest {
-  readonly type: LetterType;
-  readonly recipientName: string;
-  readonly reason: string;
-  readonly customText?: string;
-}
+type LetterForm = z.infer<typeof letterSchema>;
 
 export default function RequestLetterPage(): React.ReactElement {
-  const [form, setForm] = useState<LetterRequest>({
-    type: 'proof_of_residence',
-    recipientName: '',
-    reason: '',
-  });
-  const [submitting, setSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const update = <K extends keyof LetterRequest>(k: K, v: LetterRequest[K]): void => {
-    setForm((prev) => ({ ...prev, [k]: v })); // immutable
-  };
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<LetterForm>({
+    resolver: zodResolver(letterSchema),
+    defaultValues: {
+      type: 'proof_of_residence',
+      recipientName: '',
+      reason: '',
+      customText: '',
+    },
+    mode: 'onBlur',
+  });
 
-  const submit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setSubmitting(true);
+  const selectedType = watch('type');
+
+  const onSubmit = handleSubmit(async (values) => {
+    setMessage(null);
     try {
       // TODO: wire /api/customer/requests/letters
       const res = await fetch('/api/customer/requests/letters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(values),
       });
       if (res.ok) setMessage('Letter request submitted. You will be notified when ready.');
       else setMessage('Submission failed.');
     } catch {
       setMessage('Submission failed.');
-    } finally {
-      setSubmitting(false);
     }
-  };
+  });
 
   return (
     <main className="p-6 max-w-xl mx-auto">
@@ -51,17 +74,16 @@ export default function RequestLetterPage(): React.ReactElement {
           <CardTitle>Request a letter</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={submit} className="space-y-4">
-            {message && <Alert><AlertDescription>{message}</AlertDescription></Alert>}
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            {message && (
+              <Alert>
+                <AlertDescription>{message}</AlertDescription>
+              </Alert>
+            )}
 
             <div>
               <Label htmlFor="type">Letter type</Label>
-              <select
-                id="type"
-                className="w-full border rounded-md p-2"
-                value={form.type}
-                onChange={(e) => update('type', e.target.value as LetterType)}
-              >
+              <select id="type" className="w-full border rounded-md p-2" {...register('type')}>
                 <option value="proof_of_residence">Proof of residence</option>
                 <option value="rent_statement">Rent statement</option>
                 <option value="no_objection">No-objection letter</option>
@@ -72,12 +94,12 @@ export default function RequestLetterPage(): React.ReactElement {
 
             <div>
               <Label htmlFor="recipient">Addressed to</Label>
-              <Input
-                id="recipient"
-                value={form.recipientName}
-                onChange={(e) => update('recipientName', e.target.value)}
-                required
-              />
+              <Input id="recipient" error={!!errors.recipientName} {...register('recipientName')} />
+              {errors.recipientName && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {errors.recipientName.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -86,27 +108,36 @@ export default function RequestLetterPage(): React.ReactElement {
                 id="reason"
                 className="w-full border rounded-md p-2"
                 rows={3}
-                value={form.reason}
-                onChange={(e) => update('reason', e.target.value)}
-                required
+                aria-invalid={!!errors.reason}
+                {...register('reason')}
               />
+              {errors.reason && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {errors.reason.message}
+                </p>
+              )}
             </div>
 
-            {form.type === 'custom' && (
+            {selectedType === 'custom' && (
               <div>
                 <Label htmlFor="custom">Custom text</Label>
                 <textarea
                   id="custom"
                   className="w-full border rounded-md p-2"
                   rows={4}
-                  value={form.customText ?? ''}
-                  onChange={(e) => update('customText', e.target.value)}
+                  aria-invalid={!!errors.customText}
+                  {...register('customText')}
                 />
+                {errors.customText && (
+                  <p role="alert" className="mt-1 text-xs text-destructive">
+                    {errors.customText.message}
+                  </p>
+                )}
               </div>
             )}
 
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Submitting...' : 'Submit request'}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit request'}
             </Button>
           </form>
         </CardContent>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, TrendingUp, Droplet, Zap, Flame } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
@@ -135,16 +136,16 @@ export default function MeterReadingsPage() {
         </div>
 
         {filteredReadings.length === 0 && (
-          <div className="text-center py-12">
-            <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No readings found</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {filter === 'pending' ? 'All readings have been recorded' : 'Record meter readings to get started'}
-            </p>
-            <Link href="/utilities/readings/record" className="btn-primary mt-4 inline-block">
-              Record Reading
-            </Link>
-          </div>
+          <EmptyState
+            icon={<TrendingUp className="h-8 w-8" />}
+            title="No readings found"
+            description={filter === 'pending' ? 'All readings have been recorded.' : 'Record meter readings to get started.'}
+            action={
+              <Link href="/utilities/readings/record" className="btn-primary inline-block">
+                Record Reading
+              </Link>
+            }
+          />
         )}
       </div>
     </>

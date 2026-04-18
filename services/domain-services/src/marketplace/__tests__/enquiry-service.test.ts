@@ -143,9 +143,14 @@ describe('EnquiryService', () => {
       updatedAt: '2026-01-01T00:00:00.000Z' as ISOTimestamp,
       updatedBy: userId,
     };
+    // Mock returns the dual-shape Result that `ok(...)` produces in
+    // production code — both `{ok, value}` and `{success, data}` must be
+    // populated so callers reading either shape behave correctly.
     const startNegotiation = vi.fn(async () => ({
       ok: true,
+      success: true,
       value: { id: 'neg_1' },
+      data: { id: 'neg_1' },
     }));
     const svc = new EnquiryService({
       listingRepo: memRepo(listing),

@@ -1,10 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
+
+const propertySchema = z.object({
+  name: z.string().trim().min(1, 'Property name is required'),
+  type: z.enum(['RESIDENTIAL', 'COMMERCIAL', 'MIXED']),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'UNDER_CONSTRUCTION']),
+  address: z.object({
+    line1: z.string().trim().min(1, 'Address line 1 is required'),
+    city: z.string().trim().min(1, 'City is required'),
+    region: z.string().trim(),
+    country: z.string().trim().min(1, 'Country is required'),
+  }),
+  description: z.string(),
+  totalUnits: z.coerce.number().int('Must be a whole number').min(0, 'Cannot be negative'),
+});
+
+type PropertyForm = z.infer<typeof propertySchema>;
 
 export default function PropertyEditPage() {
   const params = useParams();
@@ -19,24 +39,32 @@ export default function PropertyEditPage() {
   });
 
   const property = data?.data;
+  const defaultCountry = process.env.NEXT_PUBLIC_TENANT_COUNTRY?.trim() || '';
 
-  const defaultCountry =
-    process.env.NEXT_PUBLIC_TENANT_COUNTRY?.trim() || '';
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'RESIDENTIAL',
-    status: 'ACTIVE',
-    address: { line1: '', city: '', region: '', country: defaultCountry },
-    description: '',
-    totalUnits: 0,
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<PropertyForm>({
+    resolver: zodResolver(propertySchema),
+    defaultValues: {
+      name: '',
+      type: 'RESIDENTIAL',
+      status: 'ACTIVE',
+      address: { line1: '', city: '', region: '', country: defaultCountry },
+      description: '',
+      totalUnits: 0,
+    },
+    mode: 'onBlur',
   });
 
   useEffect(() => {
     if (property) {
-      setFormData({
+      reset({
         name: property.name ?? '',
-        type: property.type ?? 'RESIDENTIAL',
-        status: property.status ?? 'ACTIVE',
+        type: (property.type as PropertyForm['type']) ?? 'RESIDENTIAL',
+        status: (property.status as PropertyForm['status']) ?? 'ACTIVE',
         address: {
           line1: property.address?.line1 ?? '',
           city: property.address?.city ?? '',
@@ -47,22 +75,22 @@ export default function PropertyEditPage() {
         totalUnits: property.totalUnits ?? 0,
       });
     }
-  }, [property]);
+  }, [property, reset, defaultCountry]);
 
   const mutation = useMutation({
-    mutationFn: (data: typeof formData) =>
+    mutationFn: (values: PropertyForm) =>
       propertiesService.update(id, {
-        name: data.name,
-        type: data.type,
-        status: data.status,
+        name: values.name,
+        type: values.type,
+        status: values.status,
         address: {
-          line1: data.address.line1,
-          city: data.address.city,
-          region: data.address.region || undefined,
-          country: data.address.country,
+          line1: values.address.line1,
+          city: values.address.city,
+          region: values.address.region || undefined,
+          country: values.address.country,
         },
-        description: data.description || undefined,
-        totalUnits: data.totalUnits,
+        description: values.description || undefined,
+        totalUnits: values.totalUnits,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['property', id] });
@@ -71,16 +99,19 @@ export default function PropertyEditPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    mutation.mutate(formData);
-  };
+  const onSubmit = handleSubmit(async (values) => {
+    await mutation.mutateAsync(values);
+  });
 
   if (isLoading || !property) {
     return (
       <>
         <PageHeader title="Edit Property" showBack />
-        <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+        <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </>
     );
   }
@@ -89,39 +120,26 @@ export default function PropertyEditPage() {
     <>
       <PageHeader title="Edit Property" showBack />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+      <form onSubmit={onSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto" noValidate>
         <div className="card p-4 space-y-4">
           <div>
-            <label className="label">Property Name *</label>
-            <input
-              type="text"
-              className="input"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <label htmlFor="name" className="label">Property Name *</label>
+            <input id="name" type="text" className="input" aria-invalid={!!errors.name} {...register('name')} />
+            {errors.name && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.name.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Type</label>
-              <select
-                className="input"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              >
+              <label htmlFor="type" className="label">Type</label>
+              <select id="type" className="input" {...register('type')}>
                 <option value="RESIDENTIAL">Residential</option>
                 <option value="COMMERCIAL">Commercial</option>
                 <option value="MIXED">Mixed</option>
               </select>
             </div>
             <div>
-              <label className="label">Status</label>
-              <select
-                className="input"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              >
+              <label htmlFor="status" className="label">Status</label>
+              <select id="status" className="input" {...register('status')}>
                 <option value="ACTIVE">Active</option>
                 <option value="INACTIVE">Inactive</option>
                 <option value="UNDER_CONSTRUCTION">Under Construction</option>
@@ -130,92 +148,47 @@ export default function PropertyEditPage() {
           </div>
 
           <div>
-            <label className="label">Address Line 1 *</label>
-            <input
-              type="text"
-              className="input"
-              value={formData.address.line1}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: { ...formData.address, line1: e.target.value },
-                })
-              }
-              required
-            />
+            <label htmlFor="addr-line1" className="label">Address Line 1 *</label>
+            <input id="addr-line1" type="text" className="input" aria-invalid={!!errors.address?.line1} {...register('address.line1')} />
+            {errors.address?.line1 && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.address.line1.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">City *</label>
-              <input
-                type="text"
-                className="input"
-                value={formData.address.city}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, city: e.target.value },
-                  })
-                }
-                required
-              />
+              <label htmlFor="addr-city" className="label">City *</label>
+              <input id="addr-city" type="text" className="input" aria-invalid={!!errors.address?.city} {...register('address.city')} />
+              {errors.address?.city && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.address.city.message}</p>}
             </div>
             <div>
-              <label className="label">Region</label>
-              <input
-                type="text"
-                className="input"
-                value={formData.address.region}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, region: e.target.value },
-                  })
-                }
-              />
+              <label htmlFor="addr-region" className="label">Region</label>
+              <input id="addr-region" type="text" className="input" {...register('address.region')} />
             </div>
           </div>
 
           <div>
-            <label className="label">Total Units</label>
-            <input
-              type="number"
-              className="input"
-              min={0}
-              value={formData.totalUnits ?? ''}
-              onChange={(e) =>
-                setFormData({ ...formData, totalUnits: parseInt(e.target.value, 10) || 0 })
-              }
-            />
+            <label htmlFor="totalUnits" className="label">Total Units</label>
+            <input id="totalUnits" type="number" min={0} className="input" aria-invalid={!!errors.totalUnits} {...register('totalUnits', { valueAsNumber: true })} />
+            {errors.totalUnits && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.totalUnits.message}</p>}
           </div>
 
           <div>
-            <label className="label">Description</label>
-            <textarea
-              className="input min-h-[100px]"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
+            <label htmlFor="description" className="label">Description</label>
+            <textarea id="description" className="input min-h-[100px]" {...register('description')} />
           </div>
         </div>
 
         {mutation.isError && (
-          <div className="p-3 bg-danger-50 text-danger-600 rounded-lg text-sm">
-            {(mutation.error as Error).message}
-          </div>
+          <Alert variant="danger">
+            <AlertDescription>{(mutation.error as Error).message}</AlertDescription>
+          </Alert>
         )}
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
             Cancel
           </button>
-          <button
-            type="submit"
-            className="btn-primary flex-1"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? 'Saving...' : 'Save Changes'}
+          <button type="submit" className="btn-primary flex-1" disabled={isSubmitting || mutation.isPending}>
+            {isSubmitting || mutation.isPending ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>

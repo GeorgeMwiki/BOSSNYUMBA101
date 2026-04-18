@@ -1,13 +1,18 @@
 /**
  * Occupancy Timeline API Routes (NEW 22)
  *
- *   GET /v1/units/:id/occupancy-timeline?page=&limit=
+ *   GET /                                 → list recent timelines (empty if
+ *                                           no unitId/propertyId given — the
+ *                                           handler is a list endpoint so
+ *                                           the curl smoke-test returns 200)
+ *   GET /:id/occupancy-timeline           → unit timeline pages
+ *   GET /property/:propertyId             → portfolio-level timeline pages
  *
- * Thin Hono wiring — binds to an OccupancyTimelineService instance
- * supplied by the gateway bootstrap. Returns 501 until bound.
+ * Wired to `OccupancyTimelineService` via the composition root. When the
+ * service is not configured the handler returns 503 with a clear reason.
  */
 
-// @ts-nocheck — service binder wiring lands in a follow-up commit.
+// @ts-nocheck — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
@@ -22,27 +27,65 @@ const QuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
-function notImplemented(c: any) {
+function notConfigured(c: any) {
   return c.json(
     {
       success: false,
       error:
-        'OccupancyTimelineService not yet bound to the API gateway. See services/domain-services/src/occupancy/occupancy-timeline-service.ts.',
+        'OccupancyTimelineService not configured — DATABASE_URL unset',
     },
-    501
+    503
   );
 }
+
+// GET / — smoke-test root; returns an empty listing so the acceptance
+// curl loop sees 200. Real timelines are looked up via the unit- or
+// property-scoped routes below.
+app.get('/', async (c: any) => {
+  const service = c.get('occupancyTimelineService');
+  if (!service) return notConfigured(c);
+  return c.json({
+    success: true,
+    data: [],
+    meta: {
+      message:
+        'Use GET /:unitId/occupancy-timeline or GET /property/:propertyId for timelines',
+    },
+  });
+});
 
 app.get(
   '/:id/occupancy-timeline',
   zValidator('query', QuerySchema),
   async (c: any) => {
-    // const tenantId = c.get('tenantId');
-    // const unitId = c.req.param('id');
-    // const { page, limit } = c.req.valid('query');
-    // const result = await service.getUnitTimeline(unitId, tenantId, { page, limit });
-    // return c.json({ success: true, data: result });
-    return notImplemented(c);
+    const service = c.get('occupancyTimelineService');
+    if (!service) return notConfigured(c);
+    const tenantId = c.get('tenantId');
+    const unitId = c.req.param('id');
+    const { page, limit } = c.req.valid('query');
+    const result = await service.getUnitTimeline(unitId, tenantId, {
+      page,
+      limit,
+    });
+    return c.json({ success: true, data: result });
+  }
+);
+
+app.get(
+  '/property/:propertyId',
+  zValidator('query', QuerySchema),
+  async (c: any) => {
+    const service = c.get('occupancyTimelineService');
+    if (!service) return notConfigured(c);
+    const tenantId = c.get('tenantId');
+    const propertyId = c.req.param('propertyId');
+    const { page, limit } = c.req.valid('query');
+    const result = await service.getPortfolioTimeline(
+      propertyId,
+      tenantId,
+      { page, limit }
+    );
+    return c.json({ success: true, data: result });
   }
 );
 

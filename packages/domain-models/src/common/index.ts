@@ -101,16 +101,26 @@ export interface PaginatedResult<T> {
 // Result Types
 // ============================================================================
 
+/**
+ * Result type for operations that can fail.
+ *
+ * Provides dual-shape ergonomics: callers may destructure either
+ *   - `{ success, data, error }` (legacy)
+ *   - `{ ok, value, error }` (idiomatic Rust-style)
+ *
+ * Both are present on every instance so migrating a caller is a
+ * rename-only change with no runtime wrapping required.
+ */
 export type Result<T, E = Error> =
-  | { success: true; data: T }
-  | { success: false; error: E };
+  | { success: true; ok: true; data: T; value: T }
+  | { success: false; ok: false; error: E };
 
 export function ok<T>(data: T): Result<T, never> {
-  return { success: true, data };
+  return { success: true, ok: true, data, value: data };
 }
 
 export function err<E>(error: E): Result<never, E> {
-  return { success: false, error };
+  return { success: false, ok: false, error };
 }
 
 // ============================================================================

@@ -1,47 +1,64 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Phone, User, Mail, ArrowRight } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+
+const registerSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required'),
+  lastName: z.string().trim().min(1, 'Last name is required'),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Phone number is required')
+    .regex(/^\+?[0-9\s-]{7,}$/, 'Please enter a valid phone number'),
+  email: z
+    .string()
+    .trim()
+    .email('Please enter a valid email address')
+    .optional()
+    .or(z.literal('')),
+});
+
+type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
-  const [formData, setFormData] = useState({
-    phone: '',
-    firstName: '',
-    lastName: '',
-    email: '',
+  const { register: doRegister } = useAuth();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
+    mode: 'onBlur',
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+  const onSubmit = handleSubmit(async (values) => {
     try {
-      const result = await register({
-        phone: formData.phone,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email || undefined,
+      const result = await doRegister({
+        phone: values.phone,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email && values.email.length > 0 ? values.email : undefined,
       });
 
       if (result.success) {
-        router.push(`/auth/otp?phone=${encodeURIComponent(formData.phone)}&mode=register`);
+        router.push(`/auth/otp?phone=${encodeURIComponent(values.phone)}&mode=register`);
       } else {
-        setError(result.message ?? 'Something went wrong');
+        setError('root', { message: result.message ?? 'Something went wrong' });
       }
     } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('root', { message: 'Something went wrong. Please try again.' });
     }
-  };
+  });
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
@@ -51,7 +68,7 @@ export default function RegisterPage() {
           <p className="text-gray-500 mt-2">Register to manage your tenancy</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={onSubmit} className="space-y-5" noValidate>
           <div>
             <label htmlFor="firstName" className="label">
               First Name
@@ -61,13 +78,17 @@ export default function RegisterPage() {
               <input
                 id="firstName"
                 type="text"
-                value={formData.firstName}
-                onChange={(e) => setFormData((p) => ({ ...p, firstName: e.target.value }))}
                 placeholder="John"
+                aria-invalid={!!errors.firstName}
                 className="input pl-12"
-                required
+                {...register('firstName')}
               />
             </div>
+            {errors.firstName && (
+              <p role="alert" className="mt-1 text-xs text-danger-600">
+                {errors.firstName.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -79,13 +100,17 @@ export default function RegisterPage() {
               <input
                 id="lastName"
                 type="text"
-                value={formData.lastName}
-                onChange={(e) => setFormData((p) => ({ ...p, lastName: e.target.value }))}
                 placeholder="Kamau"
+                aria-invalid={!!errors.lastName}
                 className="input pl-12"
-                required
+                {...register('lastName')}
               />
             </div>
+            {errors.lastName && (
+              <p role="alert" className="mt-1 text-xs text-danger-600">
+                {errors.lastName.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -97,14 +122,18 @@ export default function RegisterPage() {
               <input
                 id="phone"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                 placeholder="+XXX XXX XXX XXX"
-                className="input pl-12"
-                required
                 autoComplete="tel"
+                aria-invalid={!!errors.phone}
+                className="input pl-12"
+                {...register('phone')}
               />
             </div>
+            {errors.phone && (
+              <p role="alert" className="mt-1 text-xs text-danger-600">
+                {errors.phone.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -116,25 +145,32 @@ export default function RegisterPage() {
               <input
                 id="email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                 placeholder="john@example.com"
-                className="input pl-12"
                 autoComplete="email"
+                aria-invalid={!!errors.email}
+                className="input pl-12"
+                {...register('email')}
               />
             </div>
+            {errors.email && (
+              <p role="alert" className="mt-1 text-xs text-danger-600">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
-          {error && (
-            <div className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">{error}</div>
+          {errors.root && (
+            <div role="alert" className="p-3 rounded-xl bg-danger-50 text-danger-600 text-sm">
+              {errors.root.message}
+            </div>
           )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {isSubmitting ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>

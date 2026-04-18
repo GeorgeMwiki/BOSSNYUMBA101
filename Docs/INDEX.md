@@ -47,13 +47,14 @@ Master index of every document in `Docs/`, organized by category.
 
 | File | Summary |
 |------|---------|
-| [analysis/DELTA_AND_ROADMAP.md](./analysis/DELTA_AND_ROADMAP.md) | Current delivery gaps and prioritized roadmap |
+| [analysis/DELTA_AND_ROADMAP.md](./analysis/DELTA_AND_ROADMAP.md) | Current delivery gaps, wave-5 status snapshot, Production Readiness Matrix, security blocker close-out |
 | [analysis/GAP_docs_vs_code.md](./analysis/GAP_docs_vs_code.md) | Documentation-vs-code coverage gap |
 | [analysis/GAP_voice_vs_docs.md](./analysis/GAP_voice_vs_docs.md) | Voice-memo requirements vs existing docs |
 | [analysis/CONFLICT_RESOLUTIONS.md](./analysis/CONFLICT_RESOLUTIONS.md) | Decisions resolving spec conflicts |
 | [analysis/MISSING_FEATURES_DESIGN.md](./analysis/MISSING_FEATURES_DESIGN.md) | Design for features identified as missing |
 | [analysis/RESEARCH_ANSWERS.md](./analysis/RESEARCH_ANSWERS.md) | Answers to open research questions |
 | [analysis/SCAFFOLDED_COMPLETION.md](./analysis/SCAFFOLDED_COMPLETION.md) | What's scaffolded vs fully wired |
+| [analysis/SECURITY_REVIEW_WAVES_1-3.md](./analysis/SECURITY_REVIEW_WAVES_1-3.md) | Security review findings (C-1, C-2, H-1..H-6, M-*, L-*); all 5 production blockers now closed |
 | [RESEARCH_REPORT_CPG.md](./RESEARCH_REPORT_CPG.md) | Research findings on customer-property-graph |
 | [RISK_REGISTER.md](./RISK_REGISTER.md) | Known risks and mitigations |
 | [TODO_BACKLOG.md](./TODO_BACKLOG.md) | Consolidated `TODO`/`FIXME` inventory for issue filing |
@@ -63,15 +64,8 @@ Master index of every document in `Docs/`, organized by category.
 | File | Summary |
 |------|---------|
 | [ENV.md](./ENV.md) | Environment variables reference |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Local + staging + production deploy guide; env-var reference (wave-5 additions); composition root degraded mode |
+| [RUNBOOK.md](./RUNBOOK.md) | On-call runbook; standard operational procedures (migrations, seeds, health checks, API key rotation, 503 triage); incident playbooks |
 | [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) | Pre-deployment checklist and known integration notes |
 | [OPERATIONAL_SLA.md](./OPERATIONAL_SLA.md) | SLAs, escalation paths |
 | [KPIS_AND_SLOS.md](./KPIS_AND_SLOS.md) | Key KPIs and service-level objectives |
-
-## Runbook
-
-_Planned — not yet present in the repo._
-
-- `DEPLOYMENT.md` — step-by-step deploy to staging + production.
-- `RUNBOOK.md` — on-call runbook (common incidents, recovery procedures).
-
-When added, link them here and from the root `README.md`.

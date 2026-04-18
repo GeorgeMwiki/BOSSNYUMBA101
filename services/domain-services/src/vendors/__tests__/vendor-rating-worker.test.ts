@@ -51,15 +51,21 @@ describe('aggregateVendorOutcomes', () => {
 
   it('computes on-time percentage', () => {
     const agg = aggregateVendorOutcomes([
-      makeOutcome({}), // on time
+      // Completed exactly at scheduled time — counts as on-time (<=).
       makeOutcome({
-        scheduledAt: new Date('2026-02-28T10:00:00Z'),
+        scheduledAt: new Date('2026-02-28T12:00:00Z'),
         actualCompletionAt: new Date('2026-02-28T12:00:00Z'),
-      }), // on time (equal — counts as on time)
+      }),
+      // Completed before scheduled — on time.
+      makeOutcome({
+        scheduledAt: new Date('2026-02-28T12:00:00Z'),
+        actualCompletionAt: new Date('2026-02-28T10:00:00Z'),
+      }),
+      // Completed after scheduled — late.
       makeOutcome({
         scheduledAt: new Date('2026-02-28T10:00:00Z'),
         actualCompletionAt: new Date('2026-02-28T14:00:00Z'),
-      }), // late (completion after scheduled)
+      }),
     ]);
     expect(agg.metrics.onTimeCompletionPct).toBeCloseTo((2 / 3) * 100, 1);
   });

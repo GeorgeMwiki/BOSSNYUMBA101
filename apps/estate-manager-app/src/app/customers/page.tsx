@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Users, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
@@ -11,7 +12,7 @@ export default function CustomersListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['customers', { page, pageSize: 20, search: search || undefined }],
     queryFn: () =>
       customersService.list({
@@ -51,15 +52,29 @@ export default function CustomersListPage() {
         </div>
 
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
-        ) : customers.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Users className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No customers found</p>
-            <Link href="/customers/new" className="btn-primary mt-4 inline-block">
-              Add Customer
-            </Link>
+          <div aria-busy="true" aria-live="polite" className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
           </div>
+        ) : error ? (
+          <Alert variant="danger">
+            <AlertDescription>
+              {error instanceof Error ? error.message : 'Failed to load customers'}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+            </AlertDescription>
+          </Alert>
+        ) : customers.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-8 w-8" />}
+            title="No customers found"
+            description={search ? 'Try adjusting your search.' : 'Add your first customer to get started.'}
+            action={
+              <Link href="/customers/new" className="btn-primary inline-block">
+                Add Customer
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {customers.map(

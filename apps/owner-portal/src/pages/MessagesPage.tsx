@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { api, formatDateTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -392,8 +393,9 @@ export function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[calc(100vh-240px)] w-full" />
       </div>
     );
   }
@@ -405,9 +407,12 @@ export function MessagesPage() {
         <p className="text-gray-500">Communicate with your property managers</p>
       </div>
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" onClick={loadConversations} className="ml-2">Retry</Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 h-[calc(100vh-240px)] flex overflow-hidden">
@@ -535,8 +540,10 @@ export function MessagesPage() {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messagesLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div aria-busy="true" aria-live="polite" className="space-y-3">
+                    <Skeleton className="h-16 w-2/3" />
+                    <Skeleton className="h-16 w-2/3 ml-auto" />
+                    <Skeleton className="h-16 w-2/3" />
                   </div>
                 ) : (
                   <>
@@ -693,14 +700,12 @@ export function MessagesPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="font-medium">Select a conversation</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Choose from your existing conversations
-                </p>
-              </div>
+            <div className="flex items-center justify-center h-full">
+              <EmptyState
+                icon={<MessageSquare className="h-8 w-8" />}
+                title="Select a conversation"
+                description="Choose from your existing conversations to start messaging."
+              />
             </div>
           )}
         </div>

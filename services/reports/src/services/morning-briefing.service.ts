@@ -349,7 +349,12 @@ export class MorningBriefingService {
 
     try {
       return await this.kpiEngine.getKPIAlerts(tenantId, period);
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[morning-briefing] failed to load KPI alerts, returning empty list:',
+        err instanceof Error ? err.message : String(err)
+      );
       return [];
     }
   }

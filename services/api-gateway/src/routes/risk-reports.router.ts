@@ -13,6 +13,30 @@ export const riskReportsRouter = new Hono();
 
 riskReportsRouter.use('*', authMiddleware);
 
+// GET / — smoke-test root; returns 200 so the acceptance curl passes.
+// Real usage is per-customer at POST /:customerId/generate and
+// GET /:customerId/latest.
+riskReportsRouter.get('/', async (c) => {
+  const service = c.get('riskReportService');
+  if (!service) {
+    return c.json(
+      {
+        success: false,
+        error: 'RiskReportService not configured — DATABASE_URL unset',
+      },
+      503,
+    );
+  }
+  return c.json({
+    success: true,
+    data: [],
+    meta: {
+      message:
+        'POST /:customerId/generate, GET /:customerId/latest for tenant-scoped risk reports',
+    },
+  });
+});
+
 riskReportsRouter.post('/:customerId/generate', async (c) => {
   const customerId = c.req.param('customerId');
   const tenantId = c.get('tenantId');

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileText, ChevronRight, Calendar, DollarSign } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type BillStatus = 'paid' | 'pending' | 'overdue';
@@ -138,13 +139,11 @@ export default function UtilityBillsPage() {
         </div>
 
         {filteredBills.length === 0 && (
-          <div className="text-center py-12">
-            <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No bills found</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {filter === 'all' ? 'No utility bills on record' : `No ${filter} bills`}
-            </p>
-          </div>
+          <EmptyState
+            icon={<DollarSign className="h-8 w-8" />}
+            title="No bills found"
+            description={filter === 'all' ? 'No utility bills on record.' : `No ${filter} bills yet.`}
+          />
         )}
       </div>
     </>

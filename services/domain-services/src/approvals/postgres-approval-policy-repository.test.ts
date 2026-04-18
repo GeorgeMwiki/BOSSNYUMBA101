@@ -73,6 +73,12 @@ function makeFakeDb() {
     },
     insert(_t: unknown) {
       let pending: Row | null = null;
+      // Tracks whether a terminal clause (onConflictDoUpdate) already
+      // reconciled the insert against the existing rows. Without this flag
+      // the `then()` fallback re-pushes `pending` after the conflict handler
+      // has already merged it in place, producing duplicate rows in the
+      // fake store.
+      let resolved = false;
       const builder = {
         values(v: Row) {
           pending = {
@@ -98,12 +104,14 @@ function makeFakeDb() {
               ..._cfg.set,
             } as Row;
           }
+          resolved = true;
           return builder;
         },
         then(resolve: (v: unknown) => void) {
-          if (pending && !rows.some((r) => r === pending)) {
-            // If caller skipped onConflictDoUpdate we still want insert to persist.
+          if (!resolved && pending) {
+            // Caller skipped onConflictDoUpdate → plain insert semantics.
             rows.push(pending);
+            resolved = true;
           }
           resolve(undefined);
         },
@@ -117,26 +125,32 @@ function makeFakeDb() {
 // We need the predicate produced by drizzle's `and(eq(...), eq(...))` to work
 // against our fake rows. Drizzle's `eq(column, value)` returns a SQL object;
 // the fake `where` above receives it verbatim. To bridge this for tests, we
-// monkey-patch drizzle-orm's `and`/`eq` to return plain predicate functions.
+// mock drizzle-orm's `and`/`eq` to return plain predicate functions.
+//
+// Direct namespace reassignment does not work: modern Node marks ESM
+// namespace exports as read-only, so `(drizzleOrm as any).eq = …` throws
+// `TypeError: Cannot assign to read only property`. vi.mock registers a
+// factory BEFORE module load and supplies writable bindings.
 
-import * as drizzleOrm from 'drizzle-orm';
+import { vi } from 'vitest';
 import { approvalPolicies } from '@bossnyumba/database';
 
-// Replace the exported helpers with predicate-producing versions. Because
-// drizzle-orm is ESM and these are used at module load in the repo, we
-// reassign the binding on the imported namespace object. This is safe inside
-// the test file scope only.
-(drizzleOrm as any).eq = (col: unknown, val: unknown) => {
-  return (row: Row) => {
-    // Identity-match the column against the schema's tracked columns.
-    if (col === approvalPolicies.tenantId) return row.tenantId === val;
-    if (col === approvalPolicies.type) return row.type === val;
-    return false;
+vi.mock('drizzle-orm', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('drizzle-orm')>();
+  return {
+    ...actual,
+    eq: (col: unknown, val: unknown) => {
+      return (row: Row) => {
+        if (col === approvalPolicies.tenantId) return row.tenantId === val;
+        if (col === approvalPolicies.type) return row.type === val;
+        return false;
+      };
+    },
+    and: (...preds: Array<(r: Row) => boolean>) => {
+      return (row: Row) => preds.every((p) => p(row));
+    },
   };
-};
-(drizzleOrm as any).and = (...preds: Array<(r: Row) => boolean>) => {
-  return (row: Row) => preds.every((p) => p(row));
-};
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures

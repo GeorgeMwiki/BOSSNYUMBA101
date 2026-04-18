@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Wrench, Zap, Shield, FileText } from 'lucide-react';
 import {
@@ -13,22 +13,14 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { api, formatCurrency } from '../../../lib/api';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency } from '../../../lib/api';
+import { useExpensesAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#10B981'];
 
 export default function ExpensesPage() {
-  const [data, setData] = useState<Array<{ month: string; maintenance: number; utilities: number; admin: number }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<typeof data>('/analytics/expenses').then((res) => {
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data = [], isLoading, error, refetch } = useExpensesAnalytics();
 
   const chartData = data.length
     ? data
@@ -50,11 +42,29 @@ export default function ExpensesPage() {
     { name: 'Other', value: 180000 },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-80 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load expenses analytics'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

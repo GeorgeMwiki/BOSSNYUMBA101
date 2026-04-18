@@ -26,6 +26,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { api, formatCurrency } from '../lib/api';
 
 interface DashboardData {
@@ -99,18 +100,26 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertTriangle className="h-12 w-12 text-amber-500" />
-        <p className="text-gray-600">{error ?? 'Live admin dashboard data is unavailable.'}</p>
-      </div>
+      <Alert variant="danger">
+        <AlertDescription>
+          {error ?? 'Live admin dashboard data is unavailable.'}
+        </AlertDescription>
+      </Alert>
     );
   }
 

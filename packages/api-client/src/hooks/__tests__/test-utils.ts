@@ -49,11 +49,17 @@ export function stubFetchSequence(responses: ReadonlyArray<StubFetchOptions>) {
 /**
  * Install a fresh ApiClient pointing at a dummy base URL. Safe to call
  * in every `beforeEach` — later calls overwrite the previous client.
+ *
+ * Retries are disabled (retries: 0) so that error-path tests exercising
+ * 5xx responses surface as ApiClientError immediately instead of waiting
+ * through exponential backoff and timing out (default retry schedule is
+ * 1s + 2s + 4s, which exceeds Vitest's 5s default testTimeout).
  */
 export function bootstrapTestClient() {
   initializeApiClient({
     baseUrl: 'https://api.test.local',
     accessToken: 'test-token',
+    retries: 0,
   });
   return getApiClient();
 }

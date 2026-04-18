@@ -53,6 +53,31 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
         c.set('gamificationService', registry.gamification);
         c.set('gamificationRepo', undefined); // service already built
       }
+      // Wave-5 services wired from the composition root. Each router
+      // reads its service via `c.get(<key>)`. If the registry is in
+      // degraded mode (DATABASE_URL unset), the key is absent and the
+      // router's fallback path returns 503 with a clear reason.
+      if (registry.renewal) {
+        c.set('renewalService', registry.renewal);
+      }
+      if (registry.financialProfile) {
+        c.set('financialProfileService', registry.financialProfile);
+      }
+      if (registry.riskReport) {
+        c.set('riskReportService', registry.riskReport);
+      }
+      if (registry.stationMasterRouter) {
+        c.set('stationMasterRouter', registry.stationMasterRouter);
+      }
+      if (registry.stationMasterCoverageRepo) {
+        c.set(
+          'stationMasterCoverageRepo',
+          registry.stationMasterCoverageRepo
+        );
+      }
+      if (registry.occupancyTimeline) {
+        c.set('occupancyTimelineService', registry.occupancyTimeline);
+      }
       // Waitlist endpoints read from `services.waitlist.service` directly.
       // Negotiation endpoints read from `services.negotiation` directly.
       // Marketplace endpoints read from `services.marketplace.*`.

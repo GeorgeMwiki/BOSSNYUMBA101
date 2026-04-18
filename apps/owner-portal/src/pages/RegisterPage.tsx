@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, Loader2, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { createZodResolver } from '@bossnyumba/design-system';
+import { z } from 'zod';
 import { api } from '../lib/api';
 
 interface MfaSetup {
@@ -9,79 +12,101 @@ interface MfaSetup {
   backupCodes: string[];
 }
 
+/* ============================================================================
+   Zod schemas (encapsulate existing validation rules)
+   ========================================================================= */
+
+const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+  .regex(/[a-z]/, 'Password must contain a lowercase letter')
+  .regex(/[0-9]/, 'Password must contain a number')
+  .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain a special character');
+
+const detailsSchema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Please enter a valid email address'),
+    phone: z
+      .string()
+      .min(1, 'Phone number is required')
+      .regex(/^\+?[0-9\s-]{7,}$/, 'Please enter a valid phone number'),
+    companyName: z.string().optional().default(''),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    acceptTerms: z.literal(true, { message: 'You must accept the terms and conditions' }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+type DetailsForm = z.infer<typeof detailsSchema>;
+
+const codeSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, 'Please enter a valid 6-digit code'),
+});
+
+type CodeForm = z.infer<typeof codeSchema>;
+
+/* ============================================================================
+   Password requirement meter (visual only — validation is in the schema)
+   ========================================================================= */
+
+const validatePassword = (password: string) => ({
+  length: password.length >= 8,
+  uppercase: /[A-Z]/.test(password),
+  lowercase: /[a-z]/.test(password),
+  number: /[0-9]/.test(password),
+  special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+});
+
 export function RegisterPage() {
   const [step, setStep] = useState<'details' | 'verify' | 'mfa-setup' | 'mfa-verify' | 'success'>('details');
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    companyName: '',
-    acceptTerms: false,
-  });
-  const [verificationCode, setVerificationCode] = useState('');
-  const [mfaCode, setMfaCode] = useState('');
   const [mfaSetup, setMfaSetup] = useState<MfaSetup | null>(null);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [topLevelError, setTopLevelError] = useState('');
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+  /* --------------------------------------------------------------
+     Details form (step 1)
+     ------------------------------------------------------------- */
 
-  const validatePassword = (password: string) => {
-    return {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-    };
-  };
+  const detailsForm = useForm<DetailsForm>({
+    resolver: createZodResolver<DetailsForm>(detailsSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      companyName: '',
+      password: '',
+      confirmPassword: '',
+      acceptTerms: undefined as unknown as true,
+    },
+    mode: 'onBlur',
+  });
 
-  const passwordReqs = validatePassword(formData.password);
-  const isPasswordValid = Object.values(passwordReqs).every(Boolean);
+  const passwordValue = detailsForm.watch('password') ?? '';
+  const passwordReqs = validatePassword(passwordValue);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setError('Password does not meet requirements');
-      return;
-    }
-
-    if (!formData.acceptTerms) {
-      setError('You must accept the terms and conditions');
-      return;
-    }
-
-    setLoading(true);
+  const onSubmitDetails = detailsForm.handleSubmit(async (values) => {
+    setTopLevelError('');
     try {
       const response = await api.post('/auth/register', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        companyName: formData.companyName,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        phone: values.phone,
+        password: values.password,
+        companyName: values.companyName,
       });
-
+      setSubmittedEmail(values.email);
       if (response.success) {
         setStep('verify');
       } else {
@@ -90,23 +115,28 @@ export function RegisterPage() {
       }
     } catch (err) {
       // For development - proceed to next step
+      setSubmittedEmail(values.email);
       setStep('verify');
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  /* --------------------------------------------------------------
+     Email verification form (step 2)
+     ------------------------------------------------------------- */
 
+  const verifyForm = useForm<CodeForm>({
+    resolver: createZodResolver<CodeForm>(codeSchema),
+    defaultValues: { code: '' },
+    mode: 'onBlur',
+  });
+
+  const onSubmitVerify = verifyForm.handleSubmit(async (values) => {
+    setTopLevelError('');
     try {
       const response = await api.post('/auth/verify-email', {
-        email: formData.email,
-        code: verificationCode,
+        email: submittedEmail,
+        code: values.code,
       });
-
       if (response.success) {
         await initiateMfaSetup();
       } else {
@@ -114,69 +144,66 @@ export function RegisterPage() {
       }
     } catch (err) {
       await initiateMfaSetup();
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
   const initiateMfaSetup = async () => {
-    setLoading(true);
     try {
-      const response = await api.post('/auth/mfa/setup', { email: formData.email });
-
+      const response = await api.post('/auth/mfa/setup', { email: submittedEmail });
       if (response.success && response.data) {
         setMfaSetup(response.data as MfaSetup);
         setStep('mfa-setup');
+        return;
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+        setMfaSetup({
+          secret: devSecret,
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(submittedEmail)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
+          backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
+        });
+        setStep('mfa-setup');
       } else {
-        if (process.env.NODE_ENV !== 'production') {
-          const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
-          setMfaSetup({
-            secret: devSecret,
-            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
-            backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
-          });
-          setStep('mfa-setup');
-        } else {
-          setError('MFA setup failed. Please try again.');
-        }
+        setTopLevelError('MFA setup failed. Please try again.');
       }
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
         const devSecret = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
         setMfaSetup({
           secret: devSecret,
-          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(formData.email)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/BOSSNYUMBA:${encodeURIComponent(submittedEmail)}?secret=${devSecret}%26issuer=BOSSNYUMBA`,
           backupCodes: Array.from({ length: 8 }, () => crypto.randomUUID().slice(0, 9).toUpperCase()),
         });
         setStep('mfa-setup');
       } else {
-        setError('MFA setup failed. Please try again.');
+        setTopLevelError('MFA setup failed. Please try again.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleMfaVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  /* --------------------------------------------------------------
+     MFA verification form (step 4)
+     ------------------------------------------------------------- */
 
+  const mfaForm = useForm<CodeForm>({
+    resolver: createZodResolver<CodeForm>(codeSchema),
+    defaultValues: { code: '' },
+    mode: 'onBlur',
+  });
+
+  const onSubmitMfa = mfaForm.handleSubmit(async (values) => {
+    setTopLevelError('');
     try {
-      const response = await api.post('/auth/mfa/verify', { email: formData.email, code: mfaCode });
+      const response = await api.post('/auth/mfa/verify', { email: submittedEmail, code: values.code });
       if (response.success) {
         setStep('success');
       } else {
-        if (mfaCode.length === 6) setStep('success');
-        else setError('Please enter a valid 6-digit code');
+        setStep('success');
       }
     } catch (err) {
-      if (mfaCode.length === 6) setStep('success');
-      else setError('Please enter a valid 6-digit code');
-    } finally {
-      setLoading(false);
+      setStep('success');
     }
-  };
+  });
 
   const copyBackupCodes = () => {
     if (mfaSetup) {
@@ -203,6 +230,10 @@ export function RegisterPage() {
       </div>
     );
   }
+
+  const { register: registerDetails, formState: detailsState } = detailsForm;
+  const { register: registerVerify, formState: verifyState } = verifyForm;
+  const { register: registerMfa, formState: mfaState } = mfaForm;
 
   return (
     <div className="min-h-screen flex">
@@ -252,7 +283,7 @@ export function RegisterPage() {
             {['details', 'verify', 'mfa-setup', 'mfa-verify'].map((s, i) => (
               <div key={s} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === s ? 'bg-blue-600 text-white' : 
+                  step === s ? 'bg-blue-600 text-white' :
                   ['details', 'verify', 'mfa-setup', 'mfa-verify'].indexOf(step) > i ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   {['details', 'verify', 'mfa-setup', 'mfa-verify'].indexOf(step) > i ? '✓' : i + 1}
@@ -267,39 +298,43 @@ export function RegisterPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h2>
               <p className="text-gray-500 mb-8">Register as a property owner to get started</p>
 
-              {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+              {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={onSubmitDetails} className="space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                    <input id="firstName" type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    <input id="firstName" type="text" {...registerDetails('firstName')} aria-invalid={!!detailsState.errors.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    {detailsState.errors.firstName && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.firstName.message}</p>}
                   </div>
                   <div>
                     <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                    <input id="lastName" type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                    <input id="lastName" type="text" {...registerDetails('lastName')} aria-invalid={!!detailsState.errors.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    {detailsState.errors.lastName && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.lastName.message}</p>}
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                  <input id="register-email" type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@example.com" required />
+                  <input id="register-email" type="email" {...registerDetails('email')} aria-invalid={!!detailsState.errors.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@example.com" />
+                  {detailsState.errors.email && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.email.message}</p>}
                 </div>
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input id="phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="+255 xxx xxx xxx" required />
+                  <input id="phone" type="tel" {...registerDetails('phone')} aria-invalid={!!detailsState.errors.phone} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="+255 xxx xxx xxx" />
+                  {detailsState.errors.phone && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.phone.message}</p>}
                 </div>
 
                 <div>
                   <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">Company Name (Optional)</label>
-                  <input id="companyName" type="text" name="companyName" value={formData.companyName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your company or portfolio name" />
+                  <input id="companyName" type="text" {...registerDetails('companyName')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your company or portfolio name" />
                 </div>
 
                 <div>
                   <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                   <div className="relative">
-                    <input id="register-password" type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" required />
+                    <input id="register-password" type={showPassword ? 'text' : 'password'} {...registerDetails('password')} aria-invalid={!!detailsState.errors.password} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -311,22 +346,25 @@ export function RegisterPage() {
                     <span className={passwordReqs.number ? 'text-green-600' : 'text-gray-400'}>✓ Number</span>
                     <span className={passwordReqs.special ? 'text-green-600' : 'text-gray-400'}>✓ Special character</span>
                   </div>
+                  {detailsState.errors.password && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.password.message}</p>}
                 </div>
 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                  <input id="confirmPassword" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <input id="confirmPassword" type="password" {...registerDetails('confirmPassword')} aria-invalid={!!detailsState.errors.confirmPassword} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  {detailsState.errors.confirmPassword && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.confirmPassword.message}</p>}
                 </div>
 
                 <div className="flex items-start gap-2">
-                  <input type="checkbox" name="acceptTerms" id="acceptTerms" checked={formData.acceptTerms} onChange={handleChange} className="mt-1" />
+                  <input type="checkbox" id="acceptTerms" {...registerDetails('acceptTerms')} className="mt-1" />
                   <label htmlFor="acceptTerms" className="text-sm text-gray-600">
                     I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
                   </label>
                 </div>
+                {detailsState.errors.acceptTerms && <p role="alert" className="text-xs text-red-600">{detailsState.errors.acceptTerms.message}</p>}
 
-                <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <button type="submit" disabled={detailsState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {detailsState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Create Account
                 </button>
               </form>
@@ -340,18 +378,29 @@ export function RegisterPage() {
           {step === 'verify' && (
             <>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify your email</h2>
-              <p className="text-gray-500 mb-8">We've sent a verification code to <span className="font-medium">{formData.email}</span></p>
+              <p className="text-gray-500 mb-8">We've sent a verification code to <span className="font-medium">{submittedEmail}</span></p>
 
-              {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+              {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
-              <form onSubmit={handleVerify} className="space-y-4">
+              <form onSubmit={onSubmitVerify} className="space-y-4" noValidate>
                 <div>
                   <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-1">Verification Code</label>
-                  <input id="verificationCode" type="text" inputMode="numeric" autoComplete="one-time-code" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest" placeholder="000000" maxLength={6} required />
+                  <input
+                    id="verificationCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    {...registerVerify('code')}
+                    aria-invalid={!!verifyState.errors.code}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest"
+                    placeholder="000000"
+                  />
+                  {verifyState.errors.code && <p role="alert" className="mt-1 text-xs text-red-600">{verifyState.errors.code.message}</p>}
                 </div>
 
-                <button type="submit" disabled={loading || verificationCode.length !== 6} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <button type="submit" disabled={verifyState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {verifyState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Verify Email
                 </button>
               </form>
@@ -374,7 +423,7 @@ export function RegisterPage() {
                 </div>
               </div>
 
-              {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+              {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
               <div className="space-y-6">
                 <div className="p-4 bg-gray-50 rounded-lg">
@@ -442,17 +491,28 @@ export function RegisterPage() {
                 </div>
               </div>
 
-              {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+              {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
-              <form onSubmit={handleMfaVerify} className="space-y-4">
+              <form onSubmit={onSubmitMfa} className="space-y-4" noValidate>
                 <div>
                   <label htmlFor="register-mfa-code" className="block text-sm font-medium text-gray-700 mb-1">Authentication Code</label>
-                  <input id="register-mfa-code" type="text" inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest" placeholder="000000" maxLength={6} required />
+                  <input
+                    id="register-mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    {...registerMfa('code')}
+                    aria-invalid={!!mfaState.errors.code}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest"
+                    placeholder="000000"
+                  />
                   <p className="mt-2 text-xs text-gray-500">Open your authenticator app and enter the 6-digit code shown for BOSSNYUMBA.</p>
+                  {mfaState.errors.code && <p role="alert" className="mt-1 text-xs text-red-600">{mfaState.errors.code.message}</p>}
                 </div>
 
-                <button type="submit" disabled={loading || mfaCode.length !== 6} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <button type="submit" disabled={mfaState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {mfaState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Complete Setup
                 </button>
               </form>

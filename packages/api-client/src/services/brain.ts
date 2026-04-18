@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite
 /**
  * Brain API Service — client wrapper for /api/v1/brain endpoints.
  *
@@ -118,7 +117,7 @@ export const brainService = {
     limit = 50
   ): Promise<ApiResponse<{ threads: BrainThread[] }>> {
     return getApiClient().get<{ threads: BrainThread[] }>('/brain/threads', {
-      limit: String(limit),
+      params: { limit: String(limit) },
     });
   },
 

@@ -9,10 +9,11 @@ import {
   ArrowRight,
   Briefcase,
 } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useVendors } from '../../lib/hooks';
 
 export default function VendorsPage() {
-  const { data: vendors = [], isLoading } = useVendors();
+  const { data: vendors = [], isLoading, error, refetch } = useVendors();
   const [search, setSearch] = useState('');
 
   const filtered = vendors.filter(
@@ -23,9 +24,22 @@ export default function VendorsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load vendors'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

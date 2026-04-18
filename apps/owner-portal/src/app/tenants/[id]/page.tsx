@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,58 +11,43 @@ import {
   FileText,
   MessageSquare,
 } from 'lucide-react';
-import { api, formatCurrency, formatDate } from '../../../lib/api';
-
-interface TenantDetail {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  propertyId: string;
-  propertyName: string;
-  unitNumber: string;
-  leaseStartDate: string;
-  leaseEndDate: string;
-  rentAmount: number;
-  status: string;
-  balance?: number;
-  payments?: Array<{ id: string; amount: number; date: string; status: string }>;
-}
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency, formatDate } from '../../../lib/api';
+import { useTenant } from '../../../lib/hooks';
 
 export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [tenant, setTenant] = useState<TenantDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: tenant, isLoading, error, refetch } = useTenant(id || '');
 
-  useEffect(() => {
-    if (id) {
-      api.get<TenantDetail>(`/tenants/${id}`).then((res) => {
-        if (res.success && res.data) {
-          setTenant(res.data);
-        }
-        setLoading(false);
-      });
-    }
-  }, [id]);
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load tenant'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
   // Live data only — render an empty state instead of fabricating a tenant.
   if (!tenant) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        <p className="font-medium">Tenant not found</p>
-        <p className="text-sm mt-1">
-          We could not load tenant <code>{id}</code>. They may have been moved
-          out or the lookup failed.
-        </p>
-      </div>
+      <EmptyState
+        icon={<Users className="h-8 w-8" />}
+        title="Tenant not found"
+        description={`We could not load tenant ${id}. They may have been moved out or the lookup failed.`}
+      />
     );
   }
   const displayTenant = tenant;
@@ -197,7 +182,11 @@ export default function TenantDetailPage() {
           </table>
         </div>
         {(!displayTenant.payments || displayTenant.payments.length === 0) && (
-          <p className="text-center py-8 text-gray-500">No payment history</p>
+          <EmptyState
+            icon={<DollarSign className="h-8 w-8" />}
+            title="No payment history"
+            description="Payments from this tenant will appear here."
+          />
         )}
       </div>
     </div>

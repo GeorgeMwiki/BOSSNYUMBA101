@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models namespace drift; tracked
 /**
  * Audit Logging Service
  * Records and queries audit trail for compliance and security.

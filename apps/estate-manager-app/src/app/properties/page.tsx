@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Building2, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
 
@@ -12,7 +13,7 @@ export default function PropertiesListPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['properties', { page, pageSize: 20, search: search || undefined, status: statusFilter || undefined }],
     queryFn: () =>
       propertiesService.list({
@@ -65,15 +66,29 @@ export default function PropertiesListPage() {
         </div>
 
         {isLoading ? (
-          <div className="card p-8 text-center text-gray-500">Loading...</div>
-        ) : properties.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Building2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No properties found</p>
-            <Link href="/properties/new" className="btn-primary mt-4 inline-block">
-              Add Property
-            </Link>
+          <div aria-busy="true" aria-live="polite" className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
           </div>
+        ) : error ? (
+          <Alert variant="danger">
+            <AlertDescription>
+              {error instanceof Error ? error.message : 'Failed to load properties'}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+            </AlertDescription>
+          </Alert>
+        ) : properties.length === 0 ? (
+          <EmptyState
+            icon={<Building2 className="h-8 w-8" />}
+            title="No properties found"
+            description={search || statusFilter ? 'Try adjusting your search or filters.' : 'Add your first property to get started.'}
+            action={
+              <Link href="/properties/new" className="btn-primary inline-block">
+                Add Property
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {properties.map((property: { id: string; name: string; type?: string; address?: { city?: string }; totalUnits?: number; occupiedUnits?: number; status?: string }) => (

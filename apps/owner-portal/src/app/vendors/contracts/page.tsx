@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -8,33 +8,12 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
-import { api, formatCurrency, formatDate } from '../../../lib/api';
-
-interface VendorContract {
-  id: string;
-  vendorId: string;
-  vendorName: string;
-  propertyId: string;
-  propertyName: string;
-  startDate: string;
-  endDate: string;
-  value: number;
-  status: string;
-  type: string;
-}
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { formatCurrency, formatDate } from '../../../lib/api';
+import { useVendorContracts } from '../../../lib/hooks';
 
 export default function VendorContractsPage() {
-  const [contracts, setContracts] = useState<VendorContract[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<VendorContract[]>('/vendors/contracts').then((res) => {
-      if (res.success && res.data) {
-        setContracts(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: contracts = [], isLoading, error, refetch } = useVendorContracts();
 
   const displayContracts = contracts.length
     ? contracts
@@ -46,11 +25,24 @@ export default function VendorContractsPage() {
 
   const expiringSoon = displayContracts.filter((c) => c.status === 'EXPIRING_SOON' || c.status === 'EXPIRING');
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Failed to load vendor contracts'}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

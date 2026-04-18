@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models namespace drift; tracked
 import { randomHex } from '../common/id-generator.js';
 /**
  * Messaging/Chat Service

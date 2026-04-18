@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Skeleton } from '@bossnyumba/design-system';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -48,8 +49,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+      <div aria-busy="true" aria-live="polite" className="min-h-screen flex items-center justify-center bg-gray-50 p-8">
+        <div className="w-full max-w-md space-y-4">
+          <Skeleton className="h-8 w-1/2" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </div>
     );
   }

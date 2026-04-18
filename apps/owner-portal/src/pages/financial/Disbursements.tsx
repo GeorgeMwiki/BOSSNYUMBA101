@@ -30,6 +30,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatDate, formatDateTime } from '../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -180,8 +181,15 @@ export function DisbursementsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -189,9 +197,12 @@ export function DisbursementsPage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" onClick={loadData} className="ml-2">Retry</Button>
+          </AlertDescription>
+        </Alert>
       )}
       {/* Header */}
       <div className="flex items-center justify-between">

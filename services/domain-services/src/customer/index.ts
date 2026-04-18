@@ -279,3 +279,40 @@ export class CustomerService {
 }
 
 export type { Customer, CustomerId, CustomerProfile, EmergencyContact };
+
+// ---------------------------------------------------------------------------
+// Financial Profile + Risk Reports (SCAFFOLDED-5, NEW-13)
+// ---------------------------------------------------------------------------
+export {
+  FinancialProfileService,
+  FinancialProfileError,
+  type FinancialStatement,
+  type FinancialStatementRepository,
+  type LitigationRecord,
+  type LitigationRepository,
+  type IBankReferenceProvider,
+  type BankReferenceQuery,
+  type BankReferenceResult,
+  type SubmitStatementInput,
+  type RecordLitigationInput,
+} from './financial-profile-service.js';
+export {
+  PostgresFinancialStatementRepository,
+  PostgresLitigationRepository,
+} from './postgres-financial-profile-repositories.js';
+
+export {
+  RiskReportService,
+  RiskReportError,
+  type TenantRiskReport,
+  type RiskReportRepository,
+  type RiskReportInputsProvider,
+  type RiskNarrator,
+  type RiskReportSnapshot,
+  type RiskReportRecommendation,
+} from './risk-report-service.js';
+export {
+  PostgresRiskReportRepository,
+  PostgresRiskReportInputsProvider,
+  DeterministicRiskNarrator,
+} from './postgres-risk-report-repository.js';

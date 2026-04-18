@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 
 interface Campaign {
   id: string;
@@ -269,9 +270,11 @@ export default function CommunicationsCampaignsPage() {
       </div>
 
       {filteredCampaigns.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No campaigns found
-        </div>
+        <EmptyState
+          icon={<BarChart3 className="h-8 w-8" />}
+          title="No campaigns found"
+          description="Create your first campaign to reach your audience."
+        />
       )}
     </div>
   );

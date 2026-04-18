@@ -11,6 +11,7 @@ import {
   Copy,
   Trash2,
 } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 import { formatDateTime } from '../../../lib/api';
 
 interface WebhookConfig {
@@ -250,9 +251,11 @@ export default function IntegrationsWebhooksPage() {
       </div>
 
       {filteredWebhooks.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No webhooks found
-        </div>
+        <EmptyState
+          icon={<Webhook className="h-8 w-8" />}
+          title="No webhooks found"
+          description="Add a webhook to receive real-time events from the platform."
+        />
       )}
     </div>
   );

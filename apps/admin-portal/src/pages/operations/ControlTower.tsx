@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useSystemHealth } from '../../lib/hooks';
 
 export default function ControlTower() {
@@ -7,8 +8,9 @@ export default function ControlTower() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-32 w-full" />
       </div>
     );
   }
@@ -22,19 +24,13 @@ export default function ControlTower() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="h-6 w-6 text-red-600 mt-0.5" />
-          <div>
-            <p className="font-semibold text-red-800">Live operations data unavailable</p>
-            <p className="text-sm text-red-700 mt-1">
-              {error instanceof Error
-                ? error.message
-                : 'This control tower is disabled until production monitoring feeds are connected.'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert variant="danger" title="Live operations data unavailable">
+        <AlertDescription>
+          {error instanceof Error
+            ? error.message
+            : 'This control tower is disabled until production monitoring feeds are connected.'}
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

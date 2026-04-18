@@ -19,6 +19,7 @@ import {
   CreditCard,
   Building2,
 } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
 import { formatDateTime } from '../lib/api';
 
 interface AuditEvent {
@@ -428,7 +429,11 @@ export function AuditLogPage() {
       </div>
 
       {filteredEvents.length === 0 && (
-        <div className="text-center py-12 text-gray-500">No events found</div>
+        <EmptyState
+          icon={<FileText className="h-8 w-8" />}
+          title="No events found"
+          description="Try adjusting your filters to see more audit events."
+        />
       )}
     </div>
   );

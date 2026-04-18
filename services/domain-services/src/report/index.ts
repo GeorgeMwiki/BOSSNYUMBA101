@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models namespace drift; tracked
 /**
  * Report domain service.
  * Handles dashboard metrics, financial statements, and PDF export for the BOSSNYUMBA platform.

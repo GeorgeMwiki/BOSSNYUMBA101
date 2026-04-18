@@ -9,6 +9,7 @@ import {
   BarChart3,
   Target,
 } from 'lucide-react';
+import { Skeleton, EmptyState } from '@bossnyumba/design-system';
 import { formatCurrency, formatPercentage } from '../../lib/api';
 import { usePortfolioSummary, useProperties } from '../../lib/hooks';
 
@@ -19,8 +20,15 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div aria-busy="true" aria-live="polite" className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -150,7 +158,11 @@ export default function PortfolioPage() {
           ))}
         </div>
         {properties.length === 0 && (
-          <div className="p-12 text-center text-gray-500">No properties in portfolio</div>
+          <EmptyState
+            icon={<Building2 className="h-8 w-8" />}
+            title="No properties in portfolio"
+            description="Add your first property to get started."
+          />
         )}
       </div>
     </div>
