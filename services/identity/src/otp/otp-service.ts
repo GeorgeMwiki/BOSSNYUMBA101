@@ -151,6 +151,22 @@ export class OtpService {
     nowOrOptions: (() => number) | OtpServiceOptions = () => Date.now(),
     ttlMs: number = OTP_TTL_MS
   ) {
+    // FIXED H-5: production must inject durable store + real SMS dispatcher.
+    // InMemoryOtpStore + NoopSmsDispatcher are for dev/test only — in a
+    // multi-node deploy they enable distributed brute force because attempt
+    // counters don't cross node boundaries and codes never reach the user.
+    if (process.env.NODE_ENV === 'production') {
+      if (store instanceof InMemoryOtpStore) {
+        throw new Error(
+          'OtpService: InMemoryOtpStore not permitted in production. Inject RedisOtpStore via otp-factory.ts.',
+        );
+      }
+      if (sms instanceof NoopSmsDispatcher) {
+        throw new Error(
+          'OtpService: NoopSmsDispatcher not permitted in production. Inject NotificationsSmsDispatcher.',
+        );
+      }
+    }
     // Back-compat: the old constructor signature took `now` as a function and
     // `ttlMs` as the final arg. If callers pass an options object, we prefer
     // that. Otherwise fall back to the positional form.

@@ -53,12 +53,23 @@ export function verifyGepgSignature(
     };
   }
 
-  // TODO: rsa-gepg mode — implement full XML-DSig verification against
-  // the GePG-issued public cert. Must parse <SignedInfo>, canonicalize
-  // using c14n, and verify RSA-SHA256 with the cert chain.
+  // FIXED C-2: wire the real RSA XML-DSig verifier for rsa-gepg mode.
+  // Uses gepg-rsa-signature.ts (pure Node crypto, zero external XML deps).
+  // Keys loaded lazily from GEPG_SIGNING_CERT_PEM env or GEPG_SIGNING_CERT_PATH
+  // file. Falls back to invalid if no public cert configured.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { verifyGepgEnvelope } = require('./gepg-rsa-signature') as typeof import('./gepg-rsa-signature');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { loadGepgKeys } = require('./key-loader') as typeof import('./key-loader');
+  const keys = loadGepgKeys();
+  if (keys.source === 'missing' || !keys.publicCertPem) {
+    return { valid: false, reason: 'rsa_gepg_public_cert_not_configured' };
+  }
+  const result = verifyGepgEnvelope(rawBody, { publicCertPem: keys.publicCertPem });
   return {
-    valid: false,
-    reason: 'rsa_gepg_not_implemented',
+    valid: result.valid,
+    reason: result.valid ? undefined : result.reason ?? 'rsa_verification_failed',
+    signedBy: result.valid ? 'gepg' : undefined,
   };
 }
 

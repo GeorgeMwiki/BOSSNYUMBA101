@@ -18,7 +18,20 @@ export type NotificationTemplateId =
   | 'payment_received'
   | 'maintenance_update'
   | 'lease_expiring'
-  | 'welcome';
+  | 'welcome'
+  | 'auth_otp'
+  | 'case_created'
+  | 'case_escalated'
+  | 'case_resolved'
+  | 'notice_sent'
+  | 'case_sla_breached'
+  | 'renewal_window_opened'
+  | 'renewal_proposed'
+  | 'payment_overdue'
+  | 'work_order_assigned'
+  | 'inspection_scheduled'
+  | 'waitlist_vacancy'
+  | 'letter_approved';
 
 /** Recipient information */
 export interface NotificationRecipient {

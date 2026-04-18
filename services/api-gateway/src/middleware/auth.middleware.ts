@@ -13,6 +13,7 @@ import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
+import { resolveApiKeyLegacyOrRegistry } from './api-key-registry';
 
 // ============================================================================
 // Configuration
@@ -224,24 +225,14 @@ export function generateTokenPair(
 }
 
 /**
- * Extract tenant ID from request
+ * Extract tenant ID from request.
+ * FIXED H-1: JWT `tenantId` claim is the ONLY accepted source. The
+ * X-Tenant-ID header and ?tenantId= query parameter are no longer honored
+ * because they were attacker-controlled cross-tenant vectors. Service-to-
+ * service calls should use the API-key registry (see api-key-registry.ts).
  */
-function extractTenantId(c: Context, payload?: JWTPayload): string | null {
-  // Priority: 1. Token payload 2. X-Tenant-ID header 3. Query param
-  if (payload?.tenantId) {
-    return payload.tenantId;
-  }
-
-  const headerTenantId = c.req.header('X-Tenant-ID');
-  if (headerTenantId) {
-    return headerTenantId;
-  }
-
-  const queryTenantId = c.req.query('tenantId');
-  if (queryTenantId) {
-    return queryTenantId;
-  }
-
+function extractTenantId(_c: Context, payload?: JWTPayload): string | null {
+  if (payload?.tenantId) return payload.tenantId;
   return null;
 }
 
@@ -439,29 +430,22 @@ export const apiKeyAuthMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
-  // Validate API key: env API_KEYS (comma-separated). Production: consider DB or secret-manager lookup. See Docs/PRODUCTION_READINESS.md.
-  const validApiKeys = (process.env.API_KEYS || '').split(',').filter(Boolean);
-
-  if (!validApiKeys.includes(apiKey)) {
+  // FIXED C-1: resolve API key to a registry record with bound tenantId/role/scopes.
+  // Legacy API_KEYS env var still supported via shim with deprecation warning.
+  // X-Tenant-ID header is NEVER honored for API-key auth.
+  const record = resolveApiKeyLegacyOrRegistry(apiKey);
+  if (!record) {
     return c.json(
-      {
-        success: false,
-        error: {
-          code: 'INVALID_API_KEY',
-          message: 'Invalid API key',
-        },
-      },
-      401
+      { success: false, error: { code: 'INVALID_API_KEY', message: 'Invalid API key' } },
+      401,
     );
   }
-
-  // Set service context
   c.set('auth', {
-    userId: 'service',
-    tenantId: c.req.header('X-Tenant-ID') || 'system',
-    role: 'SUPER_ADMIN' as UserRole,
-    permissions: ['*'],
-    propertyAccess: ['*'],
+    userId: `service:${record.serviceName}`,
+    tenantId: record.tenantId,
+    role: record.role,
+    permissions: record.scopes,
+    propertyAccess: record.scopes.includes('*') ? ['*'] : [],
   } as AuthContext);
 
   await next();
@@ -475,16 +459,15 @@ export const flexibleAuthMiddleware = createMiddleware(async (c, next) => {
   const apiKey = c.req.header('X-API-Key');
 
   if (apiKey) {
-    // API Key takes precedence for service-to-service calls
-    const validApiKeys = (process.env.API_KEYS || '').split(',').filter(Boolean);
-
-    if (validApiKeys.includes(apiKey)) {
+    // FIXED C-1: use registry, never header-supplied tenant
+    const record = resolveApiKeyLegacyOrRegistry(apiKey);
+    if (record) {
       c.set('auth', {
-        userId: 'service',
-        tenantId: c.req.header('X-Tenant-ID') || 'system',
-        role: 'SUPER_ADMIN' as UserRole,
-        permissions: ['*'],
-        propertyAccess: ['*'],
+        userId: `service:${record.serviceName}`,
+        tenantId: record.tenantId,
+        role: record.role,
+        permissions: record.scopes,
+        propertyAccess: record.scopes.includes('*') ? ['*'] : [],
       } as AuthContext);
 
       await next();

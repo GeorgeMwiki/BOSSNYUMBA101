@@ -72,6 +72,8 @@ import {
   type SubscribableBus,
   type NotificationDispatcher,
 } from './workers/event-subscribers';
+import { ensureTenantIsolation } from './middleware/tenant-context.middleware';
+import { assertApiKeyConfig } from './middleware/api-key-registry';
 import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
@@ -157,7 +159,13 @@ app.get('/health', healthHandler);
 app.get('/healthz', healthHandler);
 
 // API v1 - Hono routes
+// FIXED C-1 production startup guard: refuses to boot if API keys aren't configured.
+assertApiKeyConfig();
+
 const api = new Hono();
+// FIXED H-2: apply tenant-isolation enforcement globally on all /api/v1/* routes.
+// Auth middleware still runs first per-router; this is a defense-in-depth layer.
+api.use('*', ensureTenantIsolation);
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
