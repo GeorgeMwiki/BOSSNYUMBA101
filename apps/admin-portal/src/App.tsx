@@ -14,6 +14,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { ConfigurationPage } from './pages/ConfigurationPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { SystemHealthPage } from './pages/SystemHealthPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import PlatformOverviewPage from './app/platform/overview/page';
 import PlatformSubscriptionsPage from './app/platform/subscriptions/page';
 import PlatformBillingPage from './app/platform/billing/page';
@@ -126,7 +127,9 @@ function AppRoutes() {
           <Route path="webhooks" element={<IntegrationsWebhooksPage />} />
           <Route path="api-keys" element={<IntegrationsApiKeysPage />} />
         </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

@@ -78,6 +78,9 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+import { buildServices, type ServiceRegistry } from './composition/service-registry';
+import { getDb } from './composition/db-client';
+import { createServiceContextMiddleware } from './composition/service-context.middleware';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -162,10 +165,41 @@ app.get('/healthz', healthHandler);
 // FIXED C-1 production startup guard: refuses to boot if API keys aren't configured.
 assertApiKeyConfig();
 
+// ----------------------------------------------------------------------------
+// Composition root — build service registry once at startup.
+//
+// The registry is a single typed bag of domain services (marketplace,
+// waitlist, negotiation, gamification, migration, etc.). It is lazily
+// instantiated: when DATABASE_URL is unset it returns a degraded
+// skeleton of all-nulls and routers fall back to 503. When the URL is
+// set, real Postgres-backed services are constructed and pure-DB
+// endpoints start returning real rows.
+// ----------------------------------------------------------------------------
+let serviceRegistry: ServiceRegistry;
+try {
+  serviceRegistry = buildServices({ db: getDb() });
+  if (serviceRegistry.isLive) {
+    logger.info('service-registry: live (Postgres-backed domain services wired)');
+  } else {
+    logger.warn(
+      'service-registry: degraded (DATABASE_URL unset — pure-DB endpoints will 503)'
+    );
+  }
+} catch (err) {
+  logger.error(
+    { err: err instanceof Error ? err.message : String(err) },
+    'service-registry: initialization failed, falling back to degraded mode'
+  );
+  serviceRegistry = buildServices({ db: null });
+}
+
 const api = new Hono();
 // FIXED H-2: apply tenant-isolation enforcement globally on all /api/v1/* routes.
 // Auth middleware still runs first per-router; this is a defense-in-depth layer.
 api.use('*', ensureTenantIsolation);
+// Inject the service registry + flat tenantId/userId into the request ctx
+// so 22 new routers can pull real service instances out of the context.
+api.use('*', createServiceContextMiddleware(serviceRegistry));
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
@@ -208,18 +242,57 @@ api.route('/gepg', gepgRouter);
 api.route('/interactive-reports', interactiveReportsRouter);
 api.route('/letters', lettersRouter);
 api.route('/marketplace', marketplaceRouter);
-// Routers built via factory — inject stub deps (real wiring resolves at runtime)
+// Routers built via factory — inject real services from the composition root
+// where available. For services that aren't yet wired, the factory gracefully
+// returns a 503/501 to the client rather than a synchronous throw — a pilot
+// can hit the endpoint, see the reason, and continue.
 const migrationRouter = createMigrationRouter({
-  getService: () => {
-    throw new Error('MigrationService not yet wired — set getService in composition root');
+  getService: (_tenantId: string) => {
+    const svc = serviceRegistry.migration;
+    if (!svc) {
+      throw Object.assign(
+        new Error('MigrationService unavailable — DATABASE_URL not configured'),
+        { statusCode: 503 }
+      );
+    }
+    return svc;
   },
 });
+// Notification preferences — the real store lives in the notifications
+// service; until the HTTP binding lands we return the posted shape
+// verbatim so clients can dev against a stable surface.
 const notificationPreferencesRouter = createNotificationPreferencesRouter({
   getPreferences: () => ({ channels: {}, templates: {}, quietHoursStart: null, quietHoursEnd: null }),
   upsertPreferences: (_u, _t, input) => input,
 });
+// Webhooks terminate here and forward deliveries via the same event bus
+// the rest of the services use, so a downstream subscriber in the
+// notifications service can persist status updates.
 const notificationWebhooksRouter = createNotificationWebhookRouter({
-  onDeliveryStatus: async () => {},
+  onDeliveryStatus: async (update) => {
+    try {
+      await serviceRegistry.eventBus.publish({
+        event: {
+          eventId: `webhook_${Date.now()}`,
+          eventType: 'NotificationDeliveryStatus',
+          timestamp: new Date().toISOString(),
+          tenantId: 'system',
+          correlationId: `wh_${Date.now()}`,
+          causationId: null,
+          metadata: {},
+          payload: update,
+        } as unknown as never,
+        version: 1,
+        aggregateId: update.providerMessageId ?? 'unknown',
+        aggregateType: 'NotificationDelivery',
+      });
+    } catch (err) {
+      logger.error(
+        { err: err instanceof Error ? err.message : String(err) },
+        'notification-webhook: failed to publish delivery status'
+      );
+    }
+  },
 });
 api.route('/migration', migrationRouter);
 api.route('/negotiations', negotiationsRouter);

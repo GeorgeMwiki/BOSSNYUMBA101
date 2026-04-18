@@ -1,6 +1,6 @@
 'use client';
 
-import { LeasesList } from '@/pages/leases/LeasesList';
+import { LeasesList } from '@/screens/leases/LeasesList';
 
 export default function LeasesPage() {
   return <LeasesList />;

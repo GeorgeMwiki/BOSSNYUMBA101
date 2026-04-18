@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -61,7 +61,7 @@ const paymentOptions: PaymentOption[] = [
   },
 ];
 
-export default function PayPage() {
+function PayPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
@@ -261,5 +261,13 @@ export default function PayPage() {
         </button>
       </div>
     </>
+  );
+}
+
+export default function PayPage() {
+  return (
+    <Suspense fallback={<PageHeader title="Make Payment" showBack />}>
+      <PayPageInner />
+    </Suspense>
   );
 }

@@ -40,7 +40,17 @@ export async function POST(req: Request) {
   // Diff against existing tenant rows requires repo access — Phase A leaves
   // the existing-state lookup as an empty diff baseline so the UI gets a
   // "would add N" preview. The committer applies real dedup at write time.
-  const diff = migrationDiff({ bundle });
+  const diff = migrationDiff({
+    bundle,
+    existing: {
+      propertyNames: [],
+      unitLabelsByProperty: {},
+      tenantNames: [],
+      employeeCodes: [],
+      departmentCodes: [],
+      teamCodes: [],
+    },
+  });
   // tenant id is pulled from ctx so the committer (next call) can use it.
   return NextResponse.json({
     bundle,

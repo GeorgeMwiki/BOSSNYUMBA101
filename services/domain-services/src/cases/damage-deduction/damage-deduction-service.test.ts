@@ -118,17 +118,81 @@ describe('DamageDeductionService', () => {
     expect(agreed.data.proposedDeductionMinor).toBe(75_000);
   });
 
-  it('aiMediate is NOT_IMPLEMENTED', async () => {
-    const created = await service.fileClaim(
+  it('aiMediate appends an ai_mediator turn with a proposed midpoint', async () => {
+    // Injected deterministic mediator so the test does not depend on
+    // ANTHROPIC_API_KEY or the dynamic-import path.
+    const stubMediator = {
+      async draft(input: {
+        claimedDeductionMinor: number;
+        tenantCounterMinor: number | null;
+      }) {
+        const counter = input.tenantCounterMinor ?? 0;
+        const midpoint = Math.round((input.claimedDeductionMinor + counter) / 2);
+        return {
+          proposedDeductionMinor: midpoint,
+          rationale: 'stub-midpoint',
+          turnText: `propose ${midpoint}`,
+          escalate: false,
+        };
+      },
+    };
+    const wired = new DamageDeductionService(repo, undefined, stubMediator);
+    const created = await wired.fileClaim(
       TENANT,
-      { claimedDeductionMinor: 1, rationale: 'r' },
+      { claimedDeductionMinor: 200, rationale: 'r' },
       ACTOR
     );
     if (!created.success) throw new Error('setup failed');
-    const res = await service.aiMediate(created.data.id, TENANT, ACTOR);
+    // Tenant responds so there is a counter to midpoint against.
+    await wired.tenantRespond(
+      created.data.id,
+      TENANT,
+      { counterProposalMinor: 40, rationale: 'low' },
+      TENANT_ACTOR
+    );
+    const res = await wired.aiMediate(created.data.id, TENANT, ACTOR);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    expect(res.data.status).toBe('negotiating');
+    expect(res.data.proposedDeductionMinor).toBe(120);
+    const last = res.data.aiMediatorTurns[res.data.aiMediatorTurns.length - 1];
+    expect(last.actor).toBe('ai_mediator');
+    expect(last.proposedAmountMinor).toBe(120);
+  });
+
+  it('aiMediate escalates when above advisor threshold', async () => {
+    const stubMediator = {
+      async draft() {
+        return {
+          proposedDeductionMinor: 99_999_999,
+          rationale: 'test',
+          turnText: 'x',
+          escalate: true,
+        };
+      },
+    };
+    const wired = new DamageDeductionService(repo, undefined, stubMediator);
+    const created = await wired.fileClaim(
+      TENANT,
+      { claimedDeductionMinor: 10, rationale: 'r' },
+      ACTOR
+    );
+    if (!created.success) throw new Error('setup failed');
+    const res = await wired.aiMediate(created.data.id, TENANT, ACTOR);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    expect(res.data.status).toBe('escalated');
+  });
+
+  it('aiMediate on unknown id returns CLAIM_NOT_FOUND', async () => {
+    const res = await service.aiMediate(
+      'ddc_nonexistent' as DamageDeductionCaseId,
+      TENANT,
+      ACTOR
+    );
     expect(res.success).toBe(false);
     if (res.success) return;
-    expect(res.error.code).toBe(DamageDeductionError.NOT_IMPLEMENTED);
+    expect(res.error.code).toBe(DamageDeductionError.CLAIM_NOT_FOUND);
   });
 
   it('isolation: tenantRespond on unknown id returns CLAIM_NOT_FOUND', async () => {

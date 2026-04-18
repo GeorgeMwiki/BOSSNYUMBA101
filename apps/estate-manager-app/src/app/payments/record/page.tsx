@@ -1,6 +1,6 @@
 'use client';
 
-import { RecordPayment } from '@/pages/payments/RecordPayment';
+import { RecordPayment } from '@/screens/payments/RecordPayment';
 
 export default function RecordPaymentPage() {
   return <RecordPayment />;

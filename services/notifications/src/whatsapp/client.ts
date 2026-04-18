@@ -96,18 +96,17 @@ export class WhatsAppClient {
   }
 
   /**
-   * Format phone number to WhatsApp format
+   * Format phone number for WhatsApp (E.164 without +).
+   *
+   * Callers MUST pass already-international numbers. We strip non-digits
+   * and a leading +; we never guess a country default. Local-format
+   * numbers (`07XX...`) are passed to the API as-is so the failure is
+   * surfaced upstream rather than being silently mapped to Kenya.
    */
   private formatPhoneNumber(phone: string): string {
-    let cleaned = phone.replace(/\D/g, '');
-
-    if (cleaned.startsWith('0')) {
-      cleaned = '254' + cleaned.slice(1); // Kenya default
-    } else if (cleaned.startsWith('+')) {
-      cleaned = cleaned.slice(1);
-    }
-
-    return cleaned;
+    const trimmed = phone.trim();
+    const cleaned = trimmed.replace(/\D/g, '');
+    return trimmed.startsWith('+') ? cleaned : cleaned;
   }
 
   /**
@@ -230,14 +229,18 @@ export class WhatsAppClient {
   }
 
   /**
-   * Send rent reminder notification
+   * Send rent reminder notification.
+   *
+   * `currency` is required — the caller must pass the tenant's
+   * currency (sourced from region-config). No hardcoded KES default.
    */
   async sendRentReminder(
     phoneNumber: string,
     tenantName: string,
     amount: number,
     dueDate: string,
-    propertyName: string
+    propertyName: string,
+    currency: string
   ): Promise<SendMessageResponse> {
     return this.sendTemplate({
       to: phoneNumber,
@@ -248,7 +251,7 @@ export class WhatsAppClient {
           type: 'body',
           parameters: [
             { type: 'text', text: tenantName },
-            { type: 'currency', currency: { fallback_value: `KES ${amount}`, code: 'KES', amount_1000: amount * 1000 } },
+            { type: 'currency', currency: { fallback_value: `${currency} ${amount}`, code: currency, amount_1000: amount * 1000 } },
             { type: 'text', text: dueDate },
             { type: 'text', text: propertyName },
           ],
@@ -258,14 +261,18 @@ export class WhatsAppClient {
   }
 
   /**
-   * Send payment confirmation
+   * Send payment confirmation.
+   *
+   * `currency` is required — the caller must pass the tenant's
+   * currency (sourced from region-config). No hardcoded KES default.
    */
   async sendPaymentConfirmation(
     phoneNumber: string,
     tenantName: string,
     amount: number,
     receiptNumber: string,
-    balance: number
+    balance: number,
+    currency: string
   ): Promise<SendMessageResponse> {
     return this.sendTemplate({
       to: phoneNumber,
@@ -276,9 +283,9 @@ export class WhatsAppClient {
           type: 'body',
           parameters: [
             { type: 'text', text: tenantName },
-            { type: 'currency', currency: { fallback_value: `KES ${amount}`, code: 'KES', amount_1000: amount * 1000 } },
+            { type: 'currency', currency: { fallback_value: `${currency} ${amount}`, code: currency, amount_1000: amount * 1000 } },
             { type: 'text', text: receiptNumber },
-            { type: 'currency', currency: { fallback_value: `KES ${balance}`, code: 'KES', amount_1000: balance * 1000 } },
+            { type: 'currency', currency: { fallback_value: `${currency} ${balance}`, code: currency, amount_1000: balance * 1000 } },
           ],
         },
       ],

@@ -186,7 +186,13 @@ export default function WorkOrderDetail() {
       workOrdersService.complete(workOrderId as never, {
         completionNotes: workNotes,
         actualCost: materials.length > 0
-          ? { amount: materials.reduce((s, m) => s + m.cost * m.quantity, 0), currency: 'KES' }
+          ? {
+              amount: materials.reduce((s, m) => s + m.cost * m.quantity, 0),
+              // Currency comes from env (set per-tenant deploy). Previously
+              // hardcoded 'KES' which wrongly labelled completions from
+              // non-Kenya tenants.
+              currency: process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD',
+            }
           : undefined,
       }),
     onSuccess: () => {

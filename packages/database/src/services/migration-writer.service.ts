@@ -221,7 +221,25 @@ export class MigrationWriterService {
    */
   async commit(
     bundle: ExtractedBundle,
-    ctx: { tenantId: string; ownerUserId: string; actorUserId: string },
+    ctx: {
+      tenantId: string;
+      ownerUserId: string;
+      actorUserId: string;
+      /**
+       * Tenant's country code (ISO 3166-1 alpha-2). Resolved from
+       * region-config at the call site. Required so migrated properties
+       * inherit the tenant's actual country rather than a hardcoded
+       * default.
+       */
+      tenantCountry: string;
+      /**
+       * Tenant's default currency (ISO 4217). Resolved from region-config.
+       * Required so migrated units inherit the tenant's rent currency.
+       */
+      tenantCurrency: string;
+      /** Default city used when a property record doesn't specify one. */
+      defaultCity?: string;
+    },
     opts: WriterOptions = {}
   ): Promise<WriterReport> {
     const report: WriterReport = {
@@ -535,8 +553,11 @@ export class MigrationWriterService {
               'apartment_complex',
             status: 'active',
             addressLine1: p.addressLine1,
-            city: p.city ?? 'Nairobi',
-            country: 'KE',
+            // City falls back to caller-supplied default (from the
+            // tenant's region config or preferences); never to a
+            // Kenya-specific city hardcode.
+            city: p.city ?? ctx.defaultCity ?? '',
+            country: ctx.tenantCountry,
             totalUnits: p.unitCount ?? 0,
           } as typeof propertiesTable.$inferInsert,
           ctx.actorUserId as never
@@ -644,7 +665,7 @@ export class MigrationWriterService {
             status:
               (u.status as typeof unitsTable.$inferInsert.status) ?? 'vacant',
             baseRentAmount: Math.round(u.rentKes * 100), // store in minor units
-            baseRentCurrency: 'KES',
+            baseRentCurrency: ctx.tenantCurrency,
           } as typeof unitsTable.$inferInsert,
           ctx.actorUserId as never
         );

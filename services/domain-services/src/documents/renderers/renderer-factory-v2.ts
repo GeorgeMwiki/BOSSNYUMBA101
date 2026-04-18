@@ -15,6 +15,8 @@ import { RendererError } from './renderer-interface.js';
 import { DocxRealRenderer } from './docx-real-renderer.js';
 import { PdfRealRenderer } from './pdf-real-renderer.js';
 import { TextRenderer } from './text-renderer.js';
+import { TypstRenderer } from './typst-renderer.js';
+import { NanoBananaImageryRenderer } from './nano-banana-imagery-renderer.js';
 
 export type RendererContext = 'document' | 'marketing-imagery';
 
@@ -45,15 +47,13 @@ export function getRenderer(
     case 'react-pdf':
       return new PdfRealRenderer({ engine: opts.pdfEngine ?? 'builtin' });
     case 'typst':
-      throw new RendererError(
-        'NOT_IMPLEMENTED',
-        'Typst renderer requires the Typst binary. Install Typst and swap in a Typst-backed renderer.'
-      );
+      // TypstRenderer degrades to the zero-dep PDF encoder when the
+      // typst binary is unavailable at runtime.
+      return new TypstRenderer();
     case 'nano-banana':
-      throw new RendererError(
-        'NOT_IMPLEMENTED',
-        'Nano Banana renderer is imagery-only; it should never render documents.'
-      );
+      // Only reachable for context='marketing-imagery' (guardrail above);
+      // NanoBananaImageryRenderer itself emits imagery mime types only.
+      return new NanoBananaImageryRenderer();
     default: {
       const exhaustive: never = kind;
       throw new RendererError('INVALID_TEMPLATE', `Unknown renderer kind: ${String(exhaustive)}`);

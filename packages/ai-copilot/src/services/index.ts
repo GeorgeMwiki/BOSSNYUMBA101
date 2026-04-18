@@ -55,3 +55,8 @@ export * from './renewal-strategy-generator.js';
 
 // Conversational Personalization (exports InteractionHistory, TenantContext)
 export * from './conversational-personalization.js';
+
+// AI Mediator — shared Anthropic-backed wrappers for mediation, negotiation,
+// report narration, and letter drafting. Deterministic fallbacks when
+// ANTHROPIC_API_KEY is unset.
+export * from './ai-mediator.js';

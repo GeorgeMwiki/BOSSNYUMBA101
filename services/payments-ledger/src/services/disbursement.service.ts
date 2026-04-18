@@ -726,7 +726,13 @@ export class DisbursementService {
    */
   async getDisbursementSummary(
     tenantId: TenantId,
-    minBalance: number = 1000
+    minBalance: number = 1000,
+    /**
+     * Currency to report when no eligible owners exist. Caller supplies
+     * this from tenant region-config; required so an empty-portfolio
+     * summary never reports KES for a non-Kenya tenant.
+     */
+    fallbackCurrency?: string
   ): Promise<{
     totalEligibleOwners: number;
     totalDisbursableAmount: Money;
@@ -739,9 +745,18 @@ export class DisbursementService {
     const eligibleOwners = await this.getEligibleOwners(tenantId, minBalance);
 
     if (eligibleOwners.length === 0) {
+      if (!fallbackCurrency) {
+        throw new Error(
+          'disbursement: fallbackCurrency is required when there are no eligible owners.'
+        );
+      }
       return {
         totalEligibleOwners: 0,
-        totalDisbursableAmount: Money.zero('KES'),
+        // Money.zero's parameter is typed to the platform's CurrencyCode
+        // union; fallbackCurrency has already been validated as a non-
+        // empty ISO-4217 code upstream (via region-config), so we cast
+        // to satisfy the generated union type.
+        totalDisbursableAmount: Money.zero(fallbackCurrency as never),
         owners: [],
       };
     }

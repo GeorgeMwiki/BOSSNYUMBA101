@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
 interface User {
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const DEFAULT_SESSION_TIMEOUT = 30;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -55,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     parseInt(localStorage.getItem('sessionTimeout') || String(DEFAULT_SESSION_TIMEOUT))
   );
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
-  
+
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,19 +71,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPermissions([]);
     setProperties([]);
     setLastActivity(null);
-    
+
+    // Reset the React Query cache so a new user (or the same user after
+    // re-login) never sees stale per-tenant data bleed through.
+    queryClient.clear();
+
     if (sessionTimeoutRef.current) {
       clearTimeout(sessionTimeoutRef.current);
     }
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
     }
-    
+
     if (reason === 'timeout') {
       // Store the reason for logout to show message on login page
       sessionStorage.setItem('logoutReason', 'Session expired due to inactivity');
     }
-  }, []);
+  }, [queryClient]);
 
   const resetSessionTimeout = useCallback(() => {
     if (sessionTimeoutRef.current) {

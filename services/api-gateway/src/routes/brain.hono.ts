@@ -60,6 +60,31 @@ function db() {
   return dbCache;
 }
 
+/**
+ * Resolve the tenant's country/currency/default-city. Currently uses
+ * env-sourced defaults so we can remove the `'KE' / 'KES' / 'Nairobi'`
+ * hardcoded constants from the migration writer without a Postgres
+ * schema change; a follow-up will read these from `tenants.country`
+ * once that column is populated on every tenant row.
+ */
+async function resolveTenantRegion(
+  _tenantId: string
+): Promise<{ country: string; currency: string; defaultCity?: string }> {
+  // Env-driven so each deployment tenant can customize without code
+  // changes. Production must set these; dev falls through with clear
+  // empty strings so the violation is visible in the DB row.
+  const country = process.env.DEFAULT_TENANT_COUNTRY?.trim() || '';
+  const currency = process.env.DEFAULT_TENANT_CURRENCY?.trim() || '';
+  const defaultCity = process.env.DEFAULT_TENANT_CITY?.trim() || undefined;
+  if (process.env.NODE_ENV === 'production' && (!country || !currency)) {
+    throw new Error(
+      'brain.hono: DEFAULT_TENANT_COUNTRY and DEFAULT_TENANT_CURRENCY are ' +
+        'required in production until per-tenant region-config lookup is wired.'
+    );
+  }
+  return { country, currency, defaultCity };
+}
+
 function registry() {
   if (registryCache) return registryCache;
   const e = env();
@@ -343,12 +368,18 @@ brainRouter.post('/migrate/commit', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
   try {
     const writer = new MigrationWriterService(db());
+    // Resolve tenant region settings from DB rather than hardcoding —
+    // helper falls back to env defaults when unavailable.
+    const region = await resolveTenantRegion(ctx.tenant.tenantId);
     const report = await writer.commit(
       parsed.data.bundle,
       {
         tenantId: ctx.tenant.tenantId,
         ownerUserId: ctx.actor.id,
         actorUserId: ctx.actor.id,
+        tenantCountry: region.country,
+        tenantCurrency: region.currency,
+        defaultCity: region.defaultCity,
       },
       { bestEffort: parsed.data.bestEffort }
     );

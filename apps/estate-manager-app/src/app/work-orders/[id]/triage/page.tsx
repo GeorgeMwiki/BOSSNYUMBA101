@@ -1,4 +1,4 @@
-import WorkOrderTriage from '@/pages/work-orders/WorkOrderTriage';
+import WorkOrderTriage from '@/screens/work-orders/WorkOrderTriage';
 
 export default function WorkOrderTriagePage() {
   return <WorkOrderTriage />;

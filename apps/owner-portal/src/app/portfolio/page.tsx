@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2,
@@ -9,44 +9,13 @@ import {
   BarChart3,
   Target,
 } from 'lucide-react';
-import { api, formatCurrency, formatPercentage } from '../../lib/api';
-
-interface PortfolioSummary {
-  totalProperties: number;
-  totalUnits: number;
-  totalValue: number;
-  monthlyRevenue: number;
-  occupancyRate: number;
-  yoyGrowth: number;
-}
+import { formatCurrency, formatPercentage } from '../../lib/api';
+import { usePortfolioSummary, useProperties } from '../../lib/hooks';
 
 export default function PortfolioPage() {
-  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
-  const [properties, setProperties] = useState<Array<{
-    id: string;
-    name: string;
-    type: string;
-    totalUnits: number;
-    occupiedUnits: number;
-    monthlyRevenue: number;
-    address: { city: string; country: string };
-  }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      api.get<PortfolioSummary>('/portfolio/summary'),
-      api.get<typeof properties>('/properties'),
-    ]).then(([summaryRes, propertiesRes]) => {
-      if (summaryRes.success && summaryRes.data) {
-        setPortfolio(summaryRes.data);
-      }
-      if (propertiesRes.success && propertiesRes.data) {
-        setProperties(propertiesRes.data);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const { data: portfolio = null, isLoading: loadingSummary } = usePortfolioSummary();
+  const { data: properties = [], isLoading: loadingProperties } = useProperties();
+  const loading = loadingSummary || loadingProperties;
 
   if (loading) {
     return (

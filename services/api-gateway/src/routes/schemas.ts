@@ -192,7 +192,8 @@ export const createInvoiceSchema = z.object({
   dueDate: z.string(),
   subtotal: z.number().min(0),
   tax: z.number().min(0).default(0),
-  currency: z.string().length(3).default('TZS'),
+  // Client resolves currency from tenant region-config. No TZS default.
+  currency: z.string().length(3),
   lineItems: z.array(invoiceLineItemSchema).min(1),
 });
 
@@ -236,7 +237,8 @@ export const createManualPaymentSchema = z.object({
   invoiceId: z.string().min(1),
   customerId: z.string().min(1),
   amount: z.number().positive(),
-  currency: z.string().length(3).default('TZS'),
+  // Client resolves currency from tenant region-config. No TZS default.
+  currency: z.string().length(3),
   method: paymentMethodSchema,
   reference: z.string().min(1).optional(),
 });

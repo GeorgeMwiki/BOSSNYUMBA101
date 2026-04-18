@@ -14,6 +14,7 @@ import { MessagesPage } from './pages/MessagesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ESignaturePage } from './pages/documents/ESignature';
 import { DisbursementsPage } from './pages/financial/Disbursements';
+import { NotFoundPage } from './pages/NotFoundPage';
 import PortfolioPage from './app/portfolio/page';
 import PortfolioPerformancePage from './app/portfolio/performance/page';
 import PortfolioGrowthPage from './app/portfolio/growth/page';
@@ -97,6 +98,7 @@ function App() {
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Layout>
             </PrivateRoute>

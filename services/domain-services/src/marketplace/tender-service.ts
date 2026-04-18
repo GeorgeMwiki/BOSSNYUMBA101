@@ -88,7 +88,9 @@ export class TenderService {
       details: input.details ?? null,
       budgetRangeMin: input.budgetRangeMin,
       budgetRangeMax: input.budgetRangeMax,
-      currency: input.currency ?? 'KES',
+      // Currency must be supplied by caller from tenant region-config.
+      // No KES fallback — wrong-currency tenders would be silently created.
+      currency: input.currency ?? '',
       status: 'open',
       visibility: input.visibility ?? 'public',
       invitedVendorIds: input.invitedVendorIds ?? [],

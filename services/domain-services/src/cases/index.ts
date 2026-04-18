@@ -302,7 +302,10 @@ export class CaseService {
       id: caseId, tenantId, caseNumber, type: input.type, severity: input.severity || 'MEDIUM', status: 'OPEN',
       title: input.title, description: input.description, customerId: input.customerId,
       leaseId: input.leaseId, propertyId: input.propertyId, unitId: input.unitId,
-      relatedInvoiceIds: input.relatedInvoiceIds, amountInDispute: input.amountInDispute, currency: input.currency || 'TZS',
+      relatedInvoiceIds: input.relatedInvoiceIds, amountInDispute: input.amountInDispute,
+      // Currency is resolved by the caller from tenant region-config; we
+      // do not inject a TZS fallback which would hide cross-region bugs.
+      currency: input.currency ?? '',
       assignedTo: input.assignedTo,
       timeline: [{ id: `event_${Date.now()}`, type: 'CASE_CREATED', description: `Case created: ${input.title}`, createdAt: now, createdBy }],
       notices: [], evidence: [], escalationLevel: 0, dueDate: input.dueDate,
@@ -444,7 +447,9 @@ export class CaseService {
     const now = new Date().toISOString() as ISOTimestamp;
     const resolution: CaseResolution = {
       outcome: input.outcome, summary: input.summary, agreedAmount: input.agreedAmount,
-      paymentPlan: input.paymentPlan ? { ...input.paymentPlan, currency: caseEntity.currency || 'TZS' } : undefined,
+      // Inherit the case's currency so the payment plan cannot silently
+      // ship TZS against a non-Tanzania tenant.
+      paymentPlan: input.paymentPlan ? { ...input.paymentPlan, currency: caseEntity.currency ?? '' } : undefined,
       terms: input.terms, resolvedAt: now, resolvedBy,
     };
     const timelineEvent: CaseTimelineEvent = { id: `event_${Date.now()}`, type: 'CASE_RESOLVED', description: `Case resolved: ${input.outcome}`, metadata: { outcome: input.outcome, agreedAmount: input.agreedAmount }, createdAt: now, createdBy: resolvedBy };

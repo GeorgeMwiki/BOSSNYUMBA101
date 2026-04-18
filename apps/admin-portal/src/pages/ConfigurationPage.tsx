@@ -388,16 +388,26 @@ export function ConfigurationPage() {
           </div>
         );
 
-      default:
+      default: {
+        const sectionName =
+          activeSection.charAt(0).toUpperCase() + activeSection.slice(1);
         return (
-          <div className="text-center py-12 text-gray-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-center py-12 text-gray-500"
+          >
             <Settings className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}{' '}
-              configuration coming soon
+            <h3 className="text-base font-semibold text-gray-700 mb-1">
+              {sectionName} configuration
+            </h3>
+            <p className="text-sm max-w-md mx-auto">
+              This section is not yet available. Choose another section from the
+              sidebar, or check back after the next platform release.
             </p>
           </div>
         );
+      }
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { normalizePhoneForCountry } from '@bossnyumba/domain-models';
 
 /**
@@ -81,6 +82,7 @@ const DEFAULT_PHONE_COUNTRY: string = 'TZ';
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<CustomerUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,7 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem(CUSTOMER_TOKEN_KEY);
     localStorage.removeItem(CUSTOMER_USER_KEY);
-  }, []);
+    // Reset per-user cache so another resident on the same device never
+    // sees the previous user's scoped data.
+    queryClient.clear();
+  }, [queryClient]);
 
   const setActiveOrg = useCallback(
     async (orgId: string) => {
@@ -157,16 +162,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (membership.status !== 'ACTIVE') {
         return { success: false, message: 'Membership is not active' };
       }
-      // TODO: call /auth/exchange-org-token to get a per-org scoped JWT
-      // and reset react-query caches. For now we only persist locally.
+      // TODO: call /auth/exchange-org-token to get a per-org scoped JWT.
+      // For now we persist locally AND clear the React Query cache so
+      // per-org scoped queries (e.g. rent history, requests) don't leak
+      // from the previously-active org after the switch.
       const next: CustomerUser = { ...user, activeOrgId: orgId };
       setUser(next);
       if (typeof window !== 'undefined') {
         localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(next));
       }
+      queryClient.clear();
       return { success: true };
     },
-    [user]
+    [user, queryClient]
   );
 
   const redeemInviteCode = useCallback(

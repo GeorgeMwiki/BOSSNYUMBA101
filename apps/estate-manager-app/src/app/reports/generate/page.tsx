@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, FileText, Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -14,10 +14,10 @@ const reportTypes: Record<ReportType, { label: string; description: string }> = 
   inspections: { label: 'Inspections Report', description: 'Inspection completion and condition summaries' },
 };
 
-export default function GenerateReportPage() {
+function GenerateReportPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const typeParam = searchParams.get('type') as ReportType | null;
+  const typeParam = searchParams?.get('type') as ReportType | null;
 
   const [formData, setFormData] = useState({
     type: (typeParam && reportTypes[typeParam] ? typeParam : 'occupancy') as ReportType,
@@ -117,5 +117,13 @@ export default function GenerateReportPage() {
         </div>
       </form>
     </>
+  );
+}
+
+export default function GenerateReportPage() {
+  return (
+    <Suspense fallback={<PageHeader title="Generate Report" showBack />}>
+      <GenerateReportPageInner />
+    </Suspense>
   );
 }

@@ -138,7 +138,10 @@ function mapVendorRow(row: VendorRowLike): VendorProfileDto {
     ratingLastComputedAt: row.ratingLastComputedAt ?? null,
     ratingSampleSize: row.ratingSampleSize ?? 0,
     hourlyRate: firstRate?.hourlyRate ?? null,
-    currency: firstRate?.currency ?? 'KES',
+    // Currency is stored on the vendor_rates row at registration.
+    // Empty string (when truly missing) surfaces the bad data rather
+    // than silently mislabeling a non-Kenya vendor as KES.
+    currency: firstRate?.currency ?? '',
   };
 }
 

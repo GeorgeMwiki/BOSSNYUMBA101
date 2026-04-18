@@ -112,12 +112,22 @@ export class ReminderEngine {
     whatsappClient: MetaWhatsAppClient;
     reminderQueue?: ReminderQueue;
     tenantDataProvider: TenantDataProvider;
-    defaultCurrency?: string;
+    /**
+     * Tenant's currency (resolved from region-config at call site).
+     * REQUIRED — no hardcoded default so the reminder never ships the
+     * wrong currency when the tenant country was misconfigured.
+     */
+    defaultCurrency: string;
   }) {
     this.whatsappClient = options.whatsappClient;
     this.reminderQueue = options.reminderQueue || new InMemoryReminderQueue();
     this.tenantDataProvider = options.tenantDataProvider;
-    this.defaultCurrency = options.defaultCurrency || 'TZS';
+    if (!options.defaultCurrency) {
+      throw new Error(
+        'ReminderEngine: defaultCurrency is required — pass the tenant currency from region-config.'
+      );
+    }
+    this.defaultCurrency = options.defaultCurrency;
   }
 
   // ============================================================================
@@ -644,7 +654,8 @@ export function createReminderEngine(options: {
   whatsappClient: MetaWhatsAppClient;
   reminderQueue?: ReminderQueue;
   tenantDataProvider: TenantDataProvider;
-  defaultCurrency?: string;
+  /** Tenant currency from region-config; required to avoid currency drift. */
+  defaultCurrency: string;
 }): ReminderEngine {
   return new ReminderEngine(options);
 }

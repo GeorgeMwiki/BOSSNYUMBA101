@@ -60,7 +60,7 @@ const priorityConfig: Record<AnnouncementPriority, { label: string; color: strin
 export default function AnnouncementDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
 
   const announcement = announcementData[id];
 

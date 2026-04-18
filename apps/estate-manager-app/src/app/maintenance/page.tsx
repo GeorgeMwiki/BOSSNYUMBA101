@@ -1,4 +1,4 @@
-import MaintenanceDashboard from '@/pages/maintenance/MaintenanceDashboard';
+import MaintenanceDashboard from '@/screens/maintenance/MaintenanceDashboard';
 
 export default function MaintenancePage() {
   return <MaintenanceDashboard />;

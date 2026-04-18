@@ -86,7 +86,8 @@ const conditionLabels: Record<ConditionRating, string> = {
 };
 
 export default function ConductInspectionPage() {
-  const params = useParams();
+  const rawParams = useParams();
+  const params = { id: (rawParams?.id ?? '') as string };
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   

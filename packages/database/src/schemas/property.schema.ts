@@ -90,6 +90,9 @@ export const properties = pgTable(
     city: text('city').notNull(),
     state: text('state'),
     postalCode: text('postal_code'),
+    // DB-level safety-net default; application code MUST pass the
+    // tenant's country from region-config. Left in place because
+    // removing the default requires a destructive migration.
     country: text('country').notNull().default('KE'),
     latitude: decimal('latitude', { precision: 10, scale: 8 }),
     longitude: decimal('longitude', { precision: 11, scale: 8 }),

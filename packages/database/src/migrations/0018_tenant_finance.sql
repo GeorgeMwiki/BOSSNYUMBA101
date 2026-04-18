@@ -5,22 +5,30 @@
 -- full tenant isolation via cascade-delete FK.
 -- =============================================================================
 
-CREATE TYPE IF NOT EXISTS financial_statement_status AS ENUM (
-  'draft', 'submitted', 'under_review', 'verified', 'rejected', 'expired'
-);
+DO $$ BEGIN
+  CREATE TYPE financial_statement_status AS ENUM (
+    'draft', 'submitted', 'under_review', 'verified', 'rejected', 'expired'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE IF NOT EXISTS bank_reference_status AS ENUM (
-  'not_requested', 'pending', 'verified', 'failed', 'manual_override'
-);
+DO $$ BEGIN
+  CREATE TYPE bank_reference_status AS ENUM (
+    'not_requested', 'pending', 'verified', 'failed', 'manual_override'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE IF NOT EXISTS litigation_kind AS ENUM (
-  'eviction', 'judgment', 'lawsuit_as_plaintiff', 'lawsuit_as_defendant',
-  'bankruptcy', 'other'
-);
+DO $$ BEGIN
+  CREATE TYPE litigation_kind AS ENUM (
+    'eviction', 'judgment', 'lawsuit_as_plaintiff', 'lawsuit_as_defendant',
+    'bankruptcy', 'other'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE IF NOT EXISTS litigation_outcome AS ENUM (
-  'pending', 'won', 'lost', 'settled', 'dismissed', 'withdrawn'
-);
+DO $$ BEGIN
+  CREATE TYPE litigation_outcome AS ENUM (
+    'pending', 'won', 'lost', 'settled', 'dismissed', 'withdrawn'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS tenant_financial_statements (
   id                            TEXT PRIMARY KEY,

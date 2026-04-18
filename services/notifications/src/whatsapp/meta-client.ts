@@ -56,6 +56,21 @@ export class WhatsAppRateLimitError extends WhatsAppAPIError {
 }
 
 // ============================================================================
+// Region dial codes — sourced from region-config conceptually; inlined so
+// the notifications service stays dependency-light. Keep in sync with
+// `packages/domain-models/src/common/region-config.ts`.
+// ============================================================================
+
+const REGION_DIAL_MAP: Readonly<
+  Record<string, { readonly dialingCode: string; readonly trunkPrefix?: string }>
+> = {
+  TZ: { dialingCode: '255', trunkPrefix: '0' },
+  KE: { dialingCode: '254', trunkPrefix: '0' },
+  UG: { dialingCode: '256', trunkPrefix: '0' },
+  RW: { dialingCode: '250', trunkPrefix: '0' },
+};
+
+// ============================================================================
 // Configuration
 // ============================================================================
 
@@ -133,36 +148,28 @@ export class MetaWhatsAppClient {
   // ============================================================================
 
   /**
-   * Format phone number to WhatsApp format (E.164 without +)
-   * Supports East African numbers (Kenya, Tanzania, Uganda)
+   * Format a phone number to WhatsApp's E.164-without-+ format.
+   *
+   * If `countryCode` is provided we use the region dialing map to
+   * canonicalize the number. If it is not provided we trust the caller
+   * passed an already-international number and strip non-digits only —
+   * no country default is ever guessed. This prevents the old
+   * Kenya/Tanzania/Uganda misrouting bug where local numbers were
+   * silently rewritten to whichever branch matched first.
    */
-  formatPhoneNumber(phone: string): string {
-    let cleaned = phone.replace(/\D/g, '');
-
-    // Remove leading zeros
-    if (cleaned.startsWith('0')) {
-      // Detect country based on number pattern
-      if (cleaned.startsWith('07') || cleaned.startsWith('01')) {
-        // Kenya mobile numbers
-        cleaned = '254' + cleaned.slice(1);
-      } else if (cleaned.startsWith('06') || cleaned.startsWith('07')) {
-        // Tanzania mobile numbers
-        cleaned = '255' + cleaned.slice(1);
-      } else if (cleaned.startsWith('07')) {
-        // Uganda mobile numbers
-        cleaned = '256' + cleaned.slice(1);
-      } else {
-        // Default to Tanzania
-        cleaned = '255' + cleaned.slice(1);
-      }
+  formatPhoneNumber(phone: string, countryCode?: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (!countryCode) return digits;
+    const region = REGION_DIAL_MAP[countryCode.toUpperCase()];
+    if (!region) {
+      // Unknown country — preserve the caller's input rather than fabricate.
+      return digits;
     }
-
-    // Handle + prefix
-    if (phone.startsWith('+')) {
-      cleaned = phone.replace(/\D/g, '');
+    if (digits.startsWith(region.dialingCode)) return digits;
+    if (region.trunkPrefix && digits.startsWith(region.trunkPrefix)) {
+      return region.dialingCode + digits.slice(region.trunkPrefix.length);
     }
-
-    return cleaned;
+    return region.dialingCode + digits;
   }
 
   // ============================================================================

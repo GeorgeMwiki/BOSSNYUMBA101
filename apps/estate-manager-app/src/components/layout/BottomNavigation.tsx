@@ -25,8 +25,8 @@ export function BottomNavigation() {
     <nav className="bottom-nav">
       <div className="flex justify-around items-center">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== '/' && pathname.startsWith(item.href));
+          const isActive = pathname === item.href ||
+            (item.href !== '/' && (pathname?.startsWith(item.href) ?? false));
           const Icon = item.icon;
 
           return (

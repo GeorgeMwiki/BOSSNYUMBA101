@@ -78,8 +78,13 @@ export function Layout({ children }: LayoutProps) {
               <Home className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">BOSSNYUMBA</span>
             </div>
-            <button onClick={() => setSidebarOpen(false)}>
-              <X className="h-6 w-6 text-gray-500" />
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close navigation menu"
+              className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <X className="h-6 w-6 text-gray-500" aria-hidden="true" />
             </button>
           </div>
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
@@ -158,17 +163,26 @@ export function Layout({ children }: LayoutProps) {
         {/* Top header */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 sm:px-6">
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden -m-2.5 p-2.5 text-gray-700"
+            aria-label="Open navigation menu"
+            className="lg:hidden -m-2.5 p-2.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
 
           <div className="flex-1" />
 
-          <button className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+          <button
+            type="button"
+            aria-label="Notifications (3 unread)"
+            className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Bell className="h-5 w-5" aria-hidden="true" />
+            <span
+              aria-hidden="true"
+              className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white"
+            >
               3
             </span>
           </button>

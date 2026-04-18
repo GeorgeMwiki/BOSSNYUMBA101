@@ -10,7 +10,7 @@ export default function PropertyEditPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -20,11 +20,13 @@ export default function PropertyEditPage() {
 
   const property = data?.data;
 
+  const defaultCountry =
+    process.env.NEXT_PUBLIC_TENANT_COUNTRY?.trim() || '';
   const [formData, setFormData] = useState({
     name: '',
     type: 'RESIDENTIAL',
     status: 'ACTIVE',
-    address: { line1: '', city: '', region: '', country: 'KE' },
+    address: { line1: '', city: '', region: '', country: defaultCountry },
     description: '',
     totalUnits: 0,
   });
@@ -39,7 +41,7 @@ export default function PropertyEditPage() {
           line1: property.address?.line1 ?? '',
           city: property.address?.city ?? '',
           region: property.address?.region ?? '',
-          country: property.address?.country ?? 'KE',
+          country: property.address?.country ?? defaultCountry,
         },
         description: property.description ?? '',
         totalUnits: property.totalUnits ?? 0,

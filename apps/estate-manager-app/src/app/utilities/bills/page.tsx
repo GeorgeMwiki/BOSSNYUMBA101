@@ -39,10 +39,17 @@ const utilityLabels: Record<string, string> = {
   gas: 'Gas',
 };
 
+// Tenant currency/locale come from env (per-deployment). No
+// Kenya hardcode. Fallback is USD/en so the page renders but the
+// unconfigured state is obvious.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
+
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-KE', {
+  return new Intl.NumberFormat(TENANT_LOCALE, {
     style: 'currency',
-    currency: 'KES',
+    currency: TENANT_CURRENCY,
     minimumFractionDigits: 0,
   }).format(amount);
 }

@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService, propertiesService } from '@bossnyumba/api-client';
 
-export default function UnitFormPage() {
+function UnitFormPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const propertyIdParam = searchParams.get('propertyId');
+  const propertyIdParam = searchParams?.get('propertyId') ?? null;
 
   const [formData, setFormData] = useState({
     propertyId: propertyIdParam ?? '',
@@ -227,5 +227,13 @@ export default function UnitFormPage() {
         </div>
       </form>
     </>
+  );
+}
+
+export default function UnitFormPage() {
+  return (
+    <Suspense fallback={<PageHeader title="New Unit" showBack />}>
+      <UnitFormPageInner />
+    </Suspense>
   );
 }

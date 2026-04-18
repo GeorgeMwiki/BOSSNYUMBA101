@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   CheckSquare,
   Check,
@@ -9,72 +9,17 @@ import {
   Wrench,
   DollarSign,
 } from 'lucide-react';
-import { api, formatDate } from '../lib/api';
-
-interface Approval {
-  id: string;
-  type: string;
-  status: string;
-  entityType: string;
-  entityId: string;
-  requestedAction: string;
-  justification?: string;
-  decision?: string;
-  createdAt: string;
-  decidedAt?: string;
-  requester?: {
-    id: string;
-    name: string;
-  };
-  approver?: {
-    id: string;
-    name: string;
-  };
-}
+import { formatDate } from '../lib/api';
+import { useApprovals, useApproveRequest, useRejectRequest } from '../lib/hooks';
 
 export function ApprovalsPage() {
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: approvals = [], isLoading: loading } = useApprovals();
+  const approveMutation = useApproveRequest();
+  const rejectMutation = useRejectRequest();
   const [filter, setFilter] = useState<string>('PENDING');
 
-  useEffect(() => {
-    api.get<Approval[]>('/approvals').then((response) => {
-      if (response.success && response.data) {
-        setApprovals(response.data);
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  const handleApprove = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/approve`, {
-      decision: 'Approved',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'APPROVED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    const response = await api.post(`/approvals/${id}/reject`, {
-      decision: 'Rejected',
-    });
-    if (response.success) {
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: 'REJECTED', decidedAt: new Date().toISOString() }
-            : a
-        )
-      );
-    }
-  };
+  const handleApprove = (id: string) => approveMutation.mutate({ id });
+  const handleReject = (id: string) => rejectMutation.mutate({ id });
 
   const filteredApprovals = approvals.filter((a) => {
     if (filter === 'all') return true;

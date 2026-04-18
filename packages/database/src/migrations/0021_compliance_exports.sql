@@ -4,17 +4,23 @@
 -- Manifest of regulator-facing exports with status + storage key.
 -- =============================================================================
 
-CREATE TYPE IF NOT EXISTS compliance_export_type AS ENUM (
-  'tz_tra', 'ke_dpa', 'ke_kra', 'tz_land_act'
-);
+DO $$ BEGIN
+  CREATE TYPE compliance_export_type AS ENUM (
+    'tz_tra', 'ke_dpa', 'ke_kra', 'tz_land_act'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE IF NOT EXISTS compliance_export_status AS ENUM (
-  'scheduled', 'generating', 'ready', 'downloaded', 'failed', 'archived'
-);
+DO $$ BEGIN
+  CREATE TYPE compliance_export_status AS ENUM (
+    'scheduled', 'generating', 'ready', 'downloaded', 'failed', 'archived'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE IF NOT EXISTS compliance_export_format AS ENUM (
-  'csv', 'json', 'xml', 'pdf'
-);
+DO $$ BEGIN
+  CREATE TYPE compliance_export_format AS ENUM (
+    'csv', 'json', 'xml', 'pdf'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS compliance_exports (
   id                 TEXT PRIMARY KEY,

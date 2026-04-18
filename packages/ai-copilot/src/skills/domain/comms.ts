@@ -296,7 +296,10 @@ export const DraftTenantLetterParamsSchema = z.object({
       leaseStartDate: z.string().optional(),
       leaseEndDate: z.string().optional(),
       monthlyRent: z.number().optional(),
-      currency: z.string().default('KES'),
+      // Currency must be passed by the caller (resolved from tenant
+      // region-config). Optional here because many letters don't
+      // include money; when they do, callers supply it explicitly.
+      currency: z.string().optional(),
       residentSince: z.string().optional(),
       purposeNote: z.string().optional(),
       requestedBy: z.string().optional(),

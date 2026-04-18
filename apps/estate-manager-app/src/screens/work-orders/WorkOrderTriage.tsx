@@ -49,7 +49,7 @@ export default function WorkOrderTriage() {
   const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
-  const workOrderId = params.id as string;
+  const workOrderId = (params?.id ?? '') as string;
 
   const [priority, setPriority] = useState('');
   const [category, setCategory] = useState('');
@@ -157,8 +157,8 @@ export default function WorkOrderTriage() {
             <span>&bull;</span>
             <span>{property?.name ? String(property.name) : ''}</span>
           </div>
-          {wo?.description && (
-            <p className="text-sm text-gray-600 mt-2">{String(wo.description)}</p>
+          {Boolean(wo?.description) && (
+            <p className="text-sm text-gray-600 mt-2">{String(wo?.description)}</p>
           )}
         </div>
 

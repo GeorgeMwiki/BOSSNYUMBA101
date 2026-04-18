@@ -2,11 +2,11 @@
  * Document renderers — barrel export.
  *
  * IDocumentRenderer defines the common contract; concrete renderers:
- *  - TextRenderer              (plain text, implemented)
- *  - DocxtemplaterRenderer     (stub)
- *  - ReactPdfRenderer          (stub)
- *  - TypstRenderer             (stub)
- *  - NanoBananaImageryRenderer (MARKETING IMAGERY ONLY; stub)
+ *  - TextRenderer              (plain text)
+ *  - DocxtemplaterRenderer     (.docx via docxtemplater; synthesizer fallback)
+ *  - ReactPdfRenderer          (PDF via @react-pdf/renderer; zero-dep fallback)
+ *  - TypstRenderer             (PDF via typst CLI; zero-dep fallback)
+ *  - NanoBananaImageryRenderer (MARKETING IMAGERY ONLY; placeholder fallback)
  */
 
 export * from './renderer-interface.js';

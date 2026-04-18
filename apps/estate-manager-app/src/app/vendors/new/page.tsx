@@ -1,4 +1,4 @@
-import VendorForm from '@/pages/vendors/VendorForm';
+import VendorForm from '@/screens/vendors/VendorForm';
 
 export default function NewVendorPage() {
   return <VendorForm />;

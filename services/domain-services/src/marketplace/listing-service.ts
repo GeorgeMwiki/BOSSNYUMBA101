@@ -74,7 +74,10 @@ export class ListingService {
       propertyId: input.propertyId ?? null,
       listingKind: input.listingKind,
       headlinePrice: input.headlinePrice,
-      currency: input.currency ?? 'KES',
+      // Currency must be supplied by caller from tenant region-config.
+      // We no longer default to KES here — that would silently mislabel
+      // listings for non-Kenya tenants.
+      currency: input.currency ?? '',
       negotiable: input.negotiable ?? true,
       media: input.media ?? [],
       attributes: input.attributes ?? {},

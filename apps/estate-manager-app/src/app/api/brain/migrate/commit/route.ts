@@ -63,12 +63,30 @@ export async function POST(req: Request) {
 
   try {
     const writer = new MigrationWriterService(db());
+    // Env-sourced region settings — moved out of the writer which used
+    // to hardcode 'KE'/'KES'/'Nairobi'. Production must set these; dev
+    // falls through with empty strings so bad data is visible.
+    const country = process.env.DEFAULT_TENANT_COUNTRY?.trim() || '';
+    const currency = process.env.DEFAULT_TENANT_CURRENCY?.trim() || '';
+    const defaultCity = process.env.DEFAULT_TENANT_CITY?.trim() || undefined;
+    if (process.env.NODE_ENV === 'production' && (!country || !currency)) {
+      return NextResponse.json(
+        {
+          error:
+            'DEFAULT_TENANT_COUNTRY and DEFAULT_TENANT_CURRENCY env vars are required in production',
+        },
+        { status: 503 }
+      );
+    }
     const report = await writer.commit(
       parsed.data.bundle,
       {
         tenantId: tenant.tenantId,
         ownerUserId: actor.id,
         actorUserId: actor.id,
+        tenantCountry: country,
+        tenantCurrency: currency,
+        defaultCity,
       },
       { bestEffort: parsed.data.bestEffort }
     );

@@ -78,3 +78,10 @@ export * as Waitlist from './waitlist/index.js';
 // Reports bundle: Occupancy Timeline (NEW 22), Station-Master Routing (NEW 18).
 export * as OccupancyTimeline from './occupancy/index.js';
 export * as Routing from './routing/index.js';
+
+// Flat re-exports for the composition root (service-registry) —
+// MigrationService, Gamification, and the documents/letters surface are
+// pulled directly by the api-gateway without a namespace alias.
+export * from './migration/index.js';
+export * from './gamification/index.js';
+export * from './documents/index.js';

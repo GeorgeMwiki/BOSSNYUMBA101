@@ -1,7 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertDescription } from '@bossnyumba/design-system';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Alert,
+  AlertDescription,
+  Skeleton,
+} from '@bossnyumba/design-system';
 
 interface NotificationPreferences {
   readonly rentReminders: { email: boolean; sms: boolean; push: boolean };
@@ -32,33 +41,47 @@ const labels: Record<Category, string> = {
 
 export default function NotificationSettingsPage(): React.ReactElement {
   const [prefs, setPrefs] = useState<NotificationPreferences>(defaults);
-  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
-  useEffect(() => {
-    // TODO: wire GET /api/customer/settings/notifications
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/customer/settings/notifications');
-        if (!cancelled && res.ok) setPrefs((await res.json()) as NotificationPreferences);
-      } catch {
-        /* ignore */
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      // TODO: wire GET /api/customer/settings/notifications
+      const res = await fetch('/api/customer/settings/notifications', { signal });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = (await res.json()) as NotificationPreferences;
+      if (!signal?.aborted) {
+        setPrefs(data);
+        setLoading(false);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch (err) {
+      if (signal?.aborted) return;
+      setLoadError(err instanceof Error ? err.message : 'Failed to load preferences');
+      setLoading(false);
+    }
   }, []);
 
-  const toggle = (cat: Category, channel: Channel): void => {
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
+
+  const toggle = useCallback((cat: Category, channel: Channel): void => {
     // Immutable nested update
     setPrefs((prev) => ({
       ...prev,
       [cat]: { ...prev[cat], [channel]: !prev[cat][channel] },
     }));
-  };
+  }, []);
 
-  const save = async (): Promise<void> => {
+  const save = useCallback(async (): Promise<void> => {
+    setSaving(true);
+    setFeedback(null);
     try {
       // TODO: wire PUT /api/customer/settings/notifications
       const res = await fetch('/api/customer/settings/notifications', {
@@ -66,52 +89,93 @@ export default function NotificationSettingsPage(): React.ReactElement {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prefs),
       });
-      setMessage(res.ok ? 'Preferences saved.' : 'Save failed.');
-    } catch {
-      setMessage('Save failed.');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      setFeedback({ kind: 'success', message: 'Preferences saved.' });
+    } catch (err) {
+      setFeedback({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Save failed',
+      });
+    } finally {
+      setSaving(false);
     }
-  };
+  }, [prefs]);
 
   const categories = Object.keys(prefs) as ReadonlyArray<Category>;
 
   return (
     <main className="p-6 max-w-2xl mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">Notification preferences</h1>
-      {message && <Alert><AlertDescription>{message}</AlertDescription></Alert>}
+
+      {loadError && (
+        <Alert variant="danger">
+          <AlertDescription>
+            {loadError}
+            <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {feedback && (
+        <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle>Channels per category</CardTitle>
         </CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left">
-                <th className="p-2"></th>
-                <th className="p-2">Email</th>
-                <th className="p-2">SMS</th>
-                <th className="p-2">Push</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => (
-                <tr key={cat} className="border-t">
-                  <td className="p-2 font-medium">{labels[cat]}</td>
-                  {(['email', 'sms', 'push'] as ReadonlyArray<Channel>).map((ch) => (
-                    <td key={ch} className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={prefs[cat][ch]}
-                        onChange={() => toggle(cat, ch)}
-                        aria-label={`${labels[cat]} ${ch}`}
-                      />
-                    </td>
-                  ))}
-                </tr>
+          {loading ? (
+            <div className="space-y-2" aria-live="polite">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
               ))}
-            </tbody>
-          </table>
-          <Button className="mt-4" onClick={save}>Save preferences</Button>
+            </div>
+          ) : (
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left">
+                    <th scope="col" className="p-2"><span className="sr-only">Category</span></th>
+                    <th scope="col" className="p-2">Email</th>
+                    <th scope="col" className="p-2">SMS</th>
+                    <th scope="col" className="p-2">Push</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categories.map((cat) => (
+                    <tr key={cat} className="border-t">
+                      <td className="p-2 font-medium">{labels[cat]}</td>
+                      {(['email', 'sms', 'push'] as ReadonlyArray<Channel>).map((ch) => (
+                        <td key={ch} className="p-2">
+                          <input
+                            type="checkbox"
+                            checked={prefs[cat][ch]}
+                            onChange={() => toggle(cat, ch)}
+                            disabled={saving}
+                            aria-label={`${labels[cat]} via ${ch}`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Button
+                className="mt-4"
+                onClick={save}
+                loading={saving}
+                disabled={saving}
+                aria-label="Save notification preferences"
+              >
+                Save preferences
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </main>

@@ -92,7 +92,7 @@ Provide your analysis in the following JSON structure:
     "title": "concise work order title",
     "description": "detailed description for vendor",
     "internalNotes": "notes for property manager",
-    "estimatedCost": { "min": 0, "max": 0, "currency": "KES" }
+    "estimatedCost": { "min": 0, "max": 0, "currency": "<ISO-4217, e.g. TZS/KES/UGX>" }
   },
   "tenantCommunication": {
     "acknowledgmentMessage": "immediate response to tenant",
@@ -518,7 +518,7 @@ export const RISK_ALERTING_PROMPT: CreatePromptRequest = {
       "min": 0,
       "max": 0,
       "likely": 0,
-      "currency": "KES"
+      "currency": "<ISO-4217, e.g. TZS/KES/UGX>"
     }
   },
   "rootCauseAnalysis": {

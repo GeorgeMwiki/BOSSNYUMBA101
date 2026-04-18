@@ -23,7 +23,8 @@ export default function SubleaseRequestPage(): React.ReactElement {
     proposedRent: 0,
     reason: '',
   });
-  const [message, setMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const update = <K extends keyof SubleaseRequest>(k: K, v: SubleaseRequest[K]): void => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -31,6 +32,16 @@ export default function SubleaseRequestPage(): React.ReactElement {
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setFeedback({ kind: 'error', message: 'End date must be on or after start date.' });
+      return;
+    }
+    if (form.proposedRent <= 0) {
+      setFeedback({ kind: 'error', message: 'Proposed rent must be positive.' });
+      return;
+    }
+    setSubmitting(true);
+    setFeedback(null);
     try {
       // TODO: wire POST /api/customer/lease/sublease
       const res = await fetch('/api/customer/lease/sublease', {
@@ -38,9 +49,15 @@ export default function SubleaseRequestPage(): React.ReactElement {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      setMessage(res.ok ? 'Sublease request sent for owner approval.' : 'Submission failed.');
-    } catch {
-      setMessage('Submission failed.');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      setFeedback({ kind: 'success', message: 'Sublease request sent for owner approval.' });
+    } catch (err) {
+      setFeedback({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Submission failed',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -52,7 +69,11 @@ export default function SubleaseRequestPage(): React.ReactElement {
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
-            {message && <Alert><AlertDescription>{message}</AlertDescription></Alert>}
+            {feedback && (
+              <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
+                <AlertDescription>{feedback.message}</AlertDescription>
+              </Alert>
+            )}
 
             <div>
               <Label htmlFor="name">Prospect name</Label>
@@ -80,7 +101,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
             </div>
             <div>
               <Label htmlFor="rent">Proposed rent</Label>
-              <Input id="rent" type="number" value={form.proposedRent} onChange={(e) => update('proposedRent', Number(e.target.value))} required />
+              <Input id="rent" type="number" min={0} value={form.proposedRent} onChange={(e) => update('proposedRent', Number(e.target.value))} required />
             </div>
             <div>
               <Label htmlFor="reason">Reason for sublease</Label>
@@ -93,7 +114,14 @@ export default function SubleaseRequestPage(): React.ReactElement {
                 required
               />
             </div>
-            <Button type="submit">Submit request</Button>
+            <Button
+              type="submit"
+              loading={submitting}
+              disabled={submitting}
+              aria-label="Submit sublease request"
+            >
+              Submit request
+            </Button>
           </form>
         </CardContent>
       </Card>

@@ -40,14 +40,26 @@ export const REPORT_TEMPLATES = {
   },
 } as const;
 
-export function formatCurrency(amount: number, currency = 'KES'): string {
-  return new Intl.NumberFormat('en-KE', { style: 'currency', currency }).format(amount);
+/**
+ * Format a money amount using the caller-supplied currency + locale.
+ * There is no KES/en-KE default — callers MUST pass the tenant's
+ * currency and locale (resolved from region-config) so multi-tenant
+ * reports don't silently render as KES for non-Kenya tenants.
+ */
+export function formatCurrency(
+  amount: number,
+  currency: string,
+  locale: string = 'en'
+): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
 }
 
 export function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-export function formatDate(date: Date): string {
+export function formatDate(date: Date, locale: string = 'en'): string {
+  // ISO day-precision format is locale-independent by design.
+  void locale;
   return date.toISOString().slice(0, 10);
 }

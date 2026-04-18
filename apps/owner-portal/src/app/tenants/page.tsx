@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -9,34 +9,12 @@ import {
   ArrowRight,
   MessageSquare,
 } from 'lucide-react';
-import { api, formatCurrency, formatDate } from '../../lib/api';
-
-interface Tenant {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  propertyId: string;
-  propertyName: string;
-  unitNumber: string;
-  leaseEndDate: string;
-  rentAmount: number;
-  status: string;
-}
+import { formatCurrency, formatDate } from '../../lib/api';
+import { useTenants } from '../../lib/hooks';
 
 export default function TenantsPage() {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tenants = [], isLoading } = useTenants();
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    api.get<Tenant[]>('/tenants').then((res) => {
-      if (res.success && res.data) {
-        setTenants(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
 
   const filtered = tenants.filter(
     (t) =>
@@ -49,7 +27,7 @@ export default function TenantsPage() {
   // nothing the empty-state below is what the user sees, by design.
   const displayTenants = filtered;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />

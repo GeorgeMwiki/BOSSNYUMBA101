@@ -228,8 +228,8 @@ export class OpenAIProvider implements AIProvider {
     const timeoutMs = request.timeoutMs ?? this.config.defaultTimeoutMs ?? 60000;
 
     try {
-      const messages = [];
-      
+      const messages: { role: string; content: string }[] = [];
+
       // System message
       if (request.prompt.systemPrompt) {
         messages.push({

@@ -7,10 +7,15 @@ import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
+// Tenant region is env-driven per-deployment. No Kenya hardcode.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
+
 export default function CustomerDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
     queryKey: ['customer', id],
@@ -133,9 +138,9 @@ export default function CustomerDetailPage() {
                         {new Date(lease.endDate).toLocaleDateString()}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {new Intl.NumberFormat('en-KE', {
+                        {new Intl.NumberFormat(TENANT_LOCALE, {
                           style: 'currency',
-                          currency: 'KES',
+                          currency: TENANT_CURRENCY,
                           minimumFractionDigits: 0,
                         }).format(lease.rentAmount)}
                         /month

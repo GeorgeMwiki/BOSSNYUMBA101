@@ -202,34 +202,42 @@ CREATE INDEX IF NOT EXISTS assets_condition_idx ON assets(condition);
 CREATE INDEX IF NOT EXISTS assets_next_maintenance_due_idx ON assets(next_maintenance_due);
 
 -- Vendor Scorecards --------------------------------------------------------
+-- NOTE: 0001b_add_missing_entities.sql already creates a `vendor_scorecards`
+-- table with a different column shape (period_month/period_year, quality_score,
+-- etc.). Rather than duplicate-create and conflict, we extend the existing
+-- table with the operational columns this migration needs. All additions are
+-- `ADD COLUMN IF NOT EXISTS` so the migration is idempotent and safe to run
+-- against environments that used either schema.
 
 CREATE TABLE IF NOT EXISTS vendor_scorecards (
-  id                        TEXT PRIMARY KEY,
-  tenant_id                 TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  vendor_id                 TEXT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
-  period_start              TIMESTAMPTZ NOT NULL,
-  period_end                TIMESTAMPTZ NOT NULL,
-  total_jobs                INTEGER NOT NULL DEFAULT 0,
-  completed_jobs            INTEGER NOT NULL DEFAULT 0,
-  cancelled_jobs            INTEGER NOT NULL DEFAULT 0,
-  avg_rating                NUMERIC(3, 2),
-  rating_count              INTEGER DEFAULT 0,
-  first_time_fix_rate       NUMERIC(5, 2),
-  on_time_arrival_rate      NUMERIC(5, 2),
-  avg_response_time_minutes INTEGER,
-  sla_compliance_rate       NUMERIC(5, 2),
-  avg_job_cost              INTEGER,
-  cost_variance             NUMERIC(5, 2),
-  communication_score       NUMERIC(3, 2),
-  complaint_count           INTEGER DEFAULT 0,
-  resolved_complaints       INTEGER DEFAULT 0,
-  overall_score             NUMERIC(5, 2),
-  trend                     TEXT,
-  recommendations           JSONB DEFAULT '[]'::jsonb,
-  is_latest                 BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  vendor_id  TEXT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE vendor_scorecards
+  ADD COLUMN IF NOT EXISTS period_start              TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS period_end                TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS total_jobs                INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS completed_jobs            INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cancelled_jobs            INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS avg_rating                NUMERIC(3, 2),
+  ADD COLUMN IF NOT EXISTS rating_count              INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS first_time_fix_rate       NUMERIC(5, 2),
+  ADD COLUMN IF NOT EXISTS on_time_arrival_rate      NUMERIC(5, 2),
+  ADD COLUMN IF NOT EXISTS avg_response_time_minutes INTEGER,
+  ADD COLUMN IF NOT EXISTS sla_compliance_rate       NUMERIC(5, 2),
+  ADD COLUMN IF NOT EXISTS avg_job_cost              INTEGER,
+  ADD COLUMN IF NOT EXISTS cost_variance             NUMERIC(5, 2),
+  ADD COLUMN IF NOT EXISTS communication_score       NUMERIC(3, 2),
+  ADD COLUMN IF NOT EXISTS complaint_count           INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS resolved_complaints       INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS trend                     TEXT,
+  ADD COLUMN IF NOT EXISTS recommendations           JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS is_latest                 BOOLEAN NOT NULL DEFAULT TRUE;
+
 CREATE INDEX IF NOT EXISTS vs_tenant_idx ON vendor_scorecards(tenant_id);
 CREATE INDEX IF NOT EXISTS vs_vendor_idx ON vendor_scorecards(vendor_id);
 CREATE INDEX IF NOT EXISTS vs_period_idx ON vendor_scorecards(period_start, period_end);

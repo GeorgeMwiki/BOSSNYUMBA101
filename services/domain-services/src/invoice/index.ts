@@ -348,9 +348,19 @@ export class InvoiceService {
       oldestOverdueDays = Math.floor((Date.now() - new Date(oldest.dueDate).getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    // Currency is derived from the actual invoices rather than hardcoded.
+    // Mixed-currency outstanding balances fall back to the first invoice's
+    // currency — multi-currency aggregation is not supported here; callers
+    // must filter by currency upstream if they need it.
+    const derivedCurrency =
+      customerOverdue[0]?.amountDue?.currency ??
+      overdueInvoices.items[0]?.amountDue?.currency ??
+      (overdueInvoices.items[0] as unknown as { currency?: string })?.currency ??
+      '';
     return {
       customerId, totalOutstanding, overdueAmount,
-      invoiceCount: customerOverdue.length, oldestOverdueDays, currency: 'KES',
+      invoiceCount: customerOverdue.length, oldestOverdueDays,
+      currency: derivedCurrency,
     };
   }
 

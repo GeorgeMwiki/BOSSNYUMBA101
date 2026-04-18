@@ -1,11 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { InvoiceDetail } from '@/pages/payments/InvoiceDetail';
+import { InvoiceDetail } from '@/screens/payments/InvoiceDetail';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
 
   return <InvoiceDetail invoiceId={id} />;
 }

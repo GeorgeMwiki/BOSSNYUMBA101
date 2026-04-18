@@ -590,7 +590,10 @@ export class OCRExtractionService {
         jobTitle: jobTitleField?.value ?? null,
         employmentType: null,
         monthlyIncome: salaryField?.value ? parseFloat(salaryField.value.replace(/[^0-9.]/g, '')) : null,
-        incomeCurrency: 'TZS', // Default to TZS for Tanzania
+        // Currency is unknown from the OCR text alone. The caller
+        // resolves it from the tenant's region-config after extraction
+        // and overwrites this field. No hardcoded TZS default.
+        incomeCurrency: null,
         verified: false,
       },
     };

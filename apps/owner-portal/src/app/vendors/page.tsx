@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2,
@@ -9,31 +9,11 @@ import {
   ArrowRight,
   Briefcase,
 } from 'lucide-react';
-import { api } from '../../lib/api';
-
-interface Vendor {
-  id: string;
-  name: string;
-  type: string;
-  email?: string;
-  phone?: string;
-  status: string;
-  propertiesCount?: number;
-}
+import { useVendors } from '../../lib/hooks';
 
 export default function VendorsPage() {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: vendors = [], isLoading } = useVendors();
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    api.get<Vendor[]>('/vendors').then((res) => {
-      if (res.success && res.data) {
-        setVendors(res.data);
-      }
-      setLoading(false);
-    });
-  }, []);
 
   const filtered = vendors.filter(
     (v) =>
@@ -41,7 +21,7 @@ export default function VendorsPage() {
       v.type.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />

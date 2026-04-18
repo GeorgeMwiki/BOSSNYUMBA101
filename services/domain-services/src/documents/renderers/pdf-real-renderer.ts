@@ -79,8 +79,8 @@ export class PdfRealRenderer implements IDocumentRenderer {
       pdf = await import('@react-pdf/renderer');
     } catch (err) {
       throw new RendererError(
-        'NOT_IMPLEMENTED',
-        '@react-pdf/renderer not installed. Run `pnpm add @react-pdf/renderer react` or use engine="builtin".'
+        'RENDER_FAILED',
+        `@react-pdf/renderer not resolvable at runtime (${err instanceof Error ? err.message : String(err)}). Use engine="builtin" or ensure the package is installed.`
       );
     }
     if (!template.source || typeof template.source !== 'object') {

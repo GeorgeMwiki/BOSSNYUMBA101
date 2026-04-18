@@ -1,6 +1,6 @@
 'use client';
 
-import { PaymentsList } from '@/pages/payments/PaymentsList';
+import { PaymentsList } from '@/screens/payments/PaymentsList';
 
 export default function PaymentsPage() {
   return <PaymentsList />;

@@ -58,7 +58,7 @@ export interface VendorProfile {
   ratings: { overall: number; quality: number; reliability: number; communication: number; value: number };
   metrics: { completedJobs: number; averageResponseTime: number; onTimeCompletion: number; repeatCallRate: number };
   availability: { nextAvailable: string; emergencyAvailable: boolean; weekendAvailable: boolean };
-  pricing: { hourlyRate?: number; callOutFee?: number; emergencyMultiplier?: number };
+  pricing: { hourlyRate?: number; callOutFee?: number; emergencyMultiplier?: number; currency?: string };
 }
 
 export interface VendorMatch {
@@ -295,7 +295,11 @@ function scoreToMatch(
         ? {
             min: vendor.pricing.hourlyRate,
             max: vendor.pricing.hourlyRate * 4,
-            currency: 'KES',
+            // Currency comes from the vendor's pricing record (sourced
+            // from region-config at vendor registration time); fall back
+            // to empty so consumers surface the missing value rather than
+            // silently render as KES.
+            currency: vendor.pricing.currency ?? '',
           }
         : undefined,
     estimatedSchedule: {

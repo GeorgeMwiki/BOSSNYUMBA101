@@ -15,6 +15,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Empty, Skeleton } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   propertiesService,
@@ -24,8 +25,14 @@ import {
   paymentsService,
 } from '@bossnyumba/api-client';
 
-function formatCurrency(amount: number, currency = 'KES') {
-  return new Intl.NumberFormat('en-KE', {
+// Tenant region is read from env at build time (set by deploy pipeline
+// per-tenant) so the dashboard does not hardcode Kenya/en-KE.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
+
+function formatCurrency(amount: number, currency: string = TENANT_CURRENCY) {
+  return new Intl.NumberFormat(TENANT_LOCALE, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -33,7 +40,7 @@ function formatCurrency(amount: number, currency = 'KES') {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-KE', {
+  return new Date(dateStr).toLocaleDateString(TENANT_LOCALE, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -114,8 +121,19 @@ export default function DashboardPage() {
 
       <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <div className="space-y-6" aria-busy="true" aria-live="polite">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
           </div>
         ) : (
           <>
@@ -240,9 +258,16 @@ export default function DashboardPage() {
               </div>
               <div className="card divide-y divide-gray-100">
                 {recentPayments.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500 text-sm">
-                    No recent payments
-                  </div>
+                  <Empty
+                    variant="default"
+                    icon={<DollarSign className="h-8 w-8 text-gray-400" />}
+                    title="No recent payments"
+                    description="Payments received in the last 7 days will appear here."
+                    action={{
+                      label: 'Receive payment',
+                      onClick: () => { window.location.href = '/payments/receive'; },
+                    }}
+                  />
                 ) : (
                   recentPayments.map(
                     (
@@ -291,9 +316,16 @@ export default function DashboardPage() {
               </div>
               <div className="card divide-y divide-gray-100">
                 {expiringLeases.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500 text-sm">
-                    No leases expiring in the next 60 days
-                  </div>
+                  <Empty
+                    variant="default"
+                    icon={<Calendar className="h-8 w-8 text-gray-400" />}
+                    title="No upcoming lease expirations"
+                    description="Leases expiring in the next 60 days will appear here so you can plan renewals."
+                    action={{
+                      label: 'View all leases',
+                      onClick: () => { window.location.href = '/leases'; },
+                    }}
+                  />
                 ) : (
                   expiringLeases.map(
                     (lease: {

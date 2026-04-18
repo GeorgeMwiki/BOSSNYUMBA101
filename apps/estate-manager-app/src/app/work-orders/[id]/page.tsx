@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
   const workOrderQuery = useQuery({
     queryKey: ['work-order-detail-live', id],
     queryFn: () => workOrdersService.get(id),

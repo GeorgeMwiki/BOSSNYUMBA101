@@ -16,15 +16,17 @@
 -- links via previous_lease_id (already exists on the table).
 -- =============================================================================
 
-CREATE TYPE IF NOT EXISTS renewal_status AS ENUM (
-  'not_started',
-  'window_opened',
-  'proposed',
-  'accepted',
-  'declined',
-  'terminated',
-  'expired'
-);
+DO $$ BEGIN
+  CREATE TYPE renewal_status AS ENUM (
+    'not_started',
+    'window_opened',
+    'proposed',
+    'accepted',
+    'declined',
+    'terminated',
+    'expired'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 ALTER TABLE leases
   ADD COLUMN IF NOT EXISTS renewal_status renewal_status

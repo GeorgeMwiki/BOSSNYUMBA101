@@ -1,4 +1,4 @@
-import WorkOrderForm from '@/pages/work-orders/WorkOrderForm';
+import WorkOrderForm from '@/screens/work-orders/WorkOrderForm';
 
 export default function NewWorkOrderPage() {
   return <WorkOrderForm />;

@@ -8,8 +8,30 @@
 -- to match the schema without data loss.
 -- =============================================================================
 
-ALTER TABLE case_timelines RENAME COLUMN summary TO title;
-ALTER TABLE case_timelines RENAME COLUMN details  TO description;
+-- Rename is idempotent via guards so the migration survives reruns and
+-- also survives fresh DBs where the columns were never named summary/details.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'case_timelines' AND column_name = 'summary')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_name = 'case_timelines' AND column_name = 'title') THEN
+    ALTER TABLE case_timelines RENAME COLUMN summary TO title;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'case_timelines' AND column_name = 'details')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_name = 'case_timelines' AND column_name = 'description') THEN
+    ALTER TABLE case_timelines RENAME COLUMN details TO description;
+  END IF;
+END $$;
+
+-- Ensure columns exist after rename (for fresh DBs that went through 0014
+-- but never had the old summary/details column names).
+ALTER TABLE case_timelines ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE case_timelines ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- Also add the extra columns the schema declares but 0014 missed:
 ALTER TABLE case_timelines ADD COLUMN IF NOT EXISTS is_internal BOOLEAN NOT NULL DEFAULT FALSE;

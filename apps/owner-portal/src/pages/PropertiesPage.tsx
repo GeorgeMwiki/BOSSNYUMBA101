@@ -1,43 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, ArrowRight, Search } from 'lucide-react';
-import { api, formatPercentage } from '../lib/api';
-
-interface Property {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-  address: {
-    line1: string;
-    city: string;
-    region?: string;
-    country: string;
-  };
-  totalUnits: number;
-  occupiedUnits: number;
-}
+import { formatPercentage } from '../lib/api';
+import { useProperties } from '../lib/hooks';
 
 export function PropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: properties = [], isLoading } = useProperties();
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    api.get<Property[]>('/properties').then((response) => {
-      if (response.success && response.data) {
-        setProperties(response.data);
-      }
-      setLoading(false);
-    });
-  }, []);
 
   const filteredProperties = properties.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.address.city.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

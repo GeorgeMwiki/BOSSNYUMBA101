@@ -643,7 +643,10 @@ export class ValidationConsistencyService {
           idNumber: idNumber.number,
           fullName: profile.fullName,
           dateOfBirth: profile.dateOfBirth ?? undefined,
-          country: idNumber.issuingCountry ?? 'TZ',
+          // Country comes from the ID record itself; falling back to a
+          // hardcoded 'TZ' would cause verification to query the wrong
+          // national registry. Empty string lets the provider reject.
+          country: idNumber.issuingCountry ?? '',
         });
 
         checks.push({

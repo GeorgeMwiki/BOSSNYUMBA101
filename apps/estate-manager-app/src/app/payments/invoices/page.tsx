@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoicesList } from '@/pages/payments/InvoicesList';
+import { InvoicesList } from '@/screens/payments/InvoicesList';
 
 export default function InvoicesPage() {
   return <InvoicesList />;

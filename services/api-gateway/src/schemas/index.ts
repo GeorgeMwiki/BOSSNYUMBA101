@@ -150,7 +150,10 @@ export const contactSchema = z.object({
  */
 export const moneySchema = z.object({
   amount: amountSchema,
-  currency: z.enum(['TZS', 'USD', 'KES', 'UGX']).default('TZS'),
+  // No default currency — client supplies this from tenant region-config.
+  // The enum is a validation allow-list of currencies the platform
+  // supports; adding a new country extends this list via region-config.
+  currency: z.enum(['TZS', 'USD', 'KES', 'UGX', 'RWF', 'EUR', 'GBP']),
 });
 
 // ============================================================================

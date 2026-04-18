@@ -57,7 +57,8 @@ interface Thread {
 }
 
 export default function ThreadDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? '';
   const [data, setData] = useState<{ thread: Thread; events: ThreadEvent[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 

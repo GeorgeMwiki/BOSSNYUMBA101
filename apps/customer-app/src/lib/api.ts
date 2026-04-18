@@ -12,10 +12,12 @@ import {
 } from '@bossnyumba/api-client';
 
 function getApiBaseUrl(): string {
+  // Accept either variable on any runtime. Server-side only envs (API_URL)
+  // are preferred when available; otherwise fall back to the public var,
+  // which is inlined at build time and therefore always defined the same
+  // way on both client and server.
   const url =
-    typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_API_URL
-      : process.env.API_URL;
+    process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
 
   if (url?.trim()) {
     const base = url.trim().replace(/\/$/, '');
@@ -29,8 +31,6 @@ function getApiBaseUrl(): string {
   return 'http://localhost:4000/api/v1';
 }
 
-const API_BASE_URL = getApiBaseUrl();
-
 function ensureClient() {
   if (!hasApiClient()) {
     const token =
@@ -39,7 +39,7 @@ function ensureClient() {
         : undefined;
 
     initializeApiClient({
-      baseUrl: API_BASE_URL,
+      baseUrl: getApiBaseUrl(),
       accessToken: token,
       timeout: 15000,
       retries: 1,
@@ -161,7 +161,7 @@ export const api = {
           ? localStorage.getItem('customer_token')
           : null;
 
-      const response = await fetch(`${API_BASE_URL}/onboarding/documents`, {
+      const response = await fetch(`${getApiBaseUrl()}/onboarding/documents`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,

@@ -214,9 +214,12 @@ export class PostgresMigrationRepository implements IMigrationRepository {
           addressLine1:
             (row.addressLine1 as string) ?? (row.address as string) ?? '',
           city: (row.city as string) ?? '',
-          country: (row.country as string) ?? 'KE',
+          // No hardcoded country/currency — callers prepare rows with the
+          // tenant's region values already resolved. Empty string lets
+          // NOT NULL constraints surface bad inputs rather than masking.
+          country: (row.country as string) ?? '',
           defaultCurrency:
-            (row.defaultCurrency as string) ?? (row.currency as string) ?? 'KES',
+            (row.defaultCurrency as string) ?? (row.currency as string) ?? '',
         }),
         properties,
         skipped.properties!,
@@ -238,7 +241,7 @@ export class PostgresMigrationRepository implements IMigrationRepository {
           status: (row.status as string) ?? 'vacant',
           baseRentAmount: (row.baseRentAmount as number) ?? 0,
           baseRentCurrency:
-            (row.baseRentCurrency as string) ?? (row.currency as string) ?? 'KES',
+            (row.baseRentCurrency as string) ?? (row.currency as string) ?? '',
         }),
         units,
         skipped.units!,

@@ -1,9 +1,15 @@
 /**
- * Damage-Deduction Service (stub structure).
+ * Damage-Deduction Service.
  *
- * Implements state + negotiation-turn tracking. AI mediation, evidence
- * bundle assembly, and ledger posting are STUBBED — they throw
- * NOT_IMPLEMENTED pending the corresponding feature work.
+ * Implements state + negotiation-turn tracking. AI mediation is wired
+ * through a pluggable `AiMediatorGateway` (optional); when no gateway is
+ * supplied the service dynamically imports `@bossnyumba/ai-copilot`'s
+ * `draftDamageMediatorTurn` at call time, falling back to a deterministic
+ * midpoint when neither the gateway nor the package is available.
+ *
+ * Evidence bundle assembly delegates to an optional `EvidenceBundleGateway`.
+ * Ledger posting is tracked under MISSING_FEATURES_DESIGN.md §4 and is
+ * intentionally left as an additive future step.
  *
  * Spec: Docs/analysis/MISSING_FEATURES_DESIGN.md §8.
  */
@@ -63,14 +69,55 @@ export interface EvidenceBundleGateway {
 }
 
 // ---------------------------------------------------------------------------
+// AI mediator gateway — pluggable surface so the service does not take a
+// hard dep on @bossnyumba/ai-copilot. Callers wire the real adapter at
+// composition time; if absent the service dynamically imports the shared
+// `draftDamageMediatorTurn` and finally falls back to a deterministic
+// midpoint calculation.
+// ---------------------------------------------------------------------------
+
+export interface AiMediatorGateway {
+  draft(input: {
+    readonly claimedDeductionMinor: number;
+    readonly tenantCounterMinor: number | null;
+    readonly findings: ReadonlyArray<{ component: string; severity: string; note?: string }>;
+    readonly priorTurns: ReadonlyArray<{ actor: string; text: string }>;
+    readonly floorMinor: number;
+    readonly ceilingMinor: number;
+    readonly advisorGate?: boolean;
+  }): Promise<{
+    readonly proposedDeductionMinor: number;
+    readonly rationale: string;
+    readonly turnText: string;
+    readonly escalate: boolean;
+  }>;
+}
+
+export interface DamageDeductionServiceOptions {
+  /** Threshold (minor units) above which the advisor gate fires. */
+  readonly advisorGateThresholdMinor?: number;
+  /** Hard floor passed to the mediator. Defaults to 0. */
+  readonly floorMinor?: number;
+}
+
+// ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
 export class DamageDeductionService {
+  private readonly options: Required<DamageDeductionServiceOptions>;
+
   constructor(
     private repo: DamageDeductionRepository,
-    private readonly evidenceBundle?: EvidenceBundleGateway
-  ) {}
+    private readonly evidenceBundle?: EvidenceBundleGateway,
+    private readonly aiMediator?: AiMediatorGateway,
+    options: DamageDeductionServiceOptions = {}
+  ) {
+    this.options = {
+      advisorGateThresholdMinor: options.advisorGateThresholdMinor ?? 500_000_00,
+      floorMinor: options.floorMinor ?? 0,
+    };
+  }
 
   /**
    * Swap the backing repository at runtime (additive hook for Wave 3
@@ -100,7 +147,10 @@ export class DamageDeductionService {
       caseId: input.caseId,
       moveOutInspectionId: input.moveOutInspectionId,
       claimedDeductionMinor: input.claimedDeductionMinor,
-      currency: input.currency ?? 'TZS',
+      // Callers resolve currency from tenant region-config before
+      // invoking. Empty string surfaces misconfigured input rather than
+      // silently persisting as TZS.
+      currency: input.currency ?? '',
       status: 'claim_filed',
       aiMediatorTurns: [
         {
@@ -159,21 +209,141 @@ export class DamageDeductionService {
   }
 
   /**
-   * AI mediation — STUBBED.
+   * AI mediation — produces a neutral midpoint proposal (with rationale)
+   * and persists it as an `ai_mediator` negotiation turn.
    *
-   * Will: invoke Estate Manager Brain with mediator prompt, produce a
-   * proposed midpoint + rationale, persist as a `ai_mediator` turn,
-   * and gate above owner-configured threshold via Opus advisor.
+   * Resolution order for the mediator gateway:
+   *  1. Injected `aiMediator` (preferred — tests can stub it).
+   *  2. Dynamic import of `@bossnyumba/ai-copilot` which itself degrades to
+   *     a deterministic midpoint when `ANTHROPIC_API_KEY` is unset.
+   *  3. In-service deterministic midpoint clamped to floor/ceiling.
+   *
+   * Advisor gate (threshold configurable) flips any proposal above the
+   * threshold into an `escalated` status so an Opus advisor (or human)
+   * must review before settlement.
    */
   async aiMediate(
-    _id: DamageDeductionCaseId,
-    _tenantId: TenantId,
-    _actor: UserId
+    id: DamageDeductionCaseId,
+    tenantId: TenantId,
+    actor: UserId
   ): Promise<Result<DamageDeductionCase, DamageDeductionErrorResult>> {
-    return err({
-      code: DamageDeductionError.NOT_IMPLEMENTED,
-      message: 'AI mediator pending (MISSING_FEATURES_DESIGN.md §8)',
-    });
+    const entity = await this.repo.findById(id, tenantId);
+    if (!entity) {
+      return err({
+        code: DamageDeductionError.CLAIM_NOT_FOUND,
+        message: 'Claim not found',
+      });
+    }
+    if (entity.status !== 'claim_filed' && entity.status !== 'tenant_responded' && entity.status !== 'negotiating') {
+      return err({
+        code: DamageDeductionError.ILLEGAL_STATUS,
+        message: `Cannot mediate when status is ${entity.status}`,
+      });
+    }
+
+    const ceilingMinor = entity.claimedDeductionMinor;
+    const floorMinor = Math.min(
+      this.options.floorMinor,
+      entity.tenantCounterProposalMinor ?? this.options.floorMinor
+    );
+    const priorTurns = entity.aiMediatorTurns.map((t) => ({
+      actor: t.actor,
+      text: t.rationale,
+    }));
+    const mediatorInput = {
+      claimedDeductionMinor: entity.claimedDeductionMinor,
+      tenantCounterMinor: entity.tenantCounterProposalMinor ?? null,
+      findings: [] as ReadonlyArray<{ component: string; severity: string; note?: string }>,
+      priorTurns,
+      floorMinor,
+      ceilingMinor,
+      advisorGate: entity.claimedDeductionMinor >= this.options.advisorGateThresholdMinor,
+    };
+
+    let proposal: {
+      proposedDeductionMinor: number;
+      rationale: string;
+      turnText: string;
+      escalate: boolean;
+    };
+    try {
+      proposal = await this.resolveMediator(mediatorInput);
+    } catch {
+      // Ultimate fallback — deterministic midpoint clamped to [floor, ceiling].
+      const counter = entity.tenantCounterProposalMinor ?? 0;
+      const midpoint = Math.max(
+        floorMinor,
+        Math.min(ceilingMinor, Math.round((entity.claimedDeductionMinor + counter) / 2))
+      );
+      proposal = {
+        proposedDeductionMinor: midpoint,
+        rationale:
+          'Deterministic fallback: midpoint of claim and tenant counter clamped to floor/ceiling.',
+        turnText: `Proposed settlement: ${midpoint} (midpoint).`,
+        escalate: entity.claimedDeductionMinor >= this.options.advisorGateThresholdMinor,
+      };
+    }
+
+    const now = new Date().toISOString() as ISOTimestamp;
+    const turn: NegotiationTurn = {
+      id: `turn_${Date.now()}_${randomHex(2)}`,
+      actor: 'ai_mediator',
+      actorId: actor,
+      proposedAmountMinor: proposal.proposedDeductionMinor,
+      rationale: proposal.rationale,
+      createdAt: now,
+    };
+    const updated: DamageDeductionCase = {
+      ...entity,
+      proposedDeductionMinor: proposal.proposedDeductionMinor,
+      status: proposal.escalate ? 'escalated' : 'negotiating',
+      aiMediatorTurns: [...entity.aiMediatorTurns, turn],
+      updatedAt: now,
+      updatedBy: actor,
+    };
+    const saved = await this.repo.update(updated);
+    return ok(saved);
+  }
+
+  private async resolveMediator(input: {
+    claimedDeductionMinor: number;
+    tenantCounterMinor: number | null;
+    findings: ReadonlyArray<{ component: string; severity: string; note?: string }>;
+    priorTurns: ReadonlyArray<{ actor: string; text: string }>;
+    floorMinor: number;
+    ceilingMinor: number;
+    advisorGate?: boolean;
+  }): Promise<{
+    proposedDeductionMinor: number;
+    rationale: string;
+    turnText: string;
+    escalate: boolean;
+  }> {
+    if (this.aiMediator) {
+      return this.aiMediator.draft(input);
+    }
+    // Dynamic import keeps domain-services free of a hard ai-copilot dep
+    // at type-check time. If the package is unavailable at runtime, the
+    // caller handles the thrown error and degrades to the in-service
+    // midpoint.
+    //
+    // The module specifier is held in a runtime-computed string so tsc
+    // does not try to resolve it (ai-copilot is not a declared dep of
+    // this package — it's loaded at runtime only when present).
+    const aiCopilotModuleId = '@bossnyumba/' + 'ai-copilot';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = (await (Function('m', 'return import(m)')(aiCopilotModuleId) as Promise<any>)) as {
+      draftDamageMediatorTurn?: (i: typeof input) => Promise<{
+        proposedDeductionMinor: number;
+        rationale: string;
+        turnText: string;
+        escalate: boolean;
+      }>;
+    };
+    if (!mod.draftDamageMediatorTurn) {
+      throw new Error('ai-copilot: draftDamageMediatorTurn not exported');
+    }
+    return mod.draftDamageMediatorTurn(input);
   }
 
   /**

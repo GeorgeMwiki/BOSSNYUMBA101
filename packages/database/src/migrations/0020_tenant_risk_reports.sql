@@ -5,9 +5,11 @@
 -- scores so the report is reproducible independent of the LLM narration.
 -- =============================================================================
 
-CREATE TYPE IF NOT EXISTS tenant_risk_report_status AS ENUM (
-  'draft', 'generated', 'archived'
-);
+DO $$ BEGIN
+  CREATE TYPE tenant_risk_report_status AS ENUM (
+    'draft', 'generated', 'archived'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS tenant_risk_reports (
   id                         TEXT PRIMARY KEY,

@@ -94,7 +94,7 @@ const conversationData: Record<string, { subject: string; participants: string[]
 export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
   const [newMessage, setNewMessage] = useState('');
 
   const conversation = conversationData[id];

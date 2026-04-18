@@ -12,8 +12,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bossnyumba/api-client": "*",
     "@bossnyumba/design-system": "*",
     "@bossnyumba/domain-models": "*",
+    "@tanstack/react-query": "^5.24.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.3",

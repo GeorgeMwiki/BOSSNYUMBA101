@@ -136,17 +136,33 @@ export function Layout() {
 
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <label htmlFor="admin-global-search" className="sr-only">
+                  Search
+                </label>
+                <Search
+                  aria-hidden="true"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                />
                 <input
-                  type="text"
+                  id="admin-global-search"
+                  type="search"
                   placeholder="Search..."
+                  aria-label="Search"
                   className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 w-64"
                 />
               </div>
 
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <Bell className="h-5 w-5" aria-hidden="true" />
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
+                />
+                <span className="sr-only">You have unread notifications</span>
               </button>
             </div>
           </div>

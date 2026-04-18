@@ -10,7 +10,7 @@ export default function CustomerEditPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
     queryKey: ['customer', id],

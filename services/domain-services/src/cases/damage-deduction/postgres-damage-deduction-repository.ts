@@ -226,7 +226,9 @@ function rowToEntity(row: any): DamageDeductionCase {
       row.tenantCounterProposalMinor != null
         ? Number(row.tenantCounterProposalMinor)
         : undefined,
-    currency: row.currency ?? 'TZS',
+    // Currency is persisted in the row by `create` (caller-provided
+    // from region-config); we don't substitute a TZS default.
+    currency: row.currency ?? '',
     status: (row.status ?? 'claim_filed') as DamageDeductionStatus,
     evidenceBundleId: row.evidenceBundleId ?? undefined,
     aiMediatorTurns: Array.isArray(row.aiMediatorTurns) ? row.aiMediatorTurns : [],

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, KeyRound } from 'lucide-react';
@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
-export default function OTPVerifyPage() {
+function OTPVerifyPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { verifyOtp, loginWithPhone, isAuthenticated } = useAuth();
@@ -175,5 +175,13 @@ export default function OTPVerifyPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function OTPVerifyPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-gray-50" />}>
+      <OTPVerifyPageInner />
+    </Suspense>
   );
 }

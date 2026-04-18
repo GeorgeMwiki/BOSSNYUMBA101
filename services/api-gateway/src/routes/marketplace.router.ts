@@ -26,7 +26,9 @@ const PublishListingSchema = z.object({
   propertyId: z.string().optional(),
   listingKind: z.enum(['rent', 'lease', 'sale']),
   headlinePrice: z.number().int().positive(),
-  currency: z.string().max(8).default('KES'),
+  // Currency is required. No KES default — the client resolves this
+  // from the tenant's region-config.
+  currency: z.string().min(3).max(8),
   negotiable: z.boolean().default(true),
   media: z.array(MediaItemSchema).max(40).optional(),
   attributes: z.record(z.unknown()).optional(),

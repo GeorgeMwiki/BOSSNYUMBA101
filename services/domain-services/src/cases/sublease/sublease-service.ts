@@ -1,9 +1,9 @@
 /**
  * Sublease Service — submit → review → approve → revoke workflow.
  *
- * Auto-approve thresholds, ApprovalService integration, and Compliance
- * Junior jurisdiction checks are STUBBED — service exposes the structure
- * and state transitions; callers wire the ApprovalService outside.
+ * State transitions (submit, review, approve, revoke) are fully wired and
+ * persisted via the injected repositories. ApprovalService routing and
+ * jurisdiction checks remain an edge-wiring concern handled by callers.
  *
  * Spec: Docs/analysis/MISSING_FEATURES_DESIGN.md §7.
  */
@@ -37,7 +37,6 @@ export const SubleaseError = {
   REQUEST_NOT_FOUND: 'REQUEST_NOT_FOUND',
   INVALID_INPUT: 'INVALID_INPUT',
   ILLEGAL_STATUS: 'ILLEGAL_STATUS',
-  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
 } as const;
 
 export type SubleaseErrorCode = (typeof SubleaseError)[keyof typeof SubleaseError];

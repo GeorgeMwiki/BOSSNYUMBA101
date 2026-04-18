@@ -186,6 +186,13 @@ export * from './components/DropdownMenu';
 
 // Toast
 export * from './components/Toast';
+export {
+  useToast,
+  toast,
+  Toaster,
+  type ToastOptions,
+  type UseToastReturn,
+} from './components/useToast';
 
 // Tooltip
 export * from './components/Tooltip';

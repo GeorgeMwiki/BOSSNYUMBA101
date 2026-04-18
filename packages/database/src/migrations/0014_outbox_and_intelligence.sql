@@ -18,12 +18,17 @@
 -- -----------------------------------------------------------------------------
 -- Outbox pattern
 -- -----------------------------------------------------------------------------
-CREATE TYPE IF NOT EXISTS outbox_status AS ENUM (
-  'pending', 'processing', 'published', 'failed', 'dead_letter'
-);
-CREATE TYPE IF NOT EXISTS event_priority AS ENUM (
-  'low', 'normal', 'high', 'critical'
-);
+DO $$ BEGIN
+  CREATE TYPE outbox_status AS ENUM (
+    'pending', 'processing', 'published', 'failed', 'dead_letter'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE event_priority AS ENUM (
+    'low', 'normal', 'high', 'critical'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS event_outbox (
   id               TEXT PRIMARY KEY,
@@ -193,22 +198,27 @@ CREATE INDEX IF NOT EXISTS friction_fingerprints_customer_idx ON friction_finger
 CREATE INDEX IF NOT EXISTS friction_fingerprints_type_idx     ON friction_fingerprints(friction_type);
 CREATE INDEX IF NOT EXISTS friction_fingerprints_unresolved_idx ON friction_fingerprints(resolved_at);
 
+-- NOTE: 0001b_add_missing_entities.sql already creates `next_best_actions`
+-- with a different column shape (priority INTEGER, recommended_at, executed_at,
+-- outcome, etc.). We keep the base CREATE TABLE as a no-op fallback and
+-- additively ensure the columns this migration needs.
 CREATE TABLE IF NOT EXISTS next_best_actions (
   id                 TEXT PRIMARY KEY,
   tenant_id          TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   customer_id        TEXT NOT NULL,
-  action_type        TEXT NOT NULL,
-  priority           TEXT NOT NULL,
-  recommendation     TEXT NOT NULL,
-  expected_outcome   JSONB DEFAULT '{}'::jsonb,
-  confidence         NUMERIC(4,3),
-  generated_by       TEXT NOT NULL,
-  valid_until        TIMESTAMPTZ,
-  acted_upon_at      TIMESTAMPTZ,
-  dismissed_at       TIMESTAMPTZ,
-  outcome_notes      TEXT,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE next_best_actions
+  ADD COLUMN IF NOT EXISTS action_type      TEXT,
+  ADD COLUMN IF NOT EXISTS recommendation   TEXT,
+  ADD COLUMN IF NOT EXISTS expected_outcome JSONB DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS confidence       NUMERIC(4,3),
+  ADD COLUMN IF NOT EXISTS generated_by     TEXT,
+  ADD COLUMN IF NOT EXISTS valid_until      TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acted_upon_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS dismissed_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS outcome_notes    TEXT;
 
 CREATE INDEX IF NOT EXISTS next_best_actions_customer_idx ON next_best_actions(customer_id);
 CREATE INDEX IF NOT EXISTS next_best_actions_priority_idx ON next_best_actions(priority);

@@ -85,8 +85,8 @@ export class DocxRealRenderer implements IDocumentRenderer {
       DocxtemplaterCtor = (await import('docxtemplater')).default;
     } catch (err) {
       throw new RendererError(
-        'NOT_IMPLEMENTED',
-        'docxtemplater/pizzip not installed. Run `pnpm add docxtemplater pizzip` or set engine="synthesizer".'
+        'RENDER_FAILED',
+        `docxtemplater/pizzip not resolvable at runtime (${err instanceof Error ? err.message : String(err)}). Set engine="synthesizer" or ensure the packages are installed.`
       );
     }
 

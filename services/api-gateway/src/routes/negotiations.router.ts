@@ -46,7 +46,8 @@ const PolicyCreateSchema = z
     floorPrice: z.number().int().positive(),
     approvalRequiredBelow: z.number().int().positive(),
     maxDiscountPct: z.number().min(0).max(1).default(0),
-    currency: z.string().default('KES'),
+    // Client resolves currency from tenant region-config; no KES default.
+    currency: z.string().min(3),
     acceptableConcessions: z.array(ConcessionSchema).max(10).optional(),
     toneGuide: z.enum(['firm', 'warm', 'flexible']).default('warm'),
     autoSendCounters: z.boolean().default(false),

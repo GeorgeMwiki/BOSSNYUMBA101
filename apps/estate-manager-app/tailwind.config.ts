@@ -1,6 +1,9 @@
 import type { Config } from 'tailwindcss';
 import baseConfig from '@bossnyumba/design-system/tailwind.config';
 
+const baseExtend = (baseConfig.theme as any)?.extend ?? {};
+const baseColors = baseExtend.colors ?? {};
+
 const config: Config = {
   ...baseConfig,
   content: [
@@ -8,8 +11,17 @@ const config: Config = {
     '../../packages/design-system/src/**/*.{ts,tsx}',
   ],
   theme: {
+    ...baseConfig.theme,
     extend: {
+      ...baseExtend,
       colors: {
+        ...baseColors,
+        // Semantic tokens driven by CSS vars (see globals.css :root / .dark).
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

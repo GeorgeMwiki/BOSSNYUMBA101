@@ -1,7 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, Alert, AlertDescription } from '@bossnyumba/design-system';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Badge,
+  Alert,
+  AlertDescription,
+  Skeleton,
+  EmptyState,
+} from '@bossnyumba/design-system';
 
 interface DamageLineItem {
   readonly id: string;
@@ -22,32 +34,54 @@ interface DamageProposal {
 export default function DamageDisputesPage(): React.ReactElement {
   const [proposal, setProposal] = useState<DamageProposal | null>(null);
   const [counters, setCounters] = useState<Record<string, { amount?: number; note?: string }>>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
-  useEffect(() => {
-    // TODO: wire GET /api/customer/lease/move-out/disputes (current active proposal)
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/customer/lease/move-out/disputes');
-        if (!cancelled && res.ok) setProposal((await res.json()) as DamageProposal);
-      } catch {
-        /* ignore */
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      // TODO: wire GET /api/customer/lease/move-out/disputes (current active proposal)
+      const res = await fetch('/api/customer/lease/move-out/disputes', { signal });
+      if (res.status === 404) {
+        if (!signal?.aborted) {
+          setProposal(null);
+          setLoading(false);
+        }
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = (await res.json()) as DamageProposal;
+      if (!signal?.aborted) {
+        setProposal(data);
+        setLoading(false);
+      }
+    } catch (err) {
+      if (signal?.aborted) return;
+      setLoadError(err instanceof Error ? err.message : 'Failed to load damage proposal');
+      setLoading(false);
+    }
   }, []);
 
-  const updateCounter = (itemId: string, patch: { amount?: number; note?: string }): void => {
-    setCounters((prev) => ({ ...prev, [itemId]: { ...prev[itemId], ...patch } }));
-  };
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
 
-  const submit = async (): Promise<void> => {
+  const updateCounter = useCallback(
+    (itemId: string, patch: { amount?: number; note?: string }): void => {
+      setCounters((prev) => ({ ...prev, [itemId]: { ...prev[itemId], ...patch } }));
+    },
+    []
+  );
+
+  const submit = useCallback(async (): Promise<void> => {
     if (!proposal) return;
     setSubmitting(true);
+    setFeedback(null);
     try {
       // TODO: wire POST /api/customer/lease/move-out/disputes
       const res = await fetch('/api/customer/lease/move-out/disputes', {
@@ -55,18 +89,54 @@ export default function DamageDisputesPage(): React.ReactElement {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposalId: proposal.id, counters }),
       });
-      setMessage(res.ok ? 'Counter submitted.' : 'Submission failed.');
-    } catch {
-      setMessage('Submission failed.');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      setFeedback({ kind: 'success', message: 'Counter submitted.' });
+    } catch (err) {
+      setFeedback({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Submission failed',
+      });
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [counters, proposal]);
+
+  if (loading) {
+    return (
+      <main className="p-6 max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
+        <div className="space-y-3" aria-live="polite">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className="p-6 max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
+        <Alert variant="danger">
+          <AlertDescription>
+            {loadError}
+            <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </main>
+    );
+  }
 
   if (!proposal) {
     return (
-      <main className="p-6">
-        <p className="text-sm text-muted-foreground">No active damage proposal to dispute.</p>
+      <main className="p-6 max-w-3xl mx-auto">
+        <EmptyState
+          title="No active damage proposal"
+          description="You have no open damage-deduction proposals from your landlord."
+        />
       </main>
     );
   }
@@ -74,7 +144,11 @@ export default function DamageDisputesPage(): React.ReactElement {
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
-      {message && <Alert><AlertDescription>{message}</AlertDescription></Alert>}
+      {feedback && (
+        <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -93,18 +167,26 @@ export default function DamageDisputesPage(): React.ReactElement {
                 <Input
                   type="number"
                   placeholder="Your amount"
+                  aria-label={`Your counter amount for ${i.description}`}
                   onChange={(e) => updateCounter(i.id, { amount: Number(e.target.value) })}
                 />
                 <Input
                   placeholder="Your note / evidence..."
+                  aria-label={`Your note for ${i.description}`}
                   onChange={(e) => updateCounter(i.id, { note: e.target.value })}
                 />
               </div>
             </div>
           ))}
 
-          <Button onClick={submit} disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit counter'}
+          <Button
+            onClick={submit}
+            loading={submitting}
+            disabled={submitting || Object.keys(counters).length === 0}
+            title={Object.keys(counters).length === 0 ? 'Add at least one counter before submitting' : undefined}
+            aria-label="Submit counter proposal"
+          >
+            Submit counter
           </Button>
         </CardContent>
       </Card>

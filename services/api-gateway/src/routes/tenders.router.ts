@@ -23,7 +23,8 @@ const PublishTenderSchema = z
     details: z.string().max(4000).optional(),
     budgetRangeMin: z.number().int().positive(),
     budgetRangeMax: z.number().int().positive(),
-    currency: z.string().max(8).default('KES'),
+    // Client resolves currency from tenant region-config; no KES fallback.
+    currency: z.string().min(3).max(8),
     visibility: z.enum(['public', 'invite_only']).default('public'),
     invitedVendorIds: z.array(z.string()).max(100).optional(),
     workOrderId: z.string().optional(),

@@ -195,11 +195,14 @@ export class RenewalOptimizerService {
     if (!data.leaseStartDate) throw new Error('renewal-optimizer: leaseStartDate is required');
     if (!data.leaseEndDate) throw new Error('renewal-optimizer: leaseEndDate is required');
     if (data.termMonths == null) throw new Error('renewal-optimizer: termMonths is required');
+    if (!data.currency) throw new Error(
+      'renewal-optimizer: currency is required — resolve from tenant region-config before calling'
+    );
 
     return {
       leaseId,
       currentRent: data.currentRent,
-      currency: data.currency ?? 'KES',
+      currency: data.currency,
       leaseStartDate: data.leaseStartDate,
       leaseEndDate: data.leaseEndDate,
       termMonths: data.termMonths,

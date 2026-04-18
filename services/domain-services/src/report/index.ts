@@ -398,7 +398,12 @@ export class ReportService {
         input.customerId, tenantId, input.periodStart, input.periodEnd
       );
 
-      const currency = 'KES';
+      // Derive currency from the actual transactions rather than hardcoding.
+      // An empty-transaction statement falls back to an empty string so the
+      // absence is visible to the UI instead of being silently wrong.
+      const firstTxn = data.transactions[0];
+      const currency =
+        firstTxn?.debit?.currency ?? firstTxn?.credit?.currency ?? '';
       let runningBalance = 0;
       let totalCharges = 0;
       let totalPayments = 0;
@@ -491,7 +496,14 @@ export class ReportService {
     try {
       const entries = await this.dataProvider.getRentRollData(tenantId, propertyId, asOfDate);
 
-      const currency = 'KES';
+      // Derive currency from the actual rent-roll entries rather than
+      // hardcoding. Empty-portfolio reports fall back to empty string.
+      const firstEntry = entries[0];
+      const currency =
+        firstEntry?.monthlyRent?.currency ??
+        firstEntry?.amountPaid?.currency ??
+        firstEntry?.balance?.currency ??
+        '';
       const totalUnits = entries.length;
       const occupiedUnits = entries.filter(e => e.status === 'occupied').length;
       const vacantUnits = entries.filter(e => e.status === 'vacant').length;

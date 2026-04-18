@@ -112,20 +112,21 @@ export class AfricasTalkingSms {
   }
 
   /**
-   * Format phone number to international format
+   * Format a phone number to international (+CC...) format.
+   *
+   * Africa's Talking supports multiple African countries. We do NOT
+   * hardcode a Kenya default — ambiguous local numbers (`07XX...`)
+   * are returned as-is prefixed with '+', which surfaces the missing
+   * country hint upstream rather than silently misrouting the SMS.
+   * Callers that know the country should pre-normalize via
+   * `normalizePhoneForCountry` from domain-models.
    */
   private formatPhoneNumber(phone: string): string {
-    let cleaned = phone.replace(/\D/g, '');
-
-    if (cleaned.startsWith('0')) {
-      cleaned = '+254' + cleaned.slice(1); // Kenya default
-    } else if (!cleaned.startsWith('+')) {
-      cleaned = '+' + cleaned;
-    } else if (cleaned.startsWith('254')) {
-      cleaned = '+' + cleaned;
-    }
-
-    return cleaned;
+    const trimmed = phone.trim();
+    const cleaned = trimmed.replace(/\D/g, '');
+    if (trimmed.startsWith('+')) return `+${cleaned}`;
+    // Preserve caller input; no 254 injection.
+    return `+${cleaned}`;
   }
 
   /**
@@ -187,16 +188,19 @@ export class AfricasTalkingSms {
   }
 
   /**
-   * Send rent reminder SMS
+   * Send rent reminder SMS. `currency` is the ISO-4217 code resolved
+   * from the tenant's region-config. Previously hardcoded KES which
+   * leaked for non-Kenya tenants.
    */
   async sendRentReminder(
     phoneNumber: string,
     tenantName: string,
     amount: number,
     dueDate: string,
-    propertyName: string
+    propertyName: string,
+    currency: string
   ): Promise<SmsResponse> {
-    const message = `Dear ${tenantName}, this is a reminder that your rent of KES ${amount.toLocaleString()} for ${propertyName} is due on ${dueDate}. Please pay via M-Pesa Paybill. Thank you.`;
+    const message = `Dear ${tenantName}, this is a reminder that your rent of ${currency} ${amount.toLocaleString()} for ${propertyName} is due on ${dueDate}. Please pay via the provided channel. Thank you.`;
 
     return this.sendSms({
       to: phoneNumber,
@@ -212,12 +216,13 @@ export class AfricasTalkingSms {
     tenantName: string,
     amount: number,
     receiptNumber: string,
-    balance: number
+    balance: number,
+    currency: string
   ): Promise<SmsResponse> {
     const message =
       balance > 0
-        ? `Dear ${tenantName}, we have received your payment of KES ${amount.toLocaleString()}. Receipt: ${receiptNumber}. Outstanding balance: KES ${balance.toLocaleString()}. Thank you.`
-        : `Dear ${tenantName}, we have received your payment of KES ${amount.toLocaleString()}. Receipt: ${receiptNumber}. Your account is now fully paid. Thank you.`;
+        ? `Dear ${tenantName}, we have received your payment of ${currency} ${amount.toLocaleString()}. Receipt: ${receiptNumber}. Outstanding balance: ${currency} ${balance.toLocaleString()}. Thank you.`
+        : `Dear ${tenantName}, we have received your payment of ${currency} ${amount.toLocaleString()}. Receipt: ${receiptNumber}. Your account is now fully paid. Thank you.`;
 
     return this.sendSms({
       to: phoneNumber,
@@ -233,9 +238,10 @@ export class AfricasTalkingSms {
     tenantName: string,
     amount: number,
     daysOverdue: number,
-    propertyName: string
+    propertyName: string,
+    currency: string
   ): Promise<SmsResponse> {
-    const message = `Dear ${tenantName}, your rent payment of KES ${amount.toLocaleString()} for ${propertyName} is ${daysOverdue} days overdue. Please pay immediately to avoid penalties. Contact us for any issues.`;
+    const message = `Dear ${tenantName}, your rent payment of ${currency} ${amount.toLocaleString()} for ${propertyName} is ${daysOverdue} days overdue. Please pay immediately to avoid penalties. Contact us for any issues.`;
 
     return this.sendSms({
       to: phoneNumber,

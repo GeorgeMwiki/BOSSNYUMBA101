@@ -84,7 +84,7 @@ describe.skipIf(!RUN)('MigrationWriterService (real Postgres)', () => {
           },
         ],
       },
-      { tenantId, ownerUserId: ownerId, actorUserId: ownerId }
+      { tenantId, ownerUserId: ownerId, actorUserId: ownerId, tenantCountry: 'KE', tenantCurrency: 'KES', defaultCity: 'Nairobi' }
     );
     expect(report.ok).toBe(true);
     expect(report.inserted.properties).toBe(1);
@@ -107,7 +107,7 @@ describe.skipIf(!RUN)('MigrationWriterService (real Postgres)', () => {
           },
         ],
       },
-      { tenantId, ownerUserId: ownerId, actorUserId: ownerId },
+      { tenantId, ownerUserId: ownerId, actorUserId: ownerId, tenantCountry: 'KE', tenantCurrency: 'KES', defaultCity: 'Nairobi' },
       { bestEffort: true }
     );
     expect(report.duplicates).toBeGreaterThan(0);
@@ -124,7 +124,7 @@ describe.skipIf(!RUN)('MigrationWriterService (real Postgres)', () => {
           },
         ],
       },
-      { tenantId, ownerUserId: ownerId, actorUserId: ownerId }
+      { tenantId, ownerUserId: ownerId, actorUserId: ownerId, tenantCountry: 'KE', tenantCurrency: 'KES', defaultCity: 'Nairobi' }
     );
     expect(report.ok).toBe(false);
     expect(report.abortError).toBeDefined();

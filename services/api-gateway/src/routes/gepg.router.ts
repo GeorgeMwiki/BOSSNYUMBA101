@@ -24,6 +24,13 @@ import {
 import type { GepgSignatureConfig } from '@bossnyumba/payments-service/providers/gepg';
 
 function loadConfig(): GepgConfig {
+  const isProd = process.env.NODE_ENV === 'production';
+  const callbackBaseUrl = process.env.GEPG_CALLBACK_BASE_URL;
+  if (isProd && !callbackBaseUrl) {
+    throw new Error(
+      'gepg: GEPG_CALLBACK_BASE_URL env var is required in production.'
+    );
+  }
   return {
     sp: process.env.GEPG_SP ?? 'SANDBOX_SP',
     spSysId: process.env.GEPG_SP_SYS_ID ?? 'SANDBOX_SYSID',
@@ -32,8 +39,8 @@ function loadConfig(): GepgConfig {
     environment:
       (process.env.GEPG_ENV as 'sandbox' | 'production') ?? 'sandbox',
     baseUrl: process.env.GEPG_BASE_URL ?? 'https://sandbox.gepg.tz',
-    callbackBaseUrl:
-      process.env.GEPG_CALLBACK_BASE_URL ?? 'http://localhost:3000',
+    // Dev fallback — production throws above.
+    callbackBaseUrl: callbackBaseUrl ?? 'http://localhost:3000',
     pspMode: process.env.GEPG_PSP_MODE !== 'false',
   };
 }

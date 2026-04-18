@@ -73,7 +73,7 @@ function capitalize(s: string) {
 export default function InspectionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = (params?.id ?? '') as string;
   const [showComparison, setShowComparison] = useState(false);
 
   // Fetch inspection from API
@@ -381,9 +381,9 @@ export default function InspectionDetailPage() {
                                 <div className="text-xs text-gray-400">Move-Out</div>
                                 <span className="text-xs font-medium">{meter.reading ? String(meter.reading) : '—'}</span>
                               </div>
-                              {moveInMeter?.reading && meter.reading && (
+                              {Boolean(moveInMeter?.reading) && Boolean(meter.reading) && (
                                 <div className="text-xs text-primary-600 font-medium ml-1">
-                                  Δ {(Number(meter.reading) - Number(moveInMeter.reading)).toLocaleString()}
+                                  Δ {(Number(meter.reading) - Number(moveInMeter?.reading)).toLocaleString()}
                                 </div>
                               )}
                             </div>
