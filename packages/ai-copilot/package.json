@@ -5,6 +5,20 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./services/migration/parsers/parse-upload": {
+      "types": "./src/services/migration/parsers/parse-upload.ts",
+      "default": "./src/services/migration/parsers/parse-upload.ts"
+    },
+    "./providers": {
+      "types": "./src/providers/index.ts",
+      "default": "./src/providers/index.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run --passWithNoTests",

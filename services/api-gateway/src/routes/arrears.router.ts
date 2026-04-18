@@ -23,7 +23,7 @@ import {
   type ArrearsRepository,
   type LedgerPort,
   type LedgerReplayEntry,
-} from '@bossnyumba/payments-ledger/arrears';
+} from '@bossnyumba/payments-ledger-service/arrears';
 
 function getService(c: { get: (k: string) => unknown }) {
   const injected = c.get('arrearsService');

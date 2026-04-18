@@ -5,11 +5,21 @@
   "description": "Payments orchestration, ledger, reconciliation, and statement services for BOSSNYUMBA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./arrears": {
+      "types": "./src/arrears/index.ts",
+      "default": "./src/arrears/index.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "ts-node-dev --respawn src/server.ts",
     "start": "node dist/server.js",
-    "test": "echo 'payments-ledger tests pending jest config' && exit 0",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts",

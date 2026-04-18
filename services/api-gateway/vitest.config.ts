@@ -8,6 +8,22 @@ export default defineConfig({
         __dirname,
         '../../packages/domain-models/src/index.ts'
       ),
+      '@bossnyumba/payments-ledger-service/arrears': path.resolve(
+        __dirname,
+        '../payments-ledger/src/arrears/index.ts'
+      ),
+      '@bossnyumba/ai-copilot/services/migration/parsers/parse-upload': path.resolve(
+        __dirname,
+        '../../packages/ai-copilot/src/services/migration/parsers/parse-upload.ts'
+      ),
+      '@bossnyumba/domain-services/gamification': path.resolve(
+        __dirname,
+        '../domain-services/src/gamification/index.ts'
+      ),
+      '@bossnyumba/payments/providers/gepg': path.resolve(
+        __dirname,
+        '../payments/src/providers/gepg/index.ts'
+      ),
     },
   },
   test: {

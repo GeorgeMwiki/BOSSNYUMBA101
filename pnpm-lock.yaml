@@ -328,6 +328,9 @@ importers:
       '@bossnyumba/domain-models':
         specifier: workspace:*
         version: link:../domain-models
+      '@tanstack/react-query':
+        specifier: ^5.24.0
+        version: 5.90.21(react@18.3.1)
       react:
         specifier: ^18.0.0
         version: 18.3.1
