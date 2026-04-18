@@ -395,6 +395,22 @@ export type DisbursementStatus = 'PENDING' | 'PROCESSING' | 'IN_TRANSIT' | 'PAID
 export type DisbursementType = 'SCHEDULED' | 'MANUAL' | 'THRESHOLD';
 
 /**
+ * Local payment status vocabulary for payments-ledger service.
+ * Uses UPPERCASE provider-style names (aligned with Stripe/M-Pesa terminology),
+ * distinct from the lowercase domain-models PaymentStatus which is used in
+ * aggregate/event layer. Provider adapters map to/from this local type.
+ */
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'REQUIRES_ACTION'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED';
+
+/**
  * Disbursement calculation breakdown
  */
 export interface DisbursementBreakdown {

@@ -9,11 +9,11 @@ import { publicEncrypt, constants, createPublicKey } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
   Money,
-  PaymentStatus,
   TenantId,
   CustomerId,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from '../types';
 
 /**
  * RSA-encrypt the initiator password with Safaricom's public cert so

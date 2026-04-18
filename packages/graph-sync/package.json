@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/graph-sync",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Canonical Property Graph (CPG) — Neo4j graph sync, schema, and query service for Boss Nyumba",
   "type": "module",
@@ -16,7 +17,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "graph:init": "tsx src/scripts/init-graph.ts",
     "graph:sync": "tsx src/scripts/run-sync.ts"

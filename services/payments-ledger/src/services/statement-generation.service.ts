@@ -343,7 +343,7 @@ export class StatementGenerationService {
         });
       }
     } catch {
-      this.logger?.warn?.({ statementId: request.statementId }, 'Failed to send statement email notification');
+      this.logger?.warn?.('Failed to send statement email notification', { statementId: request.statementId });
     }
 
     // Publish event

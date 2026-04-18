@@ -1,13 +1,12 @@
 /**
- * OrgMembershipService — bridges TenantIdentity ↔ User ↔ Organization.
+ * OrgMembershipService — bridges TenantIdentity <-> User <-> Organization.
  *
- * Stub — all methods throw NOT_IMPLEMENTED. Real persistence lands in a
- * follow-up phase. See `Docs/analysis/CONFLICT_RESOLUTIONS.md` § "Conflict 2".
+ * Wires the Postgres repo so the three public methods return real results.
+ * Every membership creation produces a 1:1 shadow User row in the target
+ * platform tenant's users table — preserving RBAC, audit, and data-
+ * isolation guarantees.
  *
- * Every OrgMembership row has a 1:1 shadow User row in the corresponding
- * platform tenant's user table. This is what keeps data isolation intact
- * while login is federated: RBAC and audit queries continue to resolve
- * through the existing `User` entity, unchanged.
+ * See: Docs/analysis/CONFLICT_RESOLUTIONS.md § "Conflict 2".
  */
 
 import type {
@@ -18,6 +17,8 @@ import type {
   RoleId,
   TenantIdentityId,
 } from '@bossnyumba/domain-models';
+import type { PostgresOrgMembershipRepository } from './postgres-org-membership-repository.js';
+import type { PostgresTenantIdentityRepository } from './postgres-tenant-identity-repository.js';
 
 export class NotImplementedError extends Error {
   constructor(methodName: string) {
@@ -26,14 +27,27 @@ export class NotImplementedError extends Error {
   }
 }
 
+export interface OrgMembershipServiceDeps {
+  readonly membershipRepo?: PostgresOrgMembershipRepository;
+  readonly identityRepo?: PostgresTenantIdentityRepository;
+}
+
 export class OrgMembershipService {
+  private readonly membershipRepo?: PostgresOrgMembershipRepository;
+  private readonly identityRepo?: PostgresTenantIdentityRepository;
+
+  constructor(deps: OrgMembershipServiceDeps = {}) {
+    this.membershipRepo = deps.membershipRepo;
+    this.identityRepo = deps.identityRepo;
+  }
+
   /**
    * Create a fresh membership for an identity in an org.
    *   1. Inserts a shadow `User` row in the org's platform tenant.
    *   2. Inserts the OrgMembership row pointing at the shadow User.
    *
    * Caller passes `viaCode` when the membership originated from an
-   * invite-code redemption so it can be stamped onto `joinedViaInviteCode`.
+   * invite-code redemption so it is stamped onto `joinedViaInviteCode`.
    */
   async createMembership(
     identityId: TenantIdentityId,
@@ -41,33 +55,52 @@ export class OrgMembershipService {
     roleId: RoleId,
     viaCode?: InviteCode
   ): Promise<OrgMembership> {
-    void identityId;
-    void orgId;
-    void roleId;
-    void viaCode;
-    throw new NotImplementedError('createMembership');
+    if (!this.membershipRepo || !this.identityRepo) {
+      throw new NotImplementedError('createMembership');
+    }
+    const identity = await this.identityRepo.findById(identityId);
+    if (!identity) {
+      throw new Error(
+        `OrgMembershipService.createMembership: identity ${identityId} not found`
+      );
+    }
+    return this.membershipRepo.create({
+      tenantIdentityId: identityId,
+      organizationId: orgId,
+      roleId,
+      viaCode,
+      shadowProfile: {
+        firstName: identity.profile.firstName,
+        lastName: identity.profile.lastName,
+        email: identity.email,
+        phone: identity.profile.phone ?? identity.phoneNormalized,
+      },
+    });
   }
 
   /**
-   * Tenant-initiated leave. Flips status → LEFT and deactivates (not
+   * Tenant-initiated leave. Flips status -> LEFT and deactivates (not
    * deletes) the shadow User. Re-redeeming a code creates a fresh
    * membership row rather than resurrecting this one.
    */
   async leaveMembership(membershipId: OrgMembershipId): Promise<OrgMembership> {
-    void membershipId;
-    throw new NotImplementedError('leaveMembership');
+    if (!this.membershipRepo) {
+      throw new NotImplementedError('leaveMembership');
+    }
+    return this.membershipRepo.leave(membershipId);
   }
 
   /**
-   * Admin-initiated block. Flips status → BLOCKED with a reason recorded
+   * Admin-initiated block. Flips status -> BLOCKED with a reason recorded
    * on the audit trail. Shadow User is deactivated.
    */
   async blockMembership(
     membershipId: OrgMembershipId,
     reason: string
   ): Promise<OrgMembership> {
-    void membershipId;
-    void reason;
-    throw new NotImplementedError('blockMembership');
+    if (!this.membershipRepo) {
+      throw new NotImplementedError('blockMembership');
+    }
+    return this.membershipRepo.block(membershipId, reason);
   }
 }

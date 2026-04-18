@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/authz-policy",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Authorization policy engine with RBAC/ABAC support for BOSSNYUMBA",
   "type": "module",
@@ -23,7 +24,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",

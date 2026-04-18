@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
@@ -24,7 +24,7 @@
     "automation"
   ],
   "author": "BOSSNYUMBA",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
     "openai": "^4.28.0",

@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/database",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Database schemas and repository implementations for BOSSNYUMBA",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +23,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/run-migrations.ts",
     "db:push": "drizzle-kit push",

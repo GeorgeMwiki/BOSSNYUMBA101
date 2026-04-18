@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/identity",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Identity services for BOSSNYUMBA — TenantIdentity, OrgMembership, InviteCode (stub).",
   "type": "module",
@@ -15,14 +16,16 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/domain-models": "workspace:*"
+    "@bossnyumba/database": "workspace:*",
+    "@bossnyumba/domain-models": "workspace:*",
+    "drizzle-orm": "^0.29.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

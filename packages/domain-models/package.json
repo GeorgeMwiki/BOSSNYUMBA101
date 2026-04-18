@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/domain-models",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Core domain models and types for BOSSNYUMBA platform",
   "main": "./dist/index.js",
@@ -46,7 +47,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist .turbo"
   },

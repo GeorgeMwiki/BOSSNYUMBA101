@@ -31,12 +31,14 @@ describe('persona catalog snapshots', () => {
     expect(ids).toMatchInlineSnapshot(`
       [
         "coworker",
+        "coworker.tender-negotiator",
         "estate-manager",
         "junior.communications",
         "junior.compliance",
         "junior.finance",
         "junior.leasing",
         "junior.maintenance",
+        "junior.price-negotiator",
         "migration-wizard",
         "owner-advisor",
         "tenant-assistant",
@@ -101,12 +103,14 @@ describe('persona catalog snapshots', () => {
     // sure the diff is a deliberate improvement — not a typo or accident.
     expect(Object.keys(hashes).sort()).toEqual([
       'coworker',
+      'coworker.tender-negotiator',
       'estate-manager',
       'junior.communications',
       'junior.compliance',
       'junior.finance',
       'junior.leasing',
       'junior.maintenance',
+      'junior.price-negotiator',
       'migration-wizard',
       'owner-advisor',
       'tenant-assistant',

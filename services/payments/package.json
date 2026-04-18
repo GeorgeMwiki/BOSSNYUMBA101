@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/payments-service",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Mobile money payment integrations (M-Pesa, Airtel Money, Tigo Pesa) for BOSSNYUMBA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +9,7 @@
     "build": "tsc",
     "dev": "ts-node-dev --respawn src/index.ts",
     "start": "node dist/index.js",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",

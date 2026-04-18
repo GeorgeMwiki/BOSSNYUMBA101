@@ -415,7 +415,7 @@ export async function matchVendorsDeterministic(
   if (deps.anthropic) {
     try {
       const prompt = buildNarrationPrompt(workOrder, ranked, availableVendors);
-      const result = await generateStructured(deps.anthropic, {
+      const result = await generateStructured<NarrationPayload>(deps.anthropic, {
         prompt,
         schema: NarrationSchema,
         model: deps.narrationModel ?? ModelTier.SONNET,
@@ -438,7 +438,10 @@ export async function matchVendorsDeterministic(
     topRecommendation: {
       vendor: top,
       reasoning: narration.reasoning,
-      alternativeScenarios: narration.alternativeScenarios,
+      alternativeScenarios: (narration.alternativeScenarios ?? []).map((s) => ({
+        scenario: s.scenario ?? '',
+        recommendedVendor: s.recommendedVendor ?? '',
+      })),
     },
     matchingInsights: {
       keyFactors: top.matchReasons,

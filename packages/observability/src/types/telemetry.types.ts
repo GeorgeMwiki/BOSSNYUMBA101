@@ -227,6 +227,50 @@ export const PLATFORM_METRICS: Record<string, MetricDefinition> = {
     type: MetricType.COUNTER,
     labelKeys: ['type', 'service', 'tenant'],
   },
+
+  // Notifications
+  NOTIFICATIONS_SENT: {
+    name: 'bossnyumba_notifications_sent_total',
+    description: 'Total notifications dispatched',
+    type: MetricType.COUNTER,
+    labelKeys: ['channel', 'status', 'tenant'],
+  },
+  NOTIFICATION_LATENCY: {
+    name: 'bossnyumba_notification_latency_ms',
+    description: 'Notification dispatch latency in ms',
+    type: MetricType.HISTOGRAM,
+    unit: 'ms',
+    labelKeys: ['channel', 'tenant'],
+  },
+
+  // LLM / AI persona
+  LLM_CALLS_TOTAL: {
+    name: 'bossnyumba_llm_calls_total',
+    description: 'Total LLM persona invocations',
+    type: MetricType.COUNTER,
+    labelKeys: ['persona', 'provider', 'status', 'tenant'],
+  },
+  LLM_TOKENS_TOTAL: {
+    name: 'bossnyumba_llm_tokens_total',
+    description: 'Total LLM tokens consumed',
+    type: MetricType.COUNTER,
+    labelKeys: ['persona', 'provider', 'kind', 'tenant'], // kind = input | output
+  },
+  LLM_LATENCY: {
+    name: 'bossnyumba_llm_latency_ms',
+    description: 'LLM call latency in ms',
+    type: MetricType.HISTOGRAM,
+    unit: 'ms',
+    labelKeys: ['persona', 'provider', 'tenant'],
+  },
+
+  // Document rendering
+  DOCUMENTS_RENDERED: {
+    name: 'bossnyumba_documents_rendered_total',
+    description: 'Total documents rendered',
+    type: MetricType.COUNTER,
+    labelKeys: ['kind', 'renderer', 'status', 'tenant'],
+  },
 };
 
 /**

@@ -5,11 +5,11 @@
 import Stripe from 'stripe';
 import {
   Money,
-  PaymentStatus,
   TenantId,
   CustomerId,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from '../types';
 import {
   BasePaymentProvider,
   CreatePaymentResult,

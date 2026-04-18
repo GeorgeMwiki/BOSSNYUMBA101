@@ -9,12 +9,12 @@ import {
   PaymentIntentAggregate,
   PaymentIntentId,
   PaymentIntentType,
-  PaymentStatus,
   TenantId,
   CustomerId,
   LeaseId,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from '../types';
 import { TenantAggregate, createId, calculatePlatformFee } from '../domain-extensions';
 import {
   IPaymentProvider,

@@ -7,26 +7,26 @@
 
 // Re-export core domain primitives so consumers of the service have
 // one import surface.
-export type {
-  ArrearsCase,
-  ArrearsCaseData,
-  ArrearsStatus,
-  ArrearsSeverity,
-  ArrearsAction,
-} from '@bossnyumba/domain-models';
+import { ArrearsCase as ArrearsCaseModule } from '@bossnyumba/domain-models';
 
-export {
-  createArrearsCase,
-  addAction,
-  assignCase,
-  recordContactAttempt,
-  recordPromiseToPay,
-  markPromiseBroken,
-  resolveCase,
-  writeOffCase,
-  escalateToLegal,
-  calculateSeverity,
-} from '@bossnyumba/domain-models';
+// Re-export types from the ArrearsCase namespace
+export type ArrearsCase = ArrearsCaseModule.ArrearsCase;
+export type ArrearsCaseData = ArrearsCaseModule.ArrearsCaseData;
+export type ArrearsStatus = ArrearsCaseModule.ArrearsStatus;
+export type ArrearsSeverity = ArrearsCaseModule.ArrearsSeverity;
+export type ArrearsAction = ArrearsCaseModule.ArrearsAction;
+
+// Re-export functions from the ArrearsCase namespace
+export const createArrearsCase = ArrearsCaseModule.createArrearsCase;
+export const addAction = ArrearsCaseModule.addAction;
+export const assignCase = ArrearsCaseModule.assignCase;
+export const recordContactAttempt = ArrearsCaseModule.recordContactAttempt;
+export const recordPromiseToPay = ArrearsCaseModule.recordPromiseToPay;
+export const markPromiseBroken = ArrearsCaseModule.markPromiseBroken;
+export const resolveCase = ArrearsCaseModule.resolveCase;
+export const writeOffCase = ArrearsCaseModule.writeOffCase;
+export const escalateToLegal = ArrearsCaseModule.escalateToLegal;
+export const calculateSeverity = ArrearsCaseModule.calculateSeverity;
 
 // ----------------------------------------------------------------------------
 // Projection + proposal types used by the arrears service

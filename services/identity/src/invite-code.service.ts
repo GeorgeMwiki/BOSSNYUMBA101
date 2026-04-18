@@ -1,12 +1,14 @@
 /**
  * InviteCodeService — generates, redeems, and revokes org-issued codes.
  *
- * Stub — all methods throw NOT_IMPLEMENTED. Real persistence + atomic
- * redeem transaction land in a follow-up phase. See
- * `Docs/analysis/CONFLICT_RESOLUTIONS.md` § "Conflict 2".
+ * Wires the Postgres repo so the three public methods return real results.
+ * Code format is enforced at the repo layer: `<ORG_CODE>-<RANDOM_4>`
+ * (e.g. `TRC-A3F9`).
  *
- * Redemption is the single chokepoint that creates an OrgMembership +
- * shadow User row + (optionally) a pending lease applicant attachment.
+ * Redemption is the atomic chokepoint that creates an OrgMembership +
+ * shadow User row + increments redemptions_used in a single transaction.
+ *
+ * See: Docs/analysis/CONFLICT_RESOLUTIONS.md § "Conflict 2".
  */
 
 import type {
@@ -20,6 +22,11 @@ import type {
   TenantIdentityId,
   UserId,
 } from '@bossnyumba/domain-models';
+import type {
+  PostgresInviteCodeRepository,
+  RedeemerProfile,
+} from './postgres-invite-code-repository.js';
+import type { PostgresTenantIdentityRepository } from './postgres-tenant-identity-repository.js';
 
 export class NotImplementedError extends Error {
   constructor(methodName: string) {
@@ -28,7 +35,6 @@ export class NotImplementedError extends Error {
   }
 }
 
-/** Options accepted when generating a new code. */
 export interface GenerateInviteOptions {
   readonly expiresAt?: ISOTimestamp;
   readonly maxRedemptions?: number;
@@ -36,26 +42,34 @@ export interface GenerateInviteOptions {
   readonly attachmentHints?: InviteAttachmentHints;
 }
 
-/** Outcome of a successful redeem: membership + the originating code row. */
 export interface RedeemResult {
   readonly membership: OrgMembership;
   readonly code: InviteCodeRecord;
 }
 
+export interface InviteCodeServiceDeps {
+  readonly inviteRepo?: PostgresInviteCodeRepository;
+  readonly identityRepo?: PostgresTenantIdentityRepository;
+}
+
 export class InviteCodeService {
-  /**
-   * Generate a new invite code for the given org. Enforces TTL and
-   * max-redemption constraints supplied by the caller.
-   */
+  private readonly inviteRepo?: PostgresInviteCodeRepository;
+  private readonly identityRepo?: PostgresTenantIdentityRepository;
+
+  constructor(deps: InviteCodeServiceDeps = {}) {
+    this.inviteRepo = deps.inviteRepo;
+    this.identityRepo = deps.identityRepo;
+  }
+
   async generate(
     orgId: OrganizationId,
     issuedBy: UserId,
     opts: GenerateInviteOptions
   ): Promise<InviteCodeRecord> {
-    void orgId;
-    void issuedBy;
-    void opts;
-    throw new NotImplementedError('generate');
+    if (!this.inviteRepo) {
+      throw new NotImplementedError('generate');
+    }
+    return this.inviteRepo.generate(orgId, issuedBy, opts);
   }
 
   /**
@@ -71,17 +85,30 @@ export class InviteCodeService {
     code: InviteCode,
     tenantIdentityId: TenantIdentityId
   ): Promise<RedeemResult> {
-    void code;
-    void tenantIdentityId;
-    throw new NotImplementedError('redeem');
+    if (!this.inviteRepo || !this.identityRepo) {
+      throw new NotImplementedError('redeem');
+    }
+    const identity = await this.identityRepo.findById(tenantIdentityId);
+    if (!identity) {
+      throw new Error(`InviteCodeService.redeem: identity ${tenantIdentityId} not found`);
+    }
+    const redeemer: RedeemerProfile = {
+      firstName: identity.profile.firstName,
+      lastName: identity.profile.lastName,
+      email: identity.email,
+      phone: identity.profile.phone ?? identity.phoneNormalized,
+    };
+    return this.inviteRepo.redeem(code, tenantIdentityId, redeemer);
   }
 
   /**
-   * Revoke an outstanding code. Future redeem attempts return
+   * Revoke an outstanding code. Future redeem attempts fail with
    * INVITE_CODE_REVOKED. Existing redemptions are unaffected.
    */
   async revoke(code: InviteCode): Promise<InviteCodeRecord> {
-    void code;
-    throw new NotImplementedError('revoke');
+    if (!this.inviteRepo) {
+      throw new NotImplementedError('revoke');
+    }
+    return this.inviteRepo.revoke(code);
   }
 }

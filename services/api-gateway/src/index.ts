@@ -38,6 +38,29 @@ import { casesRouter } from './routes/cases.hono';
 import { brainRouter } from './routes/brain.hono';
 import { maintenanceRouter } from './routes/maintenance.hono';
 import { hrRouter } from './routes/hr.hono';
+// Wave 1-2 routers (new domain features)
+import applicationsRouter from './routes/applications.router';
+import arrearsRouter from './routes/arrears.router';
+import complianceRouter from './routes/compliance.router';
+import docChatRouter from './routes/doc-chat.router';
+import documentRenderRouter from './routes/document-render.router';
+import financialProfileRouter from './routes/financial-profile.router';
+import gamificationRouter from './routes/gamification.router';
+import gepgRouter from './routes/gepg.router';
+import interactiveReportsRouter from './routes/interactive-reports.router';
+import lettersRouter from './routes/letters.router';
+import { marketplaceRouter } from './routes/marketplace.router';
+import { createMigrationRouter } from './routes/migration.router';
+import { negotiationsRouter } from './routes/negotiations.router';
+import * as notificationPreferencesRouter from './routes/notification-preferences.router';
+import { createNotificationWebhookRouter } from './routes/notification-webhooks.router';
+import occupancyTimelineRouter from './routes/occupancy-timeline.router';
+import renewalsRouter from './routes/renewals.router';
+import riskReportsRouter from './routes/risk-reports.router';
+import scansRouter from './routes/scans.router';
+import stationMasterCoverageRouter from './routes/station-master-coverage.router';
+import { tendersRouter } from './routes/tenders.router';
+import { waitlistRouter } from './routes/waitlist.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -110,14 +133,28 @@ app.use(express.json({ limit: '2mb' }));
 app.use(pinoHttp({ logger }));
 app.use(rateLimitMiddleware());
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
+// Health check — both /health (legacy) and /healthz (k8s-style) are served.
+// Returns `{ status, version, service, timestamp, upstreams }` per the
+// shared contract in @bossnyumba/observability.
+const healthHandler = async (
+  _req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  const payload = {
+    status: 'ok' as const,
+    version: process.env.APP_VERSION ?? 'dev',
     service: 'api-gateway',
     timestamp: new Date().toISOString(),
-  });
-});
+    upstreams: {
+      // Upstream probes are registered lazily in a follow-up wave to avoid
+      // adding startup latency during the tight boot window. The payload
+      // shape is stable so consumers can start relying on it today.
+    },
+  };
+  res.json(payload);
+};
+app.get('/health', healthHandler);
+app.get('/healthz', healthHandler);
 
 // API v1 - Hono routes
 const api = new Hono();
@@ -151,6 +188,29 @@ api.route('/customer', customerAppRouter);
 api.route('/owner', ownerPortalRouter);
 api.route('/manager', estateManagerAppRouter);
 api.route('/admin', adminPortalRouter);
+// Wave 1-2 feature routers
+api.route('/applications', applicationsRouter);
+api.route('/arrears', arrearsRouter);
+api.route('/compliance', complianceRouter);
+api.route('/doc-chat', docChatRouter);
+api.route('/document-render', documentRenderRouter);
+api.route('/financial-profile', financialProfileRouter);
+api.route('/gamification', gamificationRouter);
+api.route('/gepg', gepgRouter);
+api.route('/interactive-reports', interactiveReportsRouter);
+api.route('/letters', lettersRouter);
+api.route('/marketplace', marketplaceRouter);
+api.route('/migration', migrationRouter);
+api.route('/negotiations', negotiationsRouter);
+api.route('/me/notification-preferences', notificationPreferencesRouter);
+api.route('/notification-webhooks', notificationWebhooksRouter);
+api.route('/occupancy-timeline', occupancyTimelineRouter);
+api.route('/renewals', renewalsRouter);
+api.route('/risk-reports', riskReportsRouter);
+api.route('/scans', scansRouter);
+api.route('/station-master-coverage', stationMasterCoverageRouter);
+api.route('/tenders', tendersRouter);
+api.route('/waitlist', waitlistRouter);
 app.use('/api/v1', handle(api));
 
 // API versioning

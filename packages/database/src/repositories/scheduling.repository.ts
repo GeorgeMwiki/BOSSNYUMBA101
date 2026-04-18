@@ -6,7 +6,7 @@
 
 import {
   eq,
-  neq,
+  ne,
   and,
   or,
   asc,
@@ -228,7 +228,7 @@ export class SchedulingRepository {
     ];
 
     if (options?.excludeEventId) {
-      conditions.push(neq(scheduledEvents.id, options.excludeEventId));
+      conditions.push(ne(scheduledEvents.id, options.excludeEventId));
     }
     if (options?.propertyId) {
       conditions.push(eq(scheduledEvents.propertyId, options.propertyId));

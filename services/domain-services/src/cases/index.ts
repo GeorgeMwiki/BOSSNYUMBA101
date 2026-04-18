@@ -282,7 +282,12 @@ export interface NoticeSentEvent {
 const MAX_ESCALATION_LEVEL = 3;
 
 export class CaseService {
-  constructor(private readonly caseRepo: CaseRepository, private readonly eventBus: EventBus) {}
+  constructor(private caseRepo: CaseRepository, private readonly eventBus: EventBus) {}
+
+  /** Additive Wave 3 hook — attach the live Postgres repo at runtime. */
+  attachRepository(repo: CaseRepository): void {
+    this.caseRepo = repo;
+  }
 
   async createCase(tenantId: TenantId, input: CreateCaseInput, createdBy: UserId, correlationId: string): Promise<Result<Case, CaseServiceErrorResult>> {
     if (!input.title || !input.description || !input.customerId) {

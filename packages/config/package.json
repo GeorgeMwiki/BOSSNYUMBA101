@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/config",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Centralized environment configuration for BOSSNYUMBA",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +19,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {

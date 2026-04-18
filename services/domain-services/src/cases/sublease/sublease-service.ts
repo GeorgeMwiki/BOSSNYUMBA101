@@ -88,9 +88,18 @@ function assertSubleaseTransition(
 
 export class SubleaseService {
   constructor(
-    private readonly requestRepo: SubleaseRequestRepository,
-    private readonly groupRepo: TenantGroupRepository
+    private requestRepo: SubleaseRequestRepository,
+    private groupRepo: TenantGroupRepository
   ) {}
+
+  /** Additive Wave 3 hook for attaching the live Postgres repos at runtime. */
+  attachRepository(repos: {
+    requestRepo?: SubleaseRequestRepository;
+    groupRepo?: TenantGroupRepository;
+  }): void {
+    if (repos.requestRepo) this.requestRepo = repos.requestRepo;
+    if (repos.groupRepo) this.groupRepo = repos.groupRepo;
+  }
 
   async submit(
     tenantId: TenantId,

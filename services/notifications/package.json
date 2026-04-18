@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/notifications-service",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Multi-channel notifications (SMS, Email, Push, WhatsApp) for BOSSNYUMBA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",

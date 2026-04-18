@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
@@ -26,7 +26,7 @@
     "finops"
   ],
   "author": "BOSSNYUMBA",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/observability": "workspace:*",

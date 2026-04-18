@@ -132,3 +132,6 @@ export * from './compliance-exports.schema.js';
 // Reports bundle (additive): Interactive Reports (NEW 17) + Station Master Coverage (NEW 18)
 export * from './interactive-reports.schema.js';
 export * from './station-master-coverage.schema.js';
+
+// Identity bundle — Cross-Org Tenant Identity + Multi-Org (Conflict 2)
+export * from './identity.schema.js';

@@ -8,9 +8,9 @@ import {
   TenantId,
   CustomerId,
   LeaseId,
-  PaymentStatus,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from '../types';
 
 export interface PaymentIntentFilters {
   tenantId: TenantId;

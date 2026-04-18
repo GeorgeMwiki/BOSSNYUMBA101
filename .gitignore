@@ -3,8 +3,16 @@ node_modules/
 
 # Build outputs
 dist/
+build/
 .next/
+packages/*/dist/
+services/*/dist/
+apps/*/dist/
+apps/*/.next/
 *.tsbuildinfo
+
+# Storybook
+storybook-static/
 
 # Test coverage
 coverage/
@@ -54,4 +62,3 @@ override.tf
 override.tf.json
 *.override.tf
 *.override.tf.json
-

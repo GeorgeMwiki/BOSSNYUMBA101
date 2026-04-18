@@ -97,9 +97,14 @@ export interface ApproveActionPlanInput {
 
 export class ConditionalSurveyService {
   constructor(
-    private readonly repo: ConditionalSurveyRepository,
+    private repo: ConditionalSurveyRepository,
     private readonly eventBus: EventBus
   ) {}
+
+  /** Additive Wave 3 hook — attach the live Postgres repo at runtime. */
+  attachRepository(repo: ConditionalSurveyRepository): void {
+    this.repo = repo;
+  }
 
   async scheduleSurvey(
     input: ScheduleSurveyInput

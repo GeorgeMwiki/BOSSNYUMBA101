@@ -1,24 +1,33 @@
 /**
  * TenantIdentityService — global cross-org identity management.
  *
- * Stub — all methods throw NOT_IMPLEMENTED. Real persistence and OTP
- * integration will land in a follow-up phase. See
- * `Docs/analysis/CONFLICT_RESOLUTIONS.md` § "Conflict 2".
+ * Wires the Postgres repo and the OTP service so the four public methods
+ * return real results:
  *
- * This service owns:
- *   - Upsert-by-phone (phone is canonical identity key).
- *   - Phone OTP verification via region-config dialing codes.
- *   - Membership enumeration across all orgs for one identity.
- *   - Merging duplicate identities when backfill detects collisions.
+ *   - createOrUpsertByPhone: normalize phone, find-or-create the identity.
+ *   - verifyPhoneOTP:        consume a pending OTP, touch last_activity.
+ *   - getMemberships:        delegate to the membership repo.
+ *   - mergeDuplicates:       transactional re-parenting via the identity repo.
+ *
+ * Callers supply concrete repos at construction time. A zero-arg
+ * constructor is kept for backwards compatibility with existing stub tests;
+ * it throws the same NOT_IMPLEMENTED error those tests already assert on.
+ *
+ * See: Docs/analysis/CONFLICT_RESOLUTIONS.md § "Conflict 2".
  */
 
 import type {
   OrgMembership,
   TenantIdentity,
   TenantIdentityId,
+  UserProfile,
 } from '@bossnyumba/domain-models';
+import type { PostgresTenantIdentityRepository } from './postgres-tenant-identity-repository.js';
+import type { PostgresOrgMembershipRepository } from './postgres-org-membership-repository.js';
+import type { OtpService } from './otp/otp-service.js';
+import { normalizePhoneForCountry } from './phone-normalize.js';
 
-/** Error thrown by every stub method until real implementation lands. */
+/** Error thrown when the service is used without its dependencies wired. */
 export class NotImplementedError extends Error {
   constructor(methodName: string) {
     super(`NOT_IMPLEMENTED: TenantIdentityService.${methodName}`);
@@ -32,19 +41,64 @@ export interface VerifyOtpResult {
   readonly identity: TenantIdentity | null;
 }
 
+/** Dependencies injected into the service. All optional for stub-era tests. */
+export interface TenantIdentityServiceDeps {
+  readonly identityRepo?: PostgresTenantIdentityRepository;
+  readonly membershipRepo?: PostgresOrgMembershipRepository;
+  readonly otpService?: OtpService;
+  readonly defaultProfile?: UserProfile;
+}
+
+const EMPTY_PROFILE: UserProfile = {
+  firstName: '',
+  lastName: '',
+  displayName: '',
+  avatarUrl: null,
+  phone: null,
+  timezone: 'UTC',
+  locale: 'en',
+};
+
 export class TenantIdentityService {
+  private readonly identityRepo?: PostgresTenantIdentityRepository;
+  private readonly membershipRepo?: PostgresOrgMembershipRepository;
+  private readonly otpService?: OtpService;
+  private readonly defaultProfile: UserProfile;
+
+  constructor(deps: TenantIdentityServiceDeps = {}) {
+    this.identityRepo = deps.identityRepo;
+    this.membershipRepo = deps.membershipRepo;
+    this.otpService = deps.otpService;
+    this.defaultProfile = deps.defaultProfile ?? EMPTY_PROFILE;
+  }
+
   /**
    * Create or upsert a TenantIdentity for the given phone + country code.
-   * Phone is normalized via `normalizePhoneForCountry(phone, countryCode)`
-   * before lookup.
+   * Phone is normalized through `normalizePhoneForCountry` before lookup.
    */
   async createOrUpsertByPhone(
     phone: string,
     countryCode: string
   ): Promise<TenantIdentity> {
-    void phone;
-    void countryCode;
-    throw new NotImplementedError('createOrUpsertByPhone');
+    if (!this.identityRepo) {
+      throw new NotImplementedError('createOrUpsertByPhone');
+    }
+    const normalized = normalizePhoneForCountry(phone, countryCode);
+    const existing = await this.identityRepo.findByPhone(
+      normalized,
+      countryCode
+    );
+    if (existing) {
+      return existing;
+    }
+    return this.identityRepo.create({
+      phoneNormalized: normalized,
+      phoneCountryCode: countryCode,
+      profile: {
+        ...this.defaultProfile,
+        phone,
+      },
+    });
   }
 
   /**
@@ -55,33 +109,43 @@ export class TenantIdentityService {
     identityId: TenantIdentityId,
     code: string
   ): Promise<VerifyOtpResult> {
-    void identityId;
-    void code;
-    throw new NotImplementedError('verifyPhoneOTP');
+    if (!this.identityRepo || !this.otpService) {
+      throw new NotImplementedError('verifyPhoneOTP');
+    }
+    const result = await this.otpService.verify(identityId, code);
+    if (!result.verified) {
+      return { verified: false, identity: null };
+    }
+    await this.identityRepo.touchActivity(identityId);
+    const identity = await this.identityRepo.findById(identityId);
+    return { verified: true, identity };
   }
 
   /**
-   * Return every OrgMembership attached to this identity, regardless of
-   * status. Callers filter with `isMembershipActive` as needed.
+   * Return every OrgMembership attached to this identity.
+   * Callers filter by status via `isMembershipActive`.
    */
   async getMemberships(
     identityId: TenantIdentityId
   ): Promise<readonly OrgMembership[]> {
-    void identityId;
-    throw new NotImplementedError('getMemberships');
+    if (!this.membershipRepo) {
+      throw new NotImplementedError('getMemberships');
+    }
+    return this.membershipRepo.findByIdentity(identityId);
   }
 
   /**
-   * Merge duplicate identities surfaced by the phone-backfill migration.
+   * Merge duplicate identities surfaced by phone-backfill migration.
    * All memberships on `duplicateId` are re-parented to `primaryId` and
-   * the duplicate is deactivated. Atomic; emits audit event.
+   * the duplicate is deactivated. Atomic; logged via the repo layer.
    */
   async mergeDuplicates(
     primaryId: TenantIdentityId,
     duplicateId: TenantIdentityId
   ): Promise<TenantIdentity> {
-    void primaryId;
-    void duplicateId;
-    throw new NotImplementedError('mergeDuplicates');
+    if (!this.identityRepo) {
+      throw new NotImplementedError('mergeDuplicates');
+    }
+    return this.identityRepo.merge(primaryId, duplicateId);
   }
 }

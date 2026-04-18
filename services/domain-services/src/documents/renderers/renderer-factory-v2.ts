@@ -1,0 +1,77 @@
+/**
+ * Factory v2 — returns working renderer instances for every RendererKind.
+ * Upgrades the existing factory without breaking it: the old factory stays
+ * in place for any caller that needs the original semantics; new callers
+ * can import from here to get working docx + pdf out of the box.
+ *
+ * Guardrail preserved:
+ *   - `nano-banana` is imagery-only; requesting it with context='document' throws
+ *   - `docxtemplater` / `react-pdf` / `text` are document-only; requesting them
+ *     with context='marketing-imagery' throws
+ */
+
+import type { IDocumentRenderer, RendererKind } from './renderer-interface';
+import { RendererError } from './renderer-interface';
+import { DocxRealRenderer } from './docx-real-renderer';
+import { PdfRealRenderer } from './pdf-real-renderer';
+import { TextRenderer } from './text-renderer';
+
+export type RendererContext = 'document' | 'marketing-imagery';
+
+export interface RendererFactoryV2Options {
+  readonly docxEngine?: 'synthesizer' | 'docxtemplater';
+  readonly pdfEngine?: 'builtin' | 'react-pdf';
+}
+
+const IMAGERY_ONLY: readonly RendererKind[] = ['nano-banana'];
+const DOCUMENT_KINDS: readonly RendererKind[] = [
+  'text',
+  'docxtemplater',
+  'react-pdf',
+  'typst',
+];
+
+export function getRenderer(
+  kind: RendererKind,
+  context: RendererContext,
+  opts: RendererFactoryV2Options = {}
+): IDocumentRenderer {
+  assertGuardrail(kind, context);
+  switch (kind) {
+    case 'text':
+      return new TextRenderer();
+    case 'docxtemplater':
+      return new DocxRealRenderer({ engine: opts.docxEngine ?? 'synthesizer' });
+    case 'react-pdf':
+      return new PdfRealRenderer({ engine: opts.pdfEngine ?? 'builtin' });
+    case 'typst':
+      throw new RendererError(
+        'NOT_IMPLEMENTED',
+        'Typst renderer requires the Typst binary. Install Typst and swap in a Typst-backed renderer.'
+      );
+    case 'nano-banana':
+      throw new RendererError(
+        'NOT_IMPLEMENTED',
+        'Nano Banana renderer is imagery-only; it should never render documents.'
+      );
+    default: {
+      const exhaustive: never = kind;
+      throw new RendererError('INVALID_TEMPLATE', `Unknown renderer kind: ${String(exhaustive)}`);
+    }
+  }
+}
+
+function assertGuardrail(kind: RendererKind, context: RendererContext): void {
+  if (context === 'document' && IMAGERY_ONLY.includes(kind)) {
+    throw new RendererError(
+      'INVALID_TEMPLATE',
+      `Renderer "${kind}" is imagery-only and cannot be used for documents.`
+    );
+  }
+  if (context === 'marketing-imagery' && DOCUMENT_KINDS.includes(kind)) {
+    throw new RendererError(
+      'INVALID_TEMPLATE',
+      `Renderer "${kind}" is document-only and cannot be used for marketing imagery.`
+    );
+  }
+}

@@ -176,6 +176,20 @@ export {
 } from './metrics/metrics.js';
 
 // ============================================================================
+// Health checks
+// ============================================================================
+
+export type {
+  UpstreamStatus,
+  UpstreamResult,
+  HealthPayload,
+  UpstreamProbe,
+  HealthCheckOptions,
+} from './health/health-check.js';
+
+export { runHealthCheck, statusCodeFor } from './health/health-check.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 

@@ -119,9 +119,14 @@ export interface LogCheckInput {
 
 export class FarService {
   constructor(
-    private readonly repo: FarRepository,
+    private repo: FarRepository,
     private readonly eventBus: EventBus
   ) {}
+
+  /** Additive Wave 3 hook — attach the live Postgres repo at runtime. */
+  attachRepository(repo: FarRepository): void {
+    this.repo = repo;
+  }
 
   async addComponent(
     input: AddComponentInput

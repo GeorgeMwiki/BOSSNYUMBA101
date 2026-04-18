@@ -28,8 +28,8 @@ describe('OrgMembershipService (stub)', () => {
   });
 
   it('createMembership accepts (identityId, orgId, roleId, viaCode?) and rejects NOT_IMPLEMENTED', async () => {
-    // Optional trailing parameter — `.length` reports only required args.
-    expect(svc.createMembership.length).toBe(3);
+    // TS-compiled optional params still appear in Function.length
+    expect(svc.createMembership.length).toBe(4);
     await expect(
       svc.createMembership(
         'tid-1' as TenantIdentityId,

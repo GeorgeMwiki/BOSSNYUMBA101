@@ -17,7 +17,6 @@ import {
   AccountId,
   OwnerId,
   StatementId,
-  PaymentStatus,
   asTenantId,
   asCustomerId,
   asLeaseId,
@@ -28,6 +27,7 @@ import {
   CurrencyCode,
   JournalTemplates
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from './types';
 
 // Import domain extensions to augment Money prototype and get TenantAggregate
 import './domain-extensions';
@@ -1454,17 +1454,7 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
       c2b.TransID,
       'SUCCEEDED',
       c2b.TransID,
-      undefined,
-      {
-        shortCode: c2b.BusinessShortCode,
-        billRefNumber: c2b.BillRefNumber,
-        amountKes: Number.parseFloat(c2b.TransAmount) || 0,
-        payerMsisdn: c2b.MSISDN,
-        payerName: [c2b.FirstName, c2b.MiddleName, c2b.LastName]
-          .filter(Boolean)
-          .join(' ')
-          .trim(),
-      }
+      undefined
     ).catch((err) => {
       // Orchestrator failures are logged but must not propagate — we
       // still must return 200 to Daraja so it stops retrying.

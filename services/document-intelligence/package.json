@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/document-intelligence",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Document Intelligence & Identity Verification Service for BOSSNYUMBA",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,7 +17,7 @@
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts"
   },

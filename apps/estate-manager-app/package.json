@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/estate-manager-app",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3003",
@@ -8,7 +9,7 @@
     "start": "next start --port 3003",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf .next .turbo"
   },

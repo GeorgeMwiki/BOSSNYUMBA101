@@ -16,8 +16,9 @@ function buildMockProvider(
     channel,
     name: `mock-${channel}`,
     isConfigured: () => true,
-    async send() {
+    async send(): Promise<SendResult> {
       const next = sequence[Math.min(idx++, sequence.length - 1)];
+      if (next === undefined) throw new Error('mock sequence exhausted');
       if (next instanceof Error) throw next;
       return next;
     },
@@ -91,7 +92,7 @@ describe('enqueueNotification', () => {
         checkAllowed: () => ({ allowed: true }),
       } as unknown as DispatcherDeps['preferences'],
       sleep: async () => undefined,
-      deadLetterSink: { push: (r) => dlq.push(r) },
+      deadLetterSink: { push: (r) => { dlq.push(r); } },
       eventBus: {
         publish: async (type, payload) => {
           events.push({ type, payload });
@@ -134,7 +135,7 @@ describe('enqueueNotification', () => {
       preferences: {
         checkAllowed: () => ({ allowed: true }),
       } as unknown as DispatcherDeps['preferences'],
-      deadLetterSink: { push: (r) => dlq.push(r) },
+      deadLetterSink: { push: (r) => { dlq.push(r); } },
     });
     expect(result.accepted).toBe(false);
     expect(result.deadLettered).toBe(true);

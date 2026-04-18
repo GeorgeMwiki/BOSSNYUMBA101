@@ -68,9 +68,18 @@ export interface EvidenceBundleGateway {
 
 export class DamageDeductionService {
   constructor(
-    private readonly repo: DamageDeductionRepository,
+    private repo: DamageDeductionRepository,
     private readonly evidenceBundle?: EvidenceBundleGateway
   ) {}
+
+  /**
+   * Swap the backing repository at runtime (additive hook for Wave 3
+   * wiring — stub-based tests use the constructor path, production wires
+   * the Postgres repo via `attachRepository`).
+   */
+  attachRepository(repo: DamageDeductionRepository): void {
+    this.repo = repo;
+  }
 
   async fileClaim(
     tenantId: TenantId,

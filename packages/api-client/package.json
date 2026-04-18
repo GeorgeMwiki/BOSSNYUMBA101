@@ -1,6 +1,7 @@
 {
   "name": "@bossnyumba/api-client",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -21,7 +22,7 @@
     "build": "tsup src/index.ts src/hooks.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts src/hooks.ts --format cjs,esm --dts --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },

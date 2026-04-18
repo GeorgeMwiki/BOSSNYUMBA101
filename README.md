@@ -1,80 +1,108 @@
 # BOSSNYUMBA
 
-> Property Management SaaS Platform for East Africa
+> AI-native, multi-tenant property management SaaS — Tanzania-first, pan-African ambitions.
 
-**This repository is BOSSNYUMBA only. Pongezi is a separate project (different repo, different product). Do not conflate or mix the two.** See [PROJECT_BOUNDARY.md](./PROJECT_BOUNDARY.md).
+[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](./.github/workflows) [![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](#testing) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-BOSSNYUMBA is a comprehensive multi-tenant property management platform designed for property managers, landlords, tenants, and estate managers. It provides end-to-end solutions for portfolio management, tenant operations, payments, maintenance, and reporting.
+**This repository is BOSSNYUMBA only. Pongezi is a separate project (different repo, different product). Do not conflate.** See [PROJECT_BOUNDARY.md](./PROJECT_BOUNDARY.md).
+
+BOSSNYUMBA is a comprehensive multi-tenant property management platform designed for property managers, landlords, tenants, and estate managers across East Africa. It pairs a deterministic policy core with AI personas ("the Brain") for negotiations, inspections, document generation, and migration.
+
+## Architecture
+
+```
+                           ┌───────────────────────────┐
+                           │         The Brain         │
+                           │  (@bossnyumba/ai-copilot) │
+                           │  personas · providers     │
+                           └─────────────┬─────────────┘
+                                         │
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+             ┌──────▼──────┐      ┌──────▼──────┐      ┌──────▼──────┐
+             │  Owner      │      │  Admin      │      │  Customer   │
+             │  Portal     │      │  Portal     │      │  App        │
+             │ (Vite 3001) │      │ (Vite 3000) │      │ (Next 3002) │
+             └──────┬──────┘      └──────┬──────┘      └──────┬──────┘
+                    │                    │                    │
+                    │             ┌──────▼──────┐             │
+                    │             │ Estate Mgr  │             │
+                    │             │ (Next 3003) │             │
+                    │             └──────┬──────┘             │
+                    │                    │                    │
+                    └────────────┬───────┴──────┬─────────────┘
+                                 │              │
+                           ┌─────▼──────────────▼─────┐
+                           │    API Gateway (4000)    │
+                           │  authz · rate-limit      │
+                           └────────────┬─────────────┘
+                                        │
+         ┌──────────────┬────────────┬──┴────────┬──────────────┬──────────────┐
+         │              │            │           │              │              │
+  ┌──────▼──────┐┌──────▼─────┐┌─────▼────┐┌─────▼──────┐┌──────▼─────┐┌───────▼────┐
+  │ domain-     ││ payments   ││payments- ││notifications│  reports   ││ identity   │
+  │ services    ││ (M-Pesa,   ││ ledger   ││             │            ││  webhooks  │
+  │ (leases,    ││  GePG)     ││(immutable││(sms/email/ ││(pdf,html,  ││ document-  │
+  │ inspections)││            ││ ledger)  ││  push)     ││  xlsx)     ││ intellig.  │
+  └──────┬──────┘└──────┬─────┘└─────┬────┘└─────┬──────┘└──────┬─────┘└───────┬────┘
+         │              │            │           │              │              │
+         └──────────────┴────────────┼───────────┴──────────────┴──────────────┘
+                                     │
+                          ┌──────────▼──────────┐
+                          │  Postgres + Redis   │
+                          │  (@bossnyumba/      │
+                          │   database: Drizzle)│
+                          └─────────────────────┘
+```
+
+Cross-cutting packages: `@bossnyumba/domain-models` (types), `@bossnyumba/authz-policy` (RBAC), `@bossnyumba/design-system` (UI), `@bossnyumba/enterprise-hardening` (security middleware), `@bossnyumba/observability` (logs/metrics/traces), `@bossnyumba/config` (env loader), `@bossnyumba/api-client` (typed SDK), `@bossnyumba/graph-sync` (event projections).
 
 ## Features
 
 | Portal | Purpose |
 |--------|---------|
-| **Owner Portal** | Portfolio performance, statements, disbursements, maintenance oversight |
-| **Admin Portal** | Tenant management, operations control, billing, support tools |
-| **Customer App** | Payments, maintenance requests, lease documents, notifications |
-| **Estate Manager App** | Work orders, inspections, collections, SLA management |
+| **Owner Portal** | Portfolio performance, statements, disbursements, maintenance oversight, approvals |
+| **Admin Portal** | Tenant management, operations control, billing, compliance exports, GePG config |
+| **Customer App** | Payments, maintenance requests, lease documents, negotiations, disputes |
+| **Estate Manager App** | Work orders, inspections, collections, SLA management, tenders |
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS, Vite |
+| Frontend | Next.js 14 + React 18 (customer, estate-mgr); Vite + React (admin, owner); Tailwind CSS |
 | API | Express.js, Hono, Node.js, TypeScript |
-| Database | PostgreSQL with Drizzle ORM |
-| Cache | Redis |
-| Auth | JWT/OIDC with MFA support |
-| Build | Turborepo, pnpm workspaces |
+| Database | PostgreSQL 15 with Drizzle ORM |
+| Cache | Redis 7 |
+| Auth | JWT/OIDC with MFA + per-org token exchange |
+| Build | pnpm workspaces (Turbo optional) |
 | Validation | Zod |
+| AI | Anthropic Messages API via `@bossnyumba/ai-copilot` |
 
 ## Quick Start
+
+```bash
+# 1. Install deps
+pnpm install
+
+# 2. Start Postgres + Redis
+docker compose up -d postgres redis
+
+# 3. Run migrations and seed a demo org
+pnpm --filter @bossnyumba/database migrate
+pnpm --filter @bossnyumba/database seed --org=trc
+
+# 4. Start the full stack
+docker compose up
+# or for dev mode (hot reload):
+pnpm dev
+```
 
 ### Prerequisites
 
 - Node.js >= 20.0.0
 - pnpm >= 8.0.0
-- Docker & Docker Compose (for full stack)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <repo-url>
-cd BOSSNYUMBA101
-
-# Install dependencies
-pnpm install
-
-# Copy environment file
-cp .env.example .env
-# Edit .env with your values
-```
-
-### Run with Docker
-
-```bash
-# Start PostgreSQL, Redis, and all services
-docker compose up -d
-
-# Or build first
-docker compose build
-docker compose up -d
-```
-
-### Run Locally (Development)
-
-```bash
-# Start infrastructure (PostgreSQL, Redis)
-docker compose up -d postgres redis
-
-# Run migrations
-make db-migrate
-# or: pnpm --filter @bossnyumba/database migrate
-
-# Start all apps in dev mode
-make dev
-# or: pnpm exec turbo dev
-```
+- Docker & Docker Compose
 
 ### Development URLs
 
@@ -91,26 +119,34 @@ make dev
 ```
 BOSSNYUMBA101/
 ├── apps/
-│   ├── admin-portal/        # Admin dashboard (Vite, port 3000)
-│   ├── owner-portal/        # Owner dashboard (Vite, port 3001)
-│   ├── customer-app/        # Customer mobile-first (Next.js, port 3002)
-│   └── estate-manager-app/  # Manager mobile-first (Next.js, port 3003)
+│   ├── admin-portal/         # Vite, port 3000
+│   ├── owner-portal/         # Vite, port 3001
+│   ├── customer-app/         # Next.js, port 3002
+│   └── estate-manager-app/   # Next.js, port 3003
 ├── services/
-│   ├── api-gateway/         # API Gateway / BFF (port 4000)
-│   ├── domain-services/     # Business logic
-│   ├── payments-ledger/     # Payment ledger service
-│   ├── reports/             # Reporting service
-│   └── notifications/      # Notification service
+│   ├── api-gateway/          # BFF / gateway (port 4000)
+│   ├── domain-services/      # Core business logic
+│   ├── identity/             # Auth, OTP, invite codes
+│   ├── payments/             # M-Pesa, GePG providers
+│   ├── payments-ledger/      # Immutable ledger
+│   ├── notifications/        # SMS, email, push
+│   ├── reports/              # PDF, HTML, XLSX reports
+│   ├── document-intelligence/# OCR, embeddings, RAG
+│   └── webhooks/             # Outbound + inbound relay
 ├── packages/
-│   ├── database/            # Drizzle schemas, migrations, repositories
-│   ├── domain-models/       # Shared types
-│   ├── authz-policy/       # Authorization engine
-│   ├── design-system/       # UI components
-│   ├── api-client/          # API client SDK
-│   └── enterprise-hardening/# Security, rate limiting, etc.
-├── infrastructure/         # Terraform, K8s manifests
-├── Docs/                   # Documentation
-└── e2e/                    # Playwright E2E tests
+│   ├── ai-copilot/           # Brain — personas + providers
+│   ├── domain-models/        # Shared types + Zod
+│   ├── authz-policy/         # RBAC engine
+│   ├── design-system/        # UI kit
+│   ├── database/             # Drizzle + migrations + repos
+│   ├── enterprise-hardening/ # Security middleware
+│   ├── observability/        # Logs, metrics, traces
+│   ├── config/               # Env loader
+│   ├── api-client/           # Typed SDK
+│   └── graph-sync/           # Event projections
+├── infrastructure/           # Terraform, K8s manifests
+├── Docs/                     # Spec + analysis + runbooks
+└── e2e/                      # Playwright E2E tests
 ```
 
 ## Available Scripts
@@ -119,71 +155,50 @@ BOSSNYUMBA101/
 |---------|-------------|
 | `pnpm install` | Install all dependencies |
 | `pnpm build` | Build all packages and apps |
-| `pnpm dev` / `make dev` | Start all apps in dev mode |
-| `pnpm test` | Run all tests |
+| `pnpm dev` | Start all apps in dev mode |
+| `pnpm test` | Run unit + integration tests |
 | `pnpm test:coverage` | Run tests with coverage |
-| `pnpm test:e2e` | Run Playwright E2E tests |
-| `pnpm lint` | Lint all packages |
+| `pnpm test:e2e` | Playwright E2E |
+| `pnpm lint` | Lint all workspaces |
 | `pnpm typecheck` | TypeScript check |
-| `pnpm clean` | Clean build artifacts |
+| `pnpm eval` | Run AI persona evals |
 
-### Make Targets
-
-| Target | Description |
-|--------|-------------|
-| `make install` | Install dependencies |
-| `make docker-up` | Start Docker services |
-| `make docker-down` | Stop Docker services |
-| `make db-migrate` | Run database migrations |
-| `make db-seed` | Seed sample data |
-| `make db-studio` | Open Drizzle Studio |
-| `make tf-plan` | Terraform plan (TF_ENV=staging) |
-| `make deploy-staging` | Deploy to staging |
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
-| `JWT_SECRET` | JWT signing secret (use `make gen-secret`) |
-| `JWT_EXPIRES_IN` | Token expiry (e.g. `7d`) |
-| `NEXT_PUBLIC_API_URL` | API base URL for frontends |
-| `MPESA_*` | M-Pesa Daraja API credentials |
-| `STRIPE_*` | Stripe API keys |
-| `SENDGRID_API_KEY` | Email delivery |
-| `AWS_S3_BUCKET` | Document storage |
-
-See [.env.example](.env.example) for the full list.
-
-## Deployment
-
-- **Containerized**: Docker images for API Gateway and web apps
-- **Orchestration**: Kubernetes (ECS/EKS)
-- **Infrastructure**: Terraform in `infrastructure/terraform`
-- **Registry**: AWS ECR (`make ecr-push-api`)
-
-```bash
-# Deploy to staging
-make deploy-staging
-
-# Deploy to production (interactive confirmation)
-make deploy-production
-```
+See `Makefile` for Docker/Terraform/ECR helpers.
 
 ## Documentation
 
-- [Production Readiness](Docs/PRODUCTION_READINESS.md) — Pre-deployment checklist, env, and known integration notes
-- [API Reference](Docs/API.md) — Endpoints, auth, request/response examples
-- [Architecture](Docs/ARCHITECTURE.md) — System design, multi-tenant, database schema
-- [Data Flows](Docs/DATA_FLOWS.md) — Request patterns, event-driven flows
+### Start here
+- [Docs/INDEX.md](Docs/INDEX.md) — master index of every doc
+- [Docs/analysis/DELTA_AND_ROADMAP.md](Docs/analysis/DELTA_AND_ROADMAP.md) — current gaps and delivery plan
+- [Docs/PRODUCTION_READINESS.md](Docs/PRODUCTION_READINESS.md) — pre-deploy checklist
+
+### Architecture + spec
+- [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) — system design
+- [Docs/ARCHITECTURE_BRAIN.md](Docs/ARCHITECTURE_BRAIN.md) — Brain (AI) architecture
+- [Docs/BOSSNYUMBA_SPEC.md](Docs/BOSSNYUMBA_SPEC.md) — product spec
+- [Docs/DOMAIN_MODEL.md](Docs/DOMAIN_MODEL.md) — domain entities
+
+### API + contracts
+- [Docs/API.md](Docs/API.md) — endpoint reference
+- [Docs/api/openapi.yaml](Docs/api/openapi.yaml) — OpenAPI spec
+- [Docs/API_CONTRACTS.md](Docs/API_CONTRACTS.md) — contract conventions
+
+### Operations (to be added)
+- `Docs/DEPLOYMENT.md` — deployment runbook (planned)
+- `Docs/RUNBOOK.md` — on-call runbook (planned)
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 
-Proprietary — All rights reserved.
+MIT — see [LICENSE](./LICENSE).
 
 ## Support
 
-For support, email support@bossnyumba.com or open an issue.
+Open an issue on GitHub.

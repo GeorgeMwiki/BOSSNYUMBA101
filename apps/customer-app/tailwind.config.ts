@@ -1,6 +1,9 @@
 import type { Config } from 'tailwindcss';
 import baseConfig from '@bossnyumba/design-system/tailwind.config';
 
+const baseExtend = (baseConfig.theme as any)?.extend ?? {};
+const baseColors = baseExtend.colors ?? {};
+
 const config: Config = {
   ...baseConfig,
   content: [
@@ -10,8 +13,32 @@ const config: Config = {
   theme: {
     ...baseConfig.theme,
     extend: {
-      ...(baseConfig.theme as { extend?: object })?.extend,
+      ...baseExtend,
+      borderRadius: {
+        ...(baseExtend.borderRadius ?? {}),
+        insta: '14px',
+        spotify: '8px',
+        chat: '20px',
+        story: '9999px',
+      },
+      boxShadow: {
+        ...(baseExtend.boxShadow ?? {}),
+        spotify: '0 4px 12px rgba(0, 0, 0, 0.4)',
+        'spotify-lg': '0 8px 24px rgba(0, 0, 0, 0.6)',
+      },
       colors: {
+        ...baseColors,
+        border: 'hsl(var(--border, 0 0% 20%))',
+        surface: {
+          DEFAULT: 'hsl(var(--surface, 0 0% 7%))',
+          card: 'hsl(var(--surface-card, 0 0% 16%))',
+          elevated: 'hsl(var(--surface-elevated, 0 0% 9%))',
+          hover: 'hsl(var(--surface-hover, 0 0% 20%))',
+        },
+        'surface-card': 'hsl(var(--surface-card, 0 0% 16%))',
+        'surface-hover': 'hsl(var(--surface-hover, 0 0% 20%))',
+        'spotify-green': '#1DB954',
+        'spotify-green-hover': '#1ED760',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

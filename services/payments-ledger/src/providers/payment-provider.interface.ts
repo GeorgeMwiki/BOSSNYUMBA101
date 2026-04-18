@@ -5,11 +5,11 @@
 import {
   Money,
   PaymentIntentId,
-  PaymentStatus,
   TenantId,
   CustomerId,
   CurrencyCode
 } from '@bossnyumba/domain-models';
+import type { PaymentStatus } from '../types';
 
 /**
  * Result of creating a payment intent with the provider
