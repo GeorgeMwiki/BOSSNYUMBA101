@@ -101,8 +101,12 @@ export function MigrationWizard(): JSX.Element {
       });
       const data = (await res.json()) as CommitResponse;
       setCommitResult(data);
-      setStage(data.ok ? 'done' : 'error');
-      if (!data.ok) setErrorMessage(data.error.message);
+      if (data.ok === true) {
+        setStage('done');
+      } else {
+        setStage('error');
+        setErrorMessage(data.error.message);
+      }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
       setStage('error');

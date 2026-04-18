@@ -97,7 +97,7 @@ export class EnquiryService {
       userId
     );
 
-    if (!negResult.ok) {
+    if (!negResult.success) {
       return err(
         new MarketplaceServiceError(
           `Negotiation start failed: ${negResult.error.message}`,
@@ -118,16 +118,16 @@ export class EnquiryService {
           metadata: {},
           payload: {
             listingId: listing.id,
-            negotiationId: negResult.value.id,
+            negotiationId: negResult.data.id,
             prospectCustomerId: input.prospectCustomerId,
             openingOffer: input.openingOffer,
           },
         } as any,
-        negResult.value.id,
+        negResult.data.id,
         'MarketplaceEnquiry'
       )
     );
 
-    return ok(negResult.value);
+    return ok(negResult.data);
   }
 }

@@ -18,10 +18,28 @@ env:
 
 jobs:
   # ============================================
+  # Preflight: wait for Strict CI to pass
+  # ============================================
+  ci-preflight:
+    name: Preflight — Strict CI must pass
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for Strict CI
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'Strict CI Gate'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+          allowed-conclusions: success
+
+  # ============================================
   # Build All Apps
   # ============================================
   build:
     name: Build Apps
+    needs: ci-preflight
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -106,6 +106,10 @@ export const vendors = pgTable(
     // Notes
     notes: text('notes'),
 
+    // Rating aggregation (recomputed nightly by vendor-rating-worker — SCAFFOLDED 9)
+    ratingLastComputedAt: timestamp('rating_last_computed_at', { withTimezone: true }),
+    ratingSampleSize: integer('rating_sample_size').default(0),
+
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -120,6 +124,7 @@ export const vendors = pgTable(
     statusIdx: index('vendors_status_idx').on(table.status),
     preferredIdx: index('vendors_preferred_idx').on(table.isPreferred),
     emergencyIdx: index('vendors_emergency_idx').on(table.emergencyAvailable),
+    ratingComputedIdx: index('vendors_rating_computed_idx').on(table.ratingLastComputedAt),
   })
 );
 

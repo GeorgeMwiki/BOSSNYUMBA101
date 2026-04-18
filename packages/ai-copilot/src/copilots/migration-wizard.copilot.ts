@@ -15,6 +15,7 @@ import {
   AIResult,
   aiOk,
   aiErr,
+  CopilotOutputBase,
 } from '../types/core.types.js';
 import { BaseCopilot, CopilotError } from '../services/base-copilot.js';
 import { AICompletionResponse } from '../providers/ai-provider.js';
@@ -36,10 +37,8 @@ export interface MigrationWizardInput {
   readonly warnings: readonly string[];
 }
 
-export interface MigrationWizardOutput {
+export interface MigrationWizardOutput extends CopilotOutputBase {
   readonly requestId: CopilotRequestId;
-  readonly domain: CopilotDomain;
-  readonly riskLevel: RiskLevel;
   readonly proposedAction:
     | { readonly kind: 'commit'; readonly runId: string; readonly risk: RiskLevel }
     | { readonly kind: 'revise'; readonly notes: string }
@@ -122,6 +121,7 @@ export class MigrationWizardCopilot extends BaseCopilot<
       proposed.kind === 'commit' ? RiskLevel.HIGH : RiskLevel.MEDIUM;
 
     const output: MigrationWizardOutput = {
+      ...(this.createBaseOutput(requestId, riskLevel) as MigrationWizardOutput),
       requestId,
       domain: MIGRATION_DOMAIN_TAG,
       riskLevel,

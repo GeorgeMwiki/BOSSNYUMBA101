@@ -145,7 +145,7 @@ export class MoveOutChecklistService {
       updatedAt: now,
     };
     const saved = await this.repo.save(updated);
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       MoveOutChecklist,
       MoveOutErrorResult
     >;
@@ -177,7 +177,7 @@ export class MoveOutChecklistService {
       updatedAt: now,
     };
     const saved = await this.repo.save(updated);
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       MoveOutChecklist,
       MoveOutErrorResult
     >;
@@ -220,7 +220,7 @@ export class MoveOutChecklistService {
       updatedAt: now,
     };
     const saved = await this.repo.save(updated);
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       MoveOutChecklist,
       MoveOutErrorResult
     >;
@@ -249,7 +249,7 @@ export class MoveOutChecklistService {
       updatedAt: now,
     };
     const saved = await this.repo.save(updated);
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       MoveOutChecklist,
       MoveOutErrorResult
     >;
@@ -268,7 +268,7 @@ export class MoveOutChecklistService {
     code: MoveOutErrorCode,
     message: string,
   ): Result<T, MoveOutErrorResult> {
-    return { ok: false, error: { code, message } } as Result<
+    return { success: false, error: { code, message } } as Result<
       T,
       MoveOutErrorResult
     >;

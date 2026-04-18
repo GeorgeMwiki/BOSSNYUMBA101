@@ -74,3 +74,7 @@ export * from './vendor/index.js';
 export * as Negotiation from './negotiation/index.js';
 export * as Marketplace from './marketplace/index.js';
 export * as Waitlist from './waitlist/index.js';
+
+// Reports bundle: Occupancy Timeline (NEW 22), Station-Master Routing (NEW 18).
+export * as OccupancyTimeline from './occupancy/index.js';
+export * as Routing from './routing/index.js';

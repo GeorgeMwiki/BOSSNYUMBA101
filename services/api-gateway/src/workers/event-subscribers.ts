@@ -287,8 +287,255 @@ export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void 
     { id: 'notifications.legal-case-status-changed' }
   );
 
+  // ==========================================================================
+  // SCAFFOLDED 8 / NEW 21 — additional domain→notification subscribers
+  //
+  // These cover the "invisible gap" events flagged by the async audit:
+  // maintenance-case lifecycle, legal notices, SLA breaches, lease renewal
+  // windows, payment arrears, inspection scheduling.
+  // ==========================================================================
+
+  const genericPayload = (event: DomainEventLike): Record<string, unknown> => event.payload ?? {};
+  const extractTenant = (event: DomainEventLike): string | undefined => event.metadata?.tenantId;
+  const extractCustomer = (event: DomainEventLike): string | undefined =>
+    (genericPayload(event) as { customerId?: string }).customerId;
+
+  // -------- Maintenance case lifecycle --------
+  bus.subscribe(
+    'CaseCreated',
+    safeHandler('case-created', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'sms',
+        recipient: { customerId },
+        templateKey: 'case.created',
+        data: {
+          caseId: (genericPayload(event) as { caseId?: string }).caseId,
+          title: (genericPayload(event) as { title?: string }).title,
+          priority: (genericPayload(event) as { priority?: string }).priority ?? 'normal',
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.case-created' }
+  );
+
+  bus.subscribe(
+    'CaseEscalated',
+    safeHandler('case-escalated', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'whatsapp',
+        recipient: { customerId },
+        templateKey: 'case.escalated',
+        data: {
+          caseId: (genericPayload(event) as { caseId?: string }).caseId,
+          escalationLevel: (genericPayload(event) as { escalationLevel?: number }).escalationLevel,
+          assignedTo: (genericPayload(event) as { assignedTo?: string }).assignedTo,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.case-escalated' }
+  );
+
+  bus.subscribe(
+    'CaseResolved',
+    safeHandler('case-resolved', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'sms',
+        recipient: { customerId },
+        templateKey: 'case.resolved',
+        data: {
+          caseId: (genericPayload(event) as { caseId?: string }).caseId,
+          resolvedAt: (genericPayload(event) as { resolvedAt?: unknown }).resolvedAt,
+          resolution: (genericPayload(event) as { resolution?: string }).resolution,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.case-resolved' }
+  );
+
+  bus.subscribe(
+    'CaseSLABreached',
+    safeHandler('case-sla-breached', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const assigneeId = (genericPayload(event) as { assigneeId?: string }).assigneeId;
+      if (!tenantId || !assigneeId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'in_app',
+        recipient: { userId: assigneeId },
+        templateKey: 'case.sla_breached',
+        data: {
+          caseId: (genericPayload(event) as { caseId?: string }).caseId,
+          slaTargetAt: (genericPayload(event) as { slaTargetAt?: unknown }).slaTargetAt,
+          breachedAt: (genericPayload(event) as { breachedAt?: unknown }).breachedAt,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.case-sla-breached' }
+  );
+
+  // -------- Legal notice delivery --------
+  bus.subscribe(
+    'NoticeSent',
+    safeHandler('notice-sent', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'email',
+        recipient: { customerId },
+        templateKey: 'notice.sent',
+        data: {
+          noticeType: (genericPayload(event) as { noticeType?: string }).noticeType,
+          noticeId: (genericPayload(event) as { noticeId?: string }).noticeId,
+          deadline: (genericPayload(event) as { deadline?: unknown }).deadline,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.notice-sent' }
+  );
+
+  // -------- Lease renewals --------
+  bus.subscribe(
+    'RenewalWindowOpened',
+    safeHandler('renewal-window-opened', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'email',
+        recipient: { customerId },
+        templateKey: 'renewal.window_opened',
+        data: {
+          leaseId: (genericPayload(event) as { leaseId?: string }).leaseId,
+          windowStart: (genericPayload(event) as { windowStart?: unknown }).windowStart,
+          windowEnd: (genericPayload(event) as { windowEnd?: unknown }).windowEnd,
+          currentExpiryDate: (genericPayload(event) as { currentExpiryDate?: unknown })
+            .currentExpiryDate,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.renewal-window-opened' }
+  );
+
+  bus.subscribe(
+    'RenewalProposed',
+    safeHandler('renewal-proposed', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'email',
+        recipient: { customerId },
+        templateKey: 'renewal.proposed',
+        data: {
+          leaseId: (genericPayload(event) as { leaseId?: string }).leaseId,
+          newRent: (genericPayload(event) as { newRent?: unknown }).newRent,
+          proposedTermMonths: (genericPayload(event) as { proposedTermMonths?: number })
+            .proposedTermMonths,
+          respondByDate: (genericPayload(event) as { respondByDate?: unknown }).respondByDate,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.renewal-proposed' }
+  );
+
+  // -------- Payment arrears --------
+  bus.subscribe(
+    'PaymentOverdue',
+    safeHandler('payment-overdue', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'sms',
+        recipient: { customerId },
+        templateKey: 'payment.overdue',
+        data: {
+          invoiceId: (genericPayload(event) as { invoiceId?: string }).invoiceId,
+          amountDue: (genericPayload(event) as { amountDue?: unknown }).amountDue,
+          daysOverdue: (genericPayload(event) as { daysOverdue?: number }).daysOverdue,
+          dueDate: (genericPayload(event) as { dueDate?: unknown }).dueDate,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.payment-overdue' }
+  );
+
+  // -------- Work order assignment --------
+  bus.subscribe(
+    'WorkOrderAssigned',
+    safeHandler('work-order-assigned', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const vendorUserId = (genericPayload(event) as { vendorUserId?: string }).vendorUserId;
+      if (!tenantId || !vendorUserId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'whatsapp',
+        recipient: { userId: vendorUserId },
+        templateKey: 'work_order.assigned',
+        data: {
+          workOrderId: (genericPayload(event) as { workOrderId?: string }).workOrderId,
+          scheduledAt: (genericPayload(event) as { scheduledAt?: unknown }).scheduledAt,
+          propertyAddress: (genericPayload(event) as { propertyAddress?: string })
+            .propertyAddress,
+          priority: (genericPayload(event) as { priority?: string }).priority ?? 'normal',
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.work-order-assigned' }
+  );
+
+  // -------- Inspection scheduling --------
+  bus.subscribe(
+    'InspectionScheduled',
+    safeHandler('inspection-scheduled', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      await notifications.send({
+        tenantId,
+        channel: 'sms',
+        recipient: { customerId },
+        templateKey: 'inspection.scheduled',
+        data: {
+          inspectionId: (genericPayload(event) as { inspectionId?: string }).inspectionId,
+          scheduledAt: (genericPayload(event) as { scheduledAt?: unknown }).scheduledAt,
+          inspector: (genericPayload(event) as { inspector?: string }).inspector,
+          unitRef: (genericPayload(event) as { unitRef?: string }).unitRef,
+        },
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'notifications.inspection-scheduled' }
+  );
+
   logger.info(
-    { subscriberCount: 8 },
-    'domain event subscribers registered (payment, statement, disbursement, user, approval, legal)'
+    { subscriberCount: 18 },
+    'domain event subscribers registered (payment, statement, disbursement, user, approval, legal, case lifecycle, renewals, arrears, work orders, inspections)'
   );
 }

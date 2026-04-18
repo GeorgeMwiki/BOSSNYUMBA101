@@ -1,0 +1,166 @@
+# =============================================================================
+# Strict CI — blocking lint / typecheck / test / build / e2e
+# =============================================================================
+# This workflow runs the full quality gate in BLOCKING mode and is intended to
+# become the canonical CI once legacy non-blocking issues are resolved. Until
+# then, it runs alongside the existing non-blocking ci.yml and its required-
+# status-check configuration can be toggled in branch protection.
+# =============================================================================
+
+name: Strict CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: strict-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Lint (blocking)
+  # ============================================
+  lint:
+    name: Lint (strict)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+
+  # ============================================
+  # Type check (blocking)
+  # ============================================
+  typecheck:
+    name: Type Check (strict)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  # ============================================
+  # Unit tests (blocking, verbose)
+  # ============================================
+  unit-tests:
+    name: Unit Tests (strict)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Run unit tests (verbose)
+        run: pnpm test -- --reporter=verbose
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-node-${{ matrix.node-version }}
+          path: |
+            **/coverage/**
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ============================================
+  # Build all packages (blocking)
+  # ============================================
+  build:
+    name: Build (strict)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    strategy:
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: strict-build-node-${{ matrix.node-version }}
+          path: |
+            packages/*/dist
+            apps/*/dist
+            apps/*/.next
+            services/*/dist
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ============================================
+  # E2E tests (Playwright, blocking, uploads on failure)
+  # ============================================
+  e2e:
+    name: E2E (Playwright, strict)
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run Playwright
+        run: pnpm test:e2e
+        env:
+          CI: 'true'
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-strict
+          path: |
+            e2e/e2e-report/
+            e2e/test-results/
+            playwright-report/
+          retention-days: 14
+
+  strict-ci-success:
+    name: Strict CI Gate
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-tests, build, e2e]
+    steps:
+      - run: echo "All strict CI jobs passed"

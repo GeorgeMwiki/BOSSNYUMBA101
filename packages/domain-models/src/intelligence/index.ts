@@ -6,7 +6,9 @@
 // Re-export additional intelligence models
 export * from './tenant-preference-profile';
 export * from './friction-fingerprint';
-export * from './tenant-segment';
+// Namespaced to avoid collision with identity/tenant-identity's
+// isMembershipActive (OrgMembership vs CustomerSegmentMembership).
+export * as TenantSegment from './tenant-segment';
 export * from './intervention-log';
 
 import type { Brand, TenantId, UserId, ISOTimestamp } from '../common/types';

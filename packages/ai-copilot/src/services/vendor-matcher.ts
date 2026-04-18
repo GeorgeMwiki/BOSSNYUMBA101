@@ -6,6 +6,18 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { VENDOR_MATCHING_PROMPT } from '../prompts/index.js';
+import {
+  calculateVendorScore,
+  rankVendors,
+  type ScoreResult,
+  type VendorSignal,
+  type WorkOrderSignal,
+} from './risk/vendor-score-calculator.js';
+import {
+  ModelTier,
+  generateStructured,
+  type AnthropicClient,
+} from '../providers/anthropic-client.js';
 
 export const VendorSpecialty = {
   PLUMBING: 'PLUMBING',
@@ -205,3 +217,290 @@ export async function matchVendor(
   const service = createVendorMatcherService({ openaiApiKey: apiKey, ...config });
   return service.matchVendor(workOrder, availableVendors);
 }
+
+// ===========================================================================
+// SCAFFOLDED 9 — Deterministic-first vendor matcher
+//
+// The new path below is the preferred entry point. It uses the calculator
+// in `risk/vendor-score-calculator.ts` for ranking (deterministic and
+// testable), then lets Anthropic narrate WHY the top pick is best.
+// The original `VendorMatcherService.matchVendor` is kept untouched so
+// existing callers continue to work.
+// ===========================================================================
+
+const NarrationSchema = z.object({
+  reasoning: z.string(),
+  alternativeScenarios: z.array(
+    z.object({ scenario: z.string(), recommendedVendor: z.string() })
+  ),
+  warnings: z.array(z.string()),
+  autoAssignmentRecommended: z.boolean(),
+  autoAssignmentReason: z.string().optional(),
+  marketAvailability: z.enum(['abundant', 'adequate', 'limited', 'scarce']),
+  pricingContext: z.string(),
+  urgencyConsiderations: z.array(z.string()),
+});
+
+type NarrationPayload = z.infer<typeof NarrationSchema>;
+
+function vendorProfileToSignal(v: VendorProfile): VendorSignal {
+  return {
+    id: v.id,
+    specialties: v.specialties.map((s) => s.toString()),
+    serviceAreas: v.serviceArea,
+    averageResponseTimeHours: v.metrics.averageResponseTime,
+    ratings: {
+      overall: v.ratings.overall,
+      quality: v.ratings.quality,
+      communication: v.ratings.communication,
+      value: v.ratings.value,
+    },
+    onTimeCompletionPct: v.metrics.onTimeCompletion,
+    hourlyRate: v.pricing.hourlyRate ?? null,
+    emergencyAvailable: v.availability.emergencyAvailable,
+  };
+}
+
+function workOrderToSignal(wo: WorkOrderInput): WorkOrderSignal {
+  const budget = wo.budget;
+  const midpoint =
+    budget && budget.min !== undefined && budget.max !== undefined
+      ? (budget.min + budget.max) / 2
+      : budget?.max ?? budget?.min;
+  return {
+    requiredSkills: wo.requiredSkills ?? [wo.category].filter(Boolean),
+    emergency: wo.urgency === 'emergency',
+    serviceArea: wo.property.address,
+    budgetMidpoint: midpoint,
+  };
+}
+
+function scoreToMatch(
+  score: ScoreResult,
+  vendor: VendorProfile,
+  ranking: number
+): VendorMatch {
+  return {
+    vendorId: score.vendorId,
+    vendorName: vendor.name,
+    matchScore: score.composite,
+    // Confidence reflects how much signal we have — more completed jobs =
+    // more confidence. Caps at ratingSampleSize of 100.
+    confidence: Math.min(1, vendor.metrics.completedJobs / 100),
+    ranking,
+    matchReasons: score.reasons,
+    concerns: score.concerns,
+    estimatedCost:
+      vendor.pricing.hourlyRate !== undefined
+        ? {
+            min: vendor.pricing.hourlyRate,
+            max: vendor.pricing.hourlyRate * 4,
+            currency: 'KES',
+          }
+        : undefined,
+    estimatedSchedule: {
+      responseTime: `${vendor.metrics.averageResponseTime}h`,
+      completionTime: vendor.availability.nextAvailable,
+    },
+    compatibilityFactors: {
+      skillMatch: score.subScores.skill,
+      availabilityMatch: vendor.availability.emergencyAvailable ? 1 : 0.5,
+      locationMatch: 1,
+      budgetMatch: score.subScores.cost,
+      performanceScore:
+        (score.subScores.quality + score.subScores.onTime +
+          score.subScores.responsiveness) /
+        3,
+    },
+  };
+}
+
+export interface DeterministicMatcherDeps {
+  anthropic?: AnthropicClient;
+  narrationModel?: string;
+}
+
+/**
+ * Rank candidate vendors with the deterministic calculator, then use
+ * Anthropic (if a client is provided) to narrate the top choice. The
+ * returned shape conforms to `VendorMatchingResultSchema`, preserving
+ * compatibility with all existing consumers.
+ *
+ * Narration failure is non-fatal — we fall back to a terse
+ * reason-string assembled from the deterministic subscores, so vendor
+ * matching still works even when the Anthropic API is unreachable.
+ */
+export async function matchVendorsDeterministic(
+  workOrder: WorkOrderInput,
+  availableVendors: VendorProfile[],
+  deps: DeterministicMatcherDeps = {}
+): Promise<VendorMatchingResult> {
+  if (availableVendors.length === 0) {
+    return {
+      workOrderId: workOrder.id,
+      rankedVendors: [],
+      topRecommendation: {
+        // Synthesize a placeholder that still passes the schema — callers
+        // should check `rankedVendors.length === 0` first.
+        vendor: {
+          vendorId: '',
+          vendorName: '',
+          matchScore: 0,
+          confidence: 0,
+          ranking: 0,
+          matchReasons: [],
+          concerns: ['No vendors available for this category in service area'],
+          compatibilityFactors: {
+            skillMatch: 0,
+            availabilityMatch: 0,
+            locationMatch: 0,
+            budgetMatch: 0,
+            performanceScore: 0,
+          },
+        },
+        reasoning: 'No candidate vendors found',
+        alternativeScenarios: [],
+      },
+      matchingInsights: {
+        keyFactors: [],
+        marketAvailability: 'scarce',
+        pricingContext: 'No data',
+        urgencyConsiderations: [],
+      },
+      warnings: ['No candidate vendors'],
+      autoAssignmentRecommended: false,
+    };
+  }
+
+  const signals = availableVendors.map(vendorProfileToSignal);
+  const ranked = rankVendors(workOrderToSignal(workOrder), signals);
+  const vendorIndex = new Map(availableVendors.map((v) => [v.id, v]));
+
+  const rankedVendors: VendorMatch[] = ranked.map((r, idx) => {
+    const vendor = vendorIndex.get(r.vendorId);
+    if (!vendor) {
+      throw new Error(`Score referenced unknown vendor '${r.vendorId}'`);
+    }
+    return scoreToMatch(r, vendor, idx + 1);
+  });
+
+  const top = rankedVendors[0]!;
+  const topScore = ranked[0]!;
+
+  // Ask Anthropic for narration — best-effort only.
+  let narration: NarrationPayload = {
+    reasoning: buildFallbackReasoning(topScore),
+    alternativeScenarios: [],
+    warnings: [],
+    autoAssignmentRecommended: top.matchScore >= 80,
+    autoAssignmentReason:
+      top.matchScore >= 80
+        ? 'Top vendor scores above 80 with no critical concerns'
+        : undefined,
+    marketAvailability:
+      availableVendors.length >= 5
+        ? 'abundant'
+        : availableVendors.length >= 3
+          ? 'adequate'
+          : availableVendors.length >= 2
+            ? 'limited'
+            : 'scarce',
+    pricingContext: `Based on ${availableVendors.length} vendor(s) with rates available`,
+    urgencyConsiderations:
+      workOrder.urgency === 'emergency'
+        ? ['Emergency urgency — prioritize emergencyAvailable vendors']
+        : [],
+  };
+
+  if (deps.anthropic) {
+    try {
+      const prompt = buildNarrationPrompt(workOrder, ranked, availableVendors);
+      const result = await generateStructured(deps.anthropic, {
+        prompt,
+        schema: NarrationSchema,
+        model: deps.narrationModel ?? ModelTier.SONNET,
+        systemPrompt:
+          'You narrate vendor matching decisions for a property manager. ' +
+          'The ranking is already determined — your job is to explain WHY ' +
+          'and flag risks. Never contradict the ranking.',
+      });
+      narration = result.data;
+    } catch {
+      // Keep fallback narration — vendor matching should not fail on LLM issues.
+    }
+  }
+
+  const concerns = rankedVendors.flatMap((v) => v.concerns);
+
+  const result: VendorMatchingResult = {
+    workOrderId: workOrder.id,
+    rankedVendors,
+    topRecommendation: {
+      vendor: top,
+      reasoning: narration.reasoning,
+      alternativeScenarios: narration.alternativeScenarios,
+    },
+    matchingInsights: {
+      keyFactors: top.matchReasons,
+      marketAvailability: narration.marketAvailability,
+      pricingContext: narration.pricingContext,
+      urgencyConsiderations: narration.urgencyConsiderations,
+    },
+    warnings: Array.from(new Set([...narration.warnings, ...concerns])),
+    autoAssignmentRecommended: narration.autoAssignmentRecommended,
+    autoAssignmentReason: narration.autoAssignmentReason,
+  };
+
+  // Re-validate at the boundary so narration regressions don't slip through.
+  return VendorMatchingResultSchema.parse(result) as VendorMatchingResult;
+}
+
+function buildFallbackReasoning(top: ScoreResult): string {
+  const r = top.reasons;
+  if (r.length === 0) {
+    return `Selected based on composite score of ${top.composite.toFixed(1)}.`;
+  }
+  return `Top candidate — ${r.slice(0, 3).join('; ')}. Composite score ${top.composite.toFixed(1)}.`;
+}
+
+function buildNarrationPrompt(
+  wo: WorkOrderInput,
+  ranked: ScoreResult[],
+  vendors: VendorProfile[],
+): string {
+  const top3 = ranked.slice(0, 3).map((r, idx) => ({
+    rank: idx + 1,
+    vendorId: r.vendorId,
+    vendorName: vendors.find((v) => v.id === r.vendorId)?.name ?? 'Unknown',
+    composite: r.composite,
+    subScores: r.subScores,
+    reasons: r.reasons,
+    concerns: r.concerns,
+  }));
+
+  return [
+    'Work order:',
+    JSON.stringify(
+      {
+        id: wo.id,
+        title: wo.title,
+        category: wo.category,
+        urgency: wo.urgency,
+        property: wo.property,
+        budget: wo.budget,
+      },
+      null,
+      2
+    ),
+    '',
+    'Top-ranked vendors (deterministic scoring):',
+    JSON.stringify(top3, null, 2),
+    '',
+    'Return narration JSON: explain the top pick, list alternative scenarios, flag risks.',
+  ].join('\n');
+}
+
+// Re-export `getMockVendors` from the new fixtures location so old callers
+// that depend on `import { getMockVendors } from '.../vendor-matcher.js'`
+// continue to work.
+export { getMockVendors } from './fixtures/mock-vendors.js';

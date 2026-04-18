@@ -135,7 +135,7 @@ export class RiskReportService {
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Narration failed';
       return {
-        ok: false,
+        success: false,
         error: { code: 'NARRATION_FAILED', message: msg },
       } as Result<TenantRiskReport, RiskReportErrorResult>;
     }
@@ -163,7 +163,7 @@ export class RiskReportService {
       updatedAt: now,
     };
     const saved = await this.repo.create(report);
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       TenantRiskReport,
       RiskReportErrorResult
     >;
@@ -176,11 +176,11 @@ export class RiskReportService {
     const found = await this.repo.findLatestByCustomer(customerId, tenantId);
     if (!found) {
       return {
-        ok: false,
+        success: false,
         error: { code: 'NOT_FOUND', message: 'No risk report found' },
       } as Result<TenantRiskReport, RiskReportErrorResult>;
     }
-    return { ok: true, value: found } as Result<
+    return { success: true, data: found } as Result<
       TenantRiskReport,
       RiskReportErrorResult
     >;

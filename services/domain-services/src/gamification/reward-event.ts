@@ -5,7 +5,7 @@
  * `dedupKey` (e.g. paymentId + eventType). Consumers never mutate
  * prior events.
  */
-import type { RewardTier } from './reward-policy';
+import type { RewardTier } from './reward-policy.js';
 
 export type RewardEventType =
   | 'payment_posted'

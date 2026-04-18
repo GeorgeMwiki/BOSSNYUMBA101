@@ -342,7 +342,7 @@ export class FinancialProfileService {
     await this.eventBus.publish(
       createEventEnvelope(event, saved.id, 'FinancialStatement'),
     );
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       FinancialStatement,
       FinancialProfileErrorResult
     >;
@@ -368,10 +368,10 @@ export class FinancialProfileService {
     let providerResult: BankReferenceResult;
     try {
       providerResult = await this.bankProvider.fetch({
+        ...query,
         customerId: statement.customerId,
         tenantId,
         statementId,
-        ...query,
       });
     } catch (providerError) {
       const msg =
@@ -410,7 +410,7 @@ export class FinancialProfileService {
     await this.eventBus.publish(
       createEventEnvelope(event, saved.id, 'FinancialStatement'),
     );
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       FinancialStatement,
       FinancialProfileErrorResult
     >;
@@ -460,7 +460,7 @@ export class FinancialProfileService {
     await this.eventBus.publish(
       createEventEnvelope(event, saved.id, 'LitigationRecord'),
     );
-    return { ok: true, value: saved } as Result<
+    return { success: true, data: saved } as Result<
       LitigationRecord,
       FinancialProfileErrorResult
     >;
@@ -470,7 +470,7 @@ export class FinancialProfileService {
     code: FinancialProfileErrorCode,
     message: string,
   ): Result<T, FinancialProfileErrorResult> {
-    return { ok: false, error: { code, message } } as Result<
+    return { success: false, error: { code, message } } as Result<
       T,
       FinancialProfileErrorResult
     >;

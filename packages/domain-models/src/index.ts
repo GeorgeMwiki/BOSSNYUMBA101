@@ -84,6 +84,8 @@ export * from './identity/user';
 export * from './identity/role';
 export * from './identity/session';
 export * from './identity/policy';
+export * from './identity/tenant-identity';
+export * from './identity/authority-level';
 
 // Audit
 export * from './audit/audit-event';

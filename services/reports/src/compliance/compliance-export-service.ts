@@ -11,7 +11,7 @@
  */
 
 import type { TenantId, ISOTimestamp, UserId } from '@bossnyumba/domain-models';
-import { randomHex } from '../../../domain-services/src/common/id-generator.js';
+import { randomHex } from '../common/id-generator.js';
 
 import {
   formatTzTraCsv,

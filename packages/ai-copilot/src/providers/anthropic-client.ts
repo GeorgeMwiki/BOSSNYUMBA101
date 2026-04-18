@@ -320,7 +320,7 @@ async function runWithSchemaRetry<T>(
     totalCompletionTokens += response.usage?.output_tokens ?? 0;
 
     const parsed = tryParseSchema(rawText, args.schema);
-    if (parsed.ok) {
+    if (parsed.ok === true) {
       return {
         data: parsed.value,
         modelId: args.model,
@@ -331,8 +331,9 @@ async function runWithSchemaRetry<T>(
         },
         parseRetriesUsed: attempt,
       };
+    } else {
+      lastIssues = parsed.issues;
     }
-    lastIssues = parsed.issues;
   }
 
   throw new StructuredGenerationFailedError({

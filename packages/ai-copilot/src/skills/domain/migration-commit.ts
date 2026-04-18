@@ -293,5 +293,7 @@ export interface StoredBundleShim {
 }
 
 export function toStoredBundle(bundle: ExtractionBundle): StoredBundleShim {
-  return ExtractionBundleSchema.parse(bundle);
+  // After parse, all fields are populated (schema uses .default([]) per field),
+  // but the inferred input type marks them optional; cast to the required shape.
+  return ExtractionBundleSchema.parse(bundle) as StoredBundleShim;
 }

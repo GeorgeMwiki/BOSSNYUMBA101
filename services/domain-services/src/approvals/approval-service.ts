@@ -34,6 +34,24 @@ import type { ApprovalPolicyOverrideRepository } from './approval-policy-reposit
 /** Resolves approver UserId from role. Used to assign pending requests to users. */
 export type ApproverResolver = (tenantId: TenantId, role: string) => Promise<UserId | null>;
 
+/**
+ * Proximity router port (NEW 18).
+ *
+ * When bound, the approval service can use it as a first-line routing
+ * step — e.g. sending tenant-application approvals to the covering
+ * station master before walking the generic policy chain.
+ *
+ * Implementations MUST be deterministic and cross-tenant-safe.
+ */
+export interface ProximityRouter {
+  routeApplication(input: {
+    readonly applicationId: string;
+    readonly location: Readonly<Record<string, unknown>>;
+    readonly assetType: string;
+    readonly tenantId: TenantId;
+  }): Promise<{ readonly stationMasterId: string }>;
+}
+
 export const ApprovalServiceError = {
   REQUEST_NOT_FOUND: 'REQUEST_NOT_FOUND',
   INVALID_STATUS: 'INVALID_STATUS',
@@ -87,8 +105,36 @@ export class ApprovalService {
      * of this dependency preserves the previous behavior (defaults only,
      * persisted via policyRepo).
      */
-    private readonly policyOverrideRepo?: ApprovalPolicyOverrideRepository
+    private readonly policyOverrideRepo?: ApprovalPolicyOverrideRepository,
+    /**
+     * Optional station-master-proximity router (NEW 18). When provided,
+     * incoming approval requests (specifically tenant_application) can
+     * be first-line-routed to a station master covering the applicant's
+     * location. Absence of this dependency preserves the existing
+     * role-based resolver flow.
+     */
+    private readonly proximityRouter?: ProximityRouter
   ) {}
+
+  /**
+   * NEW 18: First-line routing helper. Returns a station-master id when
+   * the optional proximityRouter is bound; otherwise returns null so
+   * callers can fall back to the standard approver resolver.
+   */
+  async routeApplicationToStationMaster(input: {
+    readonly applicationId: string;
+    readonly location: Readonly<Record<string, unknown>>;
+    readonly assetType: string;
+    readonly tenantId: TenantId;
+  }): Promise<string | null> {
+    if (!this.proximityRouter) return null;
+    try {
+      const result = await this.proximityRouter.routeApplication(input);
+      return result.stationMasterId;
+    } catch {
+      return null;
+    }
+  }
 
   async createApprovalRequest(
     tenantId: TenantId,

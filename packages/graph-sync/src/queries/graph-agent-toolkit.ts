@@ -78,6 +78,17 @@ const PortfolioOverviewParams = z.object({});
 
 const GraphStatsParams = z.object({});
 
+// NEW 22: Unit Occupancy Timeline
+const UnitOccupancyTimelineParams = z.object({
+  unitId: z.string().describe('The unit ID to build occupancy timeline for'),
+  page: z.number().optional().default(1).describe('Page number (1-based)'),
+  limit: z
+    .number()
+    .optional()
+    .default(50)
+    .describe('Results per page (max 500)'),
+});
+
 // ─── Tool Definitions ────────────────────────────────────────────────────────
 
 export const GRAPH_TOOL_DEFINITIONS: GraphToolDefinition[] = [
@@ -125,6 +136,11 @@ export const GRAPH_TOOL_DEFINITIONS: GraphToolDefinition[] = [
     name: 'get_graph_stats',
     description: 'Get statistics about the knowledge graph for this tenant including node counts per type, relationship count, and last sync time. Use for system health monitoring and data completeness checks.',
     parameters: GraphStatsParams,
+  },
+  {
+    name: 'GET_UNIT_OCCUPANCY_TIMELINE',
+    description: 'Get a paginated chronological occupancy timeline for a unit using Neo4j (:Unit)-[:OCCUPIED_BY]->(:Customer) edges. Returns tenants, rents, entry/exit dates, and exit reasons sorted by period. Supports 20+ year histories via pagination. Use for longitudinal unit analysis, tenant-churn investigations, and occupancy reporting.',
+    parameters: UnitOccupancyTimelineParams,
   },
 ];
 
@@ -258,6 +274,27 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
 
   get_graph_stats: async (service, tenantId) => {
     return service.getGraphStats(tenantId);
+  },
+
+  GET_UNIT_OCCUPANCY_TIMELINE: async (service, tenantId, params) => {
+    const { unitId, page, limit } = UnitOccupancyTimelineParams.parse(params);
+    // Delegate to the query service's occupancy-timeline method. If the
+    // concrete GraphQueryService does not yet expose this method, throw
+    // a recognisable error so the binder can stub-fill.
+    const svc = service as unknown as {
+      getUnitOccupancyTimeline?: (
+        tenantId: string,
+        unitId: string,
+        page: number,
+        limit: number
+      ) => Promise<unknown>;
+    };
+    if (typeof svc.getUnitOccupancyTimeline !== 'function') {
+      throw new Error(
+        'GraphQueryService.getUnitOccupancyTimeline not implemented — bind via graph-sync infra layer.'
+      );
+    }
+    return svc.getUnitOccupancyTimeline(tenantId, unitId, page, limit);
   },
 };
 

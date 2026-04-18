@@ -241,8 +241,10 @@ function pointInRing(
 
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
+    const pi = ring[i]!;
+    const pj = ring[j]!;
+    const [xi, yi] = pi;
+    const [xj, yj] = pj;
 
     // Edge check: point lies exactly on segment (i,j) → INSIDE (deterministic).
     const onSegment =
@@ -274,6 +276,7 @@ function pointInSinglePolygon(
 ): boolean {
   if (rings.length === 0) return false;
   const [outer, ...holes] = rings;
+  if (!outer) return false;
   if (!pointInRing(lng, lat, outer)) return false;
   for (const hole of holes) {
     if (pointInRing(lng, lat, hole)) return false;

@@ -126,7 +126,7 @@ export class ListingService {
     }
 
     const timestamp = this.now();
-    const patch: Partial<MarketplaceListing> = {
+    const patch: { -readonly [K in keyof MarketplaceListing]?: MarketplaceListing[K] } = {
       status: nextStatus,
       updatedAt: timestamp,
       updatedBy: userId,

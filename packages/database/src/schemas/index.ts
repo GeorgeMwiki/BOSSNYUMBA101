@@ -120,8 +120,15 @@ export * from './doc-chat-sessions.schema.js';
 export * from './doc-chat-messages.schema.js';
 export * from './migration-runs.schema.js';
 
+// Per-org geo-hierarchy (Districts/Regions/Stations etc., org-defined)
+export * from './geo.schema.js';
+
 // Lease + Risk + Compliance bundle (additive)
 export * from './tenant-finance.schema.js';
 export * from './intelligence-history.schema.js';
 export * from './tenant-risk-reports.schema.js';
 export * from './compliance-exports.schema.js';
+
+// Reports bundle (additive): Interactive Reports (NEW 17) + Station Master Coverage (NEW 18)
+export * from './interactive-reports.schema.js';
+export * from './station-master-coverage.schema.js';

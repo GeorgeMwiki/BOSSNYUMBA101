@@ -20,12 +20,12 @@ import {
   tierForScore,
   type RewardPolicy,
   type RewardTier,
-} from './reward-policy';
+} from './reward-policy.js';
 import {
   initialProfile,
   type TenantGamificationProfile,
-} from './tenant-gamification-profile';
-import type { RewardEvent, RewardEventType } from './reward-event';
+} from './tenant-gamification-profile.js';
+import type { RewardEvent, RewardEventType } from './reward-event.js';
 
 // ----------------------------------------------------------------------------
 // External ports
@@ -748,5 +748,7 @@ function tierRank(tier: RewardTier): number {
       return 2;
     case 'platinum':
       return 3;
+    default:
+      return 0;
   }
 }

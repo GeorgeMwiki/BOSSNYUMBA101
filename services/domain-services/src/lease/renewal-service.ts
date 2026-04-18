@@ -104,14 +104,14 @@ function err<T>(
   code: RenewalServiceErrorCode,
   message: string,
 ): Result<T, RenewalServiceErrorResult> {
-  return { ok: false, error: { code, message } } as Result<
+  return { success: false, error: { code, message } } as Result<
     T,
     RenewalServiceErrorResult
   >;
 }
 
 function ok<T>(value: T): Result<T, RenewalServiceErrorResult> {
-  return { ok: true, value } as Result<T, RenewalServiceErrorResult>;
+  return { success: true, data: value } as Result<T, RenewalServiceErrorResult>;
 }
 
 // ---------------------------------------------------------------------------

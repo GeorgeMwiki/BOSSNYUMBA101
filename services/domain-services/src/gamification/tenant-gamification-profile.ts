@@ -6,7 +6,7 @@
  * Snapshots are append-only; the current state is the row with the
  * latest asOf for a (tenantId, customerId) pair.
  */
-import type { RewardTier } from './reward-policy';
+import type { RewardTier } from './reward-policy.js';
 
 export interface TenantGamificationProfile {
   readonly id: string;

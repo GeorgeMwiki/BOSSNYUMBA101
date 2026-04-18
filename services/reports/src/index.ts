@@ -148,6 +148,42 @@ export {
 } from './services/audit-pack-builder.service.js';
 
 // ============================================================================
+// Interactive Reports (NEW 17)
+// ============================================================================
+export {
+  InteractiveReportService,
+  InteractiveReportServiceError,
+  InteractiveReportServiceException,
+  InteractiveHtmlGenerator,
+  ActionPlanHandler,
+  type InteractiveReportServiceDeps,
+  type InteractiveReportServiceErrorCode,
+  type ActionPlan,
+  type ActionPlanAction,
+  type ActionPlanActionKind,
+  type ActionPlanStatus,
+  type ActionAckInput,
+  type ActionAckResult,
+  type InteractiveReportInput,
+  type InteractiveReportRenderKind,
+  type InteractiveReportStorage,
+  type InteractiveReportVersion,
+  type InteractiveReportVersionRepository,
+  type MediaReference,
+  type WorkOrderCreator,
+  type ApprovalRequestCreator,
+} from './interactive/index.js';
+
+// ============================================================================
+// Occupancy Timeline Export (NEW 22)
+// ============================================================================
+export {
+  buildOccupancyTimelineReport,
+  type OccupancyTimelineExportInput,
+  type OccupancyTimelinePeriodInput,
+} from './reports/occupancy-timeline-export.js';
+
+// ============================================================================
 // Analytics Service
 // ============================================================================
 export {

@@ -20,6 +20,12 @@ export const SystemRoles = {
   PROPERTY_MANAGER: 'property_manager',
   OWNER: 'owner',
   ESTATE_MANAGER: 'estate_manager',
+  /**
+   * Station Master (NEW 18) — first-line operator covering a geographic
+   * or tag-based slice of the portfolio. Similar in scope to an Estate
+   * Manager, but bounded by a routing coverage definition.
+   */
+  STATION_MASTER: 'station_master',
   ACCOUNTANT: 'accountant',
   CUSTOMER: 'customer',
   VIEWER: 'viewer',
@@ -164,6 +170,31 @@ export const EstateManagerPolicy: Policy = {
 };
 
 /**
+ * Station Master (NEW 18) - First-line operator for a coverage area.
+ * Scope mirrors Estate Manager but is constrained to the coverage
+ * definition recorded in station_master_coverage (enforced at runtime).
+ */
+export const StationMasterPolicy: Policy = {
+  id: 'policy:station_master',
+  name: 'Station Master',
+  description:
+    'First-line handling of applications, work orders, and resident issues for a coverage area',
+  effect: 'allow',
+  priority: 55,
+  permissions: [
+    readOnly('property'),
+    readOnly('unit'),
+    readOnly('customer_account'),
+    readOnly('lease'),
+    crudAccess('occupancy'),
+    readOnly('payment'),
+    crudAccess('work_order'),
+    readOnly('vendor'),
+    createPermission('document', ['create', 'read']),
+  ],
+};
+
+/**
  * Accountant - Financial management and reporting.
  */
 export const AccountantPolicy: Policy = {
@@ -241,6 +272,7 @@ export const SystemPolicies: Policy[] = [
   PropertyManagerPolicy,
   OwnerPolicy,
   EstateManagerPolicy,
+  StationMasterPolicy,
   AccountantPolicy,
   CustomerPolicy,
   ViewerPolicy,
@@ -256,6 +288,7 @@ export const RolePolicyMap: Record<SystemRole, Policy> = {
   [SystemRoles.PROPERTY_MANAGER]: PropertyManagerPolicy,
   [SystemRoles.OWNER]: OwnerPolicy,
   [SystemRoles.ESTATE_MANAGER]: EstateManagerPolicy,
+  [SystemRoles.STATION_MASTER]: StationMasterPolicy,
   [SystemRoles.ACCOUNTANT]: AccountantPolicy,
   [SystemRoles.CUSTOMER]: CustomerPolicy,
   [SystemRoles.VIEWER]: ViewerPolicy,

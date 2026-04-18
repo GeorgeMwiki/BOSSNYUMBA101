@@ -101,11 +101,10 @@ export const preferencesService = {
   /**
    * Check if current time is within quiet hours
    */
-  isQuietHours(userId: string, tenantId: string): boolean {
+  isQuietHours(userId: string, tenantId: string, now: Date = new Date()): boolean {
     const prefs = this.getUserPreferences(userId, tenantId);
     if (!prefs.quietHoursStart || !prefs.quietHoursEnd) return false;
 
-    const now = new Date();
     const startParts = prefs.quietHoursStart.split(':').map(Number);
     const endParts = prefs.quietHoursEnd.split(':').map(Number);
     const startH = startParts[0] ?? 0;
@@ -121,5 +120,73 @@ export const preferencesService = {
       return nowMinutes >= startMinutes && nowMinutes < endMinutes;
     }
     return nowMinutes >= startMinutes || nowMinutes < endMinutes;
+  },
+
+  // ---------------------------------------------------------------------------
+  // SCAFFOLDED 8 / NEW 21 — alias API used by the dispatcher
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Preferred API name — alias for `getUserPreferences`. Returns the full
+   * preference record for a user in a tenant (defaults are returned if the
+   * user has never saved preferences).
+   */
+  getPreferences(userId: string, tenantId: string): NotificationPreferences {
+    return this.getUserPreferences(userId, tenantId);
+  },
+
+  /**
+   * Preferred API name — alias for `updatePreferences`. Upserts a preference
+   * record by merging `input` into the existing stored prefs.
+   */
+  upsertPreferences(
+    userId: string,
+    tenantId: string,
+    input: UpdatePreferencesInput
+  ): NotificationPreferences {
+    return this.updatePreferences(userId, tenantId, input);
+  },
+
+  /**
+   * Central gate used by the notifications dispatcher before calling a
+   * provider. Returns a structured decision rather than a boolean so the
+   * caller can record WHY a send was suppressed (channel opt-out, template
+   * opt-out, or quiet hours).
+   *
+   * Emergency-priority messages bypass quiet hours per the spec
+   * (MISSING_FEATURES_DESIGN 21): quiet hours exist to protect the recipient
+   * from routine spam at night, but an emergency incident (fire, flood,
+   * security) must always reach them.
+   *
+   * Channel opt-outs and template opt-outs are NEVER bypassed — if a user
+   * has explicitly turned a channel off, we respect that even for emergencies.
+   */
+  checkAllowed(args: {
+    userId: string;
+    tenantId: string;
+    channel: NotificationChannel;
+    templateId: NotificationTemplateId;
+    priority?: 'emergency' | 'high' | 'normal' | 'low';
+    now?: Date;
+  }): {
+    allowed: boolean;
+    reason?: 'channel_disabled' | 'template_disabled' | 'quiet_hours';
+  } {
+    const priority = args.priority ?? 'normal';
+
+    if (!this.isChannelEnabled(args.userId, args.tenantId, args.channel)) {
+      return { allowed: false, reason: 'channel_disabled' };
+    }
+
+    if (!this.isTemplateEnabled(args.userId, args.tenantId, args.templateId)) {
+      return { allowed: false, reason: 'template_disabled' };
+    }
+
+    // Emergency priority bypasses quiet hours — but only quiet hours.
+    if (priority !== 'emergency' && this.isQuietHours(args.userId, args.tenantId, args.now)) {
+      return { allowed: false, reason: 'quiet_hours' };
+    }
+
+    return { allowed: true };
   },
 };
