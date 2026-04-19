@@ -12,9 +12,11 @@
 export * from './kenya/index.js';
 export * from './domain/index.js';
 export * from './graph/index.js';
+export * from './estate/index.js';
 
 import { KENYA_SKILL_TOOLS } from './kenya/index.js';
 import { DOMAIN_SKILL_TOOLS } from './domain/index.js';
+import { ESTATE_SKILL_TOOLS } from './estate/index.js';
 import {
   buildGraphToolHandlers,
   GraphToolkitLike,
@@ -25,6 +27,7 @@ import { ToolDispatcher } from '../orchestrator/tool-dispatcher.js';
  * Register all default skills on a ToolDispatcher.
  *
  * If a graph toolkit is provided, the 9 graph tools are also registered.
+ * Estate skills (valuation, scoring, forecasting) are registered by default.
  */
 export function registerDefaultSkills(
   dispatcher: ToolDispatcher,
@@ -32,6 +35,7 @@ export function registerDefaultSkills(
 ): void {
   for (const tool of KENYA_SKILL_TOOLS) dispatcher.register(tool);
   for (const tool of DOMAIN_SKILL_TOOLS) dispatcher.register(tool);
+  for (const tool of ESTATE_SKILL_TOOLS) dispatcher.register(tool);
   if (opts.graphToolkit) {
     for (const tool of buildGraphToolHandlers(opts.graphToolkit)) {
       dispatcher.register(tool);

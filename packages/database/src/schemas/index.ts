@@ -148,3 +148,15 @@ export * from './feature-flags.schema.js';
 export * from './gdpr.schema.js';
 export * from './ai-cost.schema.js';
 export * from './webhook-delivery.schema.js';
+
+// Wave 11 — AI security hardening + semantic memory.
+export * from './ai-audit-chain.schema.js';
+export * from './ai-semantic-memory.schema.js';
+
+// Wave 11 — AI Classroom (Bayesian Knowledge Tracing for staff training).
+export * from './classroom.schema.js';
+
+// Wave 12 — Intelligence Orchestrator + Progressive Intelligence.
+// Decision feedback, proactive alerts, progressive context snapshots.
+export * from './ai-intelligence-feedback.schema.js';
+export * from './progressive-context.schema.js';

@@ -44,5 +44,17 @@
     "label": "Language",
     "en": "English",
     "sw": "Swahili"
+  },
+  "chatUi": {
+    "trainingTitle": "Owner advisor",
+    "sendMessage": "Send",
+    "inputPlaceholder": "Ask about portfolio, arrears, property comparisons …",
+    "blackboardTitle": "Blackboard",
+    "blackboardEmpty": "The advisor will draw here when a concept is introduced.",
+    "blackboardClear": "Clear",
+    "quizLockdown": "Quiz locked — pick an answer",
+    "teachingKeyPoints": "Key points",
+    "reviewTitle": "Session summary",
+    "propertyComparisonTitle": "Property comparison"
   }
 }

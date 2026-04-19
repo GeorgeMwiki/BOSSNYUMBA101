@@ -43,5 +43,17 @@
     "label": "Language",
     "en": "English",
     "sw": "Swahili"
+  },
+  "chatUi": {
+    "trainingTitle": "Manager training",
+    "sendMessage": "Send",
+    "inputPlaceholder": "Ask about rent affordability, arrears, 5 Ps …",
+    "blackboardTitle": "Blackboard",
+    "blackboardEmpty": "The tutor will draw here when a concept is introduced.",
+    "blackboardClear": "Clear",
+    "quizLockdown": "Quiz locked — pick an answer",
+    "teachingKeyPoints": "Key points",
+    "reviewTitle": "Session summary",
+    "fivePsTitle": "5 Ps of tenancy risk"
   }
 }

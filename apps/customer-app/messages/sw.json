@@ -43,5 +43,17 @@
     "label": "Lugha",
     "en": "Kiingereza",
     "sw": "Kiswahili"
+  },
+  "chatUi": {
+    "trainingTitle": "Mafunzo ya mpangaji",
+    "sendMessage": "Tuma",
+    "inputPlaceholder": "Uliza kuhusu kodi, mkataba, dhamana, madeni …",
+    "blackboardTitle": "Ubao",
+    "blackboardEmpty": "Mwalimu atachora hapa dhana inapoanzishwa.",
+    "blackboardClear": "Futa",
+    "quizLockdown": "Jaribio limefungwa — chagua jibu",
+    "teachingKeyPoints": "Vidokezo muhimu",
+    "reviewTitle": "Muhtasari wa kipindi",
+    "rentAffordabilityTitle": "Uwezo wa kulipa kodi"
   }
 }

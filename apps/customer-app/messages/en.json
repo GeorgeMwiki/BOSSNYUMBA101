@@ -43,5 +43,17 @@
     "label": "Language",
     "en": "English",
     "sw": "Swahili"
+  },
+  "chatUi": {
+    "trainingTitle": "Tenant training",
+    "sendMessage": "Send",
+    "inputPlaceholder": "Ask about rent, my lease, deposit, arrears …",
+    "blackboardTitle": "Blackboard",
+    "blackboardEmpty": "The tutor will draw here when a concept is introduced.",
+    "blackboardClear": "Clear",
+    "quizLockdown": "Quiz locked — pick an answer",
+    "teachingKeyPoints": "Key points",
+    "reviewTitle": "Session summary",
+    "rentAffordabilityTitle": "Rent affordability"
   }
 }

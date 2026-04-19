@@ -44,5 +44,17 @@
     "label": "Lugha",
     "en": "Kiingereza",
     "sw": "Kiswahili"
+  },
+  "chatUi": {
+    "trainingTitle": "Mshauri wa mmiliki",
+    "sendMessage": "Tuma",
+    "inputPlaceholder": "Uliza kuhusu ufile, madeni, ulinganishaji wa mali …",
+    "blackboardTitle": "Ubao",
+    "blackboardEmpty": "Mshauri atachora hapa dhana inapoanzishwa.",
+    "blackboardClear": "Futa",
+    "quizLockdown": "Jaribio limefungwa — chagua jibu",
+    "teachingKeyPoints": "Vidokezo muhimu",
+    "reviewTitle": "Muhtasari wa kipindi",
+    "propertyComparisonTitle": "Ulinganishaji wa mali"
   }
 }

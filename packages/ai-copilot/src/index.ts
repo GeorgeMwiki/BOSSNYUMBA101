@@ -390,6 +390,32 @@ export {
 // service-registry to fall back to degraded mode on boot.
 export * from './cost-ledger.js';
 
+// ============================================
+// Wave-11 — AI security hardening + semantic memory + heartbeat
+// ============================================
+export * from './security/index.js';
+export * from './memory/index.js';
+export * from './heartbeat/index.js';
+
+// ============================================
+// Wave-11 — OpenClaw port: ambient brain, agent certification,
+// background intelligence, conversation state, proactive insights.
+// Namespaced to avoid collisions with existing barrel symbols.
+// ============================================
+export * as AmbientBrain from './ambient-brain/index.js';
+export * as AgentCertification from './agent-certification/index.js';
+export * as BackgroundIntelligence from './background-intelligence/index.js';
+export * as ConversationState from './conversation-state/index.js';
+export * as ProactiveInsights from './proactive-insights/index.js';
+
+// ============================================
+// Wave-11 — Knowledge base, workflows, document analysis, estate skills.
+// ============================================
+export * from './knowledge/index.js';
+export * from './workflows/index.js';
+export * from './document-analysis/index.js';
+export * from './skills/estate/index.js';
+
 // Conversational Personalization
 export {
   ConversationalPersonalizationService,
@@ -404,3 +430,12 @@ export {
   type PersonalizedMessage,
   type ConversationResponse,
 } from './services/conversational-personalization.js';
+
+// ============================================
+// Wave 12 — Intelligence Orchestrator + Progressive Intelligence.
+// Namespaced to avoid collisions with existing barrel symbols
+// (e.g. ProactiveInsights, Brain orchestrator).
+// ============================================
+export * as IntelligenceOrchestrator from './intelligence-orchestrator/index.js';
+export * as ProgressiveIntelligence from './progressive-intelligence/index.js';
+

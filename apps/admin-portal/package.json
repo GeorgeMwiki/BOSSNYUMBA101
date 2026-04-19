@@ -12,8 +12,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bossnyumba/chat-ui": "*",
     "@bossnyumba/design-system": "*",
     "@bossnyumba/domain-models": "*",
+    "@bossnyumba/spotlight": "*",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.24.0",
     "date-fns": "^3.3.1",

@@ -5,6 +5,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import { AppShell } from '@/components/layout/AppShell';
+import { SpotlightMount } from '@/components/SpotlightMount';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -58,6 +59,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ClientProviders>
             <AppShell>{children}</AppShell>
+            <SpotlightMount />
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

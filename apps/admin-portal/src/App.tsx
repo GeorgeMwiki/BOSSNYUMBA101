@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Skeleton } from '@bossnyumba/design-system';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SpotlightMount } from './components/SpotlightMount';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -16,6 +17,7 @@ import { ConfigurationPage } from './pages/ConfigurationPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { SystemHealthPage } from './pages/SystemHealthPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import ManagerChat from './pages/ManagerChat';
 import PlatformOverviewPage from './app/platform/overview/page';
 import PlatformSubscriptionsPage from './app/platform/subscriptions/page';
 import PlatformBillingPage from './app/platform/billing/page';
@@ -98,6 +100,7 @@ function AppRoutes() {
         <Route path="support/timeline" element={<CustomerTimeline />} />
         <Route path="support/escalation" element={<Escalation />} />
         <Route path="ai" element={<AICockpit />} />
+        <Route path="manager-chat" element={<ManagerChat />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />
@@ -142,6 +145,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
+      <SpotlightMount />
     </AuthProvider>
   );
 }

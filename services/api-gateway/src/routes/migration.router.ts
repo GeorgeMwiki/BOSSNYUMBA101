@@ -16,12 +16,21 @@ import { Hono } from 'hono';
 import {
   migrationExtract,
   MigrationExtractParamsSchema,
+  ProgressiveIntelligence,
 } from '@bossnyumba/ai-copilot';
 import {
   MigrationService,
   PostgresMigrationRepository,
 } from '@bossnyumba/domain-services';
 import { parseUpload } from '@bossnyumba/ai-copilot/services/migration/parsers/parse-upload';
+
+// Singleton per-process accumulator — session scoping handled per-run.
+// In production, swap for a persistent repository backed by
+// `progressive_context_snapshots` (migration 0042).
+const progressiveAccumulator =
+  ProgressiveIntelligence.createContextAccumulator();
+const progressiveAutoGen =
+  ProgressiveIntelligence.createAutoGenerationService(progressiveAccumulator);
 
 type Bindings = Record<string, never>;
 type Variables = {
@@ -82,10 +91,37 @@ export function createMigrationRouter(deps: {
       },
     });
 
+    // Progressive-intelligence preview: feed the extracted bundle rows into
+    // the accumulator so the UI can render a "what we understood" pane
+    // that fills in as the operator chats.
+    let progressivePreview: unknown = null;
+    try {
+      const rows = [
+        ...bundle.tenants.map((t: Record<string, unknown>, idx: number) => ({
+          rowIndex: idx,
+          data: t,
+        })),
+        ...bundle.units.map((u: Record<string, unknown>, idx: number) => ({
+          rowIndex: bundle.tenants.length + idx,
+          data: u,
+        })),
+      ];
+      progressivePreview = await progressiveAutoGen.buildPreview({
+        tenantId,
+        sessionId: `migration-${run.id}`,
+        sourceSystem: 'lpms-upload',
+        sourceFile: file.name,
+        rows,
+      });
+    } catch {
+      progressivePreview = null;
+    }
+
     return c.json({
       runId: run.id,
       bundle,
       warnings: parsed.warnings,
+      progressivePreview,
     });
   });
 

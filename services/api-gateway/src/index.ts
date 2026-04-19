@@ -71,6 +71,14 @@ import lpmsRouter from './routes/lpms.router';
 import featureFlagsRouter from './routes/feature-flags.router';
 import gdprRouter from './routes/gdpr.router';
 import aiCostsRouter from './routes/ai-costs.router';
+// Wave 12 — MCP server + agent platform
+import mcpRouter, { agentCardRouter } from './routes/mcp.router';
+// Wave 11 — public marketing (Mr. Mwikila), workflows
+import publicMarketingRouter from './routes/public-marketing.router';
+import workflowsRouter from './routes/workflows.router';
+import agentCertificationsRouter from './routes/agent-certifications.router';
+import classroomRouter from './routes/classroom.router';
+import voiceRouter from './routes/voice.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -334,6 +342,18 @@ api.route('/lpms', lpmsRouter);
 api.route('/feature-flags', featureFlagsRouter);
 api.route('/gdpr', gdprRouter);
 api.route('/ai-costs', aiCostsRouter);
+// Wave 12 — MCP server mounted for Claude Desktop, GPT, Cursor, partner agents
+api.route('/mcp', mcpRouter);
+// A2A Agent Card — expose under /api/v1/.well-known/agent.json (the standard
+// .well-known/ path would require mounting at the express root; this variant
+// is still discoverable by A2A clients that follow our OpenAPI spec).
+api.route('/.well-known/agent.json', agentCardRouter);
+// Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
+api.route('/public', publicMarketingRouter);
+api.route('/workflows', workflowsRouter);
+api.route('/agent-certifications', agentCertificationsRouter);
+api.route('/classroom', classroomRouter);
+api.route('/voice', voiceRouter);
 
 // OpenAPI spec + Swagger UI. Mounted AFTER every router so the
 // harvester can see them. The spec lives at /api/v1/openapi.json and

@@ -1,0 +1,31 @@
+{
+  "name": "@bossnyumba/agent-platform",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Cross-agent plumbing for BOSSNYUMBA: HMAC-signed A2A auth, agent-card, correlation IDs, idempotency dedup, signed webhook delivery, and a structured error-code envelope for partner platforms.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}
