@@ -85,3 +85,10 @@ export * as Routing from './routing/index.js';
 export * from './migration/index.js';
 export * from './gamification/index.js';
 export * from './documents/index.js';
+
+// Wave 8 gap closures — Warehouse inventory (S7), Maintenance taxonomy (S7),
+// IoT observations (S3). Namespaced to avoid naming collisions with
+// existing sibling modules.
+export * as Warehouse from './warehouse/index.js';
+export * as MaintenanceTaxonomy from './maintenance-taxonomy/index.js';
+export * as Iot from './iot/index.js';

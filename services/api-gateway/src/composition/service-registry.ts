@@ -81,6 +81,22 @@ import {
 } from '@bossnyumba/domain-services/migration';
 import { InMemoryEventBus, type EventBus } from '@bossnyumba/domain-services';
 
+// Wave 8 — Warehouse inventory (S7), Maintenance taxonomy (S7), IoT (S3).
+import {
+  createWarehouseService,
+  DrizzleWarehouseRepository,
+  type WarehouseService,
+} from '@bossnyumba/domain-services/warehouse';
+import {
+  createMaintenanceTaxonomyService,
+  DrizzleMaintenanceTaxonomyRepository,
+  type MaintenanceTaxonomyService,
+} from '@bossnyumba/domain-services/maintenance-taxonomy';
+import {
+  createIotService,
+  type IotService,
+} from '@bossnyumba/domain-services/iot';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -105,6 +121,11 @@ export interface ServiceRegistry {
   readonly riskReport: RiskReportService | null;
   readonly gamification: ReturnType<typeof createGamificationService> | null;
   readonly migration: MigrationService | null;
+
+  /** Wave 8 additions — all three are pure-DB. */
+  readonly warehouse: WarehouseService | null;
+  readonly maintenanceTaxonomy: MaintenanceTaxonomyService | null;
+  readonly iot: IotService | null;
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -139,6 +160,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     riskReport: null,
     gamification: null,
     migration: null,
+    warehouse: null,
+    maintenanceTaxonomy: null,
+    iot: null,
     eventBus,
     db: null,
     isLive: false,
@@ -266,6 +290,21 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     new DeterministicRiskNarrator()
   );
 
+  // Wave 8 — Warehouse (S7): stock + movements.
+  const warehouseRepo = new DrizzleWarehouseRepository(db);
+  const warehouseService = createWarehouseService({ repo: warehouseRepo });
+
+  // Wave 8 — Maintenance Taxonomy (S7): platform defaults + tenant overrides.
+  const taxonomyRepo = new DrizzleMaintenanceTaxonomyRepository(db);
+  const maintenanceTaxonomyService = createMaintenanceTaxonomyService({
+    repo: taxonomyRepo,
+  });
+
+  // Wave 8 — IoT (S3): sensor registry + observation ingest + anomaly store.
+  // Service takes the drizzle client directly since all tables live under
+  // the same client and queries are straight-through.
+  const iotService = createIotService({ db });
+
   return {
     marketplace: {
       listing: listingService,
@@ -285,6 +324,9 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     riskReport: riskReportService,
     gamification: gamificationService,
     migration: migrationService,
+    warehouse: warehouseService,
+    maintenanceTaxonomy: maintenanceTaxonomyService,
+    iot: iotService,
     eventBus,
     db,
     isLive: true,

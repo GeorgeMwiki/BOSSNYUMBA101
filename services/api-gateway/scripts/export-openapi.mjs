@@ -86,6 +86,10 @@ const spec = {
     { name: 'notification-preferences', description: 'User notification settings' },
     { name: 'notification-webhooks', description: 'Delivery-status webhooks' },
     { name: 'document-render', description: 'Async document render jobs' },
+    { name: 'warehouse', description: 'Stock + movements ledger (non-installed inventory)' },
+    { name: 'maintenance-taxonomy', description: 'Curated catalog of maintenance categories/problems' },
+    { name: 'iot', description: 'Sensor registration + observations + anomalies' },
+    { name: 'lpms', description: 'LPMS legacy export ingestion (CSV/JSON/XML)' },
   ],
   paths: {
     '/health': {
@@ -173,6 +177,24 @@ const catalog = [
   { path: '/api/v1/notification-webhooks/{provider}', methods: ['post'], tag: 'notification-webhooks' },
   { path: '/api/v1/document-render/jobs', methods: ['get', 'post'], tag: 'document-render' },
   { path: '/api/v1/document-render/jobs/{id}', methods: ['get'], tag: 'document-render' },
+  // Wave 8 — warehouse (S7)
+  { path: '/api/v1/warehouse/items', methods: ['get', 'post'], tag: 'warehouse' },
+  { path: '/api/v1/warehouse/items/{id}', methods: ['get'], tag: 'warehouse' },
+  { path: '/api/v1/warehouse/items/{id}/movements', methods: ['get', 'post'], tag: 'warehouse' },
+  // Wave 8 — maintenance taxonomy (S7)
+  { path: '/api/v1/maintenance-taxonomy/categories', methods: ['get', 'post'], tag: 'maintenance-taxonomy' },
+  { path: '/api/v1/maintenance-taxonomy/problems', methods: ['get', 'post'], tag: 'maintenance-taxonomy' },
+  { path: '/api/v1/maintenance-taxonomy/problems/by-category/{categoryId}', methods: ['get'], tag: 'maintenance-taxonomy' },
+  // Wave 8 — IoT (S3)
+  { path: '/api/v1/iot/sensors', methods: ['get', 'post'], tag: 'iot' },
+  { path: '/api/v1/iot/sensors/{id}', methods: ['get'], tag: 'iot' },
+  { path: '/api/v1/iot/sensors/{id}/observations', methods: ['get', 'post'], tag: 'iot' },
+  { path: '/api/v1/iot/anomalies', methods: ['get'], tag: 'iot' },
+  { path: '/api/v1/iot/anomalies/{id}/acknowledge', methods: ['post'], tag: 'iot' },
+  { path: '/api/v1/iot/anomalies/{id}/resolve', methods: ['post'], tag: 'iot' },
+  // Wave 8 — LPMS import (S14)
+  { path: '/api/v1/lpms/import', methods: ['post'], tag: 'lpms' },
+  { path: '/api/v1/lpms/preview-schema', methods: ['get'], tag: 'lpms' },
 ];
 
 for (const entry of catalog) {

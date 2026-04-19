@@ -135,3 +135,9 @@ export * from './station-master-coverage.schema.js';
 
 // Identity bundle — Cross-Org Tenant Identity + Multi-Org (Conflict 2)
 export * from './identity.schema.js';
+
+// Wave 8 gap closures — Warehouse inventory (S7), Maintenance taxonomy (S7),
+// IoT observations (S3). All additive; no conflicts with existing schemas.
+export * from './warehouse-inventory.schema.js';
+export * from './maintenance-taxonomy.schema.js';
+export * from './iot.schema.js';

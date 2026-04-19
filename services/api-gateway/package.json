@@ -27,6 +27,7 @@
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/domain-services": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
+    "@bossnyumba/lpms-connector": "workspace:*",
     "@bossnyumba/payments-ledger-service": "workspace:*",
     "@bossnyumba/payments-service": "workspace:*",
     "@asteasolutions/zod-to-openapi": "^7.3.0",

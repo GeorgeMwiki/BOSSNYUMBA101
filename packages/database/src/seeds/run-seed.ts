@@ -15,6 +15,7 @@
 
 import { createDatabaseClient } from '../client.js';
 import { seedTrc } from './trc-seed.js';
+import { seedMaintenanceTaxonomyPlatformDefaults } from './maintenance-taxonomy.seed.js';
 
 interface ParsedArgs {
   readonly org: string;
@@ -53,12 +54,27 @@ const ORG_SEEDS: Record<string, OrgSeedRunner> = {
   // future: mkotikoti, kilimani, etc.
 };
 
+// Platform-default seeds — cross-tenant catalogs (no tenant data). Safe to
+// run in every environment. Invoked via --org=platform-defaults (no
+// SEED_ORG_SEEDS gate).
+const PLATFORM_SEEDS: Record<string, OrgSeedRunner> = {
+  'platform-defaults': async (db) => {
+    const res = await seedMaintenanceTaxonomyPlatformDefaults(db);
+    console.log(
+      `[run-seed]   maintenance taxonomy: ${res.categoriesInserted} categories, ${res.problemsInserted} problems`,
+    );
+  },
+};
+
 async function main(): Promise<void> {
   const { org } = parseArgs(process.argv.slice(2));
 
-  // Hard gate — org seeds must be opted into explicitly so a dev running
-  // `pnpm db:seed` against a prod URL does not inadvertently write fake data.
-  if (process.env.SEED_ORG_SEEDS !== 'true') {
+  const isPlatformSeed = PLATFORM_SEEDS[org] !== undefined;
+
+  // Hard gate — ORG seeds must be opted into explicitly so a dev running
+  // `pnpm db:seed` against a prod URL does not inadvertently write fake
+  // data. PLATFORM-level seeds (cross-tenant catalogs) are always safe.
+  if (!isPlatformSeed && process.env.SEED_ORG_SEEDS !== 'true') {
     throw new Error(
       'Refusing to run org seeds: set SEED_ORG_SEEDS=true to acknowledge ' +
         'this will write sample data for the requested organization(s).',
@@ -68,14 +84,14 @@ async function main(): Promise<void> {
   const databaseUrl = requireEnv('DATABASE_URL');
   const db = createDatabaseClient(databaseUrl);
 
-  const targets =
-    org === 'all' ? Object.keys(ORG_SEEDS) : [org];
+  const runners = isPlatformSeed ? PLATFORM_SEEDS : ORG_SEEDS;
+  const targets = org === 'all' ? Object.keys(ORG_SEEDS) : [org];
 
   for (const target of targets) {
-    const runner = ORG_SEEDS[target];
+    const runner = runners[target];
     if (!runner) {
       throw new Error(
-        `Unknown org seed "${target}". Known: ${Object.keys(ORG_SEEDS).join(', ')}.`,
+        `Unknown seed "${target}". Known org: ${Object.keys(ORG_SEEDS).join(', ')}. Known platform: ${Object.keys(PLATFORM_SEEDS).join(', ')}.`,
       );
     }
     console.log(`[run-seed] running seed for ${target}`);

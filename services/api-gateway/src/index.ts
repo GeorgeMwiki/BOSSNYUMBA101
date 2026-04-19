@@ -61,6 +61,11 @@ import scansRouter from './routes/scans.router';
 import stationMasterCoverageRouter from './routes/station-master-coverage.router';
 import { tendersRouter } from './routes/tenders.router';
 import { waitlistRouter } from './routes/waitlist.router';
+// Wave 8 gap-closure routers
+import warehouseRouter from './routes/warehouse.router';
+import maintenanceTaxonomyRouter from './routes/maintenance-taxonomy.router';
+import iotRouter from './routes/iot.router';
+import lpmsRouter from './routes/lpms.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -306,6 +311,11 @@ api.route('/scans', scansRouter);
 api.route('/station-master-coverage', stationMasterCoverageRouter);
 api.route('/tenders', tendersRouter);
 api.route('/waitlist', waitlistRouter);
+// Wave 8 — warehouse stock (S7), maintenance taxonomy (S7), IoT observations (S3)
+api.route('/warehouse', warehouseRouter);
+api.route('/maintenance-taxonomy', maintenanceTaxonomyRouter);
+api.route('/iot', iotRouter);
+api.route('/lpms', lpmsRouter);
 
 // OpenAPI spec + Swagger UI. Mounted AFTER every router so the
 // harvester can see them. The spec lives at /api/v1/openapi.json and

@@ -51,6 +51,13 @@ ENDPOINTS=(
   "tenders/tender-demo/bids"                 # bids on a tender (empty list OK)
   "applications"                             # leasing applications list
   "renewals"                                 # lease renewals list
+  # Wave 8 additions — warehouse + maintenance taxonomy + IoT
+  "warehouse/items"                          # stock list
+  "maintenance-taxonomy/categories"          # curated categories (seeded)
+  "maintenance-taxonomy/problems"            # curated problems (seeded)
+  "iot/sensors"                              # IoT sensor registry
+  "iot/anomalies"                            # unresolved anomalies
+  "lpms/preview-schema"                      # LPMS ingestion schema
 )
 for endpoint in "${ENDPOINTS[@]}"; do
   code=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$GATEWAY/api/v1/$endpoint")

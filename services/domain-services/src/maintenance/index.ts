@@ -1200,3 +1200,29 @@ export class MaintenanceService {
     return `VND-${String(sequence).padStart(4, '0')}`;
   }
 }
+
+// ============================================================================
+// Predictive Scheduler (Wave 8)
+// ----------------------------------------------------------------------------
+// Pure-logic predictive layer that sits *on top* of the reactive FAR flow.
+// Callers get: priority scoring, inspection recommendations, repair-vs-replace
+// decisions, and deterministic condition forecasting.
+// ============================================================================
+
+export {
+  scorePriority,
+  recommendInspections,
+  recommendReplacements,
+  forecastConditionDegradation,
+  seasonalProfile,
+} from './predictive-scheduler.js';
+export type {
+  ComponentCondition,
+  ComponentCategory,
+  SeasonalProfile,
+  PredictiveComponentInput,
+  InspectionRecommendation,
+  ReplaceVsRepairAction,
+  ReplacementRecommendation,
+  DegradationForecast,
+} from './predictive-scheduler.js';
