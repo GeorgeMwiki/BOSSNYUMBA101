@@ -22,7 +22,9 @@ import {
   Wallet,
   Briefcase,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -50,6 +52,9 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, tenant, logout } = useAuth();
+  const tApp = useTranslations('app');
+  const tActions = useTranslations('actions');
+  const tNav = useTranslations('nav');
 
   const handleLogout = () => {
     logout();
@@ -116,7 +121,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-2 px-4 py-4 border-b">
             <Home className="h-8 w-8 text-blue-600" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">BOSSNYUMBA</h1>
+              <h1 className="text-xl font-bold text-gray-900">{tApp('title')}</h1>
               <p className="text-xs text-gray-500">Owner Portal</p>
             </div>
           </div>
@@ -145,14 +150,14 @@ export function Layout({ children }: LayoutProps) {
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
               <Settings className="h-5 w-5" />
-              Settings
+              {tNav('settings')}
             </Link>
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-5 w-5" />
-              Sign Out
+              {tActions('signOut')}
             </button>
           </div>
         </div>
@@ -172,6 +177,8 @@ export function Layout({ children }: LayoutProps) {
           </button>
 
           <div className="flex-1" />
+
+          <LocaleSwitcher />
 
           <button
             type="button"

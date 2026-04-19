@@ -385,6 +385,11 @@ export {
   type RenewalStrategyResult,
 } from './services/renewal-strategy-generator.js';
 
+// Cost Ledger — per-tenant AI-usage accounting (imported by api-gateway
+// composition root for budget enforcement). Missing from the barrel caused
+// service-registry to fall back to degraded mode on boot.
+export * from './cost-ledger.js';
+
 // Conversational Personalization
 export {
   ConversationalPersonalizationService,

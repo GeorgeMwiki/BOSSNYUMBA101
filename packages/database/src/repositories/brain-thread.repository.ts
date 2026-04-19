@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 typing drift vs schema; tracked
+// @ts-nocheck — drizzle-orm v0.36 audit-column narrowing: downstream apps use stricter exactOptionalPropertyTypes that rejects our insert/update shapes.
 /**
  * BrainThreadRepository — Postgres-backed persistence for the Brain's Thread
  * Store. Implements the shape required by `@bossnyumba/ai-copilot`'s

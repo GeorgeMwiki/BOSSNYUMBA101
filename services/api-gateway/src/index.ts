@@ -42,6 +42,7 @@ import { hrRouter } from './routes/hr.hono';
 import applicationsRouter from './routes/applications.router';
 import arrearsRouter from './routes/arrears.router';
 import complianceRouter from './routes/compliance.router';
+import compliancePluginsRouter from './routes/compliance-plugins.router';
 import docChatRouter from './routes/doc-chat.router';
 import documentRenderRouter from './routes/document-render.router';
 import financialProfileRouter from './routes/financial-profile.router';
@@ -66,6 +67,10 @@ import warehouseRouter from './routes/warehouse.router';
 import maintenanceTaxonomyRouter from './routes/maintenance-taxonomy.router';
 import iotRouter from './routes/iot.router';
 import lpmsRouter from './routes/lpms.router';
+// Wave 9 enterprise polish routers
+import featureFlagsRouter from './routes/feature-flags.router';
+import gdprRouter from './routes/gdpr.router';
+import aiCostsRouter from './routes/ai-costs.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -248,6 +253,7 @@ api.route('/admin', adminPortalRouter);
 api.route('/applications', applicationsRouter);
 api.route('/arrears', arrearsRouter);
 api.route('/compliance', complianceRouter);
+api.route('/compliance-plugins', compliancePluginsRouter);
 api.route('/doc-chat', docChatRouter);
 api.route('/document-render', documentRenderRouter);
 api.route('/financial-profile', financialProfileRouter);
@@ -324,6 +330,10 @@ api.route('/warehouse', warehouseRouter);
 api.route('/maintenance-taxonomy', maintenanceTaxonomyRouter);
 api.route('/iot', iotRouter);
 api.route('/lpms', lpmsRouter);
+// Wave 9 — feature flags, GDPR right-to-be-forgotten, AI cost ledger.
+api.route('/feature-flags', featureFlagsRouter);
+api.route('/gdpr', gdprRouter);
+api.route('/ai-costs', aiCostsRouter);
 
 // OpenAPI spec + Swagger UI. Mounted AFTER every router so the
 // harvester can see them. The spec lives at /api/v1/openapi.json and
@@ -371,6 +381,7 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/applications', app: applicationsRouter, defaultTag: 'applications' },
     { prefix: '/arrears', app: arrearsRouter, defaultTag: 'arrears' },
     { prefix: '/compliance', app: complianceRouter, defaultTag: 'compliance' },
+    { prefix: '/compliance-plugins', app: compliancePluginsRouter, defaultTag: 'compliance-plugins' },
     { prefix: '/doc-chat', app: docChatRouter, defaultTag: 'doc-chat' },
     { prefix: '/document-render', app: documentRenderRouter, defaultTag: 'document-render' },
     { prefix: '/financial-profile', app: financialProfileRouter, defaultTag: 'financial-profile' },
@@ -390,6 +401,9 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/station-master-coverage', app: stationMasterCoverageRouter, defaultTag: 'station-master-coverage' },
     { prefix: '/tenders', app: tendersRouter, defaultTag: 'tenders' },
     { prefix: '/waitlist', app: waitlistRouter, defaultTag: 'waitlist' },
+    { prefix: '/feature-flags', app: featureFlagsRouter, defaultTag: 'feature-flags' },
+    { prefix: '/gdpr', app: gdprRouter, defaultTag: 'gdpr' },
+    { prefix: '/ai-costs', app: aiCostsRouter, defaultTag: 'ai-costs' },
   ],
 });
 api.route('/', openApiRouter);

@@ -1457,3 +1457,25 @@ export class MemoryNoticeStore implements NoticeStore {
     noticeMap.clear();
   }
 }
+
+// ============================================================================
+// GDPR Right-to-be-Forgotten — Wave 9 enterprise polish
+// ============================================================================
+export {
+  createGdprService,
+  buildPseudonymizationStatements,
+  GdprError,
+  GDPR_DELETION_STATUSES,
+  type GdprService,
+  type GdprServiceDeps,
+  type GdprRepository,
+  type GdprDeletionRequest,
+  type GdprDeletionRequestInput,
+  type GdprDeletionStatus,
+  type PseudonymizationStatement,
+  type ExecuteDeletionResult,
+  type GdprDeletionRequestedEvent,
+  type GdprDeletionExecutedEvent,
+} from './gdpr-service.js';
+
+export { DrizzleGdprRepository } from './drizzle-gdpr-repository.js';

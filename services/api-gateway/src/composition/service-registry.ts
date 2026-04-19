@@ -30,6 +30,7 @@
  */
 
 import type { DatabaseClient } from '@bossnyumba/database';
+import { sql } from 'drizzle-orm';
 import {
   ListingService,
   EnquiryService,
@@ -107,6 +108,23 @@ import {
   type ArrearsEntryLoader,
 } from './arrears-infrastructure.js';
 
+// Wave 9 enterprise polish — Feature flags, GDPR, AI cost ledger.
+import {
+  createFeatureFlagsService,
+  DrizzleFeatureFlagsRepository,
+  type FeatureFlagsService,
+} from '@bossnyumba/domain-services/feature-flags';
+import {
+  createGdprService,
+  DrizzleGdprRepository,
+  type GdprService,
+} from '@bossnyumba/domain-services/compliance';
+import {
+  createCostLedger,
+  type CostLedger,
+} from '@bossnyumba/ai-copilot';
+import { DrizzleCostLedgerRepository } from './cost-ledger-repository.js';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -136,6 +154,11 @@ export interface ServiceRegistry {
   readonly warehouse: WarehouseService | null;
   readonly maintenanceTaxonomy: MaintenanceTaxonomyService | null;
   readonly iot: IotService | null;
+
+  /** Wave 9 enterprise polish — feature flags, GDPR, AI cost ledger. */
+  readonly featureFlags: FeatureFlagsService | null;
+  readonly gdpr: GdprService | null;
+  readonly aiCostLedger: CostLedger | null;
 
   /** Arrears ledger (NEW 4). Service + loader for the projection endpoint. */
   readonly arrears: {
@@ -181,6 +204,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     warehouse: null,
     maintenanceTaxonomy: null,
     iot: null,
+    featureFlags: null,
+    gdpr: null,
+    aiCostLedger: null,
     arrears: {
       service: null,
       repo: null,
@@ -222,7 +248,29 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     eventBus,
   });
 
-  const listingService = new ListingService({ repo: listingRepo, eventBus });
+  // Pre-insert unit-existence check for listing publish. Without this, a
+  // bogus `unitId` lands in Postgres as a raw FK violation and the gateway
+  // returns 500. We probe `units` with a tenant-scoped `SELECT 1` and
+  // return a clean VALIDATION (400) when the unit is missing. Uses a
+  // parameterised `sql` template so the unitId is bound safely even if
+  // the caller forges the body.
+  const unitExists = async (tenantId: string, unitId: string): Promise<boolean> => {
+    try {
+      const rows = await (db as any).execute(
+        sql`SELECT 1 FROM units WHERE id = ${unitId} AND tenant_id = ${tenantId} LIMIT 1`
+      );
+      // postgres.js returns an array-like; drizzle `execute` yields `{ rows }`
+      // depending on driver. Accept both shapes.
+      const list = Array.isArray(rows) ? rows : (rows as any)?.rows ?? [];
+      return list.length > 0;
+    } catch {
+      // If the probe itself fails, fall back to letting the DB layer raise —
+      // the FK violation will still be caught downstream.
+      return true;
+    }
+  };
+
+  const listingService = new ListingService({ repo: listingRepo, eventBus, unitExists });
   const enquiryService = new EnquiryService({
     listingRepo,
     negotiationService,
@@ -342,6 +390,23 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
   });
   const arrearsEntryLoader = createPostgresArrearsEntryLoader(db);
 
+  // Wave 9 — Feature flags (per-tenant gating of platform capabilities).
+  const featureFlagsRepo = new DrizzleFeatureFlagsRepository(db);
+  const featureFlagsService = createFeatureFlagsService({
+    repo: featureFlagsRepo,
+  });
+
+  // Wave 9 — GDPR right-to-be-forgotten.
+  const gdprRepo = new DrizzleGdprRepository(db);
+  const gdprService = createGdprService({
+    repo: gdprRepo,
+    eventBus,
+  });
+
+  // Wave 9 — AI cost ledger + per-tenant monthly budget.
+  const costLedgerRepo = new DrizzleCostLedgerRepository(db);
+  const aiCostLedger = createCostLedger({ repo: costLedgerRepo });
+
   return {
     marketplace: {
       listing: listingService,
@@ -364,6 +429,9 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     warehouse: warehouseService,
     maintenanceTaxonomy: maintenanceTaxonomyService,
     iot: iotService,
+    featureFlags: featureFlagsService,
+    gdpr: gdprService,
+    aiCostLedger,
     arrears: {
       service: arrearsService,
       repo: arrearsRepo,

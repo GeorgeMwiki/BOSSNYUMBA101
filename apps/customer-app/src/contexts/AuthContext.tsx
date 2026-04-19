@@ -73,11 +73,16 @@ const CUSTOMER_USER_KEY = 'customer_user';
 
 /**
  * Default country code used when phone normalization is required and the
- * user has not (yet) declared their region. Tanzania is the founder
- * tenant; region detection via geolocation/IP will replace this once the
- * onboarding flow lands.
+ * user has not (yet) declared their region. The login form runs pre-tenant
+ * context, so we cannot resolve a `countryPlugin` yet — instead we read the
+ * deployment's preferred default from `NEXT_PUBLIC_DEFAULT_COUNTRY`
+ * (ISO-3166-1 alpha-2). Region detection via geolocation/IP will replace
+ * this once the onboarding flow lands.
  */
-const DEFAULT_PHONE_COUNTRY: string = 'TZ';
+const DEFAULT_PHONE_COUNTRY: string =
+  (typeof process !== 'undefined'
+    ? process.env?.NEXT_PUBLIC_DEFAULT_COUNTRY?.trim().toUpperCase()
+    : undefined) || 'TZ';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

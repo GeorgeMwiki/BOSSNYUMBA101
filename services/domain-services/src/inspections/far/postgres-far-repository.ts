@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
 /**
  * Postgres-backed FAR Repository (Wave 3).
  *

@@ -141,3 +141,10 @@ export * from './identity.schema.js';
 export * from './warehouse-inventory.schema.js';
 export * from './maintenance-taxonomy.schema.js';
 export * from './iot.schema.js';
+
+// Wave 10 — Feature flags + GDPR right-to-be-forgotten + AI cost ledger
+// + webhook retry/DLQ. All additive.
+export * from './feature-flags.schema.js';
+export * from './gdpr.schema.js';
+export * from './ai-cost.schema.js';
+export * from './webhook-delivery.schema.js';

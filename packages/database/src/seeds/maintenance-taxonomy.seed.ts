@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.29 enum-column narrowing; matches project convention
 /**
  * Maintenance Problem Taxonomy — Platform Default Seed (Wave 8, S7)
  *

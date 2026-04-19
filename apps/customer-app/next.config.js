@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -13,6 +17,7 @@ const nextConfig = {
     '@bossnyumba/enterprise-hardening',
     '@bossnyumba/api-client',
     '@bossnyumba/config',
+    '@bossnyumba/compliance-plugins',
   ],
   // Support `.js` extensions on TS source imports (NodeNext convention).
   webpack: (config) => {
@@ -39,4 +44,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

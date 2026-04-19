@@ -1,0 +1,48 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Mmiliki",
+    "tagline": "Lango la mmiliki wa mali"
+  },
+  "nav": {
+    "dashboard": "Dashibodi",
+    "properties": "Mali",
+    "portfolio": "Mkusanyiko",
+    "financial": "Fedha",
+    "maintenance": "Matengenezo",
+    "documents": "Nyaraka",
+    "approvals": "Idhini",
+    "reports": "Ripoti",
+    "messages": "Ujumbe",
+    "settings": "Mipangilio",
+    "vendors": "Wauzaji",
+    "compliance": "Ufuataji",
+    "analytics": "Uchanganuzi",
+    "tenants": "Wapangaji",
+    "budgets": "Bajeti"
+  },
+  "actions": {
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "continue": "Endelea",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "export": "Hamisha"
+  },
+  "errors": {
+    "generic": "Hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia",
+    "loadFailed": "Imeshindwa kupakia data"
+  },
+  "empty": {
+    "noItems": "Hakuna vitu bado",
+    "noProperties": "Hakuna mali bado",
+    "noReports": "Hakuna ripoti bado"
+  },
+  "locale": {
+    "label": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili"
+  }
+}

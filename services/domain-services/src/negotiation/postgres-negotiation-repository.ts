@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.29 typing drift vs schema; matches project convention
 /**
  * Postgres-backed negotiation repositories (Drizzle).
  *

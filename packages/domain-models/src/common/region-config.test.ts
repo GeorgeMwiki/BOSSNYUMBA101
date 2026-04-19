@@ -54,10 +54,16 @@ describe('getRegionConfig', () => {
 });
 
 describe('getSupportedCountries', () => {
-  it('returns all configured countries', () => {
+  it('retains the founder African set and adds plugin-registered countries', () => {
     const countries = getSupportedCountries();
     const codes = countries.map((c) => c.countryCode).sort();
-    expect(codes).toEqual(['KE', 'RW', 'TZ', 'UG']);
+    for (const expected of ['KE', 'RW', 'TZ', 'UG']) {
+      expect(codes).toContain(expected);
+    }
+    // Plugin-registered countries (US/NG/ZA) must also be supported now
+    // that region-config delegates to @bossnyumba/compliance-plugins.
+    expect(codes).toContain('US');
+    expect(codes.length).toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -65,6 +71,9 @@ describe('isCountrySupported', () => {
   it('returns true for configured countries', () => {
     expect(isCountrySupported('TZ')).toBe(true);
     expect(isCountrySupported('KE')).toBe(true);
+  });
+  it('returns true for plugin-registered countries (US, NG, ZA)', () => {
+    expect(isCountrySupported('US')).toBe(true);
   });
   it('returns false for unknown countries', () => {
     expect(isCountrySupported('XX')).toBe(false);
@@ -92,6 +101,21 @@ describe('getDefaultCurrency', () => {
   });
   it('returns USD for unknown', () => {
     expect(getDefaultCurrency('XX')).toBe('USD');
+  });
+});
+
+describe('delegation to @bossnyumba/compliance-plugins', () => {
+  it('picks up plugin-only countries (US) without a legacy overlay', () => {
+    const cfg = getRegionConfig('US');
+    expect(cfg.countryCode).toBe('US');
+    expect(cfg.currencyCode).toBe('USD');
+    expect(cfg.phone.dialingCode).toBe('1');
+  });
+  it('retains TZ overlay specifics (timezone, tax authority)', () => {
+    const cfg = getRegionConfig('TZ');
+    expect(cfg.defaultTimezone).toBe('Africa/Dar_es_Salaam');
+    expect(cfg.compliance.taxAuthority).toBe('TRA');
+    expect(cfg.mobileMoneyProviders.map((p) => p.id)).toContain('mpesa_tz');
   });
 });
 

@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -11,15 +15,19 @@ const nextConfig = {
     '@bossnyumba/database',
     '@bossnyumba/observability',
     '@bossnyumba/config',
+    '@bossnyumba/compliance-plugins',
   ],
   // Support `.js` extensions on TS source imports (NodeNext convention).
+  // `.js` must be first so third-party ESM packages (e.g. @opentelemetry/api)
+  // that reference relative `.js` paths resolve correctly before we fall back
+  // to TS source imports.
   webpack: (config) => {
     config.resolve.extensionAlias = {
       ...(config.resolve.extensionAlias || {}),
-      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.js': ['.js', '.ts', '.tsx', '.jsx'],
     };
     return config;
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

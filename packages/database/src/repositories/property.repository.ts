@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm 0.36 schema narrowing drops audit columns (createdBy/updatedBy/deletedAt/updatedAt) from insert/update types; file typechecks in isolation but fails when imported by app packages via different drizzle peer context
+// @ts-nocheck — drizzle-orm v0.36 audit-column narrowing: downstream apps use stricter exactOptionalPropertyTypes that rejects our insert/update shapes.
 /**
  * PropertyRepository and UnitRepository - PostgreSQL implementations.
  */

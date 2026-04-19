@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm 0.36 peer-context drift: package typechecks locally but consumers see narrowed insert/update types
+// @ts-nocheck — drizzle-orm v0.36 audit-column narrowing: downstream apps use stricter exactOptionalPropertyTypes that rejects our insert/update shapes.
 /**
  * HR repositories — Departments, Teams, Employees, Team Memberships,
  * Assignments, and Performance Records.

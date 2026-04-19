@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 typing drift vs schema
 /**
  * Drizzle implementation of WarehouseRepositoryPort.
  *

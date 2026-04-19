@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 enum-column narrowing; tracked for drizzle upgrade
+// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Revisit when drizzle exposes a widened overload.
 /**
  * TenantRepository & UserRepository - PostgreSQL implementations for tenant and user data access.
  */

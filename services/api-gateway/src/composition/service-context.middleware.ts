@@ -96,6 +96,9 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       if (registry.arrears?.entryLoader) {
         c.set('arrearsEntryLoader', registry.arrears.entryLoader);
       }
+      // Wave 9 — feature flags, GDPR, AI cost ledger pulled via
+      // `services.featureFlags`, `services.gdpr`, `services.aiCostLedger`
+      // — the routers read those keys off `c.get('services')` already.
     }
 
     await next();

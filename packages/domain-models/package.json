@@ -51,6 +51,9 @@
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist .turbo"
   },
+  "dependencies": {
+    "@bossnyumba/compliance-plugins": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "tsup": "^8.0.0",

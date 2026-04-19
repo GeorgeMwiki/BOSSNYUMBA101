@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Admin",
+    "tagline": "Platform operations console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "users": "Users",
+    "roles": "Roles",
+    "operations": "Operations",
+    "support": "Support",
+    "reports": "Reports",
+    "configuration": "Configuration",
+    "audit": "Audit log",
+    "system": "System health",
+    "platform": "Platform",
+    "communications": "Communications",
+    "compliance": "Compliance",
+    "analytics": "Analytics",
+    "integrations": "Integrations"
+  },
+  "actions": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "create": "Create",
+    "delete": "Delete",
+    "invite": "Invite"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "pleaseSignIn": "Please sign in",
+    "unauthorized": "You are not authorized"
+  },
+  "empty": {
+    "noItems": "No items yet",
+    "noTenants": "No tenants yet"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "sw": "Swahili"
+  }
+}

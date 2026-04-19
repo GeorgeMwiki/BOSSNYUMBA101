@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { AppShell } from '@/providers/AppShell';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
@@ -24,18 +26,22 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={`${inter.className} pb-20`}>
-        <AppShell>
-          {children}
-          <BottomNavigation />
-        </AppShell>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AppShell>
+            {children}
+            <BottomNavigation />
+          </AppShell>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

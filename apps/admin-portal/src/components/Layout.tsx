@@ -21,7 +21,9 @@ import {
   Plug,
   Brain,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -45,6 +47,8 @@ const navigation = [
 export function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const tActions = useTranslations('actions');
+  const tApp = useTranslations('app');
 
   const getPageTitle = () => {
     const current = navigation.find((item) => item.href === location.pathname);
@@ -73,7 +77,7 @@ export function Layout() {
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">BOSSNYUMBA</h1>
+              <h1 className="font-bold text-lg">{tApp('title')}</h1>
               <p className="text-xs text-slate-400">Internal Admin</p>
             </div>
           </div>
@@ -118,7 +122,7 @@ export function Layout() {
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {tActions('signOut')}
           </button>
         </div>
       </aside>
@@ -135,6 +139,7 @@ export function Layout() {
             </div>
 
             <div className="flex items-center gap-4">
+              <LocaleSwitcher />
               <div className="relative">
                 <label htmlFor="admin-global-search" className="sr-only">
                   Search

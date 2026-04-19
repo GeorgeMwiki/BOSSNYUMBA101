@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Meneja",
+    "tagline": "Utendaji wa meneja wa mali uwanjani"
+  },
+  "nav": {
+    "dashboard": "Dashibodi",
+    "properties": "Mali",
+    "units": "Vyumba",
+    "leases": "Mikataba",
+    "workOrders": "Kazi",
+    "payments": "Malipo",
+    "tenants": "Wapangaji",
+    "vendors": "Wauzaji",
+    "reports": "Ripoti",
+    "settings": "Mipangilio"
+  },
+  "actions": {
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "continue": "Endelea",
+    "create": "Unda",
+    "assign": "Teua",
+    "complete": "Kamilisha",
+    "approve": "Idhinisha",
+    "reject": "Kataa"
+  },
+  "errors": {
+    "generic": "Hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia",
+    "loadFailed": "Imeshindwa kupakia data",
+    "noPermission": "Huna ruhusa ya kufanya hivyo"
+  },
+  "empty": {
+    "noItems": "Hakuna vitu bado",
+    "noWorkOrders": "Hakuna kazi bado",
+    "noTenants": "Hakuna wapangaji bado",
+    "noProperties": "Hakuna mali bado"
+  },
+  "locale": {
+    "label": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili"
+  }
+}

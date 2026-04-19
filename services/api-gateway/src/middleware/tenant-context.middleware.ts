@@ -12,6 +12,11 @@
 import { createMiddleware } from 'hono/factory';
 import type { Context } from 'hono';
 import type { AuthContext } from './auth.middleware';
+import {
+  getCountryPlugin,
+  DEFAULT_COUNTRY_ID,
+  type CountryPlugin,
+} from '@bossnyumba/compliance-plugins';
 
 // ============================================================================
 // Types
@@ -22,6 +27,13 @@ export interface TenantConfig {
   name: string;
   slug: string;
   status: TenantStatus;
+  /**
+   * ISO-3166-1 alpha-2 country code for the tenant. Drives currency,
+   * phone normalization, KYC providers, payment gateways, and regulatory
+   * rules via `@bossnyumba/compliance-plugins`. Optional during rollout —
+   * when null the middleware falls back to DEFAULT_COUNTRY_ID.
+   */
+  countryCode?: string | null;
   settings: TenantSettings;
   features: TenantFeatures;
   limits: TenantLimits;
@@ -78,6 +90,8 @@ export interface TenantContext {
   name: string;
   slug: string;
   status: TenantStatus;
+  /** Resolved ISO-3166-1 alpha-2 country code (after DEFAULT fallback). */
+  countryCode: string;
   settings: TenantSettings;
   features: TenantFeatures;
   limits: TenantLimits;
@@ -200,8 +214,20 @@ async function loadTenantFromDatabase(tenantId: string): Promise<TenantConfig | 
     });
 
     if (!res.ok) return null;
-    const data = await res.json() as { data?: TenantConfig };
-    return data.data || null;
+    const data = (await res.json()) as {
+      data?: TenantConfig & { country?: string | null };
+    };
+    const raw = data.data;
+    if (!raw) return null;
+    // The tenant schema keeps the column name `country` (legacy); the
+    // middleware surface is `countryCode`. Normalize here so every
+    // downstream reader sees the unified field.
+    return {
+      ...raw,
+      countryCode: (raw.countryCode ?? raw.country ?? null) as
+        | string
+        | null,
+    };
   } catch {
     return null;
   }
@@ -226,6 +252,10 @@ async function loadTenantConfig(tenantId: string): Promise<TenantConfig | null> 
     name: `Tenant ${tenantId}`,
     slug: tenantId.toLowerCase().replace(/[^a-z0-9]/g, '-'),
     status: 'active',
+    // Dev fallback is intentionally null — the resolver in the middleware
+    // will fall back to DEFAULT_COUNTRY_ID, which logs a one-shot warning
+    // so operators notice a tenant without a country code.
+    countryCode: process.env.DEV_DEFAULT_COUNTRY_CODE?.trim() || null,
     settings: { ...DEFAULT_TENANT_SETTINGS },
     features: { ...DEFAULT_TENANT_FEATURES },
     limits: { ...DEFAULT_TENANT_LIMITS },
@@ -357,21 +387,31 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
     );
   }
 
+  // Resolve the country plugin from the tenant's country code. Falls back
+  // to DEFAULT_COUNTRY_ID inside `getCountryPlugin` when the tenant row
+  // has not migrated to countryCode yet — a one-shot warning is logged
+  // by the plugin registry so operators can catch the drift.
+  const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
+  const countryPlugin = getCountryPlugin(resolvedCountry || null);
+
   // Set tenant context
   const tenantContext: TenantContext = {
     id: config.id,
     name: config.name,
     slug: config.slug,
     status: config.status,
+    countryCode: countryPlugin.countryCode,
     settings: config.settings,
     features: config.features,
     limits: config.limits,
   };
 
   c.set('tenant', tenantContext);
+  c.set('countryPlugin', countryPlugin);
 
   // Set response header for debugging
   c.header('X-Tenant-ID', tenantId);
+  c.header('X-Country-Code', countryPlugin.countryCode);
 
   await next();
 });
@@ -387,17 +427,23 @@ export const optionalTenantContextMiddleware = createMiddleware(async (c, next) 
     const config = await loadTenantConfig(tenantId);
 
     if (config && isTenantActive(config)) {
+      const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
+      const countryPlugin = getCountryPlugin(resolvedCountry || null);
+
       c.set('tenant', {
         id: config.id,
         name: config.name,
         slug: config.slug,
         status: config.status,
+        countryCode: countryPlugin.countryCode,
         settings: config.settings,
         features: config.features,
         limits: config.limits,
       } as TenantContext);
+      c.set('countryPlugin', countryPlugin);
 
       c.header('X-Tenant-ID', tenantId);
+      c.header('X-Country-Code', countryPlugin.countryCode);
     }
   }
 
@@ -571,6 +617,7 @@ export {
 declare module 'hono' {
   interface ContextVariableMap {
     tenant: TenantContext;
+    countryPlugin: CountryPlugin;
   }
 }
 // @ts-nocheck

@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA",
+    "tagline": "Msaidizi wako wa usimamizi wa mali"
+  },
+  "nav": {
+    "home": "Nyumbani",
+    "payments": "Malipo",
+    "maintenance": "Matengenezo",
+    "messages": "Ujumbe",
+    "profile": "Wasifu",
+    "settings": "Mipangilio",
+    "community": "Jamii",
+    "marketplace": "Soko",
+    "documents": "Nyaraka",
+    "announcements": "Matangazo"
+  },
+  "actions": {
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "continue": "Endelea",
+    "submit": "Wasilisha",
+    "retry": "Jaribu tena",
+    "close": "Funga",
+    "edit": "Hariri",
+    "delete": "Futa"
+  },
+  "errors": {
+    "generic": "Hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia",
+    "networkUnavailable": "Huonekani kuwa na intaneti",
+    "notFound": "Hatukuweza kupata unachokitafuta"
+  },
+  "empty": {
+    "noItems": "Hakuna vitu bado",
+    "noPayments": "Hakuna malipo bado",
+    "noMessages": "Hakuna ujumbe bado",
+    "noNotifications": "Hakuna arifa bado"
+  },
+  "locale": {
+    "label": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili"
+  }
+}

@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 typing drift vs schema; tracked
+// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Revisit when drizzle exposes a widened overload.
 /**
  * Messaging Repository
  * PostgreSQL implementation for Conversation, Message, and Participant persistence

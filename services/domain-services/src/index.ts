@@ -92,3 +92,6 @@ export * from './documents/index.js';
 export * as Warehouse from './warehouse/index.js';
 export * as MaintenanceTaxonomy from './maintenance-taxonomy/index.js';
 export * as Iot from './iot/index.js';
+
+// Wave 9 enterprise polish — Feature flags per tenant.
+export * as FeatureFlags from './feature-flags/index.js';

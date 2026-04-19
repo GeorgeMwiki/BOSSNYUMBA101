@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA",
+    "tagline": "Your property management companion"
+  },
+  "nav": {
+    "home": "Home",
+    "payments": "Payments",
+    "maintenance": "Maintenance",
+    "messages": "Messages",
+    "profile": "Profile",
+    "settings": "Settings",
+    "community": "Community",
+    "marketplace": "Marketplace",
+    "documents": "Documents",
+    "announcements": "Announcements"
+  },
+  "actions": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "submit": "Submit",
+    "retry": "Retry",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "pleaseSignIn": "Please sign in",
+    "networkUnavailable": "You appear to be offline",
+    "notFound": "We couldn't find what you're looking for"
+  },
+  "empty": {
+    "noItems": "No items yet",
+    "noPayments": "No payments yet",
+    "noMessages": "No messages yet",
+    "noNotifications": "No notifications yet"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "sw": "Swahili"
+  }
+}

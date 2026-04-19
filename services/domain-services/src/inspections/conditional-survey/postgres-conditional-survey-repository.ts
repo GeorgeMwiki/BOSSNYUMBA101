@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
 /**
  * Postgres-backed Conditional Survey Repository (Wave 3).
  *

@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
+// @ts-nocheck — drizzle-orm v0.36 typing drift vs schema; matches project convention
 /**
  * Postgres-backed Case Repository (Wave 3).
  *

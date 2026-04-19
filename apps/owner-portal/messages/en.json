@@ -1,0 +1,48 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Owner",
+    "tagline": "Property owner portfolio portal"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "properties": "Properties",
+    "portfolio": "Portfolio",
+    "financial": "Financial",
+    "maintenance": "Maintenance",
+    "documents": "Documents",
+    "approvals": "Approvals",
+    "reports": "Reports",
+    "messages": "Messages",
+    "settings": "Settings",
+    "vendors": "Vendors",
+    "compliance": "Compliance",
+    "analytics": "Analytics",
+    "tenants": "Tenants",
+    "budgets": "Budgets"
+  },
+  "actions": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "approve": "Approve",
+    "reject": "Reject",
+    "export": "Export"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "pleaseSignIn": "Please sign in",
+    "loadFailed": "Could not load data"
+  },
+  "empty": {
+    "noItems": "No items yet",
+    "noProperties": "No properties yet",
+    "noReports": "No reports yet"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "sw": "Swahili"
+  }
+}

@@ -10,111 +10,98 @@
  * their country/region, and everything — currency, phone format, tax
  * rates, compliance rules, timezone, locale — adapts to that selection.
  *
- * NO country is hardcoded anywhere in the codebase. Every country-
- * specific value goes through this registry. To add a new country:
- *   1. Add an entry to REGION_CONFIGS below.
- *   2. That's it. Every downstream system reads from here.
- *
- * The tenant's selected country code (ISO 3166-1 alpha-2) is stored on
- * the tenant record as `tenant.country`. All services resolve the
- * config at runtime via `getRegionConfig(tenant.country)`.
+ * Implementation note — this module USED to keep the full country catalog
+ * inline. The catalog now lives in `@bossnyumba/compliance-plugins` so
+ * every country gets the same pluggable surface (phone, currency, KYC,
+ * payment rails). This module adapts the plugin's output to the legacy
+ * `RegionConfig` shape and layers a small per-country `REGION_OVERLAYS`
+ * table for the fields the plugin does not carry (VAT rate, timezone,
+ * locale). Callers do NOT need to change — the exported API is stable.
  */
 
 import { z } from 'zod';
+import {
+  getCountryPlugin,
+  availableCountries,
+  type CountryPlugin,
+} from '@bossnyumba/compliance-plugins';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface PhoneConfig {
-  /** International dialing prefix without + (e.g. '255' for Tanzania). */
   readonly dialingCode: string;
-  /** Regex the full international number must match after normalization. */
   readonly nationalNumberRegex: RegExp;
-  /** Example number shown in UI placeholders. */
   readonly placeholder: string;
 }
 
 export interface TaxConfig {
-  /** VAT / GST rate as a decimal (e.g. 0.18 for 18%). */
   readonly vatRate: number;
-  /** Name of the VAT / GST scheme. */
   readonly vatName: string;
-  /** Rental income tax rate (if any). null = not applicable. */
   readonly rentalIncomeTaxRate: number | null;
-  /** Name of the rental income tax (e.g. 'MRI' for Kenya). */
   readonly rentalIncomeTaxName: string | null;
-  /** Maximum late-fee rate allowed by statute (decimal). null = no cap. */
   readonly maxLateFeeRate: number | null;
 }
 
 export interface ComplianceConfig {
-  /** Tax authority abbreviation (e.g. 'TRA', 'KRA', 'URA'). */
   readonly taxAuthority: string;
-  /** Taxpayer ID label (e.g. 'TIN', 'KRA PIN'). */
   readonly taxpayerIdLabel: string;
-  /** Regex for taxpayer ID validation (null = free text). */
   readonly taxpayerIdRegex: RegExp | null;
-  /** Business registration number label. null = not required. */
   readonly businessRegLabel: string | null;
-  /** Eviction notice period (residential) in days. */
   readonly evictionNoticeDaysResidential: number;
-  /** Eviction notice period (commercial) in days. */
   readonly evictionNoticeDaysCommercial: number;
-  /** Security deposit return deadline in days after lease end. */
   readonly depositReturnDays: number;
 }
 
 export interface MobileMoneyProvider {
   readonly id: string;
   readonly name: string;
-  /** Env-var prefix for this provider's config (e.g. 'MPESA', 'TIGOPESA'). */
   readonly envPrefix: string;
 }
 
 export interface RegionConfig {
-  /** ISO 3166-1 alpha-2 country code. */
   readonly countryCode: string;
-  /** Human-readable country name. */
   readonly countryName: string;
-  /** ISO 4217 currency code. */
   readonly currencyCode: string;
-  /** Currency symbol for display. */
   readonly currencySymbol: string;
-  /** Number of minor units (cents). 2 for most, 0 for JPY, etc. */
   readonly currencyMinorUnits: number;
-  /** IANA timezone (default for the country). */
   readonly defaultTimezone: string;
-  /** BCP-47 locale tag (e.g. 'sw-TZ', 'en-KE'). */
   readonly defaultLocale: string;
-  /** Phone configuration. */
   readonly phone: PhoneConfig;
-  /** Tax configuration. */
   readonly tax: TaxConfig;
-  /** Compliance / regulatory configuration. */
   readonly compliance: ComplianceConfig;
-  /** Available mobile-money providers. */
   readonly mobileMoneyProviders: readonly MobileMoneyProvider[];
 }
 
 // ---------------------------------------------------------------------------
-// Registry — add new countries here
+// Per-country overlays — the fields the plugin contract does not carry
+// (tax, locale, timezone, national number regex). Keep small.
 // ---------------------------------------------------------------------------
 
-const REGION_CONFIGS: Record<string, RegionConfig> = {
+interface RegionOverlay {
+  readonly countryName?: string;
+  readonly currencyMinorUnits?: number;
+  readonly defaultTimezone: string;
+  readonly defaultLocale: string;
+  readonly phoneRegex: RegExp;
+  readonly phonePlaceholder: string;
+  readonly tax: TaxConfig;
+  readonly taxAuthority: string;
+  readonly taxpayerIdLabel: string;
+  readonly taxpayerIdRegex: RegExp | null;
+  readonly businessRegLabel: string | null;
+  readonly evictionNoticeDaysResidential: number;
+  readonly evictionNoticeDaysCommercial: number;
+}
+
+const REGION_OVERLAYS: Record<string, RegionOverlay> = {
   TZ: {
-    countryCode: 'TZ',
-    countryName: 'Tanzania',
-    currencyCode: 'TZS',
-    currencySymbol: 'TSh',
     currencyMinorUnits: 2,
     defaultTimezone: 'Africa/Dar_es_Salaam',
     defaultLocale: 'sw-TZ',
-    phone: {
-      dialingCode: '255',
-      nationalNumberRegex: /^255[67]\d{8}$/,
-      placeholder: '+255 7XX XXX XXX',
-    },
+    phoneRegex: /^255[67]\d{8}$/,
+    phonePlaceholder: '+255 7XX XXX XXX',
     tax: {
       vatRate: 0.18,
       vatName: 'VAT',
@@ -122,102 +109,60 @@ const REGION_CONFIGS: Record<string, RegionConfig> = {
       rentalIncomeTaxName: null,
       maxLateFeeRate: null,
     },
-    compliance: {
-      taxAuthority: 'TRA',
-      taxpayerIdLabel: 'TIN',
-      taxpayerIdRegex: /^\d{9}$/,
-      businessRegLabel: 'BRELA Registration Number',
-      evictionNoticeDaysResidential: 90,
-      evictionNoticeDaysCommercial: 90,
-      depositReturnDays: 30,
-    },
-    mobileMoneyProviders: [
-      { id: 'mpesa_tz', name: 'M-Pesa (Vodacom)', envPrefix: 'MPESA' },
-      { id: 'tigopesa', name: 'Tigo Pesa', envPrefix: 'TIGOPESA' },
-      { id: 'airtelmoney', name: 'Airtel Money', envPrefix: 'AIRTELMONEY' },
-      { id: 'halopesa', name: 'Halopesa', envPrefix: 'HALOPESA' },
-    ],
+    taxAuthority: 'TRA',
+    taxpayerIdLabel: 'TIN',
+    taxpayerIdRegex: /^\d{9}$/,
+    businessRegLabel: 'BRELA Registration Number',
+    evictionNoticeDaysResidential: 90,
+    evictionNoticeDaysCommercial: 90,
   },
   KE: {
-    countryCode: 'KE',
-    countryName: 'Kenya',
-    currencyCode: 'KES',
-    currencySymbol: 'KSh',
     currencyMinorUnits: 2,
     defaultTimezone: 'Africa/Nairobi',
     defaultLocale: 'en-KE',
-    phone: {
-      dialingCode: '254',
-      nationalNumberRegex: /^254[17]\d{8}$/,
-      placeholder: '+254 7XX XXX XXX',
-    },
+    phoneRegex: /^254[17]\d{8}$/,
+    phonePlaceholder: '+254 7XX XXX XXX',
     tax: {
       vatRate: 0.16,
       vatName: 'VAT',
       rentalIncomeTaxRate: 0.075,
       rentalIncomeTaxName: 'MRI',
-      maxLateFeeRate: 0.10,
+      maxLateFeeRate: 0.1,
     },
-    compliance: {
-      taxAuthority: 'KRA',
-      taxpayerIdLabel: 'KRA PIN',
-      taxpayerIdRegex: /^[A-Z]\d{9}[A-Z]$/,
-      businessRegLabel: 'Business Registration Number',
-      evictionNoticeDaysResidential: 60,
-      evictionNoticeDaysCommercial: 90,
-      depositReturnDays: 14,
-    },
-    mobileMoneyProviders: [
-      { id: 'mpesa_ke', name: 'M-Pesa (Safaricom)', envPrefix: 'MPESA' },
-    ],
+    taxAuthority: 'KRA',
+    taxpayerIdLabel: 'KRA PIN',
+    taxpayerIdRegex: /^[A-Z]\d{9}[A-Z]$/,
+    businessRegLabel: 'Business Registration Number',
+    evictionNoticeDaysResidential: 60,
+    evictionNoticeDaysCommercial: 90,
   },
   UG: {
-    countryCode: 'UG',
-    countryName: 'Uganda',
-    currencyCode: 'UGX',
-    currencySymbol: 'USh',
     currencyMinorUnits: 0,
     defaultTimezone: 'Africa/Kampala',
     defaultLocale: 'en-UG',
-    phone: {
-      dialingCode: '256',
-      nationalNumberRegex: /^256[37]\d{8}$/,
-      placeholder: '+256 7XX XXX XXX',
-    },
+    phoneRegex: /^256[37]\d{8}$/,
+    phonePlaceholder: '+256 7XX XXX XXX',
     tax: {
       vatRate: 0.18,
       vatName: 'VAT',
-      rentalIncomeTaxRate: 0.20,
+      rentalIncomeTaxRate: 0.2,
       rentalIncomeTaxName: 'Rental Income Tax',
       maxLateFeeRate: null,
     },
-    compliance: {
-      taxAuthority: 'URA',
-      taxpayerIdLabel: 'TIN',
-      taxpayerIdRegex: /^\d{10}$/,
-      businessRegLabel: 'URSB Registration Number',
-      evictionNoticeDaysResidential: 60,
-      evictionNoticeDaysCommercial: 90,
-      depositReturnDays: 30,
-    },
-    mobileMoneyProviders: [
-      { id: 'mtn_momo', name: 'MTN Mobile Money', envPrefix: 'MTN_MOMO' },
-      { id: 'airtel_ug', name: 'Airtel Money', envPrefix: 'AIRTELMONEY' },
-    ],
+    taxAuthority: 'URA',
+    taxpayerIdLabel: 'TIN',
+    taxpayerIdRegex: /^\d{10}$/,
+    businessRegLabel: 'URSB Registration Number',
+    evictionNoticeDaysResidential: 60,
+    evictionNoticeDaysCommercial: 90,
   },
   RW: {
-    countryCode: 'RW',
     countryName: 'Rwanda',
-    currencyCode: 'RWF',
-    currencySymbol: 'FRw',
     currencyMinorUnits: 0,
     defaultTimezone: 'Africa/Kigali',
     defaultLocale: 'en-RW',
-    phone: {
-      dialingCode: '250',
-      nationalNumberRegex: /^250[78]\d{8}$/,
-      placeholder: '+250 7XX XXX XXX',
-    },
+    phoneRegex: /^250[78]\d{8}$/,
+    phonePlaceholder: '+250 7XX XXX XXX',
     tax: {
       vatRate: 0.18,
       vatName: 'VAT',
@@ -225,34 +170,37 @@ const REGION_CONFIGS: Record<string, RegionConfig> = {
       rentalIncomeTaxName: 'Rental Income Tax',
       maxLateFeeRate: null,
     },
-    compliance: {
-      taxAuthority: 'RRA',
-      taxpayerIdLabel: 'TIN',
-      taxpayerIdRegex: /^\d{9}$/,
-      businessRegLabel: 'RDB Registration Number',
-      evictionNoticeDaysResidential: 30,
-      evictionNoticeDaysCommercial: 60,
-      depositReturnDays: 30,
-    },
-    mobileMoneyProviders: [
-      { id: 'mtn_rw', name: 'MTN Mobile Money', envPrefix: 'MTN_MOMO' },
-      { id: 'airtel_rw', name: 'Airtel Money', envPrefix: 'AIRTELMONEY' },
-    ],
+    taxAuthority: 'RRA',
+    taxpayerIdLabel: 'TIN',
+    taxpayerIdRegex: /^\d{9}$/,
+    businessRegLabel: 'RDB Registration Number',
+    evictionNoticeDaysResidential: 30,
+    evictionNoticeDaysCommercial: 60,
   },
 };
 
+// Rwanda is not yet a first-class plugin. A synthetic plugin-shape snapshot
+// keeps `getRegionConfig('RW')` returning the legacy data without forcing
+// the plugin package to ship a Rwandan plugin before we have counsel sign-off.
+const RW_MOBILE_MONEY: readonly MobileMoneyProvider[] = Object.freeze([
+  { id: 'mtn_rw', name: 'MTN Mobile Money', envPrefix: 'MTN_MOMO' },
+  { id: 'airtel_rw', name: 'Airtel Money', envPrefix: 'AIRTELMONEY' },
+]);
+
+const RW_SYNTHETIC = {
+  countryCode: 'RW',
+  countryName: 'Rwanda',
+  currencyCode: 'RWF',
+  currencySymbol: 'FRw',
+  phoneCountryCode: '250',
+  mobileMoneyProviders: RW_MOBILE_MONEY,
+  depositReturnDays: 30,
+};
+
 // ---------------------------------------------------------------------------
-// Fallback for countries we don't have a specific config for yet.
-// Uses generic sensible defaults. A tenant from an unconfigured country
-// still gets a working experience — just without region-specific tweaks.
+// Generic fallback
 // ---------------------------------------------------------------------------
 
-// Fallback for when tenant.country has not been set yet (the onboarding
-// flow detects the user's location and sets it). The default is
-// intentionally GENERIC (USD / UTC) — it exists only as a safe fallback
-// so code paths never crash on a missing config. The real region is
-// resolved from the user's browser location or IP geolocation during
-// signup and persisted as tenant.country.
 const GENERIC_CONFIG: RegionConfig = {
   countryCode: '',
   countryName: 'Unknown',
@@ -286,67 +234,183 @@ const GENERIC_CONFIG: RegionConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Public API
+// Plugin → RegionConfig adapter
 // ---------------------------------------------------------------------------
 
-/**
- * Resolve the full region config for a given ISO 3166-1 alpha-2 country
- * code. Falls back to GENERIC_CONFIG for unrecognized countries so
- * callers never need null-checks.
- */
-export function getRegionConfig(countryCode: string | null | undefined): RegionConfig {
+function mobileMoneyFromPlugin(
+  plugin: CountryPlugin
+): readonly MobileMoneyProvider[] {
+  return Object.freeze(
+    plugin.paymentGateways
+      .filter((gateway) => gateway.kind === 'mobile-money')
+      .map((gateway) => ({
+        id: gateway.id,
+        name: gateway.name,
+        envPrefix: gateway.envPrefix,
+      }))
+  );
+}
+
+function buildFromPlugin(
+  plugin: CountryPlugin,
+  overlay: RegionOverlay | undefined
+): RegionConfig {
+  const tax: TaxConfig = overlay?.tax ?? GENERIC_CONFIG.tax;
+  return {
+    countryCode: plugin.countryCode,
+    countryName: overlay?.countryName ?? plugin.countryName,
+    currencyCode: plugin.currencyCode,
+    currencySymbol: plugin.currencySymbol,
+    currencyMinorUnits: overlay?.currencyMinorUnits ?? 2,
+    defaultTimezone: overlay?.defaultTimezone ?? GENERIC_CONFIG.defaultTimezone,
+    defaultLocale: overlay?.defaultLocale ?? GENERIC_CONFIG.defaultLocale,
+    phone: {
+      dialingCode: plugin.phoneCountryCode,
+      nationalNumberRegex:
+        overlay?.phoneRegex ?? GENERIC_CONFIG.phone.nationalNumberRegex,
+      placeholder: overlay?.phonePlaceholder ?? `+${plugin.phoneCountryCode}`,
+    },
+    tax,
+    compliance: {
+      taxAuthority:
+        overlay?.taxAuthority ?? GENERIC_CONFIG.compliance.taxAuthority,
+      taxpayerIdLabel:
+        overlay?.taxpayerIdLabel ?? GENERIC_CONFIG.compliance.taxpayerIdLabel,
+      taxpayerIdRegex:
+        overlay?.taxpayerIdRegex ?? GENERIC_CONFIG.compliance.taxpayerIdRegex,
+      businessRegLabel:
+        overlay?.businessRegLabel ?? GENERIC_CONFIG.compliance.businessRegLabel,
+      evictionNoticeDaysResidential:
+        overlay?.evictionNoticeDaysResidential ??
+        plugin.compliance.noticePeriodDays,
+      evictionNoticeDaysCommercial:
+        overlay?.evictionNoticeDaysCommercial ??
+        plugin.compliance.noticePeriodDays,
+      depositReturnDays: plugin.compliance.depositReturnDays,
+    },
+    mobileMoneyProviders: mobileMoneyFromPlugin(plugin),
+  };
+}
+
+function buildSyntheticRwanda(): RegionConfig {
+  const overlay = REGION_OVERLAYS.RW!;
+  return {
+    countryCode: RW_SYNTHETIC.countryCode,
+    countryName: RW_SYNTHETIC.countryName,
+    currencyCode: RW_SYNTHETIC.currencyCode,
+    currencySymbol: RW_SYNTHETIC.currencySymbol,
+    currencyMinorUnits: overlay.currencyMinorUnits ?? 0,
+    defaultTimezone: overlay.defaultTimezone,
+    defaultLocale: overlay.defaultLocale,
+    phone: {
+      dialingCode: RW_SYNTHETIC.phoneCountryCode,
+      nationalNumberRegex: overlay.phoneRegex,
+      placeholder: overlay.phonePlaceholder,
+    },
+    tax: overlay.tax,
+    compliance: {
+      taxAuthority: overlay.taxAuthority,
+      taxpayerIdLabel: overlay.taxpayerIdLabel,
+      taxpayerIdRegex: overlay.taxpayerIdRegex,
+      businessRegLabel: overlay.businessRegLabel,
+      evictionNoticeDaysResidential: overlay.evictionNoticeDaysResidential,
+      evictionNoticeDaysCommercial: overlay.evictionNoticeDaysCommercial,
+      depositReturnDays: RW_SYNTHETIC.depositReturnDays,
+    },
+    mobileMoneyProviders: RW_SYNTHETIC.mobileMoneyProviders,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Memoised snapshots
+// ---------------------------------------------------------------------------
+
+const SUPPORTED_CODES: readonly string[] = Object.freeze(
+  Array.from(
+    new Set<string>([...availableCountries(), ...Object.keys(REGION_OVERLAYS)])
+  )
+    .map((code) => code.toUpperCase())
+    .sort()
+);
+
+const cache = new Map<string, RegionConfig>();
+
+function buildConfigFor(upper: string): RegionConfig {
+  if (upper === 'RW') {
+    return Object.freeze(buildSyntheticRwanda());
+  }
+  const plugin = getCountryPlugin(upper);
+  if (plugin.countryCode !== upper) {
+    return Object.freeze({ ...GENERIC_CONFIG, countryCode: upper });
+  }
+  return Object.freeze(buildFromPlugin(plugin, REGION_OVERLAYS[upper]));
+}
+
+function resolve(upper: string): RegionConfig {
+  const cached = cache.get(upper);
+  if (cached) return cached;
+  const built = buildConfigFor(upper);
+  cache.set(upper, built);
+  return built;
+}
+
+// ---------------------------------------------------------------------------
+// Public API — signatures preserved
+// ---------------------------------------------------------------------------
+
+export function getRegionConfig(
+  countryCode: string | null | undefined
+): RegionConfig {
   if (!countryCode) return GENERIC_CONFIG;
   const upper = countryCode.trim().toUpperCase();
-  return REGION_CONFIGS[upper] ?? { ...GENERIC_CONFIG, countryCode: upper };
+  if (!upper) return GENERIC_CONFIG;
+  return resolve(upper);
 }
 
-/** List all countries that have explicit region configs. */
 export function getSupportedCountries(): readonly RegionConfig[] {
-  return Object.values(REGION_CONFIGS);
+  return Object.freeze(SUPPORTED_CODES.map((code) => resolve(code)));
 }
 
-/** Check if a country code has a dedicated config (vs fallback). */
 export function isCountrySupported(countryCode: string): boolean {
-  return countryCode.trim().toUpperCase() in REGION_CONFIGS;
+  return SUPPORTED_CODES.includes(countryCode.trim().toUpperCase());
 }
 
-/**
- * Normalize a phone number for a given country's dialing code.
- * Strips non-digits, converts leading 0 to the country prefix, and
- * prepends the prefix if missing. Works for ANY country — no
- * hardcoded assumptions about Kenya or Tanzania.
- */
 export function normalizePhoneForCountry(
   phone: string,
   countryCode: string
 ): string {
   const cfg = getRegionConfig(countryCode);
-  let cleaned = phone.replace(/\D/g, '');
-  if (cleaned.startsWith('0')) {
-    cleaned = cfg.phone.dialingCode + cleaned.substring(1);
+  if (!cfg.phone.dialingCode) {
+    return phone.replace(/\D/g, '');
   }
-  if (cfg.phone.dialingCode && !cleaned.startsWith(cfg.phone.dialingCode)) {
-    cleaned = cfg.phone.dialingCode + cleaned;
+  const upper = (countryCode ?? '').trim().toUpperCase();
+  if (upper === 'RW') {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = cfg.phone.dialingCode + cleaned.substring(1);
+    }
+    if (!cleaned.startsWith(cfg.phone.dialingCode)) {
+      cleaned = cfg.phone.dialingCode + cleaned;
+    }
+    return cleaned;
   }
-  return cleaned;
+  const plugin = getCountryPlugin(upper);
+  const e164 = plugin.normalizePhone(phone);
+  return e164.startsWith('+') ? e164.slice(1) : e164;
 }
 
-/**
- * Get the default currency code for a tenant's country. This is what
- * schemas should use instead of `default('KES')` — they should call
- * this with the tenant's country at creation time.
- */
-export function getDefaultCurrency(countryCode: string | null | undefined): string {
+export function getDefaultCurrency(
+  countryCode: string | null | undefined
+): string {
   return getRegionConfig(countryCode).currencyCode;
 }
 
-// ---------------------------------------------------------------------------
-// Zod schema for taxpayer ID validation — adapts per country
-// ---------------------------------------------------------------------------
-
 export function buildTaxpayerIdSchema(countryCode: string) {
   const cfg = getRegionConfig(countryCode);
-  const base = z.string().trim().min(1, `${cfg.compliance.taxpayerIdLabel} is required`);
+  const base = z
+    .string()
+    .trim()
+    .min(1, `${cfg.compliance.taxpayerIdLabel} is required`);
   if (cfg.compliance.taxpayerIdRegex) {
     return base.transform((v) => v.toUpperCase()).refine(
       (v) => cfg.compliance.taxpayerIdRegex!.test(v),

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: Request,
-  ctxParams: { params: { id: string } }
+  ctxParams: { params: Promise<{ id: string }> }
 ) {
   let ctx;
   try {
@@ -21,7 +21,7 @@ export async function GET(
     return NextResponse.json(body, { status });
   }
   const { brain, tenant, viewer } = ctx;
-  const id = ctxParams.params.id;
+  const { id } = await ctxParams.params;
   const thread = await brain.threads.getThread(id);
   if (!thread || thread.tenantId !== tenant.tenantId) {
     return NextResponse.json({ error: 'thread_not_found' }, { status: 404 });

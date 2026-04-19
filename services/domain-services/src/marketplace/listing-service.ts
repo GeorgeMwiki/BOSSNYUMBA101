@@ -35,21 +35,36 @@ function nowIso(): ISOTimestamp {
   return new Date().toISOString() as ISOTimestamp;
 }
 
+/**
+ * Unit-existence checker. Kept as a simple port so the service stays pure
+ * and testable: domain code doesn't know about Drizzle / Postgres. The
+ * composition root wires in a concrete checker that hits `units` with a
+ * tenant-scoped `SELECT 1`. When omitted, the service falls back to
+ * trusting the caller — preserved for in-memory tests that don't care
+ * about FK integrity.
+ */
+export interface UnitExistsChecker {
+  (tenantId: TenantId, unitId: string): Promise<boolean>;
+}
+
 export interface ListingServiceDeps {
   readonly repo: MarketplaceListingRepository;
   readonly eventBus: EventBus;
   readonly now?: () => ISOTimestamp;
+  readonly unitExists?: UnitExistsChecker;
 }
 
 export class ListingService {
   private readonly repo: MarketplaceListingRepository;
   private readonly eventBus: EventBus;
   private readonly now: () => ISOTimestamp;
+  private readonly unitExists?: UnitExistsChecker;
 
   constructor(deps: ListingServiceDeps) {
     this.repo = deps.repo;
     this.eventBus = deps.eventBus;
     this.now = deps.now ?? nowIso;
+    this.unitExists = deps.unitExists;
   }
 
   async publish(
@@ -65,6 +80,23 @@ export class ListingService {
           'VALIDATION'
         )
       );
+    }
+    // Pre-insert unit-existence check. Without this, a bogus `unitId` falls
+    // through to Postgres as a raw FK violation and surfaces as 500 —
+    // hiding a caller bug behind a server error. Surface it as a 400
+    // VALIDATION with a clear message instead. The checker is optional
+    // for backward compat (in-memory tests skip it); the gateway wires a
+    // live checker via the composition root.
+    if (this.unitExists) {
+      const exists = await this.unitExists(tenantId, input.unitId);
+      if (!exists) {
+        return err(
+          new MarketplaceServiceError(
+            `Unit not found: ${input.unitId}`,
+            'VALIDATION'
+          )
+        );
+      }
     }
     const timestamp = this.now();
     const listing: MarketplaceListing = {

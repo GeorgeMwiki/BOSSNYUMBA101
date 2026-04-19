@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary, Toaster } from '@bossnyumba/design-system';
 import App from './App';
+import { LocaleProvider } from './contexts/LocaleProvider';
 import './index.css';
 
 // Shared defaults across all BOSSNYUMBA apps. staleTime avoids redundant
@@ -26,12 +27,14 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-          <Toaster />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <LocaleProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+            <Toaster />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </LocaleProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

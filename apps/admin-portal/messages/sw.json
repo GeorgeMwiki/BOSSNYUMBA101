@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Admin",
+    "tagline": "Kiweko cha utendaji wa jukwaa"
+  },
+  "nav": {
+    "dashboard": "Dashibodi",
+    "tenants": "Wapangaji",
+    "users": "Watumiaji",
+    "roles": "Majukumu",
+    "operations": "Utendaji",
+    "support": "Usaidizi",
+    "reports": "Ripoti",
+    "configuration": "Mipangilio",
+    "audit": "Ukaguzi",
+    "system": "Afya ya mfumo",
+    "platform": "Jukwaa",
+    "communications": "Mawasiliano",
+    "compliance": "Ufuataji",
+    "analytics": "Uchanganuzi",
+    "integrations": "Ujumuishaji"
+  },
+  "actions": {
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "continue": "Endelea",
+    "create": "Unda",
+    "delete": "Futa",
+    "invite": "Alika"
+  },
+  "errors": {
+    "generic": "Hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia",
+    "unauthorized": "Huna ruhusa"
+  },
+  "empty": {
+    "noItems": "Hakuna vitu bado",
+    "noTenants": "Hakuna wapangaji bado"
+  },
+  "locale": {
+    "label": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili"
+  }
+}

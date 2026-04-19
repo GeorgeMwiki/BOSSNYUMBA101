@@ -90,7 +90,15 @@ export const tenants = pgTable(
     city: text('city'),
     state: text('state'),
     postalCode: text('postal_code'),
-    country: text('country').default('KE'),
+    /**
+     * ISO-3166-1 alpha-2. Drives currency / phone / KYC via
+     * `@bossnyumba/compliance-plugins`. Nullable during rollout — a
+     * future migration backfills every row and adds NOT NULL. The
+     * legacy 'KE' default was dropped in migration 0034 so tenants
+     * without an explicit country fall back to DEFAULT_COUNTRY_ID
+     * with a logged warning instead of being silently Kenyan.
+     */
+    country: text('country'),
     
     // Settings
     settings: jsonb('settings').default({}),
@@ -122,6 +130,7 @@ export const tenants = pgTable(
     slugIdx: uniqueIndex('tenants_slug_idx').on(table.slug),
     statusIdx: index('tenants_status_idx').on(table.status),
     createdAtIdx: index('tenants_created_at_idx').on(table.createdAt),
+    countryIdx: index('tenants_country_idx').on(table.country),
   })
 );
 

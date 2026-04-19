@@ -1,0 +1,47 @@
+{
+  "app": {
+    "title": "BOSSNYUMBA Manager",
+    "tagline": "Estate manager field operations"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "properties": "Properties",
+    "units": "Units",
+    "leases": "Leases",
+    "workOrders": "Work orders",
+    "payments": "Payments",
+    "tenants": "Tenants",
+    "vendors": "Vendors",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "actions": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "create": "Create",
+    "assign": "Assign",
+    "complete": "Complete",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "pleaseSignIn": "Please sign in",
+    "loadFailed": "Could not load data",
+    "noPermission": "You don't have permission to do that"
+  },
+  "empty": {
+    "noItems": "No items yet",
+    "noWorkOrders": "No work orders yet",
+    "noTenants": "No tenants yet",
+    "noProperties": "No properties yet"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "sw": "Swahili"
+  }
+}

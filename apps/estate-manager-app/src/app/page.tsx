@@ -15,6 +15,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Empty, Skeleton } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -48,6 +49,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function DashboardPage() {
+  const tNav = useTranslations('nav');
   const { data: propertiesData, isLoading: loadingProperties } = useQuery({
     queryKey: ['properties', { page: 1, pageSize: 100 }],
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
@@ -114,7 +116,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={tNav('dashboard')}
         subtitle="Estate Manager Overview"
         showProfile
       />
