@@ -82,6 +82,10 @@ export const marketplaceListings = pgTable(
 
     listingKind: listingKindEnum('listing_kind').notNull().default('rent'),
     headlinePrice: integer('headline_price').notNull(), // minor units
+    // Currency MUST be supplied by the caller from `tenant.defaultCurrency`
+    // (see `@bossnyumba/domain-models` `getDefaultCurrency(tenant.countryCode)`).
+    // The default below is the neutral fallback for rows created before a
+    // tenant's region is resolved; never rely on it in production flows.
     currency: text('currency').notNull().default('KES'),
     negotiable: boolean('negotiable').notNull().default(true),
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Marketplace API (NEW 11 — Listings).
  *

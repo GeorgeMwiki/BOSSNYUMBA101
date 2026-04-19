@@ -1,4 +1,3 @@
-// @ts-nocheck — OCR/evidence-pack modules pending; exports drifted
 /**
  * Document Intelligence & Identity Verification Service
  * 
@@ -30,8 +29,8 @@ export * from './repositories/interfaces.js';
 export { DocumentCollectionService, MockImageQualityAnalyzer } from './services/document-collection.service.js';
 export { OCRExtractionService, MockOCRProvider } from './services/ocr-extraction.service.js';
 export { FraudDetectionService, MockImageAnalyzer } from './services/fraud-detection.service.js';
-export { ValidationConsistencyService, MockExternalVerificationProvider } from './services/validation-consistency.service.js';
-export { EvidencePackService, MockPDFGenerator } from './services/evidence-pack.service.js';
+export { ValidationConsistencyService, type IExternalVerificationProvider } from './services/validation-consistency.service.js';
+export { EvidencePackBuilderService, MockPDFGenerator } from './services/evidence-pack-builder.service.js';
 export { ExpiryTrackingService } from './services/expiry-tracking.service.js';
 
 // ============================================================================
@@ -97,7 +96,7 @@ export {
   generateEvidencePackId,
   generateExpiryTrackerId,
   generateValidationResultId,
-  generateOcrExtractionId,
+  generateOCRExtractionId,
   generateChecksum,
 } from './utils/id-generator.js';
 export {

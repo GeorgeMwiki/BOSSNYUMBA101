@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Shared helpers for the Wave 2 hook tests.
  *
@@ -26,7 +25,8 @@ export interface StubFetchOptions {
 export function stubFetchSequence(responses: ReadonlyArray<StubFetchOptions>) {
   const queue = [...responses];
   const mock = vi.fn().mockImplementation(async () => {
-    const next = queue.shift() ?? responses[responses.length - 1];
+    const next: StubFetchOptions =
+      queue.shift() ?? responses[responses.length - 1] ?? {};
     const status = next.status ?? (next.ok === false ? 500 : 200);
     const ok = next.ok ?? status < 400;
     const headers = new Map<string, string>([
@@ -41,8 +41,7 @@ export function stubFetchSequence(responses: ReadonlyArray<StubFetchOptions>) {
       text: async () => JSON.stringify(next.body ?? {}),
     } as unknown as Response;
   });
-  // @ts-expect-error — assigning to the global fetch in a test context.
-  globalThis.fetch = mock;
+  (globalThis as { fetch: typeof fetch }).fetch = mock as unknown as typeof fetch;
   return mock;
 }
 

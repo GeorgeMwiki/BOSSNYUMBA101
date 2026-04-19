@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Maintenance problem taxonomy router — Wave 8 (S7 gap closure)
  *

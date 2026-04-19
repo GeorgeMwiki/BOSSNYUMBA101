@@ -96,6 +96,16 @@ import {
   createIotService,
   type IotService,
 } from '@bossnyumba/domain-services/iot';
+import {
+  createArrearsService,
+  type ArrearsService,
+} from '@bossnyumba/payments-ledger-service/arrears';
+import {
+  PostgresArrearsRepository,
+  PostgresLedgerPort,
+  createPostgresArrearsEntryLoader,
+  type ArrearsEntryLoader,
+} from './arrears-infrastructure.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -126,6 +136,14 @@ export interface ServiceRegistry {
   readonly warehouse: WarehouseService | null;
   readonly maintenanceTaxonomy: MaintenanceTaxonomyService | null;
   readonly iot: IotService | null;
+
+  /** Arrears ledger (NEW 4). Service + loader for the projection endpoint. */
+  readonly arrears: {
+    readonly service: ArrearsService | null;
+    readonly repo: PostgresArrearsRepository | null;
+    readonly ledgerPort: PostgresLedgerPort | null;
+    readonly entryLoader: ArrearsEntryLoader | null;
+  };
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -163,6 +181,12 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     warehouse: null,
     maintenanceTaxonomy: null,
     iot: null,
+    arrears: {
+      service: null,
+      repo: null,
+      ledgerPort: null,
+      entryLoader: null,
+    },
     eventBus,
     db: null,
     isLive: false,
@@ -305,6 +329,19 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
   // the same client and queries are straight-through.
   const iotService = createIotService({ db });
 
+  // Arrears Ledger (NEW 4) — Postgres repo + ledger-port + projection
+  // loader. The repo persists line proposals + cases; the ledger port
+  // appends adjustment rows into `transactions` on approval; the entry
+  // loader powers `GET /arrears/cases/:id/projection` by pulling real
+  // ledger rows out of Postgres (never mock).
+  const arrearsRepo = new PostgresArrearsRepository(db);
+  const arrearsLedgerPort = new PostgresLedgerPort(db);
+  const arrearsService = createArrearsService({
+    repo: arrearsRepo,
+    ledger: arrearsLedgerPort,
+  });
+  const arrearsEntryLoader = createPostgresArrearsEntryLoader(db);
+
   return {
     marketplace: {
       listing: listingService,
@@ -327,6 +364,12 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
     warehouse: warehouseService,
     maintenanceTaxonomy: maintenanceTaxonomyService,
     iot: iotService,
+    arrears: {
+      service: arrearsService,
+      repo: arrearsRepo,
+      ledgerPort: arrearsLedgerPort,
+      entryLoader: arrearsEntryLoader,
+    },
     eventBus,
     db,
     isLive: true,

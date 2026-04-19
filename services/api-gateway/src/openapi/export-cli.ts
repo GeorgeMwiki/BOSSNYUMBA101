@@ -1,4 +1,3 @@
-// @ts-nocheck — OpenAPI export CLI has complex dynamic router typing; runtime-safe
 /**
  * OpenAPI export CLI — writes the live-generated spec to disk so CI
  * can diff it against the committed copy and so API consumers can

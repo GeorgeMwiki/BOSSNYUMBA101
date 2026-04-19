@@ -1,4 +1,3 @@
-// @ts-nocheck — state-machine narrowing types need refactor; tracked for separate pass
 /**
  * SOC 2 Type II Compliance Controls
  * 
@@ -408,7 +407,14 @@ export class SOC2ComplianceManager {
    */
   generateComplianceReport(): {
     generatedAt: string;
-    summary: ReturnType<typeof this.getComplianceSummary>;
+    summary: {
+      totalControls: number;
+      compliant: number;
+      nonCompliant: number;
+      partiallyCompliant: number;
+      notAssessed: number;
+      compliancePercentage: number;
+    };
     controlDetails: Array<{
       control: SOC2ControlDefinition;
       assessment?: ControlAssessment;

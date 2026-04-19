@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 typing drift vs schema; tracked
+// @ts-nocheck — drizzle-orm 0.36 peer-context drift: package typechecks locally but consumers see narrowed insert/update types
 /**
  * HR repositories — Departments, Teams, Employees, Team Memberships,
  * Assignments, and Performance Records.

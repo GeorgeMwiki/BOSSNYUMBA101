@@ -1,4 +1,3 @@
-// @ts-nocheck — schema drift between domain-models Policy type and authz-policy; tracked for rewrite
 import jwt, { JwtPayload, SignOptions, VerifyOptions } from 'jsonwebtoken';
 
 export interface TokenPayload {
@@ -75,7 +74,7 @@ export class JwtService {
    */
   signAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
     const options: SignOptions = {
-      expiresIn: this.config.accessTokenExpiresIn as string | number,
+      expiresIn: this.config.accessTokenExpiresIn as SignOptions['expiresIn'],
       issuer: this.config.issuer,
       audience: this.config.audience,
       subject: payload.sub,
@@ -98,7 +97,7 @@ export class JwtService {
    */
   signRefreshToken(payload: Pick<TokenPayload, 'sub'>): string {
     const options: SignOptions = {
-      expiresIn: this.config.refreshTokenExpiresIn as string | number,
+      expiresIn: this.config.refreshTokenExpiresIn as SignOptions['expiresIn'],
       issuer: this.config.issuer,
       audience: this.config.audience,
       subject: payload.sub,

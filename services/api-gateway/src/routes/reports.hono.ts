@@ -29,7 +29,7 @@ function monthKey(dateValue) {
 
 function monthLabel(key) {
   const [year, month] = key.split('-').map(Number);
-  return new Date(year, month - 1, 1).toLocaleDateString('en-KE', {
+  return new Date(year, month - 1, 1).toLocaleDateString('en', {
     month: 'short',
   });
 }

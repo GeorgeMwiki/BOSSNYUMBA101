@@ -1,4 +1,3 @@
-// @ts-nocheck — state-machine narrowing types need refactor; tracked for separate pass
 /**
  * Custom Workflows Engine
  * 
@@ -402,7 +401,7 @@ export class WorkflowEngine {
         body?: unknown;
       };
       
-      const response = await fetch(this.interpolate(config.url, context), {
+      const response = await fetch(String(this.interpolate(config.url, context)), {
         method: config.method,
         headers: config.headers,
         body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,
@@ -410,7 +409,7 @@ export class WorkflowEngine {
       
       return {
         statusCode: response.status,
-        body: await response.json().catch(() => null),
+        body: await response.json().catch((): null => null),
       };
     });
 

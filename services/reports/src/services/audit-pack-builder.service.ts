@@ -1,4 +1,3 @@
-// @ts-nocheck — local type drift; tracked for alignment pass
 /**
  * Audit Pack Builder Service
  * 
@@ -566,7 +565,7 @@ export class AuditPackBuilderService {
             );
 
             doc.storedReportId = stored.id;
-            doc.url = stored.url;
+            doc.url = `/reports/${stored.id}`;
             doc.size = typeof content === 'string' ? content.length : content.length;
             doc.generatedAt = new Date();
 

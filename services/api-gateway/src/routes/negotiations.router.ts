@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Negotiations API (NEW 1 — AI Price-Negotiation Engine).
  *

@@ -29,7 +29,7 @@ function isWithinRange(dateValue, start, end) {
 }
 
 function formatMonth(dateValue) {
-  return new Date(dateValue).toLocaleDateString('en-KE', {
+  return new Date(dateValue).toLocaleDateString('en', {
     month: 'short',
     year: 'numeric',
   });
@@ -43,8 +43,8 @@ function buildMonthSeries(items, getDate, getValue, months = 7) {
     const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
     buckets.push({
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-      label: date.toLocaleDateString('en-KE', { month: 'short' }),
-      fullLabel: date.toLocaleDateString('en-KE', { month: 'short', year: 'numeric' }),
+      label: date.toLocaleDateString('en', { month: 'short' }),
+      fullLabel: date.toLocaleDateString('en', { month: 'short', year: 'numeric' }),
       value: 0,
     });
   }

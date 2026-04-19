@@ -1,4 +1,3 @@
-// @ts-nocheck — state-machine narrowing types need refactor; tracked for separate pass
 /**
  * Health Check System
  * 
@@ -290,7 +289,7 @@ export class HealthCheckManager {
     checks: readonly HealthCheckDefinition[]
   ): Promise<HealthResponse> {
     const results: HealthCheckResult[] = [];
-    let overallStatus = HealthStatus.HEALTHY;
+    let overallStatus: HealthStatus = HealthStatus.HEALTHY;
 
     for (const check of checks) {
       const state = this.checkStates.get(check.name)!;

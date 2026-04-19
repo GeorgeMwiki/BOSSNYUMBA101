@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Warehouse inventory router — Wave 8 (S7 gap closure)
  *

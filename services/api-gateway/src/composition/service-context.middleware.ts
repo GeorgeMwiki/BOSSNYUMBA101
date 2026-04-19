@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Service-context middleware.
  *
@@ -81,6 +80,22 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       // Waitlist endpoints read from `services.waitlist.service` directly.
       // Negotiation endpoints read from `services.negotiation` directly.
       // Marketplace endpoints read from `services.marketplace.*`.
+
+      // Arrears router pulls these four keys directly via `c.get(...)`.
+      // The composition root builds real Postgres-backed instances so
+      // the projection endpoint stops returning LOADER_MISSING.
+      if (registry.arrears?.service) {
+        c.set('arrearsService', registry.arrears.service);
+      }
+      if (registry.arrears?.repo) {
+        c.set('arrearsRepo', registry.arrears.repo);
+      }
+      if (registry.arrears?.ledgerPort) {
+        c.set('arrearsLedgerPort', registry.arrears.ledgerPort);
+      }
+      if (registry.arrears?.entryLoader) {
+        c.set('arrearsEntryLoader', registry.arrears.entryLoader);
+      }
     }
 
     await next();

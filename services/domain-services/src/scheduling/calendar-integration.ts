@@ -112,8 +112,11 @@ export function exportToICal(
   events: readonly ScheduledEvent[],
   options: ICalExportOptions = {}
 ): string {
+  // `timezone` here is the event-set's local tz — callers should pass
+  // `tenant.defaultTimezone` (resolve via `getRegionConfig(tenant.countryCode).defaultTimezone`).
+  // UTC is the neutral fallback when unspecified; do not hardcode a country tz.
   const {
-    timezone = 'Africa/Nairobi',
+    timezone = 'UTC',
     includeCancelled = false,
     productId = '-//BossNyumba//Scheduling//EN',
   } = options;

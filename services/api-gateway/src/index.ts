@@ -140,7 +140,15 @@ app.use(
     maxAge: 86_400,
   })
 );
-app.use(express.json({ limit: '2mb' }));
+// Skip express.json() for /api/v1 paths — those are handled by the
+// Hono sub-app which consumes the raw request body itself. Running
+// express.json() first would drain the body stream and Hono would
+// see an empty request. No Express handler outside /api/v1 reads
+// req.body today, but we keep the parser for potential future use.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/v1')) return next();
+  return express.json({ limit: '2mb' })(req, res, next);
+});
 app.use(pinoHttp({ logger }));
 app.use(rateLimitMiddleware());
 
@@ -476,7 +484,22 @@ if (require.main === module) {
   // audit entries). Runner is resolved lazily via the observability
   // event-bus singleton so tests can stub it out.
   void import('@bossnyumba/observability').then((obs) => {
-    const runner = obs.getEventBus?.() ?? (obs as unknown as { eventBus?: OutboxRunnerLike }).eventBus;
+    // Initialize the event-bus singleton first; getEventBus() throws
+    // if called without a config on first use. Config is idempotent
+    // across calls (the module memoises the first instance).
+    let runner: OutboxRunnerLike | undefined;
+    try {
+      runner = obs.getEventBus?.({
+        serviceName: 'api-gateway',
+        enableOutbox: true,
+      } as unknown as never) as unknown as OutboxRunnerLike | undefined;
+    } catch (e) {
+      runner = undefined;
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'observability: getEventBus init failed');
+    }
+    if (!runner) {
+      runner = (obs as unknown as { eventBus?: OutboxRunnerLike }).eventBus;
+    }
     if (runner && typeof (runner as OutboxRunnerLike).processOutbox === 'function') {
       startOutboxWorker(runner as OutboxRunnerLike, {
         logger,

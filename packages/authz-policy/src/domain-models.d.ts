@@ -8,6 +8,7 @@ declare module '@bossnyumba/domain-models' {
   export type RoleId = string;
   export type UserId = string;
   export type PolicyId = string;
+  export type SessionId = string;
 
   export interface User {
     id: UserId;
@@ -26,6 +27,14 @@ declare module '@bossnyumba/domain-models' {
     isAdmin?: boolean;
     priority?: number;
   }
+
+  export interface UserRoleAssignment {
+    roleId: RoleId;
+    organizationId: OrganizationId;
+    expiresAt?: string;
+  }
+
+  export function permissionMatches(permission: string, required: string): boolean;
 
   export interface AuthorizationRequest {
     subject: unknown;

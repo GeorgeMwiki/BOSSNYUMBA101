@@ -28,6 +28,7 @@ import type {
   UnitId,
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
+import { getDefaultCurrency } from '@bossnyumba/domain-models';
 import type {
   ConditionalSurvey,
   ConditionalSurveyId,
@@ -329,7 +330,10 @@ function rowToPlan(row: any): ConditionalSurveyActionPlan {
     priority: (row.priority ?? 3) as ConditionalSurveyActionPlan['priority'],
     status: (row.status ?? 'proposed') as ConditionalSurveyActionStatus,
     estimatedCostCents: row.estimatedCost != null ? Number(row.estimatedCost) : null,
-    currency: row.currency ?? 'KES',
+    // Prefer the stored value; only fall back to the neutral global default
+    // when the row has no currency. Tenant-specific currency lives in the
+    // tenant record, not here — this is a last-resort fallback.
+    currency: row.currency ?? getDefaultCurrency(null),
     targetDate: fromDate(row.targetDate),
     approvedBy: row.approvedBy ? (row.approvedBy as unknown as UserId) : null,
     approvedAt: fromDate(row.approvedAt),

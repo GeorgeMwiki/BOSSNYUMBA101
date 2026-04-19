@@ -132,10 +132,17 @@ const tenantCache: TenantCache = new InMemoryTenantCache();
 // Default Tenant Configuration
 // ============================================================================
 
+// IMPORTANT: these defaults are the last-resort fallback used ONLY in the
+// dev path where the tenant record hasn't been loaded yet. Production
+// resolves real values from the tenant row (see `loadTenantFromDatabase`).
+// Keep them country-neutral — never bake in 'TZ', 'TZS', 'en-TZ', or an
+// Africa/* timezone, which would quietly push Tanzania onto every tenant
+// whose country isn't yet known. Cross-reference `tenant.defaultCurrency`,
+// `tenant.countryCode`, `tenant.defaultLocale`, `tenant.defaultTimezone`.
 const DEFAULT_TENANT_SETTINGS: TenantSettings = {
-  timezone: 'Africa/Dar_es_Salaam',
-  currency: 'TZS',
-  locale: 'en-TZ',
+  timezone: 'UTC',
+  currency: 'USD',
+  locale: 'en',
   dateFormat: 'DD/MM/YYYY',
   fiscalYearStart: 1,
   lateFeeEnabled: true,

@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
 /**
  * Postgres-backed Tenant Group Repository (Wave 3).
  *

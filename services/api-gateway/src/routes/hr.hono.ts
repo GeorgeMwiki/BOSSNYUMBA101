@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 /**
  * /api/v1/hr — departments, teams, employees, team memberships,

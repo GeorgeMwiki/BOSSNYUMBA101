@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite
 /**
  * Typed API Client - BOSSNYUMBA
  *
@@ -418,7 +417,7 @@ export class ApiClient {
         });
       }
 
-      const error = errorData.error ?? errorData;
+      const error: Partial<ApiError> = errorData.error ?? errorData;
       throw new ApiClientError(error.code || 'UNKNOWN_ERROR', error.message || 'Request failed', {
         status: response.status,
         details: error.details,

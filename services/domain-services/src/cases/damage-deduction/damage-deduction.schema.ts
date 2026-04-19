@@ -18,6 +18,11 @@ export const damageDeductionCases = pgTable(
     claimedDeductionMinor: integer('claimed_deduction_minor').notNull().default(0),
     proposedDeductionMinor: integer('proposed_deduction_minor'),
     tenantCounterProposalMinor: integer('tenant_counter_proposal_minor'),
+    // Currency should be supplied by the service layer from
+    // `tenant.defaultCurrency` (see @bossnyumba/domain-models
+    // `getDefaultCurrency(tenant.countryCode)`). The stored default below
+    // matches migration 0017_cases_sla_and_subleases.sql and exists only
+    // for rows created before tenant context is available.
     currency: text('currency').notNull().default('TZS'),
 
     status: text('status').notNull().default('claim_filed'),

@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite against current WorkOrder/PaymentMethod namespace shape
 /**
  * Scheduling API Service
  * Calendar and scheduling
@@ -153,7 +152,7 @@ export const schedulingService = {
       propertyId: params?.propertyId,
       unitId: params?.unitId,
     });
-    return getApiClient().get<TimeSlot[]>('/scheduling/available-slots', searchParams);
+    return getApiClient().get<TimeSlot[]>('/scheduling/available-slots', { params: searchParams });
   },
 
   /**
@@ -161,8 +160,10 @@ export const schedulingService = {
    */
   async getCalendar(startDate: string, endDate: string): Promise<ApiResponse<ScheduleEvent[]>> {
     return getApiClient().get<ScheduleEvent[]>('/scheduling/calendar', {
-      startDate,
-      endDate,
+      params: {
+        startDate,
+        endDate,
+      },
     });
   },
 };

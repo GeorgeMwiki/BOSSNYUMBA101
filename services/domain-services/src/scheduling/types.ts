@@ -209,9 +209,11 @@ export interface DaySchedule {
   readonly end: string;   // HH:mm
 }
 
-// Default Africa/Nairobi working hours
+// Default working hours — timezone is UTC until the tenant's
+// `tenant.defaultTimezone` is loaded; callers should override with the
+// tenant-resolved timezone from `getRegionConfig(tenant.countryCode)`.
 export const DEFAULT_WORKING_HOURS: WorkingHours = {
-  timezone: 'Africa/Nairobi',
+  timezone: 'UTC',
   monday: { start: '08:00', end: '17:00' },
   tuesday: { start: '08:00', end: '17:00' },
   wednesday: { start: '08:00', end: '17:00' },

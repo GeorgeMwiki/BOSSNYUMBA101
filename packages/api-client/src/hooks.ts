@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite
 /**
  * React Hooks for API Client - BOSSNYUMBA
  *
@@ -543,6 +542,7 @@ export function useInfiniteQuery<TData>(
     if (pages.length === 0) return;
 
     const lastPage = pages[pages.length - 1];
+    if (!lastPage) return;
     const nextPageParam = getNextPageParam(lastPage, pages);
 
     if (nextPageParam !== undefined) {
@@ -568,6 +568,7 @@ export function useInfiniteQuery<TData>(
   const hasNextPage = useMemo(() => {
     if (pages.length === 0) return false;
     const lastPage = pages[pages.length - 1];
+    if (!lastPage) return false;
     return getNextPageParam(lastPage, pages) !== undefined;
   }, [pages, getNextPageParam]);
 

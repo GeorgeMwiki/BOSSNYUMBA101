@@ -14,6 +14,7 @@ import type {
   EntityMetadata,
   ISOTimestamp,
 } from '../common/types';
+import { getDefaultCurrency } from '../common/region-config';
 
 // ============================================================================
 // Enums and Schemas
@@ -65,6 +66,8 @@ export const MaterialUsedSchema = z.object({
   unit: z.string(),
   unitCost: z.number().optional(),
   totalCost: z.number().optional(),
+  // Currency resolves from tenant.defaultCurrency at the call site; USD is
+  // a neutral last-resort fallback (see packages/config DEFAULT_FALLBACK_CURRENCY).
   currency: z.string().default('USD'),
   supplier: z.string().optional(),
   warrantyInfo: z.string().optional(),
@@ -103,6 +106,8 @@ export const CompletionProofSchema = z.object({
   // Materials
   materialsUsed: z.array(MaterialUsedSchema).default([]),
   totalMaterialsCost: z.number().default(0),
+  // Currency resolves from tenant.defaultCurrency at the call site; USD is
+  // a neutral last-resort fallback (see packages/config DEFAULT_FALLBACK_CURRENCY).
   currency: z.string().default('USD'),
   
   // Technician
@@ -217,6 +222,14 @@ export function createCompletionProof(
     recommendations?: string;
     followUpRequired?: boolean;
     followUpNotes?: string;
+    /**
+     * ISO 4217 currency for materials / totals. Callers should supply
+     * `tenant.defaultCurrency` (resolve via `getDefaultCurrency(tenant.countryCode)`).
+     * Falls back to the global `getDefaultCurrency(null)` (USD) only when unspecified.
+     */
+    currency?: string;
+    /** ISO 3166-1 alpha-2 country code for tenant-aware currency fallback. */
+    tenantCountryCode?: string;
   },
   createdBy: UserId
 ): CompletionProof {
@@ -254,7 +267,7 @@ export function createCompletionProof(
     
     materialsUsed,
     totalMaterialsCost,
-    currency: 'KES',
+    currency: data.currency ?? getDefaultCurrency(data.tenantCountryCode ?? null),
     
     technicianName: data.technicianName,
     technicianSignature: null,

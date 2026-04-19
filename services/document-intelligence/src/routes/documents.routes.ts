@@ -1,4 +1,3 @@
-// @ts-nocheck — OCR/evidence-pack modules pending; exports drifted
 /**
  * Document Intelligence API Routes
  * 
@@ -259,6 +258,7 @@ export function validationErrorHook(
       400
     );
   }
+  return undefined;
 }
 
 // ============================================================================

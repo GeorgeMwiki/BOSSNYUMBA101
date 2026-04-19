@@ -202,6 +202,9 @@ app.delete('/events/:id', zValidator('param', idParamSchema), (c) => {
 app.get('/availability', zValidator('query', availabilityQuerySchema), (c) => {
   const auth = c.get('auth');
 
+  // TODO(tenant-aware): timezone should come from tenant.defaultTimezone
+  // resolved via getRegionConfig(tenant.countryCode). UTC is the neutral
+  // fallback until the tenant-settings plumbing lands.
   const availability = {
     slots: [
       { dayOfWeek: 1, startTime: '09:00', endTime: '17:00', enabled: true },
@@ -210,7 +213,7 @@ app.get('/availability', zValidator('query', availabilityQuerySchema), (c) => {
       { dayOfWeek: 4, startTime: '09:00', endTime: '17:00', enabled: true },
       { dayOfWeek: 5, startTime: '09:00', endTime: '17:00', enabled: true },
     ],
-    timezone: 'Africa/Dar_es_Salaam',
+    timezone: 'UTC',
   };
 
   return c.json({ success: true, data: availability });

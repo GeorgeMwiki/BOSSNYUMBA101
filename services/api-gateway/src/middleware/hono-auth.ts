@@ -88,6 +88,13 @@ export const authMiddleware = createMiddleware(async (c, next) => {
       exp: decoded.exp,
     });
 
+    // Flat accessors — legacy routers look up `tenantId`/`userId`
+    // directly via `c.get('tenantId')`. Populate these here (the
+    // service-context middleware cannot because it runs BEFORE this
+    // per-router middleware).
+    c.set('tenantId', decoded.tenantId);
+    c.set('userId', decoded.userId);
+
     await next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {

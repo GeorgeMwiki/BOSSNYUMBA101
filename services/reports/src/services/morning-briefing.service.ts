@@ -1,4 +1,3 @@
-// @ts-nocheck — local type drift; tracked for alignment pass
 /**
  * Morning Briefing Generator
  * 
@@ -231,7 +230,7 @@ export class MorningBriefingService {
       tenantId,
       recipient,
       generatedAt: now,
-      date: now.toISOString().split('T')[0],
+      date: now.toISOString().split('T')[0] ?? '',
       greeting,
       dayOfWeek,
       weather: weather ?? undefined,

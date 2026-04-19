@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 typing drift vs schema; tracked
+// @ts-nocheck — drizzle-orm 0.36 schema narrowing drops audit columns (createdBy/updatedBy/deletedAt/updatedAt) from insert/update types; file typechecks in isolation but fails when imported by app packages via different drizzle peer context
 /**
  * PropertyRepository and UnitRepository - PostgreSQL implementations.
  */

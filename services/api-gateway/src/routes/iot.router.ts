@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * IoT router — Wave 8 (S3 gap closure)
  *

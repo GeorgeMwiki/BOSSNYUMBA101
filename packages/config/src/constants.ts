@@ -98,3 +98,30 @@ export const DEV_DEFAULT_URLS = {
   customerApp: `http://localhost:${DEV_DEFAULT_PORTS.customerApp}`,
   estateManagerApp: `http://localhost:${DEV_DEFAULT_PORTS.estateManagerApp}`,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Platform-wide *last-resort* fallback defaults.
+//
+// BOSSNYUMBA is a global platform. Country, currency, locale and timezone
+// should always be resolved from `tenant.countryCode` via
+// `@bossnyumba/domain-models`'s `getRegionConfig()`. These constants exist
+// ONLY as the neutral fallback used when:
+//   - the tenant record is missing or not yet loaded
+//   - a tool / migration / test harness has no tenant context
+//
+// They must stay country-neutral. Do NOT swap these for `TZS`, `KES`,
+// or any other country-specific value even as a "sensible default" —
+// pass the tenant field through instead.
+// ---------------------------------------------------------------------------
+
+/** Last-resort currency when tenant.defaultCurrency is unknown. ISO 4217. */
+export const DEFAULT_FALLBACK_CURRENCY = 'USD';
+
+/** Last-resort country when tenant.countryCode is unknown. ISO 3166-1 alpha-2. */
+export const DEFAULT_FALLBACK_COUNTRY_CODE = '';
+
+/** Last-resort BCP-47 locale when tenant.defaultLocale is unknown. */
+export const DEFAULT_FALLBACK_LOCALE = 'en';
+
+/** Last-resort IANA timezone when tenant.defaultTimezone is unknown. */
+export const DEFAULT_FALLBACK_TIMEZONE = 'UTC';

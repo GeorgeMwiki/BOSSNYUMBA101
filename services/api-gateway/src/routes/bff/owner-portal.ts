@@ -207,7 +207,7 @@ function buildDisbursementData(scope, payments) {
       : undefined;
     const propertyId = lease?.propertyId || scope.properties[0]?.id;
     const month = new Date(payment.completedAt || payment.createdAt);
-    const period = month.toLocaleDateString('en-KE', { month: 'short', year: 'numeric' });
+    const period = month.toLocaleDateString('en', { month: 'short', year: 'numeric' });
     const key = `${propertyId || 'portfolio'}:${period}`;
 
     if (!grouped.has(key)) {

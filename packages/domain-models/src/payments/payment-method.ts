@@ -147,7 +147,9 @@ export function createCardMethod(
 }
 
 function maskPhoneNumber(phone: string): string {
-  // Assumes +254XXXXXXXXX format
+  // Country-neutral masking: keep the first 4 chars (typically +CC or +CCC)
+  // and the last 4 digits, masking everything in between. Works for any
+  // country prefix — no assumption of +254 / +255.
   if (phone.length < 8) return phone;
   const prefix = phone.slice(0, 4);
   const suffix = phone.slice(-4);

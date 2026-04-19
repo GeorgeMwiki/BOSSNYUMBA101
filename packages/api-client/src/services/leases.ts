@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite against current WorkOrder/PaymentMethod namespace shape
 /**
  * Leases API Service
  * Lease lifecycle
@@ -79,9 +78,11 @@ export const leasesService = {
     pageSize = 20
   ): Promise<ApiResponse<LeaseWithDetails[]> & { pagination?: PaginationInfo }> {
     return getApiClient().get<LeaseWithDetails[]>('/leases/expiring', {
-      days: String(days),
-      page: String(page),
-      pageSize: String(pageSize),
+      params: {
+        days: String(days),
+        page: String(page),
+        pageSize: String(pageSize),
+      },
     }) as Promise<ApiResponse<LeaseWithDetails[]> & { pagination?: PaginationInfo }>;
   },
 

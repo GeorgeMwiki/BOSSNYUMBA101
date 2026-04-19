@@ -1,4 +1,3 @@
-// @ts-nocheck — state-machine narrowing types need refactor; tracked for separate pass
 /**
  * Resource Monitor and FinOps Utilities
  * 
@@ -333,7 +332,7 @@ export class ResourceMonitorManager {
         a => a.resourceType === resourceType && !a.resolvedAt
       );
       
-      let status = ResourceStatus.HEALTHY;
+      let status: ResourceStatus = ResourceStatus.HEALTHY;
       if (alerts.some(a => a.status === ResourceStatus.CRITICAL)) {
         status = ResourceStatus.CRITICAL;
       } else if (alerts.length > 0) {

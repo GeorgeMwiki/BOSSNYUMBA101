@@ -17,7 +17,7 @@ import type {
   Result,
   ISOTimestamp,
 } from '@bossnyumba/domain-models';
-import { ok, err } from '@bossnyumba/domain-models';
+import { ok, err, getDefaultCurrency } from '@bossnyumba/domain-models';
 import type { EventBus } from '../../common/events.js';
 import { createEventEnvelope, generateEventId } from '../../common/events.js';
 import type { InspectionId } from '../types.js';
@@ -235,7 +235,15 @@ export class ConditionalSurveyService {
     surveyId: ConditionalSurveyId,
     tenantId: TenantId,
     compiledBy: UserId,
-    options?: { correlationId?: string }
+    options?: {
+      correlationId?: string;
+      /**
+       * ISO 3166-1 alpha-2 tenant country code used to resolve the
+       * action-plan currency. Callers should pass `tenant.countryCode`;
+       * omitting it falls back to the neutral default (USD).
+       */
+      tenantCountryCode?: string;
+    }
   ): Promise<Result<ConditionalSurvey, ConditionalSurveyServiceErrorResult>> {
     const survey = await this.repo.findById(surveyId, tenantId);
     if (!survey) {
@@ -259,6 +267,9 @@ export class ConditionalSurveyService {
     }
 
     const now = nowIso();
+    // Currency resolves from tenant country code (falls back to USD when
+    // caller omits `options.tenantCountryCode`). Never hardcode a country.
+    const planCurrency = getDefaultCurrency(options?.tenantCountryCode ?? null);
 
     // Draft action plans from high/critical findings (one per finding).
     const newPlans: ConditionalSurveyActionPlan[] = [];
@@ -276,7 +287,7 @@ export class ConditionalSurveyService {
           priority: finding.severity === 'critical' ? 1 : 2,
           status: 'proposed',
           estimatedCostCents: null,
-          currency: 'KES',
+          currency: planCurrency,
           targetDate: null,
           approvedBy: null,
           approvedAt: null,

@@ -1,4 +1,3 @@
-// @ts-nocheck — state-machine narrowing types need refactor; tracked for separate pass
 /**
  * Webhook System
  * 
@@ -432,7 +431,9 @@ export class WebhookManager {
         errorMessage: attempt.errorMessage,
         latencyMs: attempt.latencyMs,
       }],
-      completedAt: [DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED].includes(status)
+      completedAt: (
+        [DeliveryStatus.DELIVERED, DeliveryStatus.EXHAUSTED] as DeliveryStatus[]
+      ).includes(status)
         ? new Date().toISOString()
         : undefined,
     };

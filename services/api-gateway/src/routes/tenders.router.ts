@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tenders API (NEW 11 — Tenders + Bids).
  *

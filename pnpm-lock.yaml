@@ -431,6 +431,22 @@ importers:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@20.19.33)
 
+  packages/compliance-plugins:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.3.6
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.33
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.2.0
+        version: 1.6.1(@types/node@20.19.33)
+
   packages/config:
     dependencies:
       zod:
@@ -786,6 +802,9 @@ importers:
       '@bossnyumba/lpms-connector':
         specifier: workspace:*
         version: link:../../packages/lpms-connector
+      '@bossnyumba/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@bossnyumba/payments-ledger-service':
         specifier: workspace:*
         version: link:../payments-ledger

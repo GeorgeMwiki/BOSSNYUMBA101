@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.30 typing drift vs schema; tracked
 /**
  * Base repository with common CRUD operations using Drizzle ORM.
  * Provides tenant-scoped queries, pagination, and soft delete support.

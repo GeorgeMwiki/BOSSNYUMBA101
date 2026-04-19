@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite against current WorkOrder/PaymentMethod namespace shape
 /**
  * Invoices API Service
  * Invoice management
@@ -181,7 +180,7 @@ export const invoicesService = {
    * Get invoice PDF metadata (or download with ?download=1)
    */
   async getPdf(id: string, download?: boolean): Promise<ApiResponse<InvoicePdfResponse>> {
-    const params = download ? { download: '1' } : undefined;
-    return getApiClient().get<InvoicePdfResponse>(`/invoices/${id}/pdf`, params);
+    const options = download ? { params: { download: '1' } } : undefined;
+    return getApiClient().get<InvoicePdfResponse>(`/invoices/${id}/pdf`, options);
   },
 };

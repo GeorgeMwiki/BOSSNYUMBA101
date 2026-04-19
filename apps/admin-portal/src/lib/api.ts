@@ -76,8 +76,16 @@ export const api = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 
-export function formatCurrency(amount: number, currency = 'KES'): string {
-  return new Intl.NumberFormat('en-KE', {
+// Callers should supply the tenant's currency (`tenant.defaultCurrency`)
+// and locale (`tenant.defaultLocale`) — resolve both via
+// `getRegionConfig(tenant.countryCode)` from `@bossnyumba/domain-models`.
+// `currency` and `locale` default to neutral 'USD' / 'en' when omitted.
+export function formatCurrency(
+  amount: number,
+  currency = 'USD',
+  locale = 'en'
+): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -85,16 +93,16 @@ export function formatCurrency(amount: number, currency = 'KES'): string {
   }).format(amount);
 }
 
-export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-KE', {
+export function formatDate(date: string | Date, locale = 'en'): string {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   }).format(new Date(date));
 }
 
-export function formatDateTime(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-KE', {
+export function formatDateTime(date: string | Date, locale = 'en'): string {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

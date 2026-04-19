@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 /**
  * /api/v1/maintenance — maintenance requests, dispatch events, and

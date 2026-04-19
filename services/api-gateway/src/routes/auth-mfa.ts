@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 /**
  * MFA — TOTP-based second-factor flow.

@@ -72,7 +72,9 @@ export const TenantPreferenceProfileSchema = z.object({
   preferredContactTime: z.string().nullable(),
   quietHoursStart: z.string().nullable(),
   quietHoursEnd: z.string().nullable(),
-  timezone: z.string().default('Africa/Nairobi'),
+  // Timezone defaults to UTC until the caller supplies the tenant's
+  // `tenant.defaultTimezone` (resolve via getRegionConfig(tenant.countryCode)).
+  timezone: z.string().default('UTC'),
 
   // Notifications
   paymentReminders: z.boolean().default(true),
@@ -198,7 +200,10 @@ export function createTenantPreferenceProfile(
     preferredContactTime: null,
     quietHoursStart: null,
     quietHoursEnd: null,
-    timezone: 'Africa/Nairobi',
+    // TODO(tenant-aware): populate from tenant.defaultTimezone — see
+    // packages/domain-models/src/common/region-config.ts. UTC is the neutral
+    // fallback; callers should override via the data.timezone property.
+    timezone: 'UTC',
 
     paymentReminders: true,
     maintenanceUpdates: true,

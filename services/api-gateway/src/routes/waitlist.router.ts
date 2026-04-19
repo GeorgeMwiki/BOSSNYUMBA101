@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Waitlist API (NEW 12 — Auto-Outreach on Vacancy).
  *

@@ -95,11 +95,16 @@ export function toDecimal(m: Money): number {
 }
 
 /**
- * Format Money for display
+ * Format Money for display.
+ *
+ * `locale` should be the tenant's BCP-47 locale — resolve via
+ * `getRegionConfig(tenant.countryCode).defaultLocale`. Defaults to the
+ * neutral 'en' so output is never silently Kenya-flavoured; callers with
+ * tenant context should always pass the real locale.
  */
-export function formatMoney(m: Money): string {
+export function formatMoney(m: Money, locale: string = 'en'): string {
   const decimal = toDecimal(m);
-  const formatter = new Intl.NumberFormat('en-KE', {
+  const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: m.currency,
   });

@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
 /**
  * Postgres Vendor Repository — SCAFFOLDED 9 (Wave 3 amplified).
  *
