@@ -25,7 +25,7 @@
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
-    "drizzle-orm": "^0.36.4"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
