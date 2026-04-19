@@ -16,8 +16,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:watch": "vitest --config vitest.integration.config.ts",
     "test:routes": "vitest run src/__tests__",
-    "openapi:export": "tsx src/openapi/export-cli.ts",
-    "clean": "rm -rf dist .turbo"
+    "openapi:export": "node scripts/export-openapi.mjs",
+    "clean": "rm -rf dist .turbo",
+    "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
     "@bossnyumba/ai-copilot": "workspace:*",

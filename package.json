@@ -15,7 +15,10 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "eval": "pnpm --filter @bossnyumba/ai-copilot eval",
-    "clean": "pnpm -r clean && rm -rf node_modules"
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "uat:walkthrough": "bash scripts/uat-walkthrough.sh",
+    "openapi:export": "pnpm -F @bossnyumba/api-gateway openapi:export",
+    "audit:fix": "pnpm audit --audit-level=high"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.2",
