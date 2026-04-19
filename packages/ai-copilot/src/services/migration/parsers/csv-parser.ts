@@ -75,11 +75,14 @@ function splitCsvLine(line: string): string[] {
   return out;
 }
 
+// Anchored, unambiguous numeric regex — no nested quantifiers.
+const NUMERIC_LITERAL = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+
 function coerce(v: string | undefined): string | number | null {
   if (v == null) return null;
   const t = v.trim();
   if (t === '') return null;
-  if (/^-?\d+(\.\d+)?$/.test(t)) {
+  if (NUMERIC_LITERAL.test(t)) {
     const n = Number(t);
     if (Number.isFinite(n)) return n;
   }

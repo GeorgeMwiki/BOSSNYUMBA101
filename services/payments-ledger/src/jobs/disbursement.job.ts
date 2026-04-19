@@ -231,10 +231,11 @@ export class DisbursementJob {
       case 'daily':
         next.setDate(next.getDate() + 1);
         break;
-      case 'weekly':
+      case 'weekly': {
         const daysUntilNext = (this.config.dayOfWeek! - now.getDay() + 7) % 7;
         next.setDate(next.getDate() + (daysUntilNext || 7));
         break;
+      }
       case 'monthly':
         if (now.getDate() >= this.config.dayOfMonth!) {
           next.setMonth(next.getMonth() + 1);

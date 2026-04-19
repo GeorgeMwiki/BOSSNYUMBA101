@@ -69,9 +69,13 @@ export {
   OtpService,
   InMemoryOtpStore,
   NoopSmsDispatcher,
+  OtpResendThrottledError,
   OTP_LENGTH,
   OTP_TTL_MS,
   OTP_MAX_ATTEMPTS,
+  OTP_RESEND_COOLDOWN_MS,
+  OTP_RESEND_MAX_PER_WINDOW,
+  OTP_RESEND_WINDOW_MS,
 } from './otp/otp-service.js';
 export type {
   OtpRecord,

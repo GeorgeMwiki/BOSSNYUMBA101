@@ -106,6 +106,7 @@ function rowToRecord(row: {
 }
 
 /** Hex alphabet for the random suffix — unambiguous and URL-safe. */
+// eslint-disable-next-line no-secrets/no-secrets -- public Crockford-style alphabet, not a secret
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** Produce a 4-char random suffix (~20 bits of entropy). */

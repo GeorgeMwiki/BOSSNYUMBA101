@@ -1,41 +1,55 @@
 # =============================================================================
-# BOSSNYUMBA Backend Services - Multi-stage Dockerfile
+# BOSSNYUMBA Backend Services — Generic Multi-stage Dockerfile
 # =============================================================================
-# Build with: docker build -f docker/Dockerfile.service --build-arg SERVICE_NAME=payments .
-# Supports: payments, notifications, reports, domain-services
+# Build:
+#   docker build -f docker/Dockerfile.service \
+#     --build-arg SERVICE_NAME=payments-ledger \
+#     --build-arg PACKAGE_NAME=@bossnyumba/payments-ledger-service \
+#     --build-arg ENTRY_PATH=dist/services/payments-ledger/src/server.js \
+#     -t bossnyumba/payments-ledger:dev .
+#
+# NOTE: Several "services/*" packages in this workspace are pure libraries
+# (identity, notifications, payments, document-intelligence, webhooks,
+# domain-services). They export modules but do NOT start an HTTP server and
+# therefore cannot be run as standalone containers with this Dockerfile —
+# they're consumed in-process by the api-gateway. Only services with a real
+# HTTP/CRON entrypoint should be built here (currently: payments-ledger,
+# plus reports via Dockerfile.scheduler and api-gateway via Dockerfile.api).
 # =============================================================================
 
-ARG SERVICE_NAME=payments
+ARG SERVICE_NAME=payments-ledger
+ARG PACKAGE_NAME=@bossnyumba/payments-ledger-service
+ARG ENTRY_PATH=dist/index.js
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Stage 1: Dependencies
-# =============================================================================
-FROM node:20-alpine AS deps
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
 
-# Copy workspace config files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY tsconfig.base.json tsconfig.json ./
 COPY .npmrc ./
 
-# Copy packages (shared dependencies)
+# Workspace deps — copy shared packages once.
 COPY packages ./packages
 
-# Copy the specific service
-ARG SERVICE_NAME
-COPY services/${SERVICE_NAME} ./services/${SERVICE_NAME}
+# Copy the specific service. We copy `services/` wholesale because most
+# backend services pull in one or more sibling `services/*` packages at
+# runtime (e.g. payments-ledger uses payments/providers). `.dockerignore`
+# filters out dist/ and node_modules/ so the copy is cheap.
+COPY services ./services
 
-# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Stage 2: Builder
-# =============================================================================
-FROM node:20-alpine AS builder
-ARG SERVICE_NAME
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS builder
+ARG PACKAGE_NAME
 
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
@@ -47,41 +61,48 @@ COPY --from=deps /app/pnpm-lock.yaml ./
 COPY --from=deps /app/pnpm-workspace.yaml ./
 COPY tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
-COPY services/${SERVICE_NAME} ./services/${SERVICE_NAME}
+COPY services ./services
 
-# Build the service
-RUN pnpm --filter=@bossnyumba/${SERVICE_NAME} build
+# Build target package + its workspace deps.
+RUN pnpm --filter="${PACKAGE_NAME}..." build
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Stage 3: Production Runner
-# =============================================================================
-FROM node:20-alpine AS runner
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS runner
 ARG SERVICE_NAME
+ARG ENTRY_PATH
 
-RUN apk add --no-cache dumb-init wget curl
+RUN apk add --no-cache dumb-init wget
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 service
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 service
 
 WORKDIR /app
 
-# Copy built artifacts and dependencies
-COPY --from=builder --chown=service:nodejs /app/services/${SERVICE_NAME}/dist ./dist
-COPY --from=builder --chown=service:nodejs /app/services/${SERVICE_NAME}/package.json ./
+# Keep the full workspace tree so pnpm symlinks in node_modules resolve.
 COPY --from=builder --chown=service:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=service:nodejs /app/package.json ./
+COPY --from=builder --chown=service:nodejs /app/pnpm-workspace.yaml ./
 COPY --from=builder --chown=service:nodejs /app/packages ./packages
+COPY --from=builder --chown=service:nodejs /app/services ./services
+
+# Switch into the service directory so relative ENTRY_PATH resolves.
+WORKDIR /app/services/${SERVICE_NAME}
 
 USER service
 
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV SERVICE_NAME=${SERVICE_NAME}
+ENV NODE_ENV=production \
+    PORT=3000 \
+    SERVICE_NAME=${SERVICE_NAME} \
+    ENTRY_PATH=${ENTRY_PATH}
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/healthz || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+# Use shell form so $ENTRY_PATH expands at runtime.
+CMD node "$ENTRY_PATH"

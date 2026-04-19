@@ -308,10 +308,11 @@ export function createWebhookRouter(options: WebhookRouterOptions): Router {
       case 'read':
         await statusHandler.onRead?.(status.id, status.recipient_id);
         break;
-      case 'failed':
+      case 'failed': {
         const errorMsg = status.errors?.[0]?.message || 'Unknown error';
         await statusHandler.onFailed?.(status.id, status.recipient_id, errorMsg);
         break;
+      }
     }
   }
 

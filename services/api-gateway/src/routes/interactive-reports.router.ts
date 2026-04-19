@@ -20,7 +20,10 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
-import { interactiveReportVersions } from '@bossnyumba/database';
+import {
+  interactiveReportVersions,
+  interactiveReportActionAcks,
+} from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 
 const app = new Hono();
@@ -91,43 +94,183 @@ app.get('/:id/interactive', async (c: any) => {
   return c.json({ success: true, data: rows[0] });
 });
 
-// POST /:id/action-plans/:aid/ack
+function newId(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+}
+
+/**
+ * POST /:id/action-plans/:aid/ack
+ *
+ * Acknowledge an action plan on an interactive report. When the full
+ * `InteractiveReportService` is bound we delegate so its action-plan
+ * handler (which maps plan.action.kind → create_work_order, etc.) runs.
+ * Otherwise we fall back to persisting the ack directly + emitting an
+ * `ActionPlanAcknowledged` event so a downstream subscriber can create
+ * the work order / approval request asynchronously.
+ */
 app.post(
   '/:id/action-plans/:aid/ack',
   zValidator('json', AckBodySchema),
   async (c: any) => {
-    const service = c.get('interactiveReportService');
-    if (!service) {
-      return c.json(
-        {
-          success: false,
-          error:
-            'InteractiveReportService not yet bound (pending reports-package wiring).',
-        },
-        503
-      );
-    }
     const tenantId = c.get('tenantId');
     const userId = c.get('userId');
     const interactiveReportVersionId = c.req.param('id');
     const actionPlanId = c.req.param('aid');
     const body = c.req.valid('json');
+    const service = c.get('interactiveReportService');
+    const services = c.get('services');
+    const db = services?.db;
+
+    // Prefer the rich service when bound.
+    if (service) {
+      try {
+        const result = await service.acknowledge({
+          tenantId,
+          interactiveReportVersionId,
+          actionPlanId,
+          acknowledgedBy: userId,
+          metadata: body.metadata ?? {},
+        });
+        return c.json({ success: true, data: result });
+      } catch (error: any) {
+        const message =
+          error instanceof Error ? error.message : 'Acknowledgement failed';
+        const code = error?.code ?? 'ACK_FAILED';
+        const status = code === 'NOT_FOUND' ? 404 : 400;
+        return c.json({ success: false, error: { code, message } }, status);
+      }
+    }
+
+    // Fallback: write the ack row + emit the event.
+    if (!db) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'Interactive reports database not configured — DATABASE_URL unset',
+        },
+        503
+      );
+    }
+
+    // Load the version (enforces tenant isolation).
+    const [version] = await db
+      .select()
+      .from(interactiveReportVersions)
+      .where(
+        and(
+          eq(interactiveReportVersions.id, interactiveReportVersionId),
+          eq(interactiveReportVersions.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    if (!version) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Interactive report version not found',
+          },
+        },
+        404
+      );
+    }
+
+    // Validate the action plan exists on the version. actionPlans is jsonb
+    // so the shape is structurally-typed, not FK-enforced.
+    const plans = Array.isArray(version.actionPlans)
+      ? (version.actionPlans as any[])
+      : [];
+    const plan = plans.find((p: any) => p?.id === actionPlanId);
+    if (!plan) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'ACTION_PLAN_NOT_FOUND',
+            message: 'Action plan not found on this report version',
+          },
+        },
+        404
+      );
+    }
+
+    // Determine resolution from plan.action.kind (falls back to 'acknowledge').
+    const actionKind: string =
+      body.actionKind ||
+      plan?.action?.kind ||
+      (plan?.createsWorkOrder ? 'create_work_order' : 'acknowledge');
+    const resolution =
+      actionKind === 'create_work_order'
+        ? 'work_order_pending'
+        : actionKind === 'create_approval_request'
+        ? 'approval_pending'
+        : 'acknowledged';
+
+    const now = new Date();
+    const ackId = newId('ack');
     try {
-      const result = await service.acknowledge({
+      await db.insert(interactiveReportActionAcks).values({
+        id: ackId,
         tenantId,
-        interactiveReportVersionId,
+        interactiveReportVersionId: version.id,
         actionPlanId,
+        resolution,
+        resolutionRefId: null,
         acknowledgedBy: userId,
+        acknowledgedAt: now,
         metadata: body.metadata ?? {},
       });
-      return c.json({ success: true, data: result });
-    } catch (error: any) {
-      const message =
-        error instanceof Error ? error.message : 'Acknowledgement failed';
-      const code = error?.code ?? 'ACK_FAILED';
-      const status = code === 'NOT_FOUND' ? 404 : 400;
-      return c.json({ success: false, error: { code, message } }, status);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Persist failed';
+      return c.json(
+        { success: false, error: { code: 'PERSIST_FAILED', message } },
+        500
+      );
     }
+
+    // Emit the event so a subscriber can handle work-order creation.
+    try {
+      await services.eventBus?.publish({
+        event: {
+          eventId: newId('evt'),
+          eventType: 'ActionPlanAcknowledged',
+          timestamp: now.toISOString(),
+          tenantId,
+          correlationId: newId('cor'),
+          causationId: null,
+          metadata: {},
+          payload: {
+            ackId,
+            interactiveReportVersionId: version.id,
+            actionPlanId,
+            actionKind,
+            plan,
+            acknowledgedBy: userId,
+            createsWorkOrder: Boolean(plan?.createsWorkOrder || actionKind === 'create_work_order'),
+          },
+        } as any,
+        version: 1,
+        aggregateId: version.id,
+        aggregateType: 'InteractiveReportVersion',
+      });
+    } catch (_e) {
+      // Event publish is never allowed to break the ack response.
+    }
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          ackId,
+          resolution,
+          resolutionRefId: null,
+          workerWillProcess: resolution !== 'acknowledged',
+        },
+      },
+      202
+    );
   }
 );
 

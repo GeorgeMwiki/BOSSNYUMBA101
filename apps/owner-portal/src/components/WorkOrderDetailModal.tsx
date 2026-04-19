@@ -11,7 +11,6 @@ import {
   User,
   Calendar,
   Building2,
-  Loader2,
   AlertTriangle,
   FileText,
   ExternalLink,
@@ -19,6 +18,7 @@ import {
   ThumbsDown,
   Shield,
 } from 'lucide-react';
+import { Spinner } from '@bossnyumba/design-system';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -535,7 +535,7 @@ export function WorkOrderDetailModal({
                     disabled={rejecting || !rejectReason.trim()}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
                   >
-                    {rejecting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {rejecting && <Spinner size="sm" />}
                     <ThumbsDown className="h-4 w-4" />
                     Confirm Rejection
                   </button>
@@ -574,7 +574,7 @@ export function WorkOrderDetailModal({
                       className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
                     >
                       {approving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Spinner size="sm" />
                       ) : (
                         <ThumbsUp className="h-4 w-4" />
                       )}

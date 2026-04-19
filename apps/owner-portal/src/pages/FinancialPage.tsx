@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Eye,
   X,
-  Loader2,
   ArrowRight,
   ExternalLink,
   RefreshCw,
@@ -36,7 +35,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Skeleton, Alert, AlertDescription, Button, EmptyState, toast } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner, toast } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatDate, formatPercentage, formatDateTime } from '../lib/api';
 import {
   useFinancialStats,
@@ -248,7 +247,7 @@ export function FinancialPage() {
               aria-haspopup="menu"
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exporting ? <Spinner size="sm" /> : <Download className="h-4 w-4" />}
               Export
               <ChevronDown className="h-4 w-4" />
             </button>

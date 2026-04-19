@@ -1,144 +1,138 @@
 /**
- * OpenAPI document emitter — SCAFFOLDED 10
+ * OpenAPI document emitter — real introspection, not a stub.
  *
- * Exposes `GET /api/v1/openapi.json` assembling the spec from the
- * `@hono/zod-openapi` routers already registered on the gateway. Falls
- * back to a minimal hand-rolled stub when the runtime dep isn't yet
- * installed (the scaffold can compile and run even before the dep is
- * added to package.json).
+ * ## What this module does
  *
- * When you're ready to wire the richer integration, add
- *     "@hono/zod-openapi": "^0.16.0"
- * to `services/api-gateway/package.json` and swap the handwritten stub
- * for the real `OpenAPIHono` emit.
+ * At runtime, walks every mounted Hono router on the gateway, consults
+ * the `openapi/schema-registry` for Zod request/response metadata, and
+ * emits an OpenAPI 3.1 document via `@asteasolutions/zod-to-openapi`
+ * (the same engine `@hono/zod-openapi` uses internally).
+ *
+ * ## Endpoints exposed
+ *
+ *   GET /openapi.json  — the generated spec
+ *   GET /docs          — Swagger UI (loaded from swagger-ui CDN)
+ *
+ * ## Why not OpenAPIHono everywhere?
+ *
+ * Every existing router uses `@hono/zod-validator`. Converting all 40+
+ * routers to `OpenAPIHono` + `createRoute` would touch every file with
+ * behavioural risk. Instead routers register metadata declaratively in
+ * `openapi/manifests.ts`; routes without manifests still appear in the
+ * spec with a minimal path item so the spec is exhaustive by default.
+ *
+ * ## How to add a route to the spec
+ *
+ * 1. Write the Hono handler normally.
+ * 2. Add a `registerRoute({ prefix, method, path, ... })` call in
+ *    `openapi/manifests.ts` (or anywhere imported before the first
+ *    `/openapi.json` request).
+ * 3. Done — refresh `/openapi.json`.
  */
 
 import { Hono } from 'hono';
+import type { BuildSpecOptions, MountedRouter } from './openapi/route-harvester';
+import { buildOpenApiSpec } from './openapi/route-harvester';
 
-export interface OpenApiDocumentOptions {
-  title?: string;
-  version?: string;
-  description?: string;
-  servers?: Array<{ url: string; description?: string }>;
-}
+// Eagerly load the manifests so registerRoute() runs at module-load
+// time. Any consumer importing this file gets the full spec.
+import './openapi/manifests';
 
-/** Minimal spec scaffold — structurally valid, ready to be grown by
- *  declarative route registrations. */
-export function buildStubOpenApiSpec(
-  options: OpenApiDocumentOptions = {}
-): Record<string, unknown> {
-  return {
-    openapi: '3.1.0',
-    info: {
-      title: options.title ?? 'BOSSNYUMBA API',
-      version: options.version ?? '0.1.0',
-      description:
-        options.description ??
-        'BOSSNYUMBA platform API — multi-tenant property management SaaS.',
-    },
-    servers: options.servers ?? [
-      { url: '/api/v1', description: 'Default relative base path' },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-      schemas: {
-        ErrorEnvelope: {
-          type: 'object',
-          properties: {
-            error: {
-              type: 'object',
-              properties: {
-                code: { type: 'string' },
-                message: { type: 'string' },
-                requestId: { type: 'string' },
-                details: {},
-              },
-              required: ['code', 'message'],
-            },
-          },
-          required: ['error'],
-        },
-      },
-    },
-    security: [{ bearerAuth: [] }],
-    paths: {
-      '/me/notification-preferences': {
-        get: {
-          summary: 'Get current user notification preferences',
-          tags: ['notifications'],
-          responses: {
-            '200': {
-              description: 'Preferences returned',
-            },
-            '401': {
-              description: 'Unauthorized',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorEnvelope' },
-                },
-              },
-            },
-          },
-        },
-        put: {
-          summary: 'Upsert current user notification preferences',
-          tags: ['notifications'],
-          responses: {
-            '200': { description: 'Updated preferences returned' },
-            '400': {
-              description: 'Validation error',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/ErrorEnvelope' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  };
+export type OpenApiDocumentOptions = BuildSpecOptions;
+
+export interface CreateOpenApiRouterOptions extends OpenApiDocumentOptions {
+  /** Routers to harvest. Prefix is relative to the `/api/v1` base. */
+  mountedRouters: MountedRouter[];
+  /** Override the spec URL that Swagger UI points at. Defaults to `./openapi.json`. */
+  swaggerSpecUrl?: string;
 }
 
 /**
- * Try to use `@hono/zod-openapi`'s `OpenAPIHono` if installed; else stub.
- *
- * The returned router exposes GET `/openapi.json` at whatever path the
- * caller mounts it on (typically `/api/v1`).
+ * Build the OpenAPI JSON document for the gateway. Pure function —
+ * given the same routers + registry state it returns the same spec.
  */
-export async function createOpenApiRouter(
-  options: OpenApiDocumentOptions = {}
-): Promise<Hono> {
+export function generateOpenApiDocument(
+  options: CreateOpenApiRouterOptions
+): Record<string, unknown> {
+  return buildOpenApiSpec(options.mountedRouters, {
+    title: options.title,
+    version: options.version,
+    description: options.description,
+    servers: options.servers,
+  });
+}
+
+/**
+ * Create a Hono sub-app that serves the OpenAPI spec + Swagger UI.
+ * Typically mounted under `/api/v1` so the spec lives at
+ * `/api/v1/openapi.json` and the UI at `/api/v1/docs`.
+ */
+export function createOpenApiRouter(
+  options: CreateOpenApiRouterOptions
+): Hono {
   const app = new Hono();
-  let spec: Record<string, unknown> = buildStubOpenApiSpec(options);
 
-  try {
-    // Optional runtime dep — if present, use it for real schema introspection.
-    const mod = (await import('@hono/zod-openapi')) as unknown as {
-      OpenAPIHono?: new (...args: unknown[]) => {
-        getOpenAPIDocument(doc: Record<string, unknown>): Record<string, unknown>;
-      };
-    };
-    if (mod.OpenAPIHono) {
-      const gen = new mod.OpenAPIHono();
-      spec = gen.getOpenAPIDocument({
-        openapi: '3.1.0',
-        info: {
-          title: options.title ?? 'BOSSNYUMBA API',
-          version: options.version ?? '0.1.0',
-        },
-      });
-    }
-  } catch {
-    // Dep missing — stick with the stub.
-  }
+  // Build the spec lazily on first request so routers that are
+  // registered AFTER this factory runs (hot-reload, tests) are still
+  // picked up. Cache the result for the life of the process.
+  let cachedSpec: Record<string, unknown> | null = null;
+  const spec = (): Record<string, unknown> => {
+    if (!cachedSpec) cachedSpec = generateOpenApiDocument(options);
+    return cachedSpec;
+  };
 
-  app.get('/openapi.json', (c) => c.json(spec));
+  app.get('/openapi.json', (c) => c.json(spec()));
+
+  // Swagger UI via CDN — avoids bundling a few MB of static assets.
+  // The shell references `./openapi.json` so the page works regardless
+  // of where the router is mounted (relative URL).
+  const specUrl = options.swaggerSpecUrl ?? './openapi.json';
+  app.get('/docs', (c) =>
+    c.html(renderSwaggerHtml(options.title ?? 'BOSSNYUMBA API', specUrl))
+  );
+
   return app;
+}
+
+/**
+ * Legacy backwards-compatible stub — preserved so existing callers
+ * that imported `buildStubOpenApiSpec` do not break. The new
+ * `generateOpenApiDocument` is the preferred entry point.
+ *
+ * @deprecated use `generateOpenApiDocument`
+ */
+export function buildStubOpenApiSpec(
+  options: OpenApiDocumentOptions = {}
+): Record<string, unknown> {
+  return generateOpenApiDocument({ ...options, mountedRouters: [] });
+}
+
+function renderSwaggerHtml(title: string, specUrl: string): string {
+  // Basic Swagger UI shell. CDN pinned to a known-good major.
+  const safeTitle = title.replace(/[<>&]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const safeUrl = specUrl.replace(/"/g, '&quot;');
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${safeTitle} — API Docs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css" />
+</head>
+<body style="margin:0">
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.addEventListener('load', function () {
+      window.ui = SwaggerUIBundle({
+        url: "${safeUrl}",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        persistAuthorization: true,
+        filter: true,
+      });
+    });
+  </script>
+</body>
+</html>`;
 }

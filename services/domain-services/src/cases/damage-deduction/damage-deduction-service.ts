@@ -331,8 +331,12 @@ export class DamageDeductionService {
     // does not try to resolve it (ai-copilot is not a declared dep of
     // this package — it's loaded at runtime only when present).
     const aiCopilotModuleId = '@bossnyumba/' + 'ai-copilot';
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod = (await (Function('m', 'return import(m)')(aiCopilotModuleId) as Promise<any>)) as {
+    // Use a native dynamic import() with a bundler-ignore hint; this avoids
+    // the Function/eval constructor entirely while still deferring resolution
+    // to runtime.
+    const mod = (await import(
+      /* webpackIgnore: true */ /* @vite-ignore */ aiCopilotModuleId
+    )) as {
       draftDamageMediatorTurn?: (i: typeof input) => Promise<{
         proposedDeductionMinor: number;
         rationale: string;

@@ -558,6 +558,7 @@ export class MigrationWriterService {
             // Kenya-specific city hardcode.
             city: p.city ?? ctx.defaultCity ?? '',
             country: ctx.tenantCountry,
+            defaultCurrency: ctx.tenantCurrency,
             totalUnits: p.unitCount ?? 0,
           } as typeof propertiesTable.$inferInsert,
           ctx.actorUserId as never
@@ -662,8 +663,6 @@ export class MigrationWriterService {
             unitCode: code,
             name: u.label,
             type: unitType as typeof unitsTable.$inferInsert.type,
-            status:
-              (u.status as typeof unitsTable.$inferInsert.status) ?? 'vacant',
             baseRentAmount: Math.round(u.rentKes * 100), // store in minor units
             baseRentCurrency: ctx.tenantCurrency,
           } as typeof unitsTable.$inferInsert,

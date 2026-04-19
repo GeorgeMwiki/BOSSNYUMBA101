@@ -41,7 +41,7 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
 COPY services/reports ./services/reports
 
-RUN pnpm --filter=@bossnyumba/reports-service build
+RUN pnpm --filter=@bossnyumba/reports-service... build
 
 # -----------------------------------------------------------------------------
 # Stage 3: Runner

@@ -27,7 +27,6 @@ import {
   Square,
   Plus,
   Send,
-  Loader2,
   Building2,
   Star,
   Shield,
@@ -36,6 +35,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
+import { Spinner } from '@bossnyumba/design-system';
 
 interface Material {
   id: string;
@@ -290,7 +290,7 @@ export default function WorkOrderDetail() {
       <>
         <PageHeader title="Work Order" showBack />
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <Spinner size="lg" className="text-primary-500" />
         </div>
       </>
     );
@@ -627,7 +627,7 @@ export default function WorkOrderDetail() {
                       onClick={() => assignVendorMutation.mutate(v.id)}
                       disabled={assignVendorMutation.isPending}
                     >
-                      {assignVendorMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Assign'}
+                      {assignVendorMutation.isPending ? <Spinner size="sm" /> : 'Assign'}
                     </button>
                   </div>
                 ))}
@@ -728,7 +728,7 @@ export default function WorkOrderDetail() {
                 <button onClick={() => setShowCompletionModal(false)} className="btn-secondary flex-1 py-3">Cancel</button>
                 <button onClick={handleSubmitCompletion} disabled={!canComplete || completeMutation.isPending} className="btn-primary flex-1 py-3 disabled:opacity-50">
                   {completeMutation.isPending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner className="h-5 w-5" />
                   ) : (
                     <><Send className="w-4 h-4 mr-2" /> Submit for Sign-off</>
                   )}

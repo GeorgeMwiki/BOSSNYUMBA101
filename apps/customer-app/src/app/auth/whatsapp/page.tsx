@@ -2,7 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MessageCircle, Shield, Loader2 } from 'lucide-react';
+import { MessageCircle, Shield } from 'lucide-react';
+import { Spinner } from '@bossnyumba/design-system';
 
 function WhatsAppRegistrationContent() {
   const searchParams = useSearchParams();
@@ -37,7 +38,7 @@ function WhatsAppRegistrationContent() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card p-8 max-w-sm w-full text-center">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            <Spinner size="lg" className="text-primary-600" />
           </div>
           <h1 className="text-xl font-semibold mb-2">Verifying Your Link</h1>
           <p className="text-gray-500 text-sm">
@@ -78,7 +79,7 @@ export default function WhatsAppRegistrationPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="card p-8 max-w-sm w-full text-center">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            <Spinner size="lg" className="text-primary-600" />
           </div>
           <h1 className="text-xl font-semibold mb-2">Loading</h1>
         </div>

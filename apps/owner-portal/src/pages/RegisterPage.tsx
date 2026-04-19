@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Loader2, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
+import { Home, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { createZodResolver } from '@bossnyumba/design-system';
+import { createZodResolver, Spinner } from '@bossnyumba/design-system';
 import { z } from 'zod';
 import { api } from '../lib/api';
 
@@ -364,7 +364,7 @@ export function RegisterPage() {
                 {detailsState.errors.acceptTerms && <p role="alert" className="text-xs text-red-600">{detailsState.errors.acceptTerms.message}</p>}
 
                 <button type="submit" disabled={detailsState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {detailsState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {detailsState.isSubmitting && <Spinner size="sm" />}
                   Create Account
                 </button>
               </form>
@@ -400,7 +400,7 @@ export function RegisterPage() {
                 </div>
 
                 <button type="submit" disabled={verifyState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {verifyState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {verifyState.isSubmitting && <Spinner size="sm" />}
                   Verify Email
                 </button>
               </form>
@@ -512,7 +512,7 @@ export function RegisterPage() {
                 </div>
 
                 <button type="submit" disabled={mfaState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {mfaState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {mfaState.isSubmitting && <Spinner size="sm" />}
                   Complete Setup
                 </button>
               </form>

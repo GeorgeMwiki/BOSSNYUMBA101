@@ -1,28 +1,57 @@
 import * as React from 'react';
 import { cn } from '../lib/utils';
 
+export type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type SpinnerVariant = 'default' | 'primary' | 'secondary' | 'muted' | 'current';
+
 export interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
-  size?: 'sm' | 'md' | 'lg';
+  size?: SpinnerSize;
+  variant?: SpinnerVariant;
 }
 
-const sizeClasses = {
+const sizeClasses: Record<SpinnerSize, string> = {
+  xs: 'h-3 w-3',
   sm: 'h-4 w-4',
   md: 'h-6 w-6',
   lg: 'h-8 w-8',
+  xl: 'h-12 w-12',
+};
+
+const variantClasses: Record<SpinnerVariant, string> = {
+  default: 'text-muted-foreground',
+  primary: 'text-primary-600',
+  secondary: 'text-secondary-600',
+  muted: 'text-muted-foreground',
+  current: 'text-current',
 };
 
 const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
-  ({ className, size = 'md', 'aria-label': ariaLabel = 'Loading', ...props }, ref) => {
+  (
+    {
+      className,
+      size = 'md',
+      variant = 'default',
+      'aria-label': ariaLabel = 'Loading',
+      ...props
+    },
+    ref
+  ) => {
     return (
       <div
         ref={ref}
         role="status"
         aria-label={ariaLabel}
-        className={cn('inline-block', className)}
+        aria-live="polite"
+        className="inline-block"
         {...props}
       >
         <svg
-          className={cn('animate-spin text-muted-foreground', sizeClasses[size])}
+          className={cn(
+            'animate-spin',
+            variantClasses[variant],
+            sizeClasses[size],
+            className
+          )}
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"

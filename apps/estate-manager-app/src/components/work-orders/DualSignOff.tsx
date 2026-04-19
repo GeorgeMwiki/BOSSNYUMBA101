@@ -5,13 +5,13 @@ import {
   Camera,
   CheckCircle,
   AlertTriangle,
-  Loader2,
   Image as ImageIcon,
   X,
   PenLine,
   User,
   Wrench,
 } from 'lucide-react';
+import { Spinner } from '@bossnyumba/design-system';
 
 interface DualSignOffProps {
   workOrder: {
@@ -392,7 +392,7 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                 className="btn-primary flex-1"
               >
                 {submitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner className="h-5 w-5" />
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5 mr-2" />

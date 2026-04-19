@@ -126,15 +126,106 @@ app.get('/jobs/:id', async (c: any) => {
   return c.json({ success: true, data: rows[0] });
 });
 
+/**
+ * POST /jobs — enqueue a render job.
+ *
+ * Behaviour:
+ *   - Persists a `document_render_jobs` row with status=queued.
+ *   - Emits a `DocumentRenderRequested` domain event so subscribers (or the
+ *     render worker) can pick it up.
+ *   - Returns 202 Accepted + jobId. The real renderer runs asynchronously
+ *     — clients poll GET /jobs/:id for status.
+ *
+ * The endpoint intentionally does NOT call the renderer inline so the
+ * response stays fast and the request isn't coupled to the availability
+ * of docx/pdf/typst deps. When the worker is offline the row still
+ * persists and a follow-up pass will drain the queue.
+ */
 app.post('/jobs', zValidator('json', EnqueueSchema), async (c: any) => {
-  return c.json(
-    {
-      success: false,
-      error:
-        'Render worker not yet bound. Enqueue via the CLI or wait for the worker to be wired.',
-    },
-    503
-  );
+  const services = c.get('services');
+  const db = services?.db;
+  if (!db) return notConfigured(c);
+  const tenantId = c.get('tenantId');
+  const userId = c.get('userId');
+  const body = c.req.valid('json');
+
+  const now = new Date();
+  const jobId = `drj_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+  const row = {
+    id: jobId,
+    tenantId,
+    templateId: body.templateId,
+    templateVersion: body.templateVersion,
+    rendererKind: body.rendererKind,
+    status: 'queued' as const,
+    inputPayload: body.inputs,
+    outputDocumentId: null,
+    outputMimeType: null,
+    outputSizeBytes: null,
+    pageCount: null,
+    errorCode: null,
+    errorMessage: null,
+    relatedEntityType: body.relatedEntityType ?? null,
+    relatedEntityId: body.relatedEntityId ?? null,
+    requestedBy: userId,
+    requestedAt: now,
+    startedAt: null,
+    completedAt: null,
+  };
+
+  try {
+    const [inserted] = await db
+      .insert(documentRenderJobs)
+      .values(row)
+      .returning();
+
+    // Fire event so the render worker (or future subscribers) can pick up.
+    try {
+      await services.eventBus?.publish({
+        event: {
+          eventId: `evt_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
+          eventType: 'DocumentRenderRequested',
+          timestamp: now.toISOString(),
+          tenantId,
+          correlationId: `cor_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
+          causationId: null,
+          metadata: {},
+          payload: {
+            jobId,
+            templateId: body.templateId,
+            templateVersion: body.templateVersion,
+            rendererKind: body.rendererKind,
+            relatedEntityType: body.relatedEntityType,
+            relatedEntityId: body.relatedEntityId,
+          },
+        } as any,
+        version: 1,
+        aggregateId: jobId,
+        aggregateType: 'DocumentRenderJob',
+      });
+    } catch (_e) {
+      // Event publish never breaks the enqueue response.
+    }
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          jobId,
+          status: 'queued',
+          job: inserted ?? row,
+          workerWillProcess: true,
+        },
+      },
+      202
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Enqueue failed';
+    return c.json(
+      { success: false, error: { code: 'ENQUEUE_FAILED', message } },
+      500
+    );
+  }
 });
 
 export default app;

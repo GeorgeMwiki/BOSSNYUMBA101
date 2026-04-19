@@ -6,7 +6,6 @@ import Link from 'next/link';
 import {
   User,
   Building2,
-  Loader2,
   Star,
   Clock,
   Shield,
@@ -16,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
+import { Spinner } from '@bossnyumba/design-system';
 
 const priorities = [
   { value: 'EMERGENCY', label: 'Emergency' },
@@ -135,7 +135,7 @@ export default function WorkOrderTriage() {
       <>
         <PageHeader title="Triage Work Order" showBack />
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <Spinner size="lg" className="text-primary-500" />
         </div>
       </>
     );
@@ -235,7 +235,7 @@ export default function WorkOrderTriage() {
               <>
                 {loadingVendors ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
+                    <Spinner className="h-5 w-5 text-primary-500" />
                     <span className="text-sm text-gray-500 ml-2">Loading vendors...</span>
                   </div>
                 ) : vendors.length === 0 ? (
@@ -309,7 +309,7 @@ export default function WorkOrderTriage() {
               className="btn-primary flex-1 flex items-center justify-center gap-2"
             >
               {triageMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" />
               ) : null}
               {triageMutation.isPending ? 'Saving...' : 'Complete Triage'}
             </button>

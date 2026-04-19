@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, Loader2, Send, ThumbsUp } from 'lucide-react';
+import { Star, Send, ThumbsUp } from 'lucide-react';
+import { Spinner } from '@bossnyumba/design-system';
 
 interface ServiceRatingProps {
   onSubmit: (score: number, comment: string) => Promise<void>;
@@ -181,7 +182,7 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
             className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
           >
             {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner className="h-5 w-5" />
             ) : (
               <>
                 <Send className="w-5 h-5" />

@@ -31,13 +31,23 @@ export function loadGepgKeys(): GepgKeys {
 
   const privatePath = process.env.GEPG_SIGNING_KEY_PATH;
   const certPath = process.env.GEPG_SIGNING_CERT_PATH;
+  const isSafeAbsolutePath = (p: string): boolean =>
+    p.startsWith('/') && !p.includes('\0');
   if (privatePath || certPath) {
     const loaded: { privateKeyPem?: string; publicCertPem?: string } = {};
-    if (privatePath && existsSync(privatePath)) {
-      loaded.privateKeyPem = readFileSync(privatePath, 'utf-8');
+    if (privatePath && isSafeAbsolutePath(privatePath)) {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path, validated
+      if (existsSync(privatePath)) {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path, validated
+        loaded.privateKeyPem = readFileSync(privatePath, 'utf-8');
+      }
     }
-    if (certPath && existsSync(certPath)) {
-      loaded.publicCertPem = readFileSync(certPath, 'utf-8');
+    if (certPath && isSafeAbsolutePath(certPath)) {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path, validated
+      if (existsSync(certPath)) {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path, validated
+        loaded.publicCertPem = readFileSync(certPath, 'utf-8');
+      }
     }
     cache = {
       ...loaded,

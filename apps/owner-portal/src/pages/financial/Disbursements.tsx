@@ -16,7 +16,6 @@ import {
   FileText,
   TrendingUp,
   TrendingDown,
-  Loader2,
   Filter,
   Banknote,
 } from 'lucide-react';
@@ -30,7 +29,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, Spinner } from '@bossnyumba/design-system';
 import { api, formatCurrency, formatDate, formatDateTime } from '../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -128,7 +127,7 @@ export function DisbursementsPage() {
       case 'PENDING':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'PROCESSING':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Spinner size="sm" className="text-blue-500" />;
       case 'FAILED':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
@@ -558,7 +557,7 @@ export function DisbursementsPage() {
                       className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
                     >
                       {downloading === disbursement.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Spinner size="sm" />
                       ) : (
                         <Download className="h-4 w-4" />
                       )}

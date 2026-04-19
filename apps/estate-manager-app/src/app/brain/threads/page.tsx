@@ -9,10 +9,10 @@ import Link from 'next/link';
 import {
   Brain,
   ChevronRight,
-  Loader2,
   AlertTriangle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
 
 interface ThreadRow {
@@ -49,7 +49,7 @@ export default function ThreadsPage() {
         )}
         {rows === null && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> loading…
+            <Spinner size="sm" /> loading…
           </div>
         )}
         {rows?.length === 0 && (

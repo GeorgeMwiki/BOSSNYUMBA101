@@ -137,7 +137,7 @@ export class PlatformMetrics {
           })
         );
         break;
-      case 'gauge':
+      case 'gauge': {
         this.gaugeValues.set(key, new Map());
         this.gauges.set(
           key,
@@ -161,6 +161,7 @@ export class PlatformMetrics {
           );
         }
         break;
+      }
     }
   }
 

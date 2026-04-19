@@ -160,12 +160,13 @@ export class EmergencyProtocolHandler {
         await this.handleActiveEmergency(session, message);
         break;
 
-      default:
+      default: {
         // Start emergency detection
         const text = this.extractTextContent(message);
         if (text) {
           await this.handlePotentialEmergency(session, text);
         }
+      }
     }
   }
 

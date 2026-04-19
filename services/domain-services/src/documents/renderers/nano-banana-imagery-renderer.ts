@@ -48,6 +48,7 @@ const DEFAULT_API_URL = 'https://api.nano-banana.app/v1/images/generate';
 
 // Minimal opaque 1x1 grey PNG — used as the placeholder when no API key
 // is configured so the pipeline does not break in development.
+// eslint-disable-next-line no-secrets/no-secrets -- base64 PNG bytes, not a secret
 const PLACEHOLDER_PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 

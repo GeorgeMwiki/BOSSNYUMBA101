@@ -86,8 +86,12 @@ async function compileWithTypst(bin: string, source: string): Promise<Buffer> {
   const inPath = join(workdir, 'document.typ');
   const outPath = join(workdir, 'document.pdf');
   try {
+    // inPath/outPath are derived from mkdtemp() + a fixed filename — fully
+    // controlled by this module. Not a user-supplied path.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from mkdtemp()
     await writeFile(inPath, source, 'utf-8');
     await runProcess(bin, ['compile', inPath, outPath], 30_000);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from mkdtemp()
     return await readFile(outPath);
   } finally {
     await rm(workdir, { recursive: true, force: true }).catch(() => {});

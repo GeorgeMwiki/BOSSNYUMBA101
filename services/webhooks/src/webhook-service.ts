@@ -4,7 +4,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { WebhookEvent, WebhookEventType, WebhookSubscription } from './types.js';
-import { deliver } from './delivery.js';
+import { assertSafeWebhookUrl, deliver } from './delivery.js';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
@@ -17,6 +17,10 @@ export function subscribe(
   tenantId: string,
   secret?: string
 ): WebhookSubscription {
+  // Reject the subscription up-front if the URL would be blocked by the
+  // SSRF guard. This gives the tenant a synchronous, actionable error
+  // instead of a silent run of "failed" deliveries.
+  assertSafeWebhookUrl(url);
   const sub: WebhookSubscription = {
     id: uuidv4(),
     url,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Home, Loader2, CheckCircle, AlertCircle, Users } from 'lucide-react';
-import { Skeleton } from '@bossnyumba/design-system';
+import { Home, CheckCircle, AlertCircle, Users } from 'lucide-react';
+import { Skeleton, Spinner } from '@bossnyumba/design-system';
 import { api } from '../lib/api';
 
 interface InviteDetails {
@@ -314,7 +314,7 @@ export function InvitePage() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading && <Spinner size="sm" />}
               Accept & Create Account
             </button>
           </form>

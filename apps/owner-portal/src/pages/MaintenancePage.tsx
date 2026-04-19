@@ -17,7 +17,6 @@ import {
   Calendar,
   MessageSquare,
   RefreshCw,
-  Loader2,
   ThumbsUp,
 } from 'lucide-react';
 import {
@@ -30,7 +29,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Skeleton, Alert, AlertDescription, Button, EmptyState, toast } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner, toast } from '@bossnyumba/design-system';
 import { formatDate, formatCurrency, formatDateTime } from '../lib/api';
 import {
   useOwnerWorkOrders,
@@ -365,7 +364,7 @@ export function MaintenancePage() {
                       className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg disabled:opacity-50"
                     >
                       {approvingId === wo.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Spinner className="h-3.5 w-3.5" />
                       ) : (
                         <CheckCircle className="h-3.5 w-3.5" />
                       )}
@@ -477,7 +476,7 @@ export function MaintenancePage() {
                         className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg disabled:opacity-50"
                       >
                         {approvingId === wo.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Spinner size="sm" />
                         ) : (
                           <CheckCircle className="h-4 w-4" />
                         )}

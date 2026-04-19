@@ -122,6 +122,15 @@ export const OTP_DEFAULT_SEND_ATTEMPTS = 2;
 /** Backoff delay between OTP dispatch retries, in ms. */
 export const OTP_DEFAULT_SEND_BACKOFF_MS = 2000;
 
+/** Minimum wait between consecutive resends for the same phone number. */
+export const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+
+/** Max OTP sends per phone number inside the resend window. */
+export const OTP_RESEND_MAX_PER_WINDOW = 5;
+
+/** Rolling window size over which OTP_RESEND_MAX_PER_WINDOW applies. */
+export const OTP_RESEND_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 export interface OtpServiceOptions {
   readonly now?: () => number;
   readonly ttlMs?: number;
@@ -131,6 +140,32 @@ export interface OtpServiceOptions {
   readonly sendBackoffMs?: number;
   /** Sleep hook — injected for deterministic tests. */
   readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * Minimum milliseconds between resends for the SAME phone. Defaults to
+   * OTP_RESEND_COOLDOWN_MS (30s). Attackers resending to flood a real
+   * recipient with SMS must wait this long — prevents SMS-bomb abuse.
+   */
+  readonly resendCooldownMs?: number;
+  /** Max sends per phone inside `resendWindowMs`. Defaults to 5. */
+  readonly resendMaxPerWindow?: number;
+  /** Rolling window for `resendMaxPerWindow`. Defaults to 1 hour. */
+  readonly resendWindowMs?: number;
+}
+
+/**
+ * Raised when the per-phone resend cooldown or hourly cap is exceeded.
+ * Callers should surface a generic "try again later" message to the user
+ * — do NOT echo the remaining cooldown back, as that's a timing oracle
+ * for attackers fingerprinting phone-number registration.
+ */
+export class OtpResendThrottledError extends Error {
+  constructor(
+    public readonly retryAfterMs: number,
+    public readonly reason: 'cooldown' | 'hourly_cap',
+  ) {
+    super(`OtpService.send throttled (${reason}), retry in ${retryAfterMs}ms`);
+    this.name = 'OtpResendThrottledError';
+  }
 }
 
 function defaultSleep(ms: number): Promise<void> {
@@ -143,6 +178,19 @@ export class OtpService {
   private readonly sendAttempts: number;
   private readonly sendBackoffMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly resendCooldownMs: number;
+  private readonly resendMaxPerWindow: number;
+  private readonly resendWindowMs: number;
+  /**
+   * Per-phone send history. `timestamps` is used for the hourly cap;
+   * `lastSentAt` is used for the short cooldown. Keyed by raw phone
+   * string so two different identities can't work around the cap by
+   * registering the same number twice.
+   */
+  private readonly phoneHistory = new Map<
+    string,
+    { lastSentAt: number; timestamps: number[] }
+  >();
 
   constructor(
     private readonly store: OtpStore = new InMemoryOtpStore(),
@@ -177,6 +225,11 @@ export class OtpService {
       this.sendAttempts = 1;
       this.sendBackoffMs = OTP_DEFAULT_SEND_BACKOFF_MS;
       this.sleep = defaultSleep;
+      // Legacy tests exercise the exact send()/verify() contract with
+      // no cooldown between sends; zero these out so they don't break.
+      this.resendCooldownMs = 0;
+      this.resendMaxPerWindow = Number.POSITIVE_INFINITY;
+      this.resendWindowMs = OTP_RESEND_WINDOW_MS;
     } else {
       this.now = nowOrOptions.now ?? (() => Date.now());
       this.ttlMs = nowOrOptions.ttlMs ?? OTP_TTL_MS;
@@ -185,7 +238,58 @@ export class OtpService {
       this.sendBackoffMs =
         nowOrOptions.sendBackoffMs ?? OTP_DEFAULT_SEND_BACKOFF_MS;
       this.sleep = nowOrOptions.sleep ?? defaultSleep;
+      this.resendCooldownMs =
+        nowOrOptions.resendCooldownMs ?? OTP_RESEND_COOLDOWN_MS;
+      this.resendMaxPerWindow =
+        nowOrOptions.resendMaxPerWindow ?? OTP_RESEND_MAX_PER_WINDOW;
+      this.resendWindowMs =
+        nowOrOptions.resendWindowMs ?? OTP_RESEND_WINDOW_MS;
     }
+  }
+
+  /**
+   * Enforce per-phone resend throttling. Throws OtpResendThrottledError
+   * when either the short cooldown or the hourly cap is exceeded.
+   * Also GC's old entries so phoneHistory doesn't grow unboundedly.
+   */
+  private checkResendThrottle(phone: string): void {
+    const now = this.now();
+    const entry = this.phoneHistory.get(phone);
+    if (!entry) return;
+    // Short cooldown: block rapid consecutive sends (SMS bomb).
+    const sinceLast = now - entry.lastSentAt;
+    if (sinceLast < this.resendCooldownMs) {
+      throw new OtpResendThrottledError(
+        this.resendCooldownMs - sinceLast,
+        'cooldown',
+      );
+    }
+    // Prune timestamps outside the rolling window.
+    const windowStart = now - this.resendWindowMs;
+    const fresh = entry.timestamps.filter((t) => t >= windowStart);
+    if (fresh.length >= this.resendMaxPerWindow) {
+      // Earliest send that would expire next determines retryAfter.
+      const oldest = fresh[0];
+      throw new OtpResendThrottledError(
+        Math.max(0, oldest + this.resendWindowMs - now),
+        'hourly_cap',
+      );
+    }
+    this.phoneHistory.set(phone, { lastSentAt: entry.lastSentAt, timestamps: fresh });
+  }
+
+  /** Record a successful send against the per-phone throttle counters. */
+  private recordSend(phone: string): void {
+    const now = this.now();
+    const entry = this.phoneHistory.get(phone);
+    if (!entry) {
+      this.phoneHistory.set(phone, { lastSentAt: now, timestamps: [now] });
+      return;
+    }
+    const windowStart = now - this.resendWindowMs;
+    const fresh = entry.timestamps.filter((t) => t >= windowStart);
+    fresh.push(now);
+    this.phoneHistory.set(phone, { lastSentAt: now, timestamps: fresh });
   }
 
   /**
@@ -203,6 +307,11 @@ export class OtpService {
     if (!phone || phone.trim().length === 0) {
       throw new Error('OtpService.send: phone is required');
     }
+    // FIXED W7-M1: per-phone resend throttle. Blocks SMS-bomb abuse
+    // where an attacker forces a second system to spam a real user.
+    // Throws OtpResendThrottledError — callers should return a 429 with
+    // a neutral "try again later" message (do NOT expose retryAfterMs).
+    this.checkResendThrottle(phone);
     const code = generateCode(OTP_LENGTH);
     const expiresAt = this.now() + this.ttlMs;
     const record: OtpRecord = {
@@ -220,6 +329,7 @@ export class OtpService {
     for (let attempt = 1; attempt <= totalAttempts; attempt++) {
       try {
         await this.sms.send(phone, message);
+        this.recordSend(phone);
         return { expiresAt };
       } catch (error) {
         lastError = error as Error;

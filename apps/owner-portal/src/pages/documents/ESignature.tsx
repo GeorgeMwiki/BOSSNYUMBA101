@@ -15,11 +15,10 @@ import {
   User,
   Calendar,
   ChevronRight,
-  Loader2,
   ArrowLeft,
   History,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '@bossnyumba/design-system';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -668,7 +667,7 @@ export function ESignaturePage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Spinner size="sm" />
                       Signing...
                     </>
                   ) : (

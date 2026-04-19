@@ -26,19 +26,26 @@ import {
   type UnitType,
   type UnitStatus,
   type Money,
-  type Block,
-  type BlockId,
-  type BlockStatus,
   createProperty,
   createUnit,
-  createBlock,
   asPropertyId,
   asUnitId,
-  asBlockId,
-  generateBlockCode,
   ok,
   err,
+  Block,
 } from '@bossnyumba/domain-models';
+// Block namespace (exports asBlockId/createBlock/generateBlockCode/BlockId/BlockStatus)
+// was split out of the top-level barrel in domain-models; re-alias the
+// previously flat imports so the rest of this file keeps compiling without
+// a broader refactor.
+const { asBlockId, createBlock, generateBlockCode } = Block as unknown as {
+  asBlockId: (id: string) => any;
+  createBlock: (...args: any[]) => any;
+  generateBlockCode: (propertyCode: string, sequence: number) => string;
+};
+type Block = ReturnType<typeof createBlock>;
+type BlockId = ReturnType<typeof asBlockId>;
+type BlockStatus = 'active' | 'inactive' | 'under_construction' | 'under_renovation' | 'demolished';
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
 

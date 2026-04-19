@@ -33,12 +33,36 @@ export class JwtService {
   constructor(config: Partial<JwtConfig> = {}) {
     const accessSecret = config.accessTokenSecret || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
     const refreshSecret = config.refreshTokenSecret || process.env.JWT_REFRESH_SECRET;
-    if (process.env.NODE_ENV === 'production' && (!accessSecret || !refreshSecret)) {
-      throw new Error('JWT_ACCESS_SECRET (or JWT_SECRET) and JWT_REFRESH_SECRET are required in production');
+    // Hard fail in any non-test environment when secrets are missing.
+    // The old code silently fell back to `access-secret-change-me`, which
+    // is a well-known string — anyone who reads the repo could forge
+    // tokens signed with it. Test runs stay on randomised per-process
+    // secrets so the test suite doesn't require env wiring.
+    const env = process.env.NODE_ENV;
+    if (env !== 'test' && (!accessSecret || !refreshSecret)) {
+      throw new Error(
+        'JwtService: JWT_ACCESS_SECRET (or JWT_SECRET) and JWT_REFRESH_SECRET are required. ' +
+          'Hardcoded fallbacks have been removed to prevent token forgery.'
+      );
+    }
+    // Per-process random fallback for tests — rotated every process start
+    // so a leaked test secret can't be reused across CI runs.
+    const testFallbackAccess =
+      accessSecret ?? `test-access-${Math.random().toString(36).slice(2)}`;
+    const testFallbackRefresh =
+      refreshSecret ?? `test-refresh-${Math.random().toString(36).slice(2)}`;
+    // A short secret is almost as bad as a known one — reject <32 chars in prod.
+    if (env === 'production') {
+      if ((accessSecret ?? '').length < 32) {
+        throw new Error('JwtService: JWT access secret must be at least 32 characters in production');
+      }
+      if ((refreshSecret ?? '').length < 32) {
+        throw new Error('JwtService: JWT refresh secret must be at least 32 characters in production');
+      }
     }
     this.config = {
-      accessTokenSecret: accessSecret || 'access-secret-change-me',
-      refreshTokenSecret: refreshSecret || 'refresh-secret-change-me',
+      accessTokenSecret: testFallbackAccess,
+      refreshTokenSecret: testFallbackRefresh,
       accessTokenExpiresIn: config.accessTokenExpiresIn || '15m',
       refreshTokenExpiresIn: config.refreshTokenExpiresIn || '7d',
       issuer: config.issuer || 'bossnyumba',

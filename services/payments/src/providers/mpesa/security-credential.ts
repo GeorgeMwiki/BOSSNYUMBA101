@@ -39,6 +39,12 @@ function resolveCertificatePem(env: MpesaEnvironment): string {
   const certPath = process.env.MPESA_CERT_PATH?.trim();
   if (certPath) {
     try {
+      if (!certPath.startsWith('/') || certPath.includes('\0')) {
+        throw new SecurityCredentialError(
+          'MPESA_CERT_PATH must be an absolute path'
+        );
+      }
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path, validated
       return readFileSync(certPath, 'utf-8');
     } catch (err) {
       throw new SecurityCredentialError(

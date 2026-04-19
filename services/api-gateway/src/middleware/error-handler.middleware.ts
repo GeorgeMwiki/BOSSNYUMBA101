@@ -411,13 +411,9 @@ function httpStatusToErrorCode(status: number): ErrorCode {
 export function asyncHandler<T>(
   fn: (c: Context) => Promise<T>
 ): (c: Context) => Promise<T> {
-  return async (c: Context) => {
-    try {
-      return await fn(c);
-    } catch (error) {
-      throw error; // Let error handler middleware catch it
-    }
-  };
+  // The wrapper intentionally does not catch — the error handler middleware
+  // registered upstream captures rejected promises from Hono handlers.
+  return async (c: Context) => fn(c);
 }
 
 /**

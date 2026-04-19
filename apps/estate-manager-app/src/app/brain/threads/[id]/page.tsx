@@ -8,7 +8,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  Loader2,
   AlertTriangle,
   Brain,
   User,
@@ -19,6 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
 
 interface ThreadEvent {
@@ -87,7 +87,7 @@ export default function ThreadDetailPage() {
         )}
         {!data && !error && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> loading…
+            <Spinner size="sm" /> loading…
           </div>
         )}
         {data?.events?.length === 0 && (

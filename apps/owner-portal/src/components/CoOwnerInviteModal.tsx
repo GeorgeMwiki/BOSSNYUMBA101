@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Mail, Shield, Building2, Loader2, CheckCircle } from 'lucide-react';
+import { X, UserPlus, Mail, Shield, Building2, CheckCircle } from 'lucide-react';
+import { Spinner } from '@bossnyumba/design-system';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -152,7 +153,7 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
             <div className="flex gap-3 pt-4">
               <button type="button" onClick={handleClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
               <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Send Invitation
+                {loading ? <Spinner size="sm" /> : <Mail className="h-4 w-4" />}Send Invitation
               </button>
             </div>
           </form>

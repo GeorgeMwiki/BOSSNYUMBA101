@@ -15,10 +15,9 @@ import {
   MoreVertical,
   Smile,
   Download,
-  Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '@bossnyumba/design-system';
 import { api, formatDateTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -691,7 +690,7 @@ export function MessagesPage() {
                     className="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     {sending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Spinner className="h-5 w-5" />
                     ) : (
                       <Send className="h-5 w-5" />
                     )}

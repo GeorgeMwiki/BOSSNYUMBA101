@@ -29,6 +29,12 @@ function buildSecurityCredential(
     const certPath = process.env.MPESA_CERT_PATH?.trim();
     if (certPath) {
       try {
+        // Path comes from operator-controlled env var; validate it's an
+        // absolute path and not obviously hostile before reading.
+        if (!certPath.startsWith('/') || certPath.includes('\0')) {
+          throw new Error('MPESA_CERT_PATH must be an absolute path');
+        }
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied absolute path
         pem = readFileSync(certPath, 'utf-8');
       } catch (err) {
         throw new Error(

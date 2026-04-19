@@ -154,9 +154,11 @@ export const invoiceStatusSchema = z.enum([
 ]);
 
 /** ISO date string for date range filters */
+// Flattened alternation avoids nested optional groups (ReDoS-safe).
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)?$/;
 const isoDateSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, 'Invalid date format (use ISO 8601)')
+  .regex(ISO_DATE_RE, 'Invalid date format (use ISO 8601)')
   .optional();
 
 export const listInvoicesQuerySchema = paginationSchema.extend({

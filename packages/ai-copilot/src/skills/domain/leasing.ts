@@ -65,32 +65,34 @@ export function abstractLease(
     return m ? m[1] ?? m[0] : undefined;
   };
 
+  // Bounded-length fillers avoid catastrophic backtracking ([^\n]{0,200}).
+  // Numeric capture uses unambiguous [0-9] + [0-9,.] with explicit upper bound.
   const rentMatch = match(
-    /\brent[^\n]*?(?:KES|KSh|Ksh|kshs?)\s*([0-9][0-9,.]*)/i,
+    /\brent[^\n]{0,200}?(?:KES|KSh|Ksh|kshs?)\s*([0-9][0-9,.]{0,20})/i,
     'rentKes'
   );
   const depositMatch = match(
-    /\b(?:security\s+)?deposit[^\n]*?(?:KES|KSh|Ksh)\s*([0-9][0-9,.]*)/i,
+    /\b(?:security\s+)?deposit[^\n]{0,200}?(?:KES|KSh|Ksh)\s*([0-9][0-9,.]{0,20})/i,
     'depositKes'
   );
   const serviceChargeMatch = match(
-    /\bservice\s+charge[^\n]*?(?:KES|KSh|Ksh)\s*([0-9][0-9,.]*)/i,
+    /\bservice\s+charge[^\n]{0,200}?(?:KES|KSh|Ksh)\s*([0-9][0-9,.]{0,20})/i,
     'serviceChargeKes'
   );
   const escalationMatch = match(
-    /\b(?:escalation|increment|increase)[^\n]*?([0-9]+(?:\.[0-9]+)?)\s*%/i,
+    /\b(?:escalation|increment|increase)[^\n]{0,200}?([0-9]{1,6}(?:\.[0-9]{1,4})?)\s*%/i,
     'escalationPct'
   );
   const noticeMatch = match(
-    /\bnotice\s+period[^\n]*?([0-9]+)\s*(?:days?|months?)/i,
+    /\bnotice\s+period[^\n]{0,200}?([0-9]{1,4})\s*(?:days?|months?)/i,
     'noticePeriodDays'
   );
   const startMatch = match(
-    /\b(?:commencement|start)\s+date[^\n]*?(\d{1,2}[\/\-.][a-z0-9]+[\/\-.]\d{2,4})/i,
+    /\b(?:commencement|start)\s+date[^\n]{0,200}?(\d{1,2}[/\-.][a-z0-9]{1,12}[/\-.]\d{2,4})/i,
     'startDate'
   );
   const endMatch = match(
-    /\b(?:end|expiry|termination)\s+date[^\n]*?(\d{1,2}[\/\-.][a-z0-9]+[\/\-.]\d{2,4})/i,
+    /\b(?:end|expiry|termination)\s+date[^\n]{0,200}?(\d{1,2}[/\-.][a-z0-9]{1,12}[/\-.]\d{2,4})/i,
     'endDate'
   );
   const landlordMatch = match(

@@ -81,6 +81,7 @@ import { adminPortalRouter } from './routes/bff/admin-portal';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
 import { getDb } from './composition/db-client';
 import { createServiceContextMiddleware } from './composition/service-context.middleware';
+import { createOpenApiRouter } from './openapi';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -305,6 +306,76 @@ api.route('/scans', scansRouter);
 api.route('/station-master-coverage', stationMasterCoverageRouter);
 api.route('/tenders', tendersRouter);
 api.route('/waitlist', waitlistRouter);
+
+// OpenAPI spec + Swagger UI. Mounted AFTER every router so the
+// harvester can see them. The spec lives at /api/v1/openapi.json and
+// the interactive UI at /api/v1/docs.
+const openApiRouter = createOpenApiRouter({
+  title: 'BOSSNYUMBA API',
+  version: process.env.APP_VERSION ?? '1.0.0',
+  description:
+    'BOSSNYUMBA multi-tenant property management platform — full HTTP API. ' +
+    'Generated from the live gateway at runtime.',
+  servers: [
+    { url: '/api/v1', description: 'This gateway' },
+  ],
+  mountedRouters: [
+    { prefix: '/auth', app: authRouter, defaultTag: 'auth' },
+    { prefix: '/auth/mfa', app: authMfaRouter, defaultTag: 'auth' },
+    { prefix: '/tenants', app: tenantsRouter, defaultTag: 'tenants' },
+    { prefix: '/users', app: usersRouter, defaultTag: 'users' },
+    { prefix: '/properties', app: propertiesRouter, defaultTag: 'properties' },
+    { prefix: '/units', app: unitsRouter, defaultTag: 'units' },
+    { prefix: '/customers', app: customersRouter, defaultTag: 'customers' },
+    { prefix: '/leases', app: leasesRouter, defaultTag: 'leases' },
+    { prefix: '/invoices', app: invoicesApp, defaultTag: 'invoices' },
+    { prefix: '/payments', app: paymentsApp, defaultTag: 'payments' },
+    { prefix: '/work-orders', app: workOrdersRouter, defaultTag: 'work-orders' },
+    { prefix: '/vendors', app: vendorsRouter, defaultTag: 'vendors' },
+    { prefix: '/notifications', app: notificationsRouter, defaultTag: 'notifications' },
+    { prefix: '/reports', app: reportsHonoRouter, defaultTag: 'reports' },
+    { prefix: '/dashboard', app: dashboardRouter, defaultTag: 'dashboard' },
+    { prefix: '/onboarding', app: onboardingRouter, defaultTag: 'onboarding' },
+    { prefix: '/feedback', app: feedbackRouter, defaultTag: 'feedback' },
+    { prefix: '/complaints', app: complaintsRouter, defaultTag: 'complaints' },
+    { prefix: '/inspections', app: inspectionsRouter, defaultTag: 'inspections' },
+    { prefix: '/documents', app: documentsHonoRouter, defaultTag: 'documents' },
+    { prefix: '/scheduling', app: schedulingRouter, defaultTag: 'scheduling' },
+    { prefix: '/messaging', app: messagingRouter, defaultTag: 'messaging' },
+    { prefix: '/cases', app: casesRouter, defaultTag: 'cases' },
+    { prefix: '/brain', app: brainRouter, defaultTag: 'brain' },
+    { prefix: '/maintenance', app: maintenanceRouter, defaultTag: 'maintenance' },
+    { prefix: '/hr', app: hrRouter, defaultTag: 'hr' },
+    { prefix: '/customer', app: customerAppRouter, defaultTag: 'bff-customer' },
+    { prefix: '/owner', app: ownerPortalRouter, defaultTag: 'bff-owner' },
+    { prefix: '/manager', app: estateManagerAppRouter, defaultTag: 'bff-manager' },
+    { prefix: '/admin', app: adminPortalRouter, defaultTag: 'bff-admin' },
+    { prefix: '/applications', app: applicationsRouter, defaultTag: 'applications' },
+    { prefix: '/arrears', app: arrearsRouter, defaultTag: 'arrears' },
+    { prefix: '/compliance', app: complianceRouter, defaultTag: 'compliance' },
+    { prefix: '/doc-chat', app: docChatRouter, defaultTag: 'doc-chat' },
+    { prefix: '/document-render', app: documentRenderRouter, defaultTag: 'document-render' },
+    { prefix: '/financial-profile', app: financialProfileRouter, defaultTag: 'financial-profile' },
+    { prefix: '/gamification', app: gamificationRouter, defaultTag: 'gamification' },
+    { prefix: '/gepg', app: gepgRouter, defaultTag: 'gepg' },
+    { prefix: '/interactive-reports', app: interactiveReportsRouter, defaultTag: 'interactive-reports' },
+    { prefix: '/letters', app: lettersRouter, defaultTag: 'letters' },
+    { prefix: '/marketplace', app: marketplaceRouter, defaultTag: 'marketplace' },
+    { prefix: '/migration', app: migrationRouter as unknown as Hono, defaultTag: 'migration' },
+    { prefix: '/negotiations', app: negotiationsRouter, defaultTag: 'negotiations' },
+    { prefix: '/me/notification-preferences', app: notificationPreferencesRouter, defaultTag: 'notifications' },
+    { prefix: '/notification-webhooks', app: notificationWebhooksRouter, defaultTag: 'notifications' },
+    { prefix: '/occupancy-timeline', app: occupancyTimelineRouter, defaultTag: 'occupancy-timeline' },
+    { prefix: '/renewals', app: renewalsRouter, defaultTag: 'renewals' },
+    { prefix: '/risk-reports', app: riskReportsRouter, defaultTag: 'risk-reports' },
+    { prefix: '/scans', app: scansRouter, defaultTag: 'scans' },
+    { prefix: '/station-master-coverage', app: stationMasterCoverageRouter, defaultTag: 'station-master-coverage' },
+    { prefix: '/tenders', app: tendersRouter, defaultTag: 'tenders' },
+    { prefix: '/waitlist', app: waitlistRouter, defaultTag: 'waitlist' },
+  ],
+});
+api.route('/', openApiRouter);
+
 app.use('/api/v1', handle(api));
 
 // API versioning

@@ -10,8 +10,9 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Brain, Send, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Brain, Send, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import { authedHeaders } from '@/lib/supabase';
 
 interface Msg {
@@ -99,7 +100,7 @@ export default function TenantAssistantPage() {
         ))}
         {sending && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> Thinking…
+            <Spinner size="sm" /> Thinking…
           </div>
         )}
         {error && (
@@ -130,7 +131,7 @@ export default function TenantAssistantPage() {
             disabled={sending || !input.trim()}
             className="rounded-xl bg-sky-500 text-white px-3 py-2 text-sm font-medium hover:bg-sky-600 disabled:opacity-50 flex items-center gap-1"
           >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {sending ? <Spinner size="sm" /> : <Send className="w-4 h-4" />}
             Send
           </button>
         </div>

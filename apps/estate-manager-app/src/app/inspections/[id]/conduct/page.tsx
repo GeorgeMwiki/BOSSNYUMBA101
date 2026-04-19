@@ -10,7 +10,6 @@ import {
   X,
   Plus,
   AlertTriangle,
-  Loader2,
   CheckCircle,
   Image as ImageIcon,
   Gauge,
@@ -19,6 +18,7 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 
 type InspectionType = 'move_in' | 'move_out' | 'routine' | 'pre_lease';
 type ConditionRating = 'excellent' | 'good' | 'fair' | 'poor' | 'not_applicable';
@@ -598,7 +598,7 @@ export default function ConductInspectionPage() {
               className="btn-primary flex-1 py-4"
             >
               {isSubmitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Spinner className="h-5 w-5" />
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />

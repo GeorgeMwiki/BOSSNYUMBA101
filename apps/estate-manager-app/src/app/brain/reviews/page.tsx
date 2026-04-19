@@ -11,13 +11,13 @@ import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
-  Loader2,
   AlertTriangle,
   ChevronRight,
   Brain,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
 
 interface QueueItem {
@@ -88,7 +88,7 @@ export default function ReviewsPage() {
         )}
         {items === null && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> loading queue…
+            <Spinner size="sm" /> loading queue…
           </div>
         )}
         {items?.length === 0 && (
@@ -173,7 +173,7 @@ function Card({
           className="flex-1 rounded-xl bg-green-600 text-white px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
         >
           {busy ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Spinner size="sm" />
           ) : (
             <CheckCircle2 className="w-4 h-4" />
           )}

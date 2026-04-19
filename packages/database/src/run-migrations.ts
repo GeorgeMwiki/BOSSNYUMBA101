@@ -4,7 +4,7 @@
  */
 
 import { readdir, readFile } from 'fs/promises';
-import { join, dirname } from 'path';
+import { join, dirname, resolve, relative } from 'path';
 import { fileURLToPath } from 'url';
 import postgres from 'postgres';
 
@@ -16,7 +16,27 @@ const DATABASE_URL =
         throw new Error('DATABASE_URL is required in production. Set it in .env');
       })()
     : 'postgresql://localhost:5432/bossnyumba');
-const MIGRATIONS_DIR = join(__dirname, 'migrations');
+const MIGRATIONS_DIR = resolve(join(__dirname, 'migrations'));
+
+/** Strict allowlist: files must be `<digits-or-letters>.sql` with no path chars. */
+const SAFE_MIGRATION_NAME = /^[A-Za-z0-9_.-]+\.sql$/;
+
+/**
+ * Resolve a migration filename to an absolute path that is guaranteed to live
+ * inside MIGRATIONS_DIR. Rejects traversal, absolute paths, and names that do
+ * not match the allowlist. Prevents the `detect-non-literal-fs-filename` risk.
+ */
+function resolveMigrationPath(name: string): string {
+  if (!SAFE_MIGRATION_NAME.test(name)) {
+    throw new Error(`Rejected unsafe migration filename: ${name}`);
+  }
+  const abs = resolve(MIGRATIONS_DIR, name);
+  const rel = relative(MIGRATIONS_DIR, abs);
+  if (rel.startsWith('..') || rel.includes('..') || abs === MIGRATIONS_DIR) {
+    throw new Error(`Migration path escapes migrations dir: ${name}`);
+  }
+  return abs;
+}
 
 async function runMigrations() {
   const sql = postgres(DATABASE_URL);
@@ -42,21 +62,23 @@ async function runMigrations() {
         SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = ${name}
       `;
       if (applied.length > 0) {
-        console.log('Skipping ' + file + ' (already applied)');
+        console.warn('Skipping ' + file + ' (already applied)');
         continue;
       }
 
-      console.log('Running ' + file + '...');
-      const content = await readFile(join(MIGRATIONS_DIR, file), 'utf-8');
+      console.warn('Running ' + file + '...');
+      const safePath = resolveMigrationPath(file);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path validated by resolveMigrationPath()
+      const content = await readFile(safePath, 'utf-8');
       await sql.unsafe(content);
       await sql`
         INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
         VALUES (${name}, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
       `;
-      console.log('Applied ' + file);
+      console.warn('Applied ' + file);
     }
 
-    console.log('All migrations completed');
+    console.warn('All migrations completed');
   } catch (err) {
     console.error('Migration failed:', err);
     throw err;

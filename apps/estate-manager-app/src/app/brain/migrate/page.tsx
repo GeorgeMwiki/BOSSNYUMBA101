@@ -14,10 +14,10 @@ import {
   FileText,
   CheckCircle2,
   AlertTriangle,
-  Loader2,
   ArrowRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 
 type Step = 'upload' | 'extracting' | 'review' | 'committing' | 'done' | 'error';
 
@@ -114,7 +114,7 @@ export default function MigrationWizardPage() {
 
         {step === 'extracting' && (
           <div className="rounded-xl border border-gray-100 p-6 flex items-center gap-3 bg-white">
-            <Loader2 className="w-5 h-5 animate-spin text-sky-500" />
+            <Spinner className="h-5 w-5 text-sky-500" />
             <div>
               <div className="font-medium">Extracting entities…</div>
               <div className="text-xs text-gray-500">{fileName}</div>
@@ -137,7 +137,7 @@ export default function MigrationWizardPage() {
 
         {step === 'committing' && (
           <div className="rounded-xl border border-gray-100 p-6 flex items-center gap-3 bg-white">
-            <Loader2 className="w-5 h-5 animate-spin text-sky-500" />
+            <Spinner className="h-5 w-5 text-sky-500" />
             <div className="font-medium">Committing to your estate…</div>
           </div>
         )}

@@ -17,13 +17,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Send,
-  Loader2,
   ShieldCheck,
   EyeOff,
   Eye,
   AlertTriangle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import { useBrainChat, type BrainMessage } from '@/lib/brain-client';
 
 type Scope = 'private' | 'team' | 'management' | 'public';
@@ -75,7 +75,7 @@ export default function CoworkerPage() {
         ))}
         {sending && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Spinner size="sm" />
             Thinking privately…
           </div>
         )}
@@ -109,7 +109,7 @@ export default function CoworkerPage() {
             className="rounded-xl bg-sky-500 text-white px-3 py-2 text-sm font-medium hover:bg-sky-600 disabled:opacity-50 flex items-center gap-1"
           >
             {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <Send className="w-4 h-4" />
             )}

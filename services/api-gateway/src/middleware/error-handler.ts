@@ -265,13 +265,8 @@ type AsyncHandler<T extends Context = Context> = (c: T) => Promise<Response | vo
 export function asyncHandler<T extends Context = Context>(
   fn: AsyncHandler<T>
 ): AsyncHandler<T> {
-  return async (c: T) => {
-    try {
-      return await fn(c);
-    } catch (error) {
-      throw error; // Let the error handler middleware handle it
-    }
-  };
+  // Pass-through wrapper — rejected promises bubble to the error middleware.
+  return async (c: T) => fn(c);
 }
 
 // ============================================================================

@@ -13,7 +13,6 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronRight,
-  Loader2,
   Camera,
   Download,
   ArrowLeftRight,
@@ -24,6 +23,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { inspectionsService } from '@bossnyumba/api-client';
+import { Spinner } from '@bossnyumba/design-system';
 
 type InspectionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type InspectionType = 'MOVE_IN' | 'MOVE_OUT' | 'ROUTINE' | 'ANNUAL';
@@ -152,7 +152,7 @@ export default function InspectionDetailPage() {
       <>
         <PageHeader title="Inspection" showBack />
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <Spinner size="lg" className="text-primary-500" />
         </div>
       </>
     );

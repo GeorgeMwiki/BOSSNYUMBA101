@@ -52,9 +52,13 @@ setInterval(reapChallenges, 60 * 1000).unref?.();
 
 // TOTP primitives --------------------------------------------------------
 
+// RFC 4648 base32 alphabet (public standard, not a secret).
+// eslint-disable-next-line no-secrets/no-secrets
+const RFC4648_BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
 function base32Decode(input: string): Buffer {
   // RFC 4648 base32. TOTP secrets are conventionally base32-encoded.
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const alphabet = RFC4648_BASE32_ALPHABET;
   const cleaned = input.toUpperCase().replace(/[^A-Z2-7]/g, '');
   let bits = '';
   for (const ch of cleaned) {
@@ -70,7 +74,7 @@ function base32Decode(input: string): Buffer {
 }
 
 function base32Encode(buf: Buffer): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const alphabet = RFC4648_BASE32_ALPHABET;
   let bits = '';
   for (const byte of buf) bits += byte.toString(2).padStart(8, '0');
   let out = '';

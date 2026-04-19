@@ -24,12 +24,12 @@ import {
   Coins,
   Scale,
   Megaphone,
-  Loader2,
   AlertTriangle,
   Eye,
   EyeOff,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Spinner } from '@bossnyumba/design-system';
 import {
   usePersonae,
   useBrainChat,
@@ -113,7 +113,7 @@ export default function BrainPage() {
           ))}
           {sending && (
             <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Thinking…
             </div>
           )}
@@ -156,7 +156,7 @@ export default function BrainPage() {
             className="rounded-xl bg-sky-500 text-white px-3 py-2 text-sm font-medium hover:bg-sky-600 disabled:opacity-50 flex items-center gap-1"
           >
             {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <Send className="w-4 h-4" />
             )}

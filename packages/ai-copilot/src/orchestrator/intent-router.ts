@@ -140,8 +140,10 @@ export interface ProposedAction {
  * anywhere in the response; risk bracket is optional and case-insensitive.
  */
 export function parseProposedAction(text: string): ProposedAction | null {
+  // Bounded non-greedy body ([^\n\r]{1,500}?) prevents catastrophic
+  // backtracking while still covering any realistic action line.
   const m = text.match(
-    /PROPOSED_ACTION:\s*(\S+)\s+([^\n\r]+?)(?:\s*\[risk:(LOW|MEDIUM|HIGH|CRITICAL)\])?\s*(?:\r?\n|$)/i
+    /PROPOSED_ACTION:\s*(\S+)\s+([^\n\r]{1,500}?)(?:\s*\[risk:(LOW|MEDIUM|HIGH|CRITICAL)\])?\s*(?:\r?\n|$)/i
   );
   if (!m) return null;
   return {
