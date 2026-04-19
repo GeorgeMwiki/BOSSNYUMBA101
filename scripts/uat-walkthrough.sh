@@ -37,13 +37,32 @@ code=$(curl -sS -o /dev/null -w "%{http_code}" "$GATEWAY/api/v1/marketplace/list
 [ "$code" = "401" ] || fail "unauth marketplace got $code, expected 401"
 pass "unauth request correctly rejected (401)"
 
-# Step 3: authenticated list endpoints
-for endpoint in marketplace/listings waitlist negotiations gamification arrears; do
+# Step 3: hit real router paths (what each router.ts actually registers,
+# not aspirational roots). A raw 404 here means router is missing or the
+# OpenAPI catalog is lying — fail the UAT so CI catches the drift.
+ENDPOINTS=(
+  "marketplace/listings"                     # tenant listings index
+  "waitlist/units/unit-demo"                 # waitlist for a unit
+  "waitlist/customers/customer-demo"         # waitlist for a customer
+  "gamification/policies"                    # active reward policy
+  "gamification/customers/customer-demo"     # customer reward state
+  "arrears/cases/case-demo/projection"       # arrears projection (500 ok — no loader)
+  "me/notification-preferences"              # current user prefs
+  "tenders/tender-demo/bids"                 # bids on a tender (empty list OK)
+  "applications"                             # leasing applications list
+  "renewals"                                 # lease renewals list
+)
+for endpoint in "${ENDPOINTS[@]}"; do
   code=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$GATEWAY/api/v1/$endpoint")
-  if [[ "$code" =~ ^(200|202)$ ]]; then
+  if [[ "$code" == "404" ]]; then
+    fail "GET /$endpoint returned 404 — endpoint missing or catalog drift"
+  fi
+  # 200/202 = success; 400/403 = auth-scoped business response; 500/503 = missing
+  # upstream service but endpoint exists (catalog-truthful).
+  if [[ "$code" =~ ^(200|202|400|403|500|503)$ ]]; then
     pass "GET /$endpoint → $code"
   else
-    echo "⚠ GET /$endpoint → $code (not blocking)"
+    echo "⚠ GET /$endpoint → $code (unexpected, not blocking)"
   fi
 done
 

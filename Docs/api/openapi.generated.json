@@ -600,12 +600,12 @@
         }
       }
     },
-    "/api/v1/negotiations": {
-      "get": {
+    "/api/v1/negotiations/policies": {
+      "post": {
         "tags": [
           "negotiations"
         ],
-        "summary": "GET /api/v1/negotiations",
+        "summary": "POST /api/v1/negotiations/policies",
         "security": [
           {
             "BearerAuth": []
@@ -659,7 +659,9 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/v1/negotiations": {
       "post": {
         "tags": [
           "negotiations"
@@ -903,12 +905,73 @@
         }
       }
     },
-    "/api/v1/waitlist": {
+    "/api/v1/negotiations/{id}/audit": {
+      "get": {
+        "tags": [
+          "negotiations"
+        ],
+        "summary": "GET /api/v1/negotiations/{id}/audit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waitlist/units/{unitId}": {
       "get": {
         "tags": [
           "waitlist"
         ],
-        "summary": "GET /api/v1/waitlist",
+        "summary": "GET /api/v1/waitlist/units/{unitId}",
         "security": [
           {
             "BearerAuth": []
@@ -1025,12 +1088,12 @@
         }
       }
     },
-    "/api/v1/waitlist/{id}/leave": {
+    "/api/v1/waitlist/units/{unitId}/trigger-outreach": {
       "post": {
         "tags": [
           "waitlist"
         ],
-        "summary": "POST /api/v1/waitlist/{id}/leave",
+        "summary": "POST /api/v1/waitlist/units/{unitId}/trigger-outreach",
         "security": [
           {
             "BearerAuth": []
@@ -1086,12 +1149,73 @@
         }
       }
     },
-    "/api/v1/gamification": {
+    "/api/v1/waitlist/customers/{customerId}": {
       "get": {
         "tags": [
-          "gamification"
+          "waitlist"
         ],
-        "summary": "GET /api/v1/gamification",
+        "summary": "GET /api/v1/waitlist/customers/{customerId}",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waitlist/{id}/leave": {
+      "post": {
+        "tags": [
+          "waitlist"
+        ],
+        "summary": "POST /api/v1/waitlist/{id}/leave",
         "security": [
           {
             "BearerAuth": []
@@ -1267,12 +1391,12 @@
         }
       }
     },
-    "/api/v1/arrears": {
+    "/api/v1/gamification/customers/{customerId}": {
       "get": {
         "tags": [
-          "arrears"
+          "gamification"
         ],
-        "summary": "GET /api/v1/arrears",
+        "summary": "GET /api/v1/gamification/customers/{customerId}",
         "security": [
           {
             "BearerAuth": []
@@ -1450,12 +1574,134 @@
         }
       }
     },
-    "/api/v1/arrears/proposals/{id}/approve": {
+    "/api/v1/arrears/cases/{id}/propose": {
       "post": {
         "tags": [
           "arrears"
         ],
-        "summary": "POST /api/v1/arrears/proposals/{id}/approve",
+        "summary": "POST /api/v1/arrears/cases/{id}/propose",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/arrears/proposals/{proposalId}/approve": {
+      "post": {
+        "tags": [
+          "arrears"
+        ],
+        "summary": "POST /api/v1/arrears/proposals/{proposalId}/approve",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/arrears/proposals/{proposalId}/reject": {
+      "post": {
+        "tags": [
+          "arrears"
+        ],
+        "summary": "POST /api/v1/arrears/proposals/{proposalId}/reject",
         "security": [
           {
             "BearerAuth": []
@@ -3509,11 +3755,11 @@
       }
     },
     "/api/v1/tenders": {
-      "get": {
+      "post": {
         "tags": [
           "tenders"
         ],
-        "summary": "GET /api/v1/tenders",
+        "summary": "POST /api/v1/tenders",
         "security": [
           {
             "BearerAuth": []
@@ -3567,12 +3813,14 @@
             }
           }
         }
-      },
-      "post": {
+      }
+    },
+    "/api/v1/tenders/{id}": {
+      "get": {
         "tags": [
           "tenders"
         ],
-        "summary": "POST /api/v1/tenders",
+        "summary": "GET /api/v1/tenders/{id}",
         "security": [
           {
             "BearerAuth": []
@@ -3754,6 +4002,67 @@
           "tenders"
         ],
         "summary": "POST /api/v1/tenders/{id}/award",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "tenders"
+        ],
+        "summary": "POST /api/v1/tenders/{id}/cancel",
         "security": [
           {
             "BearerAuth": []

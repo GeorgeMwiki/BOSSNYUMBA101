@@ -4,12 +4,12 @@
  * Authenticated endpoints for a user to read and update their own
  * notification preferences.
  *
- *   GET  /v1/me/notification-preferences    -> current prefs
- *   PUT  /v1/me/notification-preferences    -> upsert prefs
+ * Mounted by the gateway at /api/v1/me/notification-preferences — so
+ * this router registers at `/` only. Do NOT prepend `/v1/me/...` here;
+ * the outer mount already provides the prefix.
  *
- * Both routes are scoped to the authenticated user — there is intentionally
- * no "admin edit anyone's prefs" path here. An admin tool for support is
- * a separate, audited surface.
+ *   GET  /                 -> current prefs (full path: /api/v1/me/notification-preferences)
+ *   PUT  /                 -> upsert prefs
  */
 
 import { Hono } from 'hono';
@@ -66,7 +66,7 @@ export function createNotificationPreferencesRouter(api: PreferencesApi): Hono {
 
   app.use('*', authMiddleware);
 
-  app.get('/v1/me/notification-preferences', (c) => {
+  app.get('/', (c) => {
     const auth = c.get('auth');
     if (!auth) {
       return c.json({ error: { code: 'UNAUTHORIZED', message: 'Auth required' } }, 401);
@@ -75,7 +75,7 @@ export function createNotificationPreferencesRouter(api: PreferencesApi): Hono {
     return c.json({ data: prefs });
   });
 
-  app.put('/v1/me/notification-preferences', async (c) => {
+  app.put('/', async (c) => {
     const auth = c.get('auth');
     if (!auth) {
       return c.json({ error: { code: 'UNAUTHORIZED', message: 'Auth required' } }, 401);
