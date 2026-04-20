@@ -1,10 +1,9 @@
-// @ts-nocheck — drizzle typing drift; matches project convention
 /**
  * Drizzle-backed AI cost ledger repository. Bridges the pure ledger
  * contract in `@bossnyumba/ai-copilot` with the Postgres tables defined
  * in `@bossnyumba/database`.
  */
-import { eq, and, gte, lt, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lt, desc } from 'drizzle-orm';
 import { aiCostEntries, tenantAiBudgets } from '@bossnyumba/database';
 import type {
   AiCostEntry,
@@ -12,12 +11,22 @@ import type {
   CostLedgerRepository,
 } from '@bossnyumba/ai-copilot';
 
-export interface DrizzleLike {
-  select: (...args: unknown[]) => any;
-  insert: (...args: unknown[]) => any;
-  update: (...args: unknown[]) => any;
-  [k: string]: any;
-}
+/**
+ * Drizzle client shape — kept as `any` at the constructor seam on
+ * purpose. The underlying drizzle fluent builders (`db.select().from
+ * (...).where(...).orderBy(...).limit(...)`) have deeply-nested generic
+ * types that the composition-root cannot reproduce faithfully, and
+ * widening through the `@bossnyumba/database` package barrel trips
+ * `TS2709 Cannot use namespace 'DatabaseClient' as a type`. `any` at
+ * this single seam keeps the rest of the file typed (every row cast
+ * to `Record<string, unknown>` before it's touched).
+ *
+ * Upstream callers should pass the real `DatabaseClient` (derived via
+ * `ReturnType<typeof createDatabaseClient>` in service-registry.ts);
+ * nothing about this repository does mock-mode fallback.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DrizzleLike = any;
 
 export class DrizzleCostLedgerRepository implements CostLedgerRepository {
   constructor(private readonly db: DrizzleLike) {}
@@ -164,5 +173,3 @@ function fromBudgetRow(row: Record<string, unknown>): TenantAiBudget {
 function toIso(d: Date | string): string {
   return d instanceof Date ? d.toISOString() : String(d);
 }
-
-void sql;

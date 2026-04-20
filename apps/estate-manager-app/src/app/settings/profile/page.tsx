@@ -7,12 +7,14 @@ import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
+  // Profile is blank until the /profile endpoint is wired — no placeholder
+  // demo identity in production code.
   const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Manager',
-    email: 'john.manager@estate.com',
+    firstName: '',
+    lastName: '',
+    email: '',
     phone: '',
-    role: 'Estate Manager',
+    role: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {

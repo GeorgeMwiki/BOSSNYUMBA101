@@ -85,7 +85,11 @@ export type TaskName =
   | 'tenant_health_5ps_recompute'
   // Wave-15 wiring-audit extensions — previously orphaned schedulables.
   | 'detect_bottlenecks'
-  | 'memory_decay_sweep';
+  | 'memory_decay_sweep'
+  // Wave-17 — weekly bulk property-grade recompute
+  | 'recompute_property_grades'
+  // Wave-17 — weekly tenant credit-rating recompute (Sunday 03:00 UTC)
+  | 'recompute_tenant_credit_ratings';
 
 export interface ScheduledTaskDefinition {
   readonly name: TaskName;

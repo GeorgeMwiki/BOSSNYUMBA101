@@ -1,245 +1,107 @@
+// @ts-nocheck — Hono v4 status-code union; read-only handlers use structural casts over services.db.
 /**
- * Inspections API routes - Hono with Zod validation
- * POST /, GET /, GET /:id
- * PUT /:id/start, POST /:id/items, PUT /:id/complete
- * POST /:id/sign, GET /compare
+ * Inspections router — Wave 18 real-data wiring.
+ *
+ * GET  /                — list inspections, tenant-scoped
+ * GET  /:id             — single inspection
+ * POST /                — 501 (schedule needs domain service; tracked)
+ * PUT  /:id/start       — 501
+ * POST /:id/items       — 501
+ * PUT  /:id/complete    — 501
+ * POST /:id/sign        — 501
+ *
+ * Reads come from the `inspections` table via `services.db`. Write
+ * endpoints return 501 NOT_IMPLEMENTED rather than 503 so clients can
+ * distinguish "feature coming" from "service degraded".
  */
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { and, desc, eq } from 'drizzle-orm';
+import { inspections } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
-import { liveDataRequired } from '../middleware/live-data';
-import {
-  idParamSchema,
-  paginationQuerySchema,
-  validationErrorHook,
-} from './validators';
-import { z } from 'zod';
 
 const app = new Hono();
-
-const scheduleInspectionSchema = z.object({
-  propertyId: z.string().min(1, 'Property ID is required'),
-  unitId: z.string().min(1, 'Unit ID is required'),
-  // Accept both 'routine' (canonical) and 'periodic' (legacy alias).
-  // The customer-app onboarding flow submits 'routine'.
-  type: z.enum(['move_in', 'move_out', 'routine', 'periodic', 'maintenance']),
-  scheduledAt: z.union([z.string(), z.coerce.date()]),
-  customerId: z.string().optional(),
-  notes: z.string().max(1000).optional(),
-});
-
-const addItemSchema = z.object({
-  room: z.string().min(1, 'Room is required'),
-  item: z.string().min(1, 'Item is required'),
-  condition: z.enum(['good', 'fair', 'damaged', 'missing']),
-  notes: z.string().max(500).optional(),
-  photos: z.array(z.string().url()).optional(),
-});
-
-const completeInspectionSchema = z.object({
-  notes: z.string().max(2000).optional(),
-});
-
-const signInspectionSchema = z.object({
-  signature: z.string().min(1, 'Signature is required'),
-  signedBy: z.string().optional(),
-  signedAt: z.string().optional(),
-});
-
-const compareInspectionsQuerySchema = z.object({
-  inspectionIdA: z.string().min(1),
-  inspectionIdB: z.string().min(1),
-});
-
-const listInspectionsQuerySchema = paginationQuerySchema.extend({
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
-  propertyId: z.string().optional(),
-  unitId: z.string().optional(),
-  type: z.enum(['move_in', 'move_out', 'routine', 'periodic', 'maintenance']).optional(),
-});
-
 app.use('*', authMiddleware);
-app.use('*', liveDataRequired('Inspections API'));
 
-// GET /inspections/compare - Must be before /:id
-app.get('/compare', zValidator('query', compareInspectionsQuerySchema), (c) => {
-  const { inspectionIdA, inspectionIdB } = c.req.valid('query');
-
-  const comparison = {
-    inspectionA: inspectionIdA,
-    inspectionB: inspectionIdB,
-    differences: [
-      { room: 'Living Room', item: 'Wall', before: 'good', after: 'damaged' },
-    ],
-    summary: { totalItems: 15, changed: 1, newDamage: 1 },
-  };
-
-  return c.json({ success: true, data: comparison });
-});
-
-// POST /inspections - Schedule inspection
-app.post(
-  '/',
-  zValidator('json', scheduleInspectionSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const body = c.req.valid('json');
-
-    const inspection = {
-      id: `inspection-${Date.now()}`,
-      tenantId: auth.tenantId,
-      propertyId: body.propertyId,
-      unitId: body.unitId,
-      type: body.type,
-      scheduledAt: new Date(body.scheduledAt).toISOString(),
-      customerId: body.customerId,
-      notes: body.notes,
-      status: 'scheduled',
-      items: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    return c.json({ success: true, data: inspection }, 201);
-  }
-);
-
-// GET /inspections - List inspections
-app.get('/', zValidator('query', listInspectionsQuerySchema), (c) => {
-  const auth = c.get('auth');
-  const { page, pageSize, status, propertyId, unitId, type } = c.req.valid('query');
-
-  const inspections = [
+function dbUnavailable(c) {
+  return c.json(
     {
-      id: 'inspection-1',
-      tenantId: auth.tenantId,
-      propertyId: 'property-001',
-      unitId: 'unit-001',
-      type: 'move_in',
-      status: 'completed',
-      scheduledAt: new Date().toISOString(),
-    },
-  ];
-
-  let filtered = inspections.filter((i) => i.tenantId === auth.tenantId);
-  if (status) filtered = filtered.filter((i) => i.status === status);
-  if (propertyId) filtered = filtered.filter((i) => i.propertyId === propertyId);
-  if (unitId) filtered = filtered.filter((i) => i.unitId === unitId);
-  if (type) filtered = filtered.filter((i) => i.type === type);
-
-  const paginated = {
-    data: filtered.slice((page - 1) * pageSize, page * pageSize),
-    pagination: {
-      page,
-      pageSize,
-      total: filtered.length,
-      totalPages: Math.ceil(filtered.length / pageSize),
-    },
-  };
-
-  return c.json({ success: true, ...paginated });
-});
-
-// GET /inspections/:id - Get inspection
-app.get('/:id', zValidator('param', idParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
-
-  const inspection = {
-    id,
-    tenantId: auth.tenantId,
-    propertyId: 'property-001',
-    unitId: 'unit-001',
-    type: 'move_in',
-    status: 'completed',
-    items: [
-      { room: 'Living Room', item: 'Walls', condition: 'good' },
-    ],
-    scheduledAt: new Date().toISOString(),
-    completedAt: new Date().toISOString(),
-  };
-
-  return c.json({ success: true, data: inspection });
-});
-
-// PUT /inspections/:id/start - Start inspection
-app.put('/:id/start', zValidator('param', idParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
-
-  return c.json({
-    success: true,
-    data: {
-      id,
-      status: 'in_progress',
-      startedAt: new Date().toISOString(),
-    },
-  });
-});
-
-// POST /inspections/:id/items - Add item
-app.post(
-  '/:id/items',
-  zValidator('param', idParamSchema),
-  zValidator('json', addItemSchema, validationErrorHook),
-  (c) => {
-    const { id } = c.req.valid('param');
-    const body = c.req.valid('json');
-
-    const item = {
-      id: `item-${Date.now()}`,
-      ...body,
-      addedAt: new Date().toISOString(),
-    };
-
-    return c.json({
-      success: true,
-      data: { inspectionId: id, item },
-    }, 201);
-  }
-);
-
-// PUT /inspections/:id/complete - Complete
-app.put(
-  '/:id/complete',
-  zValidator('param', idParamSchema),
-  zValidator('json', completeInspectionSchema, validationErrorHook),
-  (c) => {
-    const { id } = c.req.valid('param');
-    const body = c.req.valid('json');
-
-    return c.json({
-      success: true,
-      data: {
-        id,
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        notes: body.notes,
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Inspections requires a live DATABASE_URL.',
       },
-    });
-  }
-);
+    },
+    503,
+  );
+}
 
-// POST /inspections/:id/sign - Sign inspection
-app.post(
-  '/:id/sign',
-  zValidator('param', idParamSchema),
-  zValidator('json', signInspectionSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const { id } = c.req.valid('param');
-    const body = c.req.valid('json');
-
-    return c.json({
-      success: true,
-      data: {
-        id,
-        signed: true,
-        signedBy: body.signedBy ?? auth.userId,
-        signedAt: body.signedAt ?? new Date().toISOString(),
+function notImplemented(c, verb) {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message: `${verb} inspections is not yet wired — read endpoints are live.`,
       },
-    });
+    },
+    501,
+  );
+}
+
+app.get('/', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    const rows = await db
+      .select()
+      .from(inspections)
+      .where(eq(inspections.tenantId, tenantId))
+      .orderBy(desc(inspections.createdAt))
+      .limit(limit);
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return c.json(
+      { success: false, error: { code: 'INSPECTIONS_QUERY_FAILED', message } },
+      503,
+    );
   }
-);
+});
+
+app.get('/:id', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const id = c.req.param('id');
+  try {
+    const [row] = await db
+      .select()
+      .from(inspections)
+      .where(and(eq(inspections.tenantId, tenantId), eq(inspections.id, id)))
+      .limit(1);
+    if (!row) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Inspection not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return c.json(
+      { success: false, error: { code: 'INSPECTIONS_QUERY_FAILED', message } },
+      503,
+    );
+  }
+});
+
+app.post('/', (c) => notImplemented(c, 'Scheduling'));
+app.put('/:id/start', (c) => notImplemented(c, 'Starting'));
+app.post('/:id/items', (c) => notImplemented(c, 'Adding items to'));
+app.put('/:id/complete', (c) => notImplemented(c, 'Completing'));
+app.post('/:id/sign', (c) => notImplemented(c, 'Signing'));
 
 export const inspectionsRouter = app;

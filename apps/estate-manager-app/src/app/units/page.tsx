@@ -1,13 +1,88 @@
 'use client';
 
-import { LiveDataRequiredPage } from '@/components/LiveDataRequiredPage';
+import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Home } from 'lucide-react';
+import { unitsService } from '@bossnyumba/api-client';
+import { Empty } from '@bossnyumba/design-system';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function UnitsPage() {
+  const unitsQuery = useQuery({
+    queryKey: ['units-list-live'],
+    queryFn: () => unitsService.list({ page: 1, pageSize: 100 }),
+    retry: false,
+  });
+
+  const units = Array.isArray(unitsQuery.data?.data) ? unitsQuery.data!.data! : [];
+
   return (
-    <LiveDataRequiredPage
-      title="Units"
-      feature="unit inventory data"
-      description="Fallback unit inventory and tenant occupancy data have been removed. This page now requires live unit, property, and lease data."
-    />
+    <>
+      <PageHeader
+        title="Units"
+        subtitle={unitsQuery.isLoading ? 'Loading…' : `${units.length} units`}
+        action={
+          <Link
+            href="/units/new"
+            className="btn-primary text-sm flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />Add
+          </Link>
+        }
+      />
+
+      <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
+        {unitsQuery.isLoading && (
+          <div className="card p-4 text-sm text-gray-500">Loading units…</div>
+        )}
+
+        {unitsQuery.error && (
+          <div className="card p-4 text-sm text-danger-600">
+            {(unitsQuery.error as Error).message || 'Failed to load units.'}
+          </div>
+        )}
+
+        {!unitsQuery.isLoading && !unitsQuery.error && units.length === 0 && (
+          <Empty
+            variant="default"
+            icon={<Home className="h-8 w-8 text-gray-400" />}
+            title="No units yet"
+            description="Add units to the portfolio to start managing occupancy and leases."
+            action={{
+              label: 'Add unit',
+              onClick: () => {
+                window.location.href = '/units/new';
+              },
+            }}
+          />
+        )}
+
+        {units.map((unit: Record<string, unknown>) => {
+          const id = unit.id as string;
+          const unitNumber = (unit.unitNumber as string) ?? id;
+          const status = (unit.status as string) ?? 'unknown';
+          const type = (unit.type as string) ?? '';
+          const bedrooms = unit.bedrooms as number | undefined;
+
+          return (
+            <Link
+              key={id}
+              href={`/units/${id}/edit`}
+              className="card block p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{unitNumber}</div>
+                  <div className="text-sm text-gray-500">
+                    {type}{bedrooms != null ? ` • ${bedrooms} bed` : ''}
+                  </div>
+                </div>
+                <div className="badge-info text-xs capitalize">{status.toLowerCase()}</div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </>
   );
 }

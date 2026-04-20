@@ -17,15 +17,9 @@ interface Event {
   property?: string;
 }
 
-// Mock data - replace with API
-const allEvents: Event[] = [
-  { id: '1', title: 'Kitchen sink repair', date: '2024-02-25', time: '09:00', type: 'work_order', unit: 'A-204', property: 'Sunset Apartments' },
-  { id: '2', title: 'Move-in Inspection', date: '2024-02-25', time: '10:00', type: 'inspection', unit: 'A-301', property: 'Sunset Apartments' },
-  { id: '3', title: 'AC repair', date: '2024-02-25', time: '11:00', type: 'work_order', unit: 'B-102', property: 'Sunset Apartments' },
-  { id: '4', title: 'Move-out Inspection', date: '2024-02-26', time: '14:00', type: 'inspection', unit: 'B-105', property: 'Sunset Apartments' },
-  { id: '5', title: 'Door lock replacement', date: '2024-02-27', time: '14:00', type: 'work_order', unit: 'C-301', property: 'Sunset Apartments' },
-  { id: '6', title: 'Routine Inspection', date: '2024-02-28', time: '09:00', type: 'inspection', unit: 'A-102', property: 'Sunset Apartments' },
-];
+// Live wiring pending — events endpoint not yet mounted. Empty array
+// keeps the UI honest until the calendar service is plumbed.
+const allEvents: Event[] = [];
 
 const typeConfig: Record<EventType, { label: string; icon: React.ElementType; color: string }> = {
   work_order: { label: 'Work Order', icon: Wrench, color: 'bg-warning-100 text-warning-800' },

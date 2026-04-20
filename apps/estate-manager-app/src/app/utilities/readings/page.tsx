@@ -33,14 +33,9 @@ const utilityLabels: Record<UtilityType, string> = {
   gas: 'Gas',
 };
 
-// Mock data - replace with API
-const readings: Reading[] = [
-  { id: '1', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'water', previousReading: 45, currentReading: 52, consumption: 7, unitLabel: 'm³', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '2', unit: 'A-301', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 320, currentReading: 385, consumption: 65, unitLabel: 'kWh', recordedAt: '2024-02-25', status: 'recorded' },
-  { id: '3', unit: 'A-102', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-  { id: '4', unit: 'B-105', property: 'Sunset Apartments', utilityType: 'water', previousReading: 28, currentReading: 31, consumption: 3, unitLabel: 'm³', recordedAt: '2024-02-24', status: 'recorded' },
-  { id: '5', unit: 'C-202', property: 'Sunset Apartments', utilityType: 'electricity', previousReading: 0, currentReading: 0, consumption: 0, unitLabel: 'kWh', status: 'pending' },
-];
+// Live wiring pending — meter readings endpoint not yet mounted.
+// Empty array keeps the UI honest until the utilities service is plumbed.
+const readings: Reading[] = [];
 
 export default function MeterReadingsPage() {
   const [filter, setFilter] = useState<'all' | 'pending'>('pending');

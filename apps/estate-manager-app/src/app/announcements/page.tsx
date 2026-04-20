@@ -18,36 +18,9 @@ interface Announcement {
   property?: string;
 }
 
-// Mock data - replace with API
-const announcements: Announcement[] = [
-  {
-    id: '1',
-    title: 'Water Maintenance - Scheduled Shutdown',
-    content: 'Water supply will be temporarily shut down on Feb 28, 9 AM - 2 PM for pump maintenance.',
-    priority: 'urgent',
-    publishedAt: '2024-02-25T08:00:00',
-    expiresAt: '2024-02-28',
-    isPinned: true,
-    property: 'Sunset Apartments',
-  },
-  {
-    id: '2',
-    title: 'New Parking Rules Effective March 1',
-    content: 'Please review the updated parking policy. Visitor parking is now limited to 2 hours.',
-    priority: 'important',
-    publishedAt: '2024-02-20T10:00:00',
-    expiresAt: '2024-03-01',
-    isPinned: false,
-  },
-  {
-    id: '3',
-    title: 'Rent Payment Reminder',
-    content: 'Rent payments are due by the 5th of each month. Late fees apply after the 10th.',
-    priority: 'normal',
-    publishedAt: '2024-02-15T09:00:00',
-    isPinned: false,
-  },
-];
+// Live wiring pending — announcements endpoint not yet mounted.
+// Empty array keeps prod honest; empty state renders below.
+const announcements: Announcement[] = [];
 
 const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
   normal: { label: 'Normal', color: 'badge-gray' },

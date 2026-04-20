@@ -45,94 +45,9 @@ interface SupportCase {
   }>;
 }
 
-const cases: SupportCase[] = [
-  {
-    id: '1',
-    ticketNumber: 'SUP-2025-0142',
-    subject: 'Unable to process M-Pesa payments',
-    description:
-      'Our tenants are unable to make payments via M-Pesa. The payment gateway seems to be timing out.',
-    status: 'open',
-    priority: 'critical',
-    category: 'Payments',
-    tenant: 'Acme Properties Ltd',
-    requester: { name: 'John Kamau', email: 'john@acmeproperties.co.ke' },
-    assignee: null,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        sender: 'John Kamau',
-        message:
-          'Hi, we have been experiencing payment failures since this morning. Our tenants are complaining they cannot pay rent via M-Pesa.',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        isInternal: false,
-      },
-    ],
-  },
-  {
-    id: '2',
-    ticketNumber: 'SUP-2025-0141',
-    subject: 'How to generate custom reports',
-    description: 'Need help understanding how to create custom financial reports.',
-    status: 'in_progress',
-    priority: 'medium',
-    category: 'Reports',
-    tenant: 'Sunrise Realty',
-    requester: { name: 'Mary Wanjiku', email: 'mary@sunriserealty.co.ke' },
-    assignee: 'Support Team',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 7200000).toISOString(),
-    messages: [
-      {
-        id: '1',
-        sender: 'Mary Wanjiku',
-        message: 'I need to generate a custom report showing all payments for the last quarter. How do I do this?',
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        isInternal: false,
-      },
-      {
-        id: '2',
-        sender: 'Support Team',
-        message:
-          'Hi Mary, I can help you with that. You can generate custom reports from the Reports section. Let me walk you through the steps.',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        isInternal: false,
-      },
-    ],
-  },
-  {
-    id: '3',
-    ticketNumber: 'SUP-2025-0140',
-    subject: 'Request for API documentation',
-    description: 'We want to integrate with your API for our custom dashboard.',
-    status: 'resolved',
-    priority: 'low',
-    category: 'Technical',
-    tenant: 'Highland Properties',
-    requester: { name: 'David Kipchoge', email: 'david@highland.co.ke' },
-    assignee: 'Support Team',
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    messages: [],
-  },
-  {
-    id: '4',
-    ticketNumber: 'SUP-2025-0139',
-    subject: 'Billing inquiry - incorrect charges',
-    description: 'We were charged for 50 units but we only have 38.',
-    status: 'open',
-    priority: 'high',
-    category: 'Billing',
-    tenant: 'Coastal Estates',
-    requester: { name: 'Fatma Hassan', email: 'fatma@coastalestates.co.ke' },
-    assignee: null,
-    createdAt: new Date(Date.now() - 259200000).toISOString(),
-    updatedAt: new Date(Date.now() - 259200000).toISOString(),
-    messages: [],
-  },
-];
+// Live wiring pending — admin support ticket endpoints not yet mounted.
+// Production rendering falls back to an empty list rather than demo tickets.
+const cases: SupportCase[] = [];
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   open: { bg: 'bg-amber-100', text: 'text-amber-700' },

@@ -17,36 +17,9 @@ interface Conversation {
   preview: string;
 }
 
-// Mock data - replace with API
-const conversations: Conversation[] = [
-  {
-    id: '1',
-    subject: 'Water leak in Unit A-301',
-    participants: ['Maintenance Team', 'Mary Wanjiku'],
-    lastMessage: 'The plumber has been scheduled for tomorrow.',
-    lastMessageAt: '2024-02-25T10:30:00',
-    status: 'unread',
-    preview: 'Thanks for the update. I\'ll be home in the afternoon.',
-  },
-  {
-    id: '2',
-    subject: 'Lease renewal - Unit B-105',
-    participants: ['Peter Ochieng', 'Property Manager'],
-    lastMessage: 'Please find the renewal documents attached.',
-    lastMessageAt: '2024-02-24T14:20:00',
-    status: 'read',
-    preview: 'I\'ve reviewed the terms. When can we sign?',
-  },
-  {
-    id: '3',
-    subject: 'Rent payment confirmation',
-    participants: ['Grace Muthoni'],
-    lastMessage: 'Payment received. Receipt #REC-2024-4521',
-    lastMessageAt: '2024-02-24T09:15:00',
-    status: 'read',
-    preview: 'Thank you for your prompt payment.',
-  },
-];
+// Live wiring pending — conversations endpoint not yet mounted.
+// Empty list keeps the UI honest until the messaging service is plumbed.
+const conversations: Conversation[] = [];
 
 function formatTime(dateStr: string) {
   const date = new Date(dateStr);

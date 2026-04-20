@@ -604,13 +604,20 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
     zValidator('param', customerIdParamSchema),
     async (c) => {
       const { customerId } = c.req.valid('param');
-      return successResponse(c, {
-        customerId,
-        profileId: `idp_${customerId}`,
-        fullName: 'John Doe',
-        verificationStatus: 'complete',
-        completenessScore: 85,
-      });
+      // Identity lookup is not yet wired to the real repository — return
+      // 501 rather than a hardcoded "John Doe" so production callers can
+      // detect the gap instead of rendering demo data.
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_IMPLEMENTED',
+            message: 'Identity profile lookup not wired to identity service',
+          },
+          meta: { customerId, profileId: `idp_${customerId}` },
+        },
+        501
+      );
     }
   );
 

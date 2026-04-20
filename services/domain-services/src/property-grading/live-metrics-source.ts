@@ -6,9 +6,10 @@
  *
  *   - units                  → unitCount, property age, occupancy rate
  *   - payments               → rentCollectionRate, arrears, NOI
- *   - maintenance_cases      → resolution time, cost/unit
+ *   - work_orders            → resolution time, cost/unit
  *   - compliance_items       → breach count
  *   - feedback / complaints  → tenantSatisfactionProxy
+ *   - property_valuations    → asset_value portfolio weight hints
  *
  * If any dimension yields zero rows, the numeric field stays at its
  * neutral default (0 or 1 depending on the metric semantic). The
@@ -196,9 +197,14 @@ export class LiveMetricsSource implements PropertyMetricsSource {
 
   /**
    * Aggregates avg maintenance resolution time and cost-per-unit from the
-   * maintenance cases table. Raw SQL because the exact case-table columns
-   * differ across migrations — we select with best-effort fallbacks and
-   * swallow any missing-column errors into the neutral defaults.
+   * `work_orders` table (drizzle schema: maintenance.schema.ts).
+   *
+   * Schema drift note: earlier drafts queried a `maintenance_cases`
+   * table that does not exist. Work orders are the canonical per-
+   * property maintenance record. We treat `created_at → completed_at`
+   * as the resolution window and `actual_cost` (minor units) as the
+   * cost. The try/catch preserves graceful degradation if the schema
+   * further drifts.
    */
   private async aggregateMaintenance(
     tenantId: string,
@@ -208,14 +214,14 @@ export class LiveMetricsSource implements PropertyMetricsSource {
       const rows = await this.db.execute(sql`
         SELECT
           COALESCE(AVG(
-            EXTRACT(EPOCH FROM (resolved_at - opened_at)) / 3600.0
+            EXTRACT(EPOCH FROM (completed_at - created_at)) / 3600.0
           ), 0)::float8 AS avg_hours,
-          COALESCE(SUM(actual_cost_minor_units), 0)::float8 AS total_cost
-        FROM maintenance_cases
+          COALESCE(SUM(actual_cost), 0)::float8 AS total_cost
+        FROM work_orders
         WHERE tenant_id = ${tenantId}
           AND property_id = ${propertyId}
-          AND resolved_at IS NOT NULL
-          AND opened_at > NOW() - INTERVAL '180 days'
+          AND completed_at IS NOT NULL
+          AND created_at > NOW() - INTERVAL '180 days'
       `);
       const row = (Array.isArray(rows) ? rows[0] : rows?.rows?.[0]) ?? {};
       return {
@@ -232,13 +238,17 @@ export class LiveMetricsSource implements PropertyMetricsSource {
     propertyId: string,
   ): Promise<number> {
     try {
+      // compliance_status enum valid values: pending, in_progress,
+      // compliant, non_compliant, overdue, waived, cancelled. Earlier
+      // drafts used 'breached' which is NOT in the enum — querying it
+      // raises SQLSTATE 22P02.
       const rows = await this.db.execute(sql`
         SELECT COUNT(*)::int AS n
         FROM compliance_items
         WHERE tenant_id = ${tenantId}
           AND entity_type = 'property'
           AND entity_id = ${propertyId}
-          AND status IN ('breached','overdue')
+          AND status IN ('non_compliant','overdue')
       `);
       const row = (Array.isArray(rows) ? rows[0] : rows?.rows?.[0]) ?? {};
       return Number(row.n ?? 0);

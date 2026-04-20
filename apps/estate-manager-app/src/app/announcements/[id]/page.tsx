@@ -7,7 +7,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 
 type AnnouncementPriority = 'normal' | 'important' | 'urgent';
 
-// Mock data - replace with API
+// Live wiring pending — announcements endpoint not yet mounted.
+// Empty map keeps prod honest until the announcements service is plumbed.
 const announcementData: Record<string, {
   id: string;
   title: string;
@@ -18,38 +19,7 @@ const announcementData: Record<string, {
   isPinned: boolean;
   property?: string;
   author?: string;
-}> = {
-  '1': {
-    id: '1',
-    title: 'Water Maintenance - Scheduled Shutdown',
-    content: 'Water supply will be temporarily shut down on Feb 28, 9 AM - 2 PM for pump maintenance. Please store water in advance. We apologize for any inconvenience.',
-    priority: 'urgent',
-    publishedAt: '2024-02-25T08:00:00',
-    expiresAt: '2024-02-28',
-    isPinned: true,
-    property: 'Sunset Apartments',
-    author: 'Property Management',
-  },
-  '2': {
-    id: '2',
-    title: 'New Parking Rules Effective March 1',
-    content: 'Please review the updated parking policy. Visitor parking is now limited to 2 hours. Resident parking permits must be displayed. Unauthorized vehicles will be towed.',
-    priority: 'important',
-    publishedAt: '2024-02-20T10:00:00',
-    expiresAt: '2024-03-01',
-    isPinned: false,
-    author: 'Property Management',
-  },
-  '3': {
-    id: '3',
-    title: 'Rent Payment Reminder',
-    content: 'Rent payments are due by the 5th of each month. Late fees apply after the 10th. Please use the online portal or visit the office during business hours.',
-    priority: 'normal',
-    publishedAt: '2024-02-15T09:00:00',
-    isPinned: false,
-    author: 'Property Management',
-  },
-};
+}> = {};
 
 const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
   normal: { label: 'Normal', color: 'badge-gray' },

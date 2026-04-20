@@ -9,7 +9,7 @@ import {
   FileText,
   Shield,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatCurrency } from '../../../lib/api';
 import { usePropertyBudget } from '../../../lib/hooks';
 
@@ -42,19 +42,17 @@ export default function PropertyBudgetPage() {
     );
   }
 
-  const displayBudget = budget || {
-    propertyId: propertyId!,
-    propertyName: 'Westlands Apartments',
-    totalBudget: 12000000,
-    totalSpent: 5500000,
-    categories: [
-      { category: 'Maintenance', budgeted: 3000000, spent: 1450000, variance: -1550000 },
-      { category: 'Utilities', budgeted: 2000000, spent: 1050000, variance: -950000 },
-      { category: 'Admin', budgeted: 1200000, spent: 600000, variance: -600000 },
-      { category: 'Insurance', budgeted: 720000, spent: 360000, variance: -360000 },
-      { category: 'Other', budgeted: 1080000, spent: 540000, variance: -540000 },
-    ],
-  };
+  // No fixture fallback — render an empty state when the property has no budget yet.
+  if (!budget) {
+    return (
+      <EmptyState
+        title="No budget set for this property"
+        description="Create a budget for this property to track spend by category."
+      />
+    );
+  }
+
+  const displayBudget = budget;
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {

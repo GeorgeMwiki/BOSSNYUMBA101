@@ -1,20 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileCheck, Building2, Calendar } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatDate } from '../../../lib/api';
 import { useLicenses } from '../../../lib/hooks';
 
 export default function LicensesPage() {
   const { data: licenses = [], isLoading, error, refetch } = useLicenses();
 
-  const displayLicenses = licenses.length
-    ? licenses
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Rental License', number: 'RL-2024-001', issuingAuthority: 'City Council', issueDate: '2024-01-01', expiryDate: '2025-01-01', status: 'ACTIVE' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Fire Safety Certificate', number: 'FSC-2024-001', issuingAuthority: 'Fire Department', issueDate: '2024-02-01', expiryDate: '2024-03-15', status: 'EXPIRING_SOON' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Rental License', number: 'RL-2024-002', issuingAuthority: 'City Council', issueDate: '2024-01-15', expiryDate: '2025-01-15', status: 'ACTIVE' },
-      ];
+  // No fixture fallback — show real data or an empty state.
+  const displayLicenses = licenses;
 
   if (isLoading) {
     return (
@@ -48,6 +43,12 @@ export default function LicensesPage() {
         </div>
       </div>
 
+      {displayLicenses.length === 0 ? (
+        <EmptyState
+          title="No licenses tracked yet"
+          description="Add a rental license, fire-safety certificate, or other permit to track validity and renewals."
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -112,6 +113,7 @@ export default function LicensesPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

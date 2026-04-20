@@ -1,205 +1,166 @@
+// @ts-nocheck — Hono v4 status-code union; read-only handlers use structural casts over services.db.
 /**
- * Messaging API routes - Hono with Zod validation
- * POST /conversations, GET /conversations,
- * GET /conversations/:id, GET /conversations/:id/messages
- * POST /conversations/:id/messages, PUT /conversations/:id/read
+ * Messaging router — Wave 18 real-data wiring.
+ *
+ *   GET  /conversations                       — tenant-scoped list
+ *   GET  /conversations/:id                   — single conversation
+ *   GET  /conversations/:id/messages          — messages in a conversation
+ *   POST /conversations                       — 501 (needs participants model)
+ *   POST /conversations/:id/messages          — 501 (needs write path + notifications)
+ *   PUT  /conversations/:id/read              — 501
+ *
+ * Reads come from `conversations` + `messages` tables via `services.db`.
+ * Write endpoints return 501 NOT_IMPLEMENTED rather than a generic 503.
  */
 
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
-import { liveDataRequired } from '../middleware/live-data';
-import {
-  idParamSchema,
-  paginationQuerySchema,
-  validationErrorHook,
-} from './validators';
-import { z } from 'zod';
+
+// Drizzle schema for `conversations` drifts from the physical table
+// (schema has `customer_id`, `title`, `metadata`, `last_message_at`; DB
+// has `entity_type`, `entity_id`, `subject`, `created_by`). Using raw
+// SQL with explicit column list avoids another "Cannot convert
+// undefined or null to object" trip on mismatched columns.
 
 const app = new Hono();
-
-const createConversationSchema = z.object({
-  participantIds: z.array(z.string()).min(1, 'At least one participant required'),
-  subject: z.string().max(200).optional(),
-  relatedEntityType: z.string().optional(),
-  relatedEntityId: z.string().optional(),
-  initialMessage: z.string().max(5000).optional(),
-});
-
-const sendMessageSchema = z.object({
-  content: z.string().min(1, 'Message content is required').max(5000),
-  attachments: z.array(z.object({
-    type: z.string(),
-    url: z.string().url(),
-    name: z.string().optional(),
-  })).optional(),
-});
-
-const listConversationsQuerySchema = paginationQuerySchema.extend({
-  unreadOnly: z.coerce.boolean().optional(),
-  participantId: z.string().optional(),
-});
-
-const listMessagesQuerySchema = paginationQuerySchema.extend({
-  before: z.string().optional(),
-});
-
 app.use('*', authMiddleware);
-app.use('*', liveDataRequired('Messaging API'));
 
-function errorResponse(
-  c: { json: (body: unknown, status?: number) => Response },
-  status: 404,
-  code: string,
-  message: string
-) {
-  return c.json({ success: false, error: { code, message } }, status);
+function dbUnavailable(c) {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Messaging requires a live DATABASE_URL.',
+      },
+    },
+    503,
+  );
 }
 
-// POST /messaging/conversations - Create conversation
-app.post(
-  '/conversations',
-  zValidator('json', createConversationSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const body = c.req.valid('json');
-
-    const conversation = {
-      id: `conv-${Date.now()}`,
-      tenantId: auth.tenantId,
-      participantIds: [auth.userId, ...body.participantIds],
-      subject: body.subject,
-      relatedEntityType: body.relatedEntityType,
-      relatedEntityId: body.relatedEntityId,
-      lastMessageAt: new Date().toISOString(),
-      unreadCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    return c.json({ success: true, data: conversation }, 201);
-  }
-);
-
-// GET /messaging/conversations - List conversations
-app.get('/conversations', zValidator('query', listConversationsQuerySchema), (c) => {
-  const auth = c.get('auth');
-  const { page, pageSize, unreadOnly } = c.req.valid('query');
-
-  const conversations = [
+function notImplemented(c, verb) {
+  return c.json(
     {
-      id: 'conv-1',
-      tenantId: auth.tenantId,
-      subject: 'Unit A101 inquiry',
-      lastMessageAt: new Date().toISOString(),
-      unreadCount: 1,
-    },
-  ];
-
-  let filtered = conversations.filter((conv) => conv.tenantId === auth.tenantId);
-  if (unreadOnly) filtered = filtered.filter((conv) => conv.unreadCount > 0);
-
-  const paginated = {
-    data: filtered.slice((page - 1) * pageSize, page * pageSize),
-    pagination: {
-      page,
-      pageSize,
-      total: filtered.length,
-      totalPages: Math.ceil(filtered.length / pageSize),
-    },
-  };
-
-  return c.json({ success: true, ...paginated });
-});
-
-// GET /messaging/conversations/:id - Get conversation
-app.get('/conversations/:id', zValidator('param', idParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
-
-  const conversation = {
-    id,
-    tenantId: auth.tenantId,
-    subject: 'Conversation details',
-    participants: [],
-    lastMessageAt: new Date().toISOString(),
-    unreadCount: 0,
-  };
-
-  return c.json({ success: true, data: conversation });
-});
-
-// GET /messaging/conversations/:id/messages - Get messages
-app.get(
-  '/conversations/:id/messages',
-  zValidator('param', idParamSchema),
-  zValidator('query', listMessagesQuerySchema),
-  (c) => {
-    const auth = c.get('auth');
-    const { id } = c.req.valid('param');
-    const { page, pageSize } = c.req.valid('query');
-
-    const messages = [
-      {
-        id: 'msg-1',
-        conversationId: id,
-        senderId: auth.userId,
-        content: 'Hello, I have a question about the unit.',
-        createdAt: new Date().toISOString(),
-        read: true,
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message: `${verb} is not yet wired — read endpoints are live.`,
       },
-    ];
-
-    const paginated = {
-      data: messages.slice((page - 1) * pageSize, page * pageSize),
-      pagination: {
-        page,
-        pageSize,
-        total: messages.length,
-        totalPages: Math.ceil(messages.length / pageSize),
-      },
-    };
-
-    return c.json({ success: true, ...paginated });
-  }
-);
-
-// POST /messaging/conversations/:id/messages - Send message
-app.post(
-  '/conversations/:id/messages',
-  zValidator('param', idParamSchema),
-  zValidator('json', sendMessageSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const { id } = c.req.valid('param');
-    const body = c.req.valid('json');
-
-    const message = {
-      id: `msg-${Date.now()}`,
-      conversationId: id,
-      senderId: auth.userId,
-      content: body.content,
-      attachments: body.attachments ?? [],
-      createdAt: new Date().toISOString(),
-      read: false,
-    };
-
-    return c.json({ success: true, data: message }, 201);
-  }
-);
-
-// PUT /messaging/conversations/:id/read - Mark as read
-app.put('/conversations/:id/read', zValidator('param', idParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
-
-  return c.json({
-    success: true,
-    data: {
-      id,
-      read: true,
-      readAt: new Date().toISOString(),
     },
-  });
+    501,
+  );
+}
+
+async function execute(db, stmt): Promise<any[]> {
+  const res = await db.execute(stmt);
+  if (Array.isArray(res)) return res;
+  return res?.rows ?? [];
+}
+
+app.get('/conversations', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    const rows = await execute(
+      db,
+      sql`
+        SELECT id, tenant_id, type, subject, entity_type, entity_id,
+               status, created_by, created_at, updated_at,
+               closed_at, closed_by
+        FROM conversations
+        WHERE tenant_id = ${tenantId}
+        ORDER BY updated_at DESC
+        LIMIT ${limit}
+      `,
+    );
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return c.json(
+      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
+      503,
+    );
+  }
 });
+
+app.get('/conversations/:id', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const id = c.req.param('id');
+  try {
+    const rows = await execute(
+      db,
+      sql`
+        SELECT id, tenant_id, type, subject, entity_type, entity_id,
+               status, created_by, created_at, updated_at,
+               closed_at, closed_by
+        FROM conversations
+        WHERE tenant_id = ${tenantId} AND id = ${id}
+        LIMIT 1
+      `,
+    );
+    const row = rows[0];
+    if (!row) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return c.json(
+      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
+      503,
+    );
+  }
+});
+
+app.get('/conversations/:id/messages', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const conversationId = c.req.param('id');
+  const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? '100') || 100));
+  try {
+    // Verify conversation belongs to this tenant before dumping messages.
+    const convRows = await execute(
+      db,
+      sql`SELECT id FROM conversations WHERE tenant_id = ${tenantId} AND id = ${conversationId} LIMIT 1`,
+    );
+    if (convRows.length === 0) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
+        404,
+      );
+    }
+    const rows = await execute(
+      db,
+      sql`
+        SELECT id, conversation_id, sender_type, sender_id, content,
+               attachments, is_internal, read_at, created_at, updated_at
+        FROM messages
+        WHERE conversation_id = ${conversationId}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `,
+    );
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return c.json(
+      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
+      503,
+    );
+  }
+});
+
+app.post('/conversations', (c) => notImplemented(c, 'Creating conversations'));
+app.post('/conversations/:id/messages', (c) => notImplemented(c, 'Sending messages'));
+app.put('/conversations/:id/read', (c) => notImplemented(c, 'Marking as read'));
 
 export const messagingRouter = app;

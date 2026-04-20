@@ -108,53 +108,14 @@ export function OperationsPage() {
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    // Mock data
-    setSystemHealth([
-      { service: 'API Gateway', status: 'healthy', latency: 45, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Auth Service', status: 'healthy', latency: 32, uptime: 99.98, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.02 },
-      { service: 'Payment Service', status: 'healthy', latency: 128, uptime: 99.95, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.05 },
-      { service: 'Notification Service', status: 'degraded', latency: 450, uptime: 98.50, lastCheck: '2026-02-13T14:30:00Z', errorRate: 2.30 },
-      { service: 'AI Engine', status: 'healthy', latency: 280, uptime: 99.90, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.10 },
-      { service: 'Database Primary', status: 'healthy', latency: 12, uptime: 99.999, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.001 },
-      { service: 'Database Replica', status: 'healthy', latency: 15, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Redis Cache', status: 'healthy', latency: 3, uptime: 99.99, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.01 },
-      { service: 'Object Storage', status: 'healthy', latency: 85, uptime: 99.95, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.05 },
-      { service: 'Message Queue', status: 'healthy', latency: 8, uptime: 99.98, lastCheck: '2026-02-13T14:30:00Z', errorRate: 0.02 },
-    ]);
-
-    setExceptions([
-      { id: '1', type: 'Payment Failed', tenant: 'Acme Properties', description: 'M-PESA timeout after 3 retries', priority: 'critical', status: 'investigating', createdAt: '2026-02-13T12:45:00Z', assignee: 'John K.' },
-      { id: '2', type: 'Sync Error', tenant: 'Sunset Estates', description: 'Property sync failed - API rate limit exceeded', priority: 'high', status: 'open', createdAt: '2026-02-13T11:30:00Z' },
-      { id: '3', type: 'Invoice Generation', tenant: 'Prime Rentals', description: 'Monthly invoices stuck in queue', priority: 'high', status: 'investigating', createdAt: '2026-02-13T10:00:00Z', assignee: 'Mary W.' },
-      { id: '4', type: 'Email Delivery', tenant: 'Urban Living', description: 'Bounce rate exceeded threshold (15%)', priority: 'medium', status: 'open', createdAt: '2026-02-13T09:15:00Z' },
-      { id: '5', type: 'Data Validation', tenant: 'Coastal Homes', description: 'Invalid tenant data imported', priority: 'low', status: 'resolved', createdAt: '2026-02-12T16:00:00Z' },
-    ]);
-
-    setStuckWorkflows([
-      { id: 'WF-001', type: 'Lease Renewal', tenant: 'Acme Properties', description: 'Waiting for owner approval', status: 'pending_approval', step: 'Owner Approval', stuckSince: '2026-02-10T08:00:00Z', retries: 0 },
-      { id: 'WF-002', type: 'Payment Processing', tenant: 'Sunset Estates', description: 'M-PESA callback not received', status: 'stuck', step: 'Payment Confirmation', stuckSince: '2026-02-13T11:00:00Z', retries: 5 },
-      { id: 'WF-003', type: 'Maintenance Dispatch', tenant: 'Prime Rentals', description: 'No available vendors', status: 'error', step: 'Vendor Assignment', stuckSince: '2026-02-12T14:00:00Z', retries: 3 },
-      { id: 'WF-004', type: 'Document Generation', tenant: 'Urban Living', description: 'Template rendering timeout', status: 'timeout', step: 'PDF Generation', stuckSince: '2026-02-13T09:30:00Z', retries: 2 },
-      { id: 'WF-005', type: 'Tenant Onboarding', tenant: 'Coastal Homes', description: 'Awaiting KYC verification', status: 'pending_approval', step: 'KYC Review', stuckSince: '2026-02-11T10:00:00Z', retries: 0 },
-    ]);
-
-    setAIDecisions([
-      { id: '1', type: 'Late Payment Response', tenant: 'Acme Properties', input: 'Tenant 3 days overdue, KES 45,000', decision: 'Send reminder SMS + grace period', confidence: 0.92, reasoning: 'First-time late payer with good history. Grace period policy allows 5 days.', timestamp: '2026-02-13T14:00:00Z', overridden: false },
-      { id: '2', type: 'Maintenance Priority', tenant: 'Sunset Estates', input: 'Water leak in Unit 12B', decision: 'Priority: CRITICAL, Dispatch immediate', confidence: 0.98, reasoning: 'Water damage risk high. Similar issues in building require urgent attention.', timestamp: '2026-02-13T13:30:00Z', overridden: false },
-      { id: '3', type: 'Rent Adjustment', tenant: 'Prime Rentals', input: 'Market analysis for Block A', decision: 'Recommend 8% increase', confidence: 0.78, reasoning: 'Market rates increased 12% but tenant retention risk suggests moderate adjustment.', timestamp: '2026-02-13T12:00:00Z', overridden: true },
-      { id: '4', type: 'Lease Renewal', tenant: 'Urban Living', input: 'Tenant renewal request', decision: 'Auto-approve with standard terms', confidence: 0.95, reasoning: 'Perfect payment history, no violations, long-term tenant (3+ years).', timestamp: '2026-02-13T11:00:00Z', overridden: false },
-      { id: '5', type: 'Eviction Assessment', tenant: 'Coastal Homes', input: '90 days overdue, KES 180,000', decision: 'Initiate legal process', confidence: 0.88, reasoning: 'Multiple payment plans defaulted. No response to communication attempts.', timestamp: '2026-02-13T10:00:00Z', overridden: false },
-    ]);
-
-    setHealthMetrics([
-      { time: '00:00', requests: 1200, errors: 12, latency: 45 },
-      { time: '04:00', requests: 800, errors: 5, latency: 38 },
-      { time: '08:00', requests: 3500, errors: 28, latency: 52 },
-      { time: '12:00', requests: 5200, errors: 45, latency: 68 },
-      { time: '16:00', requests: 4800, errors: 38, latency: 58 },
-      { time: '20:00', requests: 2800, errors: 18, latency: 48 },
-    ]);
-
+    // Live wiring pending — until admin ops endpoints land we render empty state.
+    // No fixture data seeds in prod; the tables below show EmptyState components
+    // when the arrays are empty. See Docs/WAVE18_FINDINGS for the backlog.
+    setSystemHealth([]);
+    setExceptions([]);
+    setStuckWorkflows([]);
+    setAIDecisions([]);
+    setHealthMetrics([]);
     setLoading(false);
   }, []);
 

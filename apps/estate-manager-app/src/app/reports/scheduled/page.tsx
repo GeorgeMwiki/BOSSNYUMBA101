@@ -15,25 +15,9 @@ interface ScheduledReport {
   nextRun: string;
 }
 
-// Mock data - replace with API
-const scheduledReports: ScheduledReport[] = [
-  {
-    id: '1',
-    name: 'Weekly Occupancy Summary',
-    type: 'occupancy',
-    frequency: 'weekly',
-    recipients: ['manager@estate.com'],
-    nextRun: '2024-02-26',
-  },
-  {
-    id: '2',
-    name: 'Monthly Revenue Report',
-    type: 'revenue',
-    frequency: 'monthly',
-    recipients: ['manager@estate.com', 'accounting@estate.com'],
-    nextRun: '2024-03-01',
-  },
-];
+// Live wiring pending — scheduled reports endpoint not yet mounted.
+// Empty array keeps prod honest until the scheduling service is plumbed.
+const scheduledReports: ScheduledReport[] = [];
 
 const frequencyLabels: Record<ScheduleFrequency, string> = {
   daily: 'Daily',

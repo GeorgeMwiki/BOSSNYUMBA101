@@ -8,7 +8,7 @@ import {
   Building2,
   Search,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatDateTime } from '../../../lib/api';
 import { useTenantCommunications } from '../../../lib/hooks';
 
@@ -22,13 +22,8 @@ export default function TenantCommunicationsPage() {
       c.propertyName?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const displayConversations = filtered.length
-    ? filtered
-    : [
-        { id: '1', tenantId: '1', tenantName: 'John Kamau', propertyName: 'Westlands Apartments', unitNumber: '4B', lastMessage: 'Regarding the maintenance request...', lastMessageAt: '2024-02-12T10:30:00', unreadCount: 1 },
-        { id: '2', tenantId: '2', tenantName: 'Mary Wanjiku', propertyName: 'Westlands Apartments', unitNumber: '2A', lastMessage: 'Thank you for the update', lastMessageAt: '2024-02-11T14:20:00', unreadCount: 0 },
-        { id: '3', tenantId: '3', tenantName: 'Peter Ochieng', propertyName: 'Kilimani Complex', unitNumber: '101', lastMessage: 'Lease renewal discussion', lastMessageAt: '2024-02-10T09:15:00', unreadCount: 0 },
-      ];
+  // No fixture fallback — real empty state when the tenant has no conversations yet.
+  const displayConversations = filtered;
 
   if (isLoading) {
     return (
@@ -73,6 +68,16 @@ export default function TenantCommunicationsPage() {
         />
       </div>
 
+      {displayConversations.length === 0 ? (
+        <EmptyState
+          title={search ? 'No conversations match your search' : 'No conversations yet'}
+          description={
+            search
+              ? 'Try a different name or property.'
+              : 'Messages between you and your tenants will appear here.'
+          }
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {displayConversations.map((conv) => (
@@ -111,6 +116,7 @@ export default function TenantCommunicationsPage() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center gap-3">

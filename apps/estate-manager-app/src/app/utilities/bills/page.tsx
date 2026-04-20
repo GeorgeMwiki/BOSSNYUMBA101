@@ -19,14 +19,9 @@ interface UtilityBill {
   paidAt?: string;
 }
 
-// Mock data - replace with API
-const bills: UtilityBill[] = [
-  { id: '1', period: 'Feb 2024', utilityType: 'water', property: 'Sunset Apartments', amount: 12450, status: 'paid', dueDate: '2024-02-28', paidAt: '2024-02-20' },
-  { id: '2', period: 'Feb 2024', utilityType: 'electricity', property: 'Sunset Apartments', amount: 45600, status: 'pending', dueDate: '2024-02-28' },
-  { id: '3', period: 'Jan 2024', utilityType: 'water', property: 'Sunset Apartments', amount: 11200, status: 'paid', dueDate: '2024-01-31', paidAt: '2024-01-25' },
-  { id: '4', period: 'Jan 2024', utilityType: 'electricity', property: 'Sunset Apartments', amount: 42100, status: 'paid', dueDate: '2024-01-31', paidAt: '2024-01-28' },
-  { id: '5', period: 'Dec 2023', utilityType: 'gas', property: 'Sunset Apartments', amount: 8800, status: 'paid', dueDate: '2023-12-31', paidAt: '2023-12-29' },
-];
+// Live wiring pending — utility bills endpoint not yet mounted. Empty
+// array keeps the UI honest until the utilities service is plumbed.
+const bills: UtilityBill[] = [];
 
 const statusConfig: Record<BillStatus, { label: string; color: string }> = {
   paid: { label: 'Paid', color: 'badge-success' },

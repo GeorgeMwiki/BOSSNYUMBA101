@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Key,
   Plus,
   Search,
-  Filter,
-  MoreVertical,
   Copy,
-  Trash2,
   Eye,
   EyeOff,
   Building2,
   Globe,
+  MoreVertical,
 } from 'lucide-react';
-import { EmptyState } from '@bossnyumba/design-system';
-import { formatDateTime } from '../../../lib/api';
+import { EmptyState, Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { api, formatDateTime } from '../../../lib/api';
 
 interface ApiKey {
   id: string;
@@ -27,57 +25,34 @@ interface ApiKey {
   expiresAt: string | null;
 }
 
-const apiKeys: ApiKey[] = [
-  {
-    id: '1',
-    name: 'Admin API Key',
-    prefix: 'bn_live_...',
-    scope: 'platform',
-    tenantName: null,
-    permissions: ['read', 'write', 'admin'],
-    lastUsed: new Date(Date.now() - 3600000).toISOString(),
-    createdAt: '2024-01-01',
-    expiresAt: null,
-  },
-  {
-    id: '2',
-    name: 'Acme Properties Integration',
-    prefix: 'bn_live_...',
-    scope: 'tenant',
-    tenantName: 'Acme Properties Ltd',
-    permissions: ['read', 'write'],
-    lastUsed: new Date(Date.now() - 86400000).toISOString(),
-    createdAt: '2024-06-15',
-    expiresAt: '2025-06-15',
-  },
-  {
-    id: '3',
-    name: 'Highland Properties API',
-    prefix: 'bn_live_...',
-    scope: 'tenant',
-    tenantName: 'Highland Properties',
-    permissions: ['read', 'write'],
-    lastUsed: new Date(Date.now() - 43200000).toISOString(),
-    createdAt: '2024-09-20',
-    expiresAt: '2025-09-20',
-  },
-  {
-    id: '4',
-    name: 'Reports Service',
-    prefix: 'bn_live_...',
-    scope: 'platform',
-    tenantName: null,
-    permissions: ['read'],
-    lastUsed: null,
-    createdAt: '2024-11-01',
-    expiresAt: '2025-11-01',
-  },
-];
-
 export default function IntegrationsApiKeysPage() {
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [apiKeys, setApiKeys] = useState<ReadonlyArray<ApiKey>>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<ReadonlyArray<ApiKey>>('/admin/api-keys');
+      if (res.success) {
+        setApiKeys(res.data ?? []);
+      } else {
+        setError(res.error ?? 'Failed to load API keys');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load API keys');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filteredKeys = apiKeys.filter((key) => {
     const matchesSearch =
@@ -106,6 +81,24 @@ export default function IntegrationsApiKeysPage() {
           Create API Key
         </button>
       </div>
+
+      {error && (
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {loading && (
+        <div className="space-y-3" aria-busy="true" aria-live="polite">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">

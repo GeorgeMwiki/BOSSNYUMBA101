@@ -25,14 +25,9 @@ interface CalendarEvent {
   unit?: string;
 }
 
-// Mock data - replace with API
-const events: CalendarEvent[] = [
-  { id: '1', title: 'Kitchen sink repair', date: '2024-02-25', time: '09:00', type: 'work_order', unit: 'A-204' },
-  { id: '2', title: 'Move-in Inspection', date: '2024-02-25', time: '10:00', type: 'inspection', unit: 'A-301' },
-  { id: '3', title: 'AC repair', date: '2024-02-25', time: '11:00', type: 'work_order', unit: 'B-102' },
-  { id: '4', title: 'Move-out Inspection', date: '2024-02-26', time: '14:00', type: 'inspection', unit: 'B-105' },
-  { id: '5', title: 'Door lock replacement', date: '2024-02-27', time: '14:00', type: 'work_order', unit: 'C-301' },
-];
+// Live wiring pending — calendar events endpoint not yet mounted. Empty
+// array keeps the UI honest until the calendar service is plumbed.
+const events: CalendarEvent[] = [];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

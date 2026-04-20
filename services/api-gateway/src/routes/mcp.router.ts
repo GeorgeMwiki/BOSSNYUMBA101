@@ -251,9 +251,14 @@ app.post('/', async (c: any) => {
 export const agentCardRouter = new Hono();
 agentCardRouter.get('/', (c: any) => {
   const mcp = getMcp(c);
-  const baseUrl =
-    c.req.header('x-forwarded-host')
-      ? `https://${c.req.header('x-forwarded-host')}`
+  // Prefer the proxy-forwarded host so A2A clients see the correct canonical
+  // URL, fall back to PUBLIC_BASE_URL env, and only then to localhost for dev.
+  const forwardedHost = c.req.header('x-forwarded-host');
+  const envBase = process.env.PUBLIC_BASE_URL?.trim();
+  const baseUrl = forwardedHost
+    ? `https://${forwardedHost}`
+    : envBase && envBase.length > 0
+      ? envBase
       : 'http://localhost:3000';
   if (!mcp) {
     return c.json(

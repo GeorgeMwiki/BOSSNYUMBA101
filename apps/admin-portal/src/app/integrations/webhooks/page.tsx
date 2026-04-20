@@ -1,18 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Webhook,
   Plus,
   Search,
-  Filter,
   MoreVertical,
-  CheckCircle,
-  XCircle,
-  Clock,
   Copy,
-  Trash2,
 } from 'lucide-react';
-import { EmptyState } from '@bossnyumba/design-system';
-import { formatDateTime } from '../../../lib/api';
+import { EmptyState, Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { api, formatDateTime } from '../../../lib/api';
 
 interface WebhookConfig {
   id: string;
@@ -27,57 +22,6 @@ interface WebhookConfig {
   createdAt: string;
 }
 
-const webhooks: WebhookConfig[] = [
-  {
-    id: '1',
-    name: 'Payment Success',
-    url: 'https://acmeproperties.co.ke/webhooks/payments',
-    events: ['payment.completed', 'payment.refunded'],
-    tenantId: 't1',
-    tenantName: 'Acme Properties Ltd',
-    status: 'active',
-    lastTriggered: new Date(Date.now() - 3600000).toISOString(),
-    successRate: 99.2,
-    createdAt: '2024-06-15',
-  },
-  {
-    id: '2',
-    name: 'Tenant Created',
-    url: 'https://api.bossnyumba.com/internal/tenant-events',
-    events: ['tenant.created', 'tenant.updated'],
-    tenantId: null,
-    tenantName: null,
-    status: 'active',
-    lastTriggered: new Date(Date.now() - 86400000).toISOString(),
-    successRate: 100,
-    createdAt: '2024-01-01',
-  },
-  {
-    id: '3',
-    name: 'Property Sync',
-    url: 'https://highland.co.ke/api/sync/properties',
-    events: ['property.created', 'property.updated', 'property.deleted'],
-    tenantId: 't5',
-    tenantName: 'Highland Properties',
-    status: 'failing',
-    lastTriggered: new Date(Date.now() - 7200000).toISOString(),
-    successRate: 72.5,
-    createdAt: '2024-09-20',
-  },
-  {
-    id: '4',
-    name: 'Lease Expiry Alert',
-    url: 'https://sunriserealty.co.ke/webhooks/leases',
-    events: ['lease.expiring', 'lease.expired'],
-    tenantId: 't2',
-    tenantName: 'Sunrise Realty',
-    status: 'inactive',
-    lastTriggered: null,
-    successRate: 0,
-    createdAt: '2024-08-10',
-  },
-];
-
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   inactive: 'bg-gray-100 text-gray-700',
@@ -87,6 +31,30 @@ const statusColors: Record<string, string> = {
 export default function IntegrationsWebhooksPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [webhooks, setWebhooks] = useState<ReadonlyArray<WebhookConfig>>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<ReadonlyArray<WebhookConfig>>('/admin/webhooks');
+      if (res.success) {
+        setWebhooks(res.data ?? []);
+      } else {
+        setError(res.error ?? 'Failed to load webhooks');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load webhooks');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filteredWebhooks = webhooks.filter((wh) => {
     const matchesSearch =
@@ -113,6 +81,24 @@ export default function IntegrationsWebhooksPage() {
           Add Webhook
         </button>
       </div>
+
+      {error && (
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {loading && (
+        <div className="space-y-3" aria-busy="true" aria-live="polite">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

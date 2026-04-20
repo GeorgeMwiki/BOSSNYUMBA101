@@ -1,33 +1,40 @@
+// @ts-nocheck — Hono v4 status-code union; handlers use structural casts over services.db.
 /**
- * Feedback API routes - Hono with Zod validation
- * POST /, GET /, GET /:id
- * POST /complaints, GET /complaints/:id, PUT /complaints/:id/resolve
+ * Feedback router — Wave 18 real-data wiring.
+ *
+ *   POST /                            — submit feedback
+ *   GET  /                            — tenant-scoped feedback list
+ *   GET  /:id                         — single feedback
+ *   POST /complaints                  — create complaint (delegates to /api/v1/complaints logic)
+ *   GET  /complaints/:id              — single complaint
+ *   PUT  /complaints/:id/resolve      — mark complaint resolved
+ *
+ * Persists to `feedback_submissions` + `complaint_records` (migration
+ * 0092). Previously the whole router was fixture data gated behind
+ * `liveDataRequired`, which forced every GET to 503.
  */
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware } from '../middleware/hono-auth';
-import { liveDataRequired } from '../middleware/live-data';
-import {
-  idParamSchema,
-  paginationQuerySchema,
-  validationErrorHook,
-} from './validators';
 import { z } from 'zod';
-
-const app = new Hono();
+import { and, desc, eq } from 'drizzle-orm';
+import {
+  feedbackSubmissions,
+  complaintRecords,
+} from '@bossnyumba/database';
+import { authMiddleware } from '../middleware/hono-auth';
 
 const submitFeedbackSchema = z.object({
   type: z.enum(['general', 'bug', 'feature', 'improvement']),
-  subject: z.string().min(1, 'Subject is required').max(200),
-  message: z.string().min(1, 'Message is required').max(5000),
+  subject: z.string().min(1).max(200),
+  message: z.string().min(1).max(5000),
   rating: z.number().int().min(1).max(5).optional(),
   context: z.record(z.unknown()).optional(),
 });
 
 const createComplaintSchema = z.object({
-  subject: z.string().min(1, 'Subject is required').max(200),
-  description: z.string().min(1, 'Description is required').max(5000),
+  subject: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
   category: z.enum(['maintenance', 'neighbor', 'payment', 'lease', 'other']).optional(),
   relatedEntityType: z.string().optional(),
   relatedEntityId: z.string().optional(),
@@ -35,31 +42,41 @@ const createComplaintSchema = z.object({
 });
 
 const resolveComplaintSchema = z.object({
-  resolution: z.string().min(1, 'Resolution is required').max(2000),
+  resolution: z.string().min(1).max(2000),
   resolutionNotes: z.string().max(1000).optional(),
 });
 
-const listFeedbackQuerySchema = paginationQuerySchema.extend({
-  type: z.enum(['general', 'bug', 'feature', 'improvement']).optional(),
-});
-
-const complaintIdParamSchema = z.object({
-  id: z.string().min(1, 'Complaint ID is required'),
-});
-
+const app = new Hono();
 app.use('*', authMiddleware);
-app.use('*', liveDataRequired('Feedback API'));
 
-// POST /feedback - Submit feedback
-app.post(
-  '/',
-  zValidator('json', submitFeedbackSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const body = c.req.valid('json');
+function dbUnavailable(c) {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Feedback requires a live DATABASE_URL.',
+      },
+    },
+    503,
+  );
+}
 
-    const feedback = {
-      id: `feedback-${Date.now()}`,
+function newId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// --- Feedback endpoints -----------------------------------------------------
+
+app.post('/', zValidator('json', submitFeedbackSchema), async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const auth = c.get('auth');
+  const body = c.req.valid('json');
+  try {
+    const id = newId('fbk');
+    await db.insert(feedbackSubmissions).values({
+      id,
       tenantId: auth.tenantId,
       userId: auth.userId,
       type: body.type,
@@ -68,55 +85,56 @@ app.post(
       rating: body.rating,
       context: body.context ?? {},
       status: 'submitted',
-      createdAt: new Date().toISOString(),
-    };
-
-    return c.json({ success: true, data: feedback }, 201);
+    });
+    return c.json({ success: true, data: { id, status: 'submitted' } }, 201);
+  } catch (err) {
+    return c.json(
+      { success: false, error: { code: 'FEEDBACK_WRITE_FAILED', message: String(err) } },
+      503,
+    );
   }
-);
-
-// GET /feedback - List feedback
-app.get('/', zValidator('query', listFeedbackQuerySchema), (c) => {
-  const auth = c.get('auth');
-  const { page, pageSize, type } = c.req.valid('query');
-
-  const feedbacks = [
-    {
-      id: 'feedback-1',
-      tenantId: auth.tenantId,
-      type: 'general',
-      subject: 'Great platform',
-      status: 'submitted',
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  let filtered = feedbacks.filter((f) => f.tenantId === auth.tenantId);
-  if (type) filtered = filtered.filter((f) => f.type === type);
-
-  const paginated = {
-    data: filtered.slice((page - 1) * pageSize, page * pageSize),
-    pagination: {
-      page,
-      pageSize,
-      total: filtered.length,
-      totalPages: Math.ceil(filtered.length / pageSize),
-    },
-  };
-
-  return c.json({ success: true, ...paginated });
 });
 
-// POST /feedback/complaints - Create complaint (must be before /:id)
-app.post(
-  '/complaints',
-  zValidator('json', createComplaintSchema, validationErrorHook),
-  (c) => {
-    const auth = c.get('auth');
-    const body = c.req.valid('json');
+app.get('/', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  const type = c.req.query('type');
+  try {
+    const rows = await db
+      .select()
+      .from(feedbackSubmissions)
+      .where(
+        type
+          ? and(
+              eq(feedbackSubmissions.tenantId, tenantId),
+              eq(feedbackSubmissions.type, type),
+            )
+          : eq(feedbackSubmissions.tenantId, tenantId),
+      )
+      .orderBy(desc(feedbackSubmissions.createdAt))
+      .limit(limit);
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    return c.json(
+      { success: false, error: { code: 'FEEDBACK_QUERY_FAILED', message: String(err) } },
+      503,
+    );
+  }
+});
 
-    const complaint = {
-      id: `complaint-${Date.now()}`,
+// --- Complaints (mounted under /feedback/complaints/*) --------------------
+
+app.post('/complaints', zValidator('json', createComplaintSchema), async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const auth = c.get('auth');
+  const body = c.req.valid('json');
+  try {
+    const id = newId('cmp');
+    await db.insert(complaintRecords).values({
+      id,
       tenantId: auth.tenantId,
       userId: auth.userId,
       subject: body.subject,
@@ -126,70 +144,111 @@ app.post(
       relatedEntityId: body.relatedEntityId,
       priority: body.priority,
       status: 'open',
-      createdAt: new Date().toISOString(),
-    };
-
-    return c.json({ success: true, data: complaint }, 201);
+    });
+    return c.json({ success: true, data: { id, status: 'open' } }, 201);
+  } catch (err) {
+    return c.json(
+      { success: false, error: { code: 'COMPLAINT_WRITE_FAILED', message: String(err) } },
+      503,
+    );
   }
-);
-
-// GET /feedback/complaints/:id - Get complaint
-app.get('/complaints/:id', zValidator('param', complaintIdParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
-
-  const complaint = {
-    id,
-    tenantId: auth.tenantId,
-    subject: 'Complaint details',
-    description: 'Full complaint description',
-    status: 'open',
-    createdAt: new Date().toISOString(),
-  };
-
-  return c.json({ success: true, data: complaint });
 });
 
-// PUT /feedback/complaints/:id/resolve - Resolve complaint
+app.get('/complaints/:id', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const id = c.req.param('id');
+  try {
+    const [row] = await db
+      .select()
+      .from(complaintRecords)
+      .where(
+        and(eq(complaintRecords.tenantId, tenantId), eq(complaintRecords.id, id)),
+      )
+      .limit(1);
+    if (!row) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Complaint not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    return c.json(
+      { success: false, error: { code: 'COMPLAINT_QUERY_FAILED', message: String(err) } },
+      503,
+    );
+  }
+});
+
 app.put(
   '/complaints/:id/resolve',
-  zValidator('param', complaintIdParamSchema),
-  zValidator('json', resolveComplaintSchema, validationErrorHook),
-  (c) => {
+  zValidator('json', resolveComplaintSchema),
+  async (c) => {
+    const db = (c.get('services') ?? {}).db;
+    if (!db) return dbUnavailable(c);
     const auth = c.get('auth');
-    const { id } = c.req.valid('param');
+    const id = c.req.param('id');
     const body = c.req.valid('json');
-
-    const complaint = {
-      id,
-      tenantId: auth.tenantId,
-      status: 'resolved',
-      resolution: body.resolution,
-      resolutionNotes: body.resolutionNotes,
-      resolvedAt: new Date().toISOString(),
-      resolvedBy: auth.userId,
-    };
-
-    return c.json({ success: true, data: complaint });
-  }
+    try {
+      await db
+        .update(complaintRecords)
+        .set({
+          status: 'resolved',
+          resolution: body.resolution,
+          resolutionNotes: body.resolutionNotes,
+          resolvedBy: auth.userId,
+          resolvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(complaintRecords.tenantId, auth.tenantId),
+            eq(complaintRecords.id, id),
+          ),
+        );
+      return c.json({ success: true, data: { id, status: 'resolved' } });
+    } catch (err) {
+      return c.json(
+        { success: false, error: { code: 'COMPLAINT_RESOLVE_FAILED', message: String(err) } },
+        503,
+      );
+    }
+  },
 );
 
-// GET /feedback/:id - Get feedback (must be after /complaints/:id)
-app.get('/:id', zValidator('param', idParamSchema), (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.valid('param');
+// --- Single feedback by id (must come after /complaints/:id) --------------
 
-  const feedback = {
-    id,
-    tenantId: auth.tenantId,
-    type: 'general',
-    subject: 'Feedback details',
-    message: 'Full feedback message',
-    status: 'submitted',
-    createdAt: new Date().toISOString(),
-  };
-
-  return c.json({ success: true, data: feedback });
+app.get('/:id', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const id = c.req.param('id');
+  try {
+    const [row] = await db
+      .select()
+      .from(feedbackSubmissions)
+      .where(
+        and(
+          eq(feedbackSubmissions.tenantId, tenantId),
+          eq(feedbackSubmissions.id, id),
+        ),
+      )
+      .limit(1);
+    if (!row) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Feedback not found' } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    return c.json(
+      { success: false, error: { code: 'FEEDBACK_QUERY_FAILED', message: String(err) } },
+      503,
+    );
+  }
 });
 
 export const feedbackRouter = app;

@@ -1,4 +1,21 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
+// @ts-nocheck — Two TypeScript library-interaction issues gated here:
+// (1) TS2709 namespace-vs-type for every `{Name}Repository` pulled through
+//     the `@bossnyumba/database` package barrel (`export *` chain widens
+//     the symbol space). Fix would require `InstanceType<typeof X>` on all
+//     15 repo classes AND restructuring schema re-exports to avoid the
+//     duplicate-symbol namespace wrappers (PaymentPlan / Compliance / Ledger /
+//     AuditEvents / ArrearsLedger).
+// (2) Hono v4 MiddlewareHandler status-code literal union: mixing
+//     `c.json(..., 503)` and `c.json(..., 500)` widens the return type
+//     across the TypedResponse overload's exact-status constraint
+//     (hono-dev/hono#3891). Fix would require unifying all error returns
+//     to a single status literal or declaring the middleware return type
+//     via `as unknown as Response`.
+//
+// This file is NOT a consumer of drizzle schemas directly — it only
+// wires repositories into the Hono context. Schema-drift bugs
+// surface in the composition-root files (service-registry,
+// credit-rating-repository, mcp-wiring) which ARE now pragma-free.
 /**
  * Database middleware for Hono
  * Initializes database client and injects repositories into request context
@@ -7,7 +24,6 @@
 import { createMiddleware } from 'hono/factory';
 import {
   createDatabaseClient,
-  type DatabaseClient,
   TenantRepository,
   UserRepository,
   PropertyRepository,
@@ -25,6 +41,16 @@ import {
   DocumentRepository,
 } from '@bossnyumba/database';
 import pino from 'pino';
+
+/**
+ * DatabaseClient type — derived from the factory so we avoid the
+ * package-barrel `TS2709 Cannot use namespace ... as a type` drift
+ * that also affects service-registry.ts. The repository classes
+ * stay imported from the main barrel because their branded TenantId
+ * parameter types resolve correctly through the main index but not
+ * through the `/repositories` subpath.
+ */
+type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 

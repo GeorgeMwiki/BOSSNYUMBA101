@@ -183,3 +183,12 @@ export * from './credit-rating.schema.js';
 
 // Property grading — A–F report card system (migration 0088).
 export * from './property-grading.schema.js';
+
+// Property valuations (migration 0090) — per-property appraisal amounts
+// consumed by the property-grading portfolio weighting (asset_value hint).
+export * from './property-valuations.schema.js';
+
+// Feedback + complaints (migration 0092) — backs /api/v1/feedback and
+// /api/v1/complaints with real persistence so the routers stop serving
+// fixture data behind the liveDataRequired gate.
+export * from './feedback-complaints.schema.js';

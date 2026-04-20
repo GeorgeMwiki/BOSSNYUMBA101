@@ -17,7 +17,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatCurrency } from '../../lib/api';
 import { useBudgetSummary, useProperties } from '../../lib/hooks';
 
@@ -30,24 +30,15 @@ export default function BudgetsPage() {
   const isLoading = budgetQuery.isLoading || propertiesQuery.isLoading;
   const error = budgetQuery.error ?? propertiesQuery.error;
 
-  const displayBudget = budget || {
-    totalBudget: 25000000,
-    totalSpent: 13500000,
-    variance: -11500000,
-    byCategory: [
-      { category: 'Maintenance', budgeted: 6000000, spent: 3100000 },
-      { category: 'Utilities', budgeted: 4000000, spent: 2100000 },
-      { category: 'Admin', budgeted: 2400000, spent: 1230000 },
-      { category: 'Insurance', budgeted: 1500000, spent: 720000 },
-      { category: 'Other', budgeted: 2100000, spent: 635000 },
-    ],
+  // No fixture fallback — render an empty state when the tenant has no budget yet.
+  const displayBudget = budget ?? {
+    totalBudget: 0,
+    totalSpent: 0,
+    variance: 0,
+    byCategory: [] as Array<{ category: string; budgeted: number; spent: number }>,
   };
 
-  const displayProperties = properties.length ? properties : [
-    { id: '1', name: 'Westlands Apartments' },
-    { id: '2', name: 'Kilimani Complex' },
-    { id: '3', name: 'Lavington Residence' },
-  ];
+  const displayProperties = properties;
 
   const utilizationPercent = displayBudget.totalBudget
     ? (displayBudget.totalSpent / displayBudget.totalBudget) * 100

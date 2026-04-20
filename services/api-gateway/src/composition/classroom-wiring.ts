@@ -1,4 +1,3 @@
-// @ts-nocheck — DatabaseClient is a namespace-type from @bossnyumba/database.
 /**
  * Classroom wiring — adapts the pure BKT + session-manager functions from
  * `@bossnyumba/ai-copilot/classroom` into a service shape consumed by
@@ -14,7 +13,14 @@
  */
 
 import { sql } from 'drizzle-orm';
-import type { DatabaseClient } from '@bossnyumba/database';
+import { createDatabaseClient } from '@bossnyumba/database';
+
+/**
+ * DatabaseClient derived via `ReturnType<typeof createDatabaseClient>`
+ * so we sidestep the package-barrel `TS2709 Cannot use namespace ... as
+ * a type` drift (see service-registry.ts for the full explanation).
+ */
+type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 import {
   initBKT,
   updateBKT,

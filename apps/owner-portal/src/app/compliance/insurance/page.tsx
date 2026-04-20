@@ -1,20 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Building2, Calendar } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatCurrency, formatDate } from '../../../lib/api';
 import { useInsurancePolicies } from '../../../lib/hooks';
 
 export default function InsurancePage() {
   const { data: policies = [], isLoading, error, refetch } = useInsurancePolicies();
 
-  const displayPolicies = policies.length
-    ? policies
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', provider: 'Jubilee Insurance', type: 'Property', policyNumber: 'POL-2024-001', coverage: 50000000, premium: 450000, startDate: '2024-01-01', endDate: '2024-12-31', status: 'ACTIVE' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', provider: 'APA Insurance', type: 'Liability', policyNumber: 'POL-2024-002', coverage: 10000000, premium: 120000, startDate: '2024-01-01', endDate: '2024-12-31', status: 'ACTIVE' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', provider: 'Jubilee Insurance', type: 'Property', policyNumber: 'POL-2024-003', coverage: 35000000, premium: 320000, startDate: '2024-02-01', endDate: '2025-01-31', status: 'ACTIVE' },
-      ];
+  // No fixture fallback — show real data or an empty state.
+  const displayPolicies = policies;
 
   const totalCoverage = displayPolicies.reduce((a, p) => a + p.coverage, 0);
   const totalPremium = displayPolicies.reduce((a, p) => a + p.premium, 0);
@@ -80,6 +75,12 @@ export default function InsurancePage() {
         </div>
       </div>
 
+      {displayPolicies.length === 0 ? (
+        <EmptyState
+          title="No insurance policies yet"
+          description="Add a property or liability insurance policy to track coverage and premiums."
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -150,6 +151,7 @@ export default function InsurancePage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

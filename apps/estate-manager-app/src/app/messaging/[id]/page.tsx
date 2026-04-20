@@ -13,83 +13,9 @@ interface Message {
   sentAt: string;
 }
 
-// Mock data - replace with API
-const conversationData: Record<string, { subject: string; participants: string[]; messages: Message[] }> = {
-  '1': {
-    subject: 'Water leak in Unit A-301',
-    participants: ['Maintenance Team', 'Mary Wanjiku'],
-    messages: [
-      {
-        id: '1',
-        sender: 'Mary Wanjiku',
-        senderRole: 'tenant',
-        content: 'Hi, there\'s a water leak under the kitchen sink in Unit A-301. It started this morning.',
-        sentAt: '2024-02-25T08:15:00',
-      },
-      {
-        id: '2',
-        sender: 'Maintenance Team',
-        senderRole: 'maintenance',
-        content: 'Thank you for reporting. We\'ll send a plumber today. Please confirm availability between 10 AM - 2 PM.',
-        sentAt: '2024-02-25T08:45:00',
-      },
-      {
-        id: '3',
-        sender: 'Mary Wanjiku',
-        senderRole: 'tenant',
-        content: 'I\'ll be home. Thanks for the quick response!',
-        sentAt: '2024-02-25T09:00:00',
-      },
-      {
-        id: '4',
-        sender: 'Maintenance Team',
-        senderRole: 'maintenance',
-        content: 'The plumber has been scheduled for tomorrow at 11 AM.',
-        sentAt: '2024-02-25T10:30:00',
-      },
-    ],
-  },
-  '2': {
-    subject: 'Lease renewal - Unit B-105',
-    participants: ['Peter Ochieng', 'Property Manager'],
-    messages: [
-      {
-        id: '1',
-        sender: 'Property Manager',
-        senderRole: 'manager',
-        content: 'Hi Peter, your lease is expiring next month. Would you like to renew?',
-        sentAt: '2024-02-23T10:00:00',
-      },
-      {
-        id: '2',
-        sender: 'Peter Ochieng',
-        senderRole: 'tenant',
-        content: 'Yes, I\'d like to renew. Please send the renewal documents.',
-        sentAt: '2024-02-23T14:30:00',
-      },
-      {
-        id: '3',
-        sender: 'Property Manager',
-        senderRole: 'manager',
-        content: 'Please find the renewal documents attached.',
-        sentAt: '2024-02-24T14:20:00',
-      },
-    ],
-  },
-  '3': {
-    subject: 'Rent payment confirmation',
-    participants: ['Grace Muthoni'],
-    messages: [
-      {
-        id: '1',
-        sender: 'Property Manager',
-        senderRole: 'manager',
-        content: 'Payment received. Receipt #REC-2024-4521',
-        sentAt: '2024-02-24T09:15:00',
-      },
-    ],
-  },
-};
+// Live wiring pending — conversations endpoint not yet mounted.
+// Empty map keeps the UI honest until the messaging service is plumbed.
+const conversationData: Record<string, { subject: string; participants: string[]; messages: Message[] }> = {};
 
 export default function ConversationDetailPage() {
   const params = useParams();

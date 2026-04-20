@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2,
   Search,
-  Filter,
   ChevronRight,
-  CreditCard,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
 } from 'lucide-react';
-import { EmptyState } from '@bossnyumba/design-system';
-import { formatCurrency, formatDate } from '../../../lib/api';
+import { EmptyState, Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { api, formatCurrency, formatDate } from '../../../lib/api';
 
 interface Subscription {
   id: string;
@@ -25,64 +20,6 @@ interface Subscription {
   createdAt: string;
 }
 
-const subscriptions: Subscription[] = [
-  {
-    id: '1',
-    tenantId: 't1',
-    tenantName: 'Acme Properties Ltd',
-    plan: 'Enterprise',
-    status: 'active',
-    mrr: 125000,
-    billingCycle: 'monthly',
-    currentPeriodEnd: '2025-03-15',
-    createdAt: '2024-03-15',
-  },
-  {
-    id: '2',
-    tenantId: 't2',
-    tenantName: 'Sunrise Realty',
-    plan: 'Professional',
-    status: 'active',
-    mrr: 45000,
-    billingCycle: 'annual',
-    currentPeriodEnd: '2025-05-20',
-    createdAt: '2024-05-20',
-  },
-  {
-    id: '3',
-    tenantId: 't3',
-    tenantName: 'Metro Housing',
-    plan: 'Professional',
-    status: 'trialing',
-    mrr: 0,
-    billingCycle: 'monthly',
-    currentPeriodEnd: '2025-02-11',
-    createdAt: '2025-01-28',
-  },
-  {
-    id: '4',
-    tenantId: 't4',
-    tenantName: 'Coastal Estates',
-    plan: 'Starter',
-    status: 'past_due',
-    mrr: 15000,
-    billingCycle: 'monthly',
-    currentPeriodEnd: '2025-01-10',
-    createdAt: '2024-08-10',
-  },
-  {
-    id: '5',
-    tenantId: 't5',
-    tenantName: 'Highland Properties',
-    plan: 'Enterprise',
-    status: 'active',
-    mrr: 95000,
-    billingCycle: 'annual',
-    currentPeriodEnd: '2025-01-05',
-    createdAt: '2024-01-05',
-  },
-];
-
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   trialing: 'bg-blue-100 text-blue-700',
@@ -93,6 +30,30 @@ const statusColors: Record<string, string> = {
 export default function PlatformSubscriptionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [subscriptions, setSubscriptions] = useState<ReadonlyArray<Subscription>>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<ReadonlyArray<Subscription>>('/admin/subscriptions');
+      if (res.success) {
+        setSubscriptions(res.data ?? []);
+      } else {
+        setError(res.error ?? 'Failed to load subscriptions');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load subscriptions');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filteredSubscriptions = subscriptions.filter((sub) => {
     const matchesSearch = sub.tenantName.toLowerCase().includes(search.toLowerCase());
@@ -122,6 +83,24 @@ export default function PlatformSubscriptionsPage() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {loading && (
+        <div className="space-y-3" aria-busy="true" aria-live="polite">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

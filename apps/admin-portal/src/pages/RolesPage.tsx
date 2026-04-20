@@ -174,6 +174,9 @@ export function RolesPage() {
   const handleCreateRole = async () => {
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
+    // createdBy is filled in by the backend from the authenticated principal
+    // when the role actually persists; the optimistic row carries an empty
+    // string rather than a hardcoded admin email.
     const newRole: Role = {
       id: String(displayRoles.length + 1),
       name: roleForm.name,
@@ -182,7 +185,7 @@ export function RolesPage() {
       userCount: 0,
       isSystem: false,
       createdAt: new Date().toISOString().split('T')[0],
-      createdBy: 'admin@bossnyumba.com',
+      createdBy: '',
     };
     setLocalRoles([...displayRoles, newRole]);
     setSaving(false);

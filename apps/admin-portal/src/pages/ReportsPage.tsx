@@ -315,34 +315,11 @@ export function ReportsPage() {
               <h3 className="font-semibold text-gray-900 mb-4">
                 Top Performing Tenants
               </h3>
-              <div className="space-y-3">
-                {[
-                  { name: 'Acme Properties Ltd', mrr: 125000, units: 320 },
-                  { name: 'Highland Properties', mrr: 95000, units: 195 },
-                  { name: 'Sunrise Realty', mrr: 45000, units: 85 },
-                  { name: 'Metro Housing', mrr: 35000, units: 65 },
-                  { name: 'Coastal Estates', mrr: 28000, units: 52 },
-                ].map((tenant, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
-                        {index + 1}
-                      </span>
-                      <span className="font-medium text-gray-900">
-                        {tenant.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{tenant.units} units</span>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency(tenant.mrr)}/mo
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              {/* Live wiring pending — top-tenants endpoint not yet mounted.
+                  Render an empty-state placeholder rather than fixture names. */}
+              <div className="text-sm text-gray-500 py-6 text-center">
+                Tenant performance data will appear here once the reports
+                service is wired up for this view.
               </div>
             </div>
           </div>

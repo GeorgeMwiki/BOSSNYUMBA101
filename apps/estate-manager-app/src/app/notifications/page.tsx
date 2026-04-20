@@ -4,12 +4,9 @@ import Link from 'next/link';
 import { Bell, Settings, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-// Mock data
-const notifications = [
-  { id: '1', title: 'Work Order Updated', message: 'WO-2024-0042 status changed to In Progress', time: '10 min ago', read: false },
-  { id: '2', title: 'Inspection Reminder', message: 'Move-in inspection at Unit A-301 tomorrow at 10:00 AM', time: '2 hours ago', read: false },
-  { id: '3', title: 'Payment Received', message: 'KES 25,000 received from Grace Muthoni', time: 'Yesterday', read: true },
-];
+// Live wiring pending — notifications endpoint not yet mounted. Empty
+// array keeps prod honest until the real feed is plumbed in.
+const notifications: Array<{ id: string; title: string; message: string; time: string; read: boolean }> = [];
 
 export default function NotificationsPage() {
   return (

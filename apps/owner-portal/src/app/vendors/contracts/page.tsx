@@ -8,20 +8,15 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatCurrency, formatDate } from '../../../lib/api';
 import { useVendorContracts } from '../../../lib/hooks';
 
 export default function VendorContractsPage() {
   const { data: contracts = [], isLoading, error, refetch } = useVendorContracts();
 
-  const displayContracts = contracts.length
-    ? contracts
-    : [
-        { id: '1', vendorId: '1', vendorName: 'QuickFix Plumbing', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2024-01-01', endDate: '2024-12-31', value: 2400000, status: 'ACTIVE', type: 'Annual Maintenance' },
-        { id: '2', vendorId: '2', vendorName: 'SafeElectric Ltd', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2024-02-01', endDate: '2025-01-31', value: 1800000, status: 'ACTIVE', type: 'Electrical Services' },
-        { id: '3', vendorId: '3', vendorName: 'CleanPro Services', propertyId: '1', propertyName: 'Westlands Apartments', startDate: '2023-06-01', endDate: '2024-05-31', value: 960000, status: 'EXPIRING_SOON', type: 'Cleaning' },
-      ];
+  // No fixture fallback — show real data or an empty state.
+  const displayContracts = contracts;
 
   const expiringSoon = displayContracts.filter((c) => c.status === 'EXPIRING_SOON' || c.status === 'EXPIRING');
 
@@ -71,6 +66,12 @@ export default function VendorContractsPage() {
         </div>
       )}
 
+      {displayContracts.length === 0 ? (
+        <EmptyState
+          title="No vendor contracts yet"
+          description="Add a service agreement with a vendor to track renewal dates and contract values."
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -141,6 +142,7 @@ export default function VendorContractsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

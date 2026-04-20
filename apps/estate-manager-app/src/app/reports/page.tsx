@@ -43,12 +43,9 @@ const reportTypes: ReportCard[] = [
   },
 ];
 
-// Mock data
-const recentReports = [
-  { id: '1', name: 'Occupancy - Feb 2024', generatedAt: '2024-02-25', type: 'occupancy' },
-  { id: '2', name: 'Revenue - Jan 2024', generatedAt: '2024-02-01', type: 'revenue' },
-  { id: '3', name: 'Maintenance - Q4 2023', generatedAt: '2024-01-15', type: 'maintenance' },
-];
+// Live wiring pending — reports endpoint not yet mounted. Empty array
+// keeps the UI honest rather than showing fabricated "recent" entries.
+const recentReports: Array<{ id: string; name: string; generatedAt: string; type: string }> = [];
 
 export default function ReportsDashboardPage() {
   return (

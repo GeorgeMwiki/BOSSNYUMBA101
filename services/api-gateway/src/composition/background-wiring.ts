@@ -1,4 +1,3 @@
-// @ts-nocheck — composition bridges multiple internal packages with loose shapes.
 /**
  * Background wiring — heartbeat engine, background task scheduler,
  * webhook-DLQ repository, and ambient-brain observer composition.
@@ -314,8 +313,17 @@ function buildExtensionTasks(
               | ((tenantId: string, deps: unknown) => Promise<{ updated: number }>),
           }));
           if (sweepTenantDecay) {
-            const res = await sweepTenantDecay(ctx.tenantId, { repo });
-            updated = (res as { updated?: number })?.updated ?? 0;
+            // `repo` is opaque to this file; the caller in ai-copilot
+            // type-checks it structurally. We pass through as-is and
+            // cast the deps bag so TS doesn't widen `{ repo: unknown }`
+            // against the strict `SemanticMemoryRepository` interface.
+            const res = await (
+              sweepTenantDecay as (
+                tenantId: string,
+                deps: { repo: unknown },
+              ) => Promise<{ updated?: number }>
+            )(ctx.tenantId, { repo });
+            updated = res?.updated ?? 0;
           }
         }
       } catch (err) {

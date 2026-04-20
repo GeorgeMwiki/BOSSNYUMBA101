@@ -1,21 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Building2, Calendar, CheckCircle } from 'lucide-react';
-import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { formatDate } from '../../../lib/api';
 import { useInspections } from '../../../lib/hooks';
 
 export default function InspectionsPage() {
   const { data: inspections = [], isLoading, error, refetch } = useInspections();
 
-  const displayInspections = inspections.length
-    ? inspections
-    : [
-        { id: '1', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Fire Safety', scheduledDate: '2024-02-28', status: 'SCHEDULED' },
-        { id: '2', propertyId: '1', propertyName: 'Westlands Apartments', type: 'Electrical', scheduledDate: '2024-01-15', completedDate: '2024-01-15', status: 'PASSED', result: 'PASSED' },
-        { id: '3', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Fire Safety', scheduledDate: '2024-03-15', status: 'SCHEDULED' },
-        { id: '4', propertyId: '2', propertyName: 'Kilimani Complex', type: 'Health & Safety', scheduledDate: '2024-02-10', completedDate: '2024-02-10', status: 'PASSED', result: 'PASSED' },
-      ];
+  // No fixture fallback — show real data or an empty state.
+  const displayInspections = inspections;
 
   const upcoming = displayInspections.filter((i) => i.status === 'SCHEDULED');
   const completed = displayInspections.filter((i) => i.status === 'PASSED' || i.status === 'COMPLETED');
@@ -87,6 +81,12 @@ export default function InspectionsPage() {
         </div>
       </div>
 
+      {displayInspections.length === 0 ? (
+        <EmptyState
+          title="No inspections scheduled"
+          description="Schedule a fire-safety, electrical, or other compliance inspection to see it here."
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">All Inspections</h3>
@@ -156,6 +156,7 @@ export default function InspectionsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -6,18 +6,10 @@ import Link from 'next/link';
 import { ArrowLeft, Send, User, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-// Mock data - replace with API
-const tenants = [
-  { id: '1', name: 'Mary Wanjiku', unit: 'A-301', property: 'Sunset Apartments' },
-  { id: '2', name: 'Peter Ochieng', unit: 'B-105', property: 'Sunset Apartments' },
-  { id: '3', name: 'Grace Muthoni', unit: 'C-202', property: 'Sunset Apartments' },
-  { id: '4', name: 'David Kimani', unit: 'A-102', property: 'Sunset Apartments' },
-];
-
-const staff = [
-  { id: 'm1', name: 'Maintenance Team', role: 'Maintenance' },
-  { id: 'm2', name: 'Property Manager', role: 'Management' },
-];
+// Live wiring pending — tenant directory + staff directory endpoints
+// not yet mounted. Empty arrays keep the UI honest until wired.
+const tenants: Array<{ id: string; name: string; unit: string; property: string }> = [];
+const staff: Array<{ id: string; name: string; role: string }> = [];
 
 export default function NewConversationPage() {
   const router = useRouter();
