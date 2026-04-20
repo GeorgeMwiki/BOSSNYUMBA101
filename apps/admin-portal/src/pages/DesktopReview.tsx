@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dopamine } from '@bossnyumba/chat-ui';
+import { api } from '../lib/api';
 
 const { ConfettiTrigger } = Dopamine;
 
@@ -94,13 +95,25 @@ const LABELS: Record<Language, Record<string, string>> = {
   },
 };
 
-function fetchPanelData(): Promise<PanelData> {
-  return Promise.resolve<PanelData>({
-    arrears: [],
-    maintenance: [],
-    approvals: [],
-    insights: [],
-  });
+async function fetchPanelData(): Promise<PanelData> {
+  // Each endpoint is tenant-scoped by JWT in `api`. Any endpoint that is
+  // not wired returns `success: false` and we fall back to an empty
+  // panel rather than rendering stale stub data.
+  const [arrearsRes, maintenanceRes, approvalsRes, insightsRes] = await Promise.all([
+    api.get<readonly ArrearsItem[]>('/arrears?status=open&limit=10'),
+    api.get<readonly MaintenanceItem[]>('/cases?status=open&limit=10'),
+    api.get<readonly ApprovalItem[]>('/operations/approvals?pending=true&limit=10'),
+    api.get<readonly InsightItem[]>('/org/bottlenecks?limit=10'),
+  ]);
+  return {
+    arrears: arrearsRes.success && arrearsRes.data ? arrearsRes.data : [],
+    maintenance:
+      maintenanceRes.success && maintenanceRes.data ? maintenanceRes.data : [],
+    approvals:
+      approvalsRes.success && approvalsRes.data ? approvalsRes.data : [],
+    insights:
+      insightsRes.success && insightsRes.data ? insightsRes.data : [],
+  };
 }
 
 function detectInitialLanguage(): Language {

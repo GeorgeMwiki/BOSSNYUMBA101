@@ -74,7 +74,6 @@ describe('AdaptiveRenderer', () => {
   it('handles unknown block types without crashing', () => {
     const meta: AdaptiveMessageMetadata = {
       uiBlocks: [
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { id: 'x1', type: 'not_a_real_type', position: 'below' } as any,
       ],
     };

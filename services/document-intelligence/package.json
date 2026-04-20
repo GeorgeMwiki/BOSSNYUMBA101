@@ -25,18 +25,12 @@
     "@aws-sdk/client-textract": "^3.989.0",
     "@bossnyumba/domain-models": "workspace:*",
     "@google-cloud/vision": "^4.3.3",
-    "crypto-js": "^4.2.0",
-    "date-fns": "^3.0.0",
-    "pdfkit": "^0.14.0",
-    "sharp": "^0.33.0",
     "uuid": "^9.0.0",
     "winston": "^3.11.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@types/crypto-js": "^4.2.0",
     "@types/node": "^20.11.0",
-    "@types/pdfkit": "^0.13.0",
     "@types/uuid": "^9.0.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"

@@ -1,439 +1,178 @@
-import React, { useState } from 'react';
-import {
-  FileText,
-  Search,
-  Filter,
-  Download,
-  Calendar,
-  User,
-  Clock,
-  ChevronDown,
-  ChevronRight,
-  Shield,
-  Settings,
-  UserPlus,
-  Edit,
-  Trash2,
-  LogIn,
-  LogOut,
-  CreditCard,
-  Building2,
-} from 'lucide-react';
-import { EmptyState } from '@bossnyumba/design-system';
-import { formatDateTime } from '../lib/api';
+/**
+ * Audit log — hits the real `/api/v1/audit/autonomous-actions` endpoint.
+ *
+ * Wave 15 — replaces the previous hardcoded mock feed. No stub data is
+ * shipped to the browser; the page renders an explicit empty state if
+ * the server returns nothing.
+ */
 
-interface AuditEvent {
-  id: string;
-  timestamp: string;
-  action: string;
-  category: string;
-  actor: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
-  tenant: string | null;
-  resource: {
-    type: string;
-    id: string;
-    name: string;
-  };
-  details: Record<string, unknown>;
-  ipAddress: string;
-  userAgent: string;
+import React, { useCallback, useEffect, useState } from 'react';
+import { FileText, Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { EmptyState } from '@bossnyumba/design-system';
+import { api, formatDateTime } from '../lib/api';
+
+interface AutonomousAuditRow {
+  readonly id: string;
+  readonly domain: string;
+  readonly actionType: string;
+  readonly subjectId?: string;
+  readonly reasoning: string;
+  readonly confidence: number;
+  readonly policyRuleId?: string;
+  readonly executedAt: string;
+  readonly actor?: string;
+  readonly outcome?: string;
+  readonly metadata?: Record<string, unknown>;
 }
 
-const actionIcons: Record<string, React.ElementType> = {
-  'user.login': LogIn,
-  'user.logout': LogOut,
-  'user.created': UserPlus,
-  'user.updated': Edit,
-  'user.deleted': Trash2,
-  'role.updated': Shield,
-  'settings.updated': Settings,
-  'payment.processed': CreditCard,
-  'tenant.created': Building2,
-  default: FileText,
-};
-
-const actionColors: Record<string, { bg: string; text: string }> = {
-  created: { bg: 'bg-green-100', text: 'text-green-700' },
-  updated: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  deleted: { bg: 'bg-red-100', text: 'text-red-700' },
-  login: { bg: 'bg-gray-100', text: 'text-gray-700' },
-  logout: { bg: 'bg-gray-100', text: 'text-gray-700' },
-  processed: { bg: 'bg-green-100', text: 'text-green-700' },
-  failed: { bg: 'bg-red-100', text: 'text-red-700' },
-};
-
-const auditEvents: AuditEvent[] = [
-  {
-    id: '1',
-    timestamp: new Date().toISOString(),
-    action: 'user.login',
-    category: 'Authentication',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: { type: 'session', id: 'sess_123', name: 'Admin Session' },
-    details: { method: 'password', mfaUsed: false },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '2',
-    timestamp: new Date(Date.now() - 1800000).toISOString(),
-    action: 'tenant.created',
-    category: 'Tenant Management',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: {
-      type: 'tenant',
-      id: 'ten_456',
-      name: 'Makini Properties Ltd',
-    },
-    details: { plan: 'Professional', trialDays: 14 },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '3',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    action: 'user.created',
-    category: 'User Management',
-    actor: {
-      id: '2',
-      name: 'Support Team',
-      email: 'support@bossnyumba.com',
-      role: 'SUPPORT',
-    },
-    tenant: 'Acme Properties Ltd',
-    resource: { type: 'user', id: 'usr_789', name: 'Jane Doe' },
-    details: { email: 'jane@acmeproperties.co.ke', role: 'PROPERTY_MANAGER' },
-    ipAddress: '197.232.15.78',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-  },
-  {
-    id: '4',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    action: 'settings.updated',
-    category: 'Configuration',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: null,
-    resource: {
-      type: 'settings',
-      id: 'payments',
-      name: 'Payment Configuration',
-    },
-    details: {
-      changes: { 'mpesa.paybill': { from: '123455', to: '123456' } },
-    },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '5',
-    timestamp: new Date(Date.now() - 14400000).toISOString(),
-    action: 'role.updated',
-    category: 'Access Control',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: 'Sunrise Realty',
-    resource: { type: 'user', id: 'usr_234', name: 'Mary Wanjiku' },
-    details: { previousRole: 'ACCOUNTANT', newRole: 'PROPERTY_MANAGER' },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-  {
-    id: '6',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    action: 'payment.processed',
-    category: 'Billing',
-    actor: {
-      id: 'system',
-      name: 'System',
-      email: 'system@bossnyumba.com',
-      role: 'SYSTEM',
-    },
-    tenant: 'Acme Properties Ltd',
-    resource: { type: 'invoice', id: 'inv_567', name: 'January Invoice' },
-    details: { amount: 125000, currency: 'KES', method: 'mpesa' },
-    ipAddress: '10.0.0.1',
-    userAgent: 'BOSSNYUMBA/System',
-  },
-  {
-    id: '7',
-    timestamp: new Date(Date.now() - 172800000).toISOString(),
-    action: 'user.deleted',
-    category: 'User Management',
-    actor: {
-      id: '1',
-      name: 'System Admin',
-      email: 'admin@bossnyumba.com',
-      role: 'SUPER_ADMIN',
-    },
-    tenant: 'Coastal Estates',
-    resource: { type: 'user', id: 'usr_890', name: 'Test User' },
-    details: { reason: 'Account cleanup' },
-    ipAddress: '197.232.12.45',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-  },
-];
+const DOMAINS = [
+  'finance',
+  'leasing',
+  'maintenance',
+  'compliance',
+  'communications',
+  'strategic',
+] as const;
 
 export function AuditLogPage() {
+  const [rows, setRows] = useState<readonly AutonomousAuditRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState('last7');
+  const [domain, setDomain] = useState<string>('all');
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  const getActionType = (action: string) => {
-    const parts = action.split('.');
-    return parts[parts.length - 1];
-  };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const qs = domain === 'all' ? '' : `?domain=${encodeURIComponent(domain)}`;
+    const res = await api.get<readonly AutonomousAuditRow[]>(
+      `/audit/autonomous-actions${qs}`,
+    );
+    if (res.success && res.data) setRows(res.data);
+    else setError(res.error ?? 'Unable to load audit trail.');
+    setLoading(false);
+  }, [domain]);
 
-  const getActionIcon = (action: string) => {
-    return actionIcons[action] || actionIcons.default;
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const filteredEvents = auditEvents.filter((event) => {
-    const matchesSearch =
-      event.actor.name.toLowerCase().includes(search.toLowerCase()) ||
-      event.actor.email.toLowerCase().includes(search.toLowerCase()) ||
-      event.resource.name.toLowerCase().includes(search.toLowerCase()) ||
-      event.action.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory =
-      categoryFilter === 'all' || event.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+  const filtered = rows.filter((r) => {
+    if (!search) return true;
+    const needle = search.toLowerCase();
+    return (
+      r.actionType.toLowerCase().includes(needle) ||
+      r.domain.toLowerCase().includes(needle) ||
+      r.reasoning.toLowerCase().includes(needle) ||
+      (r.subjectId ?? '').toLowerCase().includes(needle)
+    );
   });
-
-  const categories = Array.from(new Set(auditEvents.map((e) => e.category)));
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-          <p className="text-gray-500">Track all system activities and changes</p>
+          <p className="text-gray-500">
+            Every autonomous action Mr. Mwikila took on its own authority.
+          </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <Download className="h-4 w-4" />
-          Export Log
-        </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search events..."
+            placeholder="Search reasoning, subject, action…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
-        <div className="flex gap-2">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            <option value="today">Today</option>
-            <option value="last7">Last 7 days</option>
-            <option value="last30">Last 30 days</option>
-            <option value="last90">Last 90 days</option>
-          </select>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <Filter className="h-4 w-4" />
-            More Filters
-          </button>
-        </div>
+        <select
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg"
+        >
+          <option value="all">All domains</option>
+          {DOMAINS.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-2xl font-bold text-gray-900">
-            {auditEvents.length}
-          </p>
-          <p className="text-sm text-gray-500">Total Events</p>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+          {error}
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-2xl font-bold text-gray-900">
-            {auditEvents.filter((e) => e.action.includes('login')).length}
-          </p>
-          <p className="text-sm text-gray-500">Login Events</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-2xl font-bold text-gray-900">
-            {
-              auditEvents.filter((e) => e.category === 'Configuration')
-                .length
-            }
-          </p>
-          <p className="text-sm text-gray-500">Config Changes</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-2xl font-bold text-gray-900">
-            {new Set(auditEvents.map((e) => e.actor.id)).size}
-          </p>
-          <p className="text-sm text-gray-500">Active Users</p>
-        </div>
-      </div>
+      )}
 
-      {/* Event List */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="divide-y divide-gray-100">
-          {filteredEvents.map((event) => {
-            const ActionIcon = getActionIcon(event.action);
-            const actionType = getActionType(event.action);
-            const actionColor =
-              actionColors[actionType] || actionColors.updated;
-            const isExpanded = expandedEvent === event.id;
-
-            return (
-              <div key={event.id} className="hover:bg-gray-50">
-                <button
-                  onClick={() =>
-                    setExpandedEvent(isExpanded ? null : event.id)
-                  }
-                  className="w-full p-4 text-left"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`p-2 rounded-lg ${actionColor.bg}`}>
-                      <ActionIcon className={`h-4 w-4 ${actionColor.text}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900">
-                          {event.action.replace('.', ' › ')}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded ${actionColor.bg} ${actionColor.text}`}
-                        >
-                          {actionType}
-                        </span>
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                          {event.category}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">{event.actor.name}</span>
-                        {' • '}
-                        {event.resource.name}
-                        {event.tenant && (
-                          <>
-                            {' • '}
-                            <span className="text-violet-600">
-                              {event.tenant}
-                            </span>
-                          </>
+      {loading ? (
+        <div className="text-sm text-gray-500 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading audit trail…
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-8 w-8" />}
+          title="No audit entries"
+          description="Autonomous actions will appear here once Mr. Mwikila acts on his own authority."
+        />
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <ul className="divide-y divide-gray-100">
+            {filtered.map((row) => {
+              const open = expanded === row.id;
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(open ? null : row.id)}
+                    className="w-full p-4 text-left hover:bg-gray-50"
+                    aria-expanded={open}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        {open ? (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
                         )}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDateTime(event.timestamp)}
-                        </span>
-                        <span>{event.ipAddress}</span>
                       </div>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    )}
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="px-4 pb-4 pt-0">
-                    <div className="ml-10 p-4 bg-gray-50 rounded-lg space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Actor</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {event.actor.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {event.actor.email}
-                          </p>
-                          <p className="text-xs text-violet-600">
-                            {event.actor.role}
-                          </p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-semibold text-gray-900">
+                            {row.domain} · {row.actionType}
+                          </span>
+                          <span className="text-xs text-violet-600 bg-violet-50 rounded px-2">
+                            {(row.confidence * 100).toFixed(0)}% conf
+                          </span>
+                          {row.outcome && (
+                            <span className="text-xs text-gray-500">{row.outcome}</span>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Resource</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {event.resource.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Type: {event.resource.type}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            ID: {event.resource.id}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Details</p>
-                        <pre className="text-xs text-gray-700 bg-white p-2 rounded border border-gray-200 overflow-x-auto">
-                          {JSON.stringify(event.details, null, 2)}
-                        </pre>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">User Agent</p>
-                        <p className="text-xs text-gray-600 truncate">
-                          {event.userAgent}
+                        <p className="text-sm text-gray-600 mt-1">{row.reasoning}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {formatDateTime(row.executedAt)}
+                          {row.subjectId ? ` · subject ${row.subjectId}` : ''}
+                          {row.policyRuleId ? ` · rule ${row.policyRuleId}` : ''}
                         </p>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  </button>
+                  {open && row.metadata && (
+                    <pre className="mx-4 mb-4 text-xs bg-gray-50 rounded p-3 border border-gray-200 overflow-x-auto">
+                      {JSON.stringify(row.metadata, null, 2)}
+                    </pre>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      </div>
-
-      {filteredEvents.length === 0 && (
-        <EmptyState
-          icon={<FileText className="h-8 w-8" />}
-          title="No events found"
-          description="Try adjusting your filters to see more audit events."
-        />
       )}
     </div>
   );

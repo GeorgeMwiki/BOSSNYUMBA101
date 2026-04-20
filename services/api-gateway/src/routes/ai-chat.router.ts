@@ -48,6 +48,7 @@ import {
   createGraphQueryService,
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
+import { getBrainExtraSkills } from '../composition/brain-extensions';
 import { v4 as uuid } from 'uuid';
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,7 @@ function registry() {
       },
       threadStoreBackend: backend,
       graphToolkit,
+      extraSkills: getBrainExtraSkills(),
     });
   });
   return registryCache;

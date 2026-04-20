@@ -131,6 +131,8 @@ import {
   createPostgresWebhookDeliveryRepository,
   createAmbientBehaviorObserver,
 } from './composition/background-wiring';
+import { setBrainExtraSkills } from './composition/brain-extensions';
+import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
 import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
 import { createOpenApiRouter } from './openapi';
@@ -295,6 +297,27 @@ try {
     'service-registry: initialization failed, falling back to degraded mode'
   );
   serviceRegistry = buildServices({ db: null });
+}
+
+// Wire the org-awareness query-organization skill into the Brain registry.
+// The brain factory (ai-chat.router / brain.hono) reads these extra skills
+// when it constructs per-tenant Brains, so Mr. Mwikila can answer
+// "show me my bottlenecks" / "how has arrears resolution improved" via
+// the same chat surface as every other skill.
+try {
+  const queryService = serviceRegistry.orgAwareness.queryService;
+  const orgSkill = buildQueryOrganizationTool({
+    async answer(req) {
+      return queryService.answer(req);
+    },
+  });
+  setBrainExtraSkills([orgSkill]);
+  logger.info('brain-extensions: org.query_organization skill wired');
+} catch (err) {
+  logger.warn(
+    { err: err instanceof Error ? err.message : String(err) },
+    'brain-extensions: failed to wire org skill (non-fatal)'
+  );
 }
 
 // Deep health cascade — admin-only; probes every upstream with 15s cache.

@@ -51,7 +51,20 @@
     "communications": "Mawasiliano",
     "compliance": "Compliance",
     "analytics": "Uchambuzi",
-    "integrations": "Ujumuishaji"
+    "integrations": "Ujumuishaji",
+    "orgInsights": "Maarifa ya Shirika",
+    "featureFlags": "Bendera za Vipengele",
+    "complianceSettings": "Mipangilio ya Usalama",
+    "dataPrivacy": "Faragha ya Data",
+    "aiCosts": "Gharama za AI",
+    "warehouse": "Ghala",
+    "maintenanceTaxonomy": "Uainishaji wa Matengenezo",
+    "iot": "Vihisi vya IoT",
+    "classroom": "Darasa",
+    "workflows": "Mfumo wa Kazi",
+    "apiIntegrations": "Ujumuishaji wa API",
+    "webhookDlq": "Foleni ya Webhook Walibo",
+    "legacyMigration": "Uhamaji wa Data ya Zamani"
   },
   "actions": {
     "signIn": "Ingia",

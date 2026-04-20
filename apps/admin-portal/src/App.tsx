@@ -52,6 +52,20 @@ import TrainingPage from './pages/Training';
 import DelegationMatrix from './pages/DelegationMatrix';
 import HeadOfEstates from './pages/HeadOfEstates';
 import ExceptionsPage from './pages/Exceptions';
+// Wave 15 — UI gap closure
+import ComplianceSettings from './pages/ComplianceSettings';
+import FeatureFlagsAdmin from './pages/FeatureFlags';
+import DataPrivacy from './pages/DataPrivacy';
+import AiCosts from './pages/AiCosts';
+import WarehousePage from './pages/Warehouse';
+import MaintenanceTaxonomy from './pages/MaintenanceTaxonomy';
+import IotSensors from './pages/IotSensors';
+import ClassroomPage from './pages/Classroom';
+import WorkflowsPage from './pages/Workflows';
+import ApiIntegrations from './pages/ApiIntegrations';
+import WebhookDLQ from './pages/WebhookDLQ';
+import OrgInsights from './pages/OrgInsights';
+import LegacyMigration from './pages/LegacyMigration';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -113,6 +127,19 @@ function AppRoutes() {
         <Route path="delegation" element={<DelegationMatrix />} />
         <Route path="head" element={<HeadOfEstates />} />
         <Route path="exceptions" element={<ExceptionsPage />} />
+        <Route path="org-insights" element={<OrgInsights />} />
+        <Route path="compliance-settings" element={<ComplianceSettings />} />
+        <Route path="feature-flags" element={<FeatureFlagsAdmin />} />
+        <Route path="data-privacy" element={<DataPrivacy />} />
+        <Route path="ai-costs" element={<AiCosts />} />
+        <Route path="warehouse" element={<WarehousePage />} />
+        <Route path="maintenance-taxonomy" element={<MaintenanceTaxonomy />} />
+        <Route path="iot" element={<IotSensors />} />
+        <Route path="classroom" element={<ClassroomPage />} />
+        <Route path="workflows" element={<WorkflowsPage />} />
+        <Route path="api-integrations" element={<ApiIntegrations />} />
+        <Route path="webhook-dlq" element={<WebhookDLQ />} />
+        <Route path="legacy-migration" element={<LegacyMigration />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />

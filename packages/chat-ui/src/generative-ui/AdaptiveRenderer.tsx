@@ -46,7 +46,6 @@ class BlockErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error) {
-    // eslint-disable-next-line no-console
     console.error(`[chat-ui] block error (${this.props.blockId})`, error);
   }
 
@@ -381,7 +380,6 @@ function DynamicVisualRenderer({ block }: { readonly block: DynamicVisualBlock }
         role="img"
         aria-label={block.alt ?? block.title ?? 'Visual'}
         // SVG comes from the block generator, not user input.
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: block.svg }}
       />
       {block.caption && <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{block.caption}</div>}

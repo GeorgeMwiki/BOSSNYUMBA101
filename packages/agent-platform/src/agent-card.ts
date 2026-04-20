@@ -29,7 +29,14 @@ export function generateAgentCard(deps: AgentCardDeps): AgentCard {
     provider: Object.freeze({
       organization: 'BOSSNYUMBA',
       url: deps.baseUrl,
-      contact: deps.contact ?? 'agents@bossnyumba.com',
+      // Platform-level contact. Prefer env override so the domain is not
+      // baked into the agent-platform package.
+      contact:
+        deps.contact ??
+        (typeof process !== 'undefined'
+          ? process.env?.AGENT_PLATFORM_CONTACT
+          : undefined) ??
+        'agents@example.com',
     }),
     capabilities: Object.freeze([
       Object.freeze({

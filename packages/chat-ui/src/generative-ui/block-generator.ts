@@ -80,7 +80,10 @@ export interface BlockGeneratorInput {
 }
 
 export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
-  const { responseText, toolCalls, defaultCurrency = 'KES' } = input;
+  // TODO(tenant-context): resolve defaultCurrency from
+  // `tenant.defaultCurrency` / `getDefaultCurrency(tenant.countryCode)` via
+  // @bossnyumba/compliance-plugins instead of the neutral 'USD' fallback.
+  const { responseText, toolCalls, defaultCurrency = 'USD' } = input;
   const blocks: UIBlock[] = [];
 
   if (

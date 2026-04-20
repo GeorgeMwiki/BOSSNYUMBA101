@@ -179,7 +179,11 @@ export function createBackgroundSupervisor(
         },
       };
 
-  const tasks = buildTaskCatalogue(buildTaskData(registry));
+  const baseCatalogue = buildTaskCatalogue(buildTaskData(registry));
+  const tasks = [
+    ...baseCatalogue,
+    ...buildExtensionTasks(registry, logger),
+  ];
 
   const scheduler = new BackgroundTaskScheduler({
     store: store as unknown as InstanceType<typeof InMemoryInsightStore>,
@@ -225,6 +229,112 @@ export function createBackgroundSupervisor(
       }
     },
   };
+}
+
+/**
+ * Wire previously-orphaned schedulables discovered during the Wave-15
+ * wiring audit:
+ *
+ *   - detect_bottlenecks   — scans the org-awareness process-miner every
+ *                            day at 04:00 UTC and persists surfaced stalls
+ *                            into the bottleneck store.
+ *   - memory_decay_sweep   — weekly exponential-decay pass over the
+ *                            semantic-memory table. Gated by the
+ *                            `ai.bg.memory_decay_sweep` feature flag.
+ *
+ * Both are pure functions of the registry and emit zero insights into the
+ * InsightStore — we count actual detections / decayed rows via the
+ * returned summary instead so existing dashboards continue to work.
+ */
+function buildExtensionTasks(
+  registry: ServiceRegistry,
+  logger: Logger,
+): readonly import('@bossnyumba/ai-copilot/background-intelligence').ScheduledTaskDefinition[] {
+  const tasks: import('@bossnyumba/ai-copilot/background-intelligence').ScheduledTaskDefinition[] = [];
+
+  // detect_bottlenecks — delegate to the org-awareness detector.
+  if (registry.orgAwareness?.bottleneckDetector) {
+    tasks.push({
+      name: 'detect_bottlenecks',
+      cron: '0 4 * * *',
+      description:
+        'Daily scan for chronic bottlenecks, stalls, and high reopen rates.',
+      featureFlagKey: 'ai.bg.detect_bottlenecks',
+      run: async (ctx) => {
+        const start = Date.now();
+        let surfaced: readonly unknown[] = [];
+        try {
+          surfaced = (await registry.orgAwareness.bottleneckDetector.detectForTenant(
+            ctx.tenantId,
+          )) as readonly unknown[];
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            'bg-task detect_bottlenecks failed',
+          );
+        }
+        return {
+          task: 'detect_bottlenecks',
+          tenantId: ctx.tenantId,
+          insightsEmitted: surfaced.length,
+          durationMs: Date.now() - start,
+          ranAt: ctx.now.toISOString(),
+        };
+      },
+    });
+  }
+
+  // memory_decay_sweep — best-effort: only wires if the ai-copilot memory
+  // module and a semantic-memory repository are available on the registry.
+  // In degraded mode we skip silently — operators see the scheduler
+  // registry includes the task but the runner reports zero scanned rows.
+  tasks.push({
+    name: 'memory_decay_sweep',
+    cron: '0 5 * * 0', // Sunday 05:00 UTC
+    description:
+      'Weekly exponential-decay pass over the semantic-memory store.',
+    featureFlagKey: 'ai.bg.memory_decay_sweep',
+    run: async (ctx) => {
+      const start = Date.now();
+      // Memory repo is not in the current registry; sweep is a no-op until
+      // the repo is plumbed. Kept registered so `listScheduledTasks()` is
+      // complete and ops can flip the flag when the repo lands.
+      let updated = 0;
+      try {
+        const repo = (registry as { semanticMemoryRepo?: unknown })
+          .semanticMemoryRepo;
+        if (repo) {
+          // Dynamically import to avoid a hard dependency when the memory
+          // module isn't in the graph (keeps the gateway start-up light).
+          const { sweepTenantDecay } = await import(
+            '@bossnyumba/ai-copilot'
+          ).catch(() => ({
+            sweepTenantDecay: null as
+              | null
+              | ((tenantId: string, deps: unknown) => Promise<{ updated: number }>),
+          }));
+          if (sweepTenantDecay) {
+            const res = await sweepTenantDecay(ctx.tenantId, { repo });
+            updated = (res as { updated?: number })?.updated ?? 0;
+          }
+        }
+      } catch (err) {
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          'bg-task memory_decay_sweep failed',
+        );
+      }
+      return {
+        task: 'memory_decay_sweep',
+        tenantId: ctx.tenantId,
+        insightsEmitted: updated,
+        durationMs: Date.now() - start,
+        ranAt: ctx.now.toISOString(),
+      };
+    },
+  });
+
+  return tasks;
 }
 
 function buildTaskData(_registry: ServiceRegistry): BackgroundTaskData {

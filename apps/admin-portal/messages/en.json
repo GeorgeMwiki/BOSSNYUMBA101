@@ -51,7 +51,20 @@
     "communications": "Communications",
     "compliance": "Compliance",
     "analytics": "Analytics",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "orgInsights": "Org Insights",
+    "featureFlags": "Feature Flags",
+    "complianceSettings": "Compliance Settings",
+    "dataPrivacy": "Data Privacy",
+    "aiCosts": "AI Costs",
+    "warehouse": "Warehouse",
+    "maintenanceTaxonomy": "Maintenance Taxonomy",
+    "iot": "IoT Sensors",
+    "classroom": "Classroom",
+    "workflows": "Workflows",
+    "apiIntegrations": "API Integrations",
+    "webhookDlq": "Webhook DLQ",
+    "legacyMigration": "Legacy Migration"
   },
   "actions": {
     "signIn": "Sign in",

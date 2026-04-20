@@ -320,5 +320,7 @@ function runMpesaReconcile(estate: SandboxEstate): ScenarioRun {
 }
 
 function currencyFormat(currency: 'KES' | 'TZS' | 'UGX'): (n: number) => string {
-  return (n: number) => `${currency} ${Math.round(n).toLocaleString('en-US')}`;
+  // Bare 'en' locale — only thousands separators matter in sandbox demos.
+  // TODO(tenant-context): take tenant.defaultLocale when sandbox gets it.
+  return (n: number) => `${currency} ${Math.round(n).toLocaleString('en')}`;
 }

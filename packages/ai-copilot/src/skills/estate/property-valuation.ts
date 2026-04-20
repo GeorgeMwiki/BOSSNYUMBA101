@@ -27,7 +27,10 @@ export const PropertyValuationParamsSchema = z.object({
   ageYears: z.number().int().nonnegative(),
   condition: z.enum(['excellent', 'good', 'fair', 'poor']).default('good'),
   comparables: z.array(ComparableSchema).min(1).max(30),
-  currency: z.enum(['KES', 'TZS', 'UGX', 'RWF']).default('KES'),
+  // TODO(tenant-context): allow any ISO-4217 currency — caller should pass
+  // `tenant.defaultCurrency` resolved from the country plugin. We keep the
+  // enum open-ended to support markets beyond East Africa.
+  currency: z.string().length(3).default('USD'),
 });
 export type PropertyValuationParams = z.infer<typeof PropertyValuationParamsSchema>;
 
@@ -108,7 +111,7 @@ export const propertyValuationTool: ToolHandler = {
       sqm: { type: 'number' },
       ageYears: { type: 'number' },
       condition: { type: 'string', enum: ['excellent', 'good', 'fair', 'poor'] },
-      currency: { type: 'string', enum: ['KES', 'TZS', 'UGX', 'RWF'] },
+      currency: { type: 'string', minLength: 3, maxLength: 3 },
       comparables: { type: 'array', items: { type: 'object' } },
     },
   },

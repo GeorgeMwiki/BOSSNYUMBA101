@@ -37,6 +37,7 @@ import {
   createGraphQueryService,
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
+import { getBrainExtraSkills } from '../composition/brain-extensions';
 
 // ---------------------------------------------------------------------------
 // Lazy boot — fail fast on missing env, but defer until first request so the
@@ -115,6 +116,7 @@ function registry() {
       },
       threadStoreBackend: backend,
       graphToolkit,
+      extraSkills: getBrainExtraSkills(),
     });
   });
   return registryCache;

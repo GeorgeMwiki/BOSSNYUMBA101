@@ -48,13 +48,31 @@ async function listExports(c) {
   const db = services?.db;
   if (!db) return notConfigured(c);
   const tenantId = c.get('tenantId');
-  const rows = await db
-    .select()
-    .from(complianceExports)
-    .where(eq(complianceExports.tenantId, tenantId))
-    .orderBy(desc(complianceExports.createdAt))
-    .limit(100);
-  return c.json({ success: true, data: rows });
+  try {
+    const rows = await db
+      .select()
+      .from(complianceExports)
+      .where(eq(complianceExports.tenantId, tenantId))
+      .orderBy(desc(complianceExports.createdAt))
+      .limit(100);
+    return c.json({ success: true, data: rows });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Query failed';
+    // Surface DB drift (missing table / schema mismatch) as a
+    // structured 503 instead of an unhandled 500. Keeps the JSON
+    // envelope intact for UAT + client error handling.
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'COMPLIANCE_EXPORTS_UNAVAILABLE',
+          message,
+        },
+      },
+      503,
+    );
+  }
 }
 
 // GET / and GET /exports both return the list so the acceptance curl hits 200.

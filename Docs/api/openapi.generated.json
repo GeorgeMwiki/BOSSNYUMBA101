@@ -2436,12 +2436,134 @@
         }
       }
     },
-    "/api/v1/scans/pages": {
+    "/api/v1/scans/bundles/{id}": {
+      "get": {
+        "tags": [
+          "scans"
+        ],
+        "summary": "GET /api/v1/scans/bundles/{id}",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scans/bundles/{id}/pages": {
       "post": {
         "tags": [
           "scans"
         ],
-        "summary": "POST /api/v1/scans/pages",
+        "summary": "POST /api/v1/scans/bundles/{id}/pages",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scans/bundles/{id}/ocr": {
+      "post": {
+        "tags": [
+          "scans"
+        ],
+        "summary": "POST /api/v1/scans/bundles/{id}/ocr",
         "security": [
           {
             "BearerAuth": []
@@ -2498,11 +2620,11 @@
       }
     },
     "/api/v1/letters": {
-      "get": {
+      "post": {
         "tags": [
           "letters"
         ],
-        "summary": "GET /api/v1/letters",
+        "summary": "POST /api/v1/letters",
         "security": [
           {
             "BearerAuth": []
@@ -2556,12 +2678,136 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/v1/letters/{id}": {
+      "get": {
+        "tags": [
+          "letters"
+        ],
+        "summary": "GET /api/v1/letters/{id}",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/letters/{id}/draft": {
       "post": {
         "tags": [
           "letters"
         ],
-        "summary": "POST /api/v1/letters",
+        "summary": "POST /api/v1/letters/{id}/draft",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/letters/{id}/submit-for-approval": {
+      "post": {
+        "tags": [
+          "letters"
+        ],
+        "summary": "POST /api/v1/letters/{id}/submit-for-approval",
         "security": [
           {
             "BearerAuth": []
@@ -2623,6 +2869,67 @@
           "letters"
         ],
         "summary": "POST /api/v1/letters/{id}/approve",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/letters/{id}/reject": {
+      "post": {
+        "tags": [
+          "letters"
+        ],
+        "summary": "POST /api/v1/letters/{id}/reject",
         "security": [
           {
             "BearerAuth": []
@@ -2867,65 +3174,6 @@
           "applications"
         ],
         "summary": "GET /api/v1/applications",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "202": {
-            "description": "Accepted (async)"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (tenant mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable (composition root degraded)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "applications"
-        ],
-        "summary": "POST /api/v1/applications",
         "security": [
           {
             "BearerAuth": []
@@ -3225,12 +3473,12 @@
         }
       }
     },
-    "/api/v1/risk-reports/{customerId}": {
+    "/api/v1/risk-reports": {
       "get": {
         "tags": [
           "risk-reports"
         ],
-        "summary": "GET /api/v1/risk-reports/{customerId}",
+        "summary": "GET /api/v1/risk-reports",
         "security": [
           {
             "BearerAuth": []
@@ -3347,71 +3595,12 @@
         }
       }
     },
-    "/api/v1/financial-profile/{customerId}/statements": {
+    "/api/v1/risk-reports/{customerId}/latest": {
       "get": {
         "tags": [
-          "financial-profile"
+          "risk-reports"
         ],
-        "summary": "GET /api/v1/financial-profile/{customerId}/statements",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "202": {
-            "description": "Accepted (async)"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (tenant mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable (composition root degraded)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "financial-profile"
-        ],
-        "summary": "POST /api/v1/financial-profile/{customerId}/statements",
+        "summary": "GET /api/v1/risk-reports/{customerId}/latest",
         "security": [
           {
             "BearerAuth": []
@@ -3467,71 +3656,12 @@
         }
       }
     },
-    "/api/v1/financial-profile/{customerId}/litigation": {
+    "/api/v1/financial-profile": {
       "get": {
         "tags": [
           "financial-profile"
         ],
-        "summary": "GET /api/v1/financial-profile/{customerId}/litigation",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "202": {
-            "description": "Accepted (async)"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (tenant mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable (composition root degraded)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "financial-profile"
-        ],
-        "summary": "POST /api/v1/financial-profile/{customerId}/litigation",
+        "summary": "GET /api/v1/financial-profile",
         "security": [
           {
             "BearerAuth": []
@@ -3587,12 +3717,317 @@
         }
       }
     },
-    "/api/v1/occupancy-timeline/{unitId}": {
+    "/api/v1/financial-profile/statements": {
+      "post": {
+        "tags": [
+          "financial-profile"
+        ],
+        "summary": "POST /api/v1/financial-profile/statements",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/financial-profile/statements/{id}/bank-ref": {
+      "post": {
+        "tags": [
+          "financial-profile"
+        ],
+        "summary": "POST /api/v1/financial-profile/statements/{id}/bank-ref",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/financial-profile/litigation": {
+      "post": {
+        "tags": [
+          "financial-profile"
+        ],
+        "summary": "POST /api/v1/financial-profile/litigation",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occupancy-timeline": {
       "get": {
         "tags": [
           "occupancy-timeline"
         ],
-        "summary": "GET /api/v1/occupancy-timeline/{unitId}",
+        "summary": "GET /api/v1/occupancy-timeline",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occupancy-timeline/{id}/occupancy-timeline": {
+      "get": {
+        "tags": [
+          "occupancy-timeline"
+        ],
+        "summary": "GET /api/v1/occupancy-timeline/{id}/occupancy-timeline",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occupancy-timeline/property/{propertyId}": {
+      "get": {
+        "tags": [
+          "occupancy-timeline"
+        ],
+        "summary": "GET /api/v1/occupancy-timeline/property/{propertyId}",
         "security": [
           {
             "BearerAuth": []
@@ -4376,12 +4811,134 @@
         }
       }
     },
-    "/api/v1/notification-webhooks/{provider}": {
+    "/api/v1/notification-webhooks/africastalking": {
       "post": {
         "tags": [
           "notification-webhooks"
         ],
-        "summary": "POST /api/v1/notification-webhooks/{provider}",
+        "summary": "POST /api/v1/notification-webhooks/africastalking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-webhooks/twilio": {
+      "post": {
+        "tags": [
+          "notification-webhooks"
+        ],
+        "summary": "POST /api/v1/notification-webhooks/twilio",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "202": {
+            "description": "Accepted (async)"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (tenant mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable (composition root degraded)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-webhooks/meta": {
+      "post": {
+        "tags": [
+          "notification-webhooks"
+        ],
+        "summary": "POST /api/v1/notification-webhooks/meta",
         "security": [
           {
             "BearerAuth": []

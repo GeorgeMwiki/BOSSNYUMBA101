@@ -152,7 +152,7 @@ export interface IMorningBriefingDataProvider {
   getAIInsights(tenantId: TenantId, propertyIds?: PropertyId[]): Promise<AIInsight[]>;
   getYesterdaySummary(tenantId: TenantId, propertyIds?: PropertyId[]): Promise<MorningBriefing['yesterdaySummary']>;
   getVendorUpdates(tenantId: TenantId): Promise<MorningBriefing['vendorUpdates']>;
-  getWeather?(location: string): Promise<WeatherInfo | null>;
+  getWeather?(location?: string): Promise<WeatherInfo | null>;
   getRecipients(tenantId: TenantId): Promise<BriefingRecipient[]>;
   getPortfolioStats(tenantId: TenantId, propertyIds?: PropertyId[]): Promise<MorningBriefing['portfolioSnapshot']>;
 }
@@ -215,7 +215,11 @@ export class MorningBriefingService {
       this.dataProvider.getVendorUpdates(tenantId),
       this.dataProvider.getPortfolioStats(tenantId, propertyIds),
       this.getKPIAlerts(tenantId, propertyIds),
-      this.dataProvider.getWeather?.('Dar es Salaam') ?? Promise.resolve(null),
+      // TODO(tenant-context): weather location should come from
+      // `tenant.primaryCity` / tenant office location, not a hardcoded
+      // string. Passing undefined lets the provider fall back to its
+      // own default or skip the lookup.
+      this.dataProvider.getWeather?.() ?? Promise.resolve(null),
     ]);
 
     // Build quick metrics
@@ -223,7 +227,9 @@ export class MorningBriefingService {
 
     // Generate personalized greeting
     const greeting = this.generateGreeting(recipient.name, now);
-    const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+    // TODO(tenant-context): locale should come from recipient.locale /
+    // tenant.defaultLocale. Using bare 'en' fallback until plumbed.
+    const dayOfWeek = now.toLocaleDateString('en', { weekday: 'long' });
 
     return {
       id: `briefing_${tenantId}_${now.toISOString().split('T')[0]}_${recipient.userId}`,

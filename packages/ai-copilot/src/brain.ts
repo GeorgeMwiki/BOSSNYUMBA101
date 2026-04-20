@@ -66,6 +66,13 @@ export interface BrainConfig {
   graphToolkit?: GraphToolkitLike;
   /** Default per-turn token budget (cost ceiling). */
   defaultTokenBudget?: number;
+  /**
+   * Additional ToolHandlers to register on top of the default skill bundle.
+   * Used by the composition root to inject services that can only be
+   * constructed at boot (e.g. the org-awareness query service, which needs
+   * the shared event bus + bottleneck store).
+   */
+  extraSkills?: ReadonlyArray<import('./orchestrator/tool-dispatcher.js').ToolHandler>;
 }
 
 export interface Brain {
@@ -113,6 +120,9 @@ export function createBrain(cfg: BrainConfig): Brain {
 
   const tools = new ToolDispatcher(threads);
   registerDefaultSkills(tools, { graphToolkit: cfg.graphToolkit });
+  if (cfg.extraSkills) {
+    for (const skill of cfg.extraSkills) tools.register(skill);
+  }
 
   const orchestrator = new Orchestrator({
     personas,
@@ -136,6 +146,7 @@ export interface BrainForTestingConfig {
   personaOverrides?: Persona[];
   graphToolkit?: GraphToolkitLike;
   defaultTokenBudget?: number;
+  extraSkills?: ReadonlyArray<import('./orchestrator/tool-dispatcher.js').ToolHandler>;
 }
 
 /**
@@ -153,6 +164,9 @@ export function createBrainForTesting(cfg: BrainForTestingConfig = {}): Brain {
   const reviewService = createReviewService();
   const tools = new ToolDispatcher(threads);
   registerDefaultSkills(tools, { graphToolkit: cfg.graphToolkit });
+  if (cfg.extraSkills) {
+    for (const skill of cfg.extraSkills) tools.register(skill);
+  }
   const orchestrator = new Orchestrator({
     personas,
     threads,

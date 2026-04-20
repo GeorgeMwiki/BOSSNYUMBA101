@@ -14,6 +14,7 @@ export * from './domain/index.js';
 export * from './graph/index.js';
 export * from './estate/index.js';
 export * from './admin/index.js';
+export * from './org/index.js';
 
 import { KENYA_SKILL_TOOLS } from './kenya/index.js';
 import { DOMAIN_SKILL_TOOLS } from './domain/index.js';

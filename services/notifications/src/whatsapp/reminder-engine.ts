@@ -622,7 +622,10 @@ export class ReminderEngine {
       day: 'numeric',
     };
 
-    const locale = language === 'sw' ? 'sw-TZ' : 'en-US';
+    // TODO(tenant-context): resolve locale from `tenant.defaultLocale` /
+    // compliance-plugin rather than hardcoding 'sw-TZ' / 'en-US'. Bare
+    // language tags are used so the browser picks a sensible default.
+    const locale = language === 'sw' ? 'sw' : 'en';
     return date.toLocaleDateString(locale, options);
   }
 

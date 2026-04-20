@@ -212,10 +212,10 @@ export function extractTeachingData(
   responseText: string,
 ): Partial<TeachingModeData> {
   const keyPoints: string[] = [];
-  const bulletMatches = responseText.match(/^[\-\*]\s+(.+)$/gm);
+  const bulletMatches = responseText.match(/^[-*]\s+(.+)$/gm);
   if (bulletMatches) {
     for (const match of bulletMatches.slice(0, 5)) {
-      keyPoints.push(match.replace(/^[\-\*]\s+/, '').trim());
+      keyPoints.push(match.replace(/^[-*]\s+/, '').trim());
     }
   }
 
@@ -286,7 +286,7 @@ export function extractReviewData(
   const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
 
   const deltaMatch = responseText.match(
-    /(?:increased|improved)\s*(?:by\s*)?\+?(\d{1,3})%/i,
+    /(?:increased|improved)(?: by)? \+?(\d{1,3})%/i,
   );
   const masteryDelta = deltaMatch ? parseInt(deltaMatch[1], 10) / 100 : 0;
 

@@ -82,7 +82,10 @@ export type TaskName =
   | 'compliance_expiry_check'
   | 'cost_ledger_rollup'
   | 'vendor_performance_digest'
-  | 'tenant_health_5ps_recompute';
+  | 'tenant_health_5ps_recompute'
+  // Wave-15 wiring-audit extensions — previously orphaned schedulables.
+  | 'detect_bottlenecks'
+  | 'memory_decay_sweep';
 
 export interface ScheduledTaskDefinition {
   readonly name: TaskName;

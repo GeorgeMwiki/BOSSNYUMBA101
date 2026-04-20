@@ -20,6 +20,19 @@ import {
   LineChart,
   Plug,
   Brain,
+  Boxes,
+  Wrench,
+  Radio,
+  Workflow,
+  Coins,
+  Lock,
+  Flag,
+  KeyRound,
+  UploadCloud,
+  GraduationCap,
+  TrendingUp,
+  Inbox,
+  ShieldCheck as ShieldCheckIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +55,19 @@ const navigation = [
   { name: 'Configuration', href: '/configuration', icon: Settings },
   { name: 'Audit Log', href: '/audit', icon: FileText },
   { name: 'System Health', href: '/system', icon: Server },
+  { name: 'Org Insights', href: '/org-insights', icon: TrendingUp },
+  { name: 'Feature Flags', href: '/feature-flags', icon: Flag },
+  { name: 'Compliance Settings', href: '/compliance-settings', icon: ShieldCheckIcon },
+  { name: 'Data Privacy', href: '/data-privacy', icon: Lock },
+  { name: 'AI Costs', href: '/ai-costs', icon: Coins },
+  { name: 'Warehouse', href: '/warehouse', icon: Boxes },
+  { name: 'Maintenance Taxonomy', href: '/maintenance-taxonomy', icon: Wrench },
+  { name: 'IoT Sensors', href: '/iot', icon: Radio },
+  { name: 'Classroom', href: '/classroom', icon: GraduationCap },
+  { name: 'Workflows', href: '/workflows', icon: Workflow },
+  { name: 'API Integrations', href: '/api-integrations', icon: KeyRound },
+  { name: 'Webhook DLQ', href: '/webhook-dlq', icon: Inbox },
+  { name: 'Legacy Migration', href: '/legacy-migration', icon: UploadCloud },
 ];
 
 export function Layout() {

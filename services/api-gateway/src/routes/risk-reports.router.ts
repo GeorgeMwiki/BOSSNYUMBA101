@@ -42,20 +42,76 @@ riskReportsRouter.post('/:customerId/generate', async (c) => {
   const tenantId = c.get('tenantId');
   const userId = c.get('userId');
   const service = c.get('riskReportService');
-  const result = await service.generate(tenantId, customerId, userId);
-  return result.ok
-    ? c.json({ success: true, data: result.value }, 201)
-    : c.json({ success: false, error: result.error }, 400);
+  if (!service) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'RISK_REPORT_SERVICE_UNAVAILABLE',
+          message: 'RiskReportService not configured',
+        },
+      },
+      503,
+    );
+  }
+  try {
+    const result = await service.generate(tenantId, customerId, userId);
+    return result.ok
+      ? c.json({ success: true, data: result.value }, 201)
+      : c.json({ success: false, error: result.error }, 400);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Generation failed';
+    // Foreign-key / check violations are caller errors (unknown
+    // customer), so return 400 with structured JSON. Everything else
+    // stays a real 500 so ops can alert on it.
+    const isConstraint =
+      /foreign key|violates|check constraint/i.test(message);
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: isConstraint ? 'RISK_REPORT_INVALID_INPUT' : 'RISK_REPORT_FAILED',
+          message,
+        },
+      },
+      isConstraint ? 400 : 500,
+    );
+  }
 });
 
 riskReportsRouter.get('/:customerId/latest', async (c) => {
   const customerId = c.req.param('customerId');
   const tenantId = c.get('tenantId');
   const service = c.get('riskReportService');
-  const result = await service.getLatest(tenantId, customerId);
-  return result.ok
-    ? c.json({ success: true, data: result.value })
-    : c.json({ success: false, error: result.error }, 404);
+  if (!service) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'RISK_REPORT_SERVICE_UNAVAILABLE',
+          message: 'RiskReportService not configured',
+        },
+      },
+      503,
+    );
+  }
+  try {
+    const result = await service.getLatest(tenantId, customerId);
+    return result.ok
+      ? c.json({ success: true, data: result.value })
+      : c.json({ success: false, error: result.error }, 404);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Lookup failed';
+    return c.json(
+      {
+        success: false,
+        error: { code: 'RISK_REPORT_FAILED', message },
+      },
+      500,
+    );
+  }
 });
 
 export default riskReportsRouter;

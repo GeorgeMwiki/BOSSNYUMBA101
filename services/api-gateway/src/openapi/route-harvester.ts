@@ -14,13 +14,24 @@
  */
 
 import type { Hono } from 'hono';
-import type { ZodTypeAny } from 'zod';
-import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
+import { z, type ZodTypeAny } from 'zod';
+import {
+  OpenAPIRegistry,
+  OpenApiGeneratorV31,
+  extendZodWithOpenApi,
+} from '@asteasolutions/zod-to-openapi';
 import {
   getRouteMeta,
   listRegisteredRoutes,
   type OpenApiRouteMeta,
 } from './schema-registry';
+
+// Extend Zod with `.openapi()` once at module load — `@asteasolutions/zod-to-openapi`
+// reflects on schemas via a method patched onto ZodType.prototype, which
+// is absent until this runs. Without the extension, `generateDocument`
+// throws `schema.openapi is not a function` the first time any route
+// declares request params/query/body.
+extendZodWithOpenApi(z);
 
 export interface MountedRouter {
   /** Mount prefix as seen from `/api/v1` (e.g. `/applications`). */
