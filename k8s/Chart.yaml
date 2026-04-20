@@ -1,0 +1,15 @@
+apiVersion: v2
+name: bossnyumba
+description: BOSSNYUMBA — multi-tenant property-management AI platform (Helm chart)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: BOSSNYUMBA Platform
+    email: platform@bossnyumba.com
+keywords:
+  - property-management
+  - saas
+  - ai
+  - multi-tenant
+home: https://bossnyumba.com

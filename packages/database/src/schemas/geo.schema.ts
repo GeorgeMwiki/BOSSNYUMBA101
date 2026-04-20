@@ -6,8 +6,9 @@
  *
  * Design notes:
  *  - Each organization defines its OWN label vocabulary and nesting direction
- *    (TRC: Districts > Regions > Stations). `geo_label_types.depth` is
- *    ORDINAL; it carries no cross-org semantic meaning.
+ *    (e.g. a multi-district public-sector estate client: Districts > Regions
+ *    > Stations). `geo_label_types.depth` is ORDINAL; it carries no cross-org
+ *    semantic meaning.
  *  - Arbitrary depth supported via `geo_nodes.parent_id`.
  *  - `geo_node_closure` is a classic closure table: one row per
  *    (ancestor, descendant) pair, including depth=0 self-pairs.

@@ -2,7 +2,7 @@
  * Seed runner CLI.
  *
  * Usage:
- *   pnpm db:seed --org=trc
+ *   pnpm db:seed --org=demo
  *   pnpm db:seed --org=all
  *
  * Each org seed is invoked inside its own transaction (managed by the seed
@@ -14,7 +14,7 @@
  */
 
 import { createDatabaseClient } from '../client.js';
-import { seedTrc } from './trc-seed.js';
+import { seedDemoOrg } from './demo-org-seed.js';
 import { seedMaintenanceTaxonomyPlatformDefaults } from './maintenance-taxonomy.seed.js';
 
 interface ParsedArgs {
@@ -31,7 +31,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   }
   if (!org) {
     throw new Error(
-      'Missing --org=<name> flag. Try --org=trc or --org=all.',
+      'Missing --org=<name> flag. Try --org=demo or --org=all.',
     );
   }
   return { org };
@@ -50,8 +50,8 @@ function requireEnv(name: string): string {
 type OrgSeedRunner = (db: ReturnType<typeof createDatabaseClient>) => Promise<void>;
 
 const ORG_SEEDS: Record<string, OrgSeedRunner> = {
-  trc: seedTrc,
-  // future: mkotikoti, kilimani, etc.
+  demo: seedDemoOrg,
+  // future: additional per-org fixture bundles.
 };
 
 // Platform-default seeds — cross-tenant catalogs (no tenant data). Safe to
@@ -62,6 +62,21 @@ const PLATFORM_SEEDS: Record<string, OrgSeedRunner> = {
     const res = await seedMaintenanceTaxonomyPlatformDefaults(db);
     console.log(
       `[run-seed]   maintenance taxonomy: ${res.categoriesInserted} categories, ${res.problemsInserted} problems`,
+    );
+  },
+  // Knowledge-base RAG corpus. The runner logs guidance for wiring the
+  // Drizzle knowledge store — the authoritative seed function lives in the
+  // ai-copilot package (`seedPlatformKnowledge`). Keep this entry so
+  // operators discover the workflow.
+  'knowledge-base': async () => {
+    console.log(
+      '[run-seed]   knowledge-base: invoke seedPlatformKnowledge from',
+    );
+    console.log(
+      '[run-seed]   @bossnyumba/ai-copilot with a DrizzleKnowledgeStore',
+    );
+    console.log(
+      '[run-seed]   bound to this database. See packages/ai-copilot/src/knowledge/platform-seed.ts.',
     );
   },
 };

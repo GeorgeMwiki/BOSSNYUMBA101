@@ -1,0 +1,47 @@
+{{- if .Values.ingress.enabled -}}
+{{- $root := . -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "bossnyumba.fullname" . }}
+  labels:
+    {{- include "bossnyumba.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - api.bossnyumba.com
+        {{- range $name, $app := .Values.apps }}
+        {{- if $app.enabled }}
+        - {{ $app.host }}
+        {{- end }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: api.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "bossnyumba.fullname" . }}-gateway
+                port:
+                  name: http
+    {{- range $name, $app := .Values.apps }}
+    {{- if $app.enabled }}
+    - host: {{ $app.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "bossnyumba.fullname" $root }}-{{ $name | kebabcase }}
+                port:
+                  name: http
+    {{- end }}
+    {{- end }}
+{{- end -}}

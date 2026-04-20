@@ -1,9 +1,9 @@
 -- =============================================================================
 -- 0028: Maintenance problem taxonomy — Wave 8 gap closure (S7)
 -- =============================================================================
--- TRC directive: "which problems repeat the most often, just wear and tear.
--- Okay, let's create, have a wide variety of problems that people can choose
--- from, which will be precision."
+-- Customer-research directive: "which problems repeat the most often, just
+-- wear and tear. Okay, let's create, have a wide variety of problems that
+-- people can choose from, which will be precision."
 --
 -- Professional maintenance taxonomy, seeded per-tenant so orgs can tailor
 -- it without losing the curated baseline. Two tables:

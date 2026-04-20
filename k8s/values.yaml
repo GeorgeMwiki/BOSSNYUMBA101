@@ -1,0 +1,183 @@
+# =============================================================================
+# BOSSNYUMBA Helm values
+# =============================================================================
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io
+  repository: georgemwikila/bossnyumba
+  pullPolicy: IfNotPresent
+  tag: latest
+
+imagePullSecrets: []
+
+# ----------------------------------------------------------------------------
+# Gateway (api.bossnyumba.com)
+# ----------------------------------------------------------------------------
+gateway:
+  replicaCount: 3
+  image:
+    name: api-gateway
+    tag: ""    # falls back to global image.tag
+  service:
+    type: ClusterIP
+    port: 4000
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  probes:
+    liveness:
+      path: /healthz
+      initialDelaySeconds: 20
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /readyz
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    PORT: "4000"
+  envFromSecret: bossnyumba-secrets
+
+# ----------------------------------------------------------------------------
+# Apps
+# ----------------------------------------------------------------------------
+apps:
+  customer:
+    enabled: true
+    replicaCount: 2
+    image: { name: customer-app, tag: "" }
+    port: 3000
+    host: bossnyumba.com
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  estateManager:
+    enabled: true
+    replicaCount: 2
+    image: { name: estate-manager-app, tag: "" }
+    port: 3000
+    host: manage.bossnyumba.com
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  ownerPortal:
+    enabled: true
+    replicaCount: 2
+    image: { name: owner-portal, tag: "" }
+    port: 80
+    host: owners.bossnyumba.com
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { cpu: 500m, memory: 256Mi }
+  adminPortal:
+    enabled: true
+    replicaCount: 2
+    image: { name: admin-portal, tag: "" }
+    port: 80
+    host: admin.bossnyumba.com
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { cpu: 500m, memory: 256Mi }
+
+# ----------------------------------------------------------------------------
+# Postgres (in-cluster; swap for managed RDS in real prod via values override)
+# ----------------------------------------------------------------------------
+postgres:
+  enabled: true
+  image: postgres:15-alpine
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2000m, memory: 4Gi }
+
+# ----------------------------------------------------------------------------
+# Redis
+# ----------------------------------------------------------------------------
+redis:
+  enabled: true
+  image: redis:7-alpine
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+# ----------------------------------------------------------------------------
+# Ingress (nginx + cert-manager)
+# ----------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+  tlsSecretName: bossnyumba-tls
+
+# ----------------------------------------------------------------------------
+# Secrets (external-secrets operator — values below are placeholders only;
+# real values come from AWS Secrets Manager / GCP Secret Manager / Vault.)
+# ----------------------------------------------------------------------------
+secrets:
+  externalSecrets:
+    enabled: false
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: bossnyumba-store
+  # Used only when externalSecrets.enabled=false (e.g. local kind cluster).
+  inline:
+    POSTGRES_PASSWORD: "CHANGE_ME"
+    REDIS_PASSWORD: "CHANGE_ME"
+    NEO4J_PASSWORD: "CHANGE_ME"
+    JWT_SECRET: "CHANGE_ME"
+    ANTHROPIC_API_KEY: ""
+    OPENAI_API_KEY: ""
+    ELEVENLABS_API_KEY: ""
+    SENTRY_DSN: ""
+    POSTHOG_API_KEY: ""
+
+# ----------------------------------------------------------------------------
+# ServiceMonitor for Prometheus
+# ----------------------------------------------------------------------------
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    path: /api/v1/metrics
+
+# Pod security defaults
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

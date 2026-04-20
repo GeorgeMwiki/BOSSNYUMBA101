@@ -1,4 +1,3 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
 /**
  * GET /api/v1/metrics — admin-only snapshot of the in-process metrics
  * registry.
@@ -20,12 +19,13 @@
 import { Hono } from 'hono';
 import { getMetricsRegistry } from '../observability/metrics-registry.js';
 
-export const metricsRouter = new Hono();
+type AuthedVars = { user?: { role?: string; id?: string } };
+export const metricsRouter = new Hono<{ Variables: AuthedVars }>();
 
 metricsRouter.get('/', async (c) => {
   // Admin-only — auth middleware upstream will have validated the JWT
   // and set c.get('user') with role. We double-check here defensively.
-  const user = c.get('user') as { role?: string } | undefined;
+  const user = c.get('user');
   const isAdmin =
     user?.role === 'admin' ||
     user?.role === 'super_admin' ||

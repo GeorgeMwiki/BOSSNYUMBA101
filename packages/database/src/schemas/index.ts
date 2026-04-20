@@ -156,7 +156,19 @@ export * from './ai-semantic-memory.schema.js';
 // Wave 11 — AI Classroom (Bayesian Knowledge Tracing for staff training).
 export * from './classroom.schema.js';
 
+// Adaptive Training — admin-driven, Mr. Mwikila-generated training paths.
+// Sits on top of classroom BKT; replaces the rigid classroom/course model.
+export * from './training.schema.js';
+
 // Wave 12 — Intelligence Orchestrator + Progressive Intelligence.
 // Decision feedback, proactive alerts, progressive context snapshots.
 export * from './ai-intelligence-feedback.schema.js';
 export * from './progressive-context.schema.js';
+
+// Wave 13 — Autonomous Department Mode.
+// Per-tenant autonomy policies, exception inbox for head-of-department,
+// executive briefings, and every autonomous action's reasoning audit.
+export * from './autonomy.schema.js';
+
+// Marketing leads — post-chat handoff profiles for signup pre-fill.
+export * from './marketing-leads.schema.js';

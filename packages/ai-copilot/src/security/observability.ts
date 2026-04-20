@@ -59,7 +59,7 @@ export function createSecurityObservability(
 ): SecurityObservability {
   const genId =
     deps.idGenerator ??
-    (() => `trc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
+    (() => `trace_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
   const now = deps.now ?? (() => new Date());
   const collectors: SecurityEventCollector[] = [];
 

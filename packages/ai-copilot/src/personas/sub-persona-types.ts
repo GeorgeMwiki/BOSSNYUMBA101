@@ -35,7 +35,8 @@ export type SubPersonaId =
   | 'compliance'
   | 'communications'
   | 'professor'
-  | 'advisor';
+  | 'advisor'
+  | 'consultant';
 
 // ============================================================================
 // Sub-Persona Configuration
@@ -103,6 +104,7 @@ import { COMPLIANCE_PROMPT_LAYER } from './sub-personas/compliance-persona.js';
 import { COMMUNICATIONS_PROMPT_LAYER } from './sub-personas/communications-persona.js';
 import { PROFESSOR_PROMPT_LAYER } from './sub-personas/professor-persona.js';
 import { ADVISOR_PROMPT_LAYER } from './sub-personas/advisor-persona.js';
+import { CONSULTANT_PROMPT_LAYER } from './sub-personas/consultant-persona.js';
 
 export const SUB_PERSONA_REGISTRY: Readonly<Record<SubPersonaId, SubPersonaConfig>> = {
   finance: {
@@ -337,6 +339,49 @@ export const SUB_PERSONA_REGISTRY: Readonly<Record<SubPersonaId, SubPersonaConfi
       'practice problem',
       'quiz me',
       'study mode',
+    ],
+  },
+
+  consultant: {
+    id: 'consultant',
+    displayLabel: 'BossNyumba Consultant',
+    displayLabelSw: 'Mshauri wa Kimkakati wa BossNyumba',
+    promptLayer: CONSULTANT_PROMPT_LAYER,
+    toneOverrides: {
+      warmth: 'warm',
+      depth: 'deep',
+      pace: 'measured',
+      formality: 'professional',
+    },
+    preferredTools: [
+      'get_portfolio_overview',
+      'get_property_rollup',
+      'skill.core.advise',
+      'skill.estate.dcf_valuation',
+      'skill.estate.npv_repair_vs_replace',
+      'skill.estate.board_report_composer',
+      'skill.estate.rent_repricing_memo',
+    ],
+    routePatterns: ['/strategy/*', '/advisory/*', '/consulting/*'],
+    keywordSignals: [
+      'strategic advice',
+      'help me structure',
+      'what should i do about',
+      'draft a strategy',
+      'draft a plan',
+      'advise me on',
+      'structure the deal',
+      'refinance or sell',
+      'refurbish or divest',
+      'should we acquire',
+      'how do i decide',
+      'board memo',
+      'recommendation memo',
+      'trade-offs',
+      'options analysis',
+      'decision memo',
+      'first 90 days',
+      'post-acquisition plan',
     ],
   },
 

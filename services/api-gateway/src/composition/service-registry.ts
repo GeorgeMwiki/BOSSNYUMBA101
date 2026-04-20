@@ -143,6 +143,15 @@ import {
   createClassroomService,
   type ClassroomService,
 } from './classroom-wiring.js';
+import {
+  createTrainingAdminEndpoints,
+  createTrainingGenerator,
+  createTrainingAssignmentService,
+  createTrainingDeliveryService,
+  createInMemoryTrainingRepository,
+  type TrainingAdminEndpoints,
+  type MasteryPort,
+} from '@bossnyumba/ai-copilot/training';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,6 +200,7 @@ export interface ServiceRegistry {
   readonly mcp: BossnyumbaMcpServer | null;
   readonly agentCertification: AgentCertificationService | null;
   readonly classroom: ClassroomService | null;
+  readonly training: TrainingAdminEndpoints | null;
   readonly voice: VoiceRouter | null;
 
   /** Single shared in-process event bus. */
@@ -241,6 +251,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     mcp: null,
     agentCertification: null,
     classroom: null,
+    training: null,
     voice: null,
     eventBus,
     db: null,
@@ -479,6 +490,58 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
   // Wave 12 — Classroom (BKT-backed with Postgres persistence).
   const classroom = createClassroomService(db);
 
+  // Adaptive Training — sits on top of classroom BKT and uses the in-memory
+  // repo for pilot (the Postgres adapter lives in the training module and
+  // can be dropped in once the training tables are migrated live).
+  const trainingRepo = createInMemoryTrainingRepository();
+  const trainingGenerator = createTrainingGenerator({});
+  const trainingMastery: MasteryPort = {
+    async getMastery(tenantId: string, userId: string) {
+      const rows = (await classroom.getMastery(tenantId, userId)) ?? [];
+      const map: Record<string, number> = {};
+      for (const r of rows as ReadonlyArray<{ conceptId: string; pKnow: number }>) {
+        map[r.conceptId] = r.pKnow;
+      }
+      return map;
+    },
+  };
+  const trainingAssignmentService = createTrainingAssignmentService({
+    repo: trainingRepo,
+    eventBus: {
+      async publish(evt) {
+        await eventBus.publish({
+          event: evt as unknown as never,
+          version: 1,
+          aggregateId: (evt.payload as { assignmentId?: string }).assignmentId ?? 'training',
+          aggregateType: 'TrainingAssignment',
+        });
+      },
+    },
+    featureFlags: featureFlagsService
+      ? {
+          async isEnabled(tenantId: string, flag: string) {
+            try {
+              return await (featureFlagsService as unknown as {
+                isEnabled(t: string, f: string): Promise<boolean>;
+              }).isEnabled(tenantId, flag);
+            } catch {
+              return true;
+            }
+          },
+        }
+      : null,
+  });
+  const trainingDeliveryService = createTrainingDeliveryService({
+    repo: trainingRepo,
+    mastery: trainingMastery,
+  });
+  const training = createTrainingAdminEndpoints({
+    generator: trainingGenerator,
+    assignmentService: trainingAssignmentService,
+    deliveryService: trainingDeliveryService,
+    repo: trainingRepo,
+  });
+
   // Wave 12 — Voice router. If neither ELEVENLABS_API_KEY nor OPENAI_API_KEY
   // is set, `voice` stays null and the HTTP router returns a clean 503
   // with a MISSING_KEY reason.
@@ -539,6 +602,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     mcp: null,
     agentCertification,
     classroom,
+    training,
     voice,
     eventBus,
     db,

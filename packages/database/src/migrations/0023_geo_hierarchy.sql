@@ -4,8 +4,8 @@
 -- Materializes GeoLabelType / GeoNode / GeoNodeClosure / GeoAssignment.
 --
 -- Each organization defines its OWN label vocabulary and nesting direction
--- (e.g. TRC: Districts > Regions > Stations). `depth` is ORDINAL; it has no
--- cross-org semantic meaning.
+-- (e.g. a multi-district public-sector estate client: Districts > Regions >
+-- Stations). `depth` is ORDINAL; it has no cross-org semantic meaning.
 --
 -- Polygons use JSONB (GeoJSON RFC 7946) for portability. A later migration
 -- can swap in PostGIS geometry columns without changing domain-model types.

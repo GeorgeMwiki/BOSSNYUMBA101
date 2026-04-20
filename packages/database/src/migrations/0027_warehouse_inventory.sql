@@ -1,9 +1,9 @@
 -- =============================================================================
 -- 0027: Warehouse inventory — Wave 8 gap closure (S7)
 -- =============================================================================
--- TRC directive: "Tracking appliances installed or changed... literally knowing
--- what's in our warehouses, whether it is broken or it's functioning or
--- whatever, it was changed, it was bought, it's new."
+-- Customer-research directive: "Tracking appliances installed or changed...
+-- literally knowing what's in our warehouses, whether it is broken or it's
+-- functioning or whatever, it was changed, it was bought, it's new."
 --
 -- asset_components tracks items INSTALLED in units. This migration adds the
 -- complementary warehouse_items + warehouse_movements tables for items that

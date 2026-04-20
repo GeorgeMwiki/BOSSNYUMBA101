@@ -21,6 +21,10 @@ import {
   useChatStream,
   type AdaptiveMessageMetadata,
 } from '@bossnyumba/chat-ui';
+import { LiveArrearsDemo } from '@/components/marketing/LiveArrearsDemo';
+import { LiveAffordabilityDemo } from '@/components/marketing/LiveAffordabilityDemo';
+import { LiveConsultantDemo } from '@/components/marketing/LiveConsultantDemo';
+import { HandoffCard, type SignupPrefill } from '@/components/marketing/HandoffCard';
 
 interface ChatTurn {
   readonly id: string;
@@ -49,6 +53,7 @@ export default function HomePage() {
   const [roleHint, setRoleHint] = useState<RoleHint | null>(null);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const [suggestedRoute, setSuggestedRoute] = useState<string | null>(null);
+  const [handoffPrefill, setHandoffPrefill] = useState<SignupPrefill | null>(null);
 
   // Hydrate session id / role hint from sessionStorage once, client-side only.
   useEffect(() => {
@@ -130,8 +135,39 @@ export default function HomePage() {
       setActiveAssistantId(assistantId);
       setInput('');
       await sendStream(payloadText);
+
+      // Fire-and-forget handoff detection. Runs after the turn so the
+      // transcript + latest message are complete. Idempotent per
+      // sessionId server-side — resuming in 24h surfaces the same lead.
+      if (sessionId) {
+        void fetch('/api/v1/public/leads/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            transcript: turns.map((t) => ({ role: t.role, content: t.content })),
+            latestMessage: payloadText,
+          }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data: unknown) => {
+            if (!data || typeof data !== 'object') return;
+            const payload = data as {
+              readonly data?: {
+                readonly shouldHandoff?: boolean;
+                readonly signupPrefill?: SignupPrefill;
+              };
+            };
+            if (payload.data?.shouldHandoff && payload.data.signupPrefill) {
+              setHandoffPrefill(payload.data.signupPrefill);
+            }
+          })
+          .catch(() => {
+            // Handoff is non-critical — swallow network errors.
+          });
+      }
     },
-    [state.isStreaming, sendStream, roleHint],
+    [state.isStreaming, sendStream, roleHint, sessionId, turns],
   );
 
   const pickRole = useCallback(
@@ -287,10 +323,23 @@ export default function HomePage() {
             )}
           </div>
 
+          {handoffPrefill && <HandoffCard prefill={handoffPrefill} />}
+
           <footer className="mt-6 text-center text-xs text-slate-500 lg:text-left">
             Session id: {sessionId ? <span className="font-mono">{sessionId}</span> : '—'}. Data is
             not stored until you join the waitlist or create an account.
           </footer>
+
+          <section className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-1">
+            <h2 className="text-2xl font-semibold text-slate-900">See Mr. Mwikila work</h2>
+            <p className="text-sm text-slate-600">
+              Three self-contained demos. No signup, no email capture — just proof that the brain is
+              real.
+            </p>
+            <LiveArrearsDemo />
+            <LiveAffordabilityDemo />
+            <LiveConsultantDemo />
+          </section>
         </div>
 
         <aside className="hidden lg:block">

@@ -5,7 +5,8 @@
  *
  * Design summary (see Docs/analysis/CONFLICT_RESOLUTIONS.md §3):
  *   - Each organization defines its OWN label vocabulary and nesting direction
- *     (e.g. TRC: Districts > Regions; a Kenyan org: Counties > Sub-counties > Wards).
+ *     (e.g. a public-sector estate client: Districts > Regions; a Kenyan org:
+ *     Counties > Sub-counties > Wards).
  *   - Arbitrary depth (N-level nesting) via `GeoNode.parentId`.
  *   - Each node optionally carries a GeoJSON polygon for map rendering and
  *     point-in-polygon classification.
@@ -79,11 +80,11 @@ export interface GeoPolygon {
  * Org-defined label for a single ordinal depth in its hierarchy.
  *
  * Examples:
- *   TRC:        depth=0 "District", depth=1 "Region", depth=2 "Ward".
- *   Kenyan org: depth=0 "County",   depth=1 "Sub-county", depth=2 "Ward".
+ *   Public-sector estate: depth=0 "District", depth=1 "Region", depth=2 "Ward".
+ *   Kenyan org:           depth=0 "County",   depth=1 "Sub-county", depth=2 "Ward".
  *
  * `depth` is ORDINAL only — it carries no global semantic meaning. "Region"
- * in TRC's tree and "Region" in another org's tree are unrelated concepts.
+ * in one org's tree and "Region" in another org's tree are unrelated concepts.
  */
 export interface GeoLabelType {
   readonly id: GeoLabelTypeId;

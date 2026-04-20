@@ -61,6 +61,7 @@ const ALL_DIMENSIONS: ReadonlyArray<SubPersonaId> = [
   'communications',
   'professor',
   'advisor',
+  'consultant',
 ];
 
 // ============================================================================
@@ -134,8 +135,10 @@ const CHAT_MODE_MAP: Readonly<Record<string, SubPersonaId>> = {
   quiz: 'professor',
   learning: 'professor',
   classroom: 'professor',
-  strategy: 'advisor',
-  advisory: 'advisor',
+  strategy: 'consultant',
+  advisory: 'consultant',
+  consulting: 'consultant',
+  decision: 'consultant',
   scenario: 'advisor',
 };
 
@@ -166,6 +169,7 @@ function aggregateSignals(
     communications: 0,
     professor: 0,
     advisor: 0,
+    consultant: 0,
   };
   for (const s of signals) {
     scores[s.dimension] += s.weight;

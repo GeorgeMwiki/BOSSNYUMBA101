@@ -41,6 +41,10 @@
     "./background-intelligence": {
       "types": "./src/background-intelligence/index.ts",
       "default": "./dist/background-intelligence/index.js"
+    },
+    "./training": {
+      "types": "./src/training/index.ts",
+      "default": "./dist/training/index.js"
     }
   },
   "scripts": {

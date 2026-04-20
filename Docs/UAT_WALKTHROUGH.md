@@ -1,19 +1,20 @@
 # BOSSNYUMBA UAT Walkthrough
 
-End-to-end UAT script for the BOSSNYUMBA platform, seeded with the Tanzania
-Railway Commission (TRC) pilot organization.
+End-to-end UAT script for the BOSSNYUMBA platform, seeded with the generic
+"Demo Estate Corporation" fixture (a multi-district public-sector estate
+demo organization).
 
 ## What it verifies
 
 The walkthrough (`scripts/uat-walkthrough.sh`) exercises the gateway's core
-business surface with a Director-General-scoped JWT against a TRC-seeded
+business surface with a Director-General-scoped JWT against a demo-org-seeded
 database:
 
 | # | Step | What it verifies |
 |---|------|------------------|
 | 0 | `GET /health` | Gateway is live and reachable. |
 | 1 | Mint JWT | `jsonwebtoken` can sign an HS256 token the gateway accepts. |
-| 2 | `GET /api/v1/properties` | Properties repo returns the 20 seeded TRC properties (10 warehouses + 5 barelands + 5 godowns). |
+| 2 | `GET /api/v1/properties` | Properties repo returns the 20 seeded demo-org properties (10 warehouses + 5 barelands + 5 godowns). |
 | 3 | `GET /api/v1/customers` | Customer repo returns the 20 seeded sample tenants. |
 | 4 | `GET /api/v1/units` | Units repo returns 20 units (one unit per seeded property). |
 | 5 | `POST /api/v1/applications/route` (below 500k TZS) | Station-master router resolves an EMU-tier application. |
@@ -40,21 +41,21 @@ hard failures, so an unconfigured upstream doesn't block the walkthrough.
      pnpm -F @bossnyumba/database db:migrate
    ```
 
-3. **TRC seed applied.** The seed is idempotent (stable IDs +
+3. **demo-org seed applied.** The seed is idempotent (stable IDs +
    `onConflictDoNothing`) so it is safe to re-run:
 
    ```bash
    SEED_ORG_SEEDS=true \
    DATABASE_URL=postgresql://localhost:5432/bossnyumba \
-     pnpm -F @bossnyumba/database exec tsx src/seeds/run-seed.ts --org=trc
+     pnpm -F @bossnyumba/database exec tsx src/seeds/run-seed.ts --org=demo
    ```
 
-   Expected row counts after seeding (any pre-existing non-TRC rows add
+   Expected row counts after seeding (any pre-existing non-demo rows add
    to these):
 
    | Table | Count |
    |-------|-------|
-   | `tenants` | 1 `trc-tenant` row |
+   | `tenants` | 1 `demo-tenant` row |
    | `users` | 8 (1 DG + 2 super admins + 5 station masters) |
    | `geo_nodes` | 58 (4 districts + 4 regions + 50 stations) |
    | `properties` | 20 |
@@ -91,8 +92,8 @@ Environment overrides:
 |-----|---------|---------|
 | `GATEWAY_URL` | `http://localhost:4000` | Where the gateway is listening. |
 | `JWT_SECRET` | `uat-walkthrough-dev-jwt-secret-32chars-min-please-ok` | Must match the gateway's `JWT_SECRET`. |
-| `TENANT_ID` | `trc-tenant` | Tenant claim baked into the JWT. |
-| `USER_ID` | `trc-user-dg` | Subject user. |
+| `TENANT_ID` | `demo-tenant` | Tenant claim baked into the JWT. |
+| `USER_ID` | `demo-user-dg` | Subject user. |
 | `ROLE` | `SUPER_ADMIN` | Role claim. `SUPER_ADMIN` is in the tenant-isolation allowlist so a DG token can traverse all routes. |
 
 Exit codes:
@@ -106,14 +107,14 @@ Exit codes:
 ```
 === BOSSNYUMBA UAT Walkthrough ===
 Gateway:   http://localhost:4000
-Tenant:    trc-tenant
-User:      trc-user-dg (SUPER_ADMIN)
+Tenant:    demo-tenant
+User:      demo-user-dg (SUPER_ADMIN)
 
 Step 0: Gateway health
   HTTP 200  service=api-gateway
   PASS
 
-Step 1: Mint SUPER_ADMIN JWT for trc-user-dg
+Step 1: Mint SUPER_ADMIN JWT for demo-user-dg
   token: eyJhbGciOiJIUzI1NiIsInR5cC...
   PASS
 
@@ -195,7 +196,7 @@ gateway needs to be restarted with `DATABASE_URL` set.
    using an ephemeral dev secret, stop it and relaunch with a fixed
    `JWT_SECRET` in the environment.
 
-2. **GET /properties returns 200 but count is 0** — the TRC seed has
+2. **GET /properties returns 200 but count is 0** — the demo-org seed has
    not been applied. Run the seed command from "Prerequisites" step 3
    and re-run this script.
 
@@ -223,5 +224,5 @@ safe to delete:
 rm -f /tmp/uat-*.json
 ```
 
-The seed is idempotent — there is no separate teardown. To wipe TRC
+The seed is idempotent — there is no separate teardown. To wipe demo
 data, truncate the seeded tables manually or reset the DB.

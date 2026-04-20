@@ -57,13 +57,13 @@ describe('OrgMembershipService (wired)', () => {
       'tid_1' as TenantIdentityId,
       'org_1' as OrganizationId,
       'role_tenant' as RoleId,
-      'TRC-ABCD' as InviteCode
+      'ACME-ABCD' as InviteCode
     );
     expect(seen).toMatchObject({
       tenantIdentityId: 'tid_1',
       organizationId: 'org_1',
       roleId: 'role_tenant',
-      viaCode: 'TRC-ABCD',
+      viaCode: 'ACME-ABCD',
       shadowProfile: {
         firstName: 'C',
         lastName: 'D',

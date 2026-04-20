@@ -8,6 +8,13 @@ const HIDE_NAV_ROUTES = [
   '/auth/register',
   '/auth/otp',
   '/onboarding',
+  '/for-owners',
+  '/for-tenants',
+  '/for-managers',
+  '/for-station-masters',
+  '/pricing',
+  '/how-it-works',
+  '/compare',
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

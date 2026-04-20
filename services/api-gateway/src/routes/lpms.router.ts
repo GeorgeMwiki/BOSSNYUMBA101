@@ -2,8 +2,8 @@
  * LPMS import router — Wave 8 (S14 gap closure)
  *
  * Mounted at `/api/v1/lpms`. Exposes a format-agnostic import endpoint
- * that normalizes TRC's legacy Land & Property Management System export
- * dumps (CSV / JSON / XML) into the shape consumed by MigrationWriterService.
+ * that normalizes legacy Land & Property Management System export dumps
+ * (CSV / JSON / XML) into the shape consumed by MigrationWriterService.
  *
  *   POST /import              — body: { format: 'csv'|'json'|'xml', content: string, columnMap?: object, commit?: boolean }
  *   GET  /preview-schema      — lists the normalized target schema so operators know what fields are accepted

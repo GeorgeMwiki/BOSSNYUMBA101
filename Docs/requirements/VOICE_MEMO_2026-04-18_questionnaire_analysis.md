@@ -1,8 +1,25 @@
-# Voice Memo — TRC Questionnaire Analysis & Architectural Directives
+# Voice Memo — Questionnaire Analysis & Architectural Directives
+
+> **Disclaimer — BOSSNYUMBA product neutrality**
+>
+> This document preserves the original 2026-04-18 research interview with a
+> specific large public-sector estate client (the "research client") verbatim.
+> It is retained as the source-of-truth record of the customer-discovery
+> process that shaped the elastic-architecture directives below.
+>
+> **The research client's identity is NOT referenced anywhere in the
+> BOSSNYUMBA product.** BOSSNYUMBA is built for every estate company in the
+> world, not any single customer. In code, migrations, seeds, marketing
+> copy, AI prompts, and customer-facing docs we use generic phrasing such
+> as "a multi-district public-sector estate" and a neutral seed fixture
+> called "Demo Estate Corporation" (`demo-*` IDs). The historical references
+> to "TRC" / "Tanzania Railway Commission" below describe the original
+> interview subject only; they do NOT imply any productized dependency on,
+> endorsement by, or commercial relationship with that organization.
 
 **Date:** 2026-04-18
 **Source:** Founder voice memo, transcribed verbatim
-**Context:** Analysis of the "ESTATE Native AI Operating System Questionnaire" administered to Tanzania Railway Commission (TRC) and similar large asset-owning organizations (National Housing Commission, banks, etc.). This memo translates TRC's answers into elastic-architecture design directives for BOSSNYUMBA101.
+**Context:** Analysis of the "ESTATE Native AI Operating System Questionnaire" administered to a large multi-district public-sector estate client (originally captured as "Tanzania Railway Commission / TRC" in the verbatim transcript) and similar large asset-owning organizations (National Housing Commission, banks, etc.). This memo translates their answers into elastic-architecture design directives for BOSSNYUMBA101. See the disclaimer above — specific client names preserved here are historical only and do NOT appear anywhere in the BOSSNYUMBA product itself.
 **Relationship to existing docs:** This is the **source-of-truth directive** that supersedes / amplifies prior drafts. When `BOSSNYUMBA_PRD.md`, `BOSSNYUMBA_SPEC.md`, `DOMAIN_MODEL.md`, `ARCHITECTURE_BRAIN.md` disagree with this memo, this memo wins — unless the existing code already implements the intent of this memo, in which case we **amplify, not replace**.
 
 ---

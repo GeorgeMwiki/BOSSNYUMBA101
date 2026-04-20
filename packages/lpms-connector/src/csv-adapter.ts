@@ -94,7 +94,7 @@ export interface CsvAdapterOptions {
   columnMap: CsvColumnMap;
 }
 
-/** Default map that works for the reference TRC export. */
+/** Default map that works for the reference legacy LPMS export. */
 export const DEFAULT_CSV_COLUMN_MAP: CsvColumnMap = Object.freeze({
   property: {
     externalId: 'property_id',

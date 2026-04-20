@@ -1,9 +1,10 @@
 -- =============================================================================
 -- 0029: IoT sensor observations + anomalies — Wave 8 gap closure (S3)
 -- =============================================================================
--- TRC directive (S3): "additional vectors to add (deep research): tenant
--- feedback loops, IoT sensors (if available), satellite imagery for land-use
--- verification, scheduled drone/site visits, automated compliance checks."
+-- Customer-research directive (S3): "additional vectors to add (deep research):
+-- tenant feedback loops, IoT sensors (if available), satellite imagery for
+-- land-use verification, scheduled drone/site visits, automated compliance
+-- checks."
 --
 -- Three tables:
 --   - iot_sensors — registered physical/virtual sensors (water meter,

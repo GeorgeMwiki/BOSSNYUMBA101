@@ -35,7 +35,9 @@
     "@opentelemetry/sdk-trace-base": "^1.18.0",
     "@opentelemetry/sdk-trace-node": "^1.18.0",
     "@opentelemetry/semantic-conventions": "^1.18.0",
+    "@sentry/node": "^10.49.0",
     "pino": "^8.17.0",
+    "posthog-node": "^5.29.2",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -47,6 +47,7 @@ import CustomerTimeline from './pages/support/CustomerTimeline';
 import Escalation from './pages/support/Escalation';
 import AICockpit from './pages/ai/AICockpit';
 import DesktopReview from './pages/DesktopReview';
+import TrainingPage from './pages/Training';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -104,6 +105,7 @@ function AppRoutes() {
         <Route path="ai" element={<AICockpit />} />
         <Route path="manager-chat" element={<ManagerChat />} />
         <Route path="desktop-review" element={<DesktopReview />} />
+        <Route path="training" element={<TrainingPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />

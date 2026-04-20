@@ -39,13 +39,13 @@ describe('InviteCodeService (stub)', () => {
   it('redeem accepts (code, tenantIdentityId) and rejects NOT_IMPLEMENTED', async () => {
     expect(svc.redeem.length).toBe(2);
     await expect(
-      svc.redeem('TRC-A3F9' as InviteCode, 'tid-1' as TenantIdentityId)
+      svc.redeem('ACME-A3F9' as InviteCode, 'tid-1' as TenantIdentityId)
     ).rejects.toThrow(/NOT_IMPLEMENTED/);
   });
 
   it('revoke accepts (code) and rejects NOT_IMPLEMENTED', async () => {
     expect(svc.revoke.length).toBe(1);
-    await expect(svc.revoke('TRC-A3F9' as InviteCode)).rejects.toThrow(
+    await expect(svc.revoke('ACME-A3F9' as InviteCode)).rejects.toThrow(
       /NOT_IMPLEMENTED/
     );
   });

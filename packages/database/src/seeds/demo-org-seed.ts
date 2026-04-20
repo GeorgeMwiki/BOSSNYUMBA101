@@ -1,29 +1,31 @@
-// @ts-nocheck — import-assertion syntax replaced in TS 5.3+; drizzle 0.36 pgEnum narrowing in TRC seed. Tracked.
+// @ts-nocheck — import-assertion syntax replaced in TS 5.3+; drizzle 0.36 pgEnum narrowing in demo seed. Tracked.
 /**
- * Tanzania Railway Commission (TRC) Seed
+ * Demo Estate Corporation Seed
  *
- * Provisions the TRC organization end-to-end so geo-hierarchy, approval
- * workflows, and sample leases/payments/maintenance are testable without
- * touching production data:
+ * Provisions a generic multi-district estate-company organization end-to-end
+ * so geo-hierarchy, approval workflows, and sample leases/payments/maintenance
+ * are testable without touching production data. The fixture models a large
+ * multi-district public-sector estate client — intentionally anonymous so
+ * BOSSNYUMBA customers of any size/region see a recognizable shape.
  *
- *   - Platform tenant "Tanzania Railway Commission" (country=TZ, TZS currency)
- *   - Organization "Head Office" (orgId base: trc-org)
+ *   - Platform tenant "Demo Estate Corporation" (country=TZ, TZS currency)
+ *   - Organization "Head Office" (orgId base: demo-org)
  *   - GeoLabelTypes: depth=0 District, depth=1 Region, depth=2 Station
- *   - 4 District nodes with simplified polygons (trc-districts.json)
+ *   - 4 District nodes with simplified polygons (demo-districts.json)
  *   - ~20 Region nodes nested under Districts
  *   - ~50 Station nodes under the Regions
  *   - Approval thresholds: 100k / 500k TZS per spec
  *   - Users: Director General (OWNER), 2 Super Admins, 5 Station Masters
- *   - InviteCodeRecord rows (TRC-*) for onboarding
+ *   - InviteCodeRecord rows (DEMO-*) for onboarding
  *   - Sample properties: 10 warehouses + 5 barelands + 5 godowns
  *   - Sample tenants/leases/payments/maintenance via sample-tenants.ts
  *
  * Idempotency:
- *   - Every insert uses a deterministic natural-key id (`trc-*-NNN`) and
+ *   - Every insert uses a deterministic natural-key id (`demo-*-NNN`) and
  *     onConflictDoNothing, so re-running the seed is safe.
  *
  * NOT run by default. Invoked by run-seed.ts via
- *   pnpm db:seed --org=trc
+ *   pnpm db:seed --org=demo
  */
 
 import { eq } from 'drizzle-orm';
@@ -47,7 +49,7 @@ import {
   geoNodeClosure,
   geoAssignments,
 } from '../schemas/index.js';
-import districtsData from './trc-districts.json' assert { type: 'json' };
+import districtsData from './demo-districts.json' assert { type: 'json' };
 import {
   SAMPLE_TENANTS,
   SAMPLE_LEASES,
@@ -58,28 +60,28 @@ import {
 // ---------------------------------------------------------------------------
 // Deterministic IDs
 // ---------------------------------------------------------------------------
-export const TRC_TENANT_ID = 'trc-tenant';
-export const TRC_ORG_ID = 'trc-org';
-export const TRC_ADMIN_ROLE_ID = 'trc-role-admin';
-export const TRC_MANAGER_ROLE_ID = 'trc-role-manager';
-export const TRC_STATION_ROLE_ID = 'trc-role-station-master';
+export const DEMO_TENANT_ID = 'demo-tenant';
+export const DEMO_ORG_ID = 'demo-org';
+export const DEMO_ADMIN_ROLE_ID = 'demo-role-admin';
+export const DEMO_MANAGER_ROLE_ID = 'demo-role-manager';
+export const DEMO_STATION_ROLE_ID = 'demo-role-station-master';
 
 // Users
-const TRC_DG_USER_ID = 'trc-user-dg';
-const TRC_SUPER_ADMIN_USERS = [
-  { id: 'trc-user-sa-01', firstName: 'Salim',  lastName: 'Mgonja',  email: 'salim.mgonja@trc.example.com',  authorityLevel: 'SUPER_ADMIN' },
-  { id: 'trc-user-sa-02', firstName: 'Rehema', lastName: 'Komba',   email: 'rehema.komba@trc.example.com', authorityLevel: 'SUPER_ADMIN' },
+const DEMO_DG_USER_ID = 'demo-user-dg';
+const DEMO_SUPER_ADMIN_USERS = [
+  { id: 'demo-user-sa-01', firstName: 'Salim',  lastName: 'Mgonja',  email: 'salim.mgonja@demo.example.com',  authorityLevel: 'SUPER_ADMIN' },
+  { id: 'demo-user-sa-02', firstName: 'Rehema', lastName: 'Komba',   email: 'rehema.komba@demo.example.com', authorityLevel: 'SUPER_ADMIN' },
 ];
-const TRC_STATION_MASTERS = [
-  { id: 'trc-user-sm-01', firstName: 'Joseph',  lastName: 'Mwanri',     email: 'joseph.mwanri@trc.example.com',     nodeCode: 'TRC-DAR-STA-01' },
-  { id: 'trc-user-sm-02', firstName: 'Grace',   lastName: 'Mbughuni',   email: 'grace.mbughuni@trc.example.com',    nodeCode: 'TRC-DOD-STA-01' },
-  { id: 'trc-user-sm-03', firstName: 'Peter',   lastName: 'Sanga',      email: 'peter.sanga@trc.example.com',       nodeCode: 'TRC-TAB-STA-01' },
-  { id: 'trc-user-sm-04', firstName: 'Anna',    lastName: 'Mwanga',     email: 'anna.mwanga@trc.example.com',       nodeCode: 'TRC-TNG-STA-01' },
-  { id: 'trc-user-sm-05', firstName: 'Francis', lastName: 'Rweyendela', email: 'francis.rweyendela@trc.example.com', nodeCode: 'TRC-DAR-STA-02' },
+const DEMO_STATION_MASTERS = [
+  { id: 'demo-user-sm-01', firstName: 'Joseph',  lastName: 'Mwanri',     email: 'joseph.mwanri@demo.example.com',     nodeCode: 'DEMO-DAR-STA-01' },
+  { id: 'demo-user-sm-02', firstName: 'Grace',   lastName: 'Mbughuni',   email: 'grace.mbughuni@demo.example.com',    nodeCode: 'DEMO-DOD-STA-01' },
+  { id: 'demo-user-sm-03', firstName: 'Peter',   lastName: 'Sanga',      email: 'peter.sanga@demo.example.com',       nodeCode: 'DEMO-TAB-STA-01' },
+  { id: 'demo-user-sm-04', firstName: 'Anna',    lastName: 'Mwanga',     email: 'anna.mwanga@demo.example.com',       nodeCode: 'DEMO-TNG-STA-01' },
+  { id: 'demo-user-sm-05', firstName: 'Francis', lastName: 'Rweyendela', email: 'francis.rweyendela@demo.example.com', nodeCode: 'DEMO-DAR-STA-02' },
 ];
 
 // ---------------------------------------------------------------------------
-// TRC-specific approval policies (TZS)
+// Demo-org approval policies (TZS)
 // ---------------------------------------------------------------------------
 // Tanzanian Shilling has 2 minor units in region-config. 500,000 TZS major
 // units = 50_000_000 minor units.
@@ -127,7 +129,7 @@ const PAYMENT_FLEXIBILITY_POLICY = {
 };
 
 // ---------------------------------------------------------------------------
-// Geo hierarchy planning — derived from trc-districts.json
+// Geo hierarchy planning — derived from demo-districts.json
 // ---------------------------------------------------------------------------
 interface SeedRegion {
   readonly code: string;
@@ -206,7 +208,7 @@ function planProperties(stations: readonly SeedStation[]): readonly SeedProperty
   for (let i = 0; i < 10; i++) {
     const st = getStation(i);
     props.push({
-      externalRef: `trc-prop-wh-${String(i + 1).padStart(2, '0')}`,
+      externalRef: `demo-prop-wh-${String(i + 1).padStart(2, '0')}`,
       name: `${st.name} Warehouse`,
       type: 'warehouse',
       stationCode: st.code,
@@ -217,7 +219,7 @@ function planProperties(stations: readonly SeedStation[]): readonly SeedProperty
   for (let i = 0; i < 5; i++) {
     const st = getStation(i + 10);
     props.push({
-      externalRef: `trc-prop-bl-${String(i + 1).padStart(2, '0')}`,
+      externalRef: `demo-prop-bl-${String(i + 1).padStart(2, '0')}`,
       name: `${st.name} Bareland Parcel`,
       type: 'bareland',
       stationCode: st.code,
@@ -228,7 +230,7 @@ function planProperties(stations: readonly SeedStation[]): readonly SeedProperty
   for (let i = 0; i < 5; i++) {
     const st = getStation(i + 15);
     props.push({
-      externalRef: `trc-prop-gd-${String(i + 1).padStart(2, '0')}`,
+      externalRef: `demo-prop-gd-${String(i + 1).padStart(2, '0')}`,
       name: `${st.name} Godown`,
       type: 'godown',
       stationCode: st.code,
@@ -242,8 +244,8 @@ function planProperties(stations: readonly SeedStation[]): readonly SeedProperty
 // ---------------------------------------------------------------------------
 // Seed runner
 // ---------------------------------------------------------------------------
-export async function seedTrc(db: DatabaseClient): Promise<void> {
-  console.log('[trc] starting seed');
+export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
+  console.log('[demo] starting seed');
 
   // Run the whole org seed in one transaction so a partial failure rolls back.
   await db.transaction(async (tx) => {
@@ -253,14 +255,14 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     await tx
       .insert(tenants)
       .values({
-        id: TRC_TENANT_ID,
-        name: 'Tanzania Railway Commission',
-        slug: 'trc',
+        id: DEMO_TENANT_ID,
+        name: 'Demo Estate Corporation',
+        slug: 'demo',
         status: 'active',
         subscriptionTier: 'enterprise',
-        primaryEmail: 'admin@trc.example.com',
+        primaryEmail: 'admin@demo.example.com',
         primaryPhone: '255222118800',
-        addressLine1: 'Sokoine Drive',
+        addressLine1: 'Sample Drive',
         city: 'Dar es Salaam',
         country: 'TZ',
         maxUsers: 500,
@@ -272,10 +274,10 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     await tx
       .insert(organizations)
       .values({
-        id: TRC_ORG_ID,
-        tenantId: TRC_TENANT_ID,
-        code: 'TRC-HQ',
-        name: 'TRC Head Office',
+        id: DEMO_ORG_ID,
+        tenantId: DEMO_TENANT_ID,
+        code: 'DEMO-HQ',
+        name: 'Demo Head Office',
         level: 0,
         path: '/',
       })
@@ -286,20 +288,20 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
       .insert(roles)
       .values([
         {
-          id: TRC_ADMIN_ROLE_ID,
-          tenantId: TRC_TENANT_ID,
-          name: 'trc_admin',
-          displayName: 'TRC Administrator',
+          id: DEMO_ADMIN_ROLE_ID,
+          tenantId: DEMO_TENANT_ID,
+          name: 'demo_admin',
+          displayName: 'Demo Administrator',
           description: 'Director General and Super Admins.',
           permissions: ['*'],
           isSystem: true,
           priority: 100,
         },
         {
-          id: TRC_MANAGER_ROLE_ID,
-          tenantId: TRC_TENANT_ID,
-          name: 'trc_estate_manager',
-          displayName: 'TRC Estate Manager',
+          id: DEMO_MANAGER_ROLE_ID,
+          tenantId: DEMO_TENANT_ID,
+          name: 'demo_estate_manager',
+          displayName: 'Demo Estate Manager',
           description: 'Regional estate manager.',
           permissions: [
             'property:read',
@@ -312,10 +314,10 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
           priority: 50,
         },
         {
-          id: TRC_STATION_ROLE_ID,
-          tenantId: TRC_TENANT_ID,
-          name: 'trc_station_master',
-          displayName: 'TRC Station Master',
+          id: DEMO_STATION_ROLE_ID,
+          tenantId: DEMO_TENANT_ID,
+          name: 'demo_station_master',
+          displayName: 'Demo Station Master',
           description: 'Local station manager — tagged worker.',
           permissions: [
             'property:read',
@@ -333,10 +335,10 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     await tx
       .insert(users)
       .values({
-        id: TRC_DG_USER_ID,
-        tenantId: TRC_TENANT_ID,
-        organizationId: TRC_ORG_ID,
-        email: 'director.general@trc.example.com',
+        id: DEMO_DG_USER_ID,
+        tenantId: DEMO_TENANT_ID,
+        organizationId: DEMO_ORG_ID,
+        email: 'director.general@demo.example.com',
         firstName: 'Athumani',
         lastName: 'Kihamia',
         displayName: 'Director General',
@@ -351,21 +353,21 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     await tx
       .insert(userRoles)
       .values({
-        id: `ur-${TRC_DG_USER_ID}`,
-        userId: TRC_DG_USER_ID,
-        roleId: TRC_ADMIN_ROLE_ID,
-        tenantId: TRC_TENANT_ID,
+        id: `ur-${DEMO_DG_USER_ID}`,
+        userId: DEMO_DG_USER_ID,
+        roleId: DEMO_ADMIN_ROLE_ID,
+        tenantId: DEMO_TENANT_ID,
       })
       .onConflictDoNothing();
 
     // Super Admins
-    for (const sa of TRC_SUPER_ADMIN_USERS) {
+    for (const sa of DEMO_SUPER_ADMIN_USERS) {
       await tx
         .insert(users)
         .values({
           id: sa.id,
-          tenantId: TRC_TENANT_ID,
-          organizationId: TRC_ORG_ID,
+          tenantId: DEMO_TENANT_ID,
+          organizationId: DEMO_ORG_ID,
           email: sa.email,
           firstName: sa.firstName,
           lastName: sa.lastName,
@@ -383,20 +385,20 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .values({
           id: `ur-${sa.id}`,
           userId: sa.id,
-          roleId: TRC_ADMIN_ROLE_ID,
-          tenantId: TRC_TENANT_ID,
+          roleId: DEMO_ADMIN_ROLE_ID,
+          tenantId: DEMO_TENANT_ID,
         })
         .onConflictDoNothing();
     }
 
     // Station Masters
-    for (const sm of TRC_STATION_MASTERS) {
+    for (const sm of DEMO_STATION_MASTERS) {
       await tx
         .insert(users)
         .values({
           id: sm.id,
-          tenantId: TRC_TENANT_ID,
-          organizationId: TRC_ORG_ID,
+          tenantId: DEMO_TENANT_ID,
+          organizationId: DEMO_ORG_ID,
           email: sm.email,
           firstName: sm.firstName,
           lastName: sm.lastName,
@@ -414,8 +416,8 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .values({
           id: `ur-${sm.id}`,
           userId: sm.id,
-          roleId: TRC_STATION_ROLE_ID,
-          tenantId: TRC_TENANT_ID,
+          roleId: DEMO_STATION_ROLE_ID,
+          tenantId: DEMO_TENANT_ID,
         })
         .onConflictDoNothing();
     }
@@ -424,24 +426,24 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     await tx
       .insert(geoLabelTypes)
       .values([
-        { id: 'trc-lt-district', organizationId: TRC_ORG_ID, depth: 0, singular: 'District', plural: 'Districts', color: '#1f77b4', allowsPolygon: true },
-        { id: 'trc-lt-region',   organizationId: TRC_ORG_ID, depth: 1, singular: 'Region',   plural: 'Regions',   color: '#2ca02c', allowsPolygon: true },
-        { id: 'trc-lt-station',  organizationId: TRC_ORG_ID, depth: 2, singular: 'Station',  plural: 'Stations',  color: '#ff7f0e', allowsPolygon: false },
+        { id: 'demo-lt-district', organizationId: DEMO_ORG_ID, depth: 0, singular: 'District', plural: 'Districts', color: '#1f77b4', allowsPolygon: true },
+        { id: 'demo-lt-region',   organizationId: DEMO_ORG_ID, depth: 1, singular: 'Region',   plural: 'Regions',   color: '#2ca02c', allowsPolygon: true },
+        { id: 'demo-lt-station',  organizationId: DEMO_ORG_ID, depth: 2, singular: 'Station',  plural: 'Stations',  color: '#ff7f0e', allowsPolygon: false },
       ])
       .onConflictDoNothing();
 
     // 5. District nodes (from JSON) ------------------------------------------
     const districtIdByCode = new Map<string, string>();
     for (const d of districtsData.districts) {
-      const id = `trc-geo-${d.code.toLowerCase()}`;
+      const id = `demo-geo-${d.code.toLowerCase()}`;
       districtIdByCode.set(d.code, id);
       await tx
         .insert(geoNodes)
         .values({
           id,
-          organizationId: TRC_ORG_ID,
+          organizationId: DEMO_ORG_ID,
           parentId: null,
-          labelTypeId: 'trc-lt-district',
+          labelTypeId: 'demo-lt-district',
           name: d.name,
           code: d.code,
           polygon: d.polygon,
@@ -462,7 +464,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     const regions = planRegions();
     const regionIdByCode = new Map<string, string>();
     for (const r of regions) {
-      const id = `trc-geo-${r.code.toLowerCase()}`;
+      const id = `demo-geo-${r.code.toLowerCase()}`;
       regionIdByCode.set(r.code, id);
       const parentId = districtIdByCode.get(r.districtCode);
       if (!parentId) continue;
@@ -470,9 +472,9 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(geoNodes)
         .values({
           id,
-          organizationId: TRC_ORG_ID,
+          organizationId: DEMO_ORG_ID,
           parentId,
-          labelTypeId: 'trc-lt-region',
+          labelTypeId: 'demo-lt-region',
           name: r.name,
           code: r.code,
           polygon: null,
@@ -495,7 +497,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     const stations = planStations(regions);
     const stationIdByCode = new Map<string, string>();
     for (const s of stations) {
-      const id = `trc-geo-${s.code.toLowerCase()}`;
+      const id = `demo-geo-${s.code.toLowerCase()}`;
       stationIdByCode.set(s.code, id);
       const parentId = regionIdByCode.get(s.regionCode);
       if (!parentId) continue;
@@ -505,9 +507,9 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(geoNodes)
         .values({
           id,
-          organizationId: TRC_ORG_ID,
+          organizationId: DEMO_ORG_ID,
           parentId,
-          labelTypeId: 'trc-lt-station',
+          labelTypeId: 'demo-lt-station',
           name: s.name,
           code: s.code,
           polygon: null,
@@ -527,14 +529,14 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     }
 
     // 8. Geo assignments — bind each Station Master to their station node ----
-    for (const sm of TRC_STATION_MASTERS) {
+    for (const sm of DEMO_STATION_MASTERS) {
       const nodeId = stationIdByCode.get(sm.nodeCode);
       if (!nodeId) continue;
       await tx
         .insert(geoAssignments)
         .values({
-          id: `trc-asgn-${sm.id}`,
-          organizationId: TRC_ORG_ID,
+          id: `demo-asgn-${sm.id}`,
+          organizationId: DEMO_ORG_ID,
           geoNodeId: nodeId,
           userId: sm.id,
           workerTagKey: 'station-master',
@@ -549,69 +551,69 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
       .insert(approvalPolicies)
       .values([
         {
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           type: 'maintenance_cost',
           policyJson: MAINTENANCE_POLICY,
-          updatedBy: TRC_DG_USER_ID,
+          updatedBy: DEMO_DG_USER_ID,
         },
         {
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           type: 'lease_exception',
           policyJson: LEASE_EXCEPTION_POLICY,
-          updatedBy: TRC_DG_USER_ID,
+          updatedBy: DEMO_DG_USER_ID,
         },
         {
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           type: 'payment_flexibility',
           policyJson: PAYMENT_FLEXIBILITY_POLICY,
-          updatedBy: TRC_DG_USER_ID,
+          updatedBy: DEMO_DG_USER_ID,
         },
       ])
       .onConflictDoNothing();
 
     // 10. Invite codes (stored on tenant.settings for now) --------------------
     // A dedicated invite_codes table is planned; until then, the seed stores
-    // the TRC-prefixed invite codes in tenant.settings so the onboarding UI
+    // the DEMO-prefixed invite codes in tenant.settings so the onboarding UI
     // can render them.
     const inviteCodes = [
       {
-        code: 'TRC-ONBOARD-001',
-        organizationId: TRC_ORG_ID,
-        platformTenantId: TRC_TENANT_ID,
-        issuedBy: TRC_DG_USER_ID,
+        code: 'DEMO-ONBOARD-001',
+        organizationId: DEMO_ORG_ID,
+        platformTenantId: DEMO_TENANT_ID,
+        issuedBy: DEMO_DG_USER_ID,
         issuedAt: now.toISOString(),
         expiresAt: null,
         maxRedemptions: 100,
         redemptionsUsed: 0,
-        defaultRoleId: TRC_STATION_ROLE_ID,
+        defaultRoleId: DEMO_STATION_ROLE_ID,
       },
       {
-        code: 'TRC-ONBOARD-002',
-        organizationId: TRC_ORG_ID,
-        platformTenantId: TRC_TENANT_ID,
-        issuedBy: TRC_DG_USER_ID,
+        code: 'DEMO-ONBOARD-002',
+        organizationId: DEMO_ORG_ID,
+        platformTenantId: DEMO_TENANT_ID,
+        issuedBy: DEMO_DG_USER_ID,
         issuedAt: now.toISOString(),
         expiresAt: null,
         maxRedemptions: 50,
         redemptionsUsed: 0,
-        defaultRoleId: TRC_MANAGER_ROLE_ID,
+        defaultRoleId: DEMO_MANAGER_ROLE_ID,
       },
       {
-        code: 'TRC-STATION-MASTER',
-        organizationId: TRC_ORG_ID,
-        platformTenantId: TRC_TENANT_ID,
-        issuedBy: TRC_DG_USER_ID,
+        code: 'DEMO-STATION-MASTER',
+        organizationId: DEMO_ORG_ID,
+        platformTenantId: DEMO_TENANT_ID,
+        issuedBy: DEMO_DG_USER_ID,
         issuedAt: now.toISOString(),
         expiresAt: null,
         maxRedemptions: null,
         redemptionsUsed: 0,
-        defaultRoleId: TRC_STATION_ROLE_ID,
+        defaultRoleId: DEMO_STATION_ROLE_ID,
       },
     ];
     await tx
       .update(tenants)
       .set({ settings: { inviteCodes } })
-      .where(eq(tenants.id, TRC_TENANT_ID));
+      .where(eq(tenants.id, DEMO_TENANT_ID));
 
     // 11. Properties ----------------------------------------------------------
     const sampleProps = planProperties(stations);
@@ -622,8 +624,8 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(properties)
         .values({
           id: p.externalRef,
-          tenantId: TRC_TENANT_ID,
-          ownerId: TRC_DG_USER_ID,
+          tenantId: DEMO_TENANT_ID,
+          ownerId: DEMO_DG_USER_ID,
           propertyCode: p.externalRef.toUpperCase(),
           name: p.name,
           type:
@@ -640,7 +642,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
           occupiedUnits: 0,
           vacantUnits: 1,
           defaultCurrency: 'TZS',
-          features: { trcCategory: p.type, stationCode: p.stationCode },
+          features: { demoCategory: p.type, stationCode: p.stationCode },
         })
         .onConflictDoNothing();
 
@@ -651,7 +653,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(units)
         .values({
           id: unitId,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           propertyId: p.externalRef,
           unitCode,
           name: `${p.name} — Unit A`,
@@ -669,7 +671,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(customers)
         .values({
           id: t.externalRef,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           customerCode: t.externalRef.toUpperCase(),
           email: t.email,
           phone: t.phone,
@@ -700,7 +702,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(leases)
         .values({
           id: leaseId,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           propertyId: l.propertyRef,
           unitId: unitRef,
           customerId: l.tenantRef,
@@ -725,7 +727,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(accounts)
         .values({
           id: acctId,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           customerId: l.tenantRef,
           propertyId: l.propertyRef,
           name: `Rent Receivable — ${l.tenantRef}`,
@@ -752,7 +754,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(ledgerEntries)
         .values({
           id: p.externalRef,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           accountId: acctId,
           journalId: `${p.externalRef}-journal`,
           type: 'RENT_PAYMENT',
@@ -780,7 +782,7 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
         .insert(maintenanceRequests)
         .values({
           id: m.externalRef,
-          tenantId: TRC_TENANT_ID,
+          tenantId: DEMO_TENANT_ID,
           propertyId: m.propertyRef,
           customerId: m.tenantRef ?? undefined,
           requestNumber: m.externalRef.toUpperCase(),
@@ -797,5 +799,5 @@ export async function seedTrc(db: DatabaseClient): Promise<void> {
     }
   });
 
-  console.log('[trc] seed complete');
+  console.log('[demo] seed complete');
 }

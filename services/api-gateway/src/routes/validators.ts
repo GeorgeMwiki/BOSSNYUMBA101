@@ -1,4 +1,3 @@
-// @ts-nocheck — zod safeParse discriminated union: TS does not narrow .error vs .data across control-flow edges in this helper; needs zod 3.23+ with tsconfig exactOptionalPropertyTypes tweak.
 /**
  * Zod validation schemas for API routes
  */
@@ -11,23 +10,26 @@ import type { ZodError } from 'zod';
  * Custom hook for zValidator - returns consistent error format matching API Gateway conventions.
  * Use as third arg: zValidator('json', schema, validationErrorHook)
  */
-export function validationErrorHook(result: { success: false; error: ZodError } | { success: true; data: unknown }, c: Context) {
-  if (!result.success) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid request data',
-          details: result.error.errors.map((e) => ({
-            path: e.path.join('.') || '(root)',
-            message: e.message,
-          })),
-        },
+export function validationErrorHook(
+  result: { success: false; error: ZodError } | { success: true; data: unknown },
+  c: Context,
+) {
+  if (result.success) return;
+  const errResult = result as { success: false; error: ZodError };
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request data',
+        details: errResult.error.errors.map((e) => ({
+          path: e.path.join('.') || '(root)',
+          message: e.message,
+        })),
       },
-      400
-    );
-  }
+    },
+    400,
+  );
 }
 
 // Common schemas

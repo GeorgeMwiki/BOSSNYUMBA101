@@ -188,12 +188,12 @@ function canApprove(user: UserWithRoles, orgId: OrgId, requiredTier: number): bo
 
 From `GAP_voice_vs_docs.md` lines 199–217 and 754–760:
 
-> "Tenant app is universal, not org-siloed. One download, access many organizations. Tenant can hold simultaneous tenancies across multiple orgs. To join TRC's portfolio, tenant receives/enters a special code from TRC."
+> "Tenant app is universal, not org-siloed. One download, access many organizations. Tenant can hold simultaneous tenancies across multiple orgs. To join the research client's portfolio, tenant receives/enters a special code from the estate."
 
 Founder intent:
 - One **app download**, one **tenant identity**, **many organizations**.
 - Joining an org uses a **special code** (invite / redemption token) issued by that org.
-- Org data isolation is NOT weakened — a tenant in both TRC and ACME must not see ACME data while scoped to TRC.
+- Org data isolation is NOT weakened — a tenant in both the demo-org and ACME must not see ACME data while scoped to the demo-org.
 
 ### 2.2 What exists today
 
@@ -301,9 +301,9 @@ export interface InviteCodeRecord {
 
 ### 2.6 Acceptance criteria
 
-1. Single app install with phone `+255712345678` shows both TRC + ACME memberships, switches without re-login.
-2. When scoped to TRC, `GET /units` returns ONLY TRC units. Injecting unauthorized `X-Org-Context` returns `403 ORG_CONTEXT_NOT_IN_SESSION`.
-3. Entering `TRC-A3F9` creates `OrgMembership` + shadow `User` + increments `redemptionsUsed`. Expired code returns `INVITE_CODE_EXPIRED`.
+1. Single app install with phone `+255712345678` shows both the demo-org + ACME memberships, switches without re-login.
+2. When scoped to the demo-org, `GET /units` returns ONLY demo-org units. Injecting unauthorized `X-Org-Context` returns `403 ORG_CONTEXT_NOT_IN_SESSION`.
+3. Entering `ACME-A3F9` creates `OrgMembership` + shadow `User` + increments `redemptionsUsed`. Expired code returns `INVITE_CODE_EXPIRED`.
 4. Pre-migration `CustomerUser` logs in with same phone and is seamlessly migrated to `TenantIdentity` + one `OrgMembership`. Lease/payments/history preserved.
 5. `CustomerPolicy` grants same permissions to shadow user — no RBAC regression.
 6. `normalizePhoneForCountry("0712345678", "TZ")` returns `"255712345678"`.
@@ -317,14 +317,14 @@ export interface InviteCodeRecord {
 
 From `GAP_voice_vs_docs.md` lines 76–78, 131–139 and 764–773:
 
-> "Elastic geo-hierarchy (CRITICAL) — Do NOT force a fixed region → district → village structure. TRC's convention: Districts contain Regions (counter-intuitive to global convention)."
+> "Elastic geo-hierarchy (CRITICAL) — Do NOT force a fixed region → district → village structure. the research client's convention: Districts contain Regions (counter-intuitive to global convention)."
 >
 > "Geofencing via Google Maps API — each node colored/outlined on map."
 >
 > "Street-level pin for each asset; interactive map view of all assets and all hierarchy levels."
 
 Founder intent:
-- Each org defines its **own label vocabulary** and **own nesting direction** (TRC: Districts > Regions).
+- Each org defines its **own label vocabulary** and **own nesting direction** (e.g. a public-sector estate client: Districts > Regions).
 - Arbitrary depth (N-level nesting).
 - Each node has a **polygon** on Google Maps; nodes are colored/outlined.
 - Each asset has a street-level pin, optionally belongs to deepest leaf node.
@@ -332,7 +332,7 @@ Founder intent:
 
 ### 3.2 What exists today
 
-**`packages/domain-models/src/common/region-config.ts`** — despite the name, NOT a location hierarchy. Country/currency/compliance/mobile-money registry keyed by ISO3166-1 alpha-2. Must stay as-is in this role. Answers "what currency does TZ use?", not "what hierarchy does TRC use?".
+**`packages/domain-models/src/common/region-config.ts`** — despite the name, NOT a location hierarchy. Country/currency/compliance/mobile-money registry keyed by ISO3166-1 alpha-2. Must stay as-is in this role. Answers "what currency does TZ use?", not "what hierarchy does the client use?".
 
 **`packages/domain-models/src/property/property.ts` (lines 32–40)** has fixed `Address`:
 
@@ -364,7 +364,7 @@ export type GeoLabelTypeId = Brand<string, 'GeoLabelTypeId'>;
 
 /**
  * Per-org classification of hierarchy levels.
- * TRC: [District, Region, Ward, Street]
+ * Public-sector estate: [District, Region, Ward, Street]
  * Kenyan org: [County, Sub-county, Ward, Estate]
  * Levels are ordinal; depth is N, not fixed.
  */
@@ -424,7 +424,7 @@ interface Property extends EntityMetadata, SoftDeletable {
 }
 ```
 
-**Inversion support (TRC's Districts > Regions):** nothing special needed — `GeoLabelType.depth` is ordinal, not semantic. TRC configures depth=0 → "District", depth=1 → "Region". Kenyan org configures depth=0 → "County", depth=1 → "Sub-county". No hardcoded "Region > District" anywhere.
+**Inversion support (the research client's Districts > Regions):** nothing special needed — `GeoLabelType.depth` is ordinal, not semantic. the demo-org configures depth=0 → "District", depth=1 → "Region". Kenyan org configures depth=0 → "County", depth=1 → "Sub-county". No hardcoded "Region > District" anywhere.
 
 **Google Maps integration:**
 - `polygon` stored as GeoJSON (Maps-compatible). Render via `google.maps.Data`.
@@ -450,7 +450,7 @@ export interface GeoAssignment {
 
 - `Address` untouched. Existing rows untouched.
 - `geoNodeId` optional. Existing properties have `undefined` until admin classifies.
-- TRC one-time seed: create District/Region/Ward `GeoLabelType`s, import polygons from Tanzania open-data, auto-assign properties via `ST_Contains`.
+- demo-org one-time seed: create District/Region/Ward `GeoLabelType`s, import polygons from Tanzania open-data, auto-assign properties via `ST_Contains`.
 - Unclassified properties stay with `geoNodeId = null`. Admin UI surfaces as "unclassified".
 - `RegionConfig` continues as country/currency registry. Document (in geo-node.ts header AND region-config.ts header):
 
@@ -478,15 +478,15 @@ Existing reports joining on `address.county` continue working. New reports join 
 
 ### 3.6 Acceptance criteria
 
-1. TRC admin creates label types [District (0), Region (1), Ward (2)]. Kenyan org in separate org creates [County (0), Sub-county (1), Ward (2)]. Coexist, no leak.
-2. `GeoNode` "Kinondoni District" has 3 child "Regions" in TRC's tree; the word "region" never confused across orgs.
+1. demo-org admin creates label types [District (0), Region (1), Ward (2)]. Kenyan org in separate org creates [County (0), Sub-county (1), Ward (2)]. Coexist, no leak.
+2. `GeoNode` "Kinondoni District" has 3 child "Regions" in the research client's tree; the word "region" never confused across orgs.
 3. Property at `(-6.77, 39.26)` auto-classifies into deepest matching polygon via `ST_Contains` on save.
 4. Moving "Region X" from District A to District B atomically updates `geo_node_closure`; `getDescendants(District A)` excludes moved subtree.
 5. `GeoAssignment` with `inherits=true` at District level: `geo.findAssignees(propertyUnderDistrict, 'station_master')` returns assigned user/tag. With `inherits=false`, only direct children match.
 6. `Address.county` still populates/displays; no report breaks. New reports filter by `geoNodeId`.
 7. `RegionConfig` still authoritative for `currencyCode`, `vatRate`, `defaultTimezone`. Zero references from geo-hierarchy code path.
 8. Portfolio map shows colored polygons per depth with layer toggles and street-level property pins.
-9. Data isolation: TRC-scoped user cannot see Kenyan org's `GeoNode` records — all queries `WHERE organization_id = :ctx`.
+9. Data isolation: research-client-scoped user cannot see Kenyan org's `GeoNode` records — all queries `WHERE organization_id = :ctx`.
 
 ---
 
@@ -506,7 +506,7 @@ Existing reports joining on `address.county` continue working. New reports join 
 | Wave | Work | Why first |
 |---|---|---|
 | Wave 1 | Conflict 1 — AuthorityLevel | Zero-risk, pure additive type. Unblocks approval-routing work. |
-| Wave 2 | Conflict 3 — GeoNode | Depends on nothing else. Unblocks TRC's District-first hierarchy driving Station-Master routing. |
+| Wave 2 | Conflict 3 — GeoNode | Depends on nothing else. Unblocks the research client's District-first hierarchy driving Station-Master routing. |
 | Wave 3 | Conflict 2 — Universal tenant app | Largest surface change. Benefits from AuthorityLevel being in place. |
 
 ---

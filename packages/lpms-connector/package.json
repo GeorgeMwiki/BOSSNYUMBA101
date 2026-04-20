@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "LPMS (Land and Property Management System) ingestion adapters for legacy TRC exports. Normalizes CSV, JSON, and XML dumps into the shape consumed by MigrationWriterService.",
+  "description": "LPMS (Land and Property Management System) ingestion adapters for legacy estate-system exports. Normalizes CSV, JSON, and XML dumps into the shape consumed by MigrationWriterService.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -88,5 +88,25 @@
     "teachingKeyPoints": "Key points",
     "reviewTitle": "Session summary",
     "fivePsTitle": "5 Ps of tenancy risk"
+  },
+  "training": {
+    "title": "Adaptive training",
+    "subtitle": "Describe what needs teaching — Mr. Mwikila builds the path.",
+    "generateTitle": "Generate training",
+    "generateSubtitle": "Natural-language brief → sequenced training path with Socratic prompts.",
+    "topicLabel": "What should we teach?",
+    "topicPlaceholder": "e.g. Onboard new station masters on arrears ladder",
+    "audienceLabel": "Audience",
+    "durationLabel": "Duration (hours)",
+    "languageLabel": "Language",
+    "generateCta": "Generate with Mr. Mwikila",
+    "saveCta": "Save path",
+    "discardCta": "Discard",
+    "pathsTitle": "Saved paths",
+    "assignmentsTitle": "Active assignments",
+    "assignmentsEmpty": "No active assignments yet.",
+    "masteryTitle": "Mastery heatmap",
+    "masteryEmpty": "Mastery appears once employees start learning.",
+    "masteryEmployee": "Employee"
   }
 }

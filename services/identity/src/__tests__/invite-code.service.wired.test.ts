@@ -71,11 +71,11 @@ describe('InviteCodeService (wired)', () => {
       identityRepo: makeIdentityRepo(identity),
     });
     await svc.redeem(
-      'TRC-ABCD' as InviteCode,
+      'ACME-ABCD' as InviteCode,
       identity.id
     );
     expect(seen).toEqual({
-      code: 'TRC-ABCD',
+      code: 'ACME-ABCD',
       id: identity.id,
       profile: {
         firstName: 'A',

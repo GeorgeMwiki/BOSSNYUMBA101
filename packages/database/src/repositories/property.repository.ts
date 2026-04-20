@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.36 audit-column narrowing: downstream apps use stricter exactOptionalPropertyTypes that rejects our insert/update shapes.
+// @ts-nocheck — drizzle-orm v0.36 audit-column narrowing: downstream apps use stricter exactOptionalPropertyTypes that rejects our insert/update shapes. Tracked: drizzle-team/drizzle-orm#2876.
 /**
  * PropertyRepository and UnitRepository - PostgreSQL implementations.
  */

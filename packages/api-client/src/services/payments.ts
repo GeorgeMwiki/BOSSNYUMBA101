@@ -1,4 +1,4 @@
-// @ts-nocheck — domain-models schema drift; pending rewrite against current WorkOrder/PaymentMethod namespace shape
+// @ts-nocheck — domain-models has PaymentMethod/WorkOrder exported as namespaces not types + missing Priority/Status type exports. Rewrite pending domain-models namespace→type refactor. Tracked: BOSSNYUMBA-42.
 /**
  * Payments API Service
  */

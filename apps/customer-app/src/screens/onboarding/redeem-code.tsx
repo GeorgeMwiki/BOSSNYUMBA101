@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
  * Client-side invite-code shape check. Real validation happens server-side;
  * this is only to save a round-trip on obviously malformed input.
  *
- * Codes follow the loose pattern `<ORG-PREFIX>-<ALNUM>` (e.g. `TRC-A3F9`).
+ * Codes follow the loose pattern `<ORG-PREFIX>-<ALNUM>` (e.g. `ACME-A3F9`).
  * Minimum 4 chars overall so a pasted placeholder is rejected.
  */
 const INVITE_CODE_REGEX = /^[A-Z0-9]{2,}-?[A-Z0-9]{2,}$/i;
@@ -45,7 +45,7 @@ export default function RedeemCodePage() {
     const trimmed = state.code.trim();
     if (trimmed.length < 4) return 'Code is too short.';
     if (!INVITE_CODE_REGEX.test(trimmed)) {
-      return 'Codes look like “TRC-A3F9”. Please check and try again.';
+      return 'Codes look like “ACME-A3F9”. Please check and try again.';
     }
     return null;
   }, [state.code]);
@@ -109,7 +109,7 @@ export default function RedeemCodePage() {
             inputMode="text"
             spellCheck={false}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-base uppercase tracking-wider shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="TRC-A3F9"
+            placeholder="ACME-A3F9"
             value={state.code}
             onChange={handleChange}
             aria-invalid={validationMessage !== null}

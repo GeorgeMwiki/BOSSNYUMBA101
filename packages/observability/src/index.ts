@@ -190,6 +190,30 @@ export type {
 export { runHealthCheck, statusCodeFor } from './health/health-check.js';
 
 // ============================================================================
+// Sentry (error tracking)
+// ============================================================================
+
+export type { SentryConfig, SentryClient } from './sentry.js';
+export {
+  initSentry,
+  getSentry,
+  withSentry,
+  installGlobalSentryHandlers,
+} from './sentry.js';
+
+// ============================================================================
+// Analytics (PostHog)
+// ============================================================================
+
+export type {
+  AnalyticsConfig,
+  AnalyticsClient,
+  AnalyticsEventName,
+  AnalyticsProperties,
+} from './analytics.js';
+export { initAnalytics, getAnalytics, trackEvent } from './analytics.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 

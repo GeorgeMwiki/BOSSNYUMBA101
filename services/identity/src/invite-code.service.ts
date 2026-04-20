@@ -3,7 +3,7 @@
  *
  * Wires the Postgres repo so the three public methods return real results.
  * Code format is enforced at the repo layer: `<ORG_CODE>-<RANDOM_4>`
- * (e.g. `TRC-A3F9`).
+ * (e.g. `ACME-A3F9`).
  *
  * Redemption is the atomic chokepoint that creates an OrgMembership +
  * shadow User row + increments redemptions_used in a single transaction.

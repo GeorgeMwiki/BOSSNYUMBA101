@@ -13,7 +13,7 @@
  *   - ON CONFLICT DO NOTHING on the (tenant_id, code) unique constraint.
  *   - Safe to run repeatedly; re-running will not duplicate or overwrite.
  *
- * This is a PLATFORM-level seed (not org-specific), so unlike `trc-seed.ts`
+ * This is a PLATFORM-level seed (not org-specific), so unlike `demo-org-seed.ts`
  * it is NOT gated behind `SEED_ORG_SEEDS`. It can ship in every environment.
  */
 

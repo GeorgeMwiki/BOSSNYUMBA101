@@ -272,3 +272,108 @@ scans) returns real data when `DATABASE_URL` is set.
 
 See `Docs/analysis/DELTA_AND_ROADMAP.md` § "Production Readiness Matrix"
 for the full per-feature matrix.
+
+---
+
+## 8. Production Deployment (canonical runbook)
+
+After this section, launching bossnyumba.com with real traffic is:
+`docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`
+plus a DNS flip. Every operational concern below is covered.
+
+### 8.1 Bootstrap sequence
+
+1. **Provision infrastructure**
+   - Managed Postgres 15 (RDS/Cloud SQL) + pgvector extension
+   - Managed Redis 7 (ElastiCache/MemoryStore)
+   - Object storage bucket for docs (S3/GCS) — lifecycle: 365d retention
+   - Kubernetes cluster (EKS/GKE) OR a VM running docker-compose
+   - DNS zone: `bossnyumba.com` (+ subdomains `api`, `admin`, `owners`, `manage`)
+
+2. **Issue TLS certs**
+   - `certbot certonly --dns-route53 -d bossnyumba.com -d '*.bossnyumba.com'`
+   - Mount fullchain.pem + privkey.pem under `${TLS_CERT_DIR}/bossnyumba.com/`
+
+3. **Populate `.env.production`** from `Docs/ENV.md` + section 8.2 below
+
+4. **Apply migrations + seed platform defaults**
+   ```bash
+   pnpm --filter @bossnyumba/database migrate:deploy
+   pnpm --filter @bossnyumba/database seed:platform
+   ```
+
+5. **(Optional) Seed demo org**
+   ```bash
+   pnpm --filter @bossnyumba/database seed:demo
+   ```
+
+6. **Boot gateway + apps**
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   ```
+
+7. **Flip DNS** A records for the 4 subdomains to the load-balancer IP
+
+8. **Smoke-test** with `pnpm e2e:prod` (runs critical-flow specs against https://...)
+
+### 8.2 Environment variables — REQUIRED vs OPTIONAL
+
+| Var | Required | Service(s) | How to obtain | Cost indicator |
+|---|---|---|---|---|
+| `POSTGRES_PASSWORD` | REQUIRED | all | `openssl rand -base64 32` | - |
+| `REDIS_PASSWORD` | REQUIRED | all | `openssl rand -base64 32` | - |
+| `NEO4J_PASSWORD` | REQUIRED | gateway | `openssl rand -base64 32` | - |
+| `JWT_SECRET` | REQUIRED | gateway | `openssl rand -base64 48` | - |
+| `ANTHROPIC_API_KEY` | REQUIRED | gateway (chat, workflows) | console.anthropic.com | ~$15 / 1M input tokens (Sonnet 4.5); 1 turn ≈ 1.5K in + 500 out → ~$0.028/turn. Budget for 10K turns/day = ~$280/day |
+| `OPENAI_API_KEY` | OPTIONAL | voice-in (Whisper transcription) | platform.openai.com | $0.006/min (Whisper); budget $18 per 50 hours of voice input/day |
+| `ELEVENLABS_API_KEY` | OPTIONAL | voice-out (TTS) | elevenlabs.io | $0.18/1K chars (Turbo v2.5); 1 response ≈ 300 chars → $0.054/response. Budget for 3K voice responses/day = ~$162/day |
+| `SENTRY_DSN` | OPTIONAL but strongly recommended | all | sentry.io | Free tier: 5K events/mo; Team $26/mo |
+| `POSTHOG_API_KEY` | OPTIONAL | all | posthog.com (self-host free) | Free up to 1M events/mo; self-host: infra only |
+| `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` | OPTIONAL | notifications | twilio.com | SMS TZ ~$0.06, KE ~$0.048, UG ~$0.070, NG ~$0.033, SA ~$0.058 per SMS |
+| `GEPG_CLIENT_ID` + `GEPG_CLIENT_SECRET` | OPTIONAL (TZ only) | payments | Ministry of Finance TZ | ~0.5% of transaction value |
+| `CLICKPESA_API_KEY` | OPTIONAL (TZ) | payments | clickpesa.com | ~1.5% + TZS 200/txn |
+| `MPESA_CONSUMER_KEY` + `MPESA_CONSUMER_SECRET` | OPTIONAL (KE) | payments | daraja.safaricom.co.ke | 1.5% per M-Pesa txn |
+| `FLUTTERWAVE_SECRET_KEY` | OPTIONAL (multi-country) | payments | flutterwave.com | 1.4% + NGN 50/txn |
+| `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | REQUIRED for email | notifications | SendGrid/Mailgun | SendGrid: 100 emails/day free, $19.95/mo for 50K |
+| `WHATSAPP_BUSINESS_TOKEN` | OPTIONAL | notifications | business.facebook.com | $0.005–$0.08 per session depending on country |
+
+Realistic **10-tenant / 5K units / ~1M events-per-day** monthly cost (USD):
+- Anthropic: ~$8,400 (30K chat turns + 5K workflow turns daily)
+- Voice (Whisper + ElevenLabs): ~$5,400
+- Infra (k8s 3×m5.large + RDS + ElastiCache): ~$1,100
+- SMS (country-dependent, assume TZ 50K/mo): ~$3,000
+- Sentry + PostHog + monitoring: ~$200
+- **Total: ~$18,100/mo** at this scale
+
+### 8.3 Observability (wired in Wave 13)
+
+- **Sentry** — set `SENTRY_DSN`. Client auto-initialised in api-gateway + all 4 apps. PII scrubbed via `packages/ai-copilot/src/security/pii-scrubber.ts` before events leave the process.
+- **PostHog** — set `POSTHOG_API_KEY`. Canonical events: `chat.turn`, `chat.proposed_action_approved`, `workflow.completed`, `training.assigned`, `training.completed`, `mwikila.intervention_accepted`, `demo.played`.
+- **Grafana dashboards** — JSON under `monitoring/grafana-dashboards/`, import via `grafana-cli admin import`.
+- **Prometheus scrape target** — `/api/v1/metrics` (admin-auth). Enable ServiceMonitor via `helm upgrade --set monitoring.serviceMonitor.enabled=true`.
+- **Log aggregation** — fluent-bit stub in `monitoring/fluent-bit/`. Set `FLUENT_BIT_OUTPUT=loki|cloudwatch|elastic` in `.env.production`.
+
+### 8.4 Pilot client go-live checklist (template — no specific tenant)
+
+- [ ] Tenant slug provisioned in admin portal (`POST /api/v1/tenants`)
+- [ ] Tenant's country + currency + timezone set on tenant record
+- [ ] Tenant admin user created + MFA enrolled
+- [ ] Properties + units imported (CSV via `/api/v1/migration/import-csv`)
+- [ ] Existing leases migrated (+ historical payments for arrears accuracy)
+- [ ] Payment provider creds configured (GePG/M-Pesa/Flutterwave)
+- [ ] SMS sender ID registered with MNO (TZ: TCRA, KE: CA)
+- [ ] Training path auto-generated for tenant's team (`POST /api/v1/training/generate`)
+- [ ] Mr. Mwikila persona smoke-tested (5 chat turns + 1 workflow)
+- [ ] Backup schedule: Postgres pg_basebackup daily → S3 (7d RPO) + WAL archiving
+- [ ] Rollback runbook reviewed (`Docs/RUNBOOK.md`)
+- [ ] On-call rotation published
+- [ ] Go-live announcement queued
+
+### 8.5 Real-LLM E2E smoke tests
+
+Opt-in by setting `E2E_REAL_LLM=true` before `pnpm e2e`. Required env for each spec:
+- brain-turn-real, marketing-consultant, training-generate, sandbox-flow, arrears-explain, workflow-real, mwikila-intervention-real, prospect-onboard-real: `ANTHROPIC_API_KEY`
+- voice-loop: also `ELEVENLABS_API_KEY` + `OPENAI_API_KEY`
+
+CI defaults to skipping these (no keys); local + staging pipelines opt in.
+

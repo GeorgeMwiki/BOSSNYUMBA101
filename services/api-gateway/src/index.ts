@@ -78,11 +78,14 @@ import { createMetricsMiddleware } from './observability/metrics-middleware';
 import mcpRouter, { agentCardRouter } from './routes/mcp.router';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
 import publicMarketingRouter from './routes/public-marketing.router';
+import publicSandboxRouter from './routes/public-sandbox.router';
+import publicLeadsRouter from './routes/public-leads.router';
 // Wave 12 — streaming AI chat (SSE) for all 4 chat surfaces
 import aiChatRouter from './routes/ai-chat.router';
 import workflowsRouter from './routes/workflows.router';
 import agentCertificationsRouter from './routes/agent-certifications.router';
 import classroomRouter from './routes/classroom.router';
+import trainingRouter from './routes/training.router';
 import voiceRouter from './routes/voice.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
@@ -374,11 +377,14 @@ api.route('/mcp', mcpRouter);
 api.route('/.well-known/agent.json', agentCardRouter);
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
+api.route('/public/sandbox', publicSandboxRouter);
+api.route('/public/leads', publicLeadsRouter);
 // Streaming AI chat — POST /api/v1/ai/chat with SSE response
 api.route('/ai', aiChatRouter);
 api.route('/workflows', workflowsRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/classroom', classroomRouter);
+api.route('/training', trainingRouter);
 api.route('/voice', voiceRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
@@ -576,6 +582,30 @@ let server: ReturnType<typeof app.listen> | null = null;
 
 // Start server
 if (require.main === module) {
+  // Initialize Sentry + PostHog analytics at boot — no-ops when DSN/key absent.
+  void import('@bossnyumba/observability').then(async (obs) => {
+    if (obs.initSentry && obs.installGlobalSentryHandlers) {
+      await obs.initSentry({
+        dsn: process.env.SENTRY_DSN,
+        service: 'api-gateway',
+        environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+        release: process.env.GIT_SHA,
+        tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? '0.1'),
+      });
+      obs.installGlobalSentryHandlers();
+    }
+    if (obs.initAnalytics) {
+      await obs.initAnalytics({
+        apiKey: process.env.POSTHOG_API_KEY,
+        host: process.env.POSTHOG_HOST,
+        service: 'api-gateway',
+        environment: process.env.NODE_ENV,
+      });
+    }
+  }).catch((err) => {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'sentry/analytics init failed');
+  });
+
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });

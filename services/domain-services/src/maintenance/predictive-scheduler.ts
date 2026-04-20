@@ -11,8 +11,8 @@
  *   - Reactive FAR monitoring (the existing flow) fires on an overdue date.
  *     That catches problems late. A predictive layer surfaces components that
  *     are slipping into "poor" before the due-date trigger ever runs.
- *   - Deterministic = auditable. TRC S7/S13 compliance demands evidence-linked
- *     decisions. LLM opacity is a liability here.
+ *   - Deterministic = auditable. Customer-research S7/S13 compliance demands
+ *     evidence-linked decisions. LLM opacity is a liability here.
  *   - Inputs-out: same input, same output. Tenant-isolated. Immutable.
  *
  * Industry half-lives (component age vs. expected lifespan):

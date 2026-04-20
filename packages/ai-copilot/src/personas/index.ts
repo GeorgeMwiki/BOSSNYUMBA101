@@ -82,3 +82,36 @@ export const PRIMARY_PERSONAE = Object.freeze(getAllPrimaryPersonae());
  * All 7 differential sub-persona prompt layers, keyed by id.
  */
 export const SUB_PERSONA_LAYERS = SUB_PERSONA_REGISTRY;
+
+// ----- Wave-13 amplification: pedagogy standards + teaching style -----
+export {
+  BLOOM_LEVELS,
+  SCAFFOLDING_RUNGS,
+  DELIVERY_MODES,
+  PEDAGOGY_CONSTANTS,
+  PEDAGOGY_STANDARDS_RUBRIC,
+  PEDAGOGY_STANDARDS_METADATA,
+  type BloomLevel,
+  type ScaffoldingRung,
+  type DeliveryMode,
+} from './sub-personas/pedagogy-standards.js';
+
+export {
+  TeachingStyleSchema,
+  VerbosityLevelSchema,
+  ExamplesDensitySchema,
+  SocraticQuestionRateSchema,
+  CultureContextSchema,
+  DEFAULT_TEACHING_STYLE,
+  resolveTeachingStyle,
+  verbosityWordBudget,
+  examplesPerConcept,
+  socraticRatioFloor,
+  renderTeachingStyleAddendum,
+  safeParseTeachingStyle,
+  type TeachingStyle,
+  type VerbosityLevel,
+  type ExamplesDensity,
+  type SocraticQuestionRate,
+  type CultureContext,
+} from './sub-personas/teaching-style.js';

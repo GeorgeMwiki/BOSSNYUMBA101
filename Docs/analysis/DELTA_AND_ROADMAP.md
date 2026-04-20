@@ -42,7 +42,7 @@ Details in [CONFLICT_RESOLUTIONS.md](./CONFLICT_RESOLUTIONS.md).
 |---|---|---|
 | **Admin L1–L4 hierarchy** | Add `AuthorityLevel` enum (tier 0…70) as a NEW attribute on `UserRoleAssignment`. Keep 8 RBAC roles + 10 AI personas untouched. | RBAC answers "what can I do", authority answers "how senior am I", persona answers "which AI hat". Three orthogonal axes. |
 | **Universal tenant app** | New `TenantIdentity` + `OrgMembership` on top of existing `User`. Shadow User rows preserve RBAC/isolation. | Existing `User` stays scoped per platform tenant. `TenantIdentity` federates **login only**, not data. |
-| **Elastic geo-hierarchy** | New `GeoNode` tree + per-org `GeoLabelType` depths. Existing `Address` stays. `RegionConfig` is explicitly NOT a location hierarchy. | `GeoLabelType.depth` is ordinal (TRC uses District→Region; Kenya uses County→Sub-county) — no hardcoded global convention. |
+| **Elastic geo-hierarchy** | New `GeoNode` tree + per-org `GeoLabelType` depths. Existing `Address` stays. `RegionConfig` is explicitly NOT a location hierarchy. | `GeoLabelType.depth` is ordinal (demo-org uses District→Region; Kenya uses County→Sub-county) — no hardcoded global convention. |
 
 **Sequencing:** AuthorityLevel → GeoNode → Universal app. (Lowest-risk additive type first, largest surface change last.)
 
@@ -88,7 +88,7 @@ Details in [SCAFFOLDED_COMPLETION.md](./SCAFFOLDED_COMPLETION.md).
 
 Details in [MISSING_FEATURES_DESIGN.md](./MISSING_FEATURES_DESIGN.md).
 
-**Revenue-critical (must-have for TRC launch):**
+**Revenue-critical (must-have for demo launch):**
 - GePG payment integration (with PSP shortcut per [RESEARCH_ANSWERS.md](./RESEARCH_ANSWERS.md) Q2)
 - Arrears ledger + interactive Excel-like verification
 - Gamification (3-layer: Tenant Score + early-pay credit + optional MNO cashback per Q3)
@@ -148,7 +148,7 @@ From [RESEARCH_ANSWERS.md](./RESEARCH_ANSWERS.md):
 - Shared Anthropic client (`packages/ai-copilot/src/providers/anthropic-client.ts`)
 
 ### Wave 1 — Revenue unblockers (week 3-4)
-**Goal:** Fix TRC's biggest pain points.
+**Goal:** Fix the research client's biggest pain points.
 
 - [NEW 3] GePG payment integration (PSP-first)
 - [NEW 4] Arrears ledger + interactive Excel-like UI
@@ -157,7 +157,7 @@ From [RESEARCH_ANSWERS.md](./RESEARCH_ANSWERS.md):
 - [SCAFFOLDED 3] Case state machine & SLA
 
 ### Wave 2 — Geography + Structure (week 5-7)
-**Goal:** Handle TRC's unique organizational shape.
+**Goal:** Handle the research client's unique organizational shape.
 
 - [CONFLICT 3] GeoNode elastic hierarchy
 - [NEW 18] Station-master-proximity routing
@@ -219,16 +219,16 @@ From [RESEARCH_ANSWERS.md](./RESEARCH_ANSWERS.md):
 
 ## 📊 What this closes (questionnaire → code)
 
-Every TRC questionnaire answer is now addressed by a concrete design:
+Every customer-discovery questionnaire answer is now addressed by a concrete design:
 
-| TRC question | Addressed by |
+| Research-client question | Addressed by |
 |---|---|
 | Org structure / EMU / Director General approval | CONFLICT 1 (AuthorityLevel) + SCAFFOLDED 12 (per-org policies) |
 | Application → HQ delay | NEW 18 (station-master routing) + SCAFFOLDED 3 (SLA) |
 | District vs Region inversion | CONFLICT 3 (elastic geo-hierarchy) |
 | Property classification gaps | RESEARCH Q1 taxonomy + SCAFFOLDED 2 (subdivision) |
 | Condition survey once/year | NEW 2 + NEW 16 (FAR triggers → automated surveys) |
-| Airbnb-for-TRC showcase | NEW 11 (marketplace) + CONFLICT 2 (universal app) |
+| Airbnb-for-demo-org showcase | NEW 11 (marketplace) + CONFLICT 2 (universal app) |
 | Double-leasing / conflicts | BUILT Approval routing + NEW 6 (genealogy) |
 | GePG-only payments, 2 debt figures | NEW 3 (GePG) + NEW 4 (arrears ledger) |
 | Manual arrears / Excel pain | NEW 4 (Excel-like interactive) |
@@ -310,7 +310,7 @@ Legend: **LIVE** = real Postgres reads/writes through the composition root; **ST
 | Composition root (service registry) | LIVE | `composition/service-registry.ts` — degraded skeleton when `DATABASE_URL` unset |
 | Outbox drainer + domain event subscribers (124) | LIVE | `workers/outbox-worker.ts`, `workers/event-subscribers.ts` |
 | Migrations runner | LIVE | `packages/database/src/run-migrations.ts` — 40/40 apply clean |
-| Seed runner (TRC fixture) | LIVE | `packages/database/src/seeds/{run-seed,trc-seed}.ts` |
+| Seed runner (demo-org fixture) | LIVE | `packages/database/src/seeds/{run-seed,demo-org-seed}.ts` |
 | Health endpoints (`/health`, `/healthz`) | LIVE | `services/api-gateway/src/index.ts:144-162` |
 
 ### Domain services (wave 1-5)

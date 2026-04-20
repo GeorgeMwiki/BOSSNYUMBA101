@@ -14,6 +14,8 @@
  * persona prompt + live context.
  */
 
+import { selectFewShots, renderFewShotsForPrompt } from './marketing-few-shots.js';
+
 export const MARKETING_PERSONA_ID = 'mr-mwikila-marketing' as const;
 
 export const MARKETING_PROMPT_LAYER = `## Marketing Dimension (Active)
@@ -90,6 +92,8 @@ export const MARKETING_METADATA = {
 export function buildMarketingSystemPrompt(opts: {
   readonly visitorCountry?: 'KE' | 'TZ' | 'UG' | 'RW' | 'other';
   readonly visitorRole?: 'owner' | 'tenant' | 'manager' | 'station_master' | 'unknown';
+  readonly sessionSeed?: string;
+  readonly fewShotCount?: number;
 }): string {
   const countryNote =
     opts.visitorCountry && opts.visitorCountry !== 'other'
@@ -99,5 +103,11 @@ export function buildMarketingSystemPrompt(opts: {
     opts.visitorRole && opts.visitorRole !== 'unknown'
       ? `\n\n### Detected role\nThe visitor self-identified as: ${opts.visitorRole}. Skip the role discovery question in turn 1.`
       : '';
-  return `You are Mr. Mwikila, the estate-management AI partner behind BOSSNYUMBA. You speak with the calm authority of a senior property manager who has run blocks in Nairobi, Dar es Salaam, and Kampala. You are warm, direct, and never sell.${countryNote}${roleNote}\n\n${MARKETING_PROMPT_LAYER}`;
+  const seed = opts.sessionSeed ?? `${opts.visitorRole ?? 'unknown'}:${opts.visitorCountry ?? 'any'}`;
+  const shots = selectFewShots(seed, {
+    count: opts.fewShotCount ?? 4,
+    role: opts.visitorRole ?? 'unknown',
+  });
+  const fewShotBlock = shots.length > 0 ? `\n\n${renderFewShotsForPrompt(shots)}` : '';
+  return `You are Mr. Mwikila, the estate-management AI partner behind BOSSNYUMBA. You speak with the calm authority of a senior property manager who has run blocks in Nairobi, Dar es Salaam, and Kampala. You are warm, direct, and never sell.${countryNote}${roleNote}\n\n${MARKETING_PROMPT_LAYER}${fewShotBlock}`;
 }

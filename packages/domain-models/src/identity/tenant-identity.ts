@@ -122,7 +122,7 @@ export interface OrgMembership {
   readonly joinedAt: ISOTimestamp;
   readonly joinedViaInviteCode: InviteCode | null;
   readonly status: OrgMembershipStatus;
-  /** Human-friendly label the tenant set for this org (e.g. "TRC apartments"). */
+  /** Human-friendly label the tenant set for this org (e.g. "Acme apartments"). */
   readonly nickname: string | null;
 }
 

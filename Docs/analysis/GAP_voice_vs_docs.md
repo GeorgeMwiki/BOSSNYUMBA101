@@ -41,7 +41,7 @@
 
 ### Directive: Station Master as tagged worker role (workers carry tags; tag = metadata about work bracket)
 - **Status:** PARTIALLY_COVERED
-- **Existing coverage:** BOSSNYUMBA_SPEC.md mentions "Station Master" in TRC context; ARCHITECTURE_BRAIN.md:49–60 mentions "worker tag" concept
+- **Existing coverage:** BOSSNYUMBA_SPEC.md mentions "Station Master" in a multi-district public-sector estate context; ARCHITECTURE_BRAIN.md:49–60 mentions "worker tag" concept
 - **Gap:** Tag-driven permission/workflow mechanics not fully detailed; metadata schema for tags undocumented
 
 ### Directive: Other Workers with Title (tag-driven; teams under same tag share permissions/workflows)
@@ -49,9 +49,9 @@
 - **Existing coverage:** ARCHITECTURE_BRAIN.md:49–60 mentions coworker personae and team-level permissions via VisibilityScope
 - **Gap:** Tag-driven team sharing and shared permission logic not explicitly modeled
 
-### Directive: EMU (Estate Management Unit) as Owner account for TRC
+### Directive: EMU (Estate Management Unit) as Owner account for the research-client fixture
 - **Status:** FULLY_COVERED
-- **Existing coverage:** VOICE_MEMO itself (line 30); BOSSNYUMBA_SPEC.md TRC-specific sections
+- **Existing coverage:** VOICE_MEMO itself (line 30); BOSSNYUMBA_SPEC.md demo-org-specific sections
 - **Gap:** None identified (memo-specific context)
 
 ### Directive: Conditional approval routing (asset_type + monthly_rent threshold → different routes)
@@ -123,9 +123,9 @@
 - **Existing coverage:** DOMAIN_MODEL.md mentions property location hierarchy but does NOT address org-defined labels or N-deep nesting
 - **Gap:** Configurable hierarchy labels (District/Region/Village/Zone/Ward/Street) and N-level nesting not modeled
 
-### Directive: TRC's convention: Districts contain Regions (counter-intuitive to global convention)
+### Directive: the research client's convention: Districts contain Regions (counter-intuitive to global convention)
 - **Status:** NOT_COVERED
-- **Existing coverage:** BOSSNYUMBA_SPEC.md mentions TRC context; no flexible hierarchy model documented
+- **Existing coverage:** BOSSNYUMBA_SPEC.md mentions a multi-district public-sector estate context; no flexible hierarchy model documented
 - **Gap:** No mention of org-customized hierarchy inversion support
 
 ### Directive: Geofencing via Google Maps API — each node colored/outlined on map
@@ -206,7 +206,7 @@
 - **Existing coverage:** DOMAIN_MODEL.md:17 (Customer = end-user who rents) but does not address multi-tenancy per customer
 - **Gap:** Multi-org customer model not modeled; relationship schema for customer → multiple orgs/leases not documented
 
-### Directive: To join TRC's portfolio, tenant receives/enters a special code from TRC
+### Directive: To join the research client's portfolio, tenant receives/enters a special code from the estate
 - **Status:** NOT_COVERED
 - **Existing coverage:** None found
 - **Gap:** Invite/code mechanism for org onboarding not documented
@@ -598,11 +598,11 @@
 
 ---
 
-## Section 15 — Future Vision (TRC Stated)
+## Section 15 — Future Vision (research-client stated)
 
 ### Directive: "Improved system → restored revenue"
 - **Status:** FULLY_COVERED
-- **Existing coverage:** BOSSNYUMBA_PRD.md:27–40 (value proposition); BOSSNYUMBA_SPEC.md specifies TRC context
+- **Existing coverage:** BOSSNYUMBA_PRD.md:27–40 (value proposition); BOSSNYUMBA_SPEC.md specifies a multi-district public-sector estate context
 - **Gap:** None identified (goal acknowledged)
 
 ### Directive: Eliminate lack of conditional survey reports → better maintenance plans
@@ -751,7 +751,7 @@
 
 ### CONFLICT 2: Tenant app universality vs. multi-org isolation
 
-**Memo says (lines 136–139):** "Tenant app is universal, not org-siloed. One download, access many organizations. Tenant can hold simultaneous tenancies across multiple orgs. To join TRC's portfolio, tenant receives/enters a special code from TRC."
+**Memo says (lines 136–139):** "Tenant app is universal, not org-siloed. One download, access many organizations. Tenant can hold simultaneous tenancies across multiple orgs. To join the research client's portfolio, tenant receives/enters a special code from the estate."
 
 **Existing docs (CUSTOMER_APP.md, DOMAIN_MODEL.md):** Models a single tenant-to-org binding per app session. No mention of multi-org tenant identity, special-code onboarding, or simultaneous tenancies.
 
@@ -763,22 +763,22 @@
 
 ### CONFLICT 3: Configurable geo-hierarchy vs. fixed location model
 
-**Memo says (lines 76–78):** "Elastic geo-hierarchy (CRITICAL) — Do NOT force a fixed region → district → village structure. TRC's convention: Districts contain Regions (counter-intuitive to global convention)."
+**Memo says (lines 76–78):** "Elastic geo-hierarchy (CRITICAL) — Do NOT force a fixed region → district → village structure. the research client's convention: Districts contain Regions (counter-intuitive to global convention)."
 
 **Existing docs (DOMAIN_MODEL.md):** Models location as fixed "property location" fields. No mention of org-configurable hierarchy labels or N-deep nesting.
 
 **Issue:** Allowing arbitrary hierarchy labels and inversion (Districts > Regions) requires a tree/graph model, not flat location fields.
 
-**Decision needed:** Refactor location model to support N-deep, org-configurable hierarchy, or limit initial scope to TRC's specific (Districts > Regions) pattern?
+**Decision needed:** Refactor location model to support N-deep, org-configurable hierarchy, or limit initial scope to the research client's specific (Districts > Regions) pattern?
 
 ---
 
 ## Top 10 NOT_COVERED Directives (Highest Priority to Design Next)
 
 1. **Tenant app universal + multi-org support (Section 4)** — Major architectural gap; requires identity and session redesign
-2. **Elastic geo-hierarchy with org-configurable labels (Section 2)** — Critical for TRC and similar large organizations with unique geographic conventions
+2. **Elastic geo-hierarchy with org-configurable labels (Section 2)** — Critical for similar large asset-owning organizations large organizations with unique geographic conventions
 3. **AI price-negotiation engine (Section 4)** — Required for marketplace intelligence; no negotiation protocol documented
-4. **Conditional survey report generation with action plans (Section 7 + 13)** — Pain point elimination; core value driver for TRC
+4. **Conditional survey report generation with action plans (Section 7 + 13)** — Pain point elimination; core value driver for research-client-scale orgs
 5. **GePG payment integration + Tanzanian compliance (Section 6)** — Tanzania-specific; required for full payment automation
 6. **Arrears ledger + interactive verification (Section 6)** — "Biggest operational stressor"; revenue-critical
 7. **Nanobanana document generation integration (Section 5 + 8)** — State-of-the-art document creation; mentioned by founder
@@ -795,7 +795,7 @@
 - Estate Manager persona
 - EMU as Owner mapping
 - Core pain points (revenue loss, double-leasing)
-- Future vision goals (TRC's stated outcomes)
+- Future vision goals (the research client's stated outcomes)
 
 ### Partially Covered (24 directives) — Medium Risk
 - Most approval-flow and role-hierarchy concepts exist but lack detail (e.g., admin levels, conditional routing rules)
@@ -821,6 +821,6 @@
 ## Next Steps
 
 1. **Align on conflicts** — Founder decision on Admin hierarchy, multi-org tenant identity, and geo-hierarchy scope
-2. **Prioritize NOT_COVERED directives** — Top 10 list above; recommend phased delivery with TRC pain-point priorities (geo-hierarchy, conditional survey, arrears, GePG)
+2. **Prioritize NOT_COVERED directives** — Top 10 list above; recommend phased delivery with research-client pain-point priorities (geo-hierarchy, conditional survey, arrears, GePG)
 3. **Spike on SOTA research questions** — Assign ownership for property-class taxonomy, gamification patterns, move-out workflows, bad-history thresholds
 4. **Update docs in phases** — Do not attempt to document all gaps at once; focus on implementation-ready specs for Phase 1 (geo-hierarchy, conditional survey, arrears)

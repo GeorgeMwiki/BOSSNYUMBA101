@@ -447,3 +447,10 @@ export * as LearningJourneys from './learning-journeys/index.js';
 export * as LearningEngine from './learning-engine/index.js';
 export * as RentCreditBuilding from './rent-credit-building/index.js';
 
+// ============================================
+// Adaptive Training — admin-driven, Mr. Mwikila-generated training paths.
+// Replaces the rigid classroom/course model. Namespaced so it stays
+// isolated from classroom and learning-journeys symbol sets.
+// ============================================
+export * as Training from './training/index.js';
+

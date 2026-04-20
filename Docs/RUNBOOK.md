@@ -24,7 +24,7 @@ under `packages/database/src/migrations/` lexically, and skips files
 whose `hash` (= filename without `.sql`) is already recorded. 40
 migrations apply clean as of 2026-04-18.
 
-### Seed TRC (pilot) data
+### Seed demo-org fixture data
 
 Org seeds are gated behind an explicit acknowledgement env var so a dev
 running `pnpm db:seed` against a prod URL can't inadvertently write
@@ -33,13 +33,13 @@ fake rows.
 ```bash
 export DATABASE_URL=postgresql://...
 export SEED_ORG_SEEDS=true
-pnpm -F @bossnyumba/database db:seed -- --org=trc
+pnpm -F @bossnyumba/database db:seed -- --org=demo
 # or all known fixtures:
 pnpm -F @bossnyumba/database db:seed -- --org=all
 ```
 
 Fixtures live in `packages/database/src/seeds/`
-(`trc-seed.ts`, `trc-districts.json`, `sample-tenants.ts`). New org
+(`demo-org-seed.ts`, `demo-districts.json`, `sample-tenants.ts`). New org
 seeds register in the `ORG_SEEDS` map in `run-seed.ts`.
 
 ### Inspect live gateway health endpoints

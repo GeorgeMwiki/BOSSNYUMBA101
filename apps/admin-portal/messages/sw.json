@@ -88,5 +88,25 @@
     "teachingKeyPoints": "Vidokezo muhimu",
     "reviewTitle": "Muhtasari wa kipindi",
     "fivePsTitle": "P 5 za hatari ya upangaji"
+  },
+  "training": {
+    "title": "Mafunzo yanayobadilika",
+    "subtitle": "Eleza linalohitaji kufundishwa — Bw. Mwikila atajenga njia.",
+    "generateTitle": "Unda mafunzo",
+    "generateSubtitle": "Maelezo ya asili → mpangilio wa mafunzo wenye maswali ya Socratic.",
+    "topicLabel": "Tunapaswa kufundisha nini?",
+    "topicPlaceholder": "k.m. Waelimishe wasimamizi wapya kuhusu ngazi ya arrears",
+    "audienceLabel": "Hadhira",
+    "durationLabel": "Muda (masaa)",
+    "languageLabel": "Lugha",
+    "generateCta": "Unda na Bw. Mwikila",
+    "saveCta": "Hifadhi njia",
+    "discardCta": "Tupa",
+    "pathsTitle": "Njia zilizohifadhiwa",
+    "assignmentsTitle": "Kazi zinazoendelea",
+    "assignmentsEmpty": "Hakuna kazi zinazoendelea bado.",
+    "masteryTitle": "Ramani ya umilisi",
+    "masteryEmpty": "Umilisi unaonekana wafanyakazi wakianza kujifunza.",
+    "masteryEmployee": "Mfanyakazi"
   }
 }

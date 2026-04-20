@@ -51,6 +51,7 @@ const ROLE_CATEGORY_WEIGHT: Readonly<
     compliance: 0.7,
     maintenance: 0.3,
     operations: 0.4,
+    strategy: 1.0,
   },
   tenant: {
     financial: 0.5,
@@ -58,6 +59,7 @@ const ROLE_CATEGORY_WEIGHT: Readonly<
     compliance: 0.2,
     maintenance: 0.1,
     operations: 0.1,
+    strategy: 0.1,
   },
   'estate-officer': {
     financial: 0.6,
@@ -65,6 +67,7 @@ const ROLE_CATEGORY_WEIGHT: Readonly<
     compliance: 0.8,
     maintenance: 1.0,
     operations: 1.0,
+    strategy: 0.5,
   },
   admin: {
     financial: 1.0,
@@ -72,6 +75,7 @@ const ROLE_CATEGORY_WEIGHT: Readonly<
     compliance: 1.0,
     maintenance: 0.9,
     operations: 1.0,
+    strategy: 1.0,
   },
   'station-master': {
     financial: 0.7,
@@ -79,6 +83,7 @@ const ROLE_CATEGORY_WEIGHT: Readonly<
     compliance: 0.6,
     maintenance: 0.9,
     operations: 1.0,
+    strategy: 0.3,
   },
 };
 

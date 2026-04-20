@@ -64,7 +64,7 @@ describe('ai-mediator deterministic fallback (no ANTHROPIC_API_KEY)', () => {
       letterType: 'residency_proof',
       customer: { name: 'Salome Juma', unit: 'A-12' },
       purpose: 'bank account',
-      orgName: 'TRC',
+      orgName: 'Demo Estate Corporation',
     });
     expect(r.subject.toLowerCase()).toContain('residency');
     expect(r.body).toContain('Salome Juma');

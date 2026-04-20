@@ -185,7 +185,7 @@ conditionalSurveyActionPlans = {
 ## 3. GePG Payment Integration + Tanzanian Compliance
 
 **Source:** GAP_voice_vs_docs §6 (line 288–290), Open Research #2; GAP_docs_vs_code MISSING #4.
-**Why it matters:** Tanzania requires GePG control-number payments for government-linked rentals (TRC). Manual reconciliation leaks revenue.
+**Why it matters:** Tanzania requires GePG control-number payments for government-linked rentals. Manual reconciliation leaks revenue.
 
 **Existing code to amplify:**
 - `services/payments/src/providers/mpesa/` — template for new `gepg/` provider (same callback/query pattern).
@@ -1031,7 +1031,7 @@ interactiveReportVersions = {
 ## 18. Station-Master-Proximity Routing for Applications
 
 **Source:** GAP_voice_vs_docs §1 (lines 77–85).
-**Why it matters:** TRC and similar orgs need proximity routing — applications land on wrong desk today.
+**Why it matters:** similar large asset-owning organizations orgs need proximity routing — applications land on wrong desk today.
 
 **Existing code to amplify:**
 - `packages/authz-policy/src/system-roles.ts` — add `STATION_MASTER`.
