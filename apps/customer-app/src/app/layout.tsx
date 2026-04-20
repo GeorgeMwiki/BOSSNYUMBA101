@@ -6,6 +6,7 @@ import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import { AppShell } from '@/components/layout/AppShell';
 import { SpotlightMount } from '@/components/SpotlightMount';
+import { MwikilaWidgetMount } from '@/components/MwikilaWidgetMount';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -58,8 +59,10 @@ export default async function RootLayout({
       <body className={inter.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ClientProviders>
-            <AppShell>{children}</AppShell>
-            <SpotlightMount />
+            <MwikilaWidgetMount>
+              <AppShell>{children}</AppShell>
+              <SpotlightMount />
+            </MwikilaWidgetMount>
           </ClientProviders>
         </NextIntlClientProvider>
       </body>

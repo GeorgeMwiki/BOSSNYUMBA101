@@ -842,3 +842,197 @@ export const TurnRequestSchema = z.object({
   forcePersonaId: z.string().optional(),
   maxHandoffDepth: z.number().int().min(0).max(5).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Streaming API — sibling of `handleTurn`.
+//
+// The core `handleTurn` runs the full tool-use loop atomically and returns a
+// single TurnResult. Streaming consumers (SSE in the gateway, the chat-ui)
+// want incremental updates: typing deltas, tool-call/tool-result chips, and
+// a proposed-action card before turn_end.
+//
+// Rather than re-implement the state machine we wrap `handleTurn` in an
+// async generator: we await the real turn, then emit coarse delta events
+// (chunked from the final response text). This keeps the production logic
+// single-sourced in `handleTurn` and avoids duplicating governance/review/
+// handoff plumbing.
+//
+// The event shape mirrors what the 4 chat UIs (`useChatStream` hook) expect.
+// ---------------------------------------------------------------------------
+
+export type StreamTurnEvent =
+  | {
+      readonly type: 'turn_start';
+      readonly threadId: string;
+      readonly personaId: string | undefined;
+      readonly createdAt: string;
+    }
+  | { readonly type: 'delta'; readonly content: string }
+  | {
+      readonly type: 'tool_call';
+      readonly name: string;
+      readonly args?: Record<string, unknown>;
+    }
+  | { readonly type: 'tool_result'; readonly name: string; readonly ok: boolean }
+  | {
+      readonly type: 'proposed_action';
+      readonly risk: RiskLevel;
+      readonly description: string;
+      readonly reviewRequired: boolean;
+      readonly executionHeld: boolean;
+    }
+  | {
+      readonly type: 'handoff';
+      readonly from: string;
+      readonly to: string;
+      readonly objective: string;
+    }
+  | {
+      readonly type: 'error';
+      readonly code: string;
+      readonly message: string;
+      readonly retryable: boolean;
+    }
+  | {
+      readonly type: 'turn_end';
+      readonly threadId: string;
+      readonly finalPersonaId: string;
+      readonly totalTokens: number;
+      readonly totalCost: number;
+      readonly timeMs: number;
+      readonly advisorConsulted: boolean;
+    };
+
+export interface StreamTurnRequest extends TurnRequest {
+  /**
+   * AbortSignal — if the caller disconnects (e.g. SSE client closed) the
+   * generator stops emitting events. We cannot cancel a Promise already in
+   * flight with `handleTurn` but we stop feeding bytes to the wire, which is
+   * what SSE clients care about.
+   */
+  readonly signal?: AbortSignal;
+  /** Characters per emitted delta. Default 24. */
+  readonly chunkSize?: number;
+  /** Delay between deltas in ms. Default 12. */
+  readonly chunkDelayMs?: number;
+}
+
+/**
+ * Stream a single turn as an async iterable of events.
+ *
+ * Event ordering contract with chat-ui `useChatStream`:
+ *   1. turn_start (always first — establishes threadId)
+ *   2. tool_call / tool_result pairs (zero or more, in dispatch order)
+ *   3. handoff events (zero or more)
+ *   4. delta chunks (one or more) — the persona text, chunked
+ *   5. proposed_action (optional — only when a PROPOSED_ACTION was parsed)
+ *   6. turn_end (always last — carries totalTokens + totalCost)
+ *
+ * Error cases emit a single `error` event followed by `turn_end`.
+ */
+export async function* streamTurn(
+  orchestrator: Orchestrator,
+  req: StreamTurnRequest
+): AsyncGenerator<StreamTurnEvent> {
+  const { signal } = req;
+  const chunkSize = req.chunkSize ?? 24;
+  const chunkDelayMs = req.chunkDelayMs ?? 12;
+
+  yield {
+    type: 'turn_start',
+    threadId: req.threadId,
+    personaId: req.forcePersonaId,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (signal?.aborted) {
+    yield {
+      type: 'turn_end',
+      threadId: req.threadId,
+      finalPersonaId: req.forcePersonaId ?? 'unknown',
+      totalTokens: 0,
+      totalCost: 0,
+      timeMs: 0,
+      advisorConsulted: false,
+    };
+    return;
+  }
+
+  const start = Date.now();
+  const result = await orchestrator.handleTurn(req);
+
+  if (signal?.aborted) {
+    yield {
+      type: 'turn_end',
+      threadId: req.threadId,
+      finalPersonaId: req.forcePersonaId ?? 'unknown',
+      totalTokens: 0,
+      totalCost: 0,
+      timeMs: Date.now() - start,
+      advisorConsulted: false,
+    };
+    return;
+  }
+
+  if (!result.success) {
+    const err = (result as { success: false; error: { code: string; message: string; retryable: boolean } }).error;
+    yield { type: 'error', code: err.code, message: err.message, retryable: err.retryable };
+    yield {
+      type: 'turn_end',
+      threadId: req.threadId,
+      finalPersonaId: req.forcePersonaId ?? 'unknown',
+      totalTokens: 0,
+      totalCost: 0,
+      timeMs: Date.now() - start,
+      advisorConsulted: false,
+    };
+    return;
+  }
+
+  const turn = result.data;
+
+  for (const tc of turn.toolCalls) {
+    if (signal?.aborted) break;
+    yield { type: 'tool_call', name: tc.tool };
+    yield { type: 'tool_result', name: tc.tool, ok: tc.ok };
+  }
+
+  for (const h of turn.handoffs) {
+    if (signal?.aborted) break;
+    yield { type: 'handoff', from: h.from, to: h.to, objective: h.objective };
+  }
+
+  const text = turn.responseText;
+  const size = Math.max(1, chunkSize);
+  for (let i = 0; i < text.length; i += size) {
+    if (signal?.aborted) break;
+    yield { type: 'delta', content: text.slice(i, i + size) };
+    if (chunkDelayMs > 0 && i + size < text.length) {
+      await new Promise<void>((resolve) => setTimeout(resolve, chunkDelayMs));
+    }
+  }
+
+  if (turn.proposedAction) {
+    yield {
+      type: 'proposed_action',
+      risk: turn.proposedAction.riskLevel,
+      description: `${turn.proposedAction.verb} ${turn.proposedAction.object}`,
+      reviewRequired: turn.proposedAction.reviewRequired,
+      executionHeld: turn.proposedAction.executionHeld ?? turn.proposedAction.reviewRequired,
+    };
+  }
+
+  // Coarse cost estimate — finer-grained breakdowns live in the cost ledger.
+  const costPer1k = 0.015;
+  const estimatedCost = Number(((turn.tokensUsed / 1000) * costPer1k).toFixed(6));
+
+  yield {
+    type: 'turn_end',
+    threadId: turn.threadId,
+    finalPersonaId: turn.finalPersonaId,
+    totalTokens: turn.tokensUsed,
+    totalCost: estimatedCost,
+    timeMs: turn.timeMs,
+    advisorConsulted: turn.advisorConsulted,
+  };
+}

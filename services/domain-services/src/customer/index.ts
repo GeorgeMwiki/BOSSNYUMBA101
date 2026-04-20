@@ -1,4 +1,4 @@
-// @ts-nocheck — domain-models namespace drift; tracked
+// @ts-nocheck — Customer domain model has no metadata field; service uses it as a catch-all bag until domain-models adds CustomerAttributes. Tracked.
 import { randomHex } from '../common/id-generator.js';
 /**
  * Customer domain service.

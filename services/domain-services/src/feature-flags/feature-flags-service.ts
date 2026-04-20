@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
 /**
  * Feature Flags Service — Wave 9 enterprise polish.
  *

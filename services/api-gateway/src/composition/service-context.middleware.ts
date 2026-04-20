@@ -99,6 +99,22 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       // Wave 9 — feature flags, GDPR, AI cost ledger pulled via
       // `services.featureFlags`, `services.gdpr`, `services.aiCostLedger`
       // — the routers read those keys off `c.get('services')` already.
+
+      // Wave 12 — MCP, agent certification, classroom, voice. Routers
+      // read via `c.get('services').<key>` which is the canonical path;
+      // the legacy keys below are kept for symmetry with earlier waves.
+      if (registry.mcp) {
+        c.set('mcp', registry.mcp);
+      }
+      if (registry.agentCertification) {
+        c.set('agentCertification', registry.agentCertification);
+      }
+      if (registry.classroom) {
+        c.set('classroom', registry.classroom);
+      }
+      if (registry.voice) {
+        c.set('voice', registry.voice);
+      }
     }
 
     await next();

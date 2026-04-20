@@ -1,4 +1,3 @@
-// @ts-nocheck — mirrors repo convention for Postgres repo tests
 /**
  * Tests for PostgresFarRepository using an in-memory drizzle fake.
  */

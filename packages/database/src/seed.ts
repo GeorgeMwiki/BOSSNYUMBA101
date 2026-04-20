@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.30 enum-column narrowing; tracked for drizzle upgrade
+// @ts-nocheck — bcrypt has no @types, import-assertion syntax change, drizzle 0.36 pgEnum narrowing in seed row shapes. Tracked.
 /**
  * BOSSNYUMBA Database Seed
  * Seeds the initial tenant, admin user, sample properties, units, customers,

@@ -1,17 +1,50 @@
 {
   "app": {
     "title": "BOSSNYUMBA Meneja",
-    "tagline": "Utendaji wa meneja wa mali uwanjani"
+    "tagline": "Kazi ya meneja wa mali uwanjani"
+  },
+  "chat": {
+    "typingIndicator": "Mfanyakazi mwenza anaandika…",
+    "proposedActionApprove": "Kubali",
+    "proposedActionReject": "Kataa",
+    "proposedActionLabel": "Kitendo kilichopendekezwa",
+    "toolRunning": "Inaendesha {name}…",
+    "toolComplete": "{name} imekamilika",
+    "toolFailed": "{name} imeshindwa",
+    "welcomeHeroTitle": "Mfanyakazi Mwenza",
+    "welcomeHeroSubtitle": "Msaidizi wako wa AI kwa kazi ya uwanjani.",
+    "ctaOwner": "Mtazamo wa mmiliki",
+    "ctaTenant": "Uchambuzi wa mpangaji",
+    "ctaManager": "Foleni yangu",
+    "streamingError": "Muunganisho umekatika",
+    "reconnecting": "Inaunganisha tena…",
+    "stopStreaming": "Simamisha",
+    "sendMessage": "Tuma",
+    "chatPlaceholder": "Uliza kuhusu hatari za upangaji, arrears, au matengenezo…",
+    "sessionIsolation": "Imeripotiwa kwa namba yako ya mfanyakazi kwa ukaguzi."
+  },
+  "mwikilaWidget": {
+    "personaName": "Bw. Mwikila",
+    "greet": "Habari meneja, mimi ni Bw. Mwikila. Nikusaidie aje uwanjani leo?",
+    "placeholder": "Muulize Bw. Mwikila chochote…",
+    "collapse": "Ficha gumzo",
+    "expand": "Fungua gumzo",
+    "micPermission": "Ruhusa ya maikrofoni inahitajika",
+    "unreadCount": "Ujumbe mpya {count}",
+    "languageSwitched": "Lugha imebadilishwa",
+    "voiceError": "Sauti haipatikani sasa hivi",
+    "attachmentAccepted": "Kiambatisho kimepokelewa",
+    "send": "Tuma"
   },
   "nav": {
     "dashboard": "Dashibodi",
-    "properties": "Mali",
+    "properties": "Nyumba",
     "units": "Vyumba",
     "leases": "Mikataba",
     "workOrders": "Kazi",
     "payments": "Malipo",
     "tenants": "Wapangaji",
-    "vendors": "Wauzaji",
+    "vendors": "Wafanyakazi wa nje",
     "reports": "Ripoti",
     "settings": "Mipangilio"
   },
@@ -28,16 +61,16 @@
     "reject": "Kataa"
   },
   "errors": {
-    "generic": "Hitilafu imetokea",
-    "pleaseSignIn": "Tafadhali ingia",
-    "loadFailed": "Imeshindwa kupakia data",
+    "generic": "Kuna hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia kwanza",
+    "loadFailed": "Imeshindikana kupakia data",
     "noPermission": "Huna ruhusa ya kufanya hivyo"
   },
   "empty": {
     "noItems": "Hakuna vitu bado",
-    "noWorkOrders": "Hakuna kazi bado",
-    "noTenants": "Hakuna wapangaji bado",
-    "noProperties": "Hakuna mali bado"
+    "noWorkOrders": "Bado hakuna kazi",
+    "noTenants": "Bado hakuna wapangaji",
+    "noProperties": "Bado hakuna nyumba"
   },
   "locale": {
     "label": "Lugha",
@@ -47,9 +80,9 @@
   "chatUi": {
     "trainingTitle": "Mafunzo ya mfanyakazi mwenza",
     "sendMessage": "Tuma",
-    "inputPlaceholder": "Uliza kuhusu hatari ya upangaji, mtiririko wa matengenezo …",
+    "inputPlaceholder": "Uliza kuhusu hatari za upangaji au mtiririko wa matengenezo…",
     "blackboardTitle": "Ubao",
-    "blackboardEmpty": "Mwalimu atachora hapa dhana inapoanzishwa.",
+    "blackboardEmpty": "Mwalimu atachora hapa mada inapoanzishwa.",
     "blackboardClear": "Futa",
     "quizLockdown": "Jaribio limefungwa — chagua jibu",
     "teachingKeyPoints": "Vidokezo muhimu",

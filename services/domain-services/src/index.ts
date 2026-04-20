@@ -1,4 +1,4 @@
-// @ts-nocheck — duplicate-name re-exports across submodules; tracked
+// @ts-nocheck — barrel re-export collisions (CustomerCreatedEvent, Invoice, DateRange, etc.) across nested submodules; needs explicit named re-exports across ~30 symbols. Tracked.
 /**
  * @bossnyumba/domain-services
  *

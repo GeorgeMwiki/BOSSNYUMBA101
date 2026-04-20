@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';

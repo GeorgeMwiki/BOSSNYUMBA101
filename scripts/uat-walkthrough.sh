@@ -58,6 +58,10 @@ ENDPOINTS=(
   "iot/sensors"                              # IoT sensor registry
   "iot/anomalies"                            # unresolved anomalies
   "lpms/preview-schema"                      # LPMS ingestion schema
+  # Wave 12 additions — MCP server + agent-cert + classroom + voice now wired
+  "mcp/manifest"                             # MCP server manifest (200 with tool list)
+  "agent-certifications"                     # list certs for caller tenant
+  "classroom/mastery/u-1"                    # BKT mastery snapshot (empty OK)
 )
 for endpoint in "${ENDPOINTS[@]}"; do
   code=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$GATEWAY/api/v1/$endpoint")
@@ -99,6 +103,19 @@ if [ -n "$arrears_case_id" ]; then
   pass "arrears projection for real case → 200"
 else
   echo "⚠ arrears open-case: no seed tenant/customer available, skipping end-to-end probe"
+fi
+
+# Step 3c: Wave 12 — voice endpoints. Without ELEVENLABS_API_KEY /
+# OPENAI_API_KEY the router returns a clean 503 with MISSING_KEY. With
+# either key set we expect 200/400/502 (valid auth, real provider path).
+v_code=$(curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST --data '{"text":"hello","language":"en"}' \
+  "$GATEWAY/api/v1/voice/synthesize")
+if [[ "$v_code" =~ ^(200|400|502|503)$ ]]; then
+  pass "POST /voice/synthesize → $v_code (route wired, provider may 503 without keys)"
+else
+  fail "POST /voice/synthesize got $v_code"
 fi
 
 # Step 4: tenant isolation — forged tenantId in query rejected

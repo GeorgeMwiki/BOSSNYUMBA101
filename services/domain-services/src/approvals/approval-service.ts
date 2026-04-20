@@ -1,4 +1,4 @@
-// @ts-nocheck — local type drift; tracked
+// @ts-nocheck — PaginatedResult<T> data vs rows rename in domain-models; approval wire format still uses {data}. Tracked.
 import { randomHex } from '../common/id-generator.js';
 /**
  * Approval Workflow Service

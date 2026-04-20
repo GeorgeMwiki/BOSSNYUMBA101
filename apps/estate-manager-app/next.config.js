@@ -16,6 +16,7 @@ const nextConfig = {
     '@bossnyumba/observability',
     '@bossnyumba/config',
     '@bossnyumba/compliance-plugins',
+    '@bossnyumba/chat-ui',
   ],
   // Support `.js` extensions on TS source imports (NodeNext convention).
   // `.js` must be first so third-party ESM packages (e.g. @opentelemetry/api)

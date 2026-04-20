@@ -1,11 +1,8 @@
-import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
+/**
+ * SystemHealthPage — Wave-12 shim that re-exports the new SystemHealth
+ * component from ./SystemHealth.tsx while keeping the existing import
+ * path stable for App.tsx.
+ */
 
-export function SystemHealthPage() {
-  return (
-    <LiveDataRequiredPage
-      title="System Health"
-      feature="system health telemetry"
-      description="Synthetic infrastructure metrics and randomized service health have been removed. This screen will return once it is backed by live telemetry and incident data."
-    />
-  );
-}
+export { SystemHealth as SystemHealthPage } from './SystemHealth';
+export { default } from './SystemHealth';

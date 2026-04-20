@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.29 typing drift vs schema; matches project convention
 /**
  * Maintenance Taxonomy Service (Wave 8, S7 gap closure)
  *

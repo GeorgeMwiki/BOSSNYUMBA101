@@ -1,12 +1,45 @@
 {
   "app": {
     "title": "BOSSNYUMBA Mmiliki",
-    "tagline": "Lango la mmiliki wa mali"
+    "tagline": "Lango la mmiliki wa nyumba na mali"
+  },
+  "chat": {
+    "typingIndicator": "Mshauri anaandika…",
+    "proposedActionApprove": "Kubali",
+    "proposedActionReject": "Kataa",
+    "proposedActionLabel": "Kitendo kilichopendekezwa",
+    "toolRunning": "Inaendesha {name}…",
+    "toolComplete": "{name} imekamilika",
+    "toolFailed": "{name} imeshindwa",
+    "welcomeHeroTitle": "Mshauri wa Mmiliki",
+    "welcomeHeroSubtitle": "Mawazo ya portfolio yako kutoka kwa Ubongo wa BOSSNYUMBA.",
+    "ctaOwner": "Muhtasari wa portfolio",
+    "ctaTenant": "Hatari za mpangaji",
+    "ctaManager": "Ripoti ya meneja",
+    "streamingError": "Muunganisho umekatika",
+    "reconnecting": "Inaunganisha tena…",
+    "stopStreaming": "Simamisha",
+    "sendMessage": "Tuma",
+    "chatPlaceholder": "Uliza kuhusu portfolio yako, arrears, nyumba…",
+    "sessionIsolation": "Zamu zote zimehifadhiwa kwa akaunti yako ya mmiliki."
+  },
+  "mwikilaWidget": {
+    "personaName": "Bw. Mwikila",
+    "greet": "Habari mmiliki, mimi ni Bw. Mwikila. Nikusaidie aje na portfolio yako leo?",
+    "placeholder": "Muulize Bw. Mwikila chochote…",
+    "collapse": "Ficha gumzo",
+    "expand": "Fungua gumzo",
+    "micPermission": "Ruhusa ya maikrofoni inahitajika",
+    "unreadCount": "Ujumbe mpya {count}",
+    "languageSwitched": "Lugha imebadilishwa",
+    "voiceError": "Sauti haipatikani sasa hivi",
+    "attachmentAccepted": "Kiambatisho kimepokelewa",
+    "send": "Tuma"
   },
   "nav": {
     "dashboard": "Dashibodi",
-    "properties": "Mali",
-    "portfolio": "Mkusanyiko",
+    "properties": "Mali zangu",
+    "portfolio": "Portfolio",
     "financial": "Fedha",
     "maintenance": "Matengenezo",
     "documents": "Nyaraka",
@@ -14,9 +47,9 @@
     "reports": "Ripoti",
     "messages": "Ujumbe",
     "settings": "Mipangilio",
-    "vendors": "Wauzaji",
-    "compliance": "Ufuataji",
-    "analytics": "Uchanganuzi",
+    "vendors": "Wafanyakazi wa nje",
+    "compliance": "Compliance",
+    "analytics": "Uchambuzi",
     "tenants": "Wapangaji",
     "budgets": "Bajeti"
   },
@@ -31,14 +64,14 @@
     "export": "Hamisha"
   },
   "errors": {
-    "generic": "Hitilafu imetokea",
-    "pleaseSignIn": "Tafadhali ingia",
-    "loadFailed": "Imeshindwa kupakia data"
+    "generic": "Kuna hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia kwanza",
+    "loadFailed": "Imeshindikana kupakia data"
   },
   "empty": {
     "noItems": "Hakuna vitu bado",
-    "noProperties": "Hakuna mali bado",
-    "noReports": "Hakuna ripoti bado"
+    "noProperties": "Bado hakuna nyumba",
+    "noReports": "Bado hakuna ripoti"
   },
   "locale": {
     "label": "Lugha",
@@ -48,13 +81,13 @@
   "chatUi": {
     "trainingTitle": "Mshauri wa mmiliki",
     "sendMessage": "Tuma",
-    "inputPlaceholder": "Uliza kuhusu ufile, madeni, ulinganishaji wa mali …",
+    "inputPlaceholder": "Uliza kuhusu portfolio, arrears, au ulinganishaji wa nyumba…",
     "blackboardTitle": "Ubao",
-    "blackboardEmpty": "Mshauri atachora hapa dhana inapoanzishwa.",
+    "blackboardEmpty": "Mshauri atachora hapa mada inapoanzishwa.",
     "blackboardClear": "Futa",
     "quizLockdown": "Jaribio limefungwa — chagua jibu",
     "teachingKeyPoints": "Vidokezo muhimu",
     "reviewTitle": "Muhtasari wa kipindi",
-    "propertyComparisonTitle": "Ulinganishaji wa mali"
+    "propertyComparisonTitle": "Ulinganishaji wa nyumba"
   }
 }

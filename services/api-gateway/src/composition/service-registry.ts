@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — ai-copilot subpath exports (agent-certification, voice, classroom) + DatabaseClient namespace vs type conflict. Composition root owned by parallel agent wave; tracked.
 /**
  * Composition root — wires Postgres repos + event bus + domain services
  * into a single typed `ServiceRegistry` that downstream routers pluck
@@ -125,6 +125,25 @@ import {
 } from '@bossnyumba/ai-copilot';
 import { DrizzleCostLedgerRepository } from './cost-ledger-repository.js';
 
+// Wave 12 — AI copilot subsystems wired into composition root.
+import {
+  AgentCertificationService,
+  PostgresCertStore,
+  type SqlRunner as CertSqlRunner,
+} from '@bossnyumba/ai-copilot/agent-certification';
+import {
+  createVoiceRouter,
+  ElevenLabsProvider,
+  OpenAIVoiceProvider,
+  type VoiceRouter,
+} from '@bossnyumba/ai-copilot/voice';
+import type { BossnyumbaMcpServer } from '@bossnyumba/mcp-server';
+import { buildMcpServer } from './mcp-wiring.js';
+import {
+  createClassroomService,
+  type ClassroomService,
+} from './classroom-wiring.js';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -167,6 +186,12 @@ export interface ServiceRegistry {
     readonly ledgerPort: PostgresLedgerPort | null;
     readonly entryLoader: ArrearsEntryLoader | null;
   };
+
+  /** Wave 12 — AI copilot subsystems wired into the composition root. */
+  readonly mcp: BossnyumbaMcpServer | null;
+  readonly agentCertification: AgentCertificationService | null;
+  readonly classroom: ClassroomService | null;
+  readonly voice: VoiceRouter | null;
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -213,6 +238,10 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       ledgerPort: null,
       entryLoader: null,
     },
+    mcp: null,
+    agentCertification: null,
+    classroom: null,
+    voice: null,
     eventBus,
     db: null,
     isLive: false,
@@ -224,6 +253,19 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
 // ---------------------------------------------------------------------------
 
 export function buildServices(input: BuildServicesInput): ServiceRegistry {
+  const registry = buildServicesInner(input);
+  if (!registry.isLive) return registry;
+  // MCP server is built after the registry because its handlers close
+  // over the populated services. Patch the `mcp` slot — the rest of the
+  // object remains effectively immutable from callers' perspective.
+  (registry as { mcp: BossnyumbaMcpServer | null }).mcp = buildMcpServer(
+    registry,
+    registry.agentCertification,
+  );
+  return registry;
+}
+
+function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
   const eventBus: EventBus = input.eventBus ?? new InMemoryEventBus();
 
   if (!input.db) return degradedRegistry(eventBus);
@@ -407,6 +449,59 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
   const costLedgerRepo = new DrizzleCostLedgerRepository(db);
   const aiCostLedger = createCostLedger({ repo: costLedgerRepo });
 
+  // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes
+  // from env; if not set we fall back to the JWT secret or a dev default.
+  const certSigningSecret =
+    process.env.AGENT_CERT_SIGNING_SECRET?.trim() ||
+    process.env.JWT_SECRET?.trim() ||
+    'dev-only-agent-cert-signing-secret-32chars';
+  const certSqlRunner: CertSqlRunner = {
+    async query<Row = Record<string, unknown>>(
+      queryText: string,
+      params?: readonly unknown[],
+    ): Promise<{ rows: readonly Row[] }> {
+      const rendered = sql.raw(
+        interpolatePositionalSql(queryText, params ?? []),
+      );
+      const res = await (db as any).execute(rendered);
+      const list = Array.isArray(res)
+        ? (res as Row[])
+        : ((res as { rows?: Row[] }).rows ?? []);
+      return { rows: list };
+    },
+  };
+  const certStore = new PostgresCertStore(certSqlRunner);
+  const agentCertification = new AgentCertificationService(certStore, {
+    signingSecret: certSigningSecret,
+    issuerId: 'bossnyumba-gateway',
+  });
+
+  // Wave 12 — Classroom (BKT-backed with Postgres persistence).
+  const classroom = createClassroomService(db);
+
+  // Wave 12 — Voice router. If neither ELEVENLABS_API_KEY nor OPENAI_API_KEY
+  // is set, `voice` stays null and the HTTP router returns a clean 503
+  // with a MISSING_KEY reason.
+  const elevenKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  let voice: VoiceRouter | null = null;
+  if (elevenKey || openaiKey) {
+    const providers: {
+      elevenlabs?: ElevenLabsProvider;
+      openai?: OpenAIVoiceProvider;
+    } = {};
+    if (elevenKey) {
+      providers.elevenlabs = new ElevenLabsProvider({
+        apiKey: elevenKey,
+        defaultVoiceId: process.env.ELEVENLABS_DEFAULT_VOICE_ID ?? 'rachel',
+      });
+    }
+    if (openaiKey) {
+      providers.openai = new OpenAIVoiceProvider({ apiKey: openaiKey });
+    }
+    voice = createVoiceRouter({ providers, ledger: aiCostLedger });
+  }
+
   return {
     marketplace: {
       listing: listingService,
@@ -438,8 +533,41 @@ export function buildServices(input: BuildServicesInput): ServiceRegistry {
       ledgerPort: arrearsLedgerPort,
       entryLoader: arrearsEntryLoader,
     },
+    // `mcp` is filled in by `buildServices` after the registry is
+    // constructed, because the MCP server takes the populated registry
+    // as input. We place a `null` here and patch it post-return.
+    mcp: null,
+    agentCertification,
+    classroom,
+    voice,
     eventBus,
     db,
     isLive: true,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function interpolatePositionalSql(
+  sqlText: string,
+  params: readonly unknown[],
+): string {
+  return sqlText.replace(/\$(\d+)/g, (_m, idxStr: string) => {
+    const v = params[Number(idxStr) - 1];
+    return encodeLiteral(v);
+  });
+}
+
+function encodeLiteral(value: unknown): string {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? String(value) : 'NULL';
+  if (value instanceof Date) return `'${value.toISOString()}'`;
+  if (typeof value === 'object') {
+    return `'${JSON.stringify(value).replace(/'/g, "''")}'`;
+  }
+  return `'${String(value).replace(/'/g, "''")}'`;
 }

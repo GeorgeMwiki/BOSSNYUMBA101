@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — zod safeParse discriminated union: TS does not narrow .error vs .data across control-flow edges in this helper; needs zod 3.23+ with tsconfig exactOptionalPropertyTypes tweak.
 /**
  * Zod validation schemas for API routes
  */

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Skeleton } from '@bossnyumba/design-system';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpotlightMount } from './components/SpotlightMount';
+import { MwikilaWidgetMount } from './components/MwikilaWidgetMount';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -45,6 +46,7 @@ import ControlTower from './pages/operations/ControlTower';
 import CustomerTimeline from './pages/support/CustomerTimeline';
 import Escalation from './pages/support/Escalation';
 import AICockpit from './pages/ai/AICockpit';
+import DesktopReview from './pages/DesktopReview';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -101,6 +103,7 @@ function AppRoutes() {
         <Route path="support/escalation" element={<Escalation />} />
         <Route path="ai" element={<AICockpit />} />
         <Route path="manager-chat" element={<ManagerChat />} />
+        <Route path="desktop-review" element={<DesktopReview />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />
@@ -144,8 +147,10 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
-      <SpotlightMount />
+      <MwikilaWidgetMount>
+        <AppRoutes />
+        <SpotlightMount />
+      </MwikilaWidgetMount>
     </AuthProvider>
   );
 }

@@ -3,6 +3,39 @@
     "title": "BOSSNYUMBA Admin",
     "tagline": "Kiweko cha utendaji wa jukwaa"
   },
+  "chat": {
+    "typingIndicator": "Msaidizi anaandika…",
+    "proposedActionApprove": "Kubali",
+    "proposedActionReject": "Kataa",
+    "proposedActionLabel": "Kitendo kilichopendekezwa",
+    "toolRunning": "Inaendesha {name}…",
+    "toolComplete": "{name} imekamilika",
+    "toolFailed": "{name} imeshindwa",
+    "welcomeHeroTitle": "Gumzo la Msimamizi",
+    "welcomeHeroSubtitle": "Muhtasari wa utendaji kutoka kwa Ubongo wa BOSSNYUMBA.",
+    "ctaOwner": "Mshauri wa Mmiliki",
+    "ctaTenant": "Msaidizi wa Mpangaji",
+    "ctaManager": "Gumzo la Msimamizi",
+    "streamingError": "Muunganisho umekatika",
+    "reconnecting": "Inaunganisha tena…",
+    "stopStreaming": "Simamisha",
+    "sendMessage": "Tuma",
+    "chatPlaceholder": "Uliza kuhusu uwezo wa kulipa, arrears, 5 Ps…",
+    "sessionIsolation": "Kumbukumbu za ukaguzi zinakusanywa kila zamu."
+  },
+  "mwikilaWidget": {
+    "personaName": "Bw. Mwikila",
+    "greet": "Habari, mimi ni Bw. Mwikila. Nikusaidie aje kuendesha jukwaa leo?",
+    "placeholder": "Muulize Bw. Mwikila chochote…",
+    "collapse": "Ficha gumzo",
+    "expand": "Fungua gumzo",
+    "micPermission": "Ruhusa ya maikrofoni inahitajika",
+    "unreadCount": "Ujumbe mpya {count}",
+    "languageSwitched": "Lugha imebadilishwa",
+    "voiceError": "Sauti haipatikani sasa hivi",
+    "attachmentAccepted": "Kiambatisho kimepokelewa",
+    "send": "Tuma"
+  },
   "nav": {
     "dashboard": "Dashibodi",
     "tenants": "Wapangaji",
@@ -16,8 +49,8 @@
     "system": "Afya ya mfumo",
     "platform": "Jukwaa",
     "communications": "Mawasiliano",
-    "compliance": "Ufuataji",
-    "analytics": "Uchanganuzi",
+    "compliance": "Compliance",
+    "analytics": "Uchambuzi",
     "integrations": "Ujumuishaji"
   },
   "actions": {
@@ -31,13 +64,13 @@
     "invite": "Alika"
   },
   "errors": {
-    "generic": "Hitilafu imetokea",
-    "pleaseSignIn": "Tafadhali ingia",
+    "generic": "Kuna hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia kwanza",
     "unauthorized": "Huna ruhusa"
   },
   "empty": {
     "noItems": "Hakuna vitu bado",
-    "noTenants": "Hakuna wapangaji bado"
+    "noTenants": "Bado hakuna wapangaji"
   },
   "locale": {
     "label": "Lugha",
@@ -47,9 +80,9 @@
   "chatUi": {
     "trainingTitle": "Mafunzo ya msimamizi",
     "sendMessage": "Tuma",
-    "inputPlaceholder": "Uliza kuhusu uwezo wa kulipa, madeni, 5 P …",
+    "inputPlaceholder": "Uliza kuhusu uwezo wa kulipa, arrears, 5 P…",
     "blackboardTitle": "Ubao",
-    "blackboardEmpty": "Mwalimu atachora hapa dhana inapoanzishwa.",
+    "blackboardEmpty": "Mwalimu atachora hapa mada inapoanzishwa.",
     "blackboardClear": "Futa",
     "quizLockdown": "Jaribio limefungwa — chagua jibu",
     "teachingKeyPoints": "Vidokezo muhimu",

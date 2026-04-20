@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — zod ZodEffects<> not assignable to AnyZodObject parameter in zValidator<>; known zod-openapi interop limitation, revisit when @hono/zod-openapi aligns with zod 3.23.
 /**
  * Validation Schemas
  * 

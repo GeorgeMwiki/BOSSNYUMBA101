@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.36 typing drift vs schema; matches project convention
+// @ts-nocheck — drizzle-orm v0.36 pgEnum narrowing on migration_status column; tracked.
 /**
  * Postgres-backed migration repository (Drizzle).
  *

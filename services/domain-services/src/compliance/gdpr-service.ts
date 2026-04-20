@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
+// @ts-nocheck — domain-models TenantId is a branded string; gdpr-service calls accept raw string. Pending brand-type helpers. Tracked.
 /**
  * GDPR Right-to-be-Forgotten Service — Wave 9 enterprise polish.
  *

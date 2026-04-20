@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Arrears infrastructure unit tests (shape only).
  *

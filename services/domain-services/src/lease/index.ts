@@ -1,4 +1,4 @@
-// @ts-nocheck — domain-models namespace shape (WorkOrder/Case/etc) drift; tracked
+// @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
 import { randomHex } from '../common/id-generator.js';
 /**
  * Lease domain service.

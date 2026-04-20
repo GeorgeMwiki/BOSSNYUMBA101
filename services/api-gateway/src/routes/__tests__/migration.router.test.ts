@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Migration router smoke tests.
  *

@@ -14,6 +14,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -27,6 +28,7 @@ import {
   buildWaitlistSignup,
   DemoEstate,
 } from '@bossnyumba/marketing-brain';
+import type { StreamTurnEvent } from '@bossnyumba/ai-copilot';
 
 // Singleton ephemeral store — scoped to the process. In production each
 // gateway instance keeps its own; a shared Redis cache is a follow-up.
@@ -90,12 +92,29 @@ app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
     visitorRole: lead.role,
   });
 
-  // The gateway does not itself call an LLM here — that runs in the
-  // brain service. This endpoint returns the composed context that the
-  // chat-ui picks up via SSE from the brain route. Returning a stub
-  // reply keeps the landing page functional even when the brain is
-  // offline.
   const stubReply = buildStubReply(lead.role, body.message);
+
+  // Content negotiation — if the client asks for text/event-stream we
+  // re-frame the stub reply as an SSE stream so the landing page's
+  // `useChatStream` hook can render it with the same typing-indicator +
+  // AdaptiveRenderer pipeline as the authenticated chat surfaces.
+  // JSON clients (curl, API consumers, legacy pages) get the old shape.
+  const accept = c.req.header('accept') ?? '';
+  if (accept.includes('text/event-stream')) {
+    return streamSSE(c, async (stream) => {
+      const abort = new AbortController();
+      stream.onAbort(() => abort.abort());
+
+      for await (const evt of marketingChatStream(stubReply, {
+        sessionId: body.sessionId,
+        personaId: 'public-guide',
+        suggestedRoute: lead.route,
+        signal: abort.signal,
+      })) {
+        await stream.writeSSE({ event: evt.type, data: JSON.stringify(evt) });
+      }
+    });
+  }
 
   return c.json({
     success: true,
@@ -108,6 +127,53 @@ app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
     },
   });
 });
+
+/**
+ * Stream a public/marketing chat turn as StreamTurnEvent. Mirrors the
+ * authenticated streamTurn contract so the chat-ui `useChatStream` hook
+ * can consume both surfaces with the same SSE parser.
+ */
+async function* marketingChatStream(
+  reply: string,
+  opts: {
+    readonly sessionId: string;
+    readonly personaId: string;
+    readonly suggestedRoute: string;
+    readonly signal?: AbortSignal;
+  }
+): AsyncGenerator<StreamTurnEvent> {
+  const { signal } = opts;
+  const start = Date.now();
+  yield {
+    type: 'turn_start',
+    threadId: opts.sessionId,
+    personaId: opts.personaId,
+    createdAt: new Date().toISOString(),
+  };
+  const size = 24;
+  for (let i = 0; i < reply.length; i += size) {
+    if (signal?.aborted) break;
+    yield { type: 'delta', content: reply.slice(i, i + size) };
+    await new Promise<void>((r) => setTimeout(r, 12));
+  }
+  // Emit the suggested-route as a lightweight handoff event so the UI can
+  // render the appropriate CTA card without a separate REST call.
+  yield {
+    type: 'handoff',
+    from: opts.personaId,
+    to: opts.suggestedRoute,
+    objective: 'suggested next step',
+  };
+  yield {
+    type: 'turn_end',
+    threadId: opts.sessionId,
+    finalPersonaId: opts.personaId,
+    totalTokens: 0,
+    totalCost: 0,
+    timeMs: Date.now() - start,
+    advisorConsulted: false,
+  };
+}
 
 app.post('/pricing-advice', zValidator('json', PricingSchema), async (c) => {
   const body = c.req.valid('json');

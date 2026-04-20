@@ -17,6 +17,30 @@
     "./providers": {
       "types": "./src/providers/index.ts",
       "default": "./dist/providers/index.js"
+    },
+    "./agent-certification": {
+      "types": "./src/agent-certification/index.ts",
+      "default": "./dist/agent-certification/index.js"
+    },
+    "./classroom": {
+      "types": "./src/classroom/index.ts",
+      "default": "./dist/classroom/index.js"
+    },
+    "./voice": {
+      "types": "./src/voice/index.ts",
+      "default": "./dist/voice/index.js"
+    },
+    "./heartbeat": {
+      "types": "./src/heartbeat/index.ts",
+      "default": "./dist/heartbeat/index.js"
+    },
+    "./ambient-brain": {
+      "types": "./src/ambient-brain/index.ts",
+      "default": "./dist/ambient-brain/index.js"
+    },
+    "./background-intelligence": {
+      "types": "./src/background-intelligence/index.ts",
+      "default": "./dist/background-intelligence/index.js"
     }
   },
   "scripts": {

@@ -1,4 +1,3 @@
-// @ts-nocheck — mirrors repo convention for approvals pipeline
 /**
  * Tests for PostgresApprovalPolicyRepository.
  *

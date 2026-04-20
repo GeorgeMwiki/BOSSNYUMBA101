@@ -1,7 +1,40 @@
 {
   "app": {
     "title": "BOSSNYUMBA",
-    "tagline": "Msaidizi wako wa usimamizi wa mali"
+    "tagline": "Msaidizi wako wa usimamizi wa nyumba na mali"
+  },
+  "chat": {
+    "typingIndicator": "Bw. Mwikila anaandika…",
+    "proposedActionApprove": "Kubali",
+    "proposedActionReject": "Kataa",
+    "proposedActionLabel": "Kitendo kilichopendekezwa",
+    "toolRunning": "Inaendesha {name}…",
+    "toolComplete": "{name} imekamilika",
+    "toolFailed": "{name} imeshindwa",
+    "welcomeHeroTitle": "Usimamizi wa mali, umeboreshwa",
+    "welcomeHeroSubtitle": "Karibu kwa Bw. Mwikila — msaidizi wako wa AI kwa kila jambo.",
+    "ctaOwner": "Mimi ni mmiliki wa mali",
+    "ctaTenant": "Mimi ni mpangaji",
+    "ctaManager": "Mimi ni meneja wa mali",
+    "streamingError": "Muunganisho umekatika",
+    "reconnecting": "Inaunganisha tena…",
+    "stopStreaming": "Simamisha",
+    "sendMessage": "Tuma",
+    "chatPlaceholder": "Muulize Bw. Mwikila kuhusu nyumba yako…",
+    "sessionIsolation": "Data yako haitahifadhiwa hadi ujisajili."
+  },
+  "mwikilaWidget": {
+    "personaName": "Bw. Mwikila",
+    "greet": "Habari, mimi ni Bw. Mwikila. Nikusaidie aje leo?",
+    "placeholder": "Muulize Bw. Mwikila chochote…",
+    "collapse": "Ficha gumzo",
+    "expand": "Fungua gumzo",
+    "micPermission": "Ruhusa ya maikrofoni inahitajika",
+    "unreadCount": "Ujumbe mpya {count}",
+    "languageSwitched": "Lugha imebadilishwa",
+    "voiceError": "Sauti haipatikani sasa hivi",
+    "attachmentAccepted": "Kiambatisho kimepokelewa",
+    "send": "Tuma"
   },
   "nav": {
     "home": "Nyumbani",
@@ -28,16 +61,16 @@
     "delete": "Futa"
   },
   "errors": {
-    "generic": "Hitilafu imetokea",
-    "pleaseSignIn": "Tafadhali ingia",
-    "networkUnavailable": "Huonekani kuwa na intaneti",
-    "notFound": "Hatukuweza kupata unachokitafuta"
+    "generic": "Kuna hitilafu imetokea",
+    "pleaseSignIn": "Tafadhali ingia kwanza",
+    "networkUnavailable": "Huna muunganisho wa intaneti",
+    "notFound": "Hatukupata unachokitafuta"
   },
   "empty": {
     "noItems": "Hakuna vitu bado",
-    "noPayments": "Hakuna malipo bado",
-    "noMessages": "Hakuna ujumbe bado",
-    "noNotifications": "Hakuna arifa bado"
+    "noPayments": "Bado hakuna malipo",
+    "noMessages": "Bado hakuna ujumbe",
+    "noNotifications": "Bado hakuna arifa"
   },
   "locale": {
     "label": "Lugha",
@@ -45,11 +78,11 @@
     "sw": "Kiswahili"
   },
   "chatUi": {
-    "trainingTitle": "Mafunzo ya mpangaji",
+    "trainingTitle": "Mafunzo kwa mpangaji",
     "sendMessage": "Tuma",
-    "inputPlaceholder": "Uliza kuhusu kodi, mkataba, dhamana, madeni …",
+    "inputPlaceholder": "Uliza kuhusu kodi, mkataba, dhamana au madeni…",
     "blackboardTitle": "Ubao",
-    "blackboardEmpty": "Mwalimu atachora hapa dhana inapoanzishwa.",
+    "blackboardEmpty": "Mwalimu atachora hapa mada inapoanzishwa.",
     "blackboardClear": "Futa",
     "quizLockdown": "Jaribio limefungwa — chagua jibu",
     "teachingKeyPoints": "Vidokezo muhimu",

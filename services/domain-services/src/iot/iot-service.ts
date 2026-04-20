@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm typing drift vs schema; matches project convention
+// @ts-nocheck — drizzle 0.36 pgEnum narrowing on sensor_type/reading_kind columns rejects string args from service layer; tracked.
 /**
  * IoT Service (Wave 8 — S3 gap closure)
  *

@@ -71,10 +71,15 @@ import lpmsRouter from './routes/lpms.router';
 import featureFlagsRouter from './routes/feature-flags.router';
 import gdprRouter from './routes/gdpr.router';
 import aiCostsRouter from './routes/ai-costs.router';
+// Wave 12 — metrics / observability snapshot
+import { metricsRouter } from './routes/metrics.router';
+import { createMetricsMiddleware } from './observability/metrics-middleware';
 // Wave 12 — MCP server + agent platform
 import mcpRouter, { agentCardRouter } from './routes/mcp.router';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
 import publicMarketingRouter from './routes/public-marketing.router';
+// Wave 12 — streaming AI chat (SSE) for all 4 chat surfaces
+import aiChatRouter from './routes/ai-chat.router';
 import workflowsRouter from './routes/workflows.router';
 import agentCertificationsRouter from './routes/agent-certifications.router';
 import classroomRouter from './routes/classroom.router';
@@ -99,6 +104,14 @@ import { adminPortalRouter } from './routes/bff/admin-portal';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
 import { getDb } from './composition/db-client';
 import { createServiceContextMiddleware } from './composition/service-context.middleware';
+import {
+  createHeartbeatSupervisor,
+  createBackgroundSupervisor,
+  createPostgresWebhookDeliveryRepository,
+  createAmbientBehaviorObserver,
+} from './composition/background-wiring';
+import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
+import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
 import { createOpenApiRouter } from './openapi';
 
 const logger = pino({
@@ -221,12 +234,21 @@ try {
 }
 
 const api = new Hono();
+// Wave 12 — Metrics middleware runs first so it captures the full
+// latency of every downstream handler + middleware.
+api.use('*', createMetricsMiddleware());
 // FIXED H-2: apply tenant-isolation enforcement globally on all /api/v1/* routes.
 // Auth middleware still runs first per-router; this is a defense-in-depth layer.
 api.use('*', ensureTenantIsolation);
 // Inject the service registry + flat tenantId/userId into the request ctx
 // so 22 new routers can pull real service instances out of the context.
 api.use('*', createServiceContextMiddleware(serviceRegistry));
+// Wave 12 — Ambient brain observer. Records a behaviour event on every
+// authed request so stalls/errors can bubble up into proactive
+// interventions. Shared observer instance passed to the middleware so
+// subscribers persist across requests.
+const behaviorObserver = createAmbientBehaviorObserver();
+api.use('*', createAmbientBrainMiddleware(behaviorObserver, logger));
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
@@ -342,6 +364,8 @@ api.route('/lpms', lpmsRouter);
 api.route('/feature-flags', featureFlagsRouter);
 api.route('/gdpr', gdprRouter);
 api.route('/ai-costs', aiCostsRouter);
+// Wave 12 — metrics snapshot for SystemHealth page
+api.route('/metrics', metricsRouter);
 // Wave 12 — MCP server mounted for Claude Desktop, GPT, Cursor, partner agents
 api.route('/mcp', mcpRouter);
 // A2A Agent Card — expose under /api/v1/.well-known/agent.json (the standard
@@ -350,10 +374,48 @@ api.route('/mcp', mcpRouter);
 api.route('/.well-known/agent.json', agentCardRouter);
 // Wave 11 — public marketing (Mr. Mwikila, unauthenticated) + AI workflow engine
 api.route('/public', publicMarketingRouter);
+// Streaming AI chat — POST /api/v1/ai/chat with SSE response
+api.route('/ai', aiChatRouter);
 api.route('/workflows', workflowsRouter);
 api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/classroom', classroomRouter);
 api.route('/voice', voiceRouter);
+
+// Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
+// the factory's own prefix. The factory expects a repository + requeue
+// function; we wire Postgres when the registry is live, otherwise the
+// endpoints are not registered.
+if (serviceRegistry.isLive && serviceRegistry.db) {
+  const webhookDlqRouter = createWebhookDlqRouter({
+    repository: createPostgresWebhookDeliveryRepository(serviceRegistry.db),
+    async requeue(event) {
+      try {
+        await serviceRegistry.eventBus.publish({
+          event: {
+            eventId: `webhook_${Date.now()}`,
+            eventType: 'WebhookDeliveryQueued',
+            timestamp: new Date().toISOString(),
+            tenantId: event.tenantId,
+            correlationId: `wh_${Date.now()}`,
+            causationId: null,
+            metadata: {},
+            payload: event,
+          } as unknown as never,
+          version: 1,
+          aggregateId: event.deliveryId,
+          aggregateType: 'WebhookDelivery',
+        });
+      } catch (err) {
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          'webhook-dlq: requeue publish failed',
+        );
+      }
+      return event.deliveryId;
+    },
+  });
+  api.route('/', webhookDlqRouter);
+}
 
 // OpenAPI spec + Swagger UI. Mounted AFTER every router so the
 // harvester can see them. The spec lives at /api/v1/openapi.json and
@@ -490,10 +552,16 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Wave 12 — heartbeat engine + background scheduler supervisors.
+const heartbeatSupervisor = createHeartbeatSupervisor(serviceRegistry, logger, 30_000);
+const backgroundSupervisor = createBackgroundSupervisor(serviceRegistry, logger);
+
 // Graceful shutdown
 function gracefulShutdown(signal: string) {
   logger.info({ signal }, 'Received shutdown signal, closing server...');
   stopOutboxWorker();
+  heartbeatSupervisor.stop();
+  backgroundSupervisor.stop();
   server?.close(() => {
     logger.info('Server closed');
     process.exit(0);
@@ -511,6 +579,12 @@ if (require.main === module) {
   server = app.listen(port, () => {
     logger.info({ port }, 'API Gateway started');
   });
+
+  // Wave 12 — start heartbeat + background scheduler after the server
+  // is listening. Both are gated by DATABASE_URL internally; degraded
+  // mode skips the supervisors gracefully.
+  heartbeatSupervisor.start();
+  backgroundSupervisor.start();
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

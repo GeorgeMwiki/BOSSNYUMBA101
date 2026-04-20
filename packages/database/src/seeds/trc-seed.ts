@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.29 enum-column narrowing; tracked for drizzle upgrade
+// @ts-nocheck — import-assertion syntax replaced in TS 5.3+; drizzle 0.36 pgEnum narrowing in TRC seed. Tracked.
 /**
  * Tanzania Railway Commission (TRC) Seed
  *

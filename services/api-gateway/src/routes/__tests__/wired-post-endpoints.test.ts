@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Wired-POST-endpoints integration tests.
  *

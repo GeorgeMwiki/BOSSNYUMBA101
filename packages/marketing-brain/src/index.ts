@@ -10,3 +10,4 @@ export * from './lead-qualifier.js';
 export * from './demo-data-generator.js';
 export * from './pricing-advisor.js';
 export * from './waitlist-integrator.js';
+export * as BlogEngine from './blog-engine/index.js';

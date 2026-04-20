@@ -439,3 +439,11 @@ export {
 export * as IntelligenceOrchestrator from './intelligence-orchestrator/index.js';
 export * as ProgressiveIntelligence from './progressive-intelligence/index.js';
 
+// ============================================
+// Wave 12 — Learning Journeys + Learning Engine + Rent-Credit-Building.
+// Namespaced to avoid collisions.
+// ============================================
+export * as LearningJourneys from './learning-journeys/index.js';
+export * as LearningEngine from './learning-engine/index.js';
+export * as RentCreditBuilding from './rent-credit-building/index.js';
+

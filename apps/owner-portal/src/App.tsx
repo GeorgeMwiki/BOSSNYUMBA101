@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Skeleton } from '@bossnyumba/design-system';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpotlightMount } from './components/SpotlightMount';
+import { MwikilaWidgetMount } from './components/MwikilaWidgetMount';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -63,6 +64,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <AuthProvider>
+      <MwikilaWidgetMount>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -113,6 +115,7 @@ function App() {
         />
       </Routes>
       <SpotlightMount />
+      </MwikilaWidgetMount>
     </AuthProvider>
   );
 }

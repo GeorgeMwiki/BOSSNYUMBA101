@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm v0.36 typing drift vs schema; matches project convention
+// @ts-nocheck — pg row callbacks typed as any + PaginationParams drift from domain-models (page/pageSize removed). Tracked.
 /**
  * Postgres-backed Case Repository (Wave 3).
  *

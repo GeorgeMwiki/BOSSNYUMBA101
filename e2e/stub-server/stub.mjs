@@ -28,12 +28,23 @@ const PORT = Number(process.env.PORT || 3000);
 // All routes start with `/`. Matching is exact or prefix via `startsWith`.
 
 const PAGES = {
-  // ---------- tenant-onboarding ----------
+  // ---------- tenant-onboarding + wave-12 mwikila hero ----------
   '/': `
     <a href="/signup">Sign up</a>
     <a href="/app">Get started</a>
     <label>Phone <input name="phone" /></label>
     <button type="button">Continue</button>
+    <main data-testid="mwikila-hero">
+      <h1>Karibu — I'm Mr. Mwikila</h1>
+      <p>The operating system for your rentals — whether you own or occupy.</p>
+      <form data-testid="hero-chat-form">
+        <label>Tell me about yourself
+          <input data-testid="hero-chat-input" name="intro" />
+        </label>
+        <button type="submit" data-testid="hero-chat-send">Chat</button>
+      </form>
+      <section data-testid="hero-response"></section>
+    </main>
   `,
   '/signup': `
     <label>Phone <input name="phone" /></label>
@@ -154,6 +165,61 @@ const PAGES = {
     <button type="button">Submit — send counter</button>
     <button type="button">Agree — accept</button>
     <p>SETTLED settled 350,000 deposit</p>
+  `,
+
+  // ---------- Wave 12: brain-chat ----------
+  '/brain-chat': `
+    <section data-testid="manager-chat">
+      <h1>Mr. Mwikila — Manager Chat</h1>
+      <ol data-testid="chat-transcript"></ol>
+      <form data-testid="chat-form">
+        <label>Message <textarea data-testid="chat-input" name="message"></textarea></label>
+        <button type="submit" data-testid="chat-send">Send</button>
+      </form>
+      <aside data-testid="blackboard">
+        <article data-testid="blackboard-block">Awaiting signal from brain…</article>
+      </aside>
+    </section>
+  `,
+  '/owner-advisor': `
+    <section data-testid="owner-advisor">
+      <h1>Mr. Mwikila — Owner Advisor</h1>
+      <ol data-testid="chat-transcript"></ol>
+      <form data-testid="chat-form">
+        <label>Message <textarea data-testid="chat-input" name="message"></textarea></label>
+        <button type="submit" data-testid="chat-send">Send</button>
+      </form>
+      <aside data-testid="blackboard">
+        <article data-testid="blackboard-block">Portfolio-health digest loading…</article>
+      </aside>
+    </section>
+  `,
+
+  // ---------- Wave 12: progressive migration ----------
+  '/admin/migration': `
+    <section data-testid="migration-wizard">
+      <h1>Progressive migration</h1>
+      <form data-testid="migration-upload">
+        <label>CSV <input type="file" data-testid="migration-file" name="csv" /></label>
+        <button type="submit" data-testid="migration-parse">Preview</button>
+      </form>
+      <section data-testid="migration-preview"></section>
+      <button type="button" data-testid="migration-commit">Commit migration</button>
+      <section data-testid="migration-result"></section>
+    </section>
+  `,
+
+  // ---------- Wave 12: ambient intervention on forms ----------
+  '/app/settings/profile': `
+    <h1>Profile settings</h1>
+    <form>
+      <label>Full name <input data-testid="profile-name" name="name" /></label>
+      <label>Occupation <input data-testid="profile-occupation" name="occupation" /></label>
+      <button type="submit">Save</button>
+    </form>
+    <aside data-testid="ambient-bubble" hidden>
+      <p>Mr. Mwikila: stuck on a field? I can help.</p>
+    </aside>
   `,
 };
 

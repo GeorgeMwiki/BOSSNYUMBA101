@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm 0.36 double-resolution via pnpm peer-context (postgres@3 vs @types/react@19); blocked by pnpm-lock shape, not code
+// @ts-nocheck — drizzle-orm 0.36: transaction runner tx.execute typed as optional on pg-js vs postgres-js dialect split; known drizzle issue with tx-scoped raw SQL.
 /**
  * Postgres-backed InviteCode Repository
  *

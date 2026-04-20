@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 typing drift vs schema; matches project convention
 /**
  * Drizzle-backed GDPR repository — Wave 9 enterprise polish.
  *

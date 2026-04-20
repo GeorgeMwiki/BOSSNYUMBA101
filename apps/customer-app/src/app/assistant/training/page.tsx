@@ -1,16 +1,15 @@
 'use client';
 
 /**
- * Tenant Assistant — Training Mode
+ * Tenant Assistant — Training Mode (streaming).
  *
  * Uses @bossnyumba/chat-ui pedagogical chat with blackboard + adaptive
- * renderer. Meant for onboarding tenants on lease concepts, rent
- * affordability, security deposit, arrears consequences.
+ * renderer and `useChatStream` to consume SSE from /api/v1/ai/chat.
  *
  * Mount point: /assistant/training
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -19,6 +18,7 @@ import {
   ReviewModeSummary,
   detectModeFromResponse,
   generateBlocks,
+  useChatStream,
   INITIAL_CHAT_MODE_STATE,
   type AdaptiveMessageMetadata,
   type ChatMode,
@@ -33,62 +33,68 @@ interface ChatMessage {
   readonly role: 'user' | 'assistant';
   readonly text: string;
   readonly metadata?: AdaptiveMessageMetadata;
+  readonly isStreaming?: boolean;
 }
 
 export default function TenantTrainingPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
-  const [loading, setLoading] = useState(false);
+  const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
+
+  const { state, sendMessage: sendStream, cancel, approveAction, rejectAction } = useChatStream(
+    'tenant-assistant',
+    {
+      endpoint: '/api/v1/ai/chat',
+      onEvent: (evt) => {
+        if (evt.type === 'turn_end' && activeAssistantId) {
+          const text = state.assistantText;
+          const toolCalls = state.toolCalls.map((t) => t.name);
+          const detection = detectModeFromResponse({
+            responseText: text,
+            toolCalls,
+            currentMode: modeState.mode,
+            isGroupSession: false,
+            sessionMessageCount: messages.length,
+          });
+          const blocks = generateBlocks({ responseText: text, toolCalls });
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === activeAssistantId
+                ? { ...m, text, metadata: { uiBlocks: blocks }, isStreaming: false }
+                : m,
+            ),
+          );
+          setModeState((prev) => applyMode(prev, detection.suggestedMode, detection.reason));
+        }
+      },
+    },
+  );
+
+  useEffect(() => {
+    if (!state.isStreaming || !activeAssistantId) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === activeAssistantId ? { ...m, text: state.assistantText, isStreaming: true } : m,
+      ),
+    );
+  }, [state.assistantText, state.isStreaming, activeAssistantId]);
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || loading) return;
+      if (!text.trim() || state.isStreaming) return;
       const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', text };
-      const nextMessages = [...messages, userMsg];
-      setMessages(nextMessages);
+      const assistantId = `a-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        { id: assistantId, role: 'assistant', text: '', isStreaming: true },
+      ]);
+      setActiveAssistantId(assistantId);
       setInput('');
-      setLoading(true);
-      try {
-        const response = await fetch('/api/v1/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ persona: 'tenant-assistant', message: text }),
-        });
-        const data = (await response.json()) as {
-          readonly text?: string;
-          readonly toolCalls?: readonly string[];
-          readonly metadata?: AdaptiveMessageMetadata;
-        };
-        const assistantText = data.text ?? '';
-        const toolCalls = data.toolCalls ?? [];
-        const detection = detectModeFromResponse({
-          responseText: assistantText,
-          toolCalls,
-          currentMode: modeState.mode,
-          isGroupSession: false,
-          sessionMessageCount: nextMessages.length,
-        });
-        const generatedBlocks =
-          !data.metadata?.uiBlocks || data.metadata.uiBlocks.length === 0
-            ? generateBlocks({ responseText: assistantText, toolCalls })
-            : data.metadata.uiBlocks;
-        const assistantMsg: ChatMessage = {
-          id: `a-${Date.now()}`,
-          role: 'assistant',
-          text: assistantText,
-          metadata: { ...(data.metadata ?? {}), uiBlocks: generatedBlocks },
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        setModeState((prev) => applyMode(prev, detection.suggestedMode, detection.reason));
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('TenantTraining error', error);
-      } finally {
-        setLoading(false);
-      }
+      await sendStream(text, { forcePersonaId: 'tenant-assistant' });
     },
-    [loading, messages, modeState.mode],
+    [state.isStreaming, sendStream],
   );
 
   const lastAssistant = useMemo(
@@ -113,12 +119,56 @@ export default function TenantTrainingPage() {
               style={{ background: m.role === 'user' ? '#dbeafe' : '#fff', padding: 12, borderRadius: 12 }}
             >
               <div style={{ fontSize: 11, color: '#64748b' }}>{m.role}</div>
-              <div style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+              <div style={{ fontSize: 14, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                {m.text}
+                {m.isStreaming && <span style={{ color: '#64748b' }}> …</span>}
+              </div>
               {m.metadata && (
                 <AdaptiveRenderer metadata={m.metadata} language="en" onSendMessage={sendMessage} />
               )}
             </li>
           ))}
+          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>Typing…</li>}
+          {state.toolCalls.length > 0 && (
+            <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {state.toolCalls.map((t, i) => (
+                <span
+                  key={`${t.name}-${i}`}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: t.ok === false ? '#fee2e2' : '#ecfdf5',
+                    color: t.ok === false ? '#991b1b' : '#065f46',
+                  }}
+                >
+                  {t.ok === undefined ? 'running' : t.ok ? 'ok' : 'fail'}: {t.name}
+                </span>
+              ))}
+            </li>
+          )}
+          {state.proposedAction && !state.proposedAction.decision && (
+            <li style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 12, color: '#9a3412', marginBottom: 6 }}>
+                Proposed ({state.proposedAction.risk}): {state.proposedAction.description}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={approveAction}
+                  style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6 }}
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={rejectAction}
+                  style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6 }}
+                >
+                  Reject
+                </button>
+              </div>
+            </li>
+          )}
+          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>Error: {state.error}</li>}
         </ul>
         {modeState.mode === 'quiz' && modeState.quizData && (
           <QuizLockdownOverlay
@@ -142,13 +192,22 @@ export default function TenantTrainingPage() {
             placeholder="Ask about rent, my lease, deposit, arrears …"
             style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }}
           />
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: '8px 14px', background: '#3b82f6', color: '#fff', borderRadius: 8, border: 'none' }}
-          >
-            Send
-          </button>
+          {state.isStreaming ? (
+            <button
+              type="button"
+              onClick={cancel}
+              style={{ padding: '8px 14px', background: '#ef4444', color: '#fff', borderRadius: 8, border: 'none' }}
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              style={{ padding: '8px 14px', background: '#3b82f6', color: '#fff', borderRadius: 8, border: 'none' }}
+            >
+              Send
+            </button>
+          )}
         </form>
       </div>
 
