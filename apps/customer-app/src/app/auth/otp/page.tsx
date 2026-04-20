@@ -4,12 +4,14 @@ import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, KeyRound } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
 function OTPVerifyPageInner() {
+  const t = useTranslations('authOtp');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { verifyOtp, loginWithPhone, isAuthenticated } = useAuth();
@@ -55,7 +57,7 @@ function OTPVerifyPageInner() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== OTP_LENGTH) {
-      setError('Please enter the full 6-digit code');
+      setError(t('fullCodeRequired'));
       return;
     }
 
@@ -67,10 +69,10 @@ function OTPVerifyPageInner() {
       if (result.success) {
         router.replace('/');
       } else {
-        setError(result.message ?? 'Invalid code. Please try again.');
+        setError(result.message ?? t('invalidCode'));
       }
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('somethingTryAgain'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,7 @@ function OTPVerifyPageInner() {
     if (result.success) {
       startResendCooldown();
     } else {
-      setError(result.message ?? 'Failed to resend. Try again.');
+      setError(result.message ?? t('resendFailed'));
     }
   };
 
@@ -92,9 +94,9 @@ function OTPVerifyPageInner() {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="text-center">
-          <p className="text-gray-600">Invalid or missing phone number.</p>
+          <p className="text-gray-600">{t('missingPhone')}</p>
           <Link href="/auth/login" className="text-primary-600 font-medium mt-4 inline-block">
-            Back to Login
+            {t('backToLogin')}
           </Link>
         </div>
       </main>
@@ -109,23 +111,23 @@ function OTPVerifyPageInner() {
           className="flex items-center gap-2 text-gray-600 mb-6 -ml-2 w-fit"
         >
           <ArrowLeft className="w-5 h-5" />
-          Back
+          {t('back')}
         </Link>
 
         <div className="mb-8">
           <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center mb-4">
             <KeyRound className="w-6 h-6 text-primary-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Enter verification code</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t('enterTitle')}</h1>
           <p className="text-gray-500 mt-2">
-            We sent a 6-digit code to {phone}. Enter it below.
+            {t('enterSubtitle', { phone })}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="otp" className="label">
-              Verification code
+              {t('codeLabel')}
             </label>
             <input
               id="otp"
@@ -134,7 +136,7 @@ function OTPVerifyPageInner() {
               pattern="[0-9]*"
               value={otp}
               onChange={handleOtpChange}
-              placeholder="000000"
+              placeholder={t('codePlaceholder')}
               className="input text-center text-2xl tracking-[0.5em] font-mono"
               maxLength={OTP_LENGTH}
               autoComplete="one-time-code"
@@ -154,23 +156,23 @@ function OTPVerifyPageInner() {
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Verifying...
+                {t('verifying')}
               </span>
             ) : (
-              'Verify'
+              t('verify')
             )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">Didn&apos;t receive the code?</p>
+          <p className="text-sm text-gray-500">{t('didntReceive')}</p>
           <button
             type="button"
             onClick={handleResend}
             disabled={resendCooldown > 0}
             className="text-primary-600 font-medium mt-1 disabled:text-gray-400 disabled:cursor-not-allowed"
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+            {resendCooldown > 0 ? t('resendIn', { seconds: resendCooldown }) : t('resendCode')}
           </button>
         </div>
       </div>

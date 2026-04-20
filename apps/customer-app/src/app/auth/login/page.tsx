@@ -6,6 +6,7 @@ import { Phone, ArrowRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
@@ -19,6 +20,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const t = useTranslations('authLogin');
   const router = useRouter();
   const { loginWithPhone } = useAuth();
 
@@ -39,10 +41,10 @@ export default function LoginPage() {
       if (result.success) {
         router.push(`/auth/otp?phone=${encodeURIComponent(phone)}`);
       } else {
-        setError('root', { message: result.message ?? 'Something went wrong' });
+        setError('root', { message: result.message ?? t('somethingWentWrong') });
       }
     } catch {
-      setError('root', { message: 'Something went wrong. Please try again.' });
+      setError('root', { message: t('somethingTryAgain') });
     }
   });
 
@@ -50,21 +52,21 @@ export default function LoginPage() {
     <main className="min-h-screen bg-gray-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex-1 flex flex-col justify-center px-6 py-12 max-w-md mx-auto w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">BOSSNYUMBA</h1>
-          <p className="text-gray-500 mt-2 text-base">Sign in to manage your tenancy</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 mt-2 text-base">{t('subtitle')}</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-6" noValidate>
           <div>
             <label htmlFor="phone" className="label">
-              Phone Number
+              {t('phoneLabel')}
             </label>
             <div className="relative">
               <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 id="phone"
                 type="tel"
-                placeholder="+XXX XXX XXX XXX"
+                placeholder={t('phonePlaceholder')}
                 autoComplete="tel"
                 aria-invalid={!!errors.phone}
                 className="input pl-12"
@@ -93,7 +95,7 @@ export default function LoginPage() {
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                Send OTP
+                {t('sendOtp')}
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
@@ -101,7 +103,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          We&apos;ll send you a one-time code to verify your number.
+          {t('helperText')}
         </p>
 
         <div className="mt-8 text-center">
@@ -109,7 +111,7 @@ export default function LoginPage() {
             href="/auth/register"
             className="inline-block py-3 px-4 text-primary-600 font-medium min-h-[48px] leading-normal"
           >
-            New here? Create an account
+            {t('newHereCta')}
           </Link>
         </div>
       </div>

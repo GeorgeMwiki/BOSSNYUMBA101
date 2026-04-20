@@ -15,6 +15,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, requireRole } from '../middleware/hono-auth.js';
 import { UserRole } from '../types/user-role.js';
+import { routeCatch } from '../utils/safe-error.js';
 import type {
   WebhookDeliveryRepository,
   WebhookDeliveryQueued,
@@ -70,16 +71,11 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
         meta: { limit, offset, count: entries.length },
       });
     } catch (err) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'DLQ_LIST_FAILED',
-            message: err instanceof Error ? err.message : 'unable to list dead-letters',
-          },
-        },
-        500
-      );
+      return routeCatch(c, err, {
+        code: 'DLQ_LIST_FAILED',
+        status: 500,
+        fallback: 'unable to list dead-letters',
+      });
     }
   });
 
@@ -88,15 +84,18 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   // ---------------------------------------------------------------------
   app.get('/api/v1/webhooks/dead-letters/:id', async (c) => {
     const id = c.req.param('id');
-    const entry = await deps.repository.getDeadLetter(id);
+    const auth = c.get('auth');
+    // Tenant-scoped fetch: the repository matches on (id, tenant_id) so a
+    // forged id cannot reach a row belonging to another tenant even before
+    // the post-fetch ownership check runs. The secondary check below stays
+    // as belt-and-suspenders for legacy test doubles that ignore tenantId.
+    const entry = await deps.repository.getDeadLetter(id, auth?.tenantId);
     if (!entry) {
       return c.json(
         { success: false, error: { code: 'NOT_FOUND', message: 'dead-letter not found' } },
         404
       );
     }
-    // Tenant isolation — admins can only see DLQ entries for their own tenant.
-    const auth = c.get('auth');
     if (auth?.tenantId && entry.tenantId !== auth.tenantId) {
       return c.json(
         { success: false, error: { code: 'NOT_FOUND', message: 'dead-letter not found' } },
@@ -113,7 +112,8 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
     const id = c.req.param('id');
     const auth = c.get('auth');
 
-    const entry = await deps.repository.getDeadLetter(id);
+    // Tenant-scoped fetch — see GET handler above for rationale.
+    const entry = await deps.repository.getDeadLetter(id, auth?.tenantId);
     if (!entry) {
       return c.json(
         { success: false, error: { code: 'NOT_FOUND', message: 'dead-letter not found' } },
@@ -136,26 +136,25 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
         eventType: entry.eventType,
         payload: entry.payload,
       });
+      // Tenant-scoped UPDATE — the repo's WHERE clause will include
+      // `tenant_id = ${auth.tenantId}` so a forged id cannot flip a row
+      // in another tenant even if this handler were bypassed.
       await deps.repository.markDeadLetterReplayed(
         id,
         auth?.userId ?? 'unknown-admin',
-        newDeliveryId
+        newDeliveryId,
+        auth?.tenantId
       );
       return c.json({
         success: true,
         data: { id, replayDeliveryId: newDeliveryId, replayedAt: new Date(now()).toISOString() },
       });
     } catch (err) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: 'REPLAY_FAILED',
-            message: err instanceof Error ? err.message : 'failed to replay',
-          },
-        },
-        500
-      );
+      return routeCatch(c, err, {
+        code: 'REPLAY_FAILED',
+        status: 500,
+        fallback: 'failed to replay',
+      });
     }
   });
 

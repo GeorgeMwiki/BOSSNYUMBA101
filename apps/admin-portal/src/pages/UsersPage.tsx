@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
 
 export function UsersPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Users"
-      feature="user directory data"
-      description="This screen will return once the live identity and admin user-management APIs are connected."
+      title={t('usersTitle')}
+      feature={t('usersFeature')}
+      description={t('usersDescription')}
     />
   );
 }

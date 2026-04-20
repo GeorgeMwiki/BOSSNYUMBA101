@@ -21,6 +21,7 @@ import {
   type ExceptionRepository,
 } from '@bossnyumba/ai-copilot/autonomy';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const fallbackRepo: ExceptionRepository = new InMemoryExceptionRepository();
 const fallbackInbox = new ExceptionInbox({ repository: fallbackRepo });
@@ -77,10 +78,11 @@ exceptionsRouter.get('/', zValidator('query', ListQuerySchema), async (c) => {
       meta: { total: items.length, page: 1, limit: query.limit ?? items.length },
     });
   } catch (err) {
-    return c.json(
-      { success: false, error: err instanceof Error ? err.message : 'listOpen failed' },
-      500,
-    );
+    return routeCatch(c, err, {
+      code: 'EXCEPTIONS_LIST_FAILED',
+      status: 500,
+      fallback: 'listOpen failed',
+    });
   }
 });
 

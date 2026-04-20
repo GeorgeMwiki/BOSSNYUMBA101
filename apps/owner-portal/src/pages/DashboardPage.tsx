@@ -33,6 +33,7 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate, formatPercentage } from '../lib/api';
 import { useProperties, useOwnerDashboard, type DashboardRange } from '../lib/hooks';
 import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
@@ -45,6 +46,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 type DateRange = DashboardRange;
 
 export function DashboardPage() {
+  const t = useTranslations('dashboard');
   const [selectedProperty, setSelectedProperty] = useState('all');
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const navigate = useNavigate();
@@ -62,7 +64,7 @@ export function DashboardPage() {
   const error = dashboardQuery.error
     ? dashboardQuery.error instanceof Error
       ? dashboardQuery.error.message
-      : 'Live owner dashboard data is unavailable.'
+      : t('dataUnavailable')
     : null;
 
   const handleRefresh = () => {
@@ -119,8 +121,8 @@ export function DashboardPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error ?? 'Failed to load dashboard data'}
-          <Button size="sm" onClick={handleRefresh} className="ml-2">Retry</Button>
+          {error ?? t('failedToLoad')}
+          <Button size="sm" onClick={handleRefresh} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -129,8 +131,8 @@ export function DashboardPage() {
   const { portfolio, financial, maintenance, occupancy, arrears, recentActivity, alerts } = data;
 
   const occupancyChartData = [
-    { name: 'Occupied', value: occupancy.occupancyRate },
-    { name: 'Vacant', value: 100 - occupancy.occupancyRate },
+    { name: t('occupiedLegend', { count: occupancy.totalTenants }), value: occupancy.occupancyRate },
+    { name: t('vacantLegend', { count: occupancy.vacantUnits }), value: 100 - occupancy.occupancyRate },
   ];
 
   const revenueTrendData: Array<{ month: string; revenue: number }> = [];
@@ -142,8 +144,8 @@ export function DashboardPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">Overview of your property portfolio</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -152,14 +154,14 @@ export function DashboardPage() {
             className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('refresh')}
           </button>
           <Link
             to="/reports"
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
             <FileText className="h-4 w-4" />
-            View Reports
+            {t('viewReports')}
           </Link>
         </div>
       </div>
@@ -168,7 +170,7 @@ export function DashboardPage() {
       <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Filters:</span>
+          <span className="text-sm font-medium text-gray-700">{t('filters')}</span>
         </div>
         <div className="relative">
           <select
@@ -176,7 +178,7 @@ export function DashboardPage() {
             onChange={(e) => setSelectedProperty(e.target.value)}
             className="appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
-            <option value="all">All Properties</option>
+            <option value="all">{t('allProperties')}</option>
             {properties.map((property) => (
               <option key={property.id} value={property.id}>{property.name}</option>
             ))}
@@ -194,7 +196,7 @@ export function DashboardPage() {
                   dateRange === range ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : range === '90d' ? '90 Days' : '1 Year'}
+                {range === '7d' ? t('sevenDays') : range === '30d' ? t('thirtyDays') : range === '90d' ? t('ninetyDays') : t('oneYear')}
               </button>
             ))}
           </div>
@@ -205,7 +207,7 @@ export function DashboardPage() {
             className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
           >
             <X className="h-3 w-3" />
-            Clear filter
+            {t('clearFilter')}
           </button>
         )}
       </div>
@@ -268,7 +270,7 @@ export function DashboardPage() {
                       : 'text-blue-700 hover:text-blue-800'
                   }`}
                 >
-                  View <ArrowRight className="h-4 w-4" />
+                  {t('view')} <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
             </div>
@@ -286,10 +288,10 @@ export function DashboardPage() {
             <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
               <Building2 className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Portfolio Value</span>
+            <span className="text-sm font-medium text-gray-500">{t('portfolioValue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">{formatCurrency(portfolio.portfolioValue)}</p>
-          <p className="text-sm text-gray-500">{portfolio.totalProperties} properties, {portfolio.totalUnits} units</p>
+          <p className="text-sm text-gray-500">{t('propertiesUnits', { properties: portfolio.totalProperties, units: portfolio.totalUnits })}</p>
         </button>
 
         <button
@@ -300,7 +302,7 @@ export function DashboardPage() {
             <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Monthly Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('monthlyRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(financial.currentMonthRevenue)}
@@ -314,7 +316,7 @@ export function DashboardPage() {
             <span className={financial.revenueChange >= 0 ? 'text-green-600' : 'text-red-600'}>
               {formatPercentage(Math.abs(financial.revenueChange))}
             </span>
-            <span className="text-gray-500">vs last month</span>
+            <span className="text-gray-500">{t('vsLastMonth')}</span>
           </div>
         </button>
 
@@ -326,7 +328,7 @@ export function DashboardPage() {
             <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
               <Home className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupancy</span>
+            <span className="text-sm font-medium text-gray-500">{t('occupancy')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(occupancy.occupancyRate)}
@@ -340,7 +342,7 @@ export function DashboardPage() {
             <span className={occupancy.occupancyChange >= 0 ? 'text-green-600' : 'text-red-600'}>
               {formatPercentage(Math.abs(occupancy.occupancyChange))}
             </span>
-            <span className="text-gray-500">{occupancy.vacantUnits} vacant</span>
+            <span className="text-gray-500">{occupancy.vacantUnits} {t('vacantSuffix')}</span>
           </div>
         </button>
 
@@ -352,7 +354,7 @@ export function DashboardPage() {
             <div className="p-2 bg-emerald-100 rounded-lg group-hover:bg-emerald-200 transition-colors">
               <BarChart3 className="h-5 w-5 text-emerald-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Collection Rate</span>
+            <span className="text-sm font-medium text-gray-500">{t('collectionRate')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(financial.collectionRate)}
@@ -366,7 +368,7 @@ export function DashboardPage() {
             <span className={financial.collectionRateChange >= 0 ? 'text-green-600' : 'text-red-600'}>
               {formatPercentage(Math.abs(financial.collectionRateChange))}
             </span>
-            <span className="text-gray-500">trend</span>
+            <span className="text-gray-500">{t('trend')}</span>
           </div>
         </button>
 
@@ -378,12 +380,12 @@ export function DashboardPage() {
             <div className="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
               <TrendingUp className="h-5 w-5 text-orange-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">NOI</span>
+            <span className="text-sm font-medium text-gray-500">{t('noi')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(financial.noi)}
           </p>
-          <p className="text-sm text-gray-500">Net Operating Income</p>
+          <p className="text-sm text-gray-500">{t('netOperatingIncome')}</p>
         </button>
       </div>
 
@@ -392,12 +394,12 @@ export function DashboardPage() {
         {/* Revenue trend */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-            <Link 
-              to="/analytics/revenue" 
+            <h3 className="text-lg font-semibold text-gray-900">{t('revenueTrend')}</h3>
+            <Link
+              to="/analytics/revenue"
               className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              View details <ArrowRight className="h-4 w-4" />
+              {t('viewDetails')} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="h-64">
@@ -412,7 +414,7 @@ export function DashboardPage() {
                     tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
                   />
                   <Tooltip
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                    formatter={(value: number) => [formatCurrency(value), t('revenueLabel')]}
                     contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#DBEAFE" strokeWidth={2} />
@@ -420,7 +422,7 @@ export function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
-                Revenue trend is unavailable until live time-series data is wired.
+                {t('revenueTrendUnavailable')}
               </div>
             )}
           </div>
@@ -429,12 +431,12 @@ export function DashboardPage() {
         {/* Occupancy chart */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Occupancy Rate</h3>
-            <Link 
-              to="/analytics/occupancy" 
+            <h3 className="text-lg font-semibold text-gray-900">{t('occupancyRate')}</h3>
+            <Link
+              to="/analytics/occupancy"
               className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              Details <ArrowRight className="h-4 w-4" />
+              {t('details')} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="h-48">
@@ -460,11 +462,11 @@ export function DashboardPage() {
           <div className="flex justify-center gap-4 mt-2">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span className="text-sm text-gray-600">Occupied ({occupancy.totalTenants})</span>
+              <span className="text-sm text-gray-600">{t('occupiedLegend', { count: occupancy.totalTenants })}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-sm text-gray-600">Vacant ({occupancy.vacantUnits})</span>
+              <span className="text-sm text-gray-600">{t('vacantLegend', { count: occupancy.vacantUnits })}</span>
             </div>
           </div>
         </div>
@@ -491,40 +493,40 @@ export function DashboardPage() {
         {/* Maintenance summary */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Maintenance</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('maintenance')}</h3>
             <Link
               to="/maintenance"
               className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              View all <ArrowRight className="h-4 w-4" />
+              {t('viewAll')} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Link to="/maintenance?filter=open" className="p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
               <div className="flex items-center gap-2 text-yellow-700">
                 <Clock className="h-5 w-5" />
-                <span className="text-sm font-medium">Open</span>
+                <span className="text-sm font-medium">{t('open')}</span>
               </div>
               <p className="mt-2 text-2xl font-semibold text-yellow-800">{maintenance.openRequests}</p>
             </Link>
             <Link to="/maintenance?filter=in-progress" className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
               <div className="flex items-center gap-2 text-blue-700">
                 <Wrench className="h-5 w-5" />
-                <span className="text-sm font-medium">In Progress</span>
+                <span className="text-sm font-medium">{t('inProgress')}</span>
               </div>
               <p className="mt-2 text-2xl font-semibold text-blue-800">{maintenance.inProgress}</p>
             </Link>
             <Link to="/maintenance?filter=completed" className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
               <div className="flex items-center gap-2 text-green-700">
                 <CheckCircle className="h-5 w-5" />
-                <span className="text-sm font-medium">Completed</span>
+                <span className="text-sm font-medium">{t('completed')}</span>
               </div>
               <p className="mt-2 text-2xl font-semibold text-green-800">{maintenance.completedThisMonth}</p>
             </Link>
             <Link to="/maintenance/trends" className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
               <div className="flex items-center gap-2 text-purple-700">
                 <DollarSign className="h-5 w-5" />
-                <span className="text-sm font-medium">Cost</span>
+                <span className="text-sm font-medium">{t('cost')}</span>
               </div>
               <p className="mt-2 text-2xl font-semibold text-purple-800">
                 {formatCurrency(maintenance.totalCostThisMonth)}
@@ -534,10 +536,10 @@ export function DashboardPage() {
           {maintenance.pendingApprovals > 0 && (
             <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
               <span className="text-sm text-orange-800">
-                {maintenance.pendingApprovals} work orders awaiting approval
+                {t('workOrdersPending', { count: maintenance.pendingApprovals })}
               </span>
               <Link to="/approvals" className="text-sm font-medium text-orange-700 hover:text-orange-800">
-                Review
+                {t('review')}
               </Link>
             </div>
           )}
@@ -545,7 +547,7 @@ export function DashboardPage() {
 
         {/* Recent activity */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('recentActivity')}</h3>
           <div className="space-y-4">
             {recentActivity.map((activity) => (
               <div

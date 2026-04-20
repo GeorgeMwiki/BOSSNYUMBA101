@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
 
 export function TenantDetailPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Tenant Detail"
-      feature="tenant detail data"
-      description="This view requires live tenant policy, billing, and operational data."
+      title={t('tenantDetailTitle')}
+      feature={t('tenantDetailFeature')}
+      description={t('tenantDetailDescription')}
     />
   );
 }

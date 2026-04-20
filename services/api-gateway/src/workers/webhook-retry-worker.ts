@@ -80,11 +80,28 @@ export interface WebhookDeliveryRepository {
     limit?: number;
     offset?: number;
   }): Promise<WebhookDeadLetterRecord[]>;
-  getDeadLetter(id: string): Promise<WebhookDeadLetterRecord | null>;
+  /**
+   * Fetches a dead-letter by primary key, scoped to the given tenant so the
+   * call cannot leak rows across tenants even if the caller forgets the
+   * post-fetch ownership check. Returns null when the row doesn't exist OR
+   * when it belongs to a different tenant — both cases look like 404 from
+   * the caller's perspective. `tenantId` is optional only for legacy
+   * super-admin cross-tenant tooling; prefer passing it always.
+   */
+  getDeadLetter(
+    id: string,
+    tenantId?: string
+  ): Promise<WebhookDeadLetterRecord | null>;
+  /**
+   * Marks a dead-letter as replayed. Tenant-scoped — the UPDATE only
+   * matches a row whose `tenant_id` equals the supplied value, so a
+   * compromised/forged id can never flip a row for a different tenant.
+   */
   markDeadLetterReplayed(
     id: string,
     replayedBy: string,
-    replayDeliveryId: string
+    replayDeliveryId: string,
+    tenantId?: string
   ): Promise<void>;
 }
 

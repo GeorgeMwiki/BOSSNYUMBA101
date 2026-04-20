@@ -22,6 +22,7 @@ import { Hono } from 'hono';
 import { and, desc, eq } from 'drizzle-orm';
 import { notificationDispatchLog } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -55,14 +56,11 @@ app.get('/', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Query failed';
-    return c.json(
-      {
-        success: false,
-        error: { code: 'NOTIFICATIONS_UNAVAILABLE', message },
-      },
-      503,
-    );
+    return routeCatch(c, error, {
+      code: 'NOTIFICATIONS_UNAVAILABLE',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 
@@ -102,11 +100,11 @@ app.get('/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'NOTIFICATIONS_UNAVAILABLE', message } },
-      503,
-    );
+    return routeCatch(c, error, {
+      code: 'NOTIFICATIONS_UNAVAILABLE',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 

@@ -8,6 +8,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 export const riskReportsRouter = new Hono();
 
@@ -60,23 +61,13 @@ riskReportsRouter.post('/:customerId/generate', async (c) => {
       ? c.json({ success: true, data: result.value }, 201)
       : c.json({ success: false, error: result.error }, 400);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Generation failed';
-    // Foreign-key / check violations are caller errors (unknown
-    // customer), so return 400 with structured JSON. Everything else
-    // stays a real 500 so ops can alert on it.
-    const isConstraint =
-      /foreign key|violates|check constraint/i.test(message);
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: isConstraint ? 'RISK_REPORT_INVALID_INPUT' : 'RISK_REPORT_FAILED',
-          message,
-        },
-      },
-      isConstraint ? 400 : 500,
-    );
+    // routeCatch maps 23503/23505/etc. to a 4xx envelope via mapSqlError and
+    // falls back to a scrubbed 500 for anything else.
+    return routeCatch(c, error, {
+      code: 'RISK_REPORT_FAILED',
+      status: 500,
+      fallback: 'Generation failed',
+    });
   }
 });
 
@@ -102,15 +93,11 @@ riskReportsRouter.get('/:customerId/latest', async (c) => {
       ? c.json({ success: true, data: result.value })
       : c.json({ success: false, error: result.error }, 404);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Lookup failed';
-    return c.json(
-      {
-        success: false,
-        error: { code: 'RISK_REPORT_FAILED', message },
-      },
-      500,
-    );
+    return routeCatch(c, error, {
+      code: 'RISK_REPORT_FAILED',
+      status: 500,
+      fallback: 'Lookup failed',
+    });
   }
 });
 

@@ -50,6 +50,7 @@ function formatDate(dateStr: string) {
 
 export default function DashboardPage() {
   const tNav = useTranslations('nav');
+  const t = useTranslations('dashboard');
   const { data: propertiesData, isLoading: loadingProperties } = useQuery({
     queryKey: ['properties', { page: 1, pageSize: 100 }],
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
@@ -117,7 +118,7 @@ export default function DashboardPage() {
     <>
       <PageHeader
         title={tNav('dashboard')}
-        subtitle="Estate Manager Overview"
+        subtitle={t('subtitle')}
         showProfile
       />
 
@@ -141,7 +142,7 @@ export default function DashboardPage() {
           <>
             {/* Property Overview Cards */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Property Overview</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('propertyOverview')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link href="/properties" className="card p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
@@ -150,7 +151,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{totalProperties}</div>
-                      <div className="text-xs text-gray-500">Properties</div>
+                      <div className="text-xs text-gray-500">{t('properties')}</div>
                     </div>
                   </div>
                 </Link>
@@ -161,7 +162,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{totalUnits}</div>
-                      <div className="text-xs text-gray-500">Total Units</div>
+                      <div className="text-xs text-gray-500">{t('totalUnits')}</div>
                     </div>
                   </div>
                 </Link>
@@ -172,7 +173,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{occupancyRate}%</div>
-                      <div className="text-xs text-gray-500">Occupancy Rate</div>
+                      <div className="text-xs text-gray-500">{t('occupancyRate')}</div>
                     </div>
                   </div>
                 </div>
@@ -181,7 +182,7 @@ export default function DashboardPage() {
 
             {/* Work Order Summary */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Work Orders</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('workOrders')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link href="/work-orders?filter=open" className="card p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
@@ -190,7 +191,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{openWorkOrders}</div>
-                      <div className="text-xs text-gray-500">Open</div>
+                      <div className="text-xs text-gray-500">{t('open')}</div>
                     </div>
                   </div>
                 </Link>
@@ -201,7 +202,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{inProgressWorkOrders}</div>
-                      <div className="text-xs text-gray-500">In Progress</div>
+                      <div className="text-xs text-gray-500">{t('inProgress')}</div>
                     </div>
                   </div>
                 </Link>
@@ -212,7 +213,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{completedToday}</div>
-                      <div className="text-xs text-gray-500">Completed Today</div>
+                      <div className="text-xs text-gray-500">{t('completedToday')}</div>
                     </div>
                   </div>
                 </div>
@@ -221,28 +222,28 @@ export default function DashboardPage() {
 
             {/* Quick Actions */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link
                   href="/work-orders/new"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow border-primary-200 bg-primary-50/50"
                 >
                   <Wrench className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Create Work Order</span>
+                  <span className="font-medium">{t('createWorkOrder')}</span>
                 </Link>
                 <Link
                   href="/customers/new"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
                 >
                   <UserPlus className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Add Customer</span>
+                  <span className="font-medium">{t('addCustomer')}</span>
                 </Link>
                 <Link
                   href="/payments/receive"
                   className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
                 >
                   <CreditCard className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">Receive Payment</span>
+                  <span className="font-medium">{t('receivePayment')}</span>
                 </Link>
               </div>
             </section>
@@ -252,10 +253,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
-                  Recent Payments
+                  {t('recentPayments')}
                 </h2>
                 <Link href="/payments" className="text-sm text-primary-600">
-                  View All
+                  {t('viewAll')}
                 </Link>
               </div>
               <div className="card divide-y divide-gray-100">
@@ -263,10 +264,10 @@ export default function DashboardPage() {
                   <Empty
                     variant="default"
                     icon={<DollarSign className="h-8 w-8 text-gray-400" />}
-                    title="No recent payments"
-                    description="Payments received in the last 7 days will appear here."
+                    title={t('noRecentPayments')}
+                    description={t('noRecentPaymentsDesc')}
                     action={{
-                      label: 'Receive payment',
+                      label: t('receivePaymentCta'),
                       onClick: () => { window.location.href = '/payments/receive'; },
                     }}
                   />
@@ -296,7 +297,7 @@ export default function DashboardPage() {
                               {payment.createdAt ? formatDate(payment.createdAt) : ''}
                             </div>
                           </div>
-                          <span className="badge-success">Completed</span>
+                          <span className="badge-success">{t('completed')}</span>
                         </div>
                       );
                     }
@@ -310,10 +311,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Upcoming Lease Expirations
+                  {t('upcomingLeaseExpirations')}
                 </h2>
                 <Link href="/leases?expiring=true" className="text-sm text-primary-600">
-                  View All
+                  {t('viewAll')}
                 </Link>
               </div>
               <div className="card divide-y divide-gray-100">
@@ -321,10 +322,10 @@ export default function DashboardPage() {
                   <Empty
                     variant="default"
                     icon={<Calendar className="h-8 w-8 text-gray-400" />}
-                    title="No upcoming lease expirations"
-                    description="Leases expiring in the next 60 days will appear here so you can plan renewals."
+                    title={t('noUpcomingExpirations')}
+                    description={t('noUpcomingExpirationsDesc')}
                     action={{
-                      label: 'View all leases',
+                      label: t('viewAllLeases'),
                       onClick: () => { window.location.href = '/leases'; },
                     }}
                   />
@@ -341,13 +342,13 @@ export default function DashboardPage() {
                         <div className="p-3 flex justify-between items-center hover:bg-gray-50">
                           <div>
                             <div className="font-medium text-sm">
-                              {lease.unit?.unitNumber} - {lease.customer?.name || 'Tenant'}
+                              {lease.unit?.unitNumber} - {lease.customer?.name || t('tenantFallback')}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {lease.property?.name} • Expires {formatDate(lease.endDate)}
+                              {lease.property?.name} • {t('expiresPrefix')} {formatDate(lease.endDate)}
                             </div>
                           </div>
-                          <span className="badge-warning">Expiring</span>
+                          <span className="badge-warning">{t('expiring')}</span>
                         </div>
                       </Link>
                     )

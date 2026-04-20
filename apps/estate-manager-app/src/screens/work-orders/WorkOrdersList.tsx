@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { workOrdersService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function WorkOrdersList() {
+  const t = useTranslations('lists');
   const workOrdersQuery = useQuery({
     queryKey: ['work-orders-list-live'],
     queryFn: () => workOrdersService.list(undefined, 1, 50),
@@ -18,12 +20,12 @@ export default function WorkOrdersList() {
   return (
     <>
       <PageHeader
-        title="Work Orders"
-        subtitle={`${workOrders.length} items`}
-        action={<Link href="/work-orders/new" className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />Add</Link>}
+        title={t('workOrdersTitle')}
+        subtitle={t('workOrdersItems', { count: workOrders.length })}
+        action={<Link href="/work-orders/new" className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('workOrdersAdd')}</Link>}
       />
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
-        {workOrdersQuery.isLoading && <div className="card p-4 text-sm text-gray-500">Loading work orders...</div>}
+        {workOrdersQuery.isLoading && <div className="card p-4 text-sm text-gray-500">{t('workOrdersLoading')}</div>}
         {workOrdersQuery.error && <div className="card p-4 text-sm text-danger-600">{(workOrdersQuery.error as Error).message}</div>}
         {workOrders.map((workOrder: any) => (
           <Link key={workOrder.id} href={`/work-orders/${workOrder.id}`} className="card block p-4 hover:shadow-md transition-shadow">

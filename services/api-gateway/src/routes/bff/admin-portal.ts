@@ -20,6 +20,7 @@ import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { databaseMiddleware } from '../../middleware/database';
 import { UserRole } from '../../types/user-role';
+import { routeCatch } from '../../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -74,11 +75,11 @@ app.get('/overview', async (c) => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'OVERVIEW_UNAVAILABLE', message } },
-      503,
-    );
+    return routeCatch(c, error, {
+      code: 'OVERVIEW_UNAVAILABLE',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 

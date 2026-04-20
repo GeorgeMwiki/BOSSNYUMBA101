@@ -4,6 +4,7 @@ import { Shield, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { createZodResolver } from '@bossnyumba/design-system';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 
 const loginSchema = z.object({
@@ -16,6 +17,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const t = useTranslations('login');
 
   const {
     register,
@@ -34,7 +36,7 @@ export function LoginPage() {
       navigate('/');
     } catch (err) {
       setError('root', {
-        message: err instanceof Error ? err.message : 'Login failed',
+        message: err instanceof Error ? err.message : t('loginFailed'),
       });
     }
   });
@@ -47,8 +49,8 @@ export function LoginPage() {
             <Shield className="h-10 w-10 text-white" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold text-white">Internal Admin Portal</h2>
-        <p className="mt-2 text-center text-sm text-slate-400">BOSSNYUMBA System Administration</p>
+        <h2 className="mt-6 text-center text-3xl font-bold text-white">{t('title')}</h2>
+        <p className="mt-2 text-center text-sm text-slate-400">{t('subtitle')}</p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -63,7 +65,7 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300">
-                Email address
+                {t('emailLabel')}
               </label>
               <input
                 id="email"
@@ -71,7 +73,7 @@ export function LoginPage() {
                 autoComplete="email"
                 aria-invalid={!!errors.email}
                 className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                placeholder="admin@company.com"
+                placeholder={t('emailPlaceholder')}
                 {...register('email')}
               />
               {errors.email && (
@@ -83,7 +85,7 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-300">
-                Password
+                {t('passwordLabel')}
               </label>
               <input
                 id="password"
@@ -91,7 +93,7 @@ export function LoginPage() {
                 autoComplete="current-password"
                 aria-invalid={!!errors.password}
                 className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg shadow-sm placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
                 {...register('password')}
               />
               {errors.password && (
@@ -109,7 +111,7 @@ export function LoginPage() {
               {isSubmitting ? (
                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                'Sign in'
+                t('submit')
               )}
             </button>
           </form>

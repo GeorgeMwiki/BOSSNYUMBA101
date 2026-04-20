@@ -34,6 +34,7 @@ import {
   documentEmbeddings,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -253,11 +254,11 @@ app.post('/sessions', zValidator('json', StartSessionSchema), async (c: any) => 
 
     return c.json({ success: true, data: inserted ?? row }, 201);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Create failed';
-    return c.json(
-      { success: false, error: { code: 'CREATE_FAILED', message } },
-      500
-    );
+    return routeCatch(c, error, {
+      code: 'CREATE_FAILED',
+      status: 500,
+      fallback: 'Create failed',
+    });
   }
 });
 

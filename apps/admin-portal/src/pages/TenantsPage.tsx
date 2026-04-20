@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
 
 export function TenantsPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Tenants"
-      feature="tenant directory data"
-      description="This page stays unavailable until the live tenant directory and onboarding services are connected."
+      title={t('tenantsTitle')}
+      feature={t('tenantsFeature')}
+      description={t('tenantsDescription')}
     />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface LiveDataRequiredPageProps {
@@ -16,6 +17,7 @@ export function LiveDataRequiredPage({
   description,
   showBack = false,
 }: LiveDataRequiredPageProps) {
+  const t = useTranslations('liveData');
   return (
     <>
       <PageHeader title={title} showBack={showBack} />
@@ -25,10 +27,9 @@ export function LiveDataRequiredPage({
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-red-900">{feature} unavailable</h2>
+              <h2 className="text-lg font-semibold text-red-900">{feature} {t('unavailableSuffix')}</h2>
               <p className="text-sm text-red-800">
-                {description ??
-                  `This screen is unavailable until live ${feature.toLowerCase()} is wired.`}
+                {description ?? t('defaultDescription', { feature: feature.toLowerCase() })}
               </p>
             </div>
           </div>

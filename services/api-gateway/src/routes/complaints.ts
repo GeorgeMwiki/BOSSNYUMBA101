@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
 import { complaintRecords } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const createComplaintSchema = z.object({
   subject: z.string().min(1).max(200),
@@ -76,10 +77,11 @@ app.post('/', zValidator('json', createComplaintSchema), async (c) => {
     });
     return c.json({ success: true, data: { id, status: 'open' } }, 201);
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'COMPLAINT_WRITE_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'COMPLAINT_WRITE_FAILED',
+      status: 503,
+      fallback: 'Complaint write failed',
+    });
   }
 });
 
@@ -100,10 +102,11 @@ app.get('/', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'COMPLAINTS_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'COMPLAINTS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Complaints query failed',
+    });
   }
 });
 
@@ -128,10 +131,11 @@ app.get('/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'COMPLAINT_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'COMPLAINT_QUERY_FAILED',
+      status: 503,
+      fallback: 'Complaint query failed',
+    });
   }
 });
 
@@ -160,10 +164,11 @@ app.put('/:id/resolve', zValidator('json', resolveComplaintSchema), async (c) =>
       );
     return c.json({ success: true, data: { id, status: 'resolved' } });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'COMPLAINT_RESOLVE_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'COMPLAINT_RESOLVE_FAILED',
+      status: 503,
+      fallback: 'Complaint resolve failed',
+    });
   }
 });
 

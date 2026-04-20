@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, FileText } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { leasesService } from '@bossnyumba/api-client';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export function LeasesList() {
+  const t = useTranslations('lists');
   const leasesQuery = useQuery({
     queryKey: ['leases-list-live'],
     queryFn: () => leasesService.list({ page: 1, pageSize: 50 }),
@@ -19,12 +21,12 @@ export function LeasesList() {
   return (
     <>
       <PageHeader
-        title="Leases"
-        subtitle={`${leases.length} records`}
+        title={t('leasesTitle')}
+        subtitle={t('leasesRecords', { count: leases.length })}
         action={
           <Link href="/leases/new" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            Add
+            {t('leasesAdd')}
           </Link>
         }
       />
@@ -40,7 +42,7 @@ export function LeasesList() {
           <Alert variant="danger">
             <AlertDescription>
               {(leasesQuery.error as Error).message}
-              <Button size="sm" onClick={() => leasesQuery.refetch()} className="ml-2">Retry</Button>
+              <Button size="sm" onClick={() => leasesQuery.refetch()} className="ml-2">{t('retry')}</Button>
             </AlertDescription>
           </Alert>
         )}
@@ -50,7 +52,7 @@ export function LeasesList() {
               <div>
                 <div className="font-medium">{lease.customer?.name || lease.leaseNumber || lease.id}</div>
                 <div className="text-sm text-gray-500">
-                  {lease.unit?.unitNumber || lease.unitId} • {lease.property?.name || 'Property pending'}
+                  {lease.unit?.unitNumber || lease.unitId} • {lease.property?.name || t('leasesPropertyPending')}
                 </div>
               </div>
               <div className="text-right">
@@ -63,11 +65,11 @@ export function LeasesList() {
         {!leasesQuery.isLoading && !leasesQuery.error && leases.length === 0 && (
           <EmptyState
             icon={<FileText className="h-8 w-8" />}
-            title="No leases yet"
-            description="Create your first lease to get started."
+            title={t('leasesEmptyTitle')}
+            description={t('leasesEmptyDesc')}
             action={
               <Link href="/leases/new" className="btn-primary inline-block">
-                Add Lease
+                {t('leasesEmptyCta')}
               </Link>
             }
           />

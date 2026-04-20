@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Plus, Clock, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type TicketStatus = 'submitted' | 'in_progress' | 'scheduled' | 'completed';
@@ -52,13 +53,6 @@ const tickets: MaintenanceTicket[] = [
   },
 ];
 
-const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
-  submitted: { label: 'Submitted', icon: Clock, color: 'badge-info' },
-  in_progress: { label: 'In Progress', icon: Wrench, color: 'badge-warning' },
-  scheduled: { label: 'Scheduled', icon: Clock, color: 'badge-info' },
-  completed: { label: 'Completed', icon: CheckCircle, color: 'badge-success' },
-};
-
 const priorityColors = {
   emergency: 'border-l-danger-500',
   high: 'border-l-warning-500',
@@ -67,17 +61,25 @@ const priorityColors = {
 };
 
 export default function MaintenancePage() {
+  const t = useTranslations('maintenancePage');
   const openTickets = tickets.filter((t) => t.status !== 'completed');
   const closedTickets = tickets.filter((t) => t.status === 'completed');
+
+  const statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }> = {
+    submitted: { label: t('statusSubmitted'), icon: Clock, color: 'badge-info' },
+    in_progress: { label: t('statusInProgress'), icon: Wrench, color: 'badge-warning' },
+    scheduled: { label: t('statusScheduled'), icon: Clock, color: 'badge-info' },
+    completed: { label: t('statusCompleted'), icon: CheckCircle, color: 'badge-success' },
+  };
 
   return (
     <>
       <PageHeader
-        title="Maintenance"
+        title={t('title')}
         action={
           <Link href="/maintenance/new" className="btn-primary text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            New Request
+            {t('newRequest')}
           </Link>
         }
       />
@@ -86,16 +88,16 @@ export default function MaintenancePage() {
         {/* Open Tickets */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">
-            Open Requests ({openTickets.length})
+            {t('openRequestsHeader', { count: openTickets.length })}
           </h2>
           <div className="space-y-3">
             {openTickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
+              <TicketCard key={ticket.id} ticket={ticket} statusConfig={statusConfig} atRiskLabel={t('responseAtRisk')} scheduledPrefix={t('scheduledPrefix')} />
             ))}
             {openTickets.length === 0 && (
               <div className="card p-6 text-center text-gray-500">
                 <Wrench className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p>No open maintenance requests</p>
+                <p>{t('empty')}</p>
               </div>
             )}
           </div>
@@ -104,11 +106,11 @@ export default function MaintenancePage() {
         {/* Closed Tickets */}
         <section>
           <h2 className="text-sm font-medium text-gray-500 mb-3">
-            Completed ({closedTickets.length})
+            {t('completedHeader', { count: closedTickets.length })}
           </h2>
           <div className="space-y-3">
             {closedTickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
+              <TicketCard key={ticket.id} ticket={ticket} statusConfig={statusConfig} atRiskLabel={t('responseAtRisk')} scheduledPrefix={t('scheduledPrefix')} />
             ))}
           </div>
         </section>
@@ -117,7 +119,17 @@ export default function MaintenancePage() {
   );
 }
 
-function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
+function TicketCard({
+  ticket,
+  statusConfig,
+  atRiskLabel,
+  scheduledPrefix,
+}: {
+  ticket: MaintenanceTicket;
+  statusConfig: Record<TicketStatus, { label: string; icon: React.ElementType; color: string }>;
+  atRiskLabel: string;
+  scheduledPrefix: string;
+}) {
   const status = statusConfig[ticket.status];
   const StatusIcon = status.icon;
 
@@ -137,13 +149,17 @@ function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span>{ticket.category}</span>
           {ticket.scheduledDate && (
-            <span>Scheduled: {new Date(ticket.scheduledDate).toLocaleDateString()}</span>
+            // Hydration-safe: ISO date part only (YYYY-MM-DD) so server + client
+            // render the same string. `toLocaleDateString()` without an explicit
+            // locale was rendering US format on the Node SSR pass and UK format
+            // in the browser, tripping a hydration mismatch. Wave-20 Agent N fix.
+            <span>{scheduledPrefix} {new Date(ticket.scheduledDate).toISOString().slice(0, 10)}</span>
           )}
         </div>
         {ticket.slaStatus === 'at_risk' && (
           <div className="mt-2 flex items-center text-xs text-warning-600">
             <AlertCircle className="w-3 h-3 mr-1" />
-            Response time at risk
+            {atRiskLabel}
           </div>
         )}
       </div>

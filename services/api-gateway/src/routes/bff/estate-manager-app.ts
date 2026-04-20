@@ -40,6 +40,7 @@ import {
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
+import { routeCatch } from '../../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -179,10 +180,11 @@ app.get('/', async (c) => {
   try {
     return c.json({ success: true, data: await buildHome(db, tenantId, userId) });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'HOME_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'HOME_QUERY_FAILED',
+      status: 503,
+      fallback: 'Home query failed',
+    });
   }
 });
 
@@ -194,10 +196,11 @@ app.get('/home', async (c) => {
   try {
     return c.json({ success: true, data: await buildHome(db, tenantId, userId) });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'HOME_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'HOME_QUERY_FAILED',
+      status: 503,
+      fallback: 'Home query failed',
+    });
   }
 });
 
@@ -215,10 +218,11 @@ app.get('/work-orders', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'WORK_ORDERS_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'WORK_ORDERS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Work orders query failed',
+    });
   }
 });
 
@@ -241,10 +245,11 @@ app.get('/work-orders/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'WORK_ORDER_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'WORK_ORDER_QUERY_FAILED',
+      status: 503,
+      fallback: 'Work order query failed',
+    });
   }
 });
 
@@ -262,10 +267,11 @@ app.get('/inspections', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'INSPECTIONS_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'INSPECTIONS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Inspections query failed',
+    });
   }
 });
 
@@ -282,10 +288,11 @@ app.get('/vendors', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'VENDORS_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'VENDORS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Vendors query failed',
+    });
   }
 });
 
@@ -326,10 +333,11 @@ app.get('/occupancy', async (c) => {
       },
     });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'OCCUPANCY_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'OCCUPANCY_QUERY_FAILED',
+      status: 503,
+      fallback: 'Occupancy query failed',
+    });
   }
 });
 
@@ -349,10 +357,11 @@ app.get('/collections', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    return c.json(
-      { success: false, error: { code: 'COLLECTIONS_QUERY_FAILED', message: String(err) } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'COLLECTIONS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Collections query failed',
+    });
   }
 });
 

@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import { and, desc, eq } from 'drizzle-orm';
 import { scheduledEvents } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -59,11 +60,11 @@ app.get('/events', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'SCHEDULING_QUERY_FAILED', message } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'SCHEDULING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 
@@ -86,11 +87,11 @@ app.get('/events/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'SCHEDULING_QUERY_FAILED', message } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'SCHEDULING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 
@@ -109,11 +110,11 @@ app.get('/', async (c) => {
       .limit(50);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'SCHEDULING_QUERY_FAILED', message } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'SCHEDULING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 

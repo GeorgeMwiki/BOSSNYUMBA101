@@ -16,6 +16,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
+import { routeCatch } from '../utils/safe-error';
 
 const UpdatePolicySchema = z
   .object({
@@ -67,16 +68,11 @@ app.get('/policy', async (c: any) => {
     const policy = await service.getPolicy(auth.tenantId);
     return c.json({ success: true, data: policy });
   } catch (err: any) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: err?.code ?? 'INTERNAL_ERROR',
-          message: err?.message ?? 'unknown',
-        },
-      },
-      500
-    );
+    return routeCatch(c, err, {
+      code: 'AUTONOMY_POLICY_FETCH_FAILED',
+      status: 500,
+      fallback: 'Autonomy policy fetch failed',
+    });
   }
 });
 
@@ -93,16 +89,23 @@ app.put('/policy', zValidator('json', UpdatePolicySchema), async (c: any) => {
     );
     return c.json({ success: true, data: updated });
   } catch (err: any) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: err?.code ?? 'INTERNAL_ERROR',
-          message: err?.message ?? 'unknown',
+    if (err?.code === 'VALIDATION') {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: err?.code ?? 'VALIDATION',
+            message: err?.message ?? 'validation failed',
+          },
         },
-      },
-      err?.code === 'VALIDATION' ? 400 : 500
-    );
+        400
+      );
+    }
+    return routeCatch(c, err, {
+      code: 'AUTONOMY_POLICY_UPDATE_FAILED',
+      status: 500,
+      fallback: 'Autonomy policy update failed',
+    });
   }
 });
 
@@ -118,10 +121,11 @@ app.post('/policy/enable', async (c: any) => {
     );
     return c.json({ success: true, data: updated });
   } catch (err: any) {
-    return c.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: String(err) } },
-      500
-    );
+    return routeCatch(c, err, {
+      code: 'AUTONOMY_ENABLE_FAILED',
+      status: 500,
+      fallback: 'Autonomy enable failed',
+    });
   }
 });
 
@@ -137,10 +141,11 @@ app.post('/policy/disable', async (c: any) => {
     );
     return c.json({ success: true, data: updated });
   } catch (err: any) {
-    return c.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: String(err) } },
-      500
-    );
+    return routeCatch(c, err, {
+      code: 'AUTONOMY_DISABLE_FAILED',
+      status: 500,
+      fallback: 'Autonomy disable failed',
+    });
   }
 });
 

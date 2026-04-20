@@ -38,6 +38,7 @@ import {
   createGraphAgentToolkit,
 } from '@bossnyumba/graph-sync';
 import { getBrainExtraSkills } from '../composition/brain-extensions';
+import { scrubMessage } from '../utils/safe-error';
 
 // ---------------------------------------------------------------------------
 // Lazy boot — fail fast on missing env, but defer until first request so the
@@ -146,7 +147,7 @@ function handleError(c, err) {
     );
   }
   return c.json(
-    { error: err instanceof Error ? err.message : String(err), code: 'INTERNAL' },
+    { error: scrubMessage(err, 'Internal error'), code: 'INTERNAL' },
     500
   );
 }

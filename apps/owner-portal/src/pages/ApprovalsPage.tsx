@@ -10,10 +10,12 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDate } from '../lib/api';
 import { useApprovals, useApproveRequest, useRejectRequest } from '../lib/hooks';
 
 export function ApprovalsPage() {
+  const t = useTranslations('approvalsPage');
   const { data: approvals = [], isLoading: loading, error, refetch } = useApprovals();
   const approveMutation = useApproveRequest();
   const rejectMutation = useRejectRequest();
@@ -64,8 +66,8 @@ export function ApprovalsPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load approvals'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -75,13 +77,13 @@ export function ApprovalsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Approvals</h1>
-          <p className="text-gray-500">Review and approve pending requests</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         {pendingCount > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
             <AlertCircle className="h-4 w-4" />
-            {pendingCount} pending
+            {t('pendingBadge', { count: pendingCount })}
           </div>
         )}
       </div>
@@ -98,7 +100,7 @@ export function ApprovalsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {status === 'all' ? 'All' : status}
+            {status === 'all' ? t('all') : status}
           </button>
         ))}
       </div>
@@ -131,7 +133,7 @@ export function ApprovalsPage() {
                       )}
                     </h3>
                     <p className="text-sm text-gray-600 mt-1">
-                      {approval.justification || `Request to ${approval.requestedAction}`}
+                      {approval.justification || `${t('requestToPrefix')} ${approval.requestedAction}`}
                     </p>
                   </div>
                   <span
@@ -146,7 +148,7 @@ export function ApprovalsPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4" />
-                    Requested by {approval.requester?.name || 'Unknown'}
+                    {t('requestedBy')} {approval.requester?.name || t('unknownRequester')}
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
@@ -155,14 +157,14 @@ export function ApprovalsPage() {
                   {approval.decidedAt && approval.approver && (
                     <div className="flex items-center gap-1">
                       <Check className="h-4 w-4" />
-                      Decided by {approval.approver.name}
+                      {t('decidedBy')} {approval.approver.name}
                     </div>
                   )}
                 </div>
 
                 {approval.decision && (
                   <div className="mt-2 p-2 bg-gray-50 rounded-lg text-sm text-gray-600">
-                    Decision: {approval.decision}
+                    {t('decisionPrefix')} {approval.decision}
                   </div>
                 )}
 
@@ -173,14 +175,14 @@ export function ApprovalsPage() {
                       className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
                     >
                       <Check className="h-4 w-4" />
-                      Approve
+                      {t('approve')}
                     </button>
                     <button
                       onClick={() => handleReject(approval.id)}
                       className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
                     >
                       <X className="h-4 w-4" />
-                      Reject
+                      {t('reject')}
                     </button>
                   </div>
                 )}
@@ -193,8 +195,8 @@ export function ApprovalsPage() {
       {filteredApprovals.length === 0 && (
         <EmptyState
           icon={<CheckSquare className="h-8 w-8" />}
-          title={`No ${filter === 'all' ? '' : filter.toLowerCase()} approvals`.trim()}
-          description="When requests come in they'll appear here for review."
+          title={filter === 'all' ? t('noApprovalsTitlePlain') : t('noApprovalsTitle', { filter: filter.toLowerCase() })}
+          description={t('noApprovalsDesc')}
         />
       )}
     </div>

@@ -19,6 +19,7 @@ import { Hono } from 'hono';
 import { and, desc, eq } from 'drizzle-orm';
 import { inspections } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -63,11 +64,11 @@ app.get('/', async (c) => {
       .limit(limit);
     return c.json({ success: true, data: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'INSPECTIONS_QUERY_FAILED', message } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'INSPECTIONS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 
@@ -90,11 +91,11 @@ app.get('/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'INSPECTIONS_QUERY_FAILED', message } },
-      503,
-    );
+    return routeCatch(c, err, {
+      code: 'INSPECTIONS_QUERY_FAILED',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 });
 

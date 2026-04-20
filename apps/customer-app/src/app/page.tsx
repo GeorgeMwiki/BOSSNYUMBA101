@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -43,6 +44,7 @@ const INITIAL_GREETING =
   'Hi, I am Mr. Mwikila. Are you an owner, a tenant, or a property manager? That tells me which BOSSNYUMBA capability to show you first.';
 
 export default function HomePage() {
+  const t = useTranslations('homeLanding');
   // Ephemeral session id — persisted in sessionStorage so demo data stays
   // isolated across refreshes but never leaks to another tab.
   const [sessionId, setSessionId] = useState<string>('');
@@ -190,17 +192,17 @@ export default function HomePage() {
     switch (suggestedRoute) {
       case 'owner_advisor':
       case 'owner-advisor':
-        return { label: 'Open Owner Advisor', href: '/auth/signup?persona=owner' };
+        return { label: t('ctaOwnerAdvisor'), href: '/auth/signup?persona=owner' };
       case 'tenant_assistant':
       case 'tenant-assistant':
-        return { label: 'Open Tenant Assistant', href: '/auth/signup?persona=tenant' };
+        return { label: t('ctaTenantAssistant'), href: '/auth/signup?persona=tenant' };
       case 'manager_chat':
       case 'manager-chat':
-        return { label: 'Open Manager Chat', href: '/auth/signup?persona=manager' };
+        return { label: t('ctaManagerChat'), href: '/auth/signup?persona=manager' };
       default:
         return null;
     }
-  }, [suggestedRoute]);
+  }, [suggestedRoute, t]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
@@ -209,7 +211,7 @@ export default function HomePage() {
           <header className="mb-8 text-center lg:text-left">
             <h1 className="text-4xl font-bold text-slate-900">BOSSNYUMBA</h1>
             <p className="mt-2 text-lg text-slate-600">
-              Estate management, reimagined. Meet Mr. Mwikila — your AI partner for every role in the estate.
+              {t('tagline')}
             </p>
           </header>
 
@@ -222,7 +224,7 @@ export default function HomePage() {
               }`}
               onClick={() => pickRole('owner')}
             >
-              I am a property owner
+              {t('iAmOwner')}
             </button>
             <button
               className={`rounded-full border px-3 py-1 text-sm ${
@@ -232,7 +234,7 @@ export default function HomePage() {
               }`}
               onClick={() => pickRole('tenant')}
             >
-              I am a tenant
+              {t('iAmTenant')}
             </button>
             <button
               className={`rounded-full border px-3 py-1 text-sm ${
@@ -242,7 +244,7 @@ export default function HomePage() {
               }`}
               onClick={() => pickRole('manager')}
             >
-              I am a property manager
+              {t('iAmManager')}
             </button>
           </div>
 
@@ -253,7 +255,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-slate-900">Mr. Mwikila</p>
-                <p className="text-xs text-slate-500">Marketing chat — no signup required</p>
+                <p className="text-xs text-slate-500">{t('marketingSubtitle')}</p>
               </div>
             </div>
 
@@ -285,9 +287,9 @@ export default function HomePage() {
                 </div>
               ))}
               {state.isStreaming && (
-                <div className="text-xs text-slate-500">Mr. Mwikila is typing…</div>
+                <div className="text-xs text-slate-500">{t('typingIndicator')}</div>
               )}
-              {state.error && <div className="text-xs text-red-700">Error: {state.error}</div>}
+              {state.error && <div className="text-xs text-red-700">{t('errorPrefix')} {state.error}</div>}
             </div>
 
             <form
@@ -299,7 +301,7 @@ export default function HomePage() {
             >
               <input
                 className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                placeholder="Tell Mr. Mwikila about your estate..."
+                placeholder={t('inputPlaceholder')}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={state.isStreaming}
@@ -309,7 +311,7 @@ export default function HomePage() {
                 disabled={state.isStreaming || !input.trim()}
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Send
+                {t('send')}
               </button>
             </form>
 
@@ -326,15 +328,13 @@ export default function HomePage() {
           {handoffPrefill && <HandoffCard prefill={handoffPrefill} />}
 
           <footer className="mt-6 text-center text-xs text-slate-500 lg:text-left">
-            Session id: {sessionId ? <span className="font-mono">{sessionId}</span> : '—'}. Data is
-            not stored until you join the waitlist or create an account.
+            {t('sessionLabel')} {sessionId ? <span className="font-mono">{sessionId}</span> : '—'}. {t('sessionFooter')}
           </footer>
 
           <section className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-1">
-            <h2 className="text-2xl font-semibold text-slate-900">See Mr. Mwikila work</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">{t('demosTitle')}</h2>
             <p className="text-sm text-slate-600">
-              Three self-contained demos. No signup, no email capture — just proof that the brain is
-              real.
+              {t('demosSubtitle')}
             </p>
             <LiveArrearsDemo />
             <LiveAffordabilityDemo />
@@ -343,14 +343,13 @@ export default function HomePage() {
         </div>
 
         <aside className="hidden lg:block">
-          <Blackboard language="en" conceptTitle="BOSSNYUMBA at a glance">
+          <Blackboard language="en" conceptTitle={t('blackboardConceptTitle')}>
             {lastAssistant?.metadata?.uiBlocks && lastAssistant.metadata.uiBlocks.length > 0 && (
               <AdaptiveRenderer metadata={lastAssistant.metadata} language="en" />
             )}
             {!lastAssistant && (
               <div className="text-sm text-slate-500">
-                Ask Mr. Mwikila to walk you through rent affordability, an owner report, or a
-                maintenance triage — the visualisation appears here.
+                {t('blackboardEmpty')}
               </div>
             )}
           </Blackboard>

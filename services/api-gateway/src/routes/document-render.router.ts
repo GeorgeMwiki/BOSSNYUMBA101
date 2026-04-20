@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { documentRenderJobs } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -220,11 +221,11 @@ app.post('/jobs', zValidator('json', EnqueueSchema), async (c: any) => {
       202
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Enqueue failed';
-    return c.json(
-      { success: false, error: { code: 'ENQUEUE_FAILED', message } },
-      500
-    );
+    return routeCatch(c, error, {
+      code: 'ENQUEUE_FAILED',
+      status: 500,
+      fallback: 'Enqueue failed',
+    });
   }
 });
 

@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { eq, desc } from 'drizzle-orm';
 import { complianceExports } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const ScheduleSchema = z.object({
   exportType: z.enum(['tz_tra', 'ke_dpa', 'ke_kra', 'tz_land_act']),
@@ -57,21 +58,11 @@ async function listExports(c) {
       .limit(100);
     return c.json({ success: true, data: rows });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Query failed';
-    // Surface DB drift (missing table / schema mismatch) as a
-    // structured 503 instead of an unhandled 500. Keeps the JSON
-    // envelope intact for UAT + client error handling.
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'COMPLIANCE_EXPORTS_UNAVAILABLE',
-          message,
-        },
-      },
-      503,
-    );
+    return routeCatch(c, error, {
+      code: 'COMPLIANCE_EXPORTS_UNAVAILABLE',
+      status: 503,
+      fallback: 'Query failed',
+    });
   }
 }
 
@@ -120,12 +111,11 @@ complianceRouter.post(
         });
         return c.json({ success: true, data: manifest }, 201);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Schedule failed';
-        return c.json(
-          { success: false, error: { code: 'SCHEDULE_FAILED', message } },
-          500,
-        );
+        return routeCatch(c, error, {
+          code: 'SCHEDULE_FAILED',
+          status: 500,
+          fallback: 'Schedule failed',
+        });
       }
     }
 
@@ -224,11 +214,11 @@ complianceRouter.post(
         202,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Schedule failed';
-      return c.json(
-        { success: false, error: { code: 'SCHEDULE_FAILED', message } },
-        500,
-      );
+      return routeCatch(c, error, {
+        code: 'SCHEDULE_FAILED',
+        status: 500,
+        fallback: 'Schedule failed',
+      });
     }
   },
 );

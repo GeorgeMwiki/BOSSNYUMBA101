@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, DollarSign } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { paymentsService } from '@bossnyumba/api-client';
 import { Empty } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -29,6 +30,7 @@ function formatDate(dateStr: string) {
 }
 
 export function PaymentsList() {
+  const t = useTranslations('lists');
   const paymentsQuery = useQuery({
     queryKey: ['payments-list-live'],
     queryFn: () => paymentsService.list(undefined, 1, 50),
@@ -40,26 +42,26 @@ export function PaymentsList() {
   return (
     <>
       <PageHeader
-        title="Payments"
-        subtitle={paymentsQuery.isLoading ? 'Loading…' : `${payments.length} items`}
+        title={t('paymentsTitle')}
+        subtitle={paymentsQuery.isLoading ? t('loading') : t('paymentsItems', { count: payments.length })}
         action={
           <Link
             href="/payments/receive"
             className="btn-primary text-sm flex items-center gap-1"
           >
-            <Plus className="w-4 h-4" />Receive
+            <Plus className="w-4 h-4" />{t('paymentsReceive')}
           </Link>
         }
       />
 
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {paymentsQuery.isLoading && (
-          <div className="card p-4 text-sm text-gray-500">Loading payments…</div>
+          <div className="card p-4 text-sm text-gray-500">{t('paymentsLoading')}</div>
         )}
 
         {paymentsQuery.error && (
           <div className="card p-4 text-sm text-danger-600">
-            {(paymentsQuery.error as Error).message || 'Failed to load payments.'}
+            {(paymentsQuery.error as Error).message || t('paymentsFailed')}
           </div>
         )}
 
@@ -67,10 +69,10 @@ export function PaymentsList() {
           <Empty
             variant="default"
             icon={<DollarSign className="h-8 w-8 text-gray-400" />}
-            title="No payments yet"
-            description="Payments received on this portfolio will show up here."
+            title={t('paymentsEmptyTitle')}
+            description={t('paymentsEmptyDesc')}
             action={{
-              label: 'Receive payment',
+              label: t('paymentsEmptyCta'),
               onClick: () => {
                 window.location.href = '/payments/receive';
               },
@@ -110,7 +112,7 @@ export function PaymentsList() {
                 <div>
                   <div className="font-medium">{formatCurrency(amount, currency)}</div>
                   <div className="text-sm text-gray-500">
-                    {channel ? `${channel}` : 'Payment'}
+                    {channel ? `${channel}` : t('paymentsChannelFallback')}
                     {created ? ` • ${formatDate(created)}` : ''}
                   </div>
                 </div>

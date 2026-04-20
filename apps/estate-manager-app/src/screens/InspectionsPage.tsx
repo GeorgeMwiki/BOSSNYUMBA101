@@ -1,13 +1,15 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '@/components/LiveDataRequiredPage';
 
 export default function InspectionsPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Inspections"
-      feature="inspection scheduling data"
-      description="Mock inspections and offline inspection state have been removed. This screen now requires live inspection scheduling and execution APIs."
+      title={t('inspectionsTitle')}
+      feature={t('inspectionsFeature')}
+      description={t('inspectionsDescription')}
     />
   );
 }

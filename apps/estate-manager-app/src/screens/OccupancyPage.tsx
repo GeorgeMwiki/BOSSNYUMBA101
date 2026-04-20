@@ -1,13 +1,15 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '@/components/LiveDataRequiredPage';
 
 export default function OccupancyPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Occupancy"
-      feature="occupancy data"
-      description="Static properties, units, and tenant occupancy states have been removed. This page requires live property, unit, lease, and tenant records."
+      title={t('occupancyTitle')}
+      feature={t('occupancyFeature')}
+      description={t('occupancyDescription')}
     />
   );
 }

@@ -550,23 +550,44 @@ export function createPostgresWebhookDeliveryRepository(
       return rows.map(mapDeadLetter);
     },
 
-    async getDeadLetter(id) {
+    async getDeadLetter(id, tenantId) {
+      // Tenant-scoped fetch: when tenantId is provided (the normal path)
+      // the WHERE clause matches both columns so cross-tenant reads cannot
+      // happen even before the router's ownership check runs. When
+      // undefined (legacy super-admin tooling only) the query falls back
+      // to id-only — still safe because only SUPER_ADMIN can reach that
+      // code path and it has no tenant to scope to.
       const rows = asRows(
         await exec(
-          sql`SELECT * FROM webhook_dead_letters WHERE id = ${id} LIMIT 1`,
+          tenantId
+            ? sql`SELECT * FROM webhook_dead_letters WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`
+            : sql`SELECT * FROM webhook_dead_letters WHERE id = ${id} LIMIT 1`,
         ),
       );
       return rows[0] ? mapDeadLetter(rows[0]) : null;
     },
 
-    async markDeadLetterReplayed(id, replayedBy, replayDeliveryId) {
-      await exec(sql`
-        UPDATE webhook_dead_letters
-        SET replayed_at = NOW(),
-            replayed_by = ${replayedBy},
-            replay_delivery_id = ${replayDeliveryId}
-        WHERE id = ${id}
-      `);
+    async markDeadLetterReplayed(id, replayedBy, replayDeliveryId, tenantId) {
+      // Tenant-scoped UPDATE: id alone is not enough — the row must also
+      // belong to the caller's tenant. Without this, a forged id could
+      // flip a row in another tenant.
+      if (tenantId) {
+        await exec(sql`
+          UPDATE webhook_dead_letters
+          SET replayed_at = NOW(),
+              replayed_by = ${replayedBy},
+              replay_delivery_id = ${replayDeliveryId}
+          WHERE id = ${id} AND tenant_id = ${tenantId}
+        `);
+      } else {
+        await exec(sql`
+          UPDATE webhook_dead_letters
+          SET replayed_at = NOW(),
+              replayed_by = ${replayedBy},
+              replay_delivery_id = ${replayDeliveryId}
+          WHERE id = ${id}
+        `);
+      }
     },
   };
 }

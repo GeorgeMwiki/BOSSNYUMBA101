@@ -28,7 +28,7 @@ function apiBase(): string {
     const base = url.trim().replace(/\/$/, '');
     return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
   }
-  return 'http://localhost:4000/api/v1';
+  return 'http://localhost:4001/api/v1';
 }
 
 export default function NotificationsPage() {

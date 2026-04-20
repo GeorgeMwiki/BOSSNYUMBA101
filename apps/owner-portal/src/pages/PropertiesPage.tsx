@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, ArrowRight, Search } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatPercentage } from '../lib/api';
 import { useProperties } from '../lib/hooks';
 
 export function PropertiesPage() {
+  const t = useTranslations('propertiesPage');
   const { data: properties = [], isLoading, error, refetch } = useProperties();
   const [search, setSearch] = useState('');
 
@@ -31,8 +33,8 @@ export function PropertiesPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load properties'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -42,8 +44,8 @@ export function PropertiesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
-          <p className="text-gray-500">Manage your property portfolio</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -51,7 +53,7 @@ export function PropertiesPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search properties..."
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -92,7 +94,7 @@ export function PropertiesPage() {
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    {property.occupiedUnits}/{property.totalUnits} units
+                    {property.occupiedUnits}/{property.totalUnits} {t('unitsSuffix')}
                   </span>
                 </div>
                 <div className="text-right">
@@ -100,7 +102,7 @@ export function PropertiesPage() {
                     {formatPercentage(
                       (property.occupiedUnits / property.totalUnits) * 100
                     )}{' '}
-                    occupancy
+                    {t('occupancySuffix')}
                   </span>
                 </div>
               </div>
@@ -117,11 +119,9 @@ export function PropertiesPage() {
       {filteredProperties.length === 0 && (
         <EmptyState
           icon={<Building2 className="h-8 w-8" />}
-          title={search ? 'No matches' : 'No properties yet'}
+          title={search ? t('noMatches') : t('noPropertiesTitle')}
           description={
-            search
-              ? 'Try adjusting your search to find what you\u2019re looking for.'
-              : 'When you add properties they\u2019ll appear here.'
+            search ? t('noMatchesDesc') : t('noPropertiesDesc')
           }
         />
       )}

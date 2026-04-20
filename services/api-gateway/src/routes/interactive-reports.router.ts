@@ -25,6 +25,7 @@ import {
   interactiveReportActionAcks,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -223,11 +224,11 @@ app.post(
         metadata: body.metadata ?? {},
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Persist failed';
-      return c.json(
-        { success: false, error: { code: 'PERSIST_FAILED', message } },
-        500
-      );
+      return routeCatch(c, error, {
+        code: 'PERSIST_FAILED',
+        status: 500,
+        fallback: 'Persist failed',
+      });
     }
 
     // Emit the event so a subscriber can handle work-order creation.

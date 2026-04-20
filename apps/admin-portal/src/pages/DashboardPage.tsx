@@ -27,6 +27,7 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatCurrency } from '../lib/api';
 
 interface DashboardData {
@@ -68,6 +69,7 @@ interface DashboardData {
 }
 
 export function DashboardPage() {
+  const t = useTranslations('dashboard');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function DashboardPage() {
             typeof responseError === 'string'
               ? responseError
               : (responseError as { message?: string } | undefined)?.message ??
-                  'Live admin dashboard data is unavailable.'
+                  t('dataUnavailable')
           );
         }
         setLoading(false);
@@ -117,7 +119,7 @@ export function DashboardPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error ?? 'Live admin dashboard data is unavailable.'}
+          {error ?? t('dataUnavailable')}
         </AlertDescription>
       </Alert>
     );
@@ -151,7 +153,7 @@ export function DashboardPage() {
               <AlertTriangle className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm flex-1">{alert.message}</span>
               <button className="text-sm font-medium hover:underline">
-                View
+                {t('view')}
               </button>
             </div>
           ))}
@@ -174,10 +176,10 @@ export function DashboardPage() {
             <p className="text-2xl font-bold text-gray-900">
               {kpis.totalTenants}
             </p>
-            <p className="text-sm text-gray-500">Total Tenants</p>
+            <p className="text-sm text-gray-500">{t('totalTenants')}</p>
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            {kpis.activeTenants} active
+            {kpis.activeTenants} {t('activeSuffix')}
           </p>
         </div>
 
@@ -189,10 +191,10 @@ export function DashboardPage() {
           </div>
           <div className="mt-4">
             <p className="text-2xl font-bold text-gray-900">{kpis.totalUsers}</p>
-            <p className="text-sm text-gray-500">Total Users</p>
+            <p className="text-sm text-gray-500">{t('totalUsers')}</p>
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            Across all tenants
+            {t('acrossAllTenants')}
           </p>
         </div>
 
@@ -206,9 +208,9 @@ export function DashboardPage() {
             <p className="text-2xl font-bold text-gray-900">
               {formatCurrency(kpis.monthlyRevenue)}
             </p>
-            <p className="text-sm text-gray-500">Monthly Revenue</p>
+            <p className="text-sm text-gray-500">{t('monthlyRevenue')}</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">MRR from subscriptions</p>
+          <p className="mt-2 text-xs text-gray-400">{t('mrrSubtitle')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -221,10 +223,10 @@ export function DashboardPage() {
             <p className="text-2xl font-bold text-gray-900">
               {kpis.totalUnits.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-500">Units Managed</p>
+            <p className="text-sm text-gray-500">{t('unitsManaged')}</p>
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            {kpis.totalProperties} properties
+            {kpis.totalProperties} {t('propertiesSuffix')}
           </p>
         </div>
       </div>
@@ -232,7 +234,7 @@ export function DashboardPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">{t('revenueTrend')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueTrend}>
@@ -266,7 +268,7 @@ export function DashboardPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Tenant Growth</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">{t('tenantGrowth')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={tenantGrowth}>
@@ -285,7 +287,7 @@ export function DashboardPage() {
         {/* Tenant Status Distribution */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-900 mb-4">
-            Tenant Status Distribution
+            {t('tenantStatusDistribution')}
           </h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -315,12 +317,12 @@ export function DashboardPage() {
         {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+            <h3 className="font-semibold text-gray-900">{t('recentActivity')}</h3>
             <Link
               to="/audit"
               className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1"
             >
-              View all
+              {t('viewAll')}
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           </div>
@@ -370,7 +372,7 @@ export function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('quickActions')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             to="/tenants"
@@ -378,7 +380,7 @@ export function DashboardPage() {
           >
             <Building2 className="h-6 w-6 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              New Tenant
+              {t('newTenant')}
             </span>
           </Link>
           <Link
@@ -387,7 +389,7 @@ export function DashboardPage() {
           >
             <Users className="h-6 w-6 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              Manage Users
+              {t('manageUsers')}
             </span>
           </Link>
           <Link
@@ -396,7 +398,7 @@ export function DashboardPage() {
           >
             <Activity className="h-6 w-6 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              Support Cases
+              {t('supportCases')}
             </span>
           </Link>
           <Link
@@ -405,7 +407,7 @@ export function DashboardPage() {
           >
             <CreditCard className="h-6 w-6 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              Generate Report
+              {t('generateReport')}
             </span>
           </Link>
         </div>

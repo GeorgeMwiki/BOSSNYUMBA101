@@ -46,6 +46,7 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface SystemHealth {
   service: string;
@@ -94,6 +95,7 @@ interface AIDecision {
 const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
 
 export function OperationsPage() {
+  const t = useTranslations('operations');
   const [activeTab, setActiveTab] = useState('health');
   const [systemHealth, setSystemHealth] = useState<SystemHealth[]>([]);
   const [exceptions, setExceptions] = useState<ExceptionItem[]>([]);
@@ -149,13 +151,13 @@ export function OperationsPage() {
   };
 
   const handleRetryWorkflow = async (workflow: WorkflowItem) => {
-    setNotification({ type: 'success', message: `Retrying workflow ${workflow.id}...` });
+    setNotification({ type: 'success', message: t('retryingWorkflow', { id: workflow.id }) });
     setTimeout(() => setNotification(null), 3000);
   };
 
   const handleCancelWorkflow = async (workflow: WorkflowItem) => {
     setStuckWorkflows(stuckWorkflows.filter(w => w.id !== workflow.id));
-    setNotification({ type: 'success', message: `Workflow ${workflow.id} cancelled` });
+    setNotification({ type: 'success', message: t('workflowCancelled', { id: workflow.id }) });
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -167,10 +169,10 @@ export function OperationsPage() {
   });
 
   const tabs = [
-    { id: 'health', name: 'System Health', icon: Activity },
-    { id: 'exceptions', name: 'Exception Queue', icon: AlertTriangle, count: exceptions.filter(e => e.status !== 'resolved').length },
-    { id: 'workflows', name: 'Stuck Workflows', icon: Clock, count: stuckWorkflows.length },
-    { id: 'ai', name: 'AI Decisions', icon: Brain },
+    { id: 'health', name: t('tabSystemHealth'), icon: Activity },
+    { id: 'exceptions', name: t('tabExceptionQueue'), icon: AlertTriangle, count: exceptions.filter(e => e.status !== 'resolved').length },
+    { id: 'workflows', name: t('tabStuckWorkflows'), icon: Clock, count: stuckWorkflows.length },
+    { id: 'ai', name: t('tabAiDecisions'), icon: Brain },
   ];
 
   if (loading) {
@@ -193,21 +195,21 @@ export function OperationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Operations Control Tower</h1>
-          <p className="text-sm text-gray-500 mt-1">Monitor system health and manage exceptions</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-2 text-sm text-gray-500">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            Last updated: {new Date().toLocaleTimeString()}
+            {t('lastUpdated')}: {new Date().toLocaleTimeString()}
           </span>
           <a href="/operations/control-tower" className="flex items-center gap-2 px-3 py-2 text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 text-sm font-medium">
             <Eye className="h-4 w-4" />
-            Enhanced Control Tower
+            {t('enhancedControlTower')}
           </a>
           <button className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t('refresh')}
           </button>
         </div>
       </div>
@@ -275,7 +277,7 @@ export function OperationsPage() {
                   <p className="text-2xl font-bold text-gray-900">
                     {systemHealth.filter(s => s.status === 'healthy').length}/{systemHealth.length}
                   </p>
-                  <p className="text-sm text-gray-500">Services Healthy</p>
+                  <p className="text-sm text-gray-500">{t('servicesHealthy')}</p>
                 </div>
               </div>
             </div>
@@ -286,7 +288,7 @@ export function OperationsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">45ms</p>
-                  <p className="text-sm text-gray-500">Avg Latency</p>
+                  <p className="text-sm text-gray-500">{t('avgLatency')}</p>
                 </div>
               </div>
             </div>
@@ -297,7 +299,7 @@ export function OperationsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">99.95%</p>
-                  <p className="text-sm text-gray-500">Avg Uptime</p>
+                  <p className="text-sm text-gray-500">{t('avgUptime')}</p>
                 </div>
               </div>
             </div>
@@ -308,7 +310,7 @@ export function OperationsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">0.24%</p>
-                  <p className="text-sm text-gray-500">Error Rate</p>
+                  <p className="text-sm text-gray-500">{t('errorRate')}</p>
                 </div>
               </div>
             </div>
@@ -316,7 +318,7 @@ export function OperationsPage() {
 
           {/* Health Chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Request Volume & Errors (24h)</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('requestVolumeErrors')}</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={healthMetrics}>
@@ -335,7 +337,7 @@ export function OperationsPage() {
           {/* Services Grid */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Service Status</h3>
+              <h3 className="font-semibold text-gray-900">{t('serviceStatus')}</h3>
             </div>
             <div className="divide-y divide-gray-200">
               {systemHealth.map((service) => (
@@ -347,23 +349,23 @@ export function OperationsPage() {
                     }`} />
                     <div>
                       <p className="font-medium text-gray-900">{service.service}</p>
-                      <p className="text-xs text-gray-500">Last check: {new Date(service.lastCheck).toLocaleTimeString()}</p>
+                      <p className="text-xs text-gray-500">{t('lastCheck')}: {new Date(service.lastCheck).toLocaleTimeString()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">{service.latency}ms</p>
-                      <p className="text-xs text-gray-500">Latency</p>
+                      <p className="text-xs text-gray-500">{t('latency')}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">{service.uptime}%</p>
-                      <p className="text-xs text-gray-500">Uptime</p>
+                      <p className="text-xs text-gray-500">{t('uptime')}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-sm font-medium ${service.errorRate > 1 ? 'text-red-600' : 'text-gray-900'}`}>
                         {service.errorRate}%
                       </p>
-                      <p className="text-xs text-gray-500">Error Rate</p>
+                      <p className="text-xs text-gray-500">{t('errorRate')}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(service.status)}`}>
                       {service.status.toUpperCase()}
@@ -384,7 +386,7 @@ export function OperationsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search exceptions..."
+                placeholder={t('searchExceptions')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
@@ -395,11 +397,11 @@ export function OperationsPage() {
               onChange={(e) => setFilterPriority(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
             >
-              <option value="all">All Priorities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('allPriorities')}</option>
+              <option value="critical">{t('priorityCritical')}</option>
+              <option value="high">{t('priorityHigh')}</option>
+              <option value="medium">{t('priorityMedium')}</option>
+              <option value="low">{t('priorityLow')}</option>
             </select>
           </div>
 
@@ -458,7 +460,7 @@ export function OperationsPage() {
                       </button>
                       {exception.status !== 'resolved' && (
                         <button className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
-                          Assign
+                          {t('assign')}
                         </button>
                       )}
                     </div>
@@ -474,8 +476,8 @@ export function OperationsPage() {
       {activeTab === 'workflows' && (
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Stuck Workflows ({stuckWorkflows.length})</h3>
-            <button className="text-sm text-violet-600 hover:text-violet-700">View All Workflows</button>
+            <h3 className="font-semibold text-gray-900">{t('stuckWorkflowsHeader', { count: stuckWorkflows.length })}</h3>
+            <button className="text-sm text-violet-600 hover:text-violet-700">{t('viewAllWorkflows')}</button>
           </div>
           <div className="divide-y divide-gray-200">
             {stuckWorkflows.map((workflow) => (
@@ -509,15 +511,15 @@ export function OperationsPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Settings className="h-3 w-3" />
-                          Step: {workflow.step}
+                          {t('step')}: {workflow.step}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          Stuck since: {new Date(workflow.stuckSince).toLocaleString()}
+                          {t('stuckSince')}: {new Date(workflow.stuckSince).toLocaleString()}
                         </span>
                         <span className="flex items-center gap-1">
                           <RefreshCw className="h-3 w-3" />
-                          {workflow.retries} retries
+                          {t('retries', { count: workflow.retries })}
                         </span>
                       </div>
                     </div>
@@ -526,21 +528,21 @@ export function OperationsPage() {
                     <button
                       onClick={() => setSelectedWorkflow(workflow)}
                       className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
-                      title="View Details"
+                      title={t('viewDetails')}
                     >
                       <Eye className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleRetryWorkflow(workflow)}
                       className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
-                      title="Retry"
+                      title={t('retry')}
                     >
                       <RotateCcw className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleCancelWorkflow(workflow)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                      title="Cancel"
+                      title={t('cancel')}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -557,10 +559,10 @@ export function OperationsPage() {
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Recent AI Decisions</h3>
+              <h3 className="font-semibold text-gray-900">{t('recentAiDecisions')}</h3>
               <button className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700">
                 <Download className="h-4 w-4" />
-                Export Log
+                {t('exportLog')}
               </button>
             </div>
             <div className="divide-y divide-gray-200">
@@ -578,19 +580,19 @@ export function OperationsPage() {
                             decision.confidence >= 0.9 ? 'bg-green-100 text-green-700' :
                             decision.confidence >= 0.7 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                           }`}>
-                            {(decision.confidence * 100).toFixed(0)}% confidence
+                            {t('confidence', { percent: (decision.confidence * 100).toFixed(0) })}
                           </span>
                           {decision.overridden && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
-                              Overridden
+                              {t('overridden')}
                             </span>
                           )}
                         </div>
                         <p className="text-sm text-gray-600 mb-1">
-                          <span className="text-gray-500">Input:</span> {decision.input}
+                          <span className="text-gray-500">{t('inputLabel')}</span> {decision.input}
                         </p>
                         <p className="text-sm text-gray-900 mb-1">
-                          <span className="text-gray-500">Decision:</span> <span className="font-medium">{decision.decision}</span>
+                          <span className="text-gray-500">{t('decisionLabel')}</span> <span className="font-medium">{decision.decision}</span>
                         </p>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
@@ -609,7 +611,7 @@ export function OperationsPage() {
                       className="flex items-center gap-1 px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50"
                     >
                       <Eye className="h-4 w-4" />
-                      View Reasoning
+                      {t('viewReasoning')}
                     </button>
                   </div>
                 </div>
@@ -630,7 +632,7 @@ export function OperationsPage() {
                   <div className="p-2 bg-violet-100 rounded-lg">
                     <Brain className="h-5 w-5 text-violet-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">AI Decision Details</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('aiDecisionDetails')}</h3>
                 </div>
                 <button onClick={() => setSelectedDecision(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="h-5 w-5 text-gray-500" />
@@ -639,19 +641,19 @@ export function OperationsPage() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">Decision Type</label>
+                    <label className="text-xs font-medium text-gray-500 uppercase">{t('decisionType')}</label>
                     <p className="font-medium text-gray-900">{selectedDecision.type}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">Tenant</label>
+                    <label className="text-xs font-medium text-gray-500 uppercase">{t('tenant')}</label>
                     <p className="font-medium text-gray-900">{selectedDecision.tenant}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">Timestamp</label>
+                    <label className="text-xs font-medium text-gray-500 uppercase">{t('timestamp')}</label>
                     <p className="font-medium text-gray-900">{new Date(selectedDecision.timestamp).toLocaleString()}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">Confidence</label>
+                    <label className="text-xs font-medium text-gray-500 uppercase">{t('confidenceLabel')}</label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-gray-200 rounded-full">
                         <div
@@ -668,17 +670,17 @@ export function OperationsPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase">Input Context</label>
+                  <label className="text-xs font-medium text-gray-500 uppercase">{t('inputContext')}</label>
                   <p className="mt-1 p-3 bg-gray-50 rounded-lg text-gray-700">{selectedDecision.input}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase">AI Decision</label>
+                  <label className="text-xs font-medium text-gray-500 uppercase">{t('aiDecision')}</label>
                   <p className="mt-1 p-3 bg-violet-50 rounded-lg text-violet-900 font-medium">{selectedDecision.decision}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase">Reasoning</label>
+                  <label className="text-xs font-medium text-gray-500 uppercase">{t('reasoning')}</label>
                   <p className="mt-1 p-3 bg-gray-50 rounded-lg text-gray-700">{selectedDecision.reasoning}</p>
                 </div>
 
@@ -686,7 +688,7 @@ export function OperationsPage() {
                   <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                     <div className="flex items-center gap-2 text-purple-800">
                       <AlertTriangle className="h-4 w-4" />
-                      <span className="font-medium">This decision was manually overridden</span>
+                      <span className="font-medium">{t('manuallyOverridden')}</span>
                     </div>
                   </div>
                 )}
@@ -696,11 +698,11 @@ export function OperationsPage() {
                   onClick={() => setSelectedDecision(null)}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
                 >
-                  Close
+                  {t('close')}
                 </button>
                 {!selectedDecision.overridden && (
                   <button className="px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700">
-                    Override Decision
+                    {t('overrideDecision')}
                   </button>
                 )}
               </div>

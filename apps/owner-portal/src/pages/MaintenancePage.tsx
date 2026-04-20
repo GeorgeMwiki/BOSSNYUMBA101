@@ -30,6 +30,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner, toast } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDate, formatCurrency, formatDateTime } from '../lib/api';
 import {
   useOwnerWorkOrders,
@@ -51,6 +52,7 @@ interface CostTrendData {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function MaintenancePage() {
+  const t = useTranslations('maintenancePage');
   const {
     data: workOrders = [],
     isLoading: loading,
@@ -81,9 +83,9 @@ export function MaintenancePage() {
     const detail: WorkOrderDetail = {
       ...wo,
       timeline: [
-        { id: 'submitted', action: 'Request Submitted', description: wo.description, timestamp: wo.reportedAt, user: wo.customer?.name },
-        ...(wo.scheduledAt ? [{ id: 'scheduled', action: 'Work Scheduled', description: `${wo.vendor?.name || 'Vendor assigned'} for ${formatDate(wo.scheduledAt)}`, timestamp: wo.scheduledAt }] : []),
-        ...(wo.completedAt ? [{ id: 'completed', action: 'Work Completed', description: `Final cost: ${formatCurrency(wo.actualCost || wo.estimatedCost || 0)}`, timestamp: wo.completedAt, user: wo.vendor?.name }] : []),
+        { id: 'submitted', action: t('timelineSubmitted'), description: wo.description, timestamp: wo.reportedAt, user: wo.customer?.name },
+        ...(wo.scheduledAt ? [{ id: 'scheduled', action: t('timelineScheduled'), description: `${wo.vendor?.name || t('vendorAssignedFallback')} for ${formatDate(wo.scheduledAt)}`, timestamp: wo.scheduledAt }] : []),
+        ...(wo.completedAt ? [{ id: 'completed', action: t('timelineCompleted'), description: `${t('finalCostPrefix')} ${formatCurrency(wo.actualCost || wo.estimatedCost || 0)}`, timestamp: wo.completedAt, user: wo.vendor?.name }] : []),
       ],
       evidence: [],
     };
@@ -95,9 +97,9 @@ export function MaintenancePage() {
     approveMutation.mutate(
       { id },
       {
-        onSuccess: () => toast.success('Work order approved'),
+        onSuccess: () => toast.success(t('approvalToastSuccess')),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Approval failed'),
+          toast.error(err instanceof Error ? err.message : t('approvalToastFailed')),
       }
     );
   };
@@ -106,9 +108,9 @@ export function MaintenancePage() {
     rejectMutation.mutate(
       { id, reason },
       {
-        onSuccess: () => toast.success('Work order rejected'),
+        onSuccess: () => toast.success(t('rejectionToastSuccess')),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Rejection failed'),
+          toast.error(err instanceof Error ? err.message : t('rejectionToastFailed')),
       }
     );
   };
@@ -186,7 +188,7 @@ export function MaintenancePage() {
       <Alert variant="danger">
         <AlertDescription>
           {error}
-          <Button size="sm" onClick={() => loadData()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => loadData()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -203,8 +205,8 @@ export function MaintenancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Maintenance</h1>
-          <p className="text-gray-500">Track and manage work orders</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -219,7 +221,7 @@ export function MaintenancePage() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
           >
             <TrendingUp className="h-4 w-4" />
-            {showCostTrends ? 'Hide Trends' : 'Cost Trends'}
+            {showCostTrends ? t('hideTrends') : t('costTrends')}
           </button>
         </div>
       </div>
@@ -232,7 +234,7 @@ export function MaintenancePage() {
               <Clock className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Open</p>
+              <p className="text-sm text-gray-500">{t('open')}</p>
               <p className="text-xl font-semibold text-gray-900">{openCount}</p>
             </div>
           </div>
@@ -243,7 +245,7 @@ export function MaintenancePage() {
               <Wrench className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">In Progress</p>
+              <p className="text-sm text-gray-500">{t('inProgress')}</p>
               <p className="text-xl font-semibold text-gray-900">{inProgressCount}</p>
             </div>
           </div>
@@ -254,7 +256,7 @@ export function MaintenancePage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Completed</p>
+              <p className="text-sm text-gray-500">{t('completed')}</p>
               <p className="text-xl font-semibold text-gray-900">{completedCount}</p>
             </div>
           </div>
@@ -265,7 +267,7 @@ export function MaintenancePage() {
               <AlertTriangle className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Pending Approval</p>
+              <p className="text-sm text-gray-500">{t('pendingApproval')}</p>
               <p className="text-xl font-semibold text-gray-900">{pendingApprovalCount}</p>
             </div>
           </div>
@@ -276,7 +278,7 @@ export function MaintenancePage() {
               <DollarSign className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Cost</p>
+              <p className="text-sm text-gray-500">{t('totalCost')}</p>
               <p className="text-xl font-semibold text-gray-900">{formatCurrency(totalCost)}</p>
             </div>
           </div>
@@ -288,8 +290,8 @@ export function MaintenancePage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Maintenance Cost Trends</h3>
-              <p className="text-sm text-gray-500">Cost breakdown by category over time</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('maintenanceCostTrends')}</h3>
+              <p className="text-sm text-gray-500">{t('costBreakdown')}</p>
             </div>
             <button onClick={() => setShowCostTrends(false)} className="p-1 hover:bg-gray-100 rounded">
               <X className="h-5 w-5 text-gray-400" />
@@ -303,11 +305,11 @@ export function MaintenancePage() {
                 <YAxis stroke="#9CA3AF" fontSize={12} tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }} />
                 <Legend />
-                <Area type="monotone" dataKey="plumbing" name="Plumbing" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="electrical" name="Electrical" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="hvac" name="HVAC" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="structural" name="Structural" stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="other" name="Other" stackId="1" stroke="#6B7280" fill="#6B7280" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="plumbing" name={t('plumbing')} stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="electrical" name={t('electrical')} stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="hvac" name={t('hvac')} stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="structural" name={t('structural')} stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="other" name={t('other')} stackId="1" stroke="#6B7280" fill="#6B7280" fillOpacity={0.6} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -321,15 +323,15 @@ export function MaintenancePage() {
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-orange-600" />
               <div>
-                <p className="font-medium text-orange-800">{pendingApprovalCount} work order(s) require your approval</p>
-                <p className="text-sm text-orange-600">High-value maintenance work needs authorization before proceeding</p>
+                <p className="font-medium text-orange-800">{t('pendingApprovalAlert', { count: pendingApprovalCount })}</p>
+                <p className="text-sm text-orange-600">{t('pendingApprovalDesc')}</p>
               </div>
             </div>
             <button
               onClick={() => setFilter('pending_approval')}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 text-sm"
             >
-              Review Now
+              {t('reviewNow')}
             </button>
           </div>
           {/* Quick approval list */}
@@ -368,7 +370,7 @@ export function MaintenancePage() {
                       ) : (
                         <CheckCircle className="h-3.5 w-3.5" />
                       )}
-                      Approve
+                      {t('approve')}
                     </button>
                   </div>
                 </div>
@@ -381,7 +383,7 @@ export function MaintenancePage() {
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-gray-400" />
-          <span className="text-sm text-gray-500">Status:</span>
+          <span className="text-sm text-gray-500">{t('status')}</span>
           <div className="flex gap-2">
             {['all', 'open', 'pending_approval', 'IN_PROGRESS', 'COMPLETED'].map((status) => (
               <button
@@ -391,21 +393,21 @@ export function MaintenancePage() {
                   filter === status ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {status === 'all' ? 'All' : status === 'open' ? 'Open' : status === 'pending_approval' ? 'Pending Approval' : status.replace('_', ' ')}
+                {status === 'all' ? t('allStatus') : status === 'open' ? t('openStatus') : status === 'pending_approval' ? t('pendingApprovalFilter') : status.replace('_', ' ')}
               </button>
             ))}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Category:</span>
+          <span className="text-sm text-gray-500">{t('category')}</span>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
+              <option key={cat} value={cat}>{cat === 'all' ? t('allCategories') : cat}</option>
             ))}
           </select>
         </div>
@@ -445,18 +447,18 @@ export function MaintenancePage() {
                   )}
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    Reported {formatDate(wo.reportedAt)}
+                    {t('reportedPrefix')} {formatDate(wo.reportedAt)}
                   </div>
                   {wo.scheduledAt && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      Scheduled {formatDate(wo.scheduledAt)}
+                      {t('scheduledPrefix')} {formatDate(wo.scheduledAt)}
                     </div>
                   )}
                   {(wo.actualCost || wo.estimatedCost) && (
                     <div className="flex items-center gap-1 font-medium text-gray-700">
                       <DollarSign className="h-4 w-4" />
-                      {wo.actualCost ? formatCurrency(wo.actualCost) : `Est: ${formatCurrency(wo.estimatedCost || 0)}`}
+                      {wo.actualCost ? formatCurrency(wo.actualCost) : `${t('estPrefix')} ${formatCurrency(wo.estimatedCost || 0)}`}
                     </div>
                   )}
                 </div>
@@ -466,7 +468,7 @@ export function MaintenancePage() {
                     onClick={() => handleViewDetails(wo)}
                     className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg"
                   >
-                    <Eye className="h-4 w-4" /> View Details
+                    <Eye className="h-4 w-4" /> {t('viewDetails')}
                   </button>
                   {wo.status === 'PENDING_APPROVAL' && (
                     <>
@@ -480,13 +482,13 @@ export function MaintenancePage() {
                         ) : (
                           <CheckCircle className="h-4 w-4" />
                         )}
-                        Approve {wo.estimatedCost ? `(${formatCurrency(wo.estimatedCost)})` : ''}
+                        {t('approve')} {wo.estimatedCost ? `(${formatCurrency(wo.estimatedCost)})` : ''}
                       </button>
                       <button
                         onClick={() => handleViewDetails(wo)}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
                       >
-                        <AlertCircle className="h-4 w-4" /> Reject
+                        <AlertCircle className="h-4 w-4" /> {t('reject')}
                       </button>
                     </>
                   )}
@@ -500,11 +502,11 @@ export function MaintenancePage() {
       {filteredOrders.length === 0 && (
         <EmptyState
           icon={<Wrench className="h-8 w-8" />}
-          title="No work orders found"
+          title={t('noWorkOrders')}
           description={
             filter !== 'all' || categoryFilter !== 'all'
-              ? 'Try adjusting your filters to find what you\u2019re looking for.'
-              : 'When tenants submit maintenance requests they\u2019ll appear here.'
+              ? t('noWorkOrdersFiltered')
+              : t('noWorkOrdersEmpty')
           }
         />
       )}

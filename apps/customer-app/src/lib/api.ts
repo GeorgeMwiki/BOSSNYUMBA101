@@ -28,7 +28,11 @@ function getApiBaseUrl(): string {
     throw new Error('NEXT_PUBLIC_API_URL (or API_URL server-side) is required in production');
   }
 
-  return 'http://localhost:4000/api/v1';
+  // Dev fallback: the gateway binds to PORT=4001 by default (matches every
+  // other app's vite proxy target). The legacy `:4000` default broke
+  // every API call in customer-app dev with ERR_CONNECTION_REFUSED —
+  // caught by Wave-20 Agent N's Playwright smoke.
+  return 'http://localhost:4001/api/v1';
 }
 
 function ensureClient() {

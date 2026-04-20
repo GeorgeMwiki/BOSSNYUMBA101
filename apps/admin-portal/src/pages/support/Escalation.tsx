@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../components/LiveDataRequiredPage';
 
 export default function Escalation() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Escalation"
-      feature="support escalation data"
-      description="Mock escalation cases and workflows have been removed. This screen now requires live support case queues and escalation endpoints."
+      title={t('escalationTitle')}
+      feature={t('escalationFeature')}
+      description={t('escalationDescription')}
     />
   );
 }

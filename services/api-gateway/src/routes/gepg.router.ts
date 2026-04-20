@@ -18,6 +18,7 @@ import { createMiddleware } from 'hono/factory';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 import {
   createGepgProvider,
   type GepgConfig,
@@ -152,11 +153,11 @@ app.post(
 
       return c.json({ success: true, data: response }, 201);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown';
-      return c.json(
-        { success: false, error: { code: 'GEPG_ERROR', message } },
-        502
-      );
+      return routeCatch(c, err, {
+        code: 'GEPG_ERROR',
+        status: 502,
+        fallback: 'GePG gateway error',
+      });
     }
   }
 );
@@ -176,11 +177,11 @@ app.get('/control-numbers/:controlNumber', authMiddleware, async (c) => {
     const result = await provider.queryStatus({ controlNumber, billId });
     return c.json({ success: true, data: result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown';
-    return c.json(
-      { success: false, error: { code: 'GEPG_ERROR', message } },
-      502
-    );
+    return routeCatch(c, err, {
+      code: 'GEPG_ERROR',
+      status: 502,
+      fallback: 'GePG gateway error',
+    });
   }
 });
 

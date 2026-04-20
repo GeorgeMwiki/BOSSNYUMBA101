@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
 
 export function BillingPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="Billing"
-      feature="billing operations"
-      description="Synthetic invoices, credits, and usage metrics have been removed. This screen now requires live billing and subscription data."
+      title={t('billingTitleLabel')}
+      feature={t('billingFeature')}
+      description={t('billingDescription')}
     />
   );
 }

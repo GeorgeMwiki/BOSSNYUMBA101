@@ -32,6 +32,7 @@ import {
   scanBundlePages,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -167,11 +168,11 @@ app.post('/bundles', zValidator('json', CreateBundleSchema), async (c: any) => {
 
     return c.json({ success: true, data: inserted ?? row }, 201);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Create failed';
-    return c.json(
-      { success: false, error: { code: 'CREATE_FAILED', message } },
-      500
-    );
+    return routeCatch(c, error, {
+      code: 'CREATE_FAILED',
+      status: 500,
+      fallback: 'Create failed',
+    });
   }
 });
 
@@ -265,11 +266,11 @@ app.post(
         201
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Upload failed';
-      return c.json(
-        { success: false, error: { code: 'UPLOAD_FAILED', message } },
-        500
-      );
+      return routeCatch(c, error, {
+        code: 'UPLOAD_FAILED',
+        status: 500,
+        fallback: 'Upload failed',
+      });
     }
   }
 );
@@ -370,11 +371,11 @@ app.post('/bundles/:id/ocr', async (c: any) => {
       202
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'OCR queue failed';
-    return c.json(
-      { success: false, error: { code: 'OCR_QUEUE_FAILED', message } },
-      500
-    );
+    return routeCatch(c, error, {
+      code: 'OCR_QUEUE_FAILED',
+      status: 500,
+      fallback: 'OCR queue failed',
+    });
   }
 });
 
@@ -493,11 +494,11 @@ app.post(
 
       return c.json({ success: true, data: updated }, 200);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Submit failed';
-      return c.json(
-        { success: false, error: { code: 'SUBMIT_FAILED', message } },
-        500
-      );
+      return routeCatch(c, error, {
+        code: 'SUBMIT_FAILED',
+        status: 500,
+        fallback: 'Submit failed',
+      });
     }
   }
 );

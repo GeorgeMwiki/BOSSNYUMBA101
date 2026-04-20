@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../components/LiveDataRequiredPage';
 
 export function UserRolesPage() {
+  const t = useTranslations('pages');
   return (
     <LiveDataRequiredPage
-      title="User Roles"
-      feature="role assignment data"
-      description="Static roles and synthetic user-role mappings have been removed. This page will be re-enabled when live RBAC data and mutation endpoints are wired."
+      title={t('userRolesTitleLabel')}
+      feature={t('userRolesFeature')}
+      description={t('userRolesDescription')}
     />
   );
 }
