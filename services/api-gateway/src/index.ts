@@ -5,6 +5,19 @@
  * Handles authentication, authorization, request routing, and aggregation.
  */
 
+// Auto-load .env FIRST — before any module reads process.env. Look at
+// repo root (cwd/../../.env from services/api-gateway) and the service
+// folder. Tests + prod skip via BOSSNYUMBA_SKIP_DOTENV=true.
+import { config as loadDotenv } from 'dotenv';
+import { resolve as resolvePath } from 'node:path';
+if (!process.env.BOSSNYUMBA_SKIP_DOTENV) {
+  // cwd when started via `pnpm dev` is services/api-gateway. Repo root is 2 up.
+  // override=true ensures stale shell exports (e.g. empty ANTHROPIC_API_KEY
+  // left in a previous terminal) don't beat the canonical .env values.
+  loadDotenv({ path: resolvePath(process.cwd(), '../../.env'), override: true });
+  loadDotenv({ path: resolvePath(process.cwd(), '.env'), override: true });
+}
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -297,38 +310,47 @@ const deepHealthHandler = createDeepHealthHandler({
   },
   probes: [
     postgresProbe(async () => {
-      const db = serviceRegistry.db;
-      if (!db) throw new Error('database not configured');
-      // Every drizzle client exposes `.execute(sql)` — delegate to a raw
-      // `SELECT 1` so we hit the Postgres wire, not the ORM cache.
-      const exec = (db as unknown as {
-        execute: (q: unknown) => Promise<unknown>;
-      }).execute;
-      await exec.call(db, { sql: 'SELECT 1' } as unknown as never);
+      if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL not set');
+      // Use postgres-js directly for the probe — drizzle's `.execute()`
+      // surface shape drifted across 0.36/0.37 and the wrapper wasn't
+      // worth the complexity. This hits the DB wire with a trivial
+      // `SELECT 1` and closes the connection.
+      const { default: postgres } = await import('postgres');
+      const sql = postgres(process.env.DATABASE_URL, { max: 1, idle_timeout: 2 });
+      try {
+        const rows = await sql`SELECT 1 as ok`;
+        if (rows[0]?.ok !== 1) throw new Error('unexpected row');
+      } finally {
+        await sql.end({ timeout: 1 });
+      }
     }),
     redisProbe(async () => {
       if (!process.env.REDIS_URL) throw new Error('REDIS_URL not set');
-      // Dynamic import via Function+eval so TS doesn't try to resolve
-      // the 'redis' package type declaration at compile time. The rate-
-      // limit middleware already owns the real client; this is the
-      // smallest possible healthcheck that won't couple to it.
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      const dyn: (id: string) => Promise<unknown> =
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, security/detect-eval-with-expression
-        new Function('id', 'return import(id)') as never;
-      const mod = await dyn('redis').catch(() => null);
-      if (!mod || typeof (mod as { createClient?: unknown }).createClient !== 'function') {
-        throw new Error('redis client not installed');
-      }
-      const client = (mod as { createClient: (o: { url: string }) => {
+      // ioredis is a gateway dep. Named export shape under ESM varies;
+      // guard for both default + named, pick whichever is constructable.
+      const ioredis = await import('ioredis');
+      const RedisCtor =
+        (ioredis as unknown as { default?: new (...a: never[]) => unknown })
+          .default ??
+        (ioredis as unknown as { Redis?: new (...a: never[]) => unknown })
+          .Redis ??
+        (ioredis as unknown as new (...a: never[]) => unknown);
+      const client = new (RedisCtor as new (url: string, opts: unknown) => {
         connect: () => Promise<void>;
         ping: () => Promise<string>;
-        quit: () => Promise<void>;
-      } }).createClient({ url: process.env.REDIS_URL });
-      await client.connect();
-      const pong = await client.ping();
-      await client.quit();
-      if (pong !== 'PONG') throw new Error(`unexpected ping: ${pong}`);
+        disconnect: () => void;
+      })(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 1,
+        connectTimeout: 1_000,
+        lazyConnect: true,
+      });
+      try {
+        await client.connect();
+        const pong = await client.ping();
+        if (pong !== 'PONG') throw new Error(`unexpected ping: ${pong}`);
+      } finally {
+        client.disconnect();
+      }
     }),
     anthropicProbe(process.env.ANTHROPIC_API_KEY),
     openaiProbe(process.env.OPENAI_API_KEY),
