@@ -207,5 +207,22 @@
     "teachingKeyPoints": "Key points",
     "reviewTitle": "Session summary",
     "maintenanceFlowTitle": "Maintenance case flow"
+  },
+  "announcementsCreate": {
+    "pageTitle": "Create Announcement",
+    "labelTitle": "Title *",
+    "placeholderTitle": "Enter announcement title...",
+    "labelContent": "Content *",
+    "placeholderContent": "Write your announcement...",
+    "labelPriority": "Priority",
+    "priorityNormal": "Normal",
+    "priorityImportant": "Important",
+    "priorityUrgent": "Urgent",
+    "labelProperty": "Property (optional)",
+    "allProperties": "All Properties",
+    "labelExpiryDate": "Expiry Date (optional)",
+    "pinToTop": "Pin to top",
+    "cancel": "Cancel",
+    "publish": "Publish Announcement"
   }
 }

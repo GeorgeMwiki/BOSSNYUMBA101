@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Webhook,
   Plus,
@@ -29,6 +30,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function IntegrationsWebhooksPage() {
+  const t = useTranslations('webhooks');
+  const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [webhooks, setWebhooks] = useState<ReadonlyArray<WebhookConfig>>([]);
@@ -43,10 +46,10 @@ export default function IntegrationsWebhooksPage() {
       if (res.success) {
         setWebhooks(res.data ?? []);
       } else {
-        setError(res.error ?? 'Failed to load webhooks');
+        setError(res.error ?? t('errorLoad'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load webhooks');
+      setError(err instanceof Error ? err.message : t('errorLoad'));
     } finally {
       setLoading(false);
     }
@@ -70,15 +73,15 @@ export default function IntegrationsWebhooksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Webhooks
+            {t('title')}
           </h1>
           <p className="text-gray-500">
-            Manage outbound webhook endpoints for events
+            {t('subtitle')}
           </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
           <Plus className="h-4 w-4" />
-          Add Webhook
+          {t('addWebhook')}
         </button>
       </div>
 
@@ -87,7 +90,7 @@ export default function IntegrationsWebhooksPage() {
           <AlertDescription>
             {error}
             <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
-              Retry
+              {tCommon('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -104,25 +107,25 @@ export default function IntegrationsWebhooksPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">{webhooks.length}</p>
-          <p className="text-sm text-gray-500">Total Webhooks</p>
+          <p className="text-sm text-gray-500">{t('totalWebhooks')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-green-600">
             {webhooks.filter((w) => w.status === 'active').length}
           </p>
-          <p className="text-sm text-gray-500">Active</p>
+          <p className="text-sm text-gray-500">{t('active')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-red-600">
             {webhooks.filter((w) => w.status === 'failing').length}
           </p>
-          <p className="text-sm text-gray-500">Failing</p>
+          <p className="text-sm text-gray-500">{t('failing')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">
             {webhooks.filter((w) => w.tenantId === null).length}
           </p>
-          <p className="text-sm text-gray-500">Platform-level</p>
+          <p className="text-sm text-gray-500">{t('platformLevel')}</p>
         </div>
       </div>
 
@@ -132,7 +135,7 @@ export default function IntegrationsWebhooksPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search webhooks..."
+            placeholder={t('searchWebhooks')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -143,10 +146,10 @@ export default function IntegrationsWebhooksPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="failing">Failing</option>
+          <option value="all">{t('allStatus')}</option>
+          <option value="active">{t('active')}</option>
+          <option value="inactive">{t('inactive')}</option>
+          <option value="failing">{t('failing')}</option>
         </select>
         {/* "More Filters" button removed; status select is the only
             honest filter dimension currently. */}

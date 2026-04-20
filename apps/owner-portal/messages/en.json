@@ -400,5 +400,18 @@
     "topWeaknesses": "Top 3 needing attention",
     "empty": "No data yet.",
     "insufficientData": "Not enough data to grade yet."
+  },
+  "ownerHome": {
+    "welcome": "Welcome to BOSSNYUMBA Owner Portal",
+    "portfolioOverview": "Portfolio Overview",
+    "portfolioDesc": "View your property investments",
+    "properties": "Properties",
+    "monthlyIncome": "Monthly Income",
+    "monthlyIncomeDesc": "Rent collections this month",
+    "collected": "Collected",
+    "pendingActions": "Pending Actions",
+    "pendingActionsDesc": "Items requiring your attention",
+    "pendingApprovals": "Pending approvals",
+    "viewAllProperties": "View All Properties"
   }
 }

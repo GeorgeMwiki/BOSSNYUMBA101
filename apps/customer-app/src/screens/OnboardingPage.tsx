@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ChevronRight,
   ChevronLeft,
@@ -22,39 +23,40 @@ type OnboardingStep = 'welcome' | 'id_upload' | 'inspection' | 'signature';
 
 interface StepInfo {
   id: OnboardingStep;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   icon: React.ElementType;
 }
 
 const STEPS: StepInfo[] = [
   {
     id: 'welcome',
-    title: 'Welcome',
-    description: 'Get started with your new home',
+    titleKey: 'stepWelcomeTitle',
+    descriptionKey: 'stepWelcomeDesc',
     icon: Home,
   },
   {
     id: 'id_upload',
-    title: 'ID Verification',
-    description: 'Upload your identification',
+    titleKey: 'stepIdTitle',
+    descriptionKey: 'stepIdDesc',
     icon: Shield,
   },
   {
     id: 'inspection',
-    title: 'Move-in Inspection',
-    description: 'Document unit condition',
+    titleKey: 'stepInspectionTitle',
+    descriptionKey: 'stepInspectionDesc',
     icon: ClipboardCheck,
   },
   {
     id: 'signature',
-    title: 'Sign Documents',
-    description: 'Complete your lease agreement',
+    titleKey: 'stepSignatureTitle',
+    descriptionKey: 'stepSignatureDesc',
     icon: PenLine,
   },
 ];
 
 export default function OnboardingPage() {
+  const t = useTranslations('onboarding');
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
@@ -191,9 +193,9 @@ export default function OnboardingPage() {
       <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-lg font-semibold">Setup Your Account</h1>
+            <h1 className="text-lg font-semibold">{t('headerTitle')}</h1>
             <span className="text-sm text-gray-500">
-              Step {currentStepIndex + 1} of {STEPS.length}
+              {t('stepOf', { current: currentStepIndex + 1, total: STEPS.length })}
             </span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -227,7 +229,7 @@ export default function OnboardingPage() {
                 ) : (
                   <Icon className="w-4 h-4" />
                 )}
-                <span className="font-medium">{step.title}</span>
+                <span className="font-medium">{t(step.titleKey)}</span>
               </div>
             );
           })}
@@ -242,9 +244,9 @@ export default function OnboardingPage() {
             <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Home className="w-12 h-12 text-primary-600" />
             </div>
-            <h2 className="text-2xl font-bold mb-3">Welcome to Your New Home!</h2>
+            <h2 className="text-2xl font-bold mb-3">{t('welcomeHeadline')}</h2>
             <p className="text-gray-600 mb-8 max-w-sm mx-auto">
-              Complete these quick steps to finalize your move-in process and get your keys.
+              {t('welcomeBody')}
             </p>
 
             <div className="space-y-4 text-left max-w-sm mx-auto">
@@ -256,8 +258,8 @@ export default function OnboardingPage() {
                       <Icon className="w-6 h-6 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="font-medium">{step.title}</h3>
-                      <p className="text-sm text-gray-500">{step.description}</p>
+                      <h3 className="font-medium">{t(step.titleKey)}</h3>
+                      <p className="text-sm text-gray-500">{t(step.descriptionKey)}</p>
                     </div>
                   </div>
                 );
@@ -270,9 +272,9 @@ export default function OnboardingPage() {
         {currentStep === 'id_upload' && (
           <div className="px-4 py-6 space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold mb-2">Verify Your Identity</h2>
+              <h2 className="text-xl font-semibold mb-2">{t('verifyIdentity')}</h2>
               <p className="text-gray-600 text-sm">
-                Upload clear photos of your ID document and a selfie for verification.
+                {t('verifyIdentityBody')}
               </p>
             </div>
 
@@ -281,12 +283,12 @@ export default function OnboardingPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-gray-500" />
-                  <span className="font-medium">ID Front Side</span>
+                  <span className="font-medium">{t('idFront')}</span>
                 </div>
                 {idFrontImage && (
                   <span className="badge-success">
                     <CheckCircle className="w-3 h-3 mr-1" />
-                    Uploaded
+                    {t('uploaded')}
                   </span>
                 )}
               </div>
@@ -310,7 +312,7 @@ export default function OnboardingPage() {
                   className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
                 >
                   <Camera className="w-8 h-8 mb-2" />
-                  <span className="text-sm font-medium">Take or Upload Photo</span>
+                  <span className="text-sm font-medium">{t('takeOrUploadPhoto')}</span>
                 </button>
               )}
             </div>
@@ -320,12 +322,12 @@ export default function OnboardingPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-gray-500" />
-                  <span className="font-medium">ID Back Side</span>
+                  <span className="font-medium">{t('idBack')}</span>
                 </div>
                 {idBackImage && (
                   <span className="badge-success">
                     <CheckCircle className="w-3 h-3 mr-1" />
-                    Uploaded
+                    {t('uploaded')}
                   </span>
                 )}
               </div>
@@ -349,7 +351,7 @@ export default function OnboardingPage() {
                   className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
                 >
                   <Camera className="w-8 h-8 mb-2" />
-                  <span className="text-sm font-medium">Take or Upload Photo</span>
+                  <span className="text-sm font-medium">{t('takeOrUploadPhoto')}</span>
                 </button>
               )}
             </div>
@@ -359,12 +361,12 @@ export default function OnboardingPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <User className="w-5 h-5 text-gray-500" />
-                  <span className="font-medium">Selfie Verification</span>
+                  <span className="font-medium">{t('selfie')}</span>
                 </div>
                 {selfieImage && (
                   <span className="badge-success">
                     <CheckCircle className="w-3 h-3 mr-1" />
-                    Uploaded
+                    {t('uploaded')}
                   </span>
                 )}
               </div>
@@ -388,7 +390,7 @@ export default function OnboardingPage() {
                   className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
                 >
                   <Camera className="w-8 h-8 mb-2" />
-                  <span className="text-sm font-medium">Take Selfie</span>
+                  <span className="text-sm font-medium">{t('takeSelfie')}</span>
                 </button>
               )}
             </div>
@@ -396,7 +398,7 @@ export default function OnboardingPage() {
             <div className="flex items-start gap-3 text-sm text-gray-600 p-4 bg-gray-50 rounded-xl">
               <AlertCircle className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
               <p>
-                Your documents are encrypted and stored securely. We use them only for identity verification.
+                {t('securityNote')}
               </p>
             </div>
           </div>
@@ -406,9 +408,9 @@ export default function OnboardingPage() {
         {currentStep === 'inspection' && (
           <div className="px-4 py-6 space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold mb-2">Move-in Inspection</h2>
+              <h2 className="text-xl font-semibold mb-2">{t('inspectionTitle')}</h2>
               <p className="text-gray-600 text-sm">
-                Document the current condition of your unit before moving in.
+                {t('inspectionBody')}
               </p>
             </div>
 
@@ -416,12 +418,12 @@ export default function OnboardingPage() {
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ClipboardCheck className="w-8 h-8 text-primary-600" />
               </div>
-              <h3 className="font-semibold mb-2">Complete Your Inspection</h3>
+              <h3 className="font-semibold mb-2">{t('completeInspection')}</h3>
               <p className="text-gray-600 text-sm mb-6">
-                Walk through each room and document any existing damage or issues. This protects your security deposit.
+                {t('inspectionWalkthrough')}
               </p>
               <a href="/onboarding/inspection" className="btn-primary w-full py-4">
-                Start Inspection
+                {t('startInspection')}
                 <ChevronRight className="w-5 h-5 ml-1" />
               </a>
             </div>
@@ -432,8 +434,8 @@ export default function OnboardingPage() {
                   <Camera className="w-5 h-5 text-gray-600" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm">Take Photos</h4>
-                  <p className="text-xs text-gray-500">Document any scratches, stains, or damage</p>
+                  <h4 className="font-medium text-sm">{t('takePhotos')}</h4>
+                  <p className="text-xs text-gray-500">{t('takePhotosDesc')}</p>
                 </div>
               </div>
               <div className="card p-4 flex items-center gap-3">
@@ -441,8 +443,8 @@ export default function OnboardingPage() {
                   <FileText className="w-5 h-5 text-gray-600" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm">Add Notes</h4>
-                  <p className="text-xs text-gray-500">Describe condition of walls, floors, appliances</p>
+                  <h4 className="font-medium text-sm">{t('addNotes')}</h4>
+                  <p className="text-xs text-gray-500">{t('addNotesDesc')}</p>
                 </div>
               </div>
               <div className="card p-4 flex items-center gap-3">
@@ -450,8 +452,8 @@ export default function OnboardingPage() {
                   <CheckCircle className="w-5 h-5 text-gray-600" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm">Rate Condition</h4>
-                  <p className="text-xs text-gray-500">Mark items as good, fair, or poor condition</p>
+                  <h4 className="font-medium text-sm">{t('rateCondition')}</h4>
+                  <p className="text-xs text-gray-500">{t('rateConditionDesc')}</p>
                 </div>
               </div>
             </div>
@@ -462,9 +464,9 @@ export default function OnboardingPage() {
         {currentStep === 'signature' && (
           <div className="px-4 py-6 space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold mb-2">Sign Your Lease</h2>
+              <h2 className="text-xl font-semibold mb-2">{t('signLease')}</h2>
               <p className="text-gray-600 text-sm">
-                Review and sign your lease agreement to complete the onboarding.
+                {t('signLeaseBody')}
               </p>
             </div>
 
@@ -475,21 +477,21 @@ export default function OnboardingPage() {
                   <FileText className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium">Lease Agreement</h3>
+                  <h3 className="font-medium">{t('leaseAgreement')}</h3>
                   <p className="text-sm text-gray-500">Unit A-204 • 12 months</p>
                 </div>
               </div>
               <div className="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-4">
                 <div className="flex justify-between">
-                  <span>Monthly Rent</span>
+                  <span>{t('monthlyRent')}</span>
                   <span className="font-medium text-gray-900">KES 40,000</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Start Date</span>
+                  <span>{t('startDate')}</span>
                   <span className="font-medium text-gray-900">June 1, 2024</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>End Date</span>
+                  <span>{t('endDate')}</span>
                   <span className="font-medium text-gray-900">May 31, 2025</span>
                 </div>
               </div>
@@ -497,7 +499,7 @@ export default function OnboardingPage() {
                 href="/onboarding/e-sign"
                 className="btn-secondary w-full mt-4 text-sm"
               >
-                View Full Document
+                {t('viewFullDocument')}
               </a>
             </div>
 
@@ -505,10 +507,10 @@ export default function OnboardingPage() {
             <div className="card overflow-hidden">
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Your Signature</h3>
+                  <h3 className="font-medium">{t('yourSignature')}</h3>
                   {hasSignature && (
                     <button onClick={clearSignature} className="text-sm text-primary-600">
-                      Clear
+                      {t('clear')}
                     </button>
                   )}
                 </div>
@@ -527,7 +529,7 @@ export default function OnboardingPage() {
                 onTouchEnd={stopDrawing}
               />
               <p className="text-xs text-gray-400 text-center py-3 border-t border-gray-100">
-                Sign above using your finger or mouse
+                {t('signHint')}
               </p>
             </div>
 
@@ -540,8 +542,7 @@ export default function OnboardingPage() {
                 className="mt-1 w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               <span className="text-sm text-gray-600">
-                I have read and agree to the Lease Agreement, House Rules, and Privacy Policy.
-                I understand this electronic signature is legally binding.
+                {t('termsAgreement')}
               </span>
             </label>
           </div>
@@ -554,7 +555,7 @@ export default function OnboardingPage() {
           {currentStepIndex > 0 && (
             <button onClick={goToPreviousStep} className="btn-secondary flex-1 py-4">
               <ChevronLeft className="w-5 h-5 mr-1" />
-              Back
+              {t('back')}
             </button>
           )}
           {currentStep === 'signature' ? (
@@ -566,10 +567,10 @@ export default function OnboardingPage() {
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Completing...
+                  {t('completing')}
                 </span>
               ) : (
-                'Complete Setup'
+                t('completeSetup')
               )}
             </button>
           ) : (
@@ -578,7 +579,7 @@ export default function OnboardingPage() {
               disabled={currentStep === 'id_upload' && !canProceedFromIdUpload}
               className="btn-primary flex-1 py-4"
             >
-              Continue
+              {t('continue')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </button>
           )}

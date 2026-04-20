@@ -207,5 +207,22 @@
     "teachingKeyPoints": "Vidokezo muhimu",
     "reviewTitle": "Muhtasari wa kipindi",
     "maintenanceFlowTitle": "Mtiririko wa matengenezo"
+  },
+  "announcementsCreate": {
+    "pageTitle": "Unda Tangazo",
+    "labelTitle": "Kichwa *",
+    "placeholderTitle": "Ingiza kichwa cha tangazo...",
+    "labelContent": "Maudhui *",
+    "placeholderContent": "Andika tangazo lako...",
+    "labelPriority": "Kipaumbele",
+    "priorityNormal": "Kawaida",
+    "priorityImportant": "Muhimu",
+    "priorityUrgent": "Haraka",
+    "labelProperty": "Mali (si lazima)",
+    "allProperties": "Mali Zote",
+    "labelExpiryDate": "Tarehe ya Mwisho (si lazima)",
+    "pinToTop": "Bandika juu",
+    "cancel": "Ghairi",
+    "publish": "Chapisha Tangazo"
   }
 }

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   Building2,
   Search,
@@ -28,6 +29,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PlatformSubscriptionsPage() {
+  const t = useTranslations('platformSubscriptions');
+  const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [subscriptions, setSubscriptions] = useState<ReadonlyArray<Subscription>>([]);
@@ -42,13 +45,14 @@ export default function PlatformSubscriptionsPage() {
       if (res.success) {
         setSubscriptions(res.data ?? []);
       } else {
-        setError(res.error ?? 'Failed to load subscriptions');
+        setError(res.error ?? t('errorLoad'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load subscriptions');
+      setError(err instanceof Error ? err.message : t('errorLoad'));
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -76,10 +80,10 @@ export default function PlatformSubscriptionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Tenant Subscriptions
+            {t('title')}
           </h1>
           <p className="text-gray-500">
-            Manage tenant plans and billing cycles
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -89,7 +93,7 @@ export default function PlatformSubscriptionsPage() {
           <AlertDescription>
             {error}
             <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
-              Retry
+              {tCommon('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -106,25 +110,25 @@ export default function PlatformSubscriptionsPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-          <p className="text-sm text-gray-500">Total Subscriptions</p>
+          <p className="text-sm text-gray-500">{t('totalSubscriptions')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-          <p className="text-sm text-gray-500">Active</p>
+          <p className="text-sm text-gray-500">{t('active')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-blue-600">{stats.trialing}</p>
-          <p className="text-sm text-gray-500">In Trial</p>
+          <p className="text-sm text-gray-500">{t('inTrial')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-amber-600">{stats.pastDue}</p>
-          <p className="text-sm text-gray-500">Past Due</p>
+          <p className="text-sm text-gray-500">{t('pastDue')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">
             {formatCurrency(stats.totalMrr)}
           </p>
-          <p className="text-sm text-gray-500">Total MRR</p>
+          <p className="text-sm text-gray-500">{t('totalMrr')}</p>
         </div>
       </div>
 
@@ -134,7 +138,7 @@ export default function PlatformSubscriptionsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search tenants..."
+            placeholder={t('searchTenants')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -145,11 +149,11 @@ export default function PlatformSubscriptionsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="trialing">Trialing</option>
-          <option value="past_due">Past Due</option>
-          <option value="canceled">Canceled</option>
+          <option value="all">{t('allStatus')}</option>
+          <option value="active">{t('active')}</option>
+          <option value="trialing">{t('trialing')}</option>
+          <option value="past_due">{t('pastDue')}</option>
+          <option value="canceled">{t('canceled')}</option>
         </select>
         {/* "More Filters" button removed; status select is the only
             honest filter dimension currently. */}
@@ -161,25 +165,25 @@ export default function PlatformSubscriptionsPage() {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tenant
+                {t('colTenant')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Plan
+                {t('colPlan')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                {t('colStatus')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Billing
+                {t('colBilling')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                MRR
+                {t('colMrr')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Period End
+                {t('colPeriodEnd')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {t('colActions')}
               </th>
             </tr>
           </thead>
@@ -222,7 +226,7 @@ export default function PlatformSubscriptionsPage() {
                     to={`/tenants/${sub.tenantId}`}
                     className="inline-flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700"
                   >
-                    Manage
+                    {t('manage')}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </td>
@@ -235,8 +239,8 @@ export default function PlatformSubscriptionsPage() {
       {filteredSubscriptions.length === 0 && (
         <EmptyState
           icon={<Building2 className="h-8 w-8" />}
-          title="No subscriptions found"
-          description="Tenant subscriptions will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       )}
     </div>

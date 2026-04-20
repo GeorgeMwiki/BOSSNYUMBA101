@@ -400,5 +400,18 @@
     "topWeaknesses": "Tatu zinazohitaji umakini",
     "empty": "Hakuna data bado.",
     "insufficientData": "Hakuna data ya kutosha bado."
+  },
+  "ownerHome": {
+    "welcome": "Karibu kwenye Dashibodi ya Mmiliki BOSSNYUMBA",
+    "portfolioOverview": "Muhtasari wa Mali",
+    "portfolioDesc": "Tazama uwekezaji wako wa mali",
+    "properties": "Mali",
+    "monthlyIncome": "Mapato ya Mwezi",
+    "monthlyIncomeDesc": "Ukusanyaji wa kodi mwezi huu",
+    "collected": "Imekusanywa",
+    "pendingActions": "Vitendo Vinavyosubiri",
+    "pendingActionsDesc": "Vitu vinavyohitaji umakini wako",
+    "pendingApprovals": "Idhini zinazosubiri",
+    "viewAllProperties": "Tazama Mali Zote"
   }
 }

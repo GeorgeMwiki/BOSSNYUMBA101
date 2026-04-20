@@ -1,19 +1,21 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 export default function AdminPortalHome() {
+  const t = useTranslations('adminHome');
   return (
     <main className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">BOSSNYUMBA Admin Portal</h1>
-          <Badge variant="secondary">Internal</Badge>
+          <h1 className="text-3xl font-bold">{t('title')}</h1>
+          <Badge variant="secondary">{t('internal')}</Badge>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader>
-              <CardTitle>Total Tenants</CardTitle>
-              <CardDescription>Active organizations</CardDescription>
+              <CardTitle>{t('totalTenants')}</CardTitle>
+              <CardDescription>{t('activeOrganizations')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -22,8 +24,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Total Properties</CardTitle>
-              <CardDescription>Across all tenants</CardDescription>
+              <CardTitle>{t('totalProperties')}</CardTitle>
+              <CardDescription>{t('acrossAllTenants')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -32,8 +34,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Active Users</CardTitle>
-              <CardDescription>Platform-wide</CardDescription>
+              <CardTitle>{t('activeUsers')}</CardTitle>
+              <CardDescription>{t('platformWide')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -42,8 +44,8 @@ export default function AdminPortalHome() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Support Tickets</CardTitle>
-              <CardDescription>Open tickets</CardDescription>
+              <CardTitle>{t('supportTickets')}</CardTitle>
+              <CardDescription>{t('openTickets')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">0</p>
@@ -54,36 +56,36 @@ export default function AdminPortalHome() {
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Tenant Management</CardTitle>
-              <CardDescription>Manage organizations on the platform</CardDescription>
+              <CardTitle>{t('tenantManagement')}</CardTitle>
+              <CardDescription>{t('tenantManagementDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start">
-                Create New Tenant
+                {t('createNewTenant')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                View All Tenants
+                {t('viewAllTenants')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                Subscription Management
+                {t('subscriptionManagement')}
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Platform Operations</CardTitle>
-              <CardDescription>System administration tools</CardDescription>
+              <CardTitle>{t('platformOperations')}</CardTitle>
+              <CardDescription>{t('platformOperationsDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start">
-                Audit Logs
+                {t('auditLogs')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                System Health
+                {t('systemHealth')}
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                Feature Flags
+                {t('featureFlags')}
               </Button>
             </CardContent>
           </Card>

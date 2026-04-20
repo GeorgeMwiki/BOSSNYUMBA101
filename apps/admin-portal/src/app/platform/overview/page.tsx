@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   Building2,
   Users,
@@ -39,12 +40,13 @@ const tenantGrowthData = [
 ];
 
 export default function PlatformOverviewPage() {
+  const t = useTranslations('platformOverview');
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Platform Overview</h1>
-          <p className="text-gray-500">KPIs, active tenants, and revenue metrics</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -62,9 +64,9 @@ export default function PlatformOverviewPage() {
           </div>
           <div className="mt-4">
             <p className="text-2xl font-bold text-gray-900">118</p>
-            <p className="text-sm text-gray-500">Active Tenants</p>
+            <p className="text-sm text-gray-500">{t('activeTenants')}</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">104 paying, 14 trial</p>
+          <p className="mt-2 text-xs text-gray-400">{t('payingAndTrial', { paying: 104, trial: 14 })}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -75,9 +77,9 @@ export default function PlatformOverviewPage() {
           </div>
           <div className="mt-4">
             <p className="text-2xl font-bold text-gray-900">1,247</p>
-            <p className="text-sm text-gray-500">Platform Users</p>
+            <p className="text-sm text-gray-500">{t('platformUsers')}</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">Across all tenants</p>
+          <p className="mt-2 text-xs text-gray-400">{t('acrossAllTenants')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -90,9 +92,9 @@ export default function PlatformOverviewPage() {
             <p className="text-2xl font-bold text-gray-900">
               {formatCurrency(3750000)}
             </p>
-            <p className="text-sm text-gray-500">Monthly Revenue</p>
+            <p className="text-sm text-gray-500">{t('monthlyRevenue')}</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">MRR from subscriptions</p>
+          <p className="mt-2 text-xs text-gray-400">{t('mrrSubscriptions')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -103,16 +105,16 @@ export default function PlatformOverviewPage() {
           </div>
           <div className="mt-4">
             <p className="text-2xl font-bold text-gray-900">4,536</p>
-            <p className="text-sm text-gray-500">Units Managed</p>
+            <p className="text-sm text-gray-500">{t('unitsManaged')}</p>
           </div>
-          <p className="mt-2 text-xs text-gray-400">892 properties</p>
+          <p className="mt-2 text-xs text-gray-400">{t('properties', { count: 892 })}</p>
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">{t('revenueTrend')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData}>
@@ -146,7 +148,7 @@ export default function PlatformOverviewPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Tenant Growth</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">{t('tenantGrowth')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={tenantGrowthData}>
@@ -167,14 +169,14 @@ export default function PlatformOverviewPage() {
                 <Area
                   type="monotone"
                   dataKey="active"
-                  name="Active"
+                  name={t('active')}
                   stroke="#8b5cf6"
                   fill="url(#colorActive)"
                 />
                 <Area
                   type="monotone"
                   dataKey="trial"
-                  name="Trial"
+                  name={t('trial')}
                   stroke="#3b82f6"
                   fill="url(#colorTrial)"
                 />
@@ -186,7 +188,7 @@ export default function PlatformOverviewPage() {
 
       {/* Quick Links */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('quickActions')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             to="/platform/subscriptions"
@@ -194,7 +196,7 @@ export default function PlatformOverviewPage() {
           >
             <CheckCircle className="h-5 w-5 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              Subscriptions
+              {t('subscriptions')}
             </span>
             <ArrowUpRight className="h-4 w-4 text-gray-400 ml-auto" />
           </Link>
@@ -203,7 +205,7 @@ export default function PlatformOverviewPage() {
             className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-violet-300 hover:bg-violet-50 transition-colors"
           >
             <CreditCard className="h-5 w-5 text-violet-600" />
-            <span className="text-sm font-medium text-gray-700">Billing</span>
+            <span className="text-sm font-medium text-gray-700">{t('billing')}</span>
             <ArrowUpRight className="h-4 w-4 text-gray-400 ml-auto" />
           </Link>
           <Link
@@ -212,7 +214,7 @@ export default function PlatformOverviewPage() {
           >
             <Activity className="h-5 w-5 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              Feature Flags
+              {t('featureFlags')}
             </span>
             <ArrowUpRight className="h-4 w-4 text-gray-400 ml-auto" />
           </Link>
@@ -222,7 +224,7 @@ export default function PlatformOverviewPage() {
           >
             <Building2 className="h-5 w-5 text-violet-600" />
             <span className="text-sm font-medium text-gray-700">
-              View Tenants
+              {t('viewTenants')}
             </span>
             <ArrowUpRight className="h-4 w-4 text-gray-400 ml-auto" />
           </Link>
