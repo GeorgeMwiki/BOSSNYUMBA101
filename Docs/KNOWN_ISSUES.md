@@ -397,4 +397,24 @@ credential that is not on the current milestone.
 **Proposed fix.** File individual tickets per site when a tenant
 contract requires the feature.
 
+---
+
+## KI-Wave18 — Renewal uplift heuristic is a flat 5 percent
+
+**Severity:** LOW
+
+**Symptoms.** The scheduled `renewal_proposal_generator` dispatches a
+real proposal through `RenewalService.propose()` (Wave 18 fix) but
+computes the proposed rent as a flat `currentRent * 1.05`. The model
+service that would give a market-aware suggestion is not yet wired.
+
+**File.**
+`services/api-gateway/src/composition/background-wiring.ts` —
+`buildTaskData(registry)` → `renewalProposal.propose` closure.
+
+**Proposed fix.** Swap the heuristic for a call into the renewal
+optimizer once the ML service ships. The port signature
+(`RenewalProposalPort.propose`) already accepts the current rent +
+days-to-expiry so no breaking API change is needed.
+
 **Owners.** Various squads — file per use case.

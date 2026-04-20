@@ -361,6 +361,10 @@ export const SUB_PERSONA_REGISTRY: Readonly<Record<SubPersonaId, SubPersonaConfi
       'skill.estate.npv_repair_vs_replace',
       'skill.estate.board_report_composer',
       'skill.estate.rent_repricing_memo',
+      // Organization-health query — prioritised for "how are we doing"
+      // style questions so the orchestrator picks this over streaming
+      // conversational text.
+      'query_organization',
     ],
     routePatterns: ['/strategy/*', '/advisory/*', '/consulting/*'],
     keywordSignals: [
@@ -382,6 +386,21 @@ export const SUB_PERSONA_REGISTRY: Readonly<Record<SubPersonaId, SubPersonaConfi
       'decision memo',
       'first 90 days',
       'post-acquisition plan',
+      // Organization-health query signals — route "how are we doing?"
+      // style questions to the consultant so the orchestrator invokes
+      // the `query_organization` tool instead of streaming a generic
+      // conversational reply.
+      'how are we doing',
+      'how is our performance',
+      'how is the portfolio performing',
+      'what are our bottlenecks',
+      "what's our biggest issue",
+      'what is our biggest issue',
+      'show me improvements',
+      'show me our bottlenecks',
+      'how has arrears resolution improved',
+      'what should we focus on',
+      'where are we losing money',
     ],
   },
 

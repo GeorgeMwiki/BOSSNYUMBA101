@@ -66,6 +66,8 @@ import ApiIntegrations from './pages/ApiIntegrations';
 import WebhookDLQ from './pages/WebhookDLQ';
 import OrgInsights from './pages/OrgInsights';
 import LegacyMigration from './pages/LegacyMigration';
+import TenantCredit from './pages/TenantCredit';
+import PropertyGradesPage from './pages/PropertyGrades';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -140,6 +142,8 @@ function AppRoutes() {
         <Route path="api-integrations" element={<ApiIntegrations />} />
         <Route path="webhook-dlq" element={<WebhookDLQ />} />
         <Route path="legacy-migration" element={<LegacyMigration />} />
+        <Route path="tenant-credit" element={<TenantCredit />} />
+        <Route path="property-grades" element={<PropertyGradesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />

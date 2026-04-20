@@ -334,13 +334,54 @@ function buildExtensionTasks(
     },
   });
 
+  // recompute_property_grades — weekly (Mon 06:00 UTC) bulk-grade of every
+  // property for every tenant so the admin/owner dashboards always surface
+  // fresh report cards. Skips silently when the service is in degraded
+  // (DB-less) mode. Each grade is persisted to `property_grade_snapshots`
+  // so the 12-month history chart can be rendered without replay.
+  if (registry.propertyGrading) {
+    tasks.push({
+      name: 'recompute_property_grades',
+      cron: '0 6 * * 1',
+      description:
+        'Weekly bulk recompute of every property grade for a tenant — persists a snapshot per property so history is complete.',
+      featureFlagKey: 'ai.bg.recompute_property_grades',
+      run: async (ctx) => {
+        const start = Date.now();
+        let regraded = 0;
+        try {
+          const outcomes = await registry.propertyGrading!.gradeAllProperties(
+            ctx.tenantId,
+          );
+          regraded = outcomes.length;
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            'bg-task recompute_property_grades failed',
+          );
+        }
+        return {
+          task: 'recompute_property_grades',
+          tenantId: ctx.tenantId,
+          insightsEmitted: regraded,
+          durationMs: Date.now() - start,
+          ranAt: ctx.now.toISOString(),
+        };
+      },
+    });
+  }
+
   return tasks;
 }
 
-function buildTaskData(_registry: ServiceRegistry): BackgroundTaskData {
-  // Minimal data provider: each method returns an empty array so the
+function buildTaskData(registry: ServiceRegistry): BackgroundTaskData {
+  // Minimal data provider: each list method returns an empty array so the
   // catalogue runs without crashing. Real data wiring is a follow-up —
   // this is the shape expected by `buildTaskCatalogue`.
+  //
+  // Wave 18 — wire the `renewalProposal` port to the real RenewalService
+  // so the scheduled `renewal_proposal_generator` actually dispatches
+  // proposals instead of only writing reminder insights.
   return {
     async listPropertiesForHealthScan() {
       return [];
@@ -366,6 +407,37 @@ function buildTaskData(_registry: ServiceRegistry): BackgroundTaskData {
     async recomputeTenantHealth() {
       return [];
     },
+    renewalProposal: registry.renewal
+      ? {
+          async propose(input) {
+            // Flat 5% uplift starter — the renewal optimizer can
+            // replace this with a model-driven suggestion once the
+            // ML service is wired. Returns null on failure so the
+            // generator still emits the reminder insight.
+            const proposedRent = Math.round(input.currentRent * 1.05);
+            try {
+              const svc = registry.renewal as unknown as {
+                propose(
+                  tenantId: string,
+                  leaseId: string,
+                  proposedRent: number,
+                ): Promise<{ id?: string; proposalId?: string } | null>;
+              };
+              const res = await svc.propose(
+                input.tenantId,
+                input.leaseId,
+                proposedRent,
+              );
+              if (!res) return null;
+              const proposalId =
+                res.id ?? res.proposalId ?? input.leaseId;
+              return { proposalId, proposedRent };
+            } catch {
+              return null;
+            }
+          },
+        }
+      : null,
   };
 }
 

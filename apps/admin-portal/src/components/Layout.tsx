@@ -12,7 +12,6 @@ import {
   FileText,
   Server,
   LogOut,
-  Bell,
   Search,
   BarChart2,
   Mail,
@@ -37,38 +36,82 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { NotificationBell } from './NotificationBell';
+import { ShortcutCheatSheet } from './ShortcutCheatSheet';
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Tenants', href: '/tenants', icon: Building2 },
-  { name: 'Users', href: '/users', icon: Users },
-  { name: 'Roles & Permissions', href: '/roles', icon: Shield },
-  { name: 'Platform', href: '/platform', icon: BarChart2 },
-  { name: 'Communications', href: '/communications', icon: Mail },
-  { name: 'Compliance', href: '/compliance', icon: ShieldCheck },
-  { name: 'Analytics', href: '/analytics', icon: LineChart },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
-  { name: 'Operations', href: '/operations', icon: Activity },
-  { name: 'Support', href: '/support', icon: HeadphonesIcon },
-  { name: 'AI Cockpit', href: '/ai', icon: Brain },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Configuration', href: '/configuration', icon: Settings },
-  { name: 'Audit Log', href: '/audit', icon: FileText },
-  { name: 'System Health', href: '/system', icon: Server },
-  { name: 'Org Insights', href: '/org-insights', icon: TrendingUp },
-  { name: 'Feature Flags', href: '/feature-flags', icon: Flag },
-  { name: 'Compliance Settings', href: '/compliance-settings', icon: ShieldCheckIcon },
-  { name: 'Data Privacy', href: '/data-privacy', icon: Lock },
-  { name: 'AI Costs', href: '/ai-costs', icon: Coins },
-  { name: 'Warehouse', href: '/warehouse', icon: Boxes },
-  { name: 'Maintenance Taxonomy', href: '/maintenance-taxonomy', icon: Wrench },
-  { name: 'IoT Sensors', href: '/iot', icon: Radio },
-  { name: 'Classroom', href: '/classroom', icon: GraduationCap },
-  { name: 'Workflows', href: '/workflows', icon: Workflow },
-  { name: 'API Integrations', href: '/api-integrations', icon: KeyRound },
-  { name: 'Webhook DLQ', href: '/webhook-dlq', icon: Inbox },
-  { name: 'Legacy Migration', href: '/legacy-migration', icon: UploadCloud },
+interface NavItem {
+  readonly name: string;
+  readonly href: string;
+  readonly icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavGroup {
+  readonly heading: string;
+  readonly items: readonly NavItem[];
+}
+
+const NAV_GROUPS: readonly NavGroup[] = [
+  {
+    heading: 'Overview',
+    items: [{ name: 'Dashboard', href: '/', icon: LayoutDashboard }],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { name: 'Tenants', href: '/tenants', icon: Building2 },
+      { name: 'Operations', href: '/operations', icon: Activity },
+      { name: 'Support', href: '/support', icon: HeadphonesIcon },
+      { name: 'Maintenance Taxonomy', href: '/maintenance-taxonomy', icon: Wrench },
+      { name: 'Warehouse', href: '/warehouse', icon: Boxes },
+      { name: 'IoT Sensors', href: '/iot', icon: Radio },
+      { name: 'Workflows', href: '/workflows', icon: Workflow },
+    ],
+  },
+  {
+    heading: 'Finance',
+    items: [
+      { name: 'Reports', href: '/reports', icon: BarChart3 },
+      { name: 'AI Costs', href: '/ai-costs', icon: Coins },
+    ],
+  },
+  {
+    heading: 'AI Brain',
+    items: [
+      { name: 'AI Cockpit', href: '/ai', icon: Brain },
+      { name: 'Classroom', href: '/classroom', icon: GraduationCap },
+      { name: 'Exceptions', href: '/exceptions', icon: Inbox },
+    ],
+  },
+  {
+    heading: 'Org Insights',
+    items: [
+      { name: 'Org Insights', href: '/org-insights', icon: TrendingUp },
+      { name: 'Platform', href: '/platform', icon: BarChart2 },
+      { name: 'Analytics', href: '/analytics', icon: LineChart },
+      { name: 'Communications', href: '/communications', icon: Mail },
+      { name: 'Compliance', href: '/compliance', icon: ShieldCheck },
+    ],
+  },
+  {
+    heading: 'Settings',
+    items: [
+      { name: 'Users', href: '/users', icon: Users },
+      { name: 'Roles & Permissions', href: '/roles', icon: Shield },
+      { name: 'Integrations', href: '/integrations', icon: Plug },
+      { name: 'API Integrations', href: '/api-integrations', icon: KeyRound },
+      { name: 'Configuration', href: '/configuration', icon: Settings },
+      { name: 'Feature Flags', href: '/feature-flags', icon: Flag },
+      { name: 'Compliance Settings', href: '/compliance-settings', icon: ShieldCheckIcon },
+      { name: 'Data Privacy', href: '/data-privacy', icon: Lock },
+      { name: 'Audit Log', href: '/audit', icon: FileText },
+      { name: 'System Health', href: '/system', icon: Server },
+      { name: 'Webhook DLQ', href: '/webhook-dlq', icon: Inbox },
+      { name: 'Legacy Migration', href: '/legacy-migration', icon: UploadCloud },
+    ],
+  },
 ];
+
+const FLAT_NAV: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -77,7 +120,7 @@ export function Layout() {
   const tApp = useTranslations('app');
 
   const getPageTitle = () => {
-    const current = navigation.find((item) => item.href === location.pathname);
+    const current = FLAT_NAV.find((item) => item.href === location.pathname);
     if (current) return current.name;
     if (location.pathname.startsWith('/tenants/onboard')) return 'Tenant Onboarding';
     if (location.pathname.startsWith('/roles/permissions')) return 'Permission Matrix';
@@ -109,24 +152,36 @@ export function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              end={item.href === '/'}
-              className={({ isActive }) => {
-                const isSectionActive = item.href !== '/' && (location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
-                return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive || isSectionActive
-                    ? 'bg-violet-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`;
-              }}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </NavLink>
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.heading} className="mb-4">
+              <h2 className="px-3 pt-2 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                {group.heading}
+              </h2>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.name}
+                    to={item.href}
+                    end={item.href === '/'}
+                    className={({ isActive }) => {
+                      const isSectionActive =
+                        item.href !== '/' &&
+                        (location.pathname === item.href ||
+                          location.pathname.startsWith(item.href + '/'));
+                      return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive || isSectionActive
+                          ? 'bg-violet-600 text-white'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`;
+                    }}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -166,35 +221,30 @@ export function Layout() {
 
             <div className="flex items-center gap-4">
               <LocaleSwitcher />
-              <div className="relative">
-                <label htmlFor="admin-global-search" className="sr-only">
-                  Search
-                </label>
-                <Search
-                  aria-hidden="true"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-                />
-                <input
-                  id="admin-global-search"
-                  type="search"
-                  placeholder="Search..."
-                  aria-label="Search"
-                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 w-64"
-                />
-              </div>
-
               <button
                 type="button"
-                aria-label="Notifications"
-                className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                aria-label="Open search (Cmd+K)"
+                onClick={() => {
+                  const isMac = navigator.platform.toUpperCase().includes('MAC');
+                  const event = new KeyboardEvent('keydown', {
+                    key: 'k',
+                    code: 'KeyK',
+                    metaKey: isMac,
+                    ctrlKey: !isMac,
+                    bubbles: true,
+                  });
+                  document.dispatchEvent(event);
+                }}
+                className="flex items-center gap-2 pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-500 w-64 text-left"
               >
-                <Bell className="h-5 w-5" aria-hidden="true" />
-                <span
-                  aria-hidden="true"
-                  className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
-                />
-                <span className="sr-only">You have unread notifications</span>
+                <Search aria-hidden="true" className="h-4 w-4 text-gray-400" />
+                <span className="flex-1">Search anywhere</span>
+                <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 border border-gray-200 rounded">
+                  {navigator.platform.toUpperCase().includes('MAC') ? 'Cmd K' : 'Ctrl K'}
+                </kbd>
               </button>
+
+              <NotificationBell />
             </div>
           </div>
         </header>
@@ -204,6 +254,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <ShortcutCheatSheet />
     </div>
   );
 }

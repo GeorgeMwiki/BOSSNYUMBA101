@@ -117,6 +117,29 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       }
     }
 
+    // Autonomy policy service — wired in both live and degraded modes
+    // so `GET /api/v1/autonomy/policy` returns a defaults-shaped policy
+    // even before the DB is attached. Routers pull via
+    // `c.get('services').autonomy.policyService`; this shim makes the
+    // service available to legacy consumers that read flat keys.
+    if (registry.autonomy?.policyService) {
+      c.set('autonomyPolicyService', registry.autonomy.policyService);
+    }
+
+    // Property grading — live in Postgres-backed mode, null otherwise.
+    // The router reads `services.propertyGrading` and emits 503 when it
+    // is absent, so flat-key consumers are not required.
+    if (registry.propertyGrading) {
+      c.set('propertyGradingService', registry.propertyGrading);
+    }
+
+    // Credit rating — FICO 300-850 + CRB bands. Router reads
+    // `services.creditRating` primarily; flat key left here for legacy
+    // consumers / tests that inject a mock service directly.
+    if (registry.creditRating) {
+      c.set('creditRatingService', registry.creditRating);
+    }
+
     await next();
   });
 }

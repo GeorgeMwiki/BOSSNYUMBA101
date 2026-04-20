@@ -89,5 +89,20 @@
     "teachingKeyPoints": "Key points",
     "reviewTitle": "Session summary",
     "propertyComparisonTitle": "Property comparison"
+  },
+  "portfolioGrade": {
+    "title": "Your portfolio",
+    "subtitle": "A simple letter grade for your portfolio, computed from live data.",
+    "loading": "Loading your grade…",
+    "portfolioGrade": "Portfolio grade",
+    "score": "Score",
+    "across": "across",
+    "properties": "properties",
+    "trajectory": "Trajectory",
+    "narrativeTitle": "Mr. Mwikila says",
+    "topStrengths": "Top 3 strongest",
+    "topWeaknesses": "Top 3 needing attention",
+    "empty": "No data yet.",
+    "insufficientData": "Not enough data to grade yet."
   }
 }

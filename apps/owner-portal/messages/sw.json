@@ -89,5 +89,20 @@
     "teachingKeyPoints": "Vidokezo muhimu",
     "reviewTitle": "Muhtasari wa kipindi",
     "propertyComparisonTitle": "Ulinganishaji wa nyumba"
+  },
+  "portfolioGrade": {
+    "title": "Portfolio yako",
+    "subtitle": "Daraja rahisi la portfolio yako, kutoka kwenye data halisi.",
+    "loading": "Inapakia daraja lako…",
+    "portfolioGrade": "Daraja la portfolio",
+    "score": "Alama",
+    "across": "kwa",
+    "properties": "mali",
+    "trajectory": "Mwelekeo",
+    "narrativeTitle": "Bw. Mwikila anasema",
+    "topStrengths": "Tatu bora zaidi",
+    "topWeaknesses": "Tatu zinazohitaji umakini",
+    "empty": "Hakuna data bado.",
+    "insufficientData": "Hakuna data ya kutosha bado."
   }
 }

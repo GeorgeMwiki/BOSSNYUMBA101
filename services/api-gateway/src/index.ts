@@ -106,6 +106,10 @@ import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.rout
 import autonomyRouter from './routes/autonomy.router';
 // Organizational Awareness — "talk to your organization" endpoints
 import orgAwarenessRouter from './routes/org-awareness.router';
+// Tenant Credit Rating — FICO-scale credit + portable certificate
+import creditRatingRouter from './routes/credit-rating.router';
+// Property Grading — Mr. Mwikila's A–F report card system (migration 0088)
+import propertyGradingRouter from './routes/property-grading.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -542,6 +546,10 @@ api.route('/audit', autonomousActionsAuditRouter);
 api.route('/autonomy', autonomyRouter);
 // Organizational Awareness — "talk to your organization" endpoints
 api.route('/org', orgAwarenessRouter);
+// Tenant Credit Rating — FICO-scale credit + portable certificate
+api.route('/credit-rating', creditRatingRouter);
+// Property Grading — Mr. Mwikila's A–F report card system
+api.route('/property-grading', propertyGradingRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue
@@ -895,7 +903,14 @@ if (require.main === module) {
           }
         },
       };
-      registerDomainEventSubscribers({ bus: subscribableBus, notifications: dispatcher, logger });
+      // Wave 18 — pass the arrears service through so InvoiceOverdue
+      // events open real cases instead of just logging a metric.
+      registerDomainEventSubscribers({
+        bus: subscribableBus,
+        notifications: dispatcher,
+        logger,
+        arrearsService: serviceRegistry.arrears?.service ?? null,
+      });
     } else {
       logger.warn('event subscribers: bus.subscribe not available; subscribers not registered');
     }

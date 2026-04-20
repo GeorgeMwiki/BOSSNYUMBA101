@@ -176,3 +176,10 @@ export * from './marketing-leads.schema.js';
 // Organizational Awareness — process observations, bottlenecks,
 // improvement snapshots. Powers "talk to your organization" tool.
 export * from './org-awareness.schema.js';
+
+// Tenant Credit Rating — FICO-scale 300-850 rating for internal risk
+// management and portable credit certificate (opt-in cross-landlord share).
+export * from './credit-rating.schema.js';
+
+// Property grading — A–F report card system (migration 0088).
+export * from './property-grading.schema.js';

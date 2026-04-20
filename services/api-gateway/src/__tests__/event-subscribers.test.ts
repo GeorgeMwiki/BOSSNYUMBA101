@@ -178,6 +178,73 @@ describe('registerDomainEventSubscribers', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('auto-opens an arrears case when InvoiceOverdue fires with a wired arrearsService', async () => {
+    const { bus, logger } = createDeps();
+    const noopDispatcher: NotificationDispatcher = {
+      async send() { return { success: true }; },
+    };
+    const opened: Array<Parameters<NonNullable<Parameters<typeof registerDomainEventSubscribers>[0]['arrearsService']>['openCase']>[0]> = [];
+    const fakeArrears = {
+      async openCase(input: Parameters<typeof fakeArrears.openCase>[0]) {
+        opened.push(input);
+        return { id: 'ac_1', caseNumber: 'ARR-TEST-1' };
+      },
+    };
+    registerDomainEventSubscribers({
+      bus,
+      notifications: noopDispatcher,
+      logger,
+      arrearsService: fakeArrears,
+    });
+    await bus.publish({
+      eventType: 'InvoiceOverdue',
+      aggregateId: 'inv_1',
+      payload: {
+        customerId: 'cust_1',
+        invoiceId: 'inv_1',
+        leaseId: 'lease_1',
+        unitId: 'unit_1',
+        propertyId: 'prop_1',
+        amountMinorUnits: 12500,
+        currency: 'TZS',
+        daysOverdue: 7,
+        oldestInvoiceDate: '2026-03-12T00:00:00Z',
+      },
+      metadata: { tenantId: 'tnt_1', correlationId: 'cor_1' },
+    });
+    expect(opened).toHaveLength(1);
+    expect(opened[0].tenantId).toBe('tnt_1');
+    expect(opened[0].customerId).toBe('cust_1');
+    expect(opened[0].totalArrearsAmount).toBe(12500);
+    expect(opened[0].currency).toBe('TZS');
+    expect(opened[0].leaseId).toBe('lease_1');
+    expect(opened[0].createdBy).toBe('system:arrears-auto-open');
+  });
+
+  it('skips openCase when arrearsService is not wired, without throwing', async () => {
+    const { bus, logger } = createDeps();
+    const noopDispatcher: NotificationDispatcher = {
+      async send() { return { success: true }; },
+    };
+    registerDomainEventSubscribers({
+      bus,
+      notifications: noopDispatcher,
+      logger,
+      arrearsService: null,
+    });
+    await expect(
+      bus.publish({
+        eventType: 'InvoiceOverdue',
+        payload: {
+          customerId: 'cust_1',
+          amountMinorUnits: 100,
+          currency: 'TZS',
+        },
+        metadata: { tenantId: 'tnt_1' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it('registers all expected event types', () => {
     const bus = new FakeBus();
     const spy = vi.spyOn(bus, 'subscribe');

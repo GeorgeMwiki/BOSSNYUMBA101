@@ -37,6 +37,8 @@ import { formatCurrency, formatDate, formatPercentage } from '../lib/api';
 import { useProperties, useOwnerDashboard, type DashboardRange } from '../lib/hooks';
 import { ArrearsAgingChart } from '../components/charts/ArrearsAgingChart';
 import { QuickActions } from '../components/QuickActions';
+import { PortfolioAtAGlance } from '../components/PortfolioAtAGlance';
+import { ComparePropertiesTable } from '../components/ComparePropertiesTable';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -135,6 +137,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <PortfolioAtAGlance />
+      <ComparePropertiesTable />
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>

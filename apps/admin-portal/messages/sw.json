@@ -176,5 +176,29 @@
     "acknowledge": "Kubali kupokea",
     "resolve": "Tatua",
     "recommended": "Pendekezo: {action}"
+  },
+  "propertyGrades": {
+    "title": "Daraja za mali",
+    "subtitle": "Kadi za A–F zinazotolewa na mfumo wa Bw. Mwikila wa vipimo sita.",
+    "loading": "Inapakia daraja…",
+    "portfolioGrade": "Daraja la portfolio",
+    "score": "Alama",
+    "properties": "mali",
+    "distribution": "Mgawanyo",
+    "trajectoryUp": "Inaboreka",
+    "trajectoryDown": "Inashuka",
+    "trajectoryFlat": "Imetulia",
+    "recomputeAll": "Kokotoa tena yote",
+    "dimensions": "Vipimo",
+    "reasons": "Sababu",
+    "history": "Historia",
+    "insufficientData": "Hakuna data ya kutosha bado.",
+    "dim.income": "Mapato",
+    "dim.expense": "Gharama",
+    "dim.maintenance": "Matengenezo",
+    "dim.occupancy": "Ujaaji",
+    "dim.compliance": "Uzingatiaji",
+    "dim.tenant": "Ubora wa mpangaji",
+    "close": "Funga"
   }
 }

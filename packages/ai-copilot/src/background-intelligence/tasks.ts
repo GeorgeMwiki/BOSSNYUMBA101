@@ -15,6 +15,36 @@ import type {
   TaskRunner,
 } from './types.js';
 
+/**
+ * Result of dispatching a renewal proposal to the lease service.
+ *
+ * Returned by `proposeRenewal` so the generator can log the new
+ * proposal ID + proposedRent in the insight's evidenceRefs. When the
+ * port is not wired (degraded mode / tests), the generator falls back
+ * to the insight-only path without crashing.
+ */
+export interface RenewalProposalDispatchResult {
+  readonly proposalId: string;
+  readonly proposedRent: number;
+}
+
+export interface RenewalProposalPort {
+  /**
+   * Push a renewal proposal into the lease service. Mirrors the HTTP
+   * contract of `POST /renewals/:leaseId/propose`: the service decides
+   * the final rent (via renewal optimizer) and returns the proposal
+   * handle. Return `null` when the lease is already past its renewal
+   * window / already has a pending proposal — the generator treats
+   * null as "skip" rather than an error.
+   */
+  propose(input: {
+    readonly tenantId: string;
+    readonly leaseId: string;
+    readonly currentRent: number;
+    readonly daysToExpiry: number;
+  }): Promise<RenewalProposalDispatchResult | null>;
+}
+
 export interface BackgroundTaskData {
   readonly listPropertiesForHealthScan: (
     tenantId: string,
@@ -40,6 +70,13 @@ export interface BackgroundTaskData {
   readonly recomputeTenantHealth: (
     tenantId: string,
   ) => Promise<readonly TenantHealth5Ps[]>;
+  /**
+   * Optional port that actually dispatches the renewal proposal into
+   * the lease service. When present, `renewal_proposal_generator`
+   * calls this and annotates the insight with the real proposal ID
+   * instead of only writing a "draft pending review" note.
+   */
+  readonly renewalProposal?: RenewalProposalPort | null;
 }
 
 export interface PortfolioProperty {
@@ -266,20 +303,59 @@ function renewalProposalGenerator(data: BackgroundTaskData): TaskRunner {
     const leases = await data.listLeasesNearExpiry(ctx.tenantId, 90);
     let emitted = 0;
     for (const l of leases) {
+      // Wave 18 — actually dispatch the proposal when the lease service
+      // is wired. Absent port (tests / degraded mode) falls through to
+      // the insight-only path so the head still sees the reminder.
+      let dispatch: RenewalProposalDispatchResult | null = null;
+      if (data.renewalProposal) {
+        try {
+          dispatch = await data.renewalProposal.propose({
+            tenantId: ctx.tenantId,
+            leaseId: l.leaseId,
+            currentRent: l.rent,
+            daysToExpiry: l.daysToExpiry,
+          });
+        } catch {
+          // Swallow — the insight still fires so a human can follow up.
+          dispatch = null;
+        }
+      }
+      const rentPhrase = dispatch
+        ? `Proposed new rent: ${dispatch.proposedRent.toLocaleString()} (proposal ${dispatch.proposalId}).`
+        : 'Open draft proposal, adjust rent if needed, send to tenant via preferred channel.';
+      const evidenceRefs: ReadonlyArray<{ kind: 'lease' | 'invoice'; id: string }> = dispatch
+        ? [
+            { kind: 'lease', id: l.leaseId },
+            // Reuse the `invoice` evidence kind to link the dispatched
+            // proposal id — the insight viewer renders the ref as a
+            // clickable anchor either way.
+            { kind: 'invoice', id: dispatch.proposalId },
+          ]
+        : [{ kind: 'lease', id: l.leaseId }];
       await ctx.store.upsert({
         tenantId: ctx.tenantId,
         kind: 'renewal_proposal',
         severity: l.daysToExpiry <= 30 ? 'high' : 'medium',
-        title: `Renewal proposal drafted for ${l.tenantName}`,
-        description: `Lease for unit ${l.unitId} expires in ${l.daysToExpiry} days. Current rent ${l.rent.toLocaleString()} TZS.`,
-        evidenceRefs: [{ kind: 'lease', id: l.leaseId }],
+        title: dispatch
+          ? `Renewal proposal submitted for ${l.tenantName}`
+          : `Renewal proposal drafted for ${l.tenantName}`,
+        description: `Lease for unit ${l.unitId} expires in ${l.daysToExpiry} days. Current rent ${l.rent.toLocaleString()} TZS. ${rentPhrase}`,
+        evidenceRefs,
         actionPlan: {
-          summary: 'Review the auto-drafted renewal and send to tenant',
-          steps: [
-            'Open draft proposal',
-            'Adjust rent if needed',
-            'Send to tenant via preferred channel',
-          ],
+          summary: dispatch
+            ? 'Review the dispatched renewal proposal and confirm'
+            : 'Review the auto-drafted renewal and send to tenant',
+          steps: dispatch
+            ? [
+                'Open submitted proposal',
+                'Confirm rent + term',
+                'Track tenant response',
+              ]
+            : [
+                'Open draft proposal',
+                'Adjust rent if needed',
+                'Send to tenant via preferred channel',
+              ],
         },
         dedupeKey: `renewal:${l.leaseId}`,
       });

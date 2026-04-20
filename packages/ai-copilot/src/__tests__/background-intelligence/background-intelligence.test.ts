@@ -153,6 +153,37 @@ describe('BackgroundIntelligence: individual task bodies', () => {
     expect(summary.insightsEmitted).toBe(1);
   });
 
+  it('renewal_proposal_generator dispatches a real proposal when the port is wired', async () => {
+    const calls: Array<{ leaseId: string; tenantId: string; currentRent: number }> = [];
+    const data = makeData({
+      renewalProposal: {
+        async propose(input) {
+          calls.push({
+            leaseId: input.leaseId,
+            tenantId: input.tenantId,
+            currentRent: input.currentRent,
+          });
+          return { proposalId: 'prop_42', proposedRent: 880_000 };
+        },
+      },
+    });
+    const store = new InMemoryInsightStore();
+    const tasks = buildTaskCatalogue(data);
+    const task = tasks.find((t) => t.name === 'renewal_proposal_generator')!;
+    const summary = await task.run({
+      tenantId: T1,
+      now: new Date(),
+      store,
+    });
+    expect(summary.insightsEmitted).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tenantId).toBe(T1);
+    expect(calls[0].leaseId).toBe('lease_1');
+    expect(calls[0].currentRent).toBe(800_000);
+    const ins = await store.listUnacknowledged(T1);
+    expect(ins[0].title).toContain('submitted');
+  });
+
   it('far_inspection_reminder_sweep flags overdue inspections', async () => {
     const store = new InMemoryInsightStore();
     const tasks = buildTaskCatalogue(makeData());

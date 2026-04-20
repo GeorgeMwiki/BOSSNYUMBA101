@@ -250,6 +250,34 @@ describe('sub-persona prompt composition', () => {
     expect(out).toBe(base);
   });
 
+  it('routes "how are we doing?" org-health questions to the consultant dimension on neutral routes', () => {
+    // Wave 18 — add keyword signals so these questions trigger the
+    // consultant sub-persona, which has `query_organization` in its
+    // preferred-tools list. Without this, the orchestrator streams
+    // conversationally instead of invoking the tool.
+    //
+    // Uses a neutral route (/home) so the message keywords drive the
+    // pick rather than the route-pattern signal (the dashboard route
+    // pre-selects the advisor dimension and would skew the winner).
+    const context = baseContext({
+      route: '/home',
+      message: 'How are we doing? Show me improvements.',
+    });
+    const result = routeToSubPersona(context);
+    expect(result).not.toBeNull();
+    expect(result?.subPersonaId).toBe('consultant');
+  });
+
+  it('includes query_organization in consultant preferred tools', () => {
+    // Direct assertion on the registry — Wave 18 wired the tool as a
+    // preferred signal for the consultant so the orchestrator prefers
+    // the org-health tool over streaming conversational text.
+    const cfg = SUB_PERSONA_REGISTRY.consultant;
+    expect(cfg.preferredTools).toContain('query_organization');
+    const merged = composeAvailableTools(['get_portfolio_overview'], 'consultant');
+    expect(merged).toContain('query_organization');
+  });
+
   it('every sub-persona registry entry has a non-empty prompt layer', () => {
     const ids = Object.keys(SUB_PERSONA_REGISTRY) as SubPersonaId[];
     // Wave-11: 7 base sub-personae (finance/leasing/maintenance/compliance/

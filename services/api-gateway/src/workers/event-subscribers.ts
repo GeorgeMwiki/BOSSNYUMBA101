@@ -88,6 +88,28 @@ export interface ObservabilitySink {
   }): void;
 }
 
+/**
+ * Subset of the arrears service this worker uses. Kept minimal so the
+ * subscribers module never pulls in the full payments-ledger package
+ * dependency graph — tests + degraded-mode gateways inject a null.
+ */
+export interface ArrearsOpenCaseService {
+  openCase(input: {
+    readonly tenantId: string;
+    readonly customerId: string;
+    readonly currency: string;
+    readonly totalArrearsAmount: number;
+    readonly daysOverdue: number;
+    readonly overdueInvoiceCount: number;
+    readonly oldestInvoiceDate: Date;
+    readonly leaseId?: string;
+    readonly propertyId?: string;
+    readonly unitId?: string;
+    readonly createdBy: string;
+    readonly notes?: string;
+  }): Promise<{ id: string; caseNumber: string }>;
+}
+
 export interface EventSubscriberDeps {
   bus: SubscribableBus;
   notifications: NotificationDispatcher;
@@ -96,6 +118,13 @@ export interface EventSubscriberDeps {
   audit?: AuditSink;
   /** Optional observability sink — absent in test/in-process deployments. */
   observability?: ObservabilitySink;
+  /**
+   * Optional arrears service. When present, `InvoiceOverdue` events
+   * auto-open a real arrears case. When absent, the subscriber still
+   * emits the audit + metric signal but skips the DB write so degraded
+   * gateways never crash on missing wiring.
+   */
+  arrearsService?: ArrearsOpenCaseService | null;
 }
 
 function safeHandler(
@@ -129,7 +158,7 @@ function safeHandler(
  * during graceful shutdown (the bus implementation handles cleanup).
  */
 export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void {
-  const { bus, notifications, logger, audit, observability } = deps;
+  const { bus, notifications, logger, audit, observability, arrearsService } = deps;
 
   // Thin no-op defaults so handler code can call these unconditionally.
   const auditLog = async (entry: Parameters<AuditSink['log']>[0]): Promise<void> => {
@@ -744,9 +773,11 @@ export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void 
     { id: 'notifications.invoice-paid' }
   );
 
-  // Wave 16 — auto-open arrears case on invoice.overdue. Previously missing;
-  // the scheduled `arrears_ladder_tick` task upserted insights but never
-  // opened a real case when an invoice first became overdue.
+  // Wave 18 — auto-open arrears case on invoice.overdue. Wave 16 added
+  // the metric + audit scaffolding but never called the service. This
+  // block now wires the concrete `arrearsService.openCase()` call when
+  // the service is present; when absent (degraded gateway, unit tests)
+  // the observability signal still fires so ops sees the trigger.
   bus.subscribe(
     'InvoiceOverdue',
     safeHandler('arrears-auto-open', logger, async (event) => {
@@ -764,9 +795,7 @@ export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void 
         oldestInvoiceDate?: string;
       };
       if (!payload.amountMinorUnits || !payload.currency) return;
-      // Emit a domain event that the arrears service subscribes to.
-      // Stays decoupled so a tenant who opts out of auto-arrears can
-      // disable it via feature-flag without editing the subscriber.
+
       emitMetric({
         name: 'arrears.auto_open_triggered',
         value: 1,
@@ -782,6 +811,68 @@ export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void 
         metadata: payload,
         correlationId: event.metadata?.correlationId,
       });
+
+      // Concrete call: open the arrears case in the ledger. The service
+      // is idempotent for a given (tenantId, customerId, invoiceId)
+      // pair at the repo layer, so re-emitted overdue events never
+      // double-open.
+      if (!arrearsService) {
+        logger.warn(
+          { tenantId, customerId, invoiceId: payload.invoiceId },
+          'arrears-auto-open: arrearsService unwired; skipping case open',
+        );
+        return;
+      }
+      const oldestInvoiceDate = payload.oldestInvoiceDate
+        ? new Date(payload.oldestInvoiceDate)
+        : new Date();
+      try {
+        const opened = await arrearsService.openCase({
+          tenantId,
+          customerId,
+          currency: payload.currency,
+          totalArrearsAmount: payload.amountMinorUnits,
+          daysOverdue: payload.daysOverdue ?? 0,
+          overdueInvoiceCount: 1,
+          oldestInvoiceDate,
+          leaseId: payload.leaseId,
+          propertyId: payload.propertyId,
+          unitId: payload.unitId,
+          createdBy: 'system:arrears-auto-open',
+          notes: `Auto-opened on InvoiceOverdue for invoice ${payload.invoiceId ?? 'unknown'}.`,
+        });
+        emitMetric({
+          name: 'arrears.auto_open_opened',
+          value: 1,
+          tags: { tenantId },
+        });
+        await auditLog({
+          tenantId,
+          action: 'arrears.case_opened',
+          target: { type: 'ArrearsCase', id: opened.id },
+          metadata: {
+            caseNumber: opened.caseNumber,
+            invoiceId: payload.invoiceId,
+            customerId,
+          },
+          correlationId: event.metadata?.correlationId,
+        });
+      } catch (err) {
+        logger.error(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            tenantId,
+            customerId,
+            invoiceId: payload.invoiceId,
+          },
+          'arrears-auto-open: openCase failed',
+        );
+        emitMetric({
+          name: 'arrears.auto_open_failed',
+          value: 1,
+          tags: { tenantId },
+        });
+      }
     }),
     { id: 'arrears.auto-open-on-overdue' }
   );

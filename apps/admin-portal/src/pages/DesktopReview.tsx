@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dopamine } from '@bossnyumba/chat-ui';
 import { api } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const { ConfettiTrigger } = Dopamine;
 
@@ -127,6 +128,7 @@ function detectInitialLanguage(): Language {
 
 export function DesktopReview(): JSX.Element {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [lang] = useState<Language>(detectInitialLanguage);
   const [data, setData] = useState<PanelData>({
     arrears: [],
@@ -173,9 +175,14 @@ export function DesktopReview(): JSX.Element {
       if (
         action === 'approve' &&
         kind === 'approval' &&
-        approval?.kind === 'tender-award'
+        approval?.kind === 'tender-award' &&
+        user?.tenantId &&
+        user?.id
       ) {
-        setCelebrateTender({ tenantId: 'current', userId: 'current' });
+        // Pull real identifiers from the authenticated session — this
+        // is what the Dopamine ConfettiTrigger uses to de-dupe the
+        // celebration per-user-per-kind.
+        setCelebrateTender({ tenantId: user.tenantId, userId: user.id });
       }
       const params = new URLSearchParams({
         context: `${kind}:${id}`,
@@ -183,7 +190,7 @@ export function DesktopReview(): JSX.Element {
       });
       navigate(`/manager-chat?${params.toString()}`);
     },
-    [askMrMwikila, data.approvals, navigate],
+    [askMrMwikila, data.approvals, navigate, user?.tenantId, user?.id],
   );
 
   const updatedDisplay = useMemo(() => {

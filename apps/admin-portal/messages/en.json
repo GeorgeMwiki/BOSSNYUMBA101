@@ -176,5 +176,29 @@
     "acknowledge": "Acknowledge",
     "resolve": "Resolve",
     "recommended": "Recommended: {action}"
+  },
+  "propertyGrades": {
+    "title": "Property grades",
+    "subtitle": "A–F report cards powered by Mr. Mwikila's six-dimension scoring model.",
+    "loading": "Loading property grades…",
+    "portfolioGrade": "Portfolio grade",
+    "score": "Score",
+    "properties": "properties",
+    "distribution": "Distribution",
+    "trajectoryUp": "Improving",
+    "trajectoryDown": "Declining",
+    "trajectoryFlat": "Stable",
+    "recomputeAll": "Recompute all",
+    "dimensions": "Dimensions",
+    "reasons": "Reasons",
+    "history": "History",
+    "insufficientData": "Not enough live data yet.",
+    "dim.income": "Income",
+    "dim.expense": "Expense",
+    "dim.maintenance": "Maintenance",
+    "dim.occupancy": "Occupancy",
+    "dim.compliance": "Compliance",
+    "dim.tenant": "Tenant quality",
+    "close": "Close"
   }
 }

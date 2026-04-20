@@ -263,12 +263,17 @@ describe('rent-repricing-advisor', () => {
 });
 
 describe('estate skill bundle', () => {
-  it('ships all seven tools', () => {
-    expect(ESTATE_SKILL_TOOLS.length).toBe(7);
+  it('ships at least the seven legacy tools', () => {
+    expect(ESTATE_SKILL_TOOLS.length).toBeGreaterThanOrEqual(7);
   });
 
   it('every tool has a unique name', () => {
     const names = ESTATE_SKILL_TOOLS.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('includes skill.estate.grade_property', () => {
+    const names = ESTATE_SKILL_TOOLS.map((t) => t.name);
+    expect(names).toContain('skill.estate.grade_property');
   });
 });

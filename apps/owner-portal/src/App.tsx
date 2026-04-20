@@ -19,6 +19,7 @@ import { ESignaturePage } from './pages/documents/ESignature';
 import { DisbursementsPage } from './pages/financial/Disbursements';
 import { NotFoundPage } from './pages/NotFoundPage';
 import OwnerAdvisor from './pages/OwnerAdvisor';
+import PortfolioGradePage from './pages/PortfolioGrade';
 import PortfolioPage from './app/portfolio/page';
 import PortfolioPerformancePage from './app/portfolio/performance/page';
 import PortfolioGrowthPage from './app/portfolio/growth/page';
@@ -107,6 +108,7 @@ function App() {
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/advisor" element={<OwnerAdvisor />} />
+                  <Route path="/portfolio-grade" element={<PortfolioGradePage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Layout>

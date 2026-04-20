@@ -416,6 +416,9 @@ export * from './workflows/index.js';
 export * from './document-analysis/index.js';
 export * from './skills/estate/index.js';
 
+// Property grading — Mr. Mwikila's A–F report card system.
+export * as PropertyGrading from './property-grading/index.js';
+
 // Conversational Personalization
 export {
   ConversationalPersonalizationService,
@@ -461,4 +464,11 @@ export * as Training from './training/index.js';
 // ============================================
 export * as OrgAwareness from './org-awareness/index.js';
 export * as OrgSkills from './skills/org/index.js';
+
+// ============================================
+// Tenant Credit Rating — FICO-scale 300-850 rating, portable certificate,
+// opt-in cross-landlord sharing. Barrel-exported so the api-gateway router
+// can import the service factory and certificate helpers directly.
+// ============================================
+export * from './credit-rating/index.js';
 

@@ -97,6 +97,14 @@ import {
   createIotService,
   type IotService,
 } from '@bossnyumba/domain-services/iot';
+import { createPropertyGradingAdapters } from '@bossnyumba/domain-services/property-grading';
+import { PropertyGrading } from '@bossnyumba/ai-copilot';
+type PropertyGradingService = import('@bossnyumba/ai-copilot').PropertyGrading.PropertyGradingService;
+import {
+  createCreditRatingService,
+  type CreditRatingService,
+} from '@bossnyumba/ai-copilot';
+import { PostgresCreditRatingRepository } from './credit-rating-repository.js';
 import {
   createArrearsService,
   type ArrearsService,
@@ -153,6 +161,14 @@ import {
   type MasteryPort,
 } from '@bossnyumba/ai-copilot/training';
 import { OrgAwareness } from '@bossnyumba/ai-copilot';
+// Wave 18 final annihilation — autonomy policy service wired into the
+// composition root so `GET/PUT /api/v1/autonomy/policy` stops returning
+// 503 NOT_IMPLEMENTED.
+import {
+  AutonomyPolicyService,
+  InMemoryAutonomyPolicyRepository,
+} from '@bossnyumba/ai-copilot/autonomy';
+import { PostgresAutonomyPolicyRepository } from './autonomy-policy-repository.js';
 
 type OrgAwarenessRegistry = {
   readonly miner: InstanceType<typeof OrgAwareness.ProcessMiner>;
@@ -228,6 +244,21 @@ export interface ServiceRegistry {
    *  improvement tracking, "talk to your organization" query service.
    *  In-memory-backed for pilot; swap to Postgres adapters when ready. */
   readonly orgAwareness: OrgAwarenessRegistry;
+
+  /** Autonomy policy — per-tenant Autonomous Department Mode config.
+   *  Postgres-backed in live mode, in-memory when DATABASE_URL is unset
+   *  (so the endpoint stays 200 OK in local dev). */
+  readonly autonomy: {
+    readonly policyService: AutonomyPolicyService;
+  };
+
+  /** Property grading — A–F report card scoring + portfolio rollup.
+   *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
+  readonly propertyGrading: PropertyGradingService | null;
+
+  /** Tenant credit rating — FICO-scale 300-850 rating with CRB bands
+   *  and portable certificate. Postgres-backed in live mode. */
+  readonly creditRating: CreditRatingService | null;
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -335,6 +366,16 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     training: null,
     voice: null,
     orgAwareness: buildOrgAwareness(eventBus),
+    autonomy: {
+      // Degraded mode: in-memory repository so the endpoint still
+      // returns a defaults-shaped policy. Never persists across
+      // restarts — fine for local-dev / DB-down degraded mode.
+      policyService: new AutonomyPolicyService({
+        repository: new InMemoryAutonomyPolicyRepository(),
+      }),
+    },
+    propertyGrading: null,
+    creditRating: null,
     eventBus,
     db: null,
     isLive: false,
@@ -687,6 +728,31 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     training,
     voice,
     orgAwareness: buildOrgAwareness(eventBus),
+    autonomy: {
+      // Live mode: Postgres-backed repository so tenants' policies
+      // survive restarts and every mutation is chained into the
+      // audit table (Wave 11).
+      policyService: new AutonomyPolicyService({
+        repository: new PostgresAutonomyPolicyRepository(db),
+      }),
+    },
+    // Property grading — Mr. Mwikila's A–F report card system.
+    // Adapters live in domain-services (Postgres wiring); the service
+    // class lives in ai-copilot (pure business logic). We compose here.
+    propertyGrading: (() => {
+      const adapters = createPropertyGradingAdapters(db);
+      return new PropertyGrading.PropertyGradingService({
+        metricsSource: adapters.metricsSource,
+        weightsRepo: adapters.weightsRepo,
+        snapshotRepo: adapters.snapshotRepo,
+      });
+    })(),
+    // Tenant credit rating — FICO-scale 300-850 + CRB bands + portable
+    // certificate. Postgres-backed repository pulls real invoice /
+    // payment / tenancy data — zero mocks.
+    creditRating: createCreditRatingService({
+      repo: new PostgresCreditRatingRepository(db),
+    }),
     eventBus,
     db,
     isLive: true,
