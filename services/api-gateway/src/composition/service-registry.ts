@@ -152,6 +152,27 @@ import {
   type TrainingAdminEndpoints,
   type MasteryPort,
 } from '@bossnyumba/ai-copilot/training';
+import { OrgAwareness } from '@bossnyumba/ai-copilot';
+
+type OrgAwarenessRegistry = {
+  readonly miner: InstanceType<typeof OrgAwareness.ProcessMiner>;
+  readonly bottleneckDetector: InstanceType<
+    typeof OrgAwareness.BottleneckDetector
+  >;
+  readonly improvementTracker: InstanceType<
+    typeof OrgAwareness.ImprovementTracker
+  >;
+  readonly queryService: InstanceType<typeof OrgAwareness.OrgQueryService>;
+  readonly observationStore: InstanceType<
+    typeof OrgAwareness.InMemoryProcessObservationStore
+  >;
+  readonly bottleneckStore: InstanceType<
+    typeof OrgAwareness.InMemoryBottleneckStore
+  >;
+  readonly snapshotStore: InstanceType<
+    typeof OrgAwareness.InMemoryImprovementSnapshotStore
+  >;
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -203,6 +224,11 @@ export interface ServiceRegistry {
   readonly training: TrainingAdminEndpoints | null;
   readonly voice: VoiceRouter | null;
 
+  /** Organizational Awareness — process mining, bottleneck detection,
+   *  improvement tracking, "talk to your organization" query service.
+   *  In-memory-backed for pilot; swap to Postgres adapters when ready. */
+  readonly orgAwareness: OrgAwarenessRegistry;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -222,6 +248,61 @@ export interface BuildServicesInput {
 // ---------------------------------------------------------------------------
 // Degraded skeleton — every service null
 // ---------------------------------------------------------------------------
+
+function buildOrgAwareness(eventBus: EventBus): OrgAwarenessRegistry {
+  const observationStore = new OrgAwareness.InMemoryProcessObservationStore();
+  const bottleneckStore = new OrgAwareness.InMemoryBottleneckStore();
+  const snapshotStore = new OrgAwareness.InMemoryImprovementSnapshotStore();
+  const miner = OrgAwareness.createProcessMiner({
+    store: observationStore,
+  });
+  const bottleneckDetector = OrgAwareness.createBottleneckDetector({
+    observationStore,
+    bottleneckStore,
+    miner,
+  });
+  const improvementTracker = OrgAwareness.createImprovementTracker({
+    store: snapshotStore,
+  });
+  const queryService = OrgAwareness.createOrgQueryService({
+    miner,
+    bottleneckStore,
+    improvementTracker,
+  });
+  // Subscribe to platform events so every emitted lifecycle event
+  // lands in the process-miner's observation stream. Bus-shape shim
+  // because `EventBus.publish(env)` wraps events — we expose a
+  // `subscribe(type, handler)` facade over the existing bus.
+  const busShim: OrgAwareness.PlatformBusLike = {
+    subscribe(eventType, handler) {
+      const offs: Array<() => void> = [];
+      const sub = (eventBus as unknown as {
+        subscribe?: (t: string, h: (e: unknown) => void) => () => void;
+      }).subscribe;
+      if (typeof sub === 'function') {
+        offs.push(
+          sub.call(eventBus, eventType, (envelope: unknown) => {
+            const evt = (envelope as { event?: unknown })?.event ?? envelope;
+            handler(evt as OrgAwareness.PlatformEventLike);
+          }),
+        );
+      }
+      return () => {
+        for (const off of offs) off();
+      };
+    },
+  };
+  OrgAwareness.subscribeOrgEvents({ bus: busShim, miner });
+  return {
+    miner,
+    bottleneckDetector,
+    improvementTracker,
+    queryService,
+    observationStore,
+    bottleneckStore,
+    snapshotStore,
+  };
+}
 
 function degradedRegistry(eventBus: EventBus): ServiceRegistry {
   return {
@@ -253,6 +334,7 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     classroom: null,
     training: null,
     voice: null,
+    orgAwareness: buildOrgAwareness(eventBus),
     eventBus,
     db: null,
     isLive: false,
@@ -604,6 +686,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     classroom,
     training,
     voice,
+    orgAwareness: buildOrgAwareness(eventBus),
     eventBus,
     db,
     isLive: true,

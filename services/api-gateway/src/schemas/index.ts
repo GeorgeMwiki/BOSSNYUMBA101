@@ -1,4 +1,3 @@
-// @ts-nocheck — zod ZodEffects<> not assignable to AnyZodObject parameter in zValidator<>; known zod-openapi interop limitation, revisit when @hono/zod-openapi aligns with zod 3.23.
 /**
  * Validation Schemas
  * 
@@ -99,10 +98,11 @@ export const paginationSchema = z.object({
 /**
  * Date range filter
  */
-export const dateRangeSchema = z.object({
+const dateRangeShape = z.object({
   startDate: isoDateSchema.optional(),
   endDate: isoDateSchema.optional(),
-}).refine(
+});
+export const dateRangeSchema = dateRangeShape.refine(
   (data) => {
     if (data.startDate && data.endDate) {
       return new Date(data.startDate) <= new Date(data.endDate);
@@ -392,7 +392,7 @@ export const unitFilterSchema = paginationSchema.merge(sortSchema).extend({
 /**
  * Work order filter
  */
-export const workOrderFilterSchema = paginationSchema.merge(sortSchema).merge(dateRangeSchema).extend({
+export const workOrderFilterSchema = paginationSchema.merge(sortSchema).merge(dateRangeShape).extend({
   propertyId: uuidSchema.optional(),
   unitId: uuidSchema.optional(),
   customerId: uuidSchema.optional(),
@@ -418,7 +418,7 @@ export const workOrderFilterSchema = paginationSchema.merge(sortSchema).merge(da
 /**
  * Payment/Transaction filter
  */
-export const paymentFilterSchema = paginationSchema.merge(sortSchema).merge(dateRangeSchema).extend({
+export const paymentFilterSchema = paginationSchema.merge(sortSchema).merge(dateRangeShape).extend({
   customerId: uuidSchema.optional(),
   propertyId: uuidSchema.optional(),
   status: z.enum(['all', 'pending', 'processing', 'completed', 'failed', 'refunded']).optional(),

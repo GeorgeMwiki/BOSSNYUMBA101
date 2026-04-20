@@ -366,6 +366,7 @@ Realistic **10-tenant / 5K units / ~1M events-per-day** monthly cost (USD):
 - [ ] Mr. Mwikila persona smoke-tested (5 chat turns + 1 workflow)
 - [ ] Backup schedule: Postgres pg_basebackup daily → S3 (7d RPO) + WAL archiving
 - [ ] Rollback runbook reviewed (`Docs/RUNBOOK.md`)
+- [ ] Production operations runbook reviewed (`Docs/OPERATIONS.md`) — incident response, known issues, capacity planning, data-deletion SLAs
 - [ ] On-call rotation published
 - [ ] Go-live announcement queued
 
@@ -376,4 +377,73 @@ Opt-in by setting `E2E_REAL_LLM=true` before `pnpm e2e`. Required env for each s
 - voice-loop: also `ELEVENLABS_API_KEY` + `OPENAI_API_KEY`
 
 CI defaults to skipping these (no keys); local + staging pipelines opt in.
+
+## 9. Environment validation (boot-time)
+
+The gateway now validates `process.env` on startup via
+`services/api-gateway/src/config/validate-env.ts`. If any required variable is
+missing or malformed, the gateway logs a structured `fatal` entry and exits
+with code 1 **before** accepting any requests.
+
+### Required (boot fails without these)
+
+| Variable | Validation | Example |
+|---|---|---|
+| `DATABASE_URL` | must start with `postgres://` or `postgresql://`, min 10 chars | `postgres://app:pw@db:5432/bn` |
+| `JWT_SECRET` | min 32 chars (64+ recommended in production) | output of `openssl rand -base64 48` |
+
+### Defaults (no warning)
+
+| Variable | Default |
+|---|---|
+| `NODE_ENV` | `development` |
+| `PORT` | `4000` |
+| `LOG_LEVEL` | `info` |
+| `JWT_ISSUER` | `bossnyumba` |
+| `JWT_AUDIENCE` | `bossnyumba-client` |
+| `APP_VERSION` | `dev` |
+
+### Optional — validated if set
+
+Auth: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (min 32 chars each).
+CORS: `ALLOWED_ORIGINS` (comma-separated list).
+Transport: `REDIS_URL` (URL), `RATE_LIMIT_MAX_REQUESTS`, `RATE_LIMIT_WINDOW_MS`.
+Workers: `OUTBOX_WORKER_DISABLED` (`true`/`false`), `OUTBOX_INTERVAL_MS`,
+`OUTBOX_BATCH_SIZE`, `BOSSNYUMBA_BG_TASKS_ENABLED`.
+Observability: `SENTRY_DSN` (URL), `SENTRY_ENVIRONMENT`,
+`SENTRY_TRACES_SAMPLE_RATE` (0..1), `POSTHOG_API_KEY`, `POSTHOG_HOST` (URL),
+`GIT_SHA`.
+AI: `ANTHROPIC_API_KEY` (must start with `sk-ant-`),
+`OPENAI_API_KEY` (must start with `sk-`), `ELEVENLABS_API_KEY`,
+`ELEVENLABS_DEFAULT_VOICE_ID`.
+OCR: `OCR_PROVIDER` in {aws_textract, google_vision, tesseract, none},
+`GOOGLE_APPLICATION_CREDENTIALS`, `AWS_TEXTRACT_REGION`.
+Payments (TZ): `GEPG_ENV` in {sandbox, production}, `GEPG_BASE_URL`,
+`GEPG_CALLBACK_BASE_URL`, `GEPG_HMAC_SECRET`, `GEPG_HEALTH_URL`, `GEPG_PKCS`,
+`GEPG_PSP_MODE` in {client_cert, hmac}, `GEPG_PUBLIC_CERT_PEM`, `GEPG_SP`,
+`GEPG_SP_SYS_ID`.
+SMS: `AFRICASTALKING_WEBHOOK_SECRET`, `META_APP_SECRET`, `TWILIO_AUTH_TOKEN`.
+Internal: `API_KEYS`, `API_KEY_REGISTRY`, `INTERNAL_API_KEY`,
+`AGENT_CERT_SIGNING_SECRET`, `WEBHOOK_DEFAULT_HMAC_SECRET`.
+Inter-service: `API_URL`, `NOTIFICATIONS_SERVICE_URL`, `TENANT_SERVICE_URL`.
+Tenant defaults: `DEFAULT_TENANT_CITY`, `DEFAULT_TENANT_COUNTRY`,
+`DEFAULT_TENANT_CURRENCY` (3-letter), `DEV_DEFAULT_COUNTRY_CODE` (2-letter).
+Health: `DEEP_HEALTH_CACHE_MS`. Testing: `USE_MOCK_DATA` (`true`/`false`).
+
+### Production-only warnings (logged, not fatal)
+
+When `NODE_ENV=production`, the validator emits a warning for each of these
+when not set: `SENTRY_DSN`, `REDIS_URL`, `ALLOWED_ORIGINS`, `APP_VERSION`,
+`GIT_SHA`. It also warns if `JWT_SECRET` is under 64 characters in production.
+
+### Development-mode nudge
+
+If `NODE_ENV=development` and `DATABASE_URL` does not reference `localhost`,
+the validator warns — a guard against accidentally pointing dev at a shared
+Postgres.
+
+### How to bypass at test time
+
+Set `NODE_ENV=test` (the gateway skips env validation so vitest fixtures
+don't need to fulfil every production var).
 

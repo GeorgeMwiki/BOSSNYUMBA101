@@ -172,3 +172,7 @@ export * from './autonomy.schema.js';
 
 // Marketing leads — post-chat handoff profiles for signup pre-fill.
 export * from './marketing-leads.schema.js';
+
+// Organizational Awareness — process observations, bottlenecks,
+// improvement snapshots. Powers "talk to your organization" tool.
+export * from './org-awareness.schema.js';

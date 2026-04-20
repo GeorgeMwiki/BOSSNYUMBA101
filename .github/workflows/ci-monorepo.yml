@@ -120,11 +120,20 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # build — produces dist artifacts uploaded for downstream deploy workflows.
+  # Next.js apps validate required public-env at build time; CI supplies
+  # placeholder values so the guard passes. Production deploys inject the
+  # real values via the deploy workflows.
   # ---------------------------------------------------------------------------
   build:
     name: Build
     runs-on: ubuntu-latest
     needs: typecheck
+    env:
+      NEXT_PUBLIC_APP_URL: https://ci-build.bossnyumba.invalid
+      NEXT_PUBLIC_API_URL: https://ci-build.bossnyumba.invalid/api
+      NEXT_PUBLIC_TENANT_CURRENCY: USD
+      NEXT_PUBLIC_TENANT_LOCALE: en
+      NEXT_PUBLIC_TENANT_COUNTRY: TZ
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3

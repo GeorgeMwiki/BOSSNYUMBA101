@@ -45,6 +45,10 @@
     "./training": {
       "types": "./src/training/index.ts",
       "default": "./dist/training/index.js"
+    },
+    "./autonomy": {
+      "types": "./src/autonomy/index.ts",
+      "default": "./dist/autonomy/index.js"
     }
   },
   "scripts": {

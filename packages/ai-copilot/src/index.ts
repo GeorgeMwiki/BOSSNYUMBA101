@@ -454,3 +454,11 @@ export * as RentCreditBuilding from './rent-credit-building/index.js';
 // ============================================
 export * as Training from './training/index.js';
 
+// ============================================
+// Organizational Awareness — process mining, bottleneck detection,
+// improvement tracking, and the "talk to your organization" skill.
+// Namespaced to avoid colliding with existing intelligence symbols.
+// ============================================
+export * as OrgAwareness from './org-awareness/index.js';
+export * as OrgSkills from './skills/org/index.js';
+

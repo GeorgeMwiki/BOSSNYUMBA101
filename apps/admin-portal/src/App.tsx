@@ -48,6 +48,10 @@ import Escalation from './pages/support/Escalation';
 import AICockpit from './pages/ai/AICockpit';
 import DesktopReview from './pages/DesktopReview';
 import TrainingPage from './pages/Training';
+// Wave 13 — Autonomous Department Mode
+import DelegationMatrix from './pages/DelegationMatrix';
+import HeadOfEstates from './pages/HeadOfEstates';
+import ExceptionsPage from './pages/Exceptions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -106,6 +110,9 @@ function AppRoutes() {
         <Route path="manager-chat" element={<ManagerChat />} />
         <Route path="desktop-review" element={<DesktopReview />} />
         <Route path="training" element={<TrainingPage />} />
+        <Route path="delegation" element={<DelegationMatrix />} />
+        <Route path="head" element={<HeadOfEstates />} />
+        <Route path="exceptions" element={<ExceptionsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="configuration" element={<ConfigurationPage />} />
         <Route path="audit" element={<AuditLogPage />} />

@@ -108,6 +108,28 @@ Coverage target: **90%+** of admin-write actions reachable by chat.
 
 ---
 
+## Wave-14 admin-skill additions
+
+The following `skill.admin.*` tools were added in Wave-14 to close direct-write gaps
+and integrate with autonomy + training subsystems. Each is wired into
+`ADMIN_SKILL_TOOLS` (see `packages/ai-copilot/src/skills/admin/index.ts`) and
+registered by `registerDefaultSkills`.
+
+| Skill | Risk gate | Integrates with |
+|---|---|---|
+| `skill.admin.create_case` | committed | maintenance taxonomy |
+| `skill.admin.assign_work_order` | PROPOSED > KES 100k | vendor directory |
+| `skill.admin.approve_lease_renewal` | PROPOSED > 10% rent delta | leasing renewal queue |
+| `skill.admin.send_rent_reminder` | PROPOSED > 25 recipients | comms broker |
+| `skill.admin.draft_owner_statement` | committed (draft only) | finance rollup |
+| `skill.admin.approve_tender_bid` | PROPOSED >= KES 500k | tender scoring output |
+| `skill.admin.resolve_arrears_case` | PROPOSED >= KES 20k or write_off | arrears register |
+| `skill.admin.reissue_letter` | PROPOSED always (tenant-facing) | letters service |
+| `skill.admin.update_property_fields` | committed (allow-listed fields) | property registry |
+| `skill.admin.assign_training` | PROPOSED > 25 assignees | Wave-13 training paths |
+| `skill.admin.acknowledge_exception` | committed | Wave-14 autonomy exceptions |
+| `skill.admin.update_autonomy_policy` | PROPOSED always (org-wide) | Wave-14 autonomy engine |
+
 ## Coverage summary
 
 | Bucket | Actions | Chat-enabled | Coverage |
@@ -121,7 +143,13 @@ Coverage target: **90%+** of admin-write actions reachable by chat.
 | Compliance | 6 | 6 | 100% |
 | Users + org | 6 | 6 | 100% |
 | Advanced | 5 | 4 | 80% (impersonation intentionally excluded) |
-| **Total** | **50** | **49** | **98%** |
+| Admin (Wave-14) | 12 | 12 | 100% |
+| **Total** | **62** | **61** | **98.4%** |
+
+Before Wave-14: 50 actions / 49 chat-enabled = 98%.
+After Wave-14: 62 actions / 61 chat-enabled = 98.4% — well above the 90% target.
+Twelve new `skill.admin.*` tools added, each with tenant-isolation + (where applicable)
+PROPOSED_ACTION gates.
 
 Only `impersonate tenant` is intentionally chat-exempt — super-admin impersonation requires MFA + navigation to `/admin/su/impersonate` by design (defense-in-depth).
 

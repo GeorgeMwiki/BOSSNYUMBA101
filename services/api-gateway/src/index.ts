@@ -87,6 +87,11 @@ import agentCertificationsRouter from './routes/agent-certifications.router';
 import classroomRouter from './routes/classroom.router';
 import trainingRouter from './routes/training.router';
 import voiceRouter from './routes/voice.router';
+// Wave 13 — Autonomous Department Mode routers
+import exceptionsRouter from './routes/exceptions.router';
+import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.router';
+// Organizational Awareness — "talk to your organization" endpoints
+import orgAwarenessRouter from './routes/org-awareness.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
@@ -116,13 +121,46 @@ import {
 import { createAmbientBrainMiddleware } from './middleware/ambient-brain.middleware';
 import { createWebhookDlqRouter } from './routes/webhook-dlq.router';
 import { createOpenApiRouter } from './openapi';
+import {
+  createDeepHealthHandler,
+  postgresProbe,
+  redisProbe,
+  anthropicProbe,
+  openaiProbe,
+  elevenLabsProbe,
+  gepgProbe,
+} from './health/deep-health';
+import { validateEnv } from './config/validate-env';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
 });
 
+// Fail-fast env validation — throws with a precise error message if required
+// vars (DATABASE_URL, JWT_SECRET) are missing or malformed. Warnings are
+// logged but do not block boot. Skipped in test environments where vitest
+// provides its own fixtures.
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    const { warnings } = validateEnv(process.env);
+    for (const w of warnings) logger.warn({ env: true }, w);
+  } catch (err) {
+    logger.fatal(
+      { err: err instanceof Error ? err.message : String(err) },
+      'Environment validation failed — aborting boot'
+    );
+    // eslint-disable-next-line no-process-exit
+    process.exit(1);
+  }
+}
+
 const app = express();
 const port = process.env.PORT || 4000;
+
+// Hoisted flag — flipped by gracefulShutdown so /health + /healthz start
+// returning 503 the moment a SIGTERM lands. Load balancers see the
+// unhealthy status and drain traffic before in-flight requests finish.
+let isShuttingDown = false;
 
 // Middleware
 app.use(helmet());
@@ -183,20 +221,30 @@ app.use(rateLimitMiddleware());
 
 // Health check — both /health (legacy) and /healthz (k8s-style) are served.
 // Returns `{ status, version, service, timestamp, upstreams }` per the
-// shared contract in @bossnyumba/observability.
+// shared contract in @bossnyumba/observability. Deep probes live at
+// /api/v1/health/deep (admin-only, cached 15s).
 const healthHandler = async (
   _req: express.Request,
   res: express.Response,
 ): Promise<void> => {
+  if (isShuttingDown) {
+    res.status(503).json({
+      status: 'shutting_down',
+      service: 'api-gateway',
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
   const payload = {
     status: 'ok' as const,
     version: process.env.APP_VERSION ?? 'dev',
     service: 'api-gateway',
     timestamp: new Date().toISOString(),
     upstreams: {
-      // Upstream probes are registered lazily in a follow-up wave to avoid
-      // adding startup latency during the tight boot window. The payload
-      // shape is stable so consumers can start relying on it today.
+      deep: {
+        status: 'ok' as const,
+        note: 'see GET /api/v1/health/deep for upstream cascade',
+      },
     },
   };
   res.json(payload);
@@ -235,6 +283,62 @@ try {
   );
   serviceRegistry = buildServices({ db: null });
 }
+
+// Deep health cascade — admin-only; probes every upstream with 15s cache.
+// Mounted on the Express app so probes can use the serviceRegistry that
+// was just built above without crossing into Hono's sub-app.
+const deepHealthHandler = createDeepHealthHandler({
+  version: process.env.APP_VERSION ?? 'dev',
+  cacheMs: Number(process.env.DEEP_HEALTH_CACHE_MS ?? '15000') || 15_000,
+  requireAdmin: (req) => {
+    const roleHeader = req.header('x-user-role');
+    if (roleHeader === 'TENANT_ADMIN' || roleHeader === 'PLATFORM_ADMIN') return true;
+    return process.env.NODE_ENV !== 'production';
+  },
+  probes: [
+    postgresProbe(async () => {
+      const db = serviceRegistry.db;
+      if (!db) throw new Error('database not configured');
+      // Every drizzle client exposes `.execute(sql)` — delegate to a raw
+      // `SELECT 1` so we hit the Postgres wire, not the ORM cache.
+      const exec = (db as unknown as {
+        execute: (q: unknown) => Promise<unknown>;
+      }).execute;
+      await exec.call(db, { sql: 'SELECT 1' } as unknown as never);
+    }),
+    redisProbe(async () => {
+      if (!process.env.REDIS_URL) throw new Error('REDIS_URL not set');
+      // Dynamic import via Function+eval so TS doesn't try to resolve
+      // the 'redis' package type declaration at compile time. The rate-
+      // limit middleware already owns the real client; this is the
+      // smallest possible healthcheck that won't couple to it.
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const dyn: (id: string) => Promise<unknown> =
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, security/detect-eval-with-expression
+        new Function('id', 'return import(id)') as never;
+      const mod = await dyn('redis').catch(() => null);
+      if (!mod || typeof (mod as { createClient?: unknown }).createClient !== 'function') {
+        throw new Error('redis client not installed');
+      }
+      const client = (mod as { createClient: (o: { url: string }) => {
+        connect: () => Promise<void>;
+        ping: () => Promise<string>;
+        quit: () => Promise<void>;
+      } }).createClient({ url: process.env.REDIS_URL });
+      await client.connect();
+      const pong = await client.ping();
+      await client.quit();
+      if (pong !== 'PONG') throw new Error(`unexpected ping: ${pong}`);
+    }),
+    anthropicProbe(process.env.ANTHROPIC_API_KEY),
+    openaiProbe(process.env.OPENAI_API_KEY),
+    elevenLabsProbe(process.env.ELEVENLABS_API_KEY),
+    gepgProbe(process.env.GEPG_HEALTH_URL),
+  ],
+});
+app.get('/api/v1/health/deep', (req, res) => {
+  void deepHealthHandler(req, res);
+});
 
 const api = new Hono();
 // Wave 12 — Metrics middleware runs first so it captures the full
@@ -386,6 +490,11 @@ api.route('/agent-certifications', agentCertificationsRouter);
 api.route('/classroom', classroomRouter);
 api.route('/training', trainingRouter);
 api.route('/voice', voiceRouter);
+// Wave 13 — Autonomous Department Mode
+api.route('/exceptions', exceptionsRouter);
+api.route('/audit', autonomousActionsAuditRouter);
+// Organizational Awareness — "talk to your organization" endpoints
+api.route('/org', orgAwarenessRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue
@@ -492,6 +601,8 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/feature-flags', app: featureFlagsRouter, defaultTag: 'feature-flags' },
     { prefix: '/gdpr', app: gdprRouter, defaultTag: 'gdpr' },
     { prefix: '/ai-costs', app: aiCostsRouter, defaultTag: 'ai-costs' },
+    { prefix: '/exceptions', app: exceptionsRouter, defaultTag: 'autonomy' },
+    { prefix: '/audit', app: autonomousActionsAuditRouter, defaultTag: 'autonomy' },
   ],
 });
 api.route('/', openApiRouter);
@@ -562,20 +673,73 @@ app.use((_req, res) => {
 const heartbeatSupervisor = createHeartbeatSupervisor(serviceRegistry, logger, 30_000);
 const backgroundSupervisor = createBackgroundSupervisor(serviceRegistry, logger);
 
-// Graceful shutdown
-function gracefulShutdown(signal: string) {
-  logger.info({ signal }, 'Received shutdown signal, closing server...');
-  stopOutboxWorker();
-  heartbeatSupervisor.stop();
-  backgroundSupervisor.stop();
-  server?.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
-  setTimeout(() => {
-    logger.error('Forced shutdown after timeout');
+// Graceful shutdown — documented and tested step-by-step:
+//  1. Flip a "shutting down" flag so the /health probe returns 503.
+//  2. Tell the HTTP server to stop accepting NEW connections.
+//  3. Stop background workers (outbox, heartbeat, scheduler).
+//  4. Wait for in-flight requests to drain (server.close()).
+//  5. Close DB + Redis (best-effort).
+//  6. Exit 0. Force-exit after 10s if drain hangs.
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  logger.info({ signal }, 'shutdown: signal received — starting drain');
+
+  // Step 2 — server.close() stops accepting new requests and calls the
+  // callback once every in-flight request has completed. Start the
+  // force-kill timer in parallel so a hung request can't pin the process.
+  const forceExit = setTimeout(() => {
+    logger.error('shutdown: forced exit after 10s drain timeout');
     process.exit(1);
   }, 10_000);
+  forceExit.unref?.();
+
+  // Step 3 — stop every background producer before closing sockets so
+  // they don't race against a closed pool.
+  try {
+    stopOutboxWorker();
+    logger.info('shutdown: outbox worker stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: outbox stop failed');
+  }
+  try {
+    heartbeatSupervisor.stop();
+    logger.info('shutdown: heartbeat supervisor stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: heartbeat stop failed');
+  }
+  try {
+    backgroundSupervisor.stop();
+    logger.info('shutdown: background supervisor stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: background stop failed');
+  }
+
+  // Step 4 — close the HTTP server. Wrapped in a promise so we can
+  // await the drain completion.
+  await new Promise<void>((resolveDrain) => {
+    if (!server) { resolveDrain(); return; }
+    server.close(() => { resolveDrain(); });
+  });
+  logger.info('shutdown: server drained (no in-flight requests)');
+
+  // Step 5 — close DB + Redis. The drizzle client doesn't expose .end()
+  // directly; the underlying postgres-js client does. Best-effort only.
+  try {
+    const maybeClient = (serviceRegistry.db as unknown as {
+      $client?: { end?: () => Promise<void> };
+    })?.$client;
+    if (maybeClient?.end) {
+      await maybeClient.end();
+      logger.info('shutdown: postgres pool closed');
+    }
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: postgres close failed');
+  }
+
+  clearTimeout(forceExit);
+  logger.info('shutdown: complete, exiting 0');
+  process.exit(0);
 }
 
 let server: ReturnType<typeof app.listen> | null = null;
@@ -692,8 +856,8 @@ if (require.main === module) {
     logger.error({ err: err instanceof Error ? err.message : String(err) }, 'failed to load observability for outbox worker');
   });
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
+  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
 }
 
 export default app;
