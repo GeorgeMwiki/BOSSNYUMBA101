@@ -3,7 +3,7 @@
  *
  * Provides a camera viewfinder with live edge-detection overlay, multi-page
  * capture, re-take, and bundle-submit. Native camera + edge detection hooks
- * are stubbed and marked TODO; the React surface is production-shaped.
+ * are stubbed under KI-015; the React surface is production-shaped.
  *
  * Expected integrations (stubbed for this pass):
  *   - useMediaStream()        → getUserMedia wrapper
@@ -47,7 +47,8 @@ export interface ScannerCameraProps {
 // Stub hooks — replace with real implementations
 // ---------------------------------------------------------------------------
 
-// TODO: implement with navigator.mediaDevices.getUserMedia
+// TODO(KI-015): implement with navigator.mediaDevices.getUserMedia —
+//   see Docs/KNOWN_ISSUES.md#ki-015.
 function useMediaStream(_facingMode: 'environment' | 'user'): {
   stream: MediaStream | null;
   error: string | null;
@@ -55,14 +56,16 @@ function useMediaStream(_facingMode: 'environment' | 'user'): {
   return { stream: null, error: null };
 }
 
-// TODO: wire to WASM OpenCV / native edge detector
+// TODO(KI-015): wire to WASM OpenCV / native edge detector —
+//   see Docs/KNOWN_ISSUES.md#ki-015.
 function useEdgeDetection(_videoRef: React.RefObject<HTMLVideoElement>): {
   quad: readonly { x: number; y: number }[] | null;
 } {
   return { quad: null };
 }
 
-// TODO: implement perspective-correct crop using the detected quad
+// TODO(KI-015): implement perspective-correct crop using the detected
+//   quad — see Docs/KNOWN_ISSUES.md#ki-015.
 function deskewFrame(
   _video: HTMLVideoElement,
   _quad: readonly { x: number; y: number }[] | null
@@ -131,7 +134,7 @@ export function ScannerCamera(props: ScannerCameraProps): JSX.Element {
     <div className="scanner-camera" role="region" aria-label="Document scanner">
       <div className="scanner-camera__viewport">
         <video ref={videoRef} autoPlay playsInline muted />
-        {/* TODO: render the detected quad as an SVG overlay */}
+        {/* TODO(KI-015): render the detected quad as an SVG overlay. */}
         {quad ? (
           <svg className="scanner-camera__quad" aria-hidden="true" />
         ) : null}

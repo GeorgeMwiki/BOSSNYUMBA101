@@ -8,7 +8,8 @@
  *      retries cannot double-credit the ledger.
  *
  * We implement both here. The idempotency cache is process-local; a
- * Redis-backed replacement is a TODO for multi-replica deployments.
+ * Redis-backed replacement is tracked as KI-012 for multi-replica
+ * deployments. See Docs/KNOWN_ISSUES.md#ki-012.
  */
 
 import type { Request, Response, NextFunction } from 'express';

@@ -74,6 +74,66 @@ describe('AnthropicProvider tool-use parsing', () => {
   });
 });
 
+describe('AnthropicProvider tool-name sanitization', () => {
+  let originalFetch: typeof globalThis.fetch;
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  /**
+   * Regression: Anthropic enforces `^[a-zA-Z0-9_-]{1,128}$` on every
+   * tool name. Internal skill ids like `skill.maintenance.triage` contain
+   * dots and therefore must be rewritten on the way out, and restored on
+   * the way back in so the orchestrator's dispatcher continues to look up
+   * skills by their canonical id.
+   */
+  it('rewrites dotted tool names on the request and restores them on tool_use', async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi.fn(async (_url: unknown, init: RequestInit | undefined) => {
+      const raw = typeof init?.body === 'string' ? init!.body : '';
+      capturedBody = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      return new Response(
+        JSON.stringify({
+          content: [
+            {
+              type: 'tool_use',
+              id: 'tu_1',
+              // Anthropic will echo back the sanitized name the caller sent.
+              name: 'skill__maintenance__triage',
+              input: { caseId: 'c1' },
+            },
+          ],
+          stop_reason: 'tool_use',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }) as typeof globalThis.fetch;
+
+    const p = new AnthropicProvider({ apiKey: 'sk-ant-test', maxRetries: 0 });
+    const result = await p.complete({
+      prompt: compiled,
+      tools: [
+        {
+          name: 'skill.maintenance.triage',
+          description: 'Triage a case',
+          inputSchema: { type: 'object' },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    const sentTools = (capturedBody.tools ?? []) as Array<{ name: string }>;
+    expect(sentTools[0]?.name).toBe('skill__maintenance__triage');
+    if (result.success) {
+      // Canonical dotted name is restored so the dispatcher can look it up.
+      expect(result.data.toolCalls?.[0]?.name).toBe('skill.maintenance.triage');
+    }
+  });
+});
+
 describe('AnthropicProvider retry/backoff', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => {

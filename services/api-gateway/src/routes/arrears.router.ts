@@ -83,6 +83,31 @@ const RejectSchema = z.object({
 const app = new Hono();
 app.use('*', authMiddleware);
 
+// --- GET /cases — tenant-scoped list of arrears cases ----------------------
+app.get('/cases', async (c) => {
+  const auth = c.get('auth');
+  const status = c.req.query('status') || undefined;
+  const limit = Math.min(200, Number(c.req.query('limit') ?? '50'));
+  const offset = Math.max(0, Number(c.req.query('offset') ?? '0'));
+  const service = getService(c);
+  if (!service || typeof (service as { listCases?: unknown }).listCases !== 'function') {
+    // Graceful: service may not expose listCases in all implementations.
+    // Return empty envelope with a clear note so UIs render empty state.
+    return c.json({
+      success: true,
+      data: [],
+      meta: { total: 0, limit, offset, note: 'listCases not yet exposed by arrears service' },
+    });
+  }
+  try {
+    const cases = await (service as { listCases: (tenantId: string, opts: unknown) => Promise<unknown[]> })
+      .listCases(auth.tenantId, { status, limit, offset });
+    return c.json({ success: true, data: cases, meta: { limit, offset } });
+  } catch (err) {
+    return mapError(c, err);
+  }
+});
+
 // --- GET projection ---------------------------------------------------------
 app.get('/cases/:id/projection', async (c) => {
   const auth = c.get('auth');

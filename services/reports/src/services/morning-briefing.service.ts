@@ -215,10 +215,10 @@ export class MorningBriefingService {
       this.dataProvider.getVendorUpdates(tenantId),
       this.dataProvider.getPortfolioStats(tenantId, propertyIds),
       this.getKPIAlerts(tenantId, propertyIds),
-      // TODO(tenant-context): weather location should come from
-      // `tenant.primaryCity` / tenant office location, not a hardcoded
-      // string. Passing undefined lets the provider fall back to its
-      // own default or skip the lookup.
+      // TODO(KI-005): weather location should come from tenant.primaryCity
+      //   once the tenants-table migration lands. Passing undefined lets
+      //   the provider fall back to its own default or skip the lookup.
+      //   See Docs/KNOWN_ISSUES.md#ki-005.
       this.dataProvider.getWeather?.() ?? Promise.resolve(null),
     ]);
 
@@ -227,8 +227,9 @@ export class MorningBriefingService {
 
     // Generate personalized greeting
     const greeting = this.generateGreeting(recipient.name, now);
-    // TODO(tenant-context): locale should come from recipient.locale /
-    // tenant.defaultLocale. Using bare 'en' fallback until plumbed.
+    // TODO(KI-005): locale should come from recipient.locale /
+    //   tenant.defaultLocale. Using bare 'en' fallback until plumbed.
+    //   See Docs/KNOWN_ISSUES.md#ki-005.
     const dayOfWeek = now.toLocaleDateString('en', { weekday: 'long' });
 
     return {

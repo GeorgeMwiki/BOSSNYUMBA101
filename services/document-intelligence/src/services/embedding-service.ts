@@ -1,9 +1,11 @@
 /**
  * Embedding Service (NEW 15)
  *
- * Chunks document text and generates vector embeddings. The actual
- * embedding-model call is stubbed with a TODO — swap in OpenAI
- * (`text-embedding-3-small`) or Anthropic/Voyage when wiring is added.
+ * Chunks document text and generates vector embeddings. The default
+ * `StubEmbeddingModel` emits deterministic vectors so tests/dev run
+ * without an API key — production swaps in a real port (OpenAI
+ * `text-embedding-3-small` or Voyage). See KI-009 for the aligned
+ * plan on wiring the Anthropic doc-chat adapter.
  */
 
 export interface TextChunk {
@@ -27,15 +29,23 @@ export interface EmbeddingServiceOptions {
   readonly model: IEmbeddingModelPort;
   readonly chunkSize?: number;
   readonly chunkOverlap?: number;
+  /** Max chunks sent per model.embed() call. Default: 32. */
+  readonly batchSize?: number;
+  /** Max concurrent model.embed() calls. Default: 4. */
+  readonly maxConcurrency?: number;
 }
 
 export class EmbeddingService {
   private readonly chunkSize: number;
   private readonly chunkOverlap: number;
+  private readonly batchSize: number;
+  private readonly maxConcurrency: number;
 
   constructor(private readonly options: EmbeddingServiceOptions) {
     this.chunkSize = options.chunkSize ?? 1000;
     this.chunkOverlap = options.chunkOverlap ?? 150;
+    this.batchSize = Math.max(1, options.batchSize ?? 32);
+    this.maxConcurrency = Math.max(1, options.maxConcurrency ?? 4);
   }
 
   /** Split text into overlapping character-window chunks. */
@@ -58,18 +68,52 @@ export class EmbeddingService {
 
   async embedChunks(chunks: readonly TextChunk[]): Promise<readonly EmbeddedChunk[]> {
     if (chunks.length === 0) return [];
-    // TODO: batch with concurrency control; handle rate limits.
-    const vectors = await this.options.model.embed(chunks.map((c) => c.text));
-    if (vectors.length !== chunks.length) {
-      throw new Error(
-        `embedding count mismatch: expected ${chunks.length}, got ${vectors.length}`
-      );
+
+    // Split into batches of `batchSize` and cap concurrent embed() calls
+    // at `maxConcurrency`. This keeps a burst of thousands of chunks from
+    // stampeding the upstream provider and respects per-request token
+    // limits. Rate-limit handling (429) is the provider adapter's
+    // responsibility — a 429 thrown here bubbles up to the caller so the
+    // ingest job can retry with backoff at a higher level.
+    const batches: TextChunk[][] = [];
+    for (let i = 0; i < chunks.length; i += this.batchSize) {
+      batches.push(chunks.slice(i, i + this.batchSize));
     }
-    return chunks.map((c, i) => ({
-      ...c,
-      embedding: vectors[i] ?? [],
-      embeddingModel: this.options.model.model,
-    }));
+
+    const results = new Array<readonly number[][]>(batches.length);
+    let cursor = 0;
+
+    const runOne = async (): Promise<void> => {
+      while (cursor < batches.length) {
+        const idx = cursor++;
+        const batch = batches[idx];
+        if (!batch) continue;
+        const vectors = await this.options.model.embed(batch.map((c) => c.text));
+        if (vectors.length !== batch.length) {
+          throw new Error(
+            `embedding count mismatch (batch ${idx}): expected ${batch.length}, got ${vectors.length}`
+          );
+        }
+        results[idx] = vectors;
+      }
+    };
+
+    const workerCount = Math.min(this.maxConcurrency, batches.length);
+    await Promise.all(Array.from({ length: workerCount }, () => runOne()));
+
+    const flat: EmbeddedChunk[] = [];
+    for (let b = 0; b < batches.length; b++) {
+      const batch = batches[b]!;
+      const vectors = results[b]!;
+      for (let i = 0; i < batch.length; i++) {
+        flat.push({
+          ...batch[i]!,
+          embedding: vectors[i] ?? [],
+          embeddingModel: this.options.model.model,
+        });
+      }
+    }
+    return flat;
   }
 
   async embedDocumentText(

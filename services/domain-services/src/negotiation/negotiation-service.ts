@@ -11,8 +11,8 @@
  *   rejectOffer()       – close with reason; emits event.
  *   getAudit()          – replay turns (append-only log).
  *
- * The LLM call itself is STUBBED here with a TODO. Policy enforcement
- * runs both before (upper-bound) and after (re-check) the LLM so that a
+ * The LLM call itself is stubbed (see KI-008). Policy enforcement runs
+ * both before (upper-bound) and after (re-check) the LLM so that a
  * prompt-injected counter below floor is still rejected.
  */
 
@@ -158,8 +158,10 @@ export type AiCounterGenerator = (
 
 /**
  * Default stub — clamps midway between last offer and lowerBound.
- * TODO: wire to Anthropic client (see packages/ai-copilot/src/providers/).
- * When wiring, do NOT remove the post-LLM policy re-check in this service.
+ * TODO(KI-008): wire to Anthropic client (see
+ *   packages/ai-copilot/src/providers/). When wiring, do NOT remove
+ *   the post-LLM policy re-check in this service — it is the
+ *   compliance safety net. See Docs/KNOWN_ISSUES.md#ki-008.
  */
 export const defaultStubAiCounterGenerator: AiCounterGenerator = async (
   req

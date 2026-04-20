@@ -228,8 +228,10 @@ export class ConditionalSurveyService {
   /**
    * Compile the survey's findings into a report + draft action plans.
    *
-   * TODO: wire to AI persona — once the narrative-generation agent is wired
-   * in, call the persona here with the finding set to produce `narrative`.
+   * TODO(KI-007): wire to AI persona — once the narrative-generation
+   *   agent (packages/ai-copilot/src/personas/inspection-narrator.ts)
+   *   is authored, call the persona here with the finding set to
+   *   produce `narrative`. See Docs/KNOWN_ISSUES.md#ki-007.
    */
   async compileReport(
     surveyId: ConditionalSurveyId,
@@ -309,7 +311,8 @@ export class ConditionalSurveyService {
       lowCount: survey.findings.filter((f) => f.severity === 'low').length,
     };
 
-    // TODO: wire to AI persona for narrative generation.
+    // TODO(KI-007): wire to AI persona for narrative generation.
+    //   See Docs/KNOWN_ISSUES.md#ki-007.
     const narrative =
       survey.narrative ??
       `Conditional survey compiled on ${now}. ${summary.findingCount} findings recorded.`;

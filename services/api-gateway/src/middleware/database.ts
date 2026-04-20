@@ -156,9 +156,14 @@ import { sql } from 'drizzle-orm';
  *     setting cannot leak across requests sharing the pool.
  */
 export const databaseMiddleware = createMiddleware(async (c, next) => {
-  const database = getDatabase();
-  const repos = getRepositories();
-  const useMockData = USE_MOCK_DATA || !database;
+  // Unit tests can pre-populate `db` and `repos` on the context to exercise
+  // routers without a live Postgres. We honour an existing binding so the
+  // middleware becomes a no-op in that case; in production the context is
+  // always empty at this point so the real client is created as before.
+  const preInjectedDb = c.get('db');
+  const database = preInjectedDb ?? getDatabase();
+  const repos = c.get('repos') ?? getRepositories();
+  const useMockData = !preInjectedDb && (USE_MOCK_DATA || !database);
 
   c.set('db', database);
   c.set('repos', repos);

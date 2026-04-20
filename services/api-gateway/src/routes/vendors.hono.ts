@@ -51,16 +51,20 @@ app.get('/', async (c) => {
   const p = parseListPagination(c);
   const status = c.req.query('status')?.toLowerCase();
   const specialization = c.req.query('specialization');
-  // Specialization/status are in-memory filters; cap fetch at 500.
-  // TODO: push filters into repos.vendors.findMany.
-  const rows = specialization
-    ? await repos.vendors.findBySpecialization(specialization, auth.tenantId)
-    : (status
-        ? (await repos.vendors.findMany(auth.tenantId, 500, 0)).items.filter((row: any) => row.status === status)
-        : (await repos.vendors.findMany(auth.tenantId, 500, 0)).items);
-  const items = rows.map(mapVendorRow);
-  const pageSlice = items.slice(p.offset, p.offset + p.limit);
-  return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
+  // Filters are pushed into repos.vendors.findMany's DB-level WHERE
+  // clause (status = $1, specializations @> $2::jsonb). Tenant
+  // isolation is enforced by the repo.
+  const result = await repos.vendors.findMany(
+    auth.tenantId,
+    p.limit,
+    p.offset,
+    { status, specialization }
+  );
+  const items = result.items.map(mapVendorRow);
+  return c.json({
+    success: true,
+    ...buildListResponse(items, result.total, p),
+  });
 });
 
 app.get('/available', async (c) => {

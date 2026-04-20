@@ -147,3 +147,254 @@ DB.
 **Proposed fix.** Part of KI-001 — add the migrate-verify step. No
 router change needed; MCP already surfaces the Postgres error cleanly
 via its error envelope.
+
+---
+
+## KI-005 — Tenant-aware defaults (timezone, locale, currency, city) not plumbed
+
+**Severity:** LOW (defaults fall back to neutral values — UTC, en, USD).
+
+**Sites.**
+- `services/api-gateway/src/routes/scheduling.ts:205` — availability
+  timezone hardcoded to `UTC`.
+- `services/notifications/src/whatsapp/reminder-engine.ts:625` —
+  reminder date format uses bare `sw` / `en` language tag.
+- `services/reports/src/services/morning-briefing.service.ts:218` —
+  weather lookup has no location; `230` — day-of-week is `en` only.
+- `packages/marketing-brain/src/sandbox/sandbox-scenarios.ts:324` —
+  sandbox hardcodes a locale.
+- `packages/chat-ui/src/generative-ui/block-generator.ts:83` —
+  defaultCurrency fallback.
+- `packages/ai-copilot/src/skills/estate/property-valuation.ts:30` —
+  currency is caller-supplied but should also accept a tenant default.
+- `packages/domain-models/src/intelligence/tenant-preference-profile.ts:203`
+  — timezone populated from a fallback.
+
+**Root cause.** The `tenants` table does not yet expose
+`defaultTimezone`, `defaultLocale`, `primaryCity`, or
+`defaultCurrency` columns surfaced to the API layer. Country-code-based
+currency resolution already works via `getDefaultCurrency(countryCode)`.
+
+**Proposed fix.**
+1. Schema migration: add `defaultTimezone` (IANA),
+   `defaultLocale` (BCP-47), `primaryCityName`, `defaultCurrency`
+   columns to `tenants` (nullable; fall back to country-code defaults).
+2. Surface the resolved values through the auth middleware in a
+   `c.get('tenantSettings')` context.
+3. Replace each TODO(KI-005) site with a read from that context.
+
+**Owners.** Platform / Tenant-onboarding.
+
+---
+
+## KI-006 — GePG direct-integration HTTP client still sandbox-synthetic
+
+**Severity:** LOW in Tanzania launch (PSP-shortcut mode is the
+primary path per RESEARCH_ANSWERS.md Q2; direct GePG is a fallback).
+
+**Sites.** `services/payments/src/providers/gepg/gepg-client.ts:63` and
+`:145` — sandbox branch synthesizes deterministic 12-digit control
+numbers so the downstream pipeline (matcher, ledger, notifications)
+can be exercised without live credentials.
+
+**Root cause.** Live GePG sandbox credentials (SP, SpSysId, PKCS#12
+cert) have not been provisioned. Production path through the PSP is
+fully wired; GePG-direct is the backup.
+
+**Proposed fix.** When credentials land, replace the sandbox branch
+with the real SOAP/REST envelope build (spec §3) — the function
+signature already matches the production return shape so only the
+body is missing.
+
+**Owners.** Payments / TZ launch squad.
+
+---
+
+## KI-007 — Inspection narrative generation awaits AI-persona wiring
+
+**Severity:** LOW (inspections compile and save correctly — the
+`narrative` field just defaults to a terse summary until a persona is
+plugged in).
+
+**Sites.**
+- `services/domain-services/src/inspections/conditional-survey/conditional-survey-service.ts:231`
+  and `:312`.
+- `services/domain-services/src/inspections/move-out/move-out-checklist-service.ts:472`
+  and `.../photo-comparator.ts:39`.
+- `services/domain-services/src/inspections/far/far-scheduler.ts:45`.
+
+**Root cause.** The narrative-generation persona / prompt-chain
+(`packages/ai-copilot/src/personas/inspection-narrator.ts`) has not
+been authored yet. Ports accept an optional persona seam already.
+
+**Proposed fix.** Author the persona under `ai-copilot/personas`,
+register with `BrainRegistry`, inject into each inspection service
+via the composition root.
+
+**Owners.** AI-Copilot.
+
+---
+
+## KI-008 — Negotiation AI counter-offer generator is a stub
+
+**Severity:** LOW (the stub clamps midway between last offer and
+lowerBound — policy re-check still runs after, so no compliance risk).
+
+**Site.** `services/domain-services/src/negotiation/negotiation-service.ts:161`
+— `defaultStubAiCounterGenerator`.
+
+**Root cause.** Anthropic client adapter not yet wired to this
+service. `packages/ai-copilot/src/providers/anthropic-client.ts`
+exists; the negotiation service needs a thin adapter.
+
+**Proposed fix.** Add `packages/ai-copilot/src/personas/negotiator.ts`
+exporting an `AiCounterGenerator`, wire via composition root. Keep
+the post-LLM policy re-check as the safety net.
+
+**Owners.** AI-Copilot + Leasing.
+
+---
+
+## KI-009 — document-chat service still uses `StubAnthropicDocChatLlm`
+
+**Severity:** MEDIUM (RAG answers are deterministic echo strings with
+one citation, not real LLM answers). Functionally visible to users
+who query documents.
+
+**Site.**
+`services/document-intelligence/src/services/document-chat.service.ts:306`.
+
+**Root cause.** The Anthropic Messages client is available at
+`packages/ai-copilot/src/providers/anthropic-client.ts` but the
+DocChat service has not been rewired.
+
+**Proposed fix.** Replace `StubAnthropicDocChatLlm` with a real
+adapter that emits `<citations>` tags per claim and parses them back
+into `DocChatCitation[]`. Unit test with recorded fixtures. Gate on
+`ANTHROPIC_API_KEY` presence at composition root; fall back to stub
+when absent.
+
+**Owners.** Document-Intelligence.
+
+---
+
+## KI-010 — Station-master polygon coverage deferred until GeoNode live
+
+**Severity:** LOW. Radius-based and district-based coverage work; only
+`polygon` kind is skipped.
+
+**Sites.**
+- `services/domain-services/src/routing/station-master-router.ts:83`.
+- `services/domain-services/src/routing/types.ts:14`.
+- `packages/database/src/schemas/station-master-coverage.schema.ts:29`.
+- `apps/admin-portal/src/features/station-master-coverage/StationMasterCoverageEditor.tsx:8`.
+
+**Root cause.** GeoNode (OSM-derived admin-polygon service) is not
+yet deployed. Depends on `@googlemaps/js-api-loader` + `@turf/boolean-point-in-polygon`.
+
+**Proposed fix.** When GeoNode ships, swap the `polygon` case from
+`skip` to `turf.booleanPointInPolygon` lookup; lift the guard in
+`polygon-kind` tests.
+
+**Owners.** Platform / Geo.
+
+---
+
+## KI-011 — Production scanner missing deskew + PDF assembler
+
+**Severity:** LOW (scans are delivered as per-page images; single-PDF
+output is a deferred nice-to-have).
+
+**Sites.** `services/document-intelligence/src/scan/scan-service.ts:130`
+(deskew), `:140` (PDF assembler), `:249` (per-page buffer fetch).
+
+**Root cause.** WASM OpenCV and `pdf-lib` not yet in the dep graph.
+
+**Proposed fix.** Add `pdf-lib` + `@techstark/opencv-js` behind a
+feature flag; wire the deskew step into the scan pipeline.
+
+**Owners.** Document-Intelligence.
+
+---
+
+## KI-012 — M-Pesa webhook idempotency cache is process-local
+
+**Severity:** MEDIUM for multi-replica deployments (two pods could
+accept the same `CheckoutRequestID` concurrently before either
+persists the ledger entry, enabling a narrow double-credit window).
+
+**Site.**
+`services/payments-ledger/src/middleware/mpesa-webhook.middleware.ts:11`.
+
+**Root cause.** The cache is an in-process `LRUCache`. Redis is
+available (`REDIS_URL`) but not wired here.
+
+**Proposed fix.** Add a `RedisIdempotencyStore` adapter that uses
+`SET key val NX EX 300` to claim the slot atomically. Swap via
+composition root when `REDIS_URL` is set.
+
+**Owners.** Payments.
+
+---
+
+## KI-013 — Migration Wizard copilot `/ask` endpoint is a thin ack
+
+**Severity:** LOW (the wizard UX still works in read-only mode; chat
+replies are placeholder acks until the copilot is wired).
+
+**Site.** `services/api-gateway/src/routes/migration.router.ts:167`.
+
+**Root cause.** `MigrationWizardCopilot` exists in
+`packages/ai-copilot/src/copilots/migration-wizard/` but is not yet
+registered in the shared `BrainRegistry`.
+
+**Proposed fix.** Register the copilot at composition root, replace
+the ack with `copilot.run({ tenantId, actorId, runId, message })`.
+
+**Owners.** AI-Copilot.
+
+---
+
+## KI-014 — OCR provider adapters still stubbed (Textract / Vision)
+
+**Severity:** LOW (tesseract fallback works for dev; production
+tenants needing Textract/Vision quality are not yet onboarded).
+
+**Site.** `services/document-intelligence/src/providers/types.ts:7`.
+
+**Root cause.** `@aws-sdk/client-textract` and
+`@google-cloud/vision` are declared optional deps to keep the package
+buildable without cloud credentials.
+
+**Proposed fix.** Add a `pnpm add -F @bossnyumba/document-intelligence`
+step for the two SDKs in the deployment image; wire the adapters.
+
+**Owners.** Document-Intelligence.
+
+---
+
+## KI-015 — Peripheral stubs: xlsx parser, docxtemplater, ScannerCamera, feed adapter
+
+**Severity:** LOW. Each has a clear graceful-degradation path.
+
+**Sites.**
+- `packages/ai-copilot/src/services/migration/parsers/xlsx-parser.ts:24`
+  — `exceljs` wiring (CSV is the live path).
+- `packages/ai-copilot/src/services/migration/parsers/csv-parser.ts:22`
+  — papaparse upgrade (hand-rolled parser works).
+- `services/domain-services/src/documents/renderers/renderer-interface.ts:9`
+  — `docxtemplater` install pending.
+- `packages/design-system/src/ScannerCamera.tsx:50,58,65,134` —
+  camera + edge detection is a React-surface-only stub.
+- `packages/market-intelligence/src/feed-adapters/external-feed-placeholder.ts:2`
+  — external market-feed adapter.
+- `services/reports/src/generators/interactive-html-generator.ts:61` —
+  video player polish (videojs / Plyr).
+
+**Root cause.** Each depends on a library install or external
+credential that is not on the current milestone.
+
+**Proposed fix.** File individual tickets per site when a tenant
+contract requires the feature.
+
+**Owners.** Various squads — file per use case.

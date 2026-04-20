@@ -11,9 +11,10 @@ export interface TagCoverage {
 
 export interface PolygonCoverage {
   readonly kind: 'polygon';
-  // TODO(@googlemaps/js-api-loader + turf): enable polygon matching
-  // once the GeoNode hierarchy is live. For now, a polygon-kind row is
-  // skipped during matching and logged.
+  // TODO(KI-010): enable polygon matching via @googlemaps/js-api-loader
+  //   + @turf/boolean-point-in-polygon once GeoNode is live. Today a
+  //   polygon-kind row is skipped during matching and logged.
+  //   See Docs/KNOWN_ISSUES.md#ki-010.
   readonly value: { readonly geoJson: unknown };
 }
 

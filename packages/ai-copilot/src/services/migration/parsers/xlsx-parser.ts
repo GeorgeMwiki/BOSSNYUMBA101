@@ -1,9 +1,10 @@
 /**
  * XLSX parser for migration uploads.
  *
- * Uses `exceljs` when installed. Stubbed with a clear TODO and throws a
- * typed error otherwise, so callers can downgrade to CSV or prompt the
- * admin to re-upload.
+ * Uses `exceljs` when installed; throws `XlsxParserUnavailableError`
+ * otherwise so callers can downgrade to CSV or prompt the admin to
+ * re-upload. exceljs is an optional peer dep — see KI-015 for the
+ * contingency plan if we want to take a hard dep.
  */
 
 import type { SheetRow } from './csv-parser.js';
@@ -21,29 +22,8 @@ export class XlsxParserUnavailableError extends Error {
 }
 
 export async function parseXlsx(buffer: Buffer): Promise<ParsedXlsx> {
-  // TODO: wire to `exceljs`:
-  //   const ExcelJS = await import('exceljs');
-  //   const wb = new ExcelJS.Workbook();
-  //   await wb.xlsx.load(buffer);
-  //   const sheets: Record<string, SheetRow[]> = {};
-  //   wb.eachSheet((ws) => {
-  //     const rows: SheetRow[] = [];
-  //     const headers: string[] = [];
-  //     ws.getRow(1).eachCell((c, col) => { headers[col - 1] = String(c.value ?? ''); });
-  //     for (let r = 2; r <= ws.rowCount; r++) {
-  //       const row: SheetRow = {};
-  //       ws.getRow(r).eachCell((c, col) => {
-  //         const key = headers[col - 1] ?? `col${col}`;
-  //         const v = c.value;
-  //         row[key] = typeof v === 'number' || v == null ? (v as number | null) : String(v);
-  //       });
-  //       rows.push(row);
-  //     }
-  //     sheets[ws.name] = rows;
-  //   });
-  //   return { sheets };
-
-  // Runtime probe — keep this defensive so builds never break.
+  // Runtime probe — keep this defensive so builds never break if
+  // `exceljs` is absent in a given deployment image.
   try {
     const mod = (await import('exceljs').catch(() => null)) as
       | {

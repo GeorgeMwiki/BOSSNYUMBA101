@@ -19,10 +19,12 @@ export async function parseCsv(
 ): Promise<ParsedCsv> {
   const text = buffer.toString('utf8').replace(/^\uFEFF/, '');
 
-  // TODO: if papaparse is added to dependencies, prefer it for robustness:
-  //   const Papa = await import('papaparse');
-  //   const { data } = Papa.parse<SheetRow>(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
-  //   return { sheetName, rows: data };
+  // TODO(KI-015): if papaparse is added as a hard dep, prefer it for
+  //   robustness (streaming, quoted-newline handling):
+  //     const Papa = await import('papaparse');
+  //     const { data } = Papa.parse<SheetRow>(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+  //     return { sheetName, rows: data };
+  //   See Docs/KNOWN_ISSUES.md#ki-015.
 
   return { sheetName, rows: minimalCsvParse(text) };
 }

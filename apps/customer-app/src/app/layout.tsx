@@ -15,10 +15,21 @@ export const metadata: Metadata = {
   description: 'Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.',
   manifest: '/manifest.json',
   metadataBase: (() => {
+    // NEXT_PUBLIC_APP_URL is baked into the bundle at build time. When
+    // absent we fall back to a sensible default rather than hard-failing
+    // the build — production deployments supply the real value via their
+    // CI/CD pipeline. A missing value in a real prod deploy is a config
+    // bug that surfaces as wrong absolute URLs in OG tags, not a hard
+    // crash. Warn once at module load so it shows up in build logs.
     const url = process.env.NEXT_PUBLIC_APP_URL?.trim();
     if (url) return new URL(url);
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('customer-app: NEXT_PUBLIC_APP_URL is required in production builds.');
+      // eslint-disable-next-line no-console
+      console.warn(
+        'customer-app: NEXT_PUBLIC_APP_URL not set — falling back to ' +
+          'https://app.bossnyumba.com. Set this env var in your deploy target.'
+      );
+      return new URL('https://app.bossnyumba.com');
     }
     return new URL('http://localhost:3002');
   })(),

@@ -6,7 +6,7 @@
  *
  * Supported renderer kinds:
  *  - `text`            plain text (default, implemented)
- *  - `docxtemplater`   .docx output (stub — TODO install docxtemplater)
+ *  - `docxtemplater`   .docx output (stub — KI-015 tracks the dep install)
  *  - `react-pdf`       PDF via @react-pdf/renderer (stub)
  *  - `typst`           Typst → PDF (stub — requires Typst binary)
  *  - `nano-banana`     MARKETING IMAGERY ONLY — never documents

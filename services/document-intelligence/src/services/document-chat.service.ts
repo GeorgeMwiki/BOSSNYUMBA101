@@ -303,8 +303,10 @@ export class StubAnthropicDocChatLlm implements IDocChatLlmPort {
     citations: readonly DocChatCitation[];
     tokensUsed?: { input: number; output: number };
   }> {
-    // TODO: call Anthropic Messages API with a system prompt that
-    // REQUIRES the model to emit <citations> for every claim.
+    // TODO(KI-009): call Anthropic Messages API with a system prompt
+    //   that REQUIRES the model to emit <citations> for every claim.
+    //   Adapter is at packages/ai-copilot/src/providers/anthropic-client.ts.
+    //   See Docs/KNOWN_ISSUES.md#ki-009.
     const top = input.context[0];
     const content = top
       ? `Based on the indexed documents, here is a stubbed answer for: "${input.question}". See citation.`

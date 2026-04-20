@@ -11,7 +11,7 @@
  *   assembleBundle()   → combine pages into a single PDF document record
  *   submitBundle()     → transition to 'submitted' and link to a document
  *
- * Native image processing bits (deskew) are stubbed and flagged TODO.
+ * Native image processing bits (deskew) are stubbed — see KI-011.
  */
 
 export type ScanBundleStatus =
@@ -127,7 +127,9 @@ function decodeDataUrl(dataUrl: string): { mime: string; buffer: Buffer } {
   return { mime: mime ?? 'application/octet-stream', buffer };
 }
 
-// TODO: replace with real perspective-correct deskew (e.g. WASM OpenCV)
+// TODO(KI-011): replace with real perspective-correct deskew via
+//   WASM OpenCV once @techstark/opencv-js is added.
+//   See Docs/KNOWN_ISSUES.md#ki-011.
 function deskewBuffer(
   input: Buffer,
   _quad?: readonly { x: number; y: number }[]
@@ -137,7 +139,8 @@ function deskewBuffer(
   return input;
 }
 
-// TODO: replace with a real PDF assembler (e.g. pdf-lib)
+// TODO(KI-011): replace with a real PDF assembler (e.g. pdf-lib) once
+//   the dep is added. See Docs/KNOWN_ISSUES.md#ki-011.
 function assembleToPdf(_pages: readonly Buffer[]): { buffer: Buffer; mimeType: string } {
   // Stub — just return the first page buffer as-is for now.
   return {
@@ -246,7 +249,8 @@ export class ScanService {
     await this.options.repository.updateBundle(processing);
 
     try {
-      // TODO: fetch each page's buffer from storage; stubbed here.
+      // TODO(KI-011): fetch each page's buffer from storage; stubbed here
+      //   pending the scan pipeline upgrade. See Docs/KNOWN_ISSUES.md#ki-011.
       for (const _p of pages) {
         // await this.options.storage.download(...);
         // await this.options.ocr.extractText(buf, p.mimeType);

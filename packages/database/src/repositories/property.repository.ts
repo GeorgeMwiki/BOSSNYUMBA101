@@ -3,7 +3,7 @@
  * PropertyRepository and UnitRepository - PostgreSQL implementations.
  */
 
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNull, sql, ilike, or } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
 import { properties, units } from '../schemas/index.js';
 import type {
@@ -65,6 +65,78 @@ export class PropertyRepository {
       eq(properties.tenantId, tenantId),
       isNull(properties.deletedAt)
     );
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(properties)
+        .where(whereClause)
+        .orderBy(desc(properties.createdAt))
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ count: sql<number>`count(*)::int` }).from(properties).where(whereClause),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    return buildPaginatedResult(items, total, { limit, offset });
+  }
+
+  /**
+   * Filter-aware findMany. Pushes `search`, `status`, `type`, and `city`
+   * predicates into the database instead of doing in-memory filtering at
+   * the route layer. Tenant isolation is enforced via the tenantId
+   * argument — callers must never pass a filter that bypasses it.
+   *
+   * `search` matches against name, propertyCode, addressLine1, and city
+   * using case-insensitive partial match (ILIKE '%term%').
+   */
+  async findManyFiltered(
+    tenantId: TenantId,
+    filters: {
+      readonly search?: string;
+      readonly status?: string;
+      readonly type?: string;
+      readonly city?: string;
+      readonly allowedIds?: readonly string[] | undefined;
+    },
+    pagination?: PaginationParams
+  ): Promise<PaginatedResult<PropertyRow>> {
+    const { limit, offset } = pagination ?? DEFAULT_PAGINATION;
+
+    const predicates = [
+      eq(properties.tenantId, tenantId),
+      isNull(properties.deletedAt),
+    ];
+
+    if (filters.status) {
+      predicates.push(eq(properties.status, filters.status as any));
+    }
+    if (filters.type) {
+      predicates.push(eq(properties.type, filters.type as any));
+    }
+    if (filters.city) {
+      predicates.push(ilike(properties.city, `%${filters.city}%`));
+    }
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      const searchClause = or(
+        ilike(properties.name, term),
+        ilike(properties.propertyCode, term),
+        ilike(properties.addressLine1, term),
+        ilike(properties.city, term)
+      );
+      if (searchClause) predicates.push(searchClause);
+    }
+    if (filters.allowedIds && filters.allowedIds.length > 0) {
+      // `inArray` would be cleaner but keeping zero new imports.
+      const idsSql = sql`${properties.id} IN (${sql.join(
+        filters.allowedIds.map((id) => sql`${id}`),
+        sql`, `
+      )})`;
+      predicates.push(idsSql as any);
+    }
+
+    const whereClause = and(...predicates);
 
     const [items, countResult] = await Promise.all([
       this.db

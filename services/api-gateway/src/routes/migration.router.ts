@@ -164,10 +164,12 @@ export function createMigrationRouter(deps: {
     };
     if (!body.message) return c.json({ error: 'missing message' }, 400);
 
-    // TODO: wire to MigrationWizardCopilot via the shared BrainRegistry
-    //   const copilot = registry.getMigrationWizard(tenantId);
-    //   const out = await copilot.run({ tenantId, actorId, runId, ... });
-    //   return c.json(out);
+    // TODO(KI-013): wire to MigrationWizardCopilot via the shared
+    //   BrainRegistry once the copilot is registered at composition root.
+    //     const copilot = registry.getMigrationWizard(tenantId);
+    //     const out = await copilot.run({ tenantId, actorId, runId, message });
+    //     return c.json(out);
+    //   See Docs/KNOWN_ISSUES.md#ki-013.
     return c.json({
       runId,
       ack: true,

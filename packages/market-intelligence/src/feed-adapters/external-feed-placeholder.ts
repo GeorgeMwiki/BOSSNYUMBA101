@@ -1,11 +1,11 @@
 /**
- * External feed adapter PLACEHOLDER.
+ * External feed adapter PLACEHOLDER — deferred under KI-015.
  *
  * Interface-ready so real feeds (Trulia-style, Zoopla-style, or a
  * regional real-estate data partner) can be wired in without touching
  * the aggregation layer. By default this adapter returns empty data —
  * it is the aggregator's job to gracefully prefer internal data when
- * external data is missing.
+ * external data is missing. See Docs/KNOWN_ISSUES.md#ki-015.
  */
 
 import type { DistrictMetric } from '../types.js';

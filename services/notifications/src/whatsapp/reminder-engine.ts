@@ -622,9 +622,10 @@ export class ReminderEngine {
       day: 'numeric',
     };
 
-    // TODO(tenant-context): resolve locale from `tenant.defaultLocale` /
-    // compliance-plugin rather than hardcoding 'sw-TZ' / 'en-US'. Bare
-    // language tags are used so the browser picks a sensible default.
+    // TODO(KI-005): resolve locale from `tenant.defaultLocale` (BCP-47)
+    //   once tenants-table carries defaultLocale. Bare language tags
+    //   are used so the runtime falls back to a sensible default.
+    //   See Docs/KNOWN_ISSUES.md#ki-005.
     const locale = language === 'sw' ? 'sw' : 'en';
     return date.toLocaleDateString(locale, options);
   }

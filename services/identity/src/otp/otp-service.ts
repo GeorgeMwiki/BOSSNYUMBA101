@@ -10,8 +10,10 @@
  *
  *   class RedisOtpStore implements OtpStore { ... }
  *
- * SMS delivery is done through `NotificationsDispatcher` — stubbed with a
- * TODO when the dispatcher isn't wired.
+ * SMS delivery is done through `NotificationsDispatcher`. Production
+ * startup rejects `NoopSmsDispatcher` (see the constructor guard below);
+ * dev/test uses the Noop impl. No outstanding TODO — the dispatcher
+ * contract is stable.
  */
 
 import { randomInt, createHash } from 'node:crypto';
@@ -79,7 +81,8 @@ export class InMemoryOtpStore implements OtpStore {
  */
 export class NoopSmsDispatcher implements SmsDispatcher {
   async send(_phone: string, _message: string): Promise<void> {
-    // TODO: integrate with services/notifications dispatcher once wired.
+    // Intentional no-op: dev/test-only dispatcher. Production startup
+    // rejects this class (see OtpService constructor guard).
   }
 }
 

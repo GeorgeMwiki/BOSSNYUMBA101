@@ -57,34 +57,36 @@ app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 
 app.get('/', async (c) => {
-  // search/status/type/city filters are applied in-memory after the DB
-  // fetch because the repo doesn't expose them yet. Cap the fetch at
-  // 500 so a tenant with many properties still gets a sane response.
-  // TODO: push these filters into repos.properties.findMany.
+  // Filters (search/status/type/city) are pushed into
+  // repos.properties.findManyFiltered so the DB honours them via
+  // parameterized WHERE + ILIKE clauses. Tenant isolation is enforced
+  // inside the repo; propertyAccess ACL is applied post-fetch because
+  // it comes from the JWT, not the DB row.
   const auth = c.get('auth');
   const repos = c.get('repos');
   const p = parseListPagination(c);
-  const search = (c.req.query('search') || '').toLowerCase();
-  const status = c.req.query('status');
-  const type = c.req.query('type');
-  const city = (c.req.query('city') || '').toLowerCase();
+  const search = c.req.query('search') || undefined;
+  const status = c.req.query('status') || undefined;
+  const type = c.req.query('type') || undefined;
+  const city = c.req.query('city') || undefined;
 
-  const result = await repos.properties.findMany(auth.tenantId, { limit: 500, offset: 0 });
-  let items = result.items.filter((row: any) => hasPropertyAccess(auth, row.id)).map(mapPropertyRow);
+  const wildcardAccess = auth.propertyAccess?.includes('*');
+  const allowedIds =
+    wildcardAccess || !Array.isArray(auth.propertyAccess)
+      ? undefined
+      : (auth.propertyAccess as readonly string[]);
 
-  if (search) {
-    items = items.filter((item: any) =>
-      [item.name, item.propertyCode, item.address?.line1, item.address?.city].some((v) =>
-        String(v || '').toLowerCase().includes(search)
-      )
-    );
-  }
-  if (status) items = items.filter((item: any) => item.status === status);
-  if (type) items = items.filter((item: any) => item.type === type);
-  if (city) items = items.filter((item: any) => String(item.address?.city || '').toLowerCase().includes(city));
+  const result = await repos.properties.findManyFiltered(
+    auth.tenantId,
+    { search, status, type, city, allowedIds },
+    { limit: p.limit, offset: p.offset }
+  );
 
-  const pageSlice = items.slice(p.offset, p.offset + p.limit);
-  return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
+  const items = result.items.map(mapPropertyRow);
+  return c.json({
+    success: true,
+    ...buildListResponse(items, result.total, p),
+  });
 });
 
 app.get('/:id/units', async (c) => {

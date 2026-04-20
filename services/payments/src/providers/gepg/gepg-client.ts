@@ -1,12 +1,14 @@
 /**
  * GePG HTTP client adapter
  *
- * TODO: Replace stubs with real HTTPS calls to the GePG gateway once
- * sandbox credentials are issued. The production endpoint uses mutual
- * TLS with the SP's client cert + signed XML envelopes.
+ * PSP-shortcut mode (RESEARCH_ANSWERS.md Q2) is the primary path and is
+ * fully wired — this client talks to the upstream PSP over REST/JSON.
  *
- * For PSP-shortcut mode (RESEARCH_ANSWERS.md Q2), this client talks to
- * our upstream PSP (which wraps GePG for us) over REST/JSON.
+ * Direct-to-GePG mode is the fallback and is deferred (see
+ * Docs/KNOWN_ISSUES.md#ki-006) until live sandbox credentials are
+ * issued. Sandbox paths here synthesize deterministic control numbers
+ * so matcher/ledger/notifications can be exercised end-to-end without
+ * credentials. Production uses mutual TLS + signed XML envelopes.
  */
 import { ProviderAuthError, ValidationError } from '../../common/errors';
 import { logger } from '../../common/logger';
@@ -60,10 +62,11 @@ export async function requestControlNumberHttp(
     );
   }
 
-  // TODO: Replace with real GePG SOAP/REST call. For sandbox we
-  // synthesize a deterministic 12-digit control number so the rest of
-  // the pipeline (matcher, ledger, notifications) can be exercised
-  // end-to-end without live credentials.
+  // TODO(KI-006): real GePG SOAP/REST envelope. For sandbox we
+  //   synthesize a deterministic 12-digit control number so the rest of
+  //   the pipeline (matcher, ledger, notifications) can be exercised
+  //   end-to-end without live credentials. Blocked on live-sandbox
+  //   creds. See Docs/KNOWN_ISSUES.md#ki-006.
   if (config.environment === 'sandbox') {
     const synthetic = deriveSandboxControlNumber(req.billId, req.amount);
     logger.info(
@@ -142,8 +145,9 @@ export async function queryControlNumberHttp(
   assertConfig(config);
 
   if (config.environment === 'sandbox') {
-    // TODO: sandbox harness — for now we return "pending" so the
-    // reconciliation flow has something deterministic to query.
+    // TODO(KI-006): sandbox harness — returns "pending" so the
+    //   reconciliation flow has something deterministic to query.
+    //   Blocked on live-sandbox creds. See Docs/KNOWN_ISSUES.md#ki-006.
     return {
       controlNumber: query.controlNumber,
       billId: query.billId,

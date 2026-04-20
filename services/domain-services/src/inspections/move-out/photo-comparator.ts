@@ -36,8 +36,9 @@ export interface PhotoComparisonManifest {
 /**
  * Build a comparison manifest from two item lists.
  *
- * TODO: wire to AI persona — feed each `PhotoPair`'s URL set through a
- *       vision model to compute `similarity` and `aiNarrative`.
+ * TODO(KI-007): wire to AI persona — feed each `PhotoPair`'s URL set
+ *   through a vision model to compute `similarity` and `aiNarrative`.
+ *   See Docs/KNOWN_ISSUES.md#ki-007.
  */
 export function compareMoveInMoveOutPhotos(
   moveInItems: readonly InspectionItem[],

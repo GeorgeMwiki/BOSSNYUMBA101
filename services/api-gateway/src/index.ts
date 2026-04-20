@@ -103,6 +103,7 @@ import voiceRouter from './routes/voice.router';
 // Wave 13 — Autonomous Department Mode routers
 import exceptionsRouter from './routes/exceptions.router';
 import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.router';
+import autonomyRouter from './routes/autonomy.router';
 // Organizational Awareness — "talk to your organization" endpoints
 import orgAwarenessRouter from './routes/org-awareness.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
@@ -538,6 +539,7 @@ api.route('/voice', voiceRouter);
 // Wave 13 — Autonomous Department Mode
 api.route('/exceptions', exceptionsRouter);
 api.route('/audit', autonomousActionsAuditRouter);
+api.route('/autonomy', autonomyRouter);
 // Organizational Awareness — "talk to your organization" endpoints
 api.route('/org', orgAwarenessRouter);
 

@@ -162,9 +162,19 @@ export class AnthropicProvider implements AIProvider {
     if (request.prompt.modelConfig.topP !== undefined)
       body.top_p = request.prompt.modelConfig.topP;
 
+    // Anthropic enforces `^[a-zA-Z0-9_-]{1,128}$` on every tool name. Our
+    // internal skill names use dotted segments (e.g. `skill.maintenance.triage`)
+    // so we sanitize on the way out and reverse the mapping when a `tool_use`
+    // block references the sanitized name. The mapping is deterministic
+    // (dot → `__`, colon → `___`) so it round-trips 1:1.
+    const sanitizeToolName = (name: string): string =>
+      name.replace(/\./g, '__').replace(/:/g, '___');
+    const restoreToolName = (name: string): string =>
+      name.replace(/___/g, ':').replace(/__/g, '.');
+
     if (request.tools && request.tools.length > 0) {
       body.tools = request.tools.map((t) => ({
-        name: t.name,
+        name: sanitizeToolName(t.name),
         description: t.description,
         input_schema: t.inputSchema,
       }));
@@ -212,7 +222,7 @@ export class AnthropicProvider implements AIProvider {
       toolCalls: toolCalls.length
         ? toolCalls.map((c) => ({
             id: c.id,
-            name: c.name,
+            name: restoreToolName(c.name),
             input: c.input,
           }))
         : undefined,

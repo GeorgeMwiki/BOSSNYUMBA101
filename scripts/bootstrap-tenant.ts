@@ -133,7 +133,7 @@ export async function bootstrapTenant(
       // 6. Demo data.
       let demoDataSeeded = false;
       if (args.withDemoData && !alreadyExisted) {
-        await seedDemoData(tx, tenantId);
+        await seedDemoData(tx, tenantId, adminUserId);
         demoDataSeeded = true;
       }
 
@@ -180,32 +180,53 @@ async function seedPlatformDefaults(tx: Tx, tenantId: string): Promise<void> {
       ON CONFLICT (flag_key) DO NOTHING
     `;
   }
-  // Maintenance taxonomy — minimal default categories per tenant.
-  const categories = ['plumbing', 'electrical', 'structural', 'hvac', 'general'];
-  for (const c of categories) {
-    const id = `mtx_${tenantId.slice(3, 11)}_${c}`;
-    await tx`
-      INSERT INTO maintenance_categories (id, tenant_id, code, name, created_at)
-      VALUES (${id}, ${tenantId}, ${c}, ${c.charAt(0).toUpperCase() + c.slice(1)}, NOW())
-      ON CONFLICT (id) DO NOTHING
-    `.catch(() => { /* table may not exist in stripped test schemas */ });
+  // Maintenance taxonomy — minimal default categories per tenant. The real
+  // table is maintenance_problem_categories (see migration 0028). We guard
+  // the INSERT via a pg_catalog existence check so stripped/test schemas
+  // without the table still succeed inside the outer transaction (a raw
+  // .catch() would still leave the tx aborted in Postgres — we have to
+  // avoid issuing the bad statement in the first place).
+  const haveTable = await tx<{ exists: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'maintenance_problem_categories'
+    ) AS exists
+  `;
+  if (haveTable[0]?.exists) {
+    const categories = ['plumbing', 'electrical', 'structural', 'hvac', 'general'];
+    for (const c of categories) {
+      const id = `mtx_${tenantId.slice(3, 11)}_${c}`;
+      await tx`
+        INSERT INTO maintenance_problem_categories (id, tenant_id, code, name, created_at, updated_at)
+        VALUES (${id}, ${tenantId}, ${c}, ${c.charAt(0).toUpperCase() + c.slice(1)}, NOW(), NOW())
+        ON CONFLICT (tenant_id, code) DO NOTHING
+      `;
+    }
   }
 }
 
 async function enqueueWelcomeNotification(
-  tx: Tx, tenantId: string, userId: string, email: string,
+  tx: Tx, tenantId: string, userId: string, _email: string,
 ): Promise<void> {
-  await tx`
-    INSERT INTO notifications (
-      id, tenant_id, recipient_id, recipient_email, channel, template,
-      subject, body, status, created_at
-    ) VALUES (
-      ${`ntf_${randomUUID()}`}, ${tenantId}, ${userId}, ${email}, 'email',
-      'tenant.welcome', 'Welcome to BOSSNYUMBA',
-      'Your tenant workspace is ready. Sign in to finish onboarding.',
-      'pending', NOW()
-    )
-  `.catch(() => { /* notifications table optional in tests */ });
+  // Savepoint so a schema mismatch on this *optional* welcome notification
+  // never poisons the outer bootstrap transaction.
+  try {
+    await tx.savepoint('welcome_notif', async (sp) => {
+      await sp`
+        INSERT INTO notifications (
+          id, tenant_id, recipient_type, recipient_id, type, channel,
+          subject, body, status, created_at, updated_at
+        ) VALUES (
+          ${`ntf_${randomUUID()}`}, ${tenantId}, 'user', ${userId},
+          'tenant.welcome', 'email', 'Welcome to BOSSNYUMBA',
+          'Your tenant workspace is ready. Sign in to finish onboarding.',
+          'pending', NOW(), NOW()
+        )
+      `;
+    });
+  } catch {
+    // Table/column drift is tolerable here — audit row still fires.
+  }
 }
 
 async function scheduleFirstBriefing(
@@ -213,48 +234,73 @@ async function scheduleFirstBriefing(
 ): Promise<void> {
   const id = `brf_${randomUUID()}`;
   const periodStart = new Date(at.getTime() - 7 * 86_400_000);
-  await tx`
-    INSERT INTO executive_briefings (
-      id, tenant_id, cadence, period_start, period_end, headline,
-      portfolio_health, wins, exceptions, recommendations,
-      focus_next_period, body_markdown, generated_by, created_at
-    ) VALUES (
-      ${id}, ${tenantId}, 'weekly', ${periodStart}, ${at},
-      'First briefing — workspace initialized',
-      ${tx.json({})}, ${tx.json([])}, ${tx.json([])}, ${tx.json([])},
-      ${tx.json([])},
-      '# Welcome\n\nYour first automated briefing will land here on Monday.',
-      'bootstrap-script', NOW()
-    )
-    ON CONFLICT (id) DO NOTHING
-  `.catch(() => { /* briefings table optional in stripped schemas */ });
+  try {
+    await tx.savepoint('first_briefing', async (sp) => {
+      await sp`
+        INSERT INTO executive_briefings (
+          id, tenant_id, cadence, period_start, period_end, headline,
+          portfolio_health, wins, exceptions, recommendations,
+          focus_next_period, body_markdown, generated_by, created_at
+        ) VALUES (
+          ${id}, ${tenantId}, 'weekly', ${periodStart}, ${at},
+          'First briefing — workspace initialized',
+          ${sp.json({})}, ${sp.json([])}, ${sp.json([])}, ${sp.json([])},
+          ${sp.json([])},
+          '# Welcome\n\nYour first automated briefing will land here on Monday.',
+          'bootstrap-script', NOW()
+        )
+        ON CONFLICT (id) DO NOTHING
+      `;
+    });
+  } catch {
+    // Briefings table optional in stripped schemas.
+  }
 }
 
-async function seedDemoData(tx: Tx, tenantId: string): Promise<void> {
+async function seedDemoData(tx: Tx, tenantId: string, ownerId: string): Promise<void> {
+  // Properties schema requires owner_id, property_code, type, address_line1,
+  // city. We scope ownership to the admin user so downstream RBAC lookups
+  // succeed. Wrapped in a savepoint — demo-data failure should not fail the
+  // whole bootstrap (tenant + admin user are the real contract).
   const propertyId = `prop_${randomUUID()}`;
-  await tx`
-    INSERT INTO properties (
-      id, tenant_id, name, property_type, status, created_at, updated_at
-    ) VALUES (
-      ${propertyId}, ${tenantId}, 'Demo Property', 'residential',
-      'active', NOW(), NOW()
-    )
-    ON CONFLICT (id) DO NOTHING
-  `.catch(() => { /* properties optional in tests */ });
+  try {
+    await tx.savepoint('demo_data', async (sp) => {
+      await sp`
+        INSERT INTO properties (
+          id, tenant_id, owner_id, property_code, name, type, status,
+          address_line1, city, country, default_currency,
+          created_at, updated_at
+        ) VALUES (
+          ${propertyId}, ${tenantId}, ${ownerId}, 'DEMO-001', 'Demo Property',
+          'residential', 'active', '1 Demo Street', 'Dar es Salaam',
+          'TZ', 'TZS', NOW(), NOW()
+        )
+        ON CONFLICT (id) DO NOTHING
+      `;
+    });
+  } catch {
+    // Demo data is best-effort; real end-to-end flows create fresh objects.
+  }
 }
 
 async function registerDefaultAutonomyPolicy(tx: Tx, tenantId: string): Promise<void> {
-  await tx`
-    INSERT INTO autonomy_policies (
-      tenant_id, autonomous_mode_enabled, policy_json, version,
-      created_at, updated_at, updated_by
-    ) VALUES (
-      ${tenantId}, false,
-      ${tx.json({ maxAutonomousSpendMinor: 0, domains: [], riskBudget: 'conservative' })},
-      1, NOW(), NOW(), 'bootstrap-script'
-    )
-    ON CONFLICT (tenant_id) DO NOTHING
-  `.catch(() => { /* policy table optional */ });
+  try {
+    await tx.savepoint('autonomy_policy', async (sp) => {
+      await sp`
+        INSERT INTO autonomy_policies (
+          tenant_id, autonomous_mode_enabled, policy_json, version,
+          created_at, updated_at, updated_by
+        ) VALUES (
+          ${tenantId}, false,
+          ${sp.json({ maxAutonomousSpendMinor: 0, domains: [], riskBudget: 'conservative' })},
+          1, NOW(), NOW(), 'bootstrap-script'
+        )
+        ON CONFLICT (tenant_id) DO NOTHING
+      `;
+    });
+  } catch {
+    // Policy table optional.
+  }
 }
 
 async function writeBootstrapAudit(
@@ -263,19 +309,25 @@ async function writeBootstrapAudit(
   actorId: string,
   details: Readonly<Record<string, unknown>>,
 ): Promise<void> {
-  const now = new Date();
-  await tx`
-    INSERT INTO audit_events (
-      id, tenant_id, timestamp, timestamp_ms, category, action, description,
-      outcome, severity, actor_type, actor_id, source_service, metadata,
-      schema_version, created_at
-    ) VALUES (
-      ${`aud_${randomUUID()}`}, ${tenantId}, ${now}, ${Math.floor(now.getTime() / 1000)},
-      'TENANT', 'tenant.bootstrap', 'Tenant bootstrap completed',
-      'SUCCESS', 'INFO', 'system', ${actorId}, 'bootstrap-script',
-      ${tx.json(details)}, '1.0.0', ${now}
-    )
-  `.catch(() => { /* audit table optional in stripped schemas */ });
+  // The real audit table is `audit_log` (migration 0002). Columns differ
+  // from the assumed `audit_events` shape — remap to the on-disk columns
+  // and wrap in a savepoint so stripped test schemas still allow bootstrap.
+  try {
+    await tx.savepoint('bootstrap_audit', async (sp) => {
+      await sp`
+        INSERT INTO audit_log (
+          id, tenant_id, event_type, action, description, actor_id,
+          actor_type, metadata, occurred_at
+        ) VALUES (
+          ${`aud_${randomUUID()}`}, ${tenantId}, 'tenant', 'tenant.bootstrap',
+          'Tenant bootstrap completed', ${actorId}, 'system',
+          ${sp.json(details)}, NOW()
+        )
+      `;
+    });
+  } catch {
+    // Audit table optional in stripped schemas.
+  }
 }
 
 // ---------------------------------------------------------------------------

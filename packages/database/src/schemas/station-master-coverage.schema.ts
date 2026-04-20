@@ -26,7 +26,7 @@ import { tenants } from './tenant.schema.js';
 
 export const coverageKindEnum = pgEnum('station_master_coverage_kind', [
   'tag',
-  'polygon',      // reserved for GeoNode hierarchy — handler is a TODO.
+  'polygon',      // reserved for GeoNode hierarchy — KI-010 tracks wiring.
   'city',
   'property_ids',
   'region',

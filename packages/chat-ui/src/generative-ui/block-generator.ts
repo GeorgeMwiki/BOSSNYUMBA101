@@ -80,9 +80,10 @@ export interface BlockGeneratorInput {
 }
 
 export function generateBlocks(input: BlockGeneratorInput): readonly UIBlock[] {
-  // TODO(tenant-context): resolve defaultCurrency from
-  // `tenant.defaultCurrency` / `getDefaultCurrency(tenant.countryCode)` via
-  // @bossnyumba/compliance-plugins instead of the neutral 'USD' fallback.
+  // TODO(KI-005): resolve defaultCurrency from tenant.defaultCurrency /
+  //   getDefaultCurrency(tenant.countryCode) via @bossnyumba/compliance-plugins
+  //   once tenants-table migration lands. USD is the neutral fallback.
+  //   See Docs/KNOWN_ISSUES.md#ki-005.
   const { responseText, toolCalls, defaultCurrency = 'USD' } = input;
   const blocks: UIBlock[] = [];
 

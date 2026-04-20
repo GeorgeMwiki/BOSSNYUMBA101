@@ -17,11 +17,21 @@ import { z } from 'zod';
 // Required env shape
 // ---------------------------------------------------------------------------
 
+// Treat empty strings as "unset" for optional URL fields. Operators
+// routinely leave `ANTHROPIC_BASE_URL=` in their .env to mean "use the
+// provider default"; zod's `.url().optional()` rejects an empty string
+// as an invalid URL even though the intent is "no override".
+const optionalUrl = z
+  .preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().url().optional(),
+  );
+
 export const BrainEnvSchema = z.object({
   ANTHROPIC_API_KEY: z
     .string()
     .min(10, 'ANTHROPIC_API_KEY must be set to a real key (sk-ant-...)'),
-  ANTHROPIC_BASE_URL: z.string().url().optional(),
+  ANTHROPIC_BASE_URL: optionalUrl,
   ANTHROPIC_MODEL_DEFAULT: z.string().optional(),
 
   // Supabase — primary database & auth provider.

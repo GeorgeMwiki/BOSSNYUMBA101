@@ -200,9 +200,10 @@ export function createTenantPreferenceProfile(
     preferredContactTime: null,
     quietHoursStart: null,
     quietHoursEnd: null,
-    // TODO(tenant-aware): populate from tenant.defaultTimezone — see
-    // packages/domain-models/src/common/region-config.ts. UTC is the neutral
-    // fallback; callers should override via the data.timezone property.
+    // TODO(KI-005): populate from tenant.defaultTimezone — see
+    //   packages/domain-models/src/common/region-config.ts. UTC is the
+    //   neutral fallback; callers should override via `data.timezone`.
+    //   See Docs/KNOWN_ISSUES.md#ki-005.
     timezone: 'UTC',
 
     paymentReminders: true,

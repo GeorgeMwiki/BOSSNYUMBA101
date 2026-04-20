@@ -313,28 +313,39 @@ export class WorkOrderRepository {
 export class VendorRepository {
   constructor(private db: DatabaseClient) {}
 
-  async findMany(tenantId: TenantId, limit = 50, offset = 0) {
+  async findMany(
+    tenantId: TenantId,
+    limit = 50,
+    offset = 0,
+    filters: {
+      readonly status?: string;
+      readonly specialization?: string;
+    } = {}
+  ) {
+    const predicates = [
+      eq(vendors.tenantId, tenantId),
+      isNull(vendors.deletedAt),
+    ];
+    if (filters.status) {
+      predicates.push(eq(vendors.status, filters.status));
+    }
+    if (filters.specialization) {
+      predicates.push(
+        sql`${vendors.specializations} @> ${JSON.stringify([filters.specialization])}::jsonb`
+      );
+    }
+    const whereClause = and(...predicates);
     const rows = await this.db
       .select()
       .from(vendors)
-      .where(
-        and(
-          eq(vendors.tenantId, tenantId),
-          isNull(vendors.deletedAt)
-        )
-      )
+      .where(whereClause)
       .orderBy(desc(vendors.createdAt))
       .limit(limit)
       .offset(offset);
     const [{ total }] = await this.db
       .select({ total: count() })
       .from(vendors)
-      .where(
-        and(
-          eq(vendors.tenantId, tenantId),
-          isNull(vendors.deletedAt)
-        )
-      );
+      .where(whereClause);
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 

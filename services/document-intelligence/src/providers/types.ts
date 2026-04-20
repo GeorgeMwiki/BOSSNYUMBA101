@@ -3,9 +3,10 @@
  *
  * SCAFFOLDED 13 — providers sit behind `IOCRProvider` (see
  * `services/ocr-extraction.service.ts`). The factory (`ocr-factory.ts`)
- * routes config.provider to the concrete adapter. SDK wiring is stubbed
- * with TODOs so the package builds without @aws-sdk/client-textract or
- * @google-cloud/vision being installed.
+ * routes config.provider to the concrete adapter. Cloud SDK wiring is
+ * deferred (see KI-014) so the package builds without
+ * @aws-sdk/client-textract or @google-cloud/vision being installed.
+ * See Docs/KNOWN_ISSUES.md#ki-014.
  */
 
 import type { OCRProvider } from '../types/index.js';

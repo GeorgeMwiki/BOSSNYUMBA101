@@ -11,7 +11,7 @@
  *      stationMasterId ASC) — fully deterministic.
  *   3. Return the top row.
  *
- * polygon-kind coverage is skipped (TODO: enable once GeoNode is live).
+ * polygon-kind coverage is skipped — KI-010 tracks wiring once GeoNode is live.
  */
 
 import type {
@@ -80,8 +80,8 @@ function matchesLocation(
         : { matches: false, reason: 'region mismatch' };
     }
     case 'polygon':
-      // TODO(@googlemaps/js-api-loader + @turf/boolean-point-in-polygon):
-      // wire real geospatial matching once the GeoNode hierarchy is live.
+      // TODO(KI-010): wire real geospatial matching once GeoNode is
+      //   live. See Docs/KNOWN_ISSUES.md#ki-010.
       return { matches: false, reason: 'polygon matching not yet supported' };
     default:
       return { matches: false, reason: 'unknown coverage kind' };

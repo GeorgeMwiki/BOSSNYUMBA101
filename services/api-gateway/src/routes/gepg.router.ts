@@ -8,8 +8,10 @@
  *   GET  /v1/payments/gepg/control-numbers/:id -> query status
  *
  * The callback endpoint verifies the signature BEFORE parsing the body.
- * Direct GePG mode uses XML-DSig (TODO stub); PSP-shortcut mode uses
- * HMAC. See providers/gepg/gepg-signature.ts.
+ * Direct GePG mode uses RSA-SHA256 XML-DSig (gepg-rsa-signature.ts);
+ * PSP-shortcut mode uses HMAC. See providers/gepg/gepg-signature.ts.
+ * Live direct-mode HTTP calls are deferred — see KI-006 in
+ * Docs/KNOWN_ISSUES.md.
  */
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';

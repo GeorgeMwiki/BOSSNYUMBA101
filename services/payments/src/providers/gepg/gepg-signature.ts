@@ -1,16 +1,18 @@
 /**
  * GePG signature validation
  *
- * TODO: Replace this stub with real XML-DSig / RSA verification using
- * the PKCS#12 cert issued by GePG. The real flow:
- *   1) Canonicalize XML body
- *   2) Extract <Signature> element
- *   3) Load GePG public cert, verify RSA-SHA256 signature
- * See GePG integration spec §4 (SignatureValue/KeyInfo).
+ * Two verification modes:
+ *   1. `hmac-psp` (default): HMAC-SHA256 using the shared secret minted
+ *      by the PSP. The PSP terminates the full GePG XML-DSig envelope
+ *      on our behalf (see RESEARCH_ANSWERS.md Q2).
+ *   2. `rsa-gepg`: direct-integration mode. RSA-SHA256 verification of
+ *      the XML envelope using the GePG-issued public cert, implemented
+ *      in `gepg-rsa-signature.ts` (pure Node `crypto`, zero external
+ *      XML deps). Cert/key material is loaded lazily via
+ *      `key-loader.ts` from GEPG_SIGNING_CERT_PEM /
+ *      GEPG_SIGNING_CERT_PATH.
  *
- * For sandbox and PSP-shortcut mode (see RESEARCH_ANSWERS.md Q2) we
- * validate via HMAC shared secret — the PSP terminates the full GePG
- * signature envelope on our behalf.
+ * Both modes are timing-safe.
  */
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { GepgSignatureVerification } from './types';

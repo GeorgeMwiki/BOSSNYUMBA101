@@ -5,7 +5,7 @@
  *   - Deterministic matching by tag / city / region / property_ids.
  *   - Tie-breaking by (priority, backlog, lastAssignedAt, stationMasterId).
  *   - Cross-tenant isolation — only the requesting tenant's rows match.
- *   - Polygon coverage is skipped (TODO: GeoNode).
+ *   - Polygon coverage is skipped (KI-010 — awaits GeoNode).
  *   - NO_MATCH error when nothing matches.
  */
 

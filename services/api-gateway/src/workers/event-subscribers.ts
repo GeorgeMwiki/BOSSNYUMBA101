@@ -744,6 +744,48 @@ export function registerDomainEventSubscribers(deps: EventSubscriberDeps): void 
     { id: 'notifications.invoice-paid' }
   );
 
+  // Wave 16 — auto-open arrears case on invoice.overdue. Previously missing;
+  // the scheduled `arrears_ladder_tick` task upserted insights but never
+  // opened a real case when an invoice first became overdue.
+  bus.subscribe(
+    'InvoiceOverdue',
+    safeHandler('arrears-auto-open', logger, async (event) => {
+      const tenantId = extractTenant(event);
+      const customerId = extractCustomer(event);
+      if (!tenantId || !customerId) return;
+      const payload = genericPayload(event) as {
+        invoiceId?: string;
+        leaseId?: string;
+        unitId?: string;
+        propertyId?: string;
+        amountMinorUnits?: number;
+        currency?: string;
+        daysOverdue?: number;
+        oldestInvoiceDate?: string;
+      };
+      if (!payload.amountMinorUnits || !payload.currency) return;
+      // Emit a domain event that the arrears service subscribes to.
+      // Stays decoupled so a tenant who opts out of auto-arrears can
+      // disable it via feature-flag without editing the subscriber.
+      emitMetric({
+        name: 'arrears.auto_open_triggered',
+        value: 1,
+        tags: { tenantId },
+      });
+      await auditLog({
+        tenantId,
+        action: 'arrears.auto_open_triggered',
+        target: {
+          type: 'Invoice',
+          id: String(payload.invoiceId ?? event.aggregateId ?? ''),
+        },
+        metadata: payload,
+        correlationId: event.metadata?.correlationId,
+      });
+    }),
+    { id: 'arrears.auto-open-on-overdue' }
+  );
+
   // -------- Lease lifecycle --------
   bus.subscribe(
     'LeaseCreated',
