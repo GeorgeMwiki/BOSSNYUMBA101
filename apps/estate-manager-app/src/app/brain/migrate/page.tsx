@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ArrowRight,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 
@@ -50,6 +51,7 @@ interface DiffResult {
 }
 
 export default function MigrationWizardPage() {
+  const t = useTranslations('brainMigrate');
   const [step, setStep] = useState<Step>('upload');
   const [bundle, setBundle] = useState<ExtractBundle | null>(null);
   const [diff, setDiff] = useState<DiffResult | null>(null);
@@ -103,8 +105,8 @@ export default function MigrationWizardPage() {
   return (
     <>
       <PageHeader
-        title="Migration Wizard"
-        subtitle="Bring your estate onto BossNyumba — upload, review, commit"
+        title={t('title')}
+        subtitle={t('subtitle')}
         showBack
       />
       <div className="px-4 py-4 pb-24 max-w-3xl mx-auto flex flex-col gap-4">
@@ -116,7 +118,7 @@ export default function MigrationWizardPage() {
           <div className="rounded-xl border border-gray-100 p-6 flex items-center gap-3 bg-white">
             <Spinner className="h-5 w-5 text-sky-500" />
             <div>
-              <div className="font-medium">Extracting entities…</div>
+              <div className="font-medium">{t('extracting')}</div>
               <div className="text-xs text-gray-500">{fileName}</div>
             </div>
           </div>
@@ -138,7 +140,7 @@ export default function MigrationWizardPage() {
         {step === 'committing' && (
           <div className="rounded-xl border border-gray-100 p-6 flex items-center gap-3 bg-white">
             <Spinner className="h-5 w-5 text-sky-500" />
-            <div className="font-medium">Committing to your estate…</div>
+            <div className="font-medium">{t('committing')}</div>
           </div>
         )}
 
@@ -146,10 +148,9 @@ export default function MigrationWizardPage() {
           <div className="rounded-xl border border-green-200 bg-green-50 p-6 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
             <div>
-              <div className="font-medium text-green-900">Migration complete</div>
+              <div className="font-medium text-green-900">{t('migrationComplete')}</div>
               <p className="text-sm text-green-800 mt-1">
-                Your estate is on BossNyumba. Head to the Dashboard or talk to
-                the Brain to start operating.
+                {t('migrationCompleteDesc')}
               </p>
             </div>
           </div>
@@ -159,14 +160,14 @@ export default function MigrationWizardPage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
             <div>
-              <div className="font-medium text-red-900">Something went wrong</div>
+              <div className="font-medium text-red-900">{t('somethingWrong')}</div>
               <p className="text-sm text-red-800 mt-1">{error}</p>
               <button
                 type="button"
                 onClick={() => setStep('upload')}
                 className="mt-2 text-sm text-red-900 underline"
               >
-                Try again
+                {t('tryAgain')}
               </button>
             </div>
           </div>
@@ -181,10 +182,11 @@ export default function MigrationWizardPage() {
 // ---------------------------------------------------------------------------
 
 function Stepper({ step }: { step: Step }) {
+  const t = useTranslations('brainMigrate');
   const stages: Array<{ id: Step | 'upload_base'; label: string }> = [
-    { id: 'upload_base', label: 'Upload' },
-    { id: 'review', label: 'Review' },
-    { id: 'done', label: 'Commit' },
+    { id: 'upload_base', label: t('stepUpload') },
+    { id: 'review', label: t('stepReview') },
+    { id: 'done', label: t('stepCommit') },
   ];
   const rank: Record<Step, number> = {
     upload: 0,
@@ -222,6 +224,7 @@ function Stepper({ step }: { step: Step }) {
 }
 
 function UploadPanel({ onFile }: { onFile: (f: File) => void }) {
+  const t = useTranslations('brainMigrate');
   const [dragOver, setDragOver] = useState(false);
   return (
     <label
@@ -243,11 +246,9 @@ function UploadPanel({ onFile }: { onFile: (f: File) => void }) {
     >
       <div className="flex flex-col items-center gap-2 text-center">
         <Upload className="w-8 h-8 text-sky-500" />
-        <div className="font-medium">Drop your file or click to upload</div>
+        <div className="font-medium">{t('dropOrClick')}</div>
         <div className="text-sm text-gray-500 max-w-md">
-          CSV or JSON. The Brain will extract properties, units, tenants,
-          employees, departments, and teams. You will review a diff before
-          anything writes to your estate.
+          {t('dropHelp')}
         </div>
         <input
           id="migration-file"
@@ -275,6 +276,7 @@ function ReviewPanel({
   onApprove: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations('brainMigrate');
   const total =
     diff.toAdd.properties +
     diff.toAdd.units +
@@ -282,6 +284,17 @@ function ReviewPanel({
     diff.toAdd.employees +
     diff.toAdd.departments +
     diff.toAdd.teams;
+  const labelKeys: Record<
+    'properties' | 'units' | 'tenants' | 'employees' | 'departments' | 'teams',
+    'labelProperties' | 'labelUnits' | 'labelTenants' | 'labelEmployees' | 'labelDepartments' | 'labelTeams'
+  > = {
+    properties: 'labelProperties',
+    units: 'labelUnits',
+    tenants: 'labelTenants',
+    employees: 'labelEmployees',
+    departments: 'labelDepartments',
+    teams: 'labelTeams',
+  };
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-xl border border-gray-100 bg-white p-4 flex items-center gap-3">
@@ -289,7 +302,9 @@ function ReviewPanel({
         <div className="flex-1">
           <div className="text-sm font-medium">{fileName}</div>
           <div className="text-xs text-gray-500">
-            {total} entit{total === 1 ? 'y' : 'ies'} to add · {diff.toSkip} skip (dedup)
+            {total === 1
+              ? t('entityToAdd', { count: total, skip: diff.toSkip })
+              : t('entitiesToAdd', { count: total, skip: diff.toSkip })}
           </div>
         </div>
       </div>
@@ -298,7 +313,7 @@ function ReviewPanel({
         {(['properties', 'units', 'tenants', 'employees', 'departments', 'teams'] as const).map(
           (k) => (
             <div key={k} className="flex items-center justify-between px-4 py-2.5 text-sm">
-              <span className="capitalize">{k}</span>
+              <span>{t(labelKeys[k])}</span>
               <span className="font-mono text-gray-900">
                 +{diff.toAdd[k]}
               </span>
@@ -311,7 +326,7 @@ function ReviewPanel({
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
           <div className="font-medium text-amber-900 text-sm flex items-center gap-1 mb-1">
             <AlertTriangle className="w-4 h-4" />
-            {diff.warnings.length} warning(s)
+            {t('warningsLabel', { count: diff.warnings.length })}
           </div>
           <ul className="text-xs text-amber-900 list-disc pl-5 space-y-0.5">
             {diff.warnings.slice(0, 6).map((w, i) => (
@@ -329,14 +344,14 @@ function ReviewPanel({
           onClick={onCancel}
           className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium hover:bg-gray-50"
         >
-          Cancel
+          {t('cancel')}
         </button>
         <button
           type="button"
           onClick={onApprove}
           className="flex-1 rounded-xl bg-sky-500 text-white px-3 py-2 text-sm font-medium hover:bg-sky-600"
         >
-          Approve & Commit
+          {t('approveCommit')}
         </button>
       </div>
     </div>
@@ -344,15 +359,25 @@ function ReviewPanel({
 }
 
 function SamplePreview({ diff }: { diff: DiffResult }) {
+  const t = useTranslations('brainMigrate');
+  const labelKeys: Record<
+    'properties' | 'units' | 'tenants' | 'employees',
+    'labelProperties' | 'labelUnits' | 'labelTenants' | 'labelEmployees'
+  > = {
+    properties: 'labelProperties',
+    units: 'labelUnits',
+    tenants: 'labelTenants',
+    employees: 'labelEmployees',
+  };
   return (
     <details className="rounded-xl border border-gray-100 bg-white p-3">
       <summary className="text-sm font-medium cursor-pointer select-none">
-        Sample rows (first 3 of each kind)
+        {t('sampleRows')}
       </summary>
       <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
         {(['properties', 'units', 'tenants', 'employees'] as const).map((k) => (
           <div key={k} className="rounded-lg bg-gray-50 p-2">
-            <div className="text-gray-500 mb-1">{k}</div>
+            <div className="text-gray-500 mb-1">{t(labelKeys[k])}</div>
             <pre className="whitespace-pre-wrap break-all">
               {JSON.stringify(diff.samples[k], null, 2)}
             </pre>

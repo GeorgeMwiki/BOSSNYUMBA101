@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface Tender {
   readonly id: string;
@@ -25,6 +26,7 @@ interface Tender {
 }
 
 export default function TendersPage(): React.ReactElement {
+  const t = useTranslations('tendersPage');
   const router = useRouter();
   const [tenders, setTenders] = useState<ReadonlyArray<Tender>>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -44,10 +46,10 @@ export default function TendersPage(): React.ReactElement {
       }
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Failed to load tenders');
+      setError(err instanceof Error ? err.message : t('failedLoad'));
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -64,9 +66,9 @@ export default function TendersPage(): React.ReactElement {
   return (
     <main className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Tenders</h1>
-        <Button onClick={openNewTender} aria-label="Create new tender">
-          + New tender
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <Button onClick={openNewTender} aria-label={t('newTenderAria')}>
+          {t('newTender')}
         </Button>
       </div>
 
@@ -75,7 +77,7 @@ export default function TendersPage(): React.ReactElement {
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -89,40 +91,41 @@ export default function TendersPage(): React.ReactElement {
         </div>
       ) : tenders.length === 0 ? (
         <EmptyState
-          title="No tenders yet"
-          description="Post a tender to solicit bids from your vendor network."
+          title={t('emptyTitle')}
+          description={t('emptyDesc')}
           action={
-            <Button onClick={openNewTender} aria-label="Create new tender">
-              + New tender
+            <Button onClick={openNewTender} aria-label={t('newTenderAria')}>
+              {t('newTender')}
             </Button>
           }
         />
       ) : (
         <div className="grid gap-3">
-          {tenders.map((t) => (
-            <Card key={t.id}>
+          {tenders.map((tn) => (
+            <Card key={tn.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>{t.title}</CardTitle>
-                  <Badge>{t.status}</Badge>
+                  <CardTitle>{tn.title}</CardTitle>
+                  <Badge>{tn.status}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">{t.scope}</p>
+                <p className="text-sm text-muted-foreground">{tn.scope}</p>
                 <p className="text-xs mt-1">
-                  {t.bidCount} {t.bidCount === 1 ? 'bid' : 'bids'} · closes{' '}
-                  {new Date(t.deadline).toLocaleDateString()}
+                  {tn.bidCount === 1
+                    ? t('bidLine', { count: tn.bidCount, date: new Date(tn.deadline).toLocaleDateString() })
+                    : t('bidsLine', { count: tn.bidCount, date: new Date(tn.deadline).toLocaleDateString() })}
                 </p>
                 <Button
                   size="sm"
                   variant="outline"
                   className="mt-2"
-                  disabled={t.bidCount === 0}
-                  title={t.bidCount === 0 ? 'No bids submitted yet' : undefined}
-                  onClick={() => reviewBids(t.id)}
-                  aria-label={`Review bids for ${t.title}`}
+                  disabled={tn.bidCount === 0}
+                  title={tn.bidCount === 0 ? t('noBidsYet') : undefined}
+                  onClick={() => reviewBids(tn.id)}
+                  aria-label={t('reviewBidsAria', { title: tn.title })}
                 >
-                  Review bids
+                  {t('reviewBids')}
                 </Button>
               </CardContent>
             </Card>

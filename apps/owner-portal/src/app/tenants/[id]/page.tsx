@@ -12,10 +12,12 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '../../../lib/api';
 import { useTenant } from '../../../lib/hooks';
 
 export default function TenantDetailPage() {
+  const t = useTranslations('tenantDetailPage');
   const { id } = useParams<{ id: string }>();
   const { data: tenant, isLoading, error, refetch } = useTenant(id || '');
 
@@ -33,8 +35,8 @@ export default function TenantDetailPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load tenant'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -45,8 +47,8 @@ export default function TenantDetailPage() {
     return (
       <EmptyState
         icon={<Users className="h-8 w-8" />}
-        title="Tenant not found"
-        description={`We could not load tenant ${id}. They may have been moved out or the lookup failed.`}
+        title={t('notFound')}
+        description={t('notFoundDesc', { id: id ?? '' })}
       />
     );
   }
@@ -61,7 +63,7 @@ export default function TenantDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">{displayTenant.name}</h1>
           <p className="text-gray-500">
-            {displayTenant.propertyName} • Unit {displayTenant.unitNumber}
+            {displayTenant.propertyName} • {t('unitPrefix', { unit: displayTenant.unitNumber })}
           </p>
         </div>
         <Link
@@ -69,19 +71,19 @@ export default function TenantDetailPage() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
           <MessageSquare className="h-4 w-4" />
-          Message
+          {t('message')}
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('contactInformation')}</h3>
           <div className="space-y-4">
             {displayTenant.email && (
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-gray-500">{t('email')}</p>
                   <p className="font-medium text-gray-900">{displayTenant.email}</p>
                 </div>
               </div>
@@ -90,7 +92,7 @@ export default function TenantDetailPage() {
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-sm text-gray-500">{t('phone')}</p>
                   <p className="font-medium text-gray-900">{displayTenant.phone}</p>
                 </div>
               </div>
@@ -99,12 +101,12 @@ export default function TenantDetailPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Lease Details</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('leaseDetails')}</h3>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Building2 className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Property</p>
+                <p className="text-sm text-gray-500">{t('property')}</p>
                 <Link
                   to={`/properties/${displayTenant.propertyId}`}
                   className="font-medium text-gray-900 hover:text-blue-600"
@@ -116,14 +118,14 @@ export default function TenantDetailPage() {
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Unit</p>
+                <p className="text-sm text-gray-500">{t('unit')}</p>
                 <p className="font-medium text-gray-900">{displayTenant.unitNumber}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Lease Period</p>
+                <p className="text-sm text-gray-500">{t('leasePeriod')}</p>
                 <p className="font-medium text-gray-900">
                   {formatDate(displayTenant.leaseStartDate)} - {formatDate(displayTenant.leaseEndDate)}
                 </p>
@@ -132,7 +134,7 @@ export default function TenantDetailPage() {
             <div className="flex items-center gap-3">
               <DollarSign className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Monthly Rent</p>
+                <p className="text-sm text-gray-500">{t('monthlyRent')}</p>
                 <p className="font-medium text-gray-900">
                   {formatCurrency(displayTenant.rentAmount)}
                 </p>
@@ -141,7 +143,7 @@ export default function TenantDetailPage() {
             {displayTenant.balance !== undefined && displayTenant.balance > 0 && (
               <div className="p-3 bg-yellow-50 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  Outstanding balance: {formatCurrency(displayTenant.balance)}
+                  {t('outstandingBalance', { amount: formatCurrency(displayTenant.balance) })}
                 </p>
               </div>
             )}
@@ -150,14 +152,14 @@ export default function TenantDetailPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Payments</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('recentPayments')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('colAmount')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -184,8 +186,8 @@ export default function TenantDetailPage() {
         {(!displayTenant.payments || displayTenant.payments.length === 0) && (
           <EmptyState
             icon={<DollarSign className="h-8 w-8" />}
-            title="No payment history"
-            description="Payments from this tenant will appear here."
+            title={t('noPaymentHistory')}
+            description={t('noPaymentHistoryDesc')}
           />
         )}
       </div>

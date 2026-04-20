@@ -12,6 +12,7 @@ import {
   Wrench,
   ClipboardCheck,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ViewMode = 'month' | 'week';
@@ -46,6 +47,7 @@ function getEventsForDate(dateStr: string) {
 }
 
 export default function CalendarPage() {
+  const t = useTranslations('calendarPage');
   const [currentDate, setCurrentDate] = useState(new Date('2024-02-25'));
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
@@ -71,12 +73,12 @@ export default function CalendarPage() {
   return (
     <>
       <PageHeader
-        title="Calendar"
+        title={t('title')}
         subtitle={monthTitle}
         action={
           <Link href="/inspections/schedule" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            Add
+            {t('add')}
           </Link>
         }
       />
@@ -92,13 +94,13 @@ export default function CalendarPage() {
               onClick={() => setViewMode('month')}
               className={`btn text-sm ${viewMode === 'month' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Month
+              {t('month')}
             </button>
             <button
               onClick={() => setViewMode('week')}
               className={`btn text-sm ${viewMode === 'week' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Week
+              {t('week')}
             </button>
           </div>
           <button onClick={() => navigate(1)} className="p-2 rounded-lg hover:bg-gray-100">
@@ -144,7 +146,7 @@ export default function CalendarPage() {
                           </Link>
                         ))}
                         {dayEvents.length > 2 && (
-                          <span className="text-xs text-gray-500">+{dayEvents.length - 2} more</span>
+                          <span className="text-xs text-gray-500">{t('moreEvents', { count: dayEvents.length - 2 })}</span>
                         )}
                       </div>
                     </>
@@ -159,12 +161,12 @@ export default function CalendarPage() {
         <div className="flex gap-3">
           <Link href="/calendar/events" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
             <CalendarIcon className="w-6 h-6 text-primary-600" />
-            <span className="font-medium">View Events</span>
+            <span className="font-medium">{t('viewEvents')}</span>
             <span className="ml-auto text-primary-600">→</span>
           </Link>
           <Link href="/calendar/availability" className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow">
             <Clock className="w-6 h-6 text-primary-600" />
-            <span className="font-medium">Availability</span>
+            <span className="font-medium">{t('availability')}</span>
             <span className="ml-auto text-primary-600">→</span>
           </Link>
         </div>

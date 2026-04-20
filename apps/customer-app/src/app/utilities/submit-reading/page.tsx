@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Droplets, Zap, Camera } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -25,6 +26,7 @@ const meterTypes = [
 ];
 
 export default function SubmitReadingPage() {
+  const t = useTranslations('submitReading');
   const router = useRouter();
   const [readings, setReadings] = useState<Record<string, string>>({
     water: '',
@@ -49,7 +51,7 @@ export default function SubmitReadingPage() {
 
   return (
     <>
-      <PageHeader title="Submit Meter Reading" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
         <p className="text-sm text-gray-500 mb-4">
@@ -103,7 +105,7 @@ export default function SubmitReadingPage() {
                 className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 flex-shrink-0"
               >
                 <Camera className="w-6 h-6" />
-                <span className="text-xs mt-1">Add</span>
+                <span className="text-xs mt-1">{t('add')}</span>
               </button>
             )}
           </div>

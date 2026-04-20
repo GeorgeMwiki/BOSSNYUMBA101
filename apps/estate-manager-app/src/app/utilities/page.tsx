@@ -2,25 +2,27 @@
 
 import Link from 'next/link';
 import { Droplet, Zap, Flame, ChevronRight, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
+type StatusKey = 'ok' | 'warning' | 'alert';
 
 interface UtilitySummary {
   type: UtilityType;
-  name: string;
+  nameKey: 'utilWater' | 'utilElectricity' | 'utilGas';
   icon: React.ElementType;
   totalUnits: number;
   totalConsumption: number;
   unit: string;
-  status: 'ok' | 'warning' | 'alert';
+  status: StatusKey;
   pendingReadings: number;
 }
 
 const utilities: UtilitySummary[] = [
   {
     type: 'water',
-    name: 'Water',
+    nameKey: 'utilWater',
     icon: Droplet,
     totalUnits: 24,
     totalConsumption: 12450,
@@ -30,7 +32,7 @@ const utilities: UtilitySummary[] = [
   },
   {
     type: 'electricity',
-    name: 'Electricity',
+    nameKey: 'utilElectricity',
     icon: Zap,
     totalUnits: 24,
     totalConsumption: 8560,
@@ -40,7 +42,7 @@ const utilities: UtilitySummary[] = [
   },
   {
     type: 'gas',
-    name: 'Gas',
+    nameKey: 'utilGas',
     icon: Flame,
     totalUnits: 8,
     totalConsumption: 320,
@@ -50,18 +52,24 @@ const utilities: UtilitySummary[] = [
   },
 ];
 
-const statusConfig = {
-  ok: { label: 'On Track', color: 'badge-success' },
-  warning: { label: 'Pending Readings', color: 'badge-warning' },
-  alert: { label: 'Overdue', color: 'badge-danger' },
+const statusLabelKey: Record<StatusKey, 'statusOk' | 'statusWarning' | 'statusAlert'> = {
+  ok: 'statusOk',
+  warning: 'statusWarning',
+  alert: 'statusAlert',
+};
+const statusColor: Record<StatusKey, string> = {
+  ok: 'badge-success',
+  warning: 'badge-warning',
+  alert: 'badge-danger',
 };
 
 export default function UtilitiesOverviewPage() {
+  const t = useTranslations('utilitiesOverview');
   return (
     <>
       <PageHeader
-        title="Utilities"
-        subtitle="Track consumption & bills"
+        title={t('title')}
+        subtitle={t('subtitle')}
       />
 
       <div className="px-4 py-4 space-y-6">
@@ -69,7 +77,6 @@ export default function UtilitiesOverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {utilities.map((util) => {
             const Icon = util.icon;
-            const status = statusConfig[util.status];
             return (
               <div key={util.type} className="card p-4">
                 <div className="flex items-start justify-between">
@@ -78,21 +85,21 @@ export default function UtilitiesOverviewPage() {
                       <Icon className="w-6 h-6 text-primary-600" />
                     </div>
                     <div>
-                      <div className="font-medium">{util.name}</div>
+                      <div className="font-medium">{t(util.nameKey)}</div>
                       <div className="text-2xl font-bold mt-1">
                         {util.totalConsumption.toLocaleString()} {util.unit}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {util.totalUnits} units • This month
+                        {t('unitsThisMonth', { count: util.totalUnits })}
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <span className={status.color}>{status.label}</span>
+                  <span className={statusColor[util.status]}>{t(statusLabelKey[util.status])}</span>
                   {util.pendingReadings > 0 && (
                     <span className="text-sm text-gray-500">
-                      {util.pendingReadings} pending
+                      {t('pendingLabel', { count: util.pendingReadings })}
                     </span>
                   )}
                 </div>
@@ -103,7 +110,7 @@ export default function UtilitiesOverviewPage() {
 
         {/* Quick Actions */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
           <div className="space-y-3">
             <Link href="/utilities/readings">
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
@@ -111,8 +118,8 @@ export default function UtilitiesOverviewPage() {
                   <TrendingUp className="w-5 h-5 text-primary-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Record Meter Readings</div>
-                  <div className="text-sm text-gray-500">Submit readings for all units</div>
+                  <div className="font-medium">{t('recordReadings')}</div>
+                  <div className="text-sm text-gray-500">{t('recordReadingsDesc')}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
@@ -123,8 +130,8 @@ export default function UtilitiesOverviewPage() {
                   <Zap className="w-5 h-5 text-success-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Utility Bills</div>
-                  <div className="text-sm text-gray-500">View and manage bill history</div>
+                  <div className="font-medium">{t('utilityBills')}</div>
+                  <div className="text-sm text-gray-500">{t('utilityBillsDesc')}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
@@ -137,12 +144,12 @@ export default function UtilitiesOverviewPage() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-warning-600 flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-medium text-warning-800">5 units need meter readings</div>
+              <div className="font-medium text-warning-800">{t('alertTitle')}</div>
               <div className="text-sm text-warning-700 mt-1">
-                Electricity readings overdue for Unit A-102, B-201, C-301, C-305, C-402
+                {t('alertDesc')}
               </div>
               <Link href="/utilities/readings" className="text-sm text-primary-600 font-medium mt-2 inline-block">
-                Record readings →
+                {t('recordReadingsLink')}
               </Link>
             </div>
           </div>

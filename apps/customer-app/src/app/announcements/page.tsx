@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Bell, ChevronRight, Megaphone } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -32,9 +33,10 @@ const announcements = [
 ];
 
 export default function AnnouncementsPage() {
+  const t = useTranslations('announcementsList');
   return (
     <>
-      <PageHeader title="Announcements" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-4">
         <p className="text-sm text-gray-500 mb-4">
@@ -87,7 +89,7 @@ export default function AnnouncementsPage() {
         {announcements.length === 0 && (
           <div className="text-center py-12">
             <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No announcements</h3>
+            <h3 className="font-medium text-gray-900">{t('noAnnouncements')}</h3>
             <p className="text-sm text-gray-500 mt-1">
               Check back later for property updates
             </p>

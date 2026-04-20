@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { User, Bell, Shield, HelpCircle, ChevronRight, LogOut } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface SettingsItem {
@@ -29,9 +30,10 @@ const settingsSections: { title: string; items: SettingsItem[] }[] = [
 ];
 
 export default function SettingsOverviewPage() {
+  const t = useTranslations('simple');
   return (
     <>
-      <PageHeader title="Settings" subtitle="Manage your account" />
+      <PageHeader title={t('settings')} subtitle={t('settingsSubtitle')} />
 
       <div className="px-4 py-4 space-y-6">
         {settingsSections.map((section) => (

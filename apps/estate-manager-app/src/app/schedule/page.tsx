@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, Clock, MapPin, 
   Wrench, ClipboardCheck, AlertTriangle
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface ScheduledTask {
@@ -100,6 +101,7 @@ const timeSlots = [
 ];
 
 export default function SchedulePage() {
+  const t = useTranslations('schedulePage');
   const [selectedDate, setSelectedDate] = useState(new Date('2024-02-25'));
   const [view, setView] = useState<'day' | 'week'>('day');
 
@@ -132,8 +134,8 @@ export default function SchedulePage() {
 
   return (
     <>
-      <PageHeader 
-        title="Schedule" 
+      <PageHeader
+        title={t('title')}
         subtitle={formatDate(selectedDate)}
       />
 
@@ -152,13 +154,13 @@ export default function SchedulePage() {
               onClick={() => setView('day')}
               className={`btn text-sm ${view === 'day' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Day
+              {t('day')}
             </button>
             <button
               onClick={() => setView('week')}
               className={`btn text-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Week
+              {t('week')}
             </button>
           </div>
 
@@ -204,11 +206,11 @@ export default function SchedulePage() {
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-gray-500">Today&apos;s Tasks</div>
+              <div className="text-sm text-gray-500">{t('todaysTasks')}</div>
               <div className="text-2xl font-bold">{dayTasks.length}</div>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-500">Total Time</div>
+              <div className="text-sm text-gray-500">{t('totalTime')}</div>
               <div className="text-lg font-semibold">
                 {Math.round(dayTasks.reduce((acc, t) => acc + t.duration, 0) / 60)}h
               </div>
@@ -265,7 +267,7 @@ export default function SchedulePage() {
                         <div className="font-medium text-sm truncate">{task.title}</div>
                         <div className="flex items-center gap-2 text-xs mt-1">
                           <MapPin className="w-3 h-3" />
-                          <span>Unit {task.unit}</span>
+                          <span>{t('unitPrefix', { unit: task.unit })}</span>
                           <Clock className="w-3 h-3 ml-2" />
                           <span>{task.duration}m</span>
                         </div>
@@ -285,9 +287,9 @@ export default function SchedulePage() {
         {dayTasks.length === 0 && (
           <div className="text-center py-12">
             <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No tasks scheduled</h3>
+            <h3 className="font-medium text-gray-900">{t('noTasksScheduled')}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              You have no tasks scheduled for this day
+              {t('noTasksDesc')}
             </p>
           </div>
         )}

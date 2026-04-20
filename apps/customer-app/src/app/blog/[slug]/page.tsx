@@ -2,6 +2,8 @@
  * Public blog post detail — /blog/[slug]
  */
 
+import { getTranslations } from 'next-intl/server';
+
 export const dynamic = 'force-dynamic';
 
 interface PostData {
@@ -43,12 +45,13 @@ export default async function BlogPostPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const t = await getTranslations('blogPost');
   const resolvedParams = await params;
   const post = await loadPost(resolvedParams.slug);
   if (!post) {
     return (
       <main className="max-w-3xl mx-auto p-6">
-        <h1 className="text-2xl">Post not found</h1>
+        <h1 className="text-2xl">{t('notFound')}</h1>
         <p>
           <a href="/blog" className="text-blue-600 hover:underline">
             Back to blog

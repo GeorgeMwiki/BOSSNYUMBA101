@@ -32,6 +32,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
@@ -74,6 +75,7 @@ function normalizePriority(s: string): 'emergency' | 'high' | 'medium' | 'low' {
 }
 
 export default function WorkOrderDetail() {
+  const t = useTranslations('workOrderDetail');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -144,7 +146,7 @@ export default function WorkOrderDetail() {
       property: String(property?.name ?? wo.propertyId ?? ''),
       location: String(wo.location ?? ''),
       customer: {
-        name: customer ? String(customer.firstName ?? '') + ' ' + String(customer.lastName ?? '') : 'Tenant',
+        name: customer ? String(customer.firstName ?? '') + ' ' + String(customer.lastName ?? '') : t('tenantFallback'),
         phone: String(customer?.phone ?? ''),
       },
       createdAt: String(wo.createdAt ?? ''),
@@ -172,11 +174,11 @@ export default function WorkOrderDetail() {
   const timeline: TimelineEvent[] = useMemo(() => {
     if (!wo) return [];
     const events: TimelineEvent[] = [];
-    if (wo.createdAt) events.push({ id: '1', timestamp: String(wo.createdAt), action: 'Work order submitted', user: workOrder?.customer.name ?? '' });
-    if (sla?.respondedAt) events.push({ id: '2', timestamp: String(sla.respondedAt), action: 'Triaged and assigned', user: 'System' });
-    if (wo.scheduledDate) events.push({ id: '3', timestamp: String(wo.scheduledDate), action: `Scheduled for ${new Date(String(wo.scheduledDate)).toLocaleDateString()}`, user: workOrder?.assignedTo ?? '' });
-    if (wo.startedAt) events.push({ id: '4', timestamp: String(wo.startedAt), action: 'Work started', user: workOrder?.assignedTo ?? '' });
-    if (wo.completedAt) events.push({ id: '5', timestamp: String(wo.completedAt), action: 'Work completed', user: workOrder?.assignedTo ?? '' });
+    if (wo.createdAt) events.push({ id: '1', timestamp: String(wo.createdAt), action: t('workOrderSubmitted'), user: workOrder?.customer.name ?? '' });
+    if (sla?.respondedAt) events.push({ id: '2', timestamp: String(sla.respondedAt), action: t('triagedAndAssigned'), user: t('systemUser') });
+    if (wo.scheduledDate) events.push({ id: '3', timestamp: String(wo.scheduledDate), action: t('scheduledFor', { date: new Date(String(wo.scheduledDate)).toLocaleDateString() }), user: workOrder?.assignedTo ?? '' });
+    if (wo.startedAt) events.push({ id: '4', timestamp: String(wo.startedAt), action: t('workStarted'), user: workOrder?.assignedTo ?? '' });
+    if (wo.completedAt) events.push({ id: '5', timestamp: String(wo.completedAt), action: t('workCompleted'), user: workOrder?.assignedTo ?? '' });
     return events;
   }, [wo, sla, workOrder]);
 
@@ -288,7 +290,7 @@ export default function WorkOrderDetail() {
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Work Order" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="flex justify-center py-12">
           <Spinner size="lg" className="text-primary-500" />
         </div>
@@ -299,11 +301,11 @@ export default function WorkOrderDetail() {
   if (!workOrder) {
     return (
       <>
-        <PageHeader title="Work Order" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-8 text-center">
           <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-4">Work order not found</p>
-          <button onClick={() => router.back()} className="btn-secondary">Go Back</button>
+          <p className="text-gray-500 mb-4">{t('notFound')}</p>
+          <button onClick={() => router.back()} className="btn-secondary">{t('goBack')}</button>
         </div>
       </>
     );
@@ -329,7 +331,7 @@ export default function WorkOrderDetail() {
         action={
           <button onClick={() => setShowVendorModal(true)} className="btn-secondary text-sm flex items-center gap-1">
             <Building2 className="w-4 h-4" />
-            Vendor
+            {t('vendor')}
           </button>
         }
       />
@@ -353,7 +355,7 @@ export default function WorkOrderDetail() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-500">
               <MapPin className="w-4 h-4" />
-              <span>Unit {workOrder.unit}</span>
+              <span>{t('unitPrefix', { unit: workOrder.unit })}</span>
             </div>
             <div className="flex items-center gap-2 text-gray-500">
               <FileText className="w-4 h-4" />
@@ -364,7 +366,7 @@ export default function WorkOrderDetail() {
           {workOrder.assignedTo && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">
               <Wrench className="w-4 h-4" />
-              <span>Assigned to: <strong>{workOrder.assignedTo}</strong></span>
+              <span>{t('assignedTo')} <strong>{workOrder.assignedTo}</strong></span>
             </div>
           )}
         </div>
@@ -374,27 +376,27 @@ export default function WorkOrderDetail() {
           <div className="card p-4">
             <h3 className="font-medium mb-3 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary-600" />
-              Time Tracking
+              {t('timeTracking')}
             </h3>
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-primary-600">
                   {String(laborHours).padStart(2, '0')}:{String(laborMinutes).padStart(2, '0')}
                 </div>
-                <div className="text-sm text-gray-500">Hours worked</div>
+                <div className="text-sm text-gray-500">{t('hoursWorked')}</div>
               </div>
               <div className="flex gap-2">
                 {!isTracking ? (
                   <button onClick={startTimeTracking} className="btn-primary flex items-center gap-2">
-                    <Play className="w-4 h-4" /> Start
+                    <Play className="w-4 h-4" /> {t('start')}
                   </button>
                 ) : (
                   <>
                     <button onClick={stopTimeTracking} className="btn-secondary flex items-center gap-2">
-                      <Pause className="w-4 h-4" /> Pause
+                      <Pause className="w-4 h-4" /> {t('pause')}
                     </button>
                     <button onClick={stopTimeTracking} className="btn-danger flex items-center gap-2">
-                      <Square className="w-4 h-4" /> Stop
+                      <Square className="w-4 h-4" /> {t('stop')}
                     </button>
                   </>
                 )}
@@ -407,26 +409,26 @@ export default function WorkOrderDetail() {
         <div className="card p-4">
           <h3 className="font-medium mb-3 flex items-center gap-2">
             <Timer className="w-5 h-5 text-primary-600" />
-            SLA Status
+            {t('slaStatus')}
           </h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Response Time</span>
+              <span className="text-sm text-gray-600">{t('responseTime')}</span>
               {workOrder.sla.respondedAt ? (
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success-500" />
-                  <span className="text-sm font-medium text-success-600">Met</span>
+                  <span className="text-sm font-medium text-success-600">{t('met')}</span>
                 </div>
               ) : (
                 <SLATimer minutesRemaining={responseMinutesRemaining} type="response" breached={workOrder.sla.responseBreached} />
               )}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Resolution Time</span>
+              <span className="text-sm text-gray-600">{t('resolutionTime')}</span>
               {['COMPLETED', 'completed'].includes(workOrder.status) ? (
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success-500" />
-                  <span className="text-sm font-medium text-success-600">Completed</span>
+                  <span className="text-sm font-medium text-success-600">{t('completed')}</span>
                 </div>
               ) : (
                 <SLATimer minutesRemaining={resolutionMinutesRemaining} type="resolution" breached={workOrder.sla.resolutionBreached} />
@@ -435,7 +437,7 @@ export default function WorkOrderDetail() {
             {(workOrder.sla.responseBreached || workOrder.sla.resolutionBreached) && (
               <div className="bg-danger-50 p-3 rounded-lg flex items-center gap-2 text-danger-700">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">SLA breached</span>
+                <span className="text-sm font-medium">{t('slaBreached')}</span>
               </div>
             )}
           </div>
@@ -449,7 +451,7 @@ export default function WorkOrderDetail() {
                 <Calendar className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <h3 className="font-medium text-primary-900">Scheduled Visit</h3>
+                <h3 className="font-medium text-primary-900">{t('scheduledVisit')}</h3>
                 <p className="text-sm text-primary-700">
                   {new Date(workOrder.scheduledDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                 </p>
@@ -461,7 +463,7 @@ export default function WorkOrderDetail() {
 
         {/* Customer Info */}
         <div className="card p-4">
-          <h3 className="font-medium mb-3">Customer Contact</h3>
+          <h3 className="font-medium mb-3">{t('customerContact')}</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
@@ -486,7 +488,7 @@ export default function WorkOrderDetail() {
           {workOrder.permissionToEnter && (
             <div className="mt-4 p-3 bg-success-50 rounded-lg">
               <div className="flex items-center gap-2 text-success-700 text-sm font-medium">
-                <Check className="w-4 h-4" /> Permission to Enter
+                <Check className="w-4 h-4" /> {t('permissionToEnter')}
               </div>
               {workOrder.entryInstructions && <p className="text-sm text-success-600 mt-1">{workOrder.entryInstructions}</p>}
             </div>
@@ -495,10 +497,10 @@ export default function WorkOrderDetail() {
 
         {/* Location Details */}
         <div className="card p-4">
-          <h3 className="font-medium mb-3">Location</h3>
+          <h3 className="font-medium mb-3">{t('location')}</h3>
           <div className="text-sm">
             <div className="font-medium">{workOrder.property}</div>
-            <div className="text-gray-500">Unit {workOrder.unit}</div>
+            <div className="text-gray-500">{t('unitPrefix', { unit: workOrder.unit })}</div>
             {workOrder.location && <div className="text-gray-500">{workOrder.location}</div>}
           </div>
         </div>
@@ -506,7 +508,7 @@ export default function WorkOrderDetail() {
         {/* Photos from Customer */}
         {workOrder.photos.length > 0 && (
           <div className="card p-4">
-            <h3 className="font-medium mb-3">Photos from Customer</h3>
+            <h3 className="font-medium mb-3">{t('photosFromCustomer')}</h3>
             <div className="flex gap-2 overflow-x-auto">
               {workOrder.photos.map((_, index) => (
                 <div key={index} className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center">
@@ -522,31 +524,31 @@ export default function WorkOrderDetail() {
           <div className="card p-4">
             <h3 className="font-medium mb-3 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-primary-600" />
-              Sign-off Status
+              {t('signOffStatus')}
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm">Technician Sign-off</span>
+                <span className="text-sm">{t('technicianSignOff')}</span>
                 {workOrder.signOff.technicianSigned ? (
-                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Signed</span>
+                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('signed')}</span>
                 ) : (
-                  <span className="badge-warning">Pending</span>
+                  <span className="badge-warning">{t('pending')}</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm">Tenant Confirmation</span>
+                <span className="text-sm">{t('tenantConfirmation')}</span>
                 {workOrder.signOff.tenantSigned ? (
-                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</span>
+                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('confirmed')}</span>
                 ) : (
-                  <span className="badge-warning">Pending</span>
+                  <span className="badge-warning">{t('pending')}</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm">Manager Approval</span>
+                <span className="text-sm">{t('managerApproval')}</span>
                 {workOrder.signOff.estateManagerApproved ? (
-                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Approved</span>
+                  <span className="badge-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('approved')}</span>
                 ) : (
-                  <span className="badge-warning">Pending</span>
+                  <span className="badge-warning">{t('pending')}</span>
                 )}
               </div>
             </div>
@@ -556,7 +558,7 @@ export default function WorkOrderDetail() {
         {/* Timeline */}
         {timeline.length > 0 && (
           <div className="card p-4">
-            <h3 className="font-medium mb-4">Activity Timeline</h3>
+            <h3 className="font-medium mb-4">{t('activityTimeline')}</h3>
             <Timeline events={timeline} />
           </div>
         )}
@@ -564,10 +566,10 @@ export default function WorkOrderDetail() {
         {/* Actions */}
         <div className="flex gap-3">
           <Link href={`/work-orders/${workOrder.id}/triage`} className="btn-secondary flex-1">
-            <Edit className="w-4 h-4 mr-2" /> Edit
+            <Edit className="w-4 h-4 mr-2" /> {t('edit')}
           </Link>
           <Link href="/work-orders" className="btn-secondary flex-1">
-            Back to List
+            {t('backToList')}
           </Link>
         </div>
       </div>
@@ -576,7 +578,7 @@ export default function WorkOrderDetail() {
       {isActive && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
           <button onClick={() => setShowCompletionModal(true)} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
-            <Wrench className="w-5 h-5" /> Mark as Complete
+            <Wrench className="w-5 h-5" /> {t('markAsComplete')}
           </button>
         </div>
       )}
@@ -588,17 +590,17 @@ export default function WorkOrderDetail() {
           <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-4 p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="w-5 h-5 text-primary-500" />
-              Assign Vendor
+              {t('assignVendor')}
             </h3>
             <p className="text-sm text-gray-500">
-              Select a vendor for <strong>{workOrder.category}</strong> work on this order.
+              {t('selectVendorFor')} <strong>{workOrder.category}</strong> {t('workOnThisOrder')}
             </p>
 
             {availableVendors.length === 0 ? (
               <div className="text-center py-8">
                 <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No vendors available</p>
-                <Link href="/vendors/new" className="btn-primary text-sm mt-3 inline-block">Add Vendor</Link>
+                <p className="text-sm text-gray-500">{t('noVendorsAvailable')}</p>
+                <Link href="/vendors/new" className="btn-primary text-sm mt-3 inline-block">{t('addVendor')}</Link>
               </div>
             ) : (
               <div className="space-y-2">
@@ -627,14 +629,14 @@ export default function WorkOrderDetail() {
                       onClick={() => assignVendorMutation.mutate(v.id)}
                       disabled={assignVendorMutation.isPending}
                     >
-                      {assignVendorMutation.isPending ? <Spinner size="sm" /> : 'Assign'}
+                      {assignVendorMutation.isPending ? <Spinner size="sm" /> : t('assign')}
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
-            <button className="btn-secondary w-full" onClick={() => setShowVendorModal(false)}>Close</button>
+            <button className="btn-secondary w-full" onClick={() => setShowVendorModal(false)}>{t('close')}</button>
           </div>
         </div>
       )}
@@ -645,7 +647,7 @@ export default function WorkOrderDetail() {
           <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Complete Work Order</h3>
+                <h3 className="text-lg font-semibold">{t('completeWorkOrder')}</h3>
                 <button onClick={() => setShowCompletionModal(false)} className="p-2 text-gray-400">
                   <X className="w-5 h-5" />
                 </button>
@@ -654,7 +656,7 @@ export default function WorkOrderDetail() {
 
             <div className="p-5 space-y-6">
               <div>
-                <label className="label">Before Photos</label>
+                <label className="label">{t('beforePhotos')}</label>
                 <div className="flex gap-2 flex-wrap">
                   {beforePhotos.map((_, index) => (
                     <div key={index} className="relative">
@@ -666,7 +668,7 @@ export default function WorkOrderDetail() {
                 </div>
               </div>
               <div>
-                <label className="label">After Photos <span className="text-danger-500">*</span></label>
+                <label className="label">{t('afterPhotos')} <span className="text-danger-500">*</span></label>
                 <div className="flex gap-2 flex-wrap">
                   {afterPhotos.map((_, index) => (
                     <div key={index} className="relative">
@@ -676,14 +678,14 @@ export default function WorkOrderDetail() {
                   ))}
                   <button onClick={() => addPhoto('after')} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"><Plus className="w-6 h-6" /></button>
                 </div>
-                {afterPhotos.length === 0 && <p className="text-xs text-danger-500 mt-1">At least one after photo is required</p>}
+                {afterPhotos.length === 0 && <p className="text-xs text-danger-500 mt-1">{t('afterPhotoRequired')}</p>}
               </div>
               <div>
-                <label className="label">Work Completed Notes <span className="text-danger-500">*</span></label>
-                <textarea className="input min-h-[100px]" placeholder="Describe the work completed..." value={workNotes} onChange={(e) => setWorkNotes(e.target.value)} />
+                <label className="label">{t('workCompletedNotes')} <span className="text-danger-500">*</span></label>
+                <textarea className="input min-h-[100px]" placeholder={t('describeWork')} value={workNotes} onChange={(e) => setWorkNotes(e.target.value)} />
               </div>
               <div>
-                <label className="label flex items-center gap-2"><Package className="w-4 h-4" /> Materials Used</label>
+                <label className="label flex items-center gap-2"><Package className="w-4 h-4" /> {t('materialsUsed')}</label>
                 <div className="space-y-2">
                   {materials.map((material) => (
                     <div key={material.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -696,28 +698,28 @@ export default function WorkOrderDetail() {
                   ))}
                 </div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
-                  <input type="text" className="input col-span-2" placeholder="Material name" value={newMaterial.name} onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })} />
-                  <input type="number" className="input" placeholder="Qty" min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value) || 1 })} />
-                  <input type="number" className="input" placeholder="Cost" min="0" value={newMaterial.cost || ''} onChange={(e) => setNewMaterial({ ...newMaterial, cost: parseFloat(e.target.value) || 0 })} />
+                  <input type="text" className="input col-span-2" placeholder={t('materialName')} value={newMaterial.name} onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })} />
+                  <input type="number" className="input" placeholder={t('qty')} min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value) || 1 })} />
+                  <input type="number" className="input" placeholder={t('cost')} min="0" value={newMaterial.cost || ''} onChange={(e) => setNewMaterial({ ...newMaterial, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
-                <button onClick={addMaterial} disabled={!newMaterial.name.trim()} className="btn-secondary w-full mt-2 text-sm disabled:opacity-50"><Plus className="w-4 h-4 mr-1" /> Add Material</button>
+                <button onClick={addMaterial} disabled={!newMaterial.name.trim()} className="btn-secondary w-full mt-2 text-sm disabled:opacity-50"><Plus className="w-4 h-4 mr-1" /> {t('addMaterial')}</button>
                 {materials.length > 0 && (
                   <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
-                    <span className="text-sm text-primary-700">Total Materials Cost</span>
+                    <span className="text-sm text-primary-700">{t('totalMaterialsCost')}</span>
                     <span className="font-semibold text-primary-900">KES {totalMaterialsCost.toLocaleString()}</span>
                   </div>
                 )}
               </div>
               <div>
-                <label className="label flex items-center gap-2"><Clock className="w-4 h-4" /> Labor Time</label>
+                <label className="label flex items-center gap-2"><Clock className="w-4 h-4" /> {t('laborTime')}</label>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <input type="number" className="input" placeholder="Hours" min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value) || 0)} />
-                    <span className="text-xs text-gray-500 mt-1">Hours</span>
+                    <input type="number" className="input" placeholder={t('hours')} min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value) || 0)} />
+                    <span className="text-xs text-gray-500 mt-1">{t('hours')}</span>
                   </div>
                   <div className="flex-1">
-                    <input type="number" className="input" placeholder="Minutes" min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value) || 0)} />
-                    <span className="text-xs text-gray-500 mt-1">Minutes</span>
+                    <input type="number" className="input" placeholder={t('minutes')} min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value) || 0)} />
+                    <span className="text-xs text-gray-500 mt-1">{t('minutes')}</span>
                   </div>
                 </div>
               </div>
@@ -725,12 +727,12 @@ export default function WorkOrderDetail() {
 
             <div className="p-5 border-t border-gray-200 sticky bottom-0 bg-white">
               <div className="flex gap-3">
-                <button onClick={() => setShowCompletionModal(false)} className="btn-secondary flex-1 py-3">Cancel</button>
+                <button onClick={() => setShowCompletionModal(false)} className="btn-secondary flex-1 py-3">{t('cancel')}</button>
                 <button onClick={handleSubmitCompletion} disabled={!canComplete || completeMutation.isPending} className="btn-primary flex-1 py-3 disabled:opacity-50">
                   {completeMutation.isPending ? (
                     <Spinner className="h-5 w-5" />
                   ) : (
-                    <><Send className="w-4 h-4 mr-2" /> Submit for Sign-off</>
+                    <><Send className="w-4 h-4 mr-2" /> {t('submitForSignOff')}</>
                   )}
                 </button>
               </div>
@@ -745,9 +747,9 @@ export default function WorkOrderDetail() {
           <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">
-                {signOffStep === 'technician' && 'Technician Sign-off'}
-                {signOffStep === 'tenant' && 'Tenant Confirmation'}
-                {signOffStep === 'manager' && 'Manager Approval'}
+                {signOffStep === 'technician' && t('signOffTechnician')}
+                {signOffStep === 'tenant' && t('signOffTenant')}
+                {signOffStep === 'manager' && t('signOffManager')}
               </h3>
               <button onClick={() => setShowSignOffModal(false)} className="p-2 text-gray-400"><X className="w-5 h-5" /></button>
             </div>
@@ -757,29 +759,29 @@ export default function WorkOrderDetail() {
               <div className={`w-3 h-3 rounded-full ${signOffStep === 'manager' ? 'bg-primary-500' : 'bg-gray-300'}`} />
             </div>
             <div className="p-4 bg-gray-50 rounded-xl">
-              {signOffStep === 'technician' && <p className="text-sm text-gray-600">By signing, I confirm that the work has been completed as described and the photos accurately represent the work done.</p>}
-              {signOffStep === 'tenant' && <p className="text-sm text-gray-600">Please ask the tenant to confirm they are satisfied with the work.</p>}
-              {signOffStep === 'manager' && <p className="text-sm text-gray-600">Review the completion evidence and approve the work order closure.</p>}
+              {signOffStep === 'technician' && <p className="text-sm text-gray-600">{t('technicianConfirmText')}</p>}
+              {signOffStep === 'tenant' && <p className="text-sm text-gray-600">{t('tenantConfirmText')}</p>}
+              {signOffStep === 'manager' && <p className="text-sm text-gray-600">{t('managerConfirmText')}</p>}
             </div>
             <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 h-32 flex items-center justify-center">
               {signatureDrawn ? (
                 <div className="text-center">
                   <CheckCircle className="w-12 h-12 text-success-500 mx-auto mb-2" />
-                  <span className="text-sm text-success-600">Signature captured</span>
+                  <span className="text-sm text-success-600">{t('signatureCaptured')}</span>
                 </div>
               ) : (
-                <button onClick={() => setSignatureDrawn(true)} className="text-sm text-gray-500">Tap to sign</button>
+                <button onClick={() => setSignatureDrawn(true)} className="text-sm text-gray-500">{t('tapToSign')}</button>
               )}
             </div>
             <div className="flex gap-3">
               {signOffStep !== 'technician' && (
-                <button onClick={() => { if (signOffStep === 'tenant') setSignOffStep('technician'); if (signOffStep === 'manager') setSignOffStep('tenant'); setSignatureDrawn(false); }} className="btn-secondary flex-1 py-3">Back</button>
+                <button onClick={() => { if (signOffStep === 'tenant') setSignOffStep('technician'); if (signOffStep === 'manager') setSignOffStep('tenant'); setSignatureDrawn(false); }} className="btn-secondary flex-1 py-3">{t('back')}</button>
               )}
               <button onClick={handleSignOff} disabled={!signatureDrawn} className="btn-primary flex-1 py-3 disabled:opacity-50">
-                {signOffStep === 'manager' ? 'Complete Work Order' : 'Next'}
+                {signOffStep === 'manager' ? t('completeWorkOrderAction') : t('next')}
               </button>
             </div>
-            {signOffStep === 'tenant' && <button className="btn-secondary w-full text-sm">Send confirmation link to tenant</button>}
+            {signOffStep === 'tenant' && <button className="btn-secondary w-full text-sm">{t('sendTenantLink')}</button>}
           </div>
         </div>
       )}

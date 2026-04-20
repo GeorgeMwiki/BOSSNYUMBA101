@@ -3,6 +3,7 @@
  * Emphasises the "200 units single-handed" promise.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
@@ -12,12 +13,13 @@ export const metadata = {
     'Manage 200 units single-handed. Owner reports, vendor dispatch, and a copilot who drafts before you ask.',
 };
 
-export default function ForManagersPage() {
+export default async function ForManagersPage() {
+  const t = await getTranslations('forManagers');
   return (
     <MarketingShell
-      title="Run 200 units the way a senior partner would run them."
-      subtitle="BOSSNYUMBA is built for managers who are in the middle: accountable to owners, responsible for tenants, responsible for vendors, and somehow also doing the rent roll. Mr. Mwikila absorbs the volume so you can be excellent on the calls that matter."
-      heroCtaLabel="Show me a manager dashboard"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <FeatureGrid
         heading="What a manager actually gets"

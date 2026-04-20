@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -38,6 +39,7 @@ const subleaseSchema = z
 type SubleaseForm = z.infer<typeof subleaseSchema>;
 
 export default function SubleaseRequestPage(): React.ReactElement {
+  const t = useTranslations('subleasePage');
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   const {
@@ -81,7 +83,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
     <main className="p-6 max-w-xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Request a sublease</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -92,7 +94,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
             )}
 
             <div>
-              <Label htmlFor="name">Prospect name</Label>
+              <Label htmlFor="name">{t('prospectName')}</Label>
               <Input id="name" error={!!errors.prospectName} {...register('prospectName')} />
               {errors.prospectName && (
                 <p role="alert" className="mt-1 text-xs text-destructive">
@@ -102,7 +104,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="email">Prospect email</Label>
+                <Label htmlFor="email">{t('prospectEmail')}</Label>
                 <Input id="email" type="email" error={!!errors.prospectEmail} {...register('prospectEmail')} />
                 {errors.prospectEmail && (
                   <p role="alert" className="mt-1 text-xs text-destructive">
@@ -111,7 +113,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
                 )}
               </div>
               <div>
-                <Label htmlFor="phone">Prospect phone</Label>
+                <Label htmlFor="phone">{t('prospectPhone')}</Label>
                 <Input id="phone" error={!!errors.prospectPhone} {...register('prospectPhone')} />
                 {errors.prospectPhone && (
                   <p role="alert" className="mt-1 text-xs text-destructive">
@@ -122,7 +124,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="start">Start date</Label>
+                <Label htmlFor="start">{t('startDate')}</Label>
                 <Input id="start" type="date" error={!!errors.startDate} {...register('startDate')} />
                 {errors.startDate && (
                   <p role="alert" className="mt-1 text-xs text-destructive">
@@ -131,7 +133,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
                 )}
               </div>
               <div>
-                <Label htmlFor="end">End date</Label>
+                <Label htmlFor="end">{t('endDate')}</Label>
                 <Input id="end" type="date" error={!!errors.endDate} {...register('endDate')} />
                 {errors.endDate && (
                   <p role="alert" className="mt-1 text-xs text-destructive">
@@ -141,7 +143,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
               </div>
             </div>
             <div>
-              <Label htmlFor="rent">Proposed rent</Label>
+              <Label htmlFor="rent">{t('proposedRent')}</Label>
               <Input
                 id="rent"
                 type="number"
@@ -156,7 +158,7 @@ export default function SubleaseRequestPage(): React.ReactElement {
               )}
             </div>
             <div>
-              <Label htmlFor="reason">Reason for sublease</Label>
+              <Label htmlFor="reason">{t('reason')}</Label>
               <textarea
                 id="reason"
                 className="w-full border rounded-md p-2"
@@ -174,9 +176,9 @@ export default function SubleaseRequestPage(): React.ReactElement {
               type="submit"
               loading={isSubmitting}
               disabled={isSubmitting}
-              aria-label="Submit sublease request"
+              aria-label={t('submitRequestAria')}
             >
-              Submit request
+              {t('submitRequest')}
             </Button>
           </form>
         </CardContent>

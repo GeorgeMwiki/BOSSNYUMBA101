@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useChatStream } from '@bossnyumba/chat-ui';
 
 const PROMPTS: readonly string[] = [
@@ -16,6 +17,7 @@ const PROMPTS: readonly string[] = [
 ];
 
 export function LiveConsultantDemo() {
+  const t = useTranslations('liveConsultant');
   const [sessionId, setSessionId] = useState<string>('');
   const [question, setQuestion] = useState<string>('');
   const [pastQuestion, setPastQuestion] = useState<string>('');
@@ -62,7 +64,7 @@ export function LiveConsultantDemo() {
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
         Live demo — ask a real estate question
       </div>
-      <h3 className="mb-2 text-lg font-semibold">Ask him anything. Live answer below.</h3>
+      <h3 className="mb-2 text-lg font-semibold">{t('heading')}</h3>
       <p className="mb-4 text-sm text-slate-700">
         Streams directly from Mr. Mwikila's marketing brain. No signup, no email capture.
       </p>
@@ -75,7 +77,7 @@ export function LiveConsultantDemo() {
       >
         <input
           className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-          placeholder="Ask a real estate question..."
+          placeholder={t('questionPlaceholder')}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           disabled={state.isStreaming}
@@ -104,7 +106,7 @@ export function LiveConsultantDemo() {
       {(pastQuestion || state.assistantText) && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           {pastQuestion && (
-            <div className="mb-2 text-xs text-slate-500">You asked: {pastQuestion}</div>
+            <div className="mb-2 text-xs text-slate-500">{t('youAskedPrefix')}: {pastQuestion}</div>
           )}
           <div
             ref={streamingRef}

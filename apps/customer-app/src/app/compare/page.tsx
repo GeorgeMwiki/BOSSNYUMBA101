@@ -3,6 +3,7 @@
  * Be honest, not dismissive. That builds more trust than any feature list.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
@@ -78,22 +79,23 @@ const ROWS: readonly Row[] = [
   },
 ];
 
-export default function ComparePage() {
+export default async function ComparePage() {
+  const t = await getTranslations('comparePage');
   return (
     <MarketingShell
-      title="An honest comparison."
-      subtitle="Where BOSSNYUMBA wins, where it does not, and when you should pick someone else. No marketing spin — if AppFolio fits you better, we will tell you."
-      heroCtaLabel="Ask Mr. Mwikila which is right for you"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <section className="mb-8 overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-800">Criterion</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-800">{t('criterion')}</th>
               <th className="px-4 py-3 text-left font-semibold text-emerald-700">BOSSNYUMBA</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">AppFolio</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Yardi</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Spreadsheet</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('appfolioHeader')}</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('yardiHeader')}</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('spreadsheet')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -112,20 +114,20 @@ export default function ComparePage() {
 
       <section className="mb-16 grid grid-cols-1 gap-4 md:grid-cols-3">
         <article className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-2 text-lg font-semibold">Pick AppFolio if...</h3>
+          <h3 className="mb-2 text-lg font-semibold">{t('pickAppfolio')}</h3>
           <p className="text-sm text-slate-700">
             You run 500+ US-based units, ACH is your primary rail, and US compliance is the point.
           </p>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-2 text-lg font-semibold">Pick Yardi if...</h3>
+          <h3 className="mb-2 text-lg font-semibold">{t('pickYardi')}</h3>
           <p className="text-sm text-slate-700">
             You need enterprise-grade accounting rigor across multiple jurisdictions and you have
             an IT team.
           </p>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-2 text-lg font-semibold">Pick a spreadsheet if...</h3>
+          <h3 className="mb-2 text-lg font-semibold">{t('pickSpreadsheet')}</h3>
           <p className="text-sm text-slate-700">
             You are running under 10 units, collecting cash, and have no interest in AI.
             Spreadsheets are underrated.
@@ -134,7 +136,7 @@ export default function ComparePage() {
       </section>
 
       <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-8">
-        <h2 className="mb-3 text-2xl font-semibold text-emerald-900">Pick BOSSNYUMBA if...</h2>
+        <h2 className="mb-3 text-2xl font-semibold text-emerald-900">{t('pickBossnyumba')}</h2>
         <p className="mb-4 text-emerald-900/80">
           Your portfolio is in East Africa, your tenants speak Swahili or pay via M-Pesa, and you
           want the AI to be the product — not a toy bolted onto an old database. Between 8 units

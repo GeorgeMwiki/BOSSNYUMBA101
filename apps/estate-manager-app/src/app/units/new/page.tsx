@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService, propertiesService } from '@bossnyumba/api-client';
 
@@ -32,6 +33,7 @@ const unitSchema = z.object({
 type UnitForm = z.infer<typeof unitSchema>;
 
 function UnitFormPageInner() {
+  const t = useTranslations('unitForm');
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -98,14 +100,14 @@ function UnitFormPageInner() {
 
   return (
     <>
-      <PageHeader title="Add Unit" showBack />
+      <PageHeader title={t('addTitle')} showBack />
 
       <form onSubmit={onSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto" noValidate>
         <div className="card p-4 space-y-4">
           <div>
-            <label htmlFor="propertyId" className="label">Property *</label>
+            <label htmlFor="propertyId" className="label">{t('property')}</label>
             <select id="propertyId" className="input" aria-invalid={!!errors.propertyId} {...register('propertyId')}>
-              <option value="">Select property</option>
+              <option value="">{t('selectProperty')}</option>
               {properties.map((p: { id: string; name: string }) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -117,67 +119,67 @@ function UnitFormPageInner() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="unitNumber" className="label">Unit Number *</label>
-              <input id="unitNumber" type="text" className="input" placeholder="e.g. A101" aria-invalid={!!errors.unitNumber} {...register('unitNumber')} />
+              <label htmlFor="unitNumber" className="label">{t('unitNumber')}</label>
+              <input id="unitNumber" type="text" className="input" placeholder={t('unitNumberPlaceholder')} aria-invalid={!!errors.unitNumber} {...register('unitNumber')} />
               {errors.unitNumber && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.unitNumber.message}</p>}
             </div>
             <div>
-              <label htmlFor="floor" className="label">Floor</label>
+              <label htmlFor="floor" className="label">{t('floor')}</label>
               <input id="floor" type="number" min={0} className="input" aria-invalid={!!errors.floor} {...register('floor', { valueAsNumber: true })} />
               {errors.floor && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.floor.message}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="type" className="label">Unit Type</label>
+            <label htmlFor="type" className="label">{t('unitType')}</label>
             <select id="type" className="input" {...register('type')}>
-              <option value="studio">Studio</option>
-              <option value="one_bedroom">1 Bedroom</option>
-              <option value="two_bedroom">2 Bedroom</option>
-              <option value="three_bedroom">3 Bedroom</option>
-              <option value="four_bedroom_plus">4+ Bedroom</option>
+              <option value="studio">{t('typeStudio')}</option>
+              <option value="one_bedroom">{t('typeOneBedroom')}</option>
+              <option value="two_bedroom">{t('typeTwoBedroom')}</option>
+              <option value="three_bedroom">{t('typeThreeBedroom')}</option>
+              <option value="four_bedroom_plus">{t('typeFourBedroomPlus')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="bedrooms" className="label">Bedrooms *</label>
+              <label htmlFor="bedrooms" className="label">{t('bedrooms')}</label>
               <input id="bedrooms" type="number" min={0} className="input" aria-invalid={!!errors.bedrooms} {...register('bedrooms', { valueAsNumber: true })} />
               {errors.bedrooms && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.bedrooms.message}</p>}
             </div>
             <div>
-              <label htmlFor="bathrooms" className="label">Bathrooms *</label>
+              <label htmlFor="bathrooms" className="label">{t('bathrooms')}</label>
               <input id="bathrooms" type="number" min={0} className="input" aria-invalid={!!errors.bathrooms} {...register('bathrooms', { valueAsNumber: true })} />
               {errors.bathrooms && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.bathrooms.message}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="squareMeters" className="label">Square Meters</label>
+            <label htmlFor="squareMeters" className="label">{t('squareMeters')}</label>
             <input id="squareMeters" type="number" min={0} step={0.01} className="input" aria-invalid={!!errors.squareMeters} {...register('squareMeters')} />
             {errors.squareMeters && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.squareMeters.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="rentAmount" className="label">Monthly Rent (KES) *</label>
+              <label htmlFor="rentAmount" className="label">{t('monthlyRent')}</label>
               <input id="rentAmount" type="number" min={0} className="input" aria-invalid={!!errors.rentAmount} {...register('rentAmount')} />
               {errors.rentAmount && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.rentAmount.message}</p>}
             </div>
             <div>
-              <label htmlFor="depositAmount" className="label">Deposit (KES)</label>
+              <label htmlFor="depositAmount" className="label">{t('deposit')}</label>
               <input id="depositAmount" type="number" min={0} className="input" aria-invalid={!!errors.depositAmount} {...register('depositAmount')} />
               {errors.depositAmount && <p role="alert" className="mt-1 text-xs text-danger-600">{errors.depositAmount.message}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="status" className="label">Status</label>
+            <label htmlFor="status" className="label">{t('status')}</label>
             <select id="status" className="input" {...register('status')}>
-              <option value="AVAILABLE">Available</option>
-              <option value="OCCUPIED">Occupied</option>
-              <option value="MAINTENANCE">Maintenance</option>
-              <option value="RESERVED">Reserved</option>
+              <option value="AVAILABLE">{t('statusAvailable')}</option>
+              <option value="OCCUPIED">{t('statusOccupied')}</option>
+              <option value="MAINTENANCE">{t('statusMaintenance')}</option>
+              <option value="RESERVED">{t('statusReserved')}</option>
             </select>
           </div>
         </div>
@@ -190,10 +192,10 @@ function UnitFormPageInner() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button type="submit" className="btn-primary flex-1" disabled={isSubmitting || mutation.isPending}>
-            {isSubmitting || mutation.isPending ? 'Saving...' : 'Create Unit'}
+            {isSubmitting || mutation.isPending ? t('saving') : t('createUnit')}
           </button>
         </div>
       </form>
@@ -201,9 +203,14 @@ function UnitFormPageInner() {
   );
 }
 
+function NewUnitFallback() {
+  const t = useTranslations('unitForm');
+  return <PageHeader title={t('newUnit')} showBack />;
+}
+
 export default function UnitFormPage() {
   return (
-    <Suspense fallback={<PageHeader title="New Unit" showBack />}>
+    <Suspense fallback={<NewUnitFallback />}>
       <UnitFormPageInner />
     </Suspense>
   );

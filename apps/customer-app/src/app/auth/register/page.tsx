@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Phone, User, Mail, ArrowRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,6 +28,7 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const t = useTranslations('authRegister');
   const router = useRouter();
   const { register: doRegister } = useAuth();
 
@@ -64,8 +66,8 @@ export default function RegisterPage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 px-6 py-8 max-w-md mx-auto w-full">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-2">Register to manage your tenancy</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500 mt-2">{t('subtitle')}</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
@@ -78,7 +80,7 @@ export default function RegisterPage() {
               <input
                 id="firstName"
                 type="text"
-                placeholder="John"
+                placeholder={t('firstNamePlaceholder')}
                 aria-invalid={!!errors.firstName}
                 className="input pl-12"
                 {...register('firstName')}
@@ -100,7 +102,7 @@ export default function RegisterPage() {
               <input
                 id="lastName"
                 type="text"
-                placeholder="Kamau"
+                placeholder={t('lastNamePlaceholder')}
                 aria-invalid={!!errors.lastName}
                 className="input pl-12"
                 {...register('lastName')}

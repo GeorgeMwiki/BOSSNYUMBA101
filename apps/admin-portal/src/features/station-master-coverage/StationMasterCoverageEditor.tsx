@@ -11,6 +11,7 @@
  */
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, Input, Alert, AlertDescription } from '@bossnyumba/design-system';
 
 export type CoverageKind =
@@ -36,6 +37,7 @@ export interface StationMasterCoverageEditorProps {
 export const StationMasterCoverageEditor: React.FC<
   StationMasterCoverageEditorProps
 > = (props) => {
+  const t = useTranslations('stationMasterCoverage');
   const { stationMasterId, initial, onSave } = props;
   const [rows, setRows] = React.useState<readonly CoverageRowInput[]>(initial);
   const [saving, setSaving] = React.useState(false);
@@ -72,10 +74,10 @@ export const StationMasterCoverageEditor: React.FC<
       setJsonErrors((prev) => prev.map((e, i) => (i === idx ? null : e)));
     } catch {
       setJsonErrors((prev) =>
-        prev.map((e, i) => (i === idx ? 'Invalid JSON' : e))
+        prev.map((e, i) => (i === idx ? t('invalidJson') : e))
       );
     }
-  }, []);
+  }, [t]);
 
   const removeRow = React.useCallback((idx: number) => {
     setRows((prev) => prev.filter((_, i) => i !== idx));
@@ -87,7 +89,7 @@ export const StationMasterCoverageEditor: React.FC<
 
   const handleSave = React.useCallback(async () => {
     if (hasJsonError) {
-      setSaveError('Fix invalid JSON before saving.');
+      setSaveError(t('fixJsonFirst'));
       return;
     }
     setSaving(true);
@@ -95,11 +97,11 @@ export const StationMasterCoverageEditor: React.FC<
     try {
       await onSave(rows);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save coverage');
+      setSaveError(err instanceof Error ? err.message : t('saveFailed'));
     } finally {
       setSaving(false);
     }
-  }, [hasJsonError, onSave, rows]);
+  }, [hasJsonError, onSave, rows, t]);
 
   return (
     <div
@@ -107,10 +109,9 @@ export const StationMasterCoverageEditor: React.FC<
       data-station-master-id={stationMasterId}
     >
       <header>
-        <h2 className="text-xl font-semibold">Edit coverage — {stationMasterId}</h2>
+        <h2 className="text-xl font-semibold">{t('title', { id: stationMasterId })}</h2>
         <p className="text-sm text-muted-foreground">
-          Add tags, cities, regions, or property IDs. Priority is sorted
-          ascending — lower number wins.
+          {t('subtitle')}
         </p>
       </header>
 
@@ -122,24 +123,24 @@ export const StationMasterCoverageEditor: React.FC<
 
       <div
         role="img"
-        aria-label="Polygon drawing placeholder"
+        aria-label={t('polygonPlaceholderAria')}
         className="h-56 flex items-center justify-center border border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-md"
       >
-        Polygon drawing placeholder (googlemaps loader pending)
+        {t('polygonPlaceholder')}
       </div>
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No coverage rules yet. Add one to start assigning properties.
+          {t('emptyCoverage')}
         </p>
       ) : (
         <table className="w-full text-sm">
           <thead className="bg-muted">
             <tr>
-              <th scope="col" className="p-2 text-left">Kind</th>
-              <th scope="col" className="p-2 text-left">Value (JSON)</th>
-              <th scope="col" className="p-2 text-left">Priority</th>
-              <th scope="col" className="p-2"><span className="sr-only">Actions</span></th>
+              <th scope="col" className="p-2 text-left">{t('cols.kind')}</th>
+              <th scope="col" className="p-2 text-left">{t('cols.value')}</th>
+              <th scope="col" className="p-2 text-left">{t('cols.priority')}</th>
+              <th scope="col" className="p-2"><span className="sr-only">{t('cols.actions')}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -152,7 +153,7 @@ export const StationMasterCoverageEditor: React.FC<
                 <tr key={row.id ?? `new-${idx}`} className="border-b align-top">
                   <td className="p-2">
                     <label htmlFor={kindId} className="sr-only">
-                      Coverage kind for row {idx + 1}
+                      {t('labels.kind', { row: idx + 1 })}
                     </label>
                     <select
                       id={kindId}
@@ -169,12 +170,12 @@ export const StationMasterCoverageEditor: React.FC<
                       <option value="city">city</option>
                       <option value="property_ids">property_ids</option>
                       <option value="region">region</option>
-                      <option value="polygon">polygon (pending)</option>
+                      <option value="polygon">{t('polygonPending')}</option>
                     </select>
                   </td>
                   <td className="p-2">
                     <label htmlFor={valueId} className="sr-only">
-                      Coverage value JSON for row {idx + 1}
+                      {t('labels.value', { row: idx + 1 })}
                     </label>
                     <Input
                       id={valueId}
@@ -192,7 +193,7 @@ export const StationMasterCoverageEditor: React.FC<
                   </td>
                   <td className="p-2">
                     <label htmlFor={priorityId} className="sr-only">
-                      Priority for row {idx + 1}
+                      {t('labels.priority', { row: idx + 1 })}
                     </label>
                     <Input
                       id={priorityId}
@@ -214,9 +215,9 @@ export const StationMasterCoverageEditor: React.FC<
                       variant="destructive"
                       size="sm"
                       onClick={() => removeRow(idx)}
-                      aria-label={`Remove coverage row ${idx + 1}`}
+                      aria-label={t('removeAria', { row: idx + 1 })}
                     >
-                      Remove
+                      {t('remove')}
                     </Button>
                   </td>
                 </tr>
@@ -228,16 +229,16 @@ export const StationMasterCoverageEditor: React.FC<
 
       <div className="flex gap-2">
         <Button type="button" variant="outline" onClick={addRow}>
-          Add coverage
+          {t('addCoverage')}
         </Button>
         <Button
           type="button"
           onClick={handleSave}
           loading={saving}
           disabled={saving || hasJsonError}
-          title={hasJsonError ? 'Fix invalid JSON to save' : undefined}
+          title={hasJsonError ? t('fixJsonFirst') : undefined}
         >
-          Save
+          {t('save')}
         </Button>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ClipboardCheck } from 'lucide-react';
 import { inspectionsService } from '@bossnyumba/api-client';
 import { Empty } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const TENANT_LOCALE =
@@ -20,6 +21,7 @@ function formatDate(dateStr?: string) {
 }
 
 export default function InspectionsPage() {
+  const t = useTranslations('inspectionsList');
   const inspectionsQuery = useQuery({
     queryKey: ['inspections-list-live'],
     queryFn: () => inspectionsService.list(undefined, 1, 50),
@@ -33,20 +35,20 @@ export default function InspectionsPage() {
   return (
     <>
       <PageHeader
-        title="Inspections"
+        title={t('title')}
         subtitle={
-          inspectionsQuery.isLoading ? 'Loading…' : `${inspections.length} inspections`
+          inspectionsQuery.isLoading ? t('loadingShort') : t('countLabel', { count: inspections.length })
         }
       />
 
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {inspectionsQuery.isLoading && (
-          <div className="card p-4 text-sm text-gray-500">Loading inspections…</div>
+          <div className="card p-4 text-sm text-gray-500">{t('loadingLong')}</div>
         )}
 
         {inspectionsQuery.error && (
           <div className="card p-4 text-sm text-danger-600">
-            {(inspectionsQuery.error as Error).message || 'Failed to load inspections.'}
+            {(inspectionsQuery.error as Error).message || t('failedToLoad')}
           </div>
         )}
 
@@ -56,14 +58,14 @@ export default function InspectionsPage() {
             <Empty
               variant="default"
               icon={<ClipboardCheck className="h-8 w-8 text-gray-400" />}
-              title="No inspections yet"
-              description="Scheduled move-in, move-out, and condition inspections will show up here."
+              title={t('emptyTitle')}
+              description={t('emptyDesc')}
             />
           )}
 
         {inspections.map((inspection: Record<string, unknown>) => {
           const id = inspection.id as string;
-          const type = (inspection.type as string) ?? 'Inspection';
+          const type = (inspection.type as string) ?? t('typeFallback');
           const status = (inspection.status as string) ?? 'scheduled';
           const scheduledDate = inspection.scheduledDate as string | undefined;
           const propertyName =

@@ -136,9 +136,9 @@ function TrainingGenerateForm({
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
           >
-            <option value="en">English</option>
-            <option value="sw">Swahili</option>
-            <option value="both">Both</option>
+            <option value="en">{t('languages.en')}</option>
+            <option value="sw">{t('languages.sw')}</option>
+            <option value="both">{t('languages.both')}</option>
           </select>
         </label>
       </div>

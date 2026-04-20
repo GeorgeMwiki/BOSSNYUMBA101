@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   HeadphonesIcon,
   Search,
@@ -64,6 +65,7 @@ const priorityColors: Record<string, { bg: string; text: string }> = {
 };
 
 export function SupportPage() {
+  const t = useTranslations('supportPage');
   const [selectedCase, setSelectedCase] = useState<SupportCase | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -82,17 +84,17 @@ export function SupportPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Support Center</h1>
-          <p className="text-gray-500">Manage customer support tickets</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/support/timeline" className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">
             <Users className="h-4 w-4" />
-            Customer Timeline
+            {t('customerTimeline')}
           </Link>
           <Link to="/support/escalation" className="flex items-center gap-2 px-4 py-2 text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 text-sm font-medium">
             <ArrowUp className="h-4 w-4" />
-            Escalation Queue
+            {t('escalationQueue')}
           </Link>
         </div>
       </div>
@@ -102,7 +104,7 @@ export function SupportPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-amber-600 mb-2">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Open</span>
+            <span className="text-sm font-medium">{t('stats.open')}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {cases.filter((c) => c.status === 'open').length}
@@ -111,7 +113,7 @@ export function SupportPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-blue-600 mb-2">
             <Clock className="h-4 w-4" />
-            <span className="text-sm font-medium">In Progress</span>
+            <span className="text-sm font-medium">{t('stats.inProgress')}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {cases.filter((c) => c.status === 'in_progress').length}
@@ -120,7 +122,7 @@ export function SupportPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-red-600 mb-2">
             <XCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Critical</span>
+            <span className="text-sm font-medium">{t('stats.critical')}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {cases.filter((c) => c.priority === 'critical').length}
@@ -129,7 +131,7 @@ export function SupportPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-green-600 mb-2">
             <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Resolved Today</span>
+            <span className="text-sm font-medium">{t('stats.resolvedToday')}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">5</p>
         </div>
@@ -143,7 +145,7 @@ export function SupportPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search tickets..."
+                placeholder={t('searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -154,11 +156,11 @@ export function SupportPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('statusFilter.all')}</option>
+              <option value="open">{t('statusFilter.open')}</option>
+              <option value="in_progress">{t('statusFilter.inProgress')}</option>
+              <option value="resolved">{t('statusFilter.resolved')}</option>
+              <option value="closed">{t('statusFilter.closed')}</option>
             </select>
           </div>
           <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
@@ -251,7 +253,7 @@ export function SupportPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    Created {formatDateTime(selectedCase.createdAt)}
+                    {t('caseDetail.createdAt', { date: formatDateTime(selectedCase.createdAt) })}
                   </div>
                 </div>
               </div>
@@ -286,7 +288,7 @@ export function SupportPage() {
                         </span>
                         {msg.isInternal && (
                           <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                            Internal
+                            {t('caseDetail.internal')}
                           </span>
                         )}
                         <span className="text-xs text-gray-400">
@@ -306,7 +308,7 @@ export function SupportPage() {
                     <textarea
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Type your reply..."
+                      placeholder={t('reply.placeholder')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
                       rows={3}
                     />
@@ -320,19 +322,19 @@ export function SupportPage() {
                             type="checkbox"
                             className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                           />
-                          Internal note
+                          {t('reply.internalNote')}
                         </label>
                       </div>
                       <div className="flex items-center gap-2">
                         <select className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                          <option value="open">Keep Open</option>
-                          <option value="in_progress">Mark In Progress</option>
-                          <option value="resolved">Mark Resolved</option>
-                          <option value="closed">Close Ticket</option>
+                          <option value="open">{t('reply.keepOpen')}</option>
+                          <option value="in_progress">{t('reply.markInProgress')}</option>
+                          <option value="resolved">{t('reply.markResolved')}</option>
+                          <option value="closed">{t('reply.closeTicket')}</option>
                         </select>
                         <button className="flex items-center gap-2 px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700">
                           <Send className="h-4 w-4" />
-                          Send
+                          {t('reply.send')}
                         </button>
                       </div>
                     </div>
@@ -343,7 +345,7 @@ export function SupportPage() {
           ) : (
             <div className="p-12 text-center text-gray-500">
               <HeadphonesIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>Select a ticket to view details</p>
+              <p>{t('empty.selectTicket')}</p>
             </div>
           )}
         </div>

@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -34,6 +35,7 @@ function apiBase(): string {
 }
 
 export default function MessagesPage() {
+  const t = useTranslations('pageHeaders');
   const [threads, setThreads] = useState<readonly Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export default function MessagesPage() {
 
   return (
     <>
-      <PageHeader title="Messages" />
+      <PageHeader title={t('messages')} />
       <div className="px-4 py-4 pb-24 space-y-3">
         {loading && (
           <p className="text-sm text-gray-400 flex items-center gap-2">

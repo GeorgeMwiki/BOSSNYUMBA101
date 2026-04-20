@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { CreditCard, Wrench, FileText, CheckCircle } from 'lucide-react';
 
 const activities = [
@@ -42,9 +43,10 @@ const activities = [
 ];
 
 export function RecentActivity() {
+  const t = useTranslations('recentActivity');
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-500 mb-3">Recent Activity</h2>
+      <h2 className="text-sm font-medium text-gray-500 mb-3">{t('heading')}</h2>
       <div className="card divide-y divide-gray-100">
         {activities.map((activity) => {
           const Icon = activity.icon;

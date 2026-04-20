@@ -2,9 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, User, Mail, Phone, Calendar, Edit, FileText } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Edit, FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
@@ -14,6 +15,7 @@ const TENANT_CURRENCY =
 const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
 
 export default function CustomerDetailPage() {
+  const t = useTranslations('customerDetail');
   const params = useParams();
   const router = useRouter();
   const id = (params?.id ?? '') as string;
@@ -29,7 +31,7 @@ export default function CustomerDetailPage() {
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Customer" showBack />
+        <PageHeader title={t('title')} showBack />
         <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -41,12 +43,12 @@ export default function CustomerDetailPage() {
   if (error) {
     return (
       <>
-        <PageHeader title="Customer" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-4">
           <Alert variant="danger">
             <AlertDescription>
-              {error instanceof Error ? error.message : 'Failed to load customer'}
-              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+              {error instanceof Error ? error.message : t('failedLoad')}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">{t('retry')}</Button>
             </AlertDescription>
           </Alert>
         </div>
@@ -57,15 +59,15 @@ export default function CustomerDetailPage() {
   if (!customer) {
     return (
       <>
-        <PageHeader title="Customer" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-4">
           <EmptyState
             icon={<User className="h-8 w-8" />}
-            title="Customer not found"
-            description="This customer may have been removed."
+            title={t('notFound')}
+            description={t('removedDesc')}
             action={
               <button onClick={() => router.back()} className="btn-secondary">
-                Go Back
+                {t('goBack')}
               </button>
             }
           />
@@ -85,7 +87,7 @@ export default function CustomerDetailPage() {
         action={
           <Link href={`/customers/${id}/edit`} className="btn-secondary text-sm flex items-center gap-1">
             <Edit className="w-4 h-4" />
-            Edit
+            {t('edit')}
           </Link>
         }
       />
@@ -94,7 +96,7 @@ export default function CustomerDetailPage() {
         <div className="card p-4">
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <User className="w-5 h-5" />
-            Contact Info
+            {t('contactInfo')}
           </h2>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -129,11 +131,11 @@ export default function CustomerDetailPage() {
 
         {customer.currentUnit && (
           <div className="card p-4">
-            <h2 className="font-semibold mb-3">Current Unit</h2>
+            <h2 className="font-semibold mb-3">{t('currentUnit')}</h2>
             <Link href={`/units/${customer.currentUnit.id}`}>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                <span className="font-medium">Unit {customer.currentUnit.unitNumber}</span>
-                <span className="text-primary-600">View →</span>
+                <span className="font-medium">{t('unitPrefix', { unit: customer.currentUnit.unitNumber })}</span>
+                <span className="text-primary-600">{t('view')}</span>
               </div>
             </Link>
           </div>
@@ -143,7 +145,7 @@ export default function CustomerDetailPage() {
           <div className="card p-4">
             <h2 className="font-semibold mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Lease History
+              {t('leaseHistory')}
             </h2>
             <div className="space-y-2">
               {customer.leases.map(
@@ -169,7 +171,7 @@ export default function CustomerDetailPage() {
                           currency: TENANT_CURRENCY,
                           minimumFractionDigits: 0,
                         }).format(lease.rentAmount)}
-                        /month
+                        {t('perMonth')}
                       </div>
                     </div>
                     <span
@@ -196,7 +198,7 @@ export default function CustomerDetailPage() {
             className="card p-4 flex-1 flex items-center gap-3 hover:shadow-md transition-shadow"
           >
             <Calendar className="w-6 h-6 text-primary-600" />
-            <span className="font-medium">New Lease</span>
+            <span className="font-medium">{t('newLease')}</span>
             <span className="ml-auto text-primary-600">→</span>
           </Link>
         </div>

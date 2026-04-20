@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Send, User, Building2 } from 'lucide-react';
+import { Send, User, Building2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 // Live wiring pending — tenant directory + staff directory endpoints
@@ -12,6 +12,7 @@ const tenants: Array<{ id: string; name: string; unit: string; property: string 
 const staff: Array<{ id: string; name: string; role: string }> = [];
 
 export default function NewConversationPage() {
+  const t = useTranslations('newMessage');
   const router = useRouter();
   const [formData, setFormData] = useState({
     recipientType: 'tenant' as 'tenant' | 'staff',
@@ -35,12 +36,12 @@ export default function NewConversationPage() {
 
   return (
     <>
-      <PageHeader title="New Message" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
         <div className="card p-4 space-y-4">
           <div>
-            <label className="label">Recipient Type</label>
+            <label className="label">{t('recipientType')}</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -48,7 +49,7 @@ export default function NewConversationPage() {
                 className={`btn flex-1 ${formData.recipientType === 'tenant' ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <User className="w-4 h-4" />
-                Tenant
+                {t('tenant')}
               </button>
               <button
                 type="button"
@@ -56,16 +57,16 @@ export default function NewConversationPage() {
                 className={`btn flex-1 ${formData.recipientType === 'staff' ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <Building2 className="w-4 h-4" />
-                Staff
+                {t('staff')}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="label">Select Recipient</label>
+            <label className="label">{t('selectRecipient')}</label>
             <input
               type="text"
-              placeholder="Search..."
+              placeholder={t('searchPlaceholder')}
               className="input mb-3"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -84,7 +85,7 @@ export default function NewConversationPage() {
                 >
                   <div className="font-medium">{r.name}</div>
                   {formData.recipientType === 'tenant' && 'unit' in r && (
-                    <div className="text-sm text-gray-500">Unit {(r as { unit: string }).unit}</div>
+                    <div className="text-sm text-gray-500">{t('unitLabel', { unit: (r as { unit: string }).unit })}</div>
                   )}
                   {formData.recipientType === 'staff' && 'role' in r && (
                     <div className="text-sm text-gray-500">{(r as { role: string }).role}</div>
@@ -95,11 +96,11 @@ export default function NewConversationPage() {
           </div>
 
           <div>
-            <label className="label">Subject</label>
+            <label className="label">{t('subject')}</label>
             <input
               type="text"
               className="input"
-              placeholder="Enter subject..."
+              placeholder={t('subjectPlaceholder')}
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               required
@@ -107,10 +108,10 @@ export default function NewConversationPage() {
           </div>
 
           <div>
-            <label className="label">Message</label>
+            <label className="label">{t('message')}</label>
             <textarea
               className="input min-h-[120px]"
-              placeholder="Type your message..."
+              placeholder={t('messagePlaceholder')}
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               required
@@ -120,7 +121,7 @@ export default function NewConversationPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="submit"
@@ -128,7 +129,7 @@ export default function NewConversationPage() {
             disabled={!formData.recipientId || !formData.subject || !formData.message}
           >
             <Send className="w-4 h-4" />
-            Send Message
+            {t('sendMessage')}
           </button>
         </div>
       </form>

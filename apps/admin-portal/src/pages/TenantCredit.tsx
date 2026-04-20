@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { BarChart3, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -66,16 +67,21 @@ const BAND_COLORS: Record<Band, string> = {
   insufficient_data: 'bg-gray-100 text-gray-700',
 };
 
-const BAND_LABEL: Record<Band, string> = {
-  excellent: 'Excellent',
-  good: 'Good',
-  fair: 'Fair',
-  poor: 'Poor',
-  very_poor: 'Very poor',
-  insufficient_data: 'Not enough data',
-};
+function useBandLabels(): Record<Band, string> {
+  const t = useTranslations('tenantCredit');
+  return {
+    excellent: t('bands.excellent'),
+    good: t('bands.good'),
+    fair: t('bands.fair'),
+    poor: t('bands.poor'),
+    very_poor: t('bands.veryPoor'),
+    insufficient_data: t('bands.insufficient'),
+  };
+}
 
 export default function TenantCredit(): JSX.Element {
+  const t = useTranslations('tenantCredit');
+  const BAND_LABEL = useBandLabels();
   const [customers, setCustomers] = useState<readonly CustomerRow[]>([]);
   const [ratings, setRatings] = useState<
     Readonly<Record<string, CreditRating | 'error'>>
@@ -91,9 +97,9 @@ export default function TenantCredit(): JSX.Element {
     setError(null);
     const res = await api.get<readonly CustomerRow[]>('/customers?limit=500');
     if (res.success && res.data) setCustomers(res.data);
-    else setError(res.error ?? 'Unable to load tenants.');
+    else setError(res.error ?? t('errors.loadFailed'));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   const loadRating = useCallback(async (customerId: string): Promise<void> => {
     const res = await api.get<CreditRating>(
@@ -143,11 +149,10 @@ export default function TenantCredit(): JSX.Element {
         <ShieldCheck className="h-6 w-6 text-indigo-600" />
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Tenant credit ratings
+            {t('title')}
           </h2>
           <p className="text-sm text-gray-500">
-            FICO-scale 300-850 rating from real payment data. Click a row for
-            the full dimension breakdown.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -155,7 +160,7 @@ export default function TenantCredit(): JSX.Element {
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <input
           type="search"
-          placeholder="Search tenant…"
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full sm:w-64"
@@ -165,13 +170,13 @@ export default function TenantCredit(): JSX.Element {
           onChange={(e) => setBandFilter(e.target.value as Band | 'all')}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
         >
-          <option value="all">All bands</option>
-          <option value="excellent">Excellent (750+)</option>
-          <option value="good">Good (660-749)</option>
-          <option value="fair">Fair (550-659)</option>
-          <option value="poor">Poor (450-549)</option>
-          <option value="very_poor">Very poor (&lt;450)</option>
-          <option value="insufficient_data">Insufficient data</option>
+          <option value="all">{t('filters.allBands')}</option>
+          <option value="excellent">{t('filters.excellent')}</option>
+          <option value="good">{t('filters.good')}</option>
+          <option value="fair">{t('filters.fair')}</option>
+          <option value="poor">{t('filters.poor')}</option>
+          <option value="very_poor">{t('filters.veryPoor')}</option>
+          <option value="insufficient_data">{t('filters.insufficient')}</option>
         </select>
       </div>
 
@@ -183,19 +188,19 @@ export default function TenantCredit(): JSX.Element {
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading tenants…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       ) : (
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left px-3 py-2">Tenant</th>
-                <th className="text-left px-3 py-2">Score</th>
-                <th className="text-left px-3 py-2">Band</th>
-                <th className="text-left px-3 py-2">Weakest factor</th>
-                <th className="text-left px-3 py-2">Freshness</th>
-                <th className="text-right px-3 py-2">Actions</th>
+                <th className="text-left px-3 py-2">{t('table.tenant')}</th>
+                <th className="text-left px-3 py-2">{t('table.score')}</th>
+                <th className="text-left px-3 py-2">{t('table.band')}</th>
+                <th className="text-left px-3 py-2">{t('table.weakestFactor')}</th>
+                <th className="text-left px-3 py-2">{t('table.freshness')}</th>
+                <th className="text-right px-3 py-2">{t('table.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -238,7 +243,7 @@ export default function TenantCredit(): JSX.Element {
                         className="px-2 py-1 text-indigo-600 hover:underline text-xs"
                       >
                         <BarChart3 className="inline h-3 w-3 mr-1" />
-                        Details
+                        {t('actions.details')}
                       </button>
                       <button
                         type="button"
@@ -246,7 +251,7 @@ export default function TenantCredit(): JSX.Element {
                         className="px-2 py-1 text-gray-600 hover:underline text-xs"
                       >
                         <RefreshCw className="inline h-3 w-3 mr-1" />
-                        Recompute
+                        {t('actions.recompute')}
                       </button>
                     </td>
                   </tr>
@@ -258,7 +263,7 @@ export default function TenantCredit(): JSX.Element {
                     colSpan={6}
                     className="px-3 py-6 text-center text-gray-500"
                   >
-                    No tenants match these filters.
+                    {t('empty.noMatches')}
                   </td>
                 </tr>
               )}
@@ -284,24 +289,25 @@ function DimensionDetail({
   readonly rating: CreditRating;
   readonly onClose: () => void;
 }): JSX.Element {
+  const t = useTranslations('tenantCredit');
   const dims = rating.dimensions;
   const rows: Array<[string, DimensionScore]> = [
-    ['Payment history', dims.payment_history],
-    ['Promise keeping', dims.promise_keeping],
-    ['Rent-to-income', dims.rent_to_income],
-    ['Tenancy length', dims.tenancy_length],
-    ['Dispute history', dims.dispute_history],
+    [t('dimensions.paymentHistory'), dims.payment_history],
+    [t('dimensions.promiseKeeping'), dims.promise_keeping],
+    [t('dimensions.rentToIncome'), dims.rent_to_income],
+    [t('dimensions.tenancyLength'), dims.tenancy_length],
+    [t('dimensions.disputeHistory'), dims.dispute_history],
   ];
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-white">
       <div className="flex justify-between items-start">
-        <h3 className="font-semibold">Dimension breakdown</h3>
+        <h3 className="font-semibold">{t('detail.title')}</h3>
         <button
           type="button"
           onClick={onClose}
           className="text-sm text-gray-500 hover:underline"
         >
-          Close
+          {t('detail.close')}
         </button>
       </div>
       <div className="mt-3 space-y-2">
@@ -321,7 +327,7 @@ function DimensionDetail({
         ))}
       </div>
       <div className="mt-3">
-        <h4 className="text-sm font-semibold">Recommendations</h4>
+        <h4 className="text-sm font-semibold">{t('detail.recommendations')}</h4>
         <ul className="list-disc ml-5 text-sm text-gray-700">
           {rating.recommendations.map((r, i) => (
             <li key={i}>{r}</li>

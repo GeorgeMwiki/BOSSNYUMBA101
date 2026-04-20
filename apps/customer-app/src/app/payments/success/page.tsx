@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredScreen } from '@/components/LiveDataRequired';
 import { Dopamine } from '@bossnyumba/chat-ui';
 
@@ -29,6 +30,7 @@ async function loadSuccess(): Promise<PaymentSuccessRecord | null> {
 }
 
 export default function PaymentSuccessPage() {
+  const t = useTranslations('pageHeaders');
   const [record, setRecord] = useState<PaymentSuccessRecord | null>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function PaymentSuccessPage() {
         />
       ) : null}
       <LiveDataRequiredScreen
-        title="Payment Receipt"
+        title={t('paymentReceipt')}
         feature="Payment receipt"
         description="This page requires a live confirmed payment record from the backend. When a real receipt is provided via the receipt query parameter, an on-time-payment celebration is shown."
         showBack

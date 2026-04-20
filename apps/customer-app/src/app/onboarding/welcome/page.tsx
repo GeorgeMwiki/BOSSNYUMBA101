@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Globe,
   MessageCircle,
@@ -52,6 +53,7 @@ const CHANNELS = [
 ];
 
 export default function OnboardingWelcomePage() {
+  const t = useTranslations('onboardingWelcomePage');
   const router = useRouter();
   const { user } = useAuth();
   const [language, setLanguage] = useState('en');
@@ -121,7 +123,7 @@ export default function OnboardingWelcomePage() {
               <Globe className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <h2 className="font-semibold">Preferred Language</h2>
+              <h2 className="font-semibold">{t('preferredLanguage')}</h2>
               <p className="text-sm text-gray-500">
                 Choose your communication language
               </p>
@@ -157,7 +159,7 @@ export default function OnboardingWelcomePage() {
               <MessageCircle className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <h2 className="font-semibold">Communication Channels</h2>
+              <h2 className="font-semibold">{t('communicationChannels')}</h2>
               <p className="text-sm text-gray-500">
                 How would you like to receive updates?
               </p>

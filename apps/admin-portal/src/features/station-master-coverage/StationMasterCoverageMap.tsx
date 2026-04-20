@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -25,6 +26,7 @@ interface StationMasterCoverageMapProps {
 }
 
 export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> = ({ onReassign }) => {
+  const t = useTranslations('stationMasterCoverageMap');
   const [coverage, setCoverage] = useState<ReadonlyArray<StationMasterCoverage>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,11 +45,11 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
       }
     } catch (err) {
       if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to load coverage');
+        setError(err instanceof Error ? err.message : t('errors.loadFailed'));
         setLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -60,15 +62,15 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Station Master Coverage</h1>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <Button
           variant="outline"
           onClick={onReassign}
           disabled={reassignDisabled}
-          title={reassignDisabled ? 'Reassignment flow not yet available' : undefined}
-          aria-label="Reassign regions to station masters"
+          title={reassignDisabled ? t('reassignUnavailable') : undefined}
+          aria-label={t('reassignAria')}
         >
-          Reassign regions
+          {t('reassignRegions')}
         </Button>
       </div>
 
@@ -77,7 +79,7 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -86,15 +88,15 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
       {/* TODO: Replace placeholder with Mapbox/Leaflet heatmap of region coverage. */}
       <Card>
         <CardHeader>
-          <CardTitle>Coverage Map</CardTitle>
+          <CardTitle>{t('coverageMap')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div
             className="h-64 flex items-center justify-center bg-muted rounded-md text-sm text-muted-foreground"
             role="img"
-            aria-label="Coverage map placeholder"
+            aria-label={t('mapPlaceholderAria')}
           >
-            Map placeholder — renders region polygons colored by assigned station master.
+            {t('mapPlaceholder')}
           </div>
         </CardContent>
       </Card>
@@ -107,8 +109,8 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
         </div>
       ) : coverage.length === 0 ? (
         <EmptyState
-          title="No station masters assigned"
-          description="Once station masters are assigned to regions, their coverage summary will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -122,13 +124,13 @@ export const StationMasterCoverageMap: React.FC<StationMasterCoverageMapProps> =
               </CardHeader>
               <CardContent>
                 {m.regions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No regions assigned.</p>
+                  <p className="text-sm text-muted-foreground">{t('noRegions')}</p>
                 ) : (
                   <ul className="text-sm">
                     {m.regions.map((r) => (
                       <li key={r.id} className="flex justify-between">
                         <span>{r.name}</span>
-                        <span className="text-muted-foreground">{r.propertyCount} props</span>
+                        <span className="text-muted-foreground">{t('propsCount', { count: r.propertyCount })}</span>
                       </li>
                     ))}
                   </ul>

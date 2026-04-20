@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Wrench, Loader2, Plus } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -29,6 +30,7 @@ interface Problem {
 }
 
 export default function MaintenanceTaxonomy(): JSX.Element {
+  const t = useTranslations('maintenanceTaxonomy');
   const [categories, setCategories] = useState<readonly Category[]>([]);
   const [problems, setProblems] = useState<readonly Problem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,10 +46,10 @@ export default function MaintenanceTaxonomy(): JSX.Element {
       api.get<readonly Problem[]>('/maintenance-taxonomy/problems'),
     ]);
     if (cats.success && cats.data) setCategories(cats.data);
-    else setError(cats.error ?? 'Unable to load taxonomy.');
+    else setError(cats.error ?? t('errors.loadFailed'));
     if (probs.success && probs.data) setProblems(probs.data);
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -61,7 +63,7 @@ export default function MaintenanceTaxonomy(): JSX.Element {
       setCreatingCat(false);
       void load();
     } else {
-      setError(res.error ?? 'Create failed.');
+      setError(res.error ?? t('errors.createFailed'));
     }
   }
 
@@ -74,9 +76,9 @@ export default function MaintenanceTaxonomy(): JSX.Element {
       <header className="flex items-center gap-3">
         <Wrench className="h-6 w-6 text-orange-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Maintenance taxonomy</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Categories and problems (platform defaults + your overrides).
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -89,13 +91,13 @@ export default function MaintenanceTaxonomy(): JSX.Element {
 
       {loading ? (
         <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <section className="md:col-span-1 bg-white border border-gray-200 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Categories</h3>
+              <h3 className="font-semibold text-gray-900">{t('categories')}</h3>
               <button
                 type="button"
                 onClick={() => setCreatingCat(!creatingCat)}
@@ -108,14 +110,14 @@ export default function MaintenanceTaxonomy(): JSX.Element {
               <div className="space-y-2 bg-orange-50 p-2 rounded">
                 <input
                   type="text"
-                  placeholder="code"
+                  placeholder={t('placeholders.code')}
                   value={newCat.code}
                   onChange={(e) => setNewCat({ ...newCat, code: e.target.value })}
                   className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
                 />
                 <input
                   type="text"
-                  placeholder="name"
+                  placeholder={t('placeholders.name')}
                   value={newCat.name}
                   onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
                   className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
@@ -125,7 +127,7 @@ export default function MaintenanceTaxonomy(): JSX.Element {
                   onClick={() => void createCategory()}
                   className="text-xs bg-orange-600 text-white px-3 py-1 rounded"
                 >
-                  Save
+                  {t('save')}
                 </button>
               </div>
             )}
@@ -138,7 +140,7 @@ export default function MaintenanceTaxonomy(): JSX.Element {
                     activeCat === null ? 'bg-orange-50 text-orange-700' : 'hover:bg-gray-50'
                   }`}
                 >
-                  All
+                  {t('all')}
                 </button>
               </li>
               {categories.map((c) => (
@@ -162,10 +164,10 @@ export default function MaintenanceTaxonomy(): JSX.Element {
 
           <section className="md:col-span-2 bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="font-semibold text-gray-900 mb-3">
-              Problems ({filteredProblems.length})
+              {t('problemsTitle', { count: filteredProblems.length })}
             </h3>
             {filteredProblems.length === 0 ? (
-              <p className="text-sm text-gray-500">No problems in this category.</p>
+              <p className="text-sm text-gray-500">{t('noProblems')}</p>
             ) : (
               <ul className="divide-y divide-gray-100">
                 {filteredProblems.map((p) => (

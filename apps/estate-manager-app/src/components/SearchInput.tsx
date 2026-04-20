@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface SearchInputProps {
   value?: string;
@@ -17,12 +18,14 @@ interface SearchInputProps {
 export function SearchInput({
   value: controlledValue,
   onChange,
-  placeholder = 'Search...',
+  placeholder,
   debounceMs = 300,
   className,
   inputClassName,
   disabled = false,
 }: SearchInputProps) {
+  const t = useTranslations('simple');
+  const resolvedPlaceholder = placeholder ?? `${t('search')}...`;
   const [localValue, setLocalValue] = useState(controlledValue ?? '');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,9 +70,9 @@ export function SearchInput({
         type="search"
         value={localValue}
         onChange={handleChange}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         disabled={disabled}
-        aria-label="Search"
+        aria-label={t('search')}
         className={cn(
           'w-full pl-9 pr-9 py-2.5 rounded-lg border border-gray-200 bg-white text-sm',
           'placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
@@ -82,7 +85,7 @@ export function SearchInput({
           type="button"
           onClick={handleClear}
           className="absolute right-3 p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-          aria-label="Clear search"
+          aria-label={t('clearSearch')}
         >
           <X className="w-4 h-4" />
         </button>

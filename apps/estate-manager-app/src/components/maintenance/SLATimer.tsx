@@ -1,6 +1,7 @@
 'use client';
 
 import { Timer, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface SLATimerProps {
   /** Minutes remaining (negative = breached) */
@@ -15,15 +16,6 @@ interface SLATimerProps {
   compact?: boolean;
 }
 
-function formatTimeRemaining(minutes: number): string {
-  if (minutes < 0) return 'Breached';
-  if (minutes === 0) return 'Due now';
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-
 export function SLATimer({
   minutesRemaining,
   type,
@@ -31,11 +23,22 @@ export function SLATimer({
   met = false,
   compact = false,
 }: SLATimerProps) {
+  const t = useTranslations('sla');
+
+  const formatTimeRemaining = (minutes: number): string => {
+    if (minutes < 0) return t('breached');
+    if (minutes === 0) return t('dueNow');
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
   if (met) {
     return (
       <div className="flex items-center gap-2 text-success-600 text-sm">
         <CheckCircle className="w-4 h-4 flex-shrink-0" />
-        <span>Met</span>
+        <span>{t('met')}</span>
       </div>
     );
   }
@@ -44,7 +47,7 @@ export function SLATimer({
     return (
       <div className="flex items-center gap-2 text-danger-600 text-sm font-medium">
         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-        <span>Breached</span>
+        <span>{t('breached')}</span>
       </div>
     );
   }

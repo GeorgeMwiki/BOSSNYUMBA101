@@ -478,7 +478,7 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <h3 className="font-medium">{t('leaseAgreement')}</h3>
-                  <p className="text-sm text-gray-500">Unit A-204 • 12 months</p>
+                  <p className="text-sm text-gray-500">{t('sampleUnitTerm')}</p>
                 </div>
               </div>
               <div className="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-4">
@@ -488,11 +488,11 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>{t('startDate')}</span>
-                  <span className="font-medium text-gray-900">June 1, 2024</span>
+                  <span className="font-medium text-gray-900">{t('sampleStartDate')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{t('endDate')}</span>
-                  <span className="font-medium text-gray-900">May 31, 2025</span>
+                  <span className="font-medium text-gray-900">{t('sampleEndDate')}</span>
                 </div>
               </div>
               <a

@@ -2,27 +2,29 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface NotificationSetting {
   id: string;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   enabled: boolean;
   category: 'push' | 'email' | 'sms';
 }
 
 const defaultSettings: NotificationSetting[] = [
-  { id: '1', label: 'Work Order Updates', description: 'When work order status changes', enabled: true, category: 'push' },
-  { id: '2', label: 'Inspection Reminders', description: 'Upcoming inspections', enabled: true, category: 'push' },
-  { id: '3', label: 'Payment Alerts', description: 'New payments received', enabled: true, category: 'push' },
-  { id: '4', label: 'SLA Warnings', description: 'When SLA is at risk', enabled: true, category: 'push' },
-  { id: '5', label: 'Email Digest', description: 'Daily summary email', enabled: false, category: 'email' },
-  { id: '6', label: 'Urgent Notifications', description: 'Emergency alerts via SMS', enabled: true, category: 'sms' },
+  { id: '1', labelKey: 'workOrderUpdatesLabel', descKey: 'workOrderUpdatesDesc', enabled: true, category: 'push' },
+  { id: '2', labelKey: 'inspectionRemindersLabel', descKey: 'inspectionRemindersDesc', enabled: true, category: 'push' },
+  { id: '3', labelKey: 'paymentAlertsLabel', descKey: 'paymentAlertsDesc', enabled: true, category: 'push' },
+  { id: '4', labelKey: 'slaWarningsLabel', descKey: 'slaWarningsDesc', enabled: true, category: 'push' },
+  { id: '5', labelKey: 'emailDigestLabel', descKey: 'emailDigestDesc', enabled: false, category: 'email' },
+  { id: '6', labelKey: 'urgentNotificationsLabel', descKey: 'urgentNotificationsDesc', enabled: true, category: 'sms' },
 ];
 
 export default function NotificationPreferencesPage() {
+  const t = useTranslations('notificationsSettings');
   const router = useRouter();
   const [settings, setSettings] = useState<NotificationSetting[]>(defaultSettings);
 
@@ -41,109 +43,60 @@ export default function NotificationPreferencesPage() {
   const emailSettings = settings.filter((s) => s.category === 'email');
   const smsSettings = settings.filter((s) => s.category === 'sms');
 
+  const renderSection = (
+    items: NotificationSetting[],
+    titleKey: 'pushNotifications' | 'email' | 'sms'
+  ) => (
+    items.length > 0 && (
+      <section>
+        <h2 className="text-sm font-medium text-gray-500 mb-3">{t(titleKey)}</h2>
+        <div className="card divide-y divide-gray-100">
+          {items.map((setting) => (
+            <div key={setting.id} className="p-4 flex items-center justify-between">
+              <div>
+                <div className="font-medium">{t(setting.labelKey as never)}</div>
+                <div className="text-sm text-gray-500">{t(setting.descKey as never)}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(setting.id)}
+                className={`relative w-12 h-7 rounded-full transition-colors ${
+                  setting.enabled ? 'bg-primary-500' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                    setting.enabled ? 'left-7' : 'left-1'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  );
+
   return (
     <>
-      <PageHeader title="Notification Preferences" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 max-w-2xl mx-auto">
         <p className="text-sm text-gray-600">
-          Choose how you want to receive notifications. Push notifications appear in the app.
+          {t('intro')}
         </p>
 
-        {pushSettings.length > 0 && (
-          <section>
-            <h2 className="text-sm font-medium text-gray-500 mb-3">Push Notifications</h2>
-            <div className="card divide-y divide-gray-100">
-              {pushSettings.map((setting) => (
-                <div key={setting.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{setting.label}</div>
-                    <div className="text-sm text-gray-500">{setting.description}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggle(setting.id)}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${
-                      setting.enabled ? 'bg-primary-500' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                        setting.enabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {emailSettings.length > 0 && (
-          <section>
-            <h2 className="text-sm font-medium text-gray-500 mb-3">Email</h2>
-            <div className="card divide-y divide-gray-100">
-              {emailSettings.map((setting) => (
-                <div key={setting.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{setting.label}</div>
-                    <div className="text-sm text-gray-500">{setting.description}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggle(setting.id)}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${
-                      setting.enabled ? 'bg-primary-500' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                        setting.enabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {smsSettings.length > 0 && (
-          <section>
-            <h2 className="text-sm font-medium text-gray-500 mb-3">SMS</h2>
-            <div className="card divide-y divide-gray-100">
-              {smsSettings.map((setting) => (
-                <div key={setting.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{setting.label}</div>
-                    <div className="text-sm text-gray-500">{setting.description}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggle(setting.id)}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${
-                      setting.enabled ? 'bg-primary-500' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                        setting.enabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {renderSection(pushSettings, 'pushNotifications')}
+        {renderSection(emailSettings, 'email')}
+        {renderSection(smsSettings, 'sms')}
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button onClick={handleSave} className="btn-primary flex-1 flex items-center justify-center gap-2">
             <Check className="w-4 h-4" />
-            Save Preferences
+            {t('savePreferences')}
           </button>
         </div>
       </div>

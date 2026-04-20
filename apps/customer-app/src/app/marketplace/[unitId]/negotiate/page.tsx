@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -53,6 +54,7 @@ const sendMessageSchema = z
 type SendMessageForm = z.infer<typeof sendMessageSchema>;
 
 export default function NegotiatePage(): React.ReactElement {
+  const t = useTranslations('negotiatePage');
   const params = useParams();
   const unitId = params?.unitId as string;
 
@@ -192,7 +194,7 @@ export default function NegotiatePage(): React.ReactElement {
               </div>
               <p className="text-sm mt-1 whitespace-pre-wrap">{m.content}</p>
               {m.offerAmount !== undefined && (
-                <p className="text-sm font-medium mt-1">Offer: {m.offerAmount.toLocaleString()}</p>
+                <p className="text-sm font-medium mt-1">{t('offerPrefix')}: {m.offerAmount.toLocaleString()}</p>
               )}
             </div>
           ))
@@ -204,8 +206,8 @@ export default function NegotiatePage(): React.ReactElement {
         <div className="flex gap-2">
           <div className="flex-1">
             <Input
-              placeholder="Message..."
-              aria-label="Negotiation message"
+              placeholder={t('messagePlaceholder')}
+              aria-label={t('messageAria')}
               aria-invalid={!!errors.text}
               {...register('text')}
               onKeyDown={(e) => {
@@ -223,9 +225,9 @@ export default function NegotiatePage(): React.ReactElement {
           </div>
           <div className="w-32">
             <Input
-              placeholder="Offer"
+              placeholder={t('offerPlaceholder')}
               type="number"
-              aria-label="Offer amount"
+              aria-label={t('offerAria')}
               aria-invalid={!!errors.offer}
               {...register('offer')}
             />
@@ -235,8 +237,8 @@ export default function NegotiatePage(): React.ReactElement {
               </p>
             )}
           </div>
-          <Button type="submit" loading={isSubmitting} disabled={isSubmitting} aria-label="Send message">
-            Send
+          <Button type="submit" loading={isSubmitting} disabled={isSubmitting} aria-label={t('sendAria')}>
+            {t('send')}
           </Button>
         </div>
       </form>

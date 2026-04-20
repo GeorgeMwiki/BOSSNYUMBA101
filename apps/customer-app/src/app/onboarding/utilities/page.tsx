@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Zap,
   Droplets,
@@ -146,6 +147,7 @@ const UTILITY_SETUPS: UtilitySetup[] = [
 ];
 
 export default function OnboardingUtilitiesPage() {
+  const t = useTranslations('pageHeaders');
   const router = useRouter();
   const [utilities, setUtilities] = useState<UtilitySetup[]>(UTILITY_SETUPS);
   const [expandedId, setExpandedId] = useState<string | null>('electricity');
@@ -212,7 +214,7 @@ export default function OnboardingUtilitiesPage() {
 
   return (
     <>
-      <PageHeader title="Utilities Setup" showBack />
+      <PageHeader title={t('utilitiesSetup')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-32">
         {/* Progress */}

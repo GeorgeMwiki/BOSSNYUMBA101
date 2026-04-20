@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { KeyRound, Plus, Loader2, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -28,6 +29,7 @@ interface Revocation {
 }
 
 export default function ApiIntegrations(): JSX.Element {
+  const t = useTranslations('apiIntegrations');
   const [certs, setCerts] = useState<readonly Certification[]>([]);
   const [revocations, setRevocations] = useState<readonly Revocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,10 +47,10 @@ export default function ApiIntegrations(): JSX.Element {
       api.get<readonly Revocation[]>('/agent-certifications/revocations'),
     ]);
     if (list.success && list.data) setCerts(list.data);
-    else setError(list.error ?? 'Unable to load certifications.');
+    else setError(list.error ?? t('errors.loadFailed'));
     if (revs.success && revs.data) setRevocations(revs.data);
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -67,17 +69,17 @@ export default function ApiIntegrations(): JSX.Element {
       setForm({ agentId: '', scopes: 'read:property,read:lease', days: '90' });
       void load();
     } else {
-      setError(res.error ?? 'Issue failed.');
+      setError(res.error ?? t('errors.issueFailed'));
     }
   }
 
   async function revoke(cert: Certification): Promise<void> {
-    const reason = window.prompt('Revocation reason?') ?? '';
+    const reason = window.prompt(t('revokePrompt')) ?? '';
     if (!reason) return;
     const res = await api.delete(`/agent-certifications/${encodeURIComponent(cert.id)}`);
     // If the delete endpoint expects a body with reason, the PUT below can be used instead.
     if (res.success) void load();
-    else setError(res.error ?? 'Revoke failed.');
+    else setError(res.error ?? t('errors.revokeFailed'));
   }
 
   return (
@@ -85,9 +87,9 @@ export default function ApiIntegrations(): JSX.Element {
       <header className="flex items-center gap-3">
         <KeyRound className="h-6 w-6 text-amber-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">API integrations</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Agent certifications (scoped tokens) and revocation history.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -100,10 +102,10 @@ export default function ApiIntegrations(): JSX.Element {
 
       <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 max-w-xl">
         <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Issue new certificate
+          <Plus className="h-4 w-4" /> {t('issueNewCert')}
         </h3>
         <label className="block text-sm">
-          <span className="text-gray-700">Agent ID</span>
+          <span className="text-gray-700">{t('form.agentId')}</span>
           <input
             type="text"
             value={form.agentId}
@@ -112,7 +114,7 @@ export default function ApiIntegrations(): JSX.Element {
           />
         </label>
         <label className="block text-sm">
-          <span className="text-gray-700">Scopes (comma-separated)</span>
+          <span className="text-gray-700">{t('form.scopes')}</span>
           <input
             type="text"
             value={form.scopes}
@@ -121,7 +123,7 @@ export default function ApiIntegrations(): JSX.Element {
           />
         </label>
         <label className="block text-sm">
-          <span className="text-gray-700">Valid for (days)</span>
+          <span className="text-gray-700">{t('form.validFor')}</span>
           <input
             type="number"
             min="1"
@@ -137,20 +139,20 @@ export default function ApiIntegrations(): JSX.Element {
           disabled={!form.agentId}
           className="rounded bg-amber-600 text-white px-4 py-2 text-sm disabled:opacity-50"
         >
-          Issue
+          {t('issue')}
         </button>
       </section>
 
       <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <header className="p-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">Active certificates</h3>
+          <h3 className="font-semibold text-gray-900">{t('activeCerts')}</h3>
         </header>
         {loading ? (
           <p className="p-5 text-sm text-gray-500 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
           </p>
         ) : certs.length === 0 ? (
-          <p className="p-5 text-sm text-gray-500">No certificates issued yet.</p>
+          <p className="p-5 text-sm text-gray-500">{t('noCertsYet')}</p>
         ) : (
           <ul className="divide-y divide-gray-100">
             {certs.map((c) => (
@@ -158,10 +160,10 @@ export default function ApiIntegrations(): JSX.Element {
                 <div>
                   <p className="font-medium text-sm">{c.agentId}</p>
                   <p className="text-xs text-gray-500">
-                    Scopes: {c.scopes.join(', ')}
+                    {t('scopesLabel', { list: c.scopes.join(', ') })}
                   </p>
                   <p className="text-xs text-gray-400">
-                    Expires {new Date(c.expiresAt).toLocaleString()}
+                    {t('expiresLabel', { date: new Date(c.expiresAt).toLocaleString() })}
                   </p>
                 </div>
                 {!c.revokedAt && (
@@ -170,7 +172,7 @@ export default function ApiIntegrations(): JSX.Element {
                     onClick={() => void revoke(c)}
                     className="text-xs text-red-600 hover:underline inline-flex items-center gap-1"
                   >
-                    <Trash2 className="h-3 w-3" /> revoke
+                    <Trash2 className="h-3 w-3" /> {t('revoke')}
                   </button>
                 )}
               </li>
@@ -181,12 +183,12 @@ export default function ApiIntegrations(): JSX.Element {
 
       {revocations.length > 0 && (
         <section className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-          <h3 className="font-semibold text-gray-900 mb-3">Revocation history</h3>
+          <h3 className="font-semibold text-gray-900 mb-3">{t('revocationHistory')}</h3>
           <ul className="divide-y divide-gray-100 text-sm">
             {revocations.map((r) => (
               <li key={r.id} className="py-2">
                 <p>
-                  Cert <code className="text-xs">{r.certId}</code> — {r.reason}
+                  {t('certLabel')} <code className="text-xs">{r.certId}</code> — {r.reason}
                 </p>
                 <p className="text-xs text-gray-500">
                   {new Date(r.revokedAt).toLocaleString()}

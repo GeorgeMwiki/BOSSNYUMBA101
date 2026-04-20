@@ -8,6 +8,7 @@
  * Mount point: /admin/manager-chat
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -37,6 +38,7 @@ interface ChatMessage {
 }
 
 export default function ManagerChat() {
+  const t = useTranslations('managerChat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
@@ -112,7 +114,7 @@ export default function ManagerChat() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 360px', gap: 16, padding: 16 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Manager Chat — Estate Training</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
 
         {modeState.mode === 'teaching' && modeState.teachingData && (
           <TeachingModeLayout data={modeState.teachingData} language="en" />
@@ -138,7 +140,7 @@ export default function ManagerChat() {
             </li>
           ))}
           {state.isStreaming && (
-            <li style={{ color: '#64748b', fontSize: 12 }}>Typing…</li>
+            <li style={{ color: '#64748b', fontSize: 12 }}>{t('typing')}</li>
           )}
           {state.toolCalls.length > 0 && (
             <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -175,19 +177,19 @@ export default function ManagerChat() {
                   onClick={approveAction}
                   style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6 }}
                 >
-                  Approve
+                  {t('approve')}
                 </button>
                 <button
                   onClick={rejectAction}
                   style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6 }}
                 >
-                  Reject
+                  {t('reject')}
                 </button>
               </div>
             </li>
           )}
           {state.error && (
-            <li style={{ color: '#991b1b', fontSize: 12 }}>Error: {state.error}</li>
+            <li style={{ color: '#991b1b', fontSize: 12 }}>{t('errorPrefix')}: {state.error}</li>
           )}
         </ul>
 
@@ -211,7 +213,7 @@ export default function ManagerChat() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about rent affordability, arrears, 5 Ps …"
+            placeholder={t('placeholder')}
             style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }}
           />
           {state.isStreaming ? (
@@ -220,14 +222,14 @@ export default function ManagerChat() {
               onClick={cancel}
               style={{ padding: '8px 14px', background: '#ef4444', color: '#fff', borderRadius: 8, border: 'none' }}
             >
-              Stop
+              {t('stop')}
             </button>
           ) : (
             <button
               type="submit"
               style={{ padding: '8px 14px', background: '#3b82f6', color: '#fff', borderRadius: 8, border: 'none' }}
             >
-              Send
+              {t('send')}
             </button>
           )}
         </form>

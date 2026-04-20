@@ -3,6 +3,7 @@
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { WorkOrderCardData } from '@/components/maintenance';
 import type { KanbanColumnId } from './workOrdersData';
 
@@ -40,6 +41,7 @@ interface KanbanCardProps {
 }
 
 function KanbanCard({ workOrder }: KanbanCardProps) {
+  const tMisc = useTranslations('misc');
   const {
     attributes,
     listeners,
@@ -71,7 +73,7 @@ function KanbanCard({ workOrder }: KanbanCardProps) {
         <div className="text-xs text-gray-400 mb-1">{workOrder.workOrderNumber}</div>
         <div className="font-medium text-sm mb-2">{workOrder.title}</div>
         <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>Unit {workOrder.unit}</span>
+          <span>{tMisc('unitPrefix', { unit: workOrder.unit })}</span>
           <span className={priorityConfig[workOrder.priority]}>
             {workOrder.priority.charAt(0).toUpperCase() + workOrder.priority.slice(1)}
           </span>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, User } from 'lucide-react';
+import { Send, User } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface Message {
@@ -18,6 +19,8 @@ interface Message {
 const conversationData: Record<string, { subject: string; participants: string[]; messages: Message[] }> = {};
 
 export default function ConversationDetailPage() {
+  const t = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const params = useParams();
   const router = useRouter();
   const id = (params?.id ?? '') as string;
@@ -28,11 +31,11 @@ export default function ConversationDetailPage() {
   if (!conversation) {
     return (
       <>
-        <PageHeader title="Conversation" showBack />
+        <PageHeader title={t('conversation')} showBack />
         <div className="px-4 py-8 text-center">
-          <p className="text-gray-500 mb-4">Conversation not found</p>
+          <p className="text-gray-500 mb-4">{tMisc('conversationNotFound')}</p>
           <button onClick={() => router.back()} className="btn-secondary">
-            Go Back
+            {tMisc('goBack')}
           </button>
         </div>
       </>
@@ -96,7 +99,7 @@ export default function ConversationDetailPage() {
             <input
               type="text"
               className="input flex-1"
-              placeholder="Type a message..."
+              placeholder={t('typeMessagePlaceholder')}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
             />

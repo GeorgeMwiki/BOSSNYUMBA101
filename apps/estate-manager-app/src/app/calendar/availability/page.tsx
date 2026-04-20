@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -22,6 +23,7 @@ const defaultAvailability: Record<string, string[]> = {
 };
 
 export default function SetAvailabilityPage() {
+  const t = useTranslations('availabilityPage');
   const router = useRouter();
   const [availability, setAvailability] = useState<Record<string, string[]>>(defaultAvailability);
 
@@ -43,21 +45,20 @@ export default function SetAvailabilityPage() {
 
   return (
     <>
-      <PageHeader title="Set Availability" subtitle="When you're available for inspections" showBack />
+      <PageHeader title={t('title')} subtitle={t('subtitle')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         <div className="card p-4">
           <p className="text-sm text-gray-600 mb-4">
-            Select the time slots when you&apos;re available for inspections and appointments. 
-            Inspections will be scheduled within these windows.
+            {t('intro')}
           </p>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-left py-2 pr-4 font-medium">Day</th>
-                  <th className="text-left py-2 font-medium">Available Slots</th>
+                  <th className="text-left py-2 pr-4 font-medium">{t('colDay')}</th>
+                  <th className="text-left py-2 font-medium">{t('colSlots')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,11 +95,11 @@ export default function SetAvailabilityPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button onClick={handleSave} className="btn-primary flex-1 flex items-center justify-center gap-2">
             <Check className="w-4 h-4" />
-            Save Availability
+            {t('saveAvailability')}
           </button>
         </div>
       </div>

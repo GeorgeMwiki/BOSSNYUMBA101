@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileCheck, Building2, Calendar } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDate } from '../../../lib/api';
 import { useLicenses } from '../../../lib/hooks';
 
 export default function LicensesPage() {
+  const t = useTranslations('licensesPage');
   const { data: licenses = [], isLoading, error, refetch } = useLicenses();
 
   // No fixture fallback — show real data or an empty state.
@@ -24,8 +26,8 @@ export default function LicensesPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load licenses'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -38,15 +40,15 @@ export default function LicensesPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Property Licenses</h1>
-          <p className="text-gray-500">Track licenses and permits for your properties</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
       {displayLicenses.length === 0 ? (
         <EmptyState
-          title="No licenses tracked yet"
-          description="Add a rental license, fire-safety certificate, or other permit to track validity and renewals."
+          title={t('noLicenses')}
+          description={t('noLicensesDesc')}
         />
       ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -54,11 +56,11 @@ export default function LicensesPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Authority</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Validity</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colLicense')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperty')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colAuthority')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colValidity')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -104,7 +106,7 @@ export default function LicensesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                      View
+                      {t('view')}
                     </button>
                   </td>
                 </tr>

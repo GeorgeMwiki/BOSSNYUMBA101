@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Phone,
   AlertTriangle,
@@ -40,6 +41,7 @@ const emergencyTypes = [
 ];
 
 export default function ReportEmergencyPage() {
+  const t = useTranslations('reportEmergency');
   const router = useRouter();
   const [formData, setFormData] = useState({
     type: '',
@@ -60,7 +62,7 @@ export default function ReportEmergencyPage() {
 
   return (
     <>
-      <PageHeader title="Report Emergency" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         <div className="card p-4 bg-danger-50 border-danger-200">
@@ -86,7 +88,7 @@ export default function ReportEmergencyPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <section>
-            <label className="label">What type of emergency?</label>
+            <label className="label">{t('whatType')}</label>
             <div className="space-y-2">
               {emergencyTypes.map((type) => {
                 const Icon = type.icon;
@@ -125,7 +127,7 @@ export default function ReportEmergencyPage() {
             <textarea
               id="description"
               className="input min-h-[80px]"
-              placeholder="Describe what is happening..."
+              placeholder={t('descriptionPlaceholder')}
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
@@ -142,7 +144,7 @@ export default function ReportEmergencyPage() {
               type="text"
               id="location"
               className="input"
-              placeholder="e.g., Unit A-204, main bathroom"
+              placeholder={t('locationPlaceholder')}
               value={formData.location}
               onChange={(e) =>
                 setFormData({ ...formData, location: e.target.value })
@@ -171,10 +173,9 @@ export default function ReportEmergencyPage() {
           <div className="bg-primary-50 rounded-lg p-4 flex items-start gap-3">
             <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
             <div className="text-sm text-primary-800">
-              <p className="font-medium">What happens next</p>
+              <p className="font-medium">{t('whatHappensNext')}</p>
               <p className="mt-1">
-                We will contact you immediately. For urgent issues, please also
-                call the emergency numbers.
+                {t('whatHappensNextBody')}
               </p>
             </div>
           </div>
@@ -184,7 +185,7 @@ export default function ReportEmergencyPage() {
             className="btn-primary w-full py-3"
             disabled={!formData.type || isSubmitting}
           >
-            {isSubmitting ? 'Submitting...' : 'Report Emergency'}
+            {isSubmitting ? t('submitting') : t('reportEmergency')}
           </button>
         </form>
       </div>

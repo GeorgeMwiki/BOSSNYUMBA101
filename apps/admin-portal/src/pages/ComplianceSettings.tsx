@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ShieldCheck, Globe2, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -50,6 +51,7 @@ interface PluginCatalog {
 }
 
 export default function ComplianceSettings(): JSX.Element {
+  const t = useTranslations('complianceSettings');
   const [catalog, setCatalog] = useState<PluginCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,14 +65,14 @@ export default function ComplianceSettings(): JSX.Element {
         setCatalog(res.data);
         setSelected(res.data.defaultCountryCode);
       } else {
-        setError(res.error ?? 'Unable to load compliance catalog.');
+        setError(res.error ?? t('errors.loadFailed'));
       }
       setLoading(false);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const active = useMemo(() => {
     if (!catalog || !selected) return null;
@@ -80,7 +82,7 @@ export default function ComplianceSettings(): JSX.Element {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500 p-6">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading compliance plugins…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
       </div>
     );
   }
@@ -93,16 +95,16 @@ export default function ComplianceSettings(): JSX.Element {
     );
   }
 
-  if (!catalog) return <p className="text-sm text-gray-500 p-6">No data.</p>;
+  if (!catalog) return <p className="text-sm text-gray-500 p-6">{t('noData')}</p>;
 
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-emerald-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Compliance plugins</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            {catalog.count} registered. Active jurisdiction: {catalog.defaultCountryCode}.
+            {t('registeredInfo', { count: catalog.count, code: catalog.defaultCountryCode })}
           </p>
         </div>
       </header>
@@ -136,42 +138,41 @@ export default function ComplianceSettings(): JSX.Element {
       {active && (
         <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <h3 className="font-semibold text-gray-900">
-            {active.countryName} — compliance profile
+            {t('profileTitle', { country: active.countryName })}
           </h3>
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-gray-500">Deposit cap</dt>
+              <dt className="text-gray-500">{t('profile.depositCap')}</dt>
               <dd>
-                {active.compliance.minDepositMonths}–
-                {active.compliance.maxDepositMonths} months
+                {t('profile.monthsRange', { min: active.compliance.minDepositMonths, max: active.compliance.maxDepositMonths })}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Notice period</dt>
-              <dd>{active.compliance.noticePeriodDays} days</dd>
+              <dt className="text-gray-500">{t('profile.noticePeriod')}</dt>
+              <dd>{t('profile.daysValue', { count: active.compliance.noticePeriodDays })}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Minimum lease</dt>
-              <dd>{active.compliance.minimumLeaseMonths} months</dd>
+              <dt className="text-gray-500">{t('profile.minimumLease')}</dt>
+              <dd>{t('profile.monthsValue', { count: active.compliance.minimumLeaseMonths })}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Sublease consent</dt>
+              <dt className="text-gray-500">{t('profile.subleaseConsent')}</dt>
               <dd>{active.compliance.subleaseConsent}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Late-fee cap</dt>
+              <dt className="text-gray-500">{t('profile.lateFeeCap')}</dt>
               <dd>{(active.compliance.lateFeeCapRate * 100).toFixed(1)}%</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Deposit return window</dt>
-              <dd>{active.compliance.depositReturnDays} days</dd>
+              <dt className="text-gray-500">{t('profile.depositReturn')}</dt>
+              <dd>{t('profile.daysValue', { count: active.compliance.depositReturnDays })}</dd>
             </div>
           </dl>
 
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
-              KYC providers ({active.kycProviders.length})
+              {t('profile.kycProviders', { count: active.kycProviders.length })}
             </h4>
             <ul className="flex flex-wrap gap-2 text-xs">
               {active.kycProviders.map((k) => (
@@ -187,7 +188,7 @@ export default function ComplianceSettings(): JSX.Element {
 
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
-              Payment gateways ({active.paymentGateways.length})
+              {t('profile.paymentGateways', { count: active.paymentGateways.length })}
             </h4>
             <ul className="flex flex-wrap gap-2 text-xs">
               {active.paymentGateways.map((g) => (

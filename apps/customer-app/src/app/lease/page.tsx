@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Calendar, FileText, Home } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
 export default function LeasePage() {
+  const t = useTranslations('leaseIndex');
   const leaseQuery = useQuery({
     queryKey: ['customer-current-lease'],
     queryFn: () => api.lease.getCurrent(),
@@ -16,10 +18,10 @@ export default function LeasePage() {
 
   return (
     <>
-      <PageHeader title="My Lease" showSettings />
+      <PageHeader title={t('title')} showSettings />
 
       <div className="space-y-4 px-4 py-4 pb-24">
-        {leaseQuery.isLoading && <div className="card p-4 text-sm text-gray-400">Loading lease...</div>}
+        {leaseQuery.isLoading && <div className="card p-4 text-sm text-gray-400">{t('loadingLease')}</div>}
         {leaseQuery.error && (
           <div className="card border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
             {(leaseQuery.error as Error).message}
@@ -39,19 +41,19 @@ export default function LeasePage() {
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl border border-white/10 p-3">
-                  <div className="text-gray-400">Start</div>
+                  <div className="text-gray-400">{t('start')}</div>
                   <div className="mt-1 text-white">{new Date(lease.startDate).toLocaleDateString()}</div>
                 </div>
                 <div className="rounded-xl border border-white/10 p-3">
-                  <div className="text-gray-400">End</div>
+                  <div className="text-gray-400">{t('end')}</div>
                   <div className="mt-1 text-white">{new Date(lease.endDate).toLocaleDateString()}</div>
                 </div>
                 <div className="rounded-xl border border-white/10 p-3">
-                  <div className="text-gray-400">Rent</div>
+                  <div className="text-gray-400">{t('rent')}</div>
                   <div className="mt-1 text-white">KES {Number(lease.rentAmount).toLocaleString()}</div>
                 </div>
                 <div className="rounded-xl border border-white/10 p-3">
-                  <div className="text-gray-400">Status</div>
+                  <div className="text-gray-400">{t('status')}</div>
                   <div className="mt-1 text-white">{lease.status}</div>
                 </div>
               </div>
@@ -60,13 +62,13 @@ export default function LeasePage() {
             <div className="grid grid-cols-2 gap-3">
               <Link href="/lease/renewal" className="card p-4">
                 <Calendar className="mb-2 h-5 w-5 text-white" />
-                <div className="font-medium text-white">Renewal</div>
-                <div className="text-sm text-gray-400">Review extension options</div>
+                <div className="font-medium text-white">{t('renewal')}</div>
+                <div className="text-sm text-gray-400">{t('renewalDesc')}</div>
               </Link>
               <Link href="/lease/move-out" className="card p-4">
                 <FileText className="mb-2 h-5 w-5 text-white" />
-                <div className="font-medium text-white">Move Out</div>
-                <div className="text-sm text-gray-400">Give notice</div>
+                <div className="font-medium text-white">{t('moveOut')}</div>
+                <div className="text-sm text-gray-400">{t('moveOutDesc')}</div>
               </Link>
             </div>
           </>

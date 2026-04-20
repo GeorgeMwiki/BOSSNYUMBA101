@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Settings, ChevronRight } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 // Live wiring pending — notifications endpoint not yet mounted. Empty
@@ -9,11 +10,13 @@ import { PageHeader } from '@/components/layout/PageHeader';
 const notifications: Array<{ id: string; title: string; message: string; time: string; read: boolean }> = [];
 
 export default function NotificationsPage() {
+  const t = useTranslations('simple');
+  const tMsg = useTranslations('messagingList');
   return (
     <>
       <PageHeader
-        title="Notifications"
-        subtitle={`${notifications.filter((n) => !n.read).length} unread`}
+        title={t('notifications')}
+        subtitle={tMsg('unreadCount', { count: notifications.filter((n) => !n.read).length })}
         showBack
         action={
           <Link href="/settings/notifications" className="p-2 rounded-full hover:bg-gray-100">

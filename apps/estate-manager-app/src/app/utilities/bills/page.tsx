@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FileText, ChevronRight, Calendar, DollarSign } from 'lucide-react';
+import { FileText, Calendar, DollarSign } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type BillStatus = 'paid' | 'pending' | 'overdue';
@@ -51,6 +52,8 @@ function formatCurrency(amount: number) {
 }
 
 export default function UtilityBillsPage() {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const [filter, setFilter] = useState<string>('all');
 
   const filteredBills = bills.filter((b) => {
@@ -63,8 +66,8 @@ export default function UtilityBillsPage() {
   return (
     <>
       <PageHeader
-        title="Utility Bills"
-        subtitle="Bill history & payments"
+        title={tSimple('utilityBills')}
+        subtitle={tSimple('utilityBillsSubtitle')}
         showBack
       />
 
@@ -73,7 +76,7 @@ export default function UtilityBillsPage() {
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-gray-500">Pending Amount</div>
+              <div className="text-sm text-gray-500">{tMisc('pendingAmount')}</div>
               <div className="text-2xl font-bold">{formatCurrency(pendingAmount)}</div>
             </div>
             {pendingAmount > 0 && (
@@ -136,7 +139,7 @@ export default function UtilityBillsPage() {
         {filteredBills.length === 0 && (
           <EmptyState
             icon={<DollarSign className="h-8 w-8" />}
-            title="No bills found"
+            title={tSimple('noBillsFound')}
             description={filter === 'all' ? 'No utility bills on record.' : `No ${filter} bills yet.`}
           />
         )}

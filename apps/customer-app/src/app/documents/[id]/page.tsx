@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Download, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -35,6 +36,7 @@ const documents: Record<
 };
 
 export default function DocumentViewerPage() {
+  const t = useTranslations('pageHeaders');
   const params = useParams();
   const id = params.id as string;
   const doc = documents[id];
@@ -46,9 +48,9 @@ export default function DocumentViewerPage() {
   if (!doc) {
     return (
       <>
-        <PageHeader title="Document" showBack />
+        <PageHeader title={t('document')} showBack />
         <div className="p-4">
-          <p className="text-gray-500">Document not found.</p>
+          <p className="text-gray-500">{t('documentNotFound')}</p>
         </div>
       </>
     );
@@ -79,7 +81,7 @@ export default function DocumentViewerPage() {
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
             <Download className="w-5 h-5" />
-            Download document
+            {t('downloadDocument')}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface PaginationProps {
   currentPage: number;
@@ -18,6 +19,7 @@ export function Pagination({
   className,
   showFirstLast = false,
 }: PaginationProps) {
+  const t = useTranslations('simple');
   const canGoPrev = currentPage > 1;
   const canGoNext = currentPage < totalPages;
 
@@ -55,7 +57,7 @@ export function Pagination({
   return (
     <nav
       role="navigation"
-      aria-label="Pagination"
+      aria-label={t('pagination')}
       className={cn('flex items-center justify-center gap-2', className)}
     >
       <button
@@ -63,7 +65,7 @@ export function Pagination({
         onClick={() => onPageChange(currentPage - 1)}
         disabled={!canGoPrev}
         className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-        aria-label="Previous page"
+        aria-label={t('previousPage')}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -117,7 +119,7 @@ export function Pagination({
         onClick={() => onPageChange(currentPage + 1)}
         disabled={!canGoNext}
         className="p-2 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-        aria-label="Next page"
+        aria-label={t('nextPage')}
       >
         <ChevronRight className="w-4 h-4" />
       </button>

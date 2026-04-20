@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { FileText, Download, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -36,9 +37,10 @@ const documents = [
 ];
 
 export default function DocumentsPage() {
+  const t = useTranslations('pageHeaders');
   return (
     <>
-      <PageHeader title="My Documents" showBack />
+      <PageHeader title={t('myDocuments')} showBack />
 
       <div className="px-4 py-4 space-y-4">
         <p className="text-sm text-gray-500 mb-4">
@@ -71,7 +73,7 @@ export default function DocumentsPage() {
         {documents.length === 0 && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No documents</h3>
+            <h3 className="font-medium text-gray-900">{t('noDocuments')}</h3>
             <p className="text-sm text-gray-500 mt-1">
               Your documents will appear here
             </p>

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
 import { registerServiceWorker, onServiceWorkerUpdate, skipWaiting } from '@/lib/pwa/register-sw';
 
 export function UpdatePrompt() {
+  const t = useTranslations('updatePrompt');
   const [show, setShow] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
@@ -50,22 +52,22 @@ export function UpdatePrompt() {
           <RefreshCw className="h-5 w-5 text-primary" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-gray-900">Update available</h3>
+          <h3 className="font-semibold text-gray-900">{t('title')}</h3>
           <p className="mt-0.5 text-sm text-gray-500">
-            A new version is ready. Refresh to get the latest features.
+            {t('body')}
           </p>
           <div className="mt-3 flex gap-2">
             <button
               onClick={handleUpdate}
               className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500/90"
             >
-              Refresh now
+              {t('refreshNow')}
             </button>
             <button
               onClick={handleDismiss}
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-100"
             >
-              Later
+              {t('later')}
             </button>
           </div>
         </div>

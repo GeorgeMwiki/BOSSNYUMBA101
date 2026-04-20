@@ -8,6 +8,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, Send, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -38,6 +39,7 @@ async function readAsDataUrl(file: File): Promise<string> {
 }
 
 export default function NewMaintenancePage() {
+  const t = useTranslations('maintenanceNew');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('plumbing');
@@ -108,7 +110,7 @@ export default function NewMaintenancePage() {
 
   return (
     <>
-      <PageHeader title="Report Issue" showBack />
+      <PageHeader title={t('title')} showBack />
       <div className="px-4 py-4 pb-24 space-y-4">
         {successId && (
           <div className="rounded-lg bg-emerald-900/30 border border-emerald-500/40 text-emerald-200 p-3 text-sm">
@@ -127,7 +129,7 @@ export default function NewMaintenancePage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Kitchen sink leaking"
+            placeholder={t('titlePlaceholder')}
             className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
           />
         </label>
@@ -138,7 +140,7 @@ export default function NewMaintenancePage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            placeholder="Describe the issue and when it started"
+            placeholder={t('descriptionPlaceholder')}
             className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
           />
         </label>
@@ -151,12 +153,12 @@ export default function NewMaintenancePage() {
               onChange={(e) => setCategory(e.target.value)}
               className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
             >
-              <option value="plumbing">Plumbing</option>
-              <option value="electrical">Electrical</option>
+              <option value="plumbing">{t('catPlumbing')}</option>
+              <option value="electrical">{t('catElectrical')}</option>
               <option value="hvac">HVAC</option>
-              <option value="appliance">Appliance</option>
-              <option value="lighting">Lighting</option>
-              <option value="general">General</option>
+              <option value="appliance">{t('catAppliance')}</option>
+              <option value="lighting">{t('catLighting')}</option>
+              <option value="general">{t('catGeneral')}</option>
             </select>
           </label>
           <label className="block text-sm text-gray-300">
@@ -166,11 +168,11 @@ export default function NewMaintenancePage() {
               onChange={(e) => setSeverity(e.target.value as Severity)}
               className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-              <option value="emergency">Emergency</option>
+              <option value="low">{t('sevLow')}</option>
+              <option value="medium">{t('sevMedium')}</option>
+              <option value="high">{t('sevHigh')}</option>
+              <option value="critical">{t('sevCritical')}</option>
+              <option value="emergency">{t('sevEmergency')}</option>
             </select>
           </label>
         </div>

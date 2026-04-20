@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../../components/LiveDataRequiredPage';
 
 export default function FeatureFlagsPage() {
+  const t = useTranslations('featureFlagsPage');
   return (
     <LiveDataRequiredPage
-      title="Feature Flags"
-      feature="feature-flag registry"
-      description="Static feature-flag definitions and toggle state have been removed. This page now requires live feature configuration data."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

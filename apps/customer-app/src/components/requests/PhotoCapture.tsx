@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, X, ImageIcon } from 'lucide-react';
 
 export interface PhotoPreview {
@@ -20,6 +21,7 @@ export function PhotoCapture({
   onChange,
   maxPhotos = 5,
 }: PhotoCaptureProps) {
+  const t = useTranslations('photoCapture');
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -114,7 +116,7 @@ export function PhotoCapture({
                 className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
               >
                 <Camera className="w-6 h-6" />
-                <span className="text-xs mt-1">Camera</span>
+                <span className="text-xs mt-1">{t('camera')}</span>
               </button>
               <button
                 type="button"
@@ -122,7 +124,7 @@ export function PhotoCapture({
                 className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 transition-colors"
               >
                 <ImageIcon className="w-6 h-6" />
-                <span className="text-xs mt-1">Gallery</span>
+                <span className="text-xs mt-1">{t('gallery')}</span>
               </button>
             </div>
           </>

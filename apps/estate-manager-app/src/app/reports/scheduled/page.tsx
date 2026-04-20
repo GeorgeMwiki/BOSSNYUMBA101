@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Plus, Calendar, Mail, FileText, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Plus, Calendar, Mail, FileText, Edit, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
@@ -26,11 +27,14 @@ const frequencyLabels: Record<ScheduleFrequency, string> = {
 };
 
 export default function ScheduledReportsPage() {
+  const t = useTranslations('simple');
+  const tAnn = useTranslations('announcementsList');
+  const tMisc = useTranslations('misc');
   return (
     <>
       <PageHeader
-        title="Scheduled Reports"
-        subtitle={`${scheduledReports.length} active`}
+        title={t('scheduledReports')}
+        subtitle={tAnn('countLabel', { count: scheduledReports.length })}
         showBack
         action={
           <Link href="/reports/scheduled/new" className="btn-primary text-sm flex items-center gap-1">
@@ -78,7 +82,7 @@ export default function ScheduledReportsPage() {
         {scheduledReports.length === 0 && (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No scheduled reports</h3>
+            <h3 className="font-medium text-gray-900">{tMisc('noScheduledReports')}</h3>
             <p className="text-sm text-gray-500 mt-1">
               Schedule reports to be generated and delivered automatically
             </p>

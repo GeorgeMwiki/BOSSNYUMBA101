@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   Plug,
   Webhook,
@@ -19,56 +20,16 @@ interface Integration {
   lastSync: string | null;
 }
 
-const integrations: Integration[] = [
-  {
-    id: '1',
-    name: 'M-Pesa',
-    type: 'Payment',
-    status: 'connected',
-    description: 'Mobile money payments via Safaricom',
-    lastSync: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'SendGrid',
-    type: 'Email',
-    status: 'connected',
-    description: 'Transactional email delivery',
-    lastSync: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Africa\'s Talking',
-    type: 'SMS',
-    status: 'connected',
-    description: 'SMS delivery across East Africa',
-    lastSync: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Stripe',
-    type: 'Payment',
-    status: 'disconnected',
-    description: 'Card payments (optional)',
-    lastSync: null,
-  },
-  {
-    id: '5',
-    name: 'Google Analytics',
-    type: 'Analytics',
-    status: 'connected',
-    description: 'Platform analytics tracking',
-    lastSync: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '6',
-    name: 'Slack',
-    type: 'Notifications',
-    status: 'disconnected',
-    description: 'Admin alert notifications',
-    lastSync: null,
-  },
-];
+function buildIntegrations(t: (k: string) => string): Integration[] {
+  return [
+    { id: '1', name: 'M-Pesa', type: t('types.payment'), status: 'connected', description: t('items.mpesa'), lastSync: new Date().toISOString() },
+    { id: '2', name: 'SendGrid', type: t('types.email'), status: 'connected', description: t('items.sendgrid'), lastSync: new Date().toISOString() },
+    { id: '3', name: "Africa's Talking", type: t('types.sms'), status: 'connected', description: t('items.africasTalking'), lastSync: new Date(Date.now() - 3600000).toISOString() },
+    { id: '4', name: 'Stripe', type: t('types.payment'), status: 'disconnected', description: t('items.stripe'), lastSync: null },
+    { id: '5', name: 'Google Analytics', type: t('types.analytics'), status: 'connected', description: t('items.googleAnalytics'), lastSync: new Date(Date.now() - 86400000).toISOString() },
+    { id: '6', name: 'Slack', type: t('types.notifications'), status: 'disconnected', description: t('items.slack'), lastSync: null },
+  ];
+}
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
   connected: { color: 'text-green-600', icon: CheckCircle },
@@ -77,15 +38,17 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
 };
 
 export default function IntegrationsPage() {
+  const t = useTranslations('integrationsPage');
+  const integrations = buildIntegrations(t);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Integrations
+            {t('title')}
           </h1>
           <p className="text-gray-500">
-            Manage third-party integrations and API connections
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -100,9 +63,9 @@ export default function IntegrationsPage() {
             <Webhook className="h-6 w-6 text-violet-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">Webhooks</h3>
+            <h3 className="font-semibold text-gray-900">{t('webhooksTitle')}</h3>
             <p className="text-sm text-gray-500">
-              Manage outbound webhook endpoints
+              {t('webhooksDesc')}
             </p>
           </div>
           <ArrowUpRight className="h-5 w-5 text-gray-400" />
@@ -115,9 +78,9 @@ export default function IntegrationsPage() {
             <Key className="h-6 w-6 text-blue-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">API Keys</h3>
+            <h3 className="font-semibold text-gray-900">{t('apiKeysTitle')}</h3>
             <p className="text-sm text-gray-500">
-              Manage tenant and platform API keys
+              {t('apiKeysDesc')}
             </p>
           </div>
           <ArrowUpRight className="h-5 w-5 text-gray-400" />
@@ -153,13 +116,13 @@ export default function IntegrationsPage() {
               </p>
               {integration.lastSync && (
                 <p className="text-xs text-gray-400 mt-3">
-                  Last sync: {new Date(integration.lastSync).toLocaleString()}
+                  {t('lastSync', { date: new Date(integration.lastSync).toLocaleString() })}
                 </p>
               )}
               <div className="mt-4 flex gap-2">
                 <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                   <Settings className="h-4 w-4" />
-                  {integration.status === 'connected' ? 'Configure' : 'Connect'}
+                  {integration.status === 'connected' ? t('configure') : t('connect')}
                 </button>
               </div>
             </div>

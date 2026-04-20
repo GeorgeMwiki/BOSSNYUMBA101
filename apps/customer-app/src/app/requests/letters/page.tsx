@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -31,6 +32,7 @@ const letterSchema = z
 type LetterForm = z.infer<typeof letterSchema>;
 
 export default function RequestLetterPage(): React.ReactElement {
+  const t = useTranslations('lettersPage');
   const [message, setMessage] = useState<string | null>(null);
 
   const {
@@ -71,7 +73,7 @@ export default function RequestLetterPage(): React.ReactElement {
     <main className="p-6 max-w-xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Request a letter</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -82,18 +84,18 @@ export default function RequestLetterPage(): React.ReactElement {
             )}
 
             <div>
-              <Label htmlFor="type">Letter type</Label>
+              <Label htmlFor="type">{t('letterType')}</Label>
               <select id="type" className="w-full border rounded-md p-2" {...register('type')}>
-                <option value="proof_of_residence">Proof of residence</option>
-                <option value="rent_statement">Rent statement</option>
-                <option value="no_objection">No-objection letter</option>
-                <option value="reference">Reference letter</option>
-                <option value="custom">Custom</option>
+                <option value="proof_of_residence">{t('proofOfResidence')}</option>
+                <option value="rent_statement">{t('rentStatement')}</option>
+                <option value="no_objection">{t('noObjection')}</option>
+                <option value="reference">{t('reference')}</option>
+                <option value="custom">{t('custom')}</option>
               </select>
             </div>
 
             <div>
-              <Label htmlFor="recipient">Addressed to</Label>
+              <Label htmlFor="recipient">{t('addressedTo')}</Label>
               <Input id="recipient" error={!!errors.recipientName} {...register('recipientName')} />
               {errors.recipientName && (
                 <p role="alert" className="mt-1 text-xs text-destructive">
@@ -103,7 +105,7 @@ export default function RequestLetterPage(): React.ReactElement {
             </div>
 
             <div>
-              <Label htmlFor="reason">Reason</Label>
+              <Label htmlFor="reason">{t('reason')}</Label>
               <textarea
                 id="reason"
                 className="w-full border rounded-md p-2"
@@ -120,7 +122,7 @@ export default function RequestLetterPage(): React.ReactElement {
 
             {selectedType === 'custom' && (
               <div>
-                <Label htmlFor="custom">Custom text</Label>
+                <Label htmlFor="custom">{t('customText')}</Label>
                 <textarea
                   id="custom"
                   className="w-full border rounded-md p-2"
@@ -137,7 +139,7 @@ export default function RequestLetterPage(): React.ReactElement {
             )}
 
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit request'}
+              {isSubmitting ? t('submitting') : t('submitRequest')}
             </Button>
           </form>
         </CardContent>

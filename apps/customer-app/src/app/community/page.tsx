@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Users, FileText, Calendar, MessageSquare } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -32,9 +33,10 @@ const communityPosts = [
 ];
 
 export default function CommunityPage() {
+  const t = useTranslations('communityPage');
   return (
     <>
-      <PageHeader title="Community" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         {/* Quick Links */}
@@ -48,8 +50,8 @@ export default function CommunityPage() {
                 <FileText className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <div className="font-medium text-sm">Property Rules</div>
-                <div className="text-xs text-gray-500">Building guidelines</div>
+                <div className="font-medium text-sm">{t('propertyRules')}</div>
+                <div className="text-xs text-gray-500">{t('buildingGuidelines')}</div>
               </div>
             </Link>
             <Link
@@ -60,8 +62,8 @@ export default function CommunityPage() {
                 <Calendar className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <div className="font-medium text-sm">Announcements</div>
-                <div className="text-xs text-gray-500">Property updates</div>
+                <div className="font-medium text-sm">{t('announcements')}</div>
+                <div className="text-xs text-gray-500">{t('propertyUpdates')}</div>
               </div>
             </Link>
           </div>
@@ -71,10 +73,10 @@ export default function CommunityPage() {
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
-            Community Board
+            {t('communityBoard')}
           </h3>
           <p className="text-sm text-gray-500 mb-4">
-            Connect with neighbors—share updates, ask questions, or help out.
+            {t('connectIntro')}
           </p>
           <div className="space-y-3">
             {communityPosts.map((post) => (
@@ -87,7 +89,7 @@ export default function CommunityPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{post.author}</span>
                       <span className="text-xs text-gray-400">·</span>
-                      <span className="text-xs text-gray-500">Unit {post.unit}</span>
+                      <span className="text-xs text-gray-500">{t('unitLabel', { unit: post.unit })}</span>
                     </div>
                     <p className="text-sm text-gray-700 mt-1">{post.content}</p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
@@ -106,7 +108,7 @@ export default function CommunityPage() {
           {communityPosts.length === 0 && (
             <div className="card p-8 text-center">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-1">No posts yet</p>
+              <p className="text-gray-500 mb-1">{t('noPosts')}</p>
               <p className="text-sm text-gray-400">
                 Be the first to share with the community
               </p>

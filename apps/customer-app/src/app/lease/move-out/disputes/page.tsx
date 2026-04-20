@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -32,6 +33,7 @@ interface DamageProposal {
 }
 
 export default function DamageDisputesPage(): React.ReactElement {
+  const t = useTranslations('disputesPage');
   const [proposal, setProposal] = useState<DamageProposal | null>(null);
   const [counters, setCounters] = useState<Record<string, { amount?: number; note?: string }>>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -104,7 +106,7 @@ export default function DamageDisputesPage(): React.ReactElement {
   if (loading) {
     return (
       <main className="p-6 max-w-3xl mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <div className="space-y-3" aria-live="polite">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -117,7 +119,7 @@ export default function DamageDisputesPage(): React.ReactElement {
   if (loadError) {
     return (
       <main className="p-6 max-w-3xl mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <Alert variant="danger">
           <AlertDescription>
             {loadError}
@@ -134,7 +136,7 @@ export default function DamageDisputesPage(): React.ReactElement {
     return (
       <main className="p-6 max-w-3xl mx-auto">
         <EmptyState
-          title="No active damage proposal"
+          title={t('emptyTitle')}
           description="You have no open damage-deduction proposals from your landlord."
         />
       </main>
@@ -143,7 +145,7 @@ export default function DamageDisputesPage(): React.ReactElement {
 
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">Damage proposal — counter / dispute</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
       {feedback && (
         <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
           <AlertDescription>{feedback.message}</AlertDescription>
@@ -161,17 +163,17 @@ export default function DamageDisputesPage(): React.ReactElement {
             <div key={i.id} className="border rounded-md p-3">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{i.description}</span>
-                <Badge>Manager: {i.managerAmount.toLocaleString()}</Badge>
+                <Badge>{t('managerPrefix')}: {i.managerAmount.toLocaleString()}</Badge>
               </div>
               <div className="grid grid-cols-[140px_1fr] gap-2 mt-2">
                 <Input
                   type="number"
-                  placeholder="Your amount"
+                  placeholder={t('amountPlaceholder')}
                   aria-label={`Your counter amount for ${i.description}`}
                   onChange={(e) => updateCounter(i.id, { amount: Number(e.target.value) })}
                 />
                 <Input
-                  placeholder="Your note / evidence..."
+                  placeholder={t('notePlaceholder')}
                   aria-label={`Your note for ${i.description}`}
                   onChange={(e) => updateCounter(i.id, { note: e.target.value })}
                 />
@@ -184,7 +186,7 @@ export default function DamageDisputesPage(): React.ReactElement {
             loading={submitting}
             disabled={submitting || Object.keys(counters).length === 0}
             title={Object.keys(counters).length === 0 ? 'Add at least one counter before submitting' : undefined}
-            aria-label="Submit counter proposal"
+            aria-label={t('submitCounterAria')}
           >
             Submit counter
           </Button>

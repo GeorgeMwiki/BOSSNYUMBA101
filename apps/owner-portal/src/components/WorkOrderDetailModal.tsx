@@ -19,6 +19,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export function WorkOrderDetailModal({
   onReject,
   isPendingApproval,
 }: WorkOrderDetailModalProps) {
+  const t = useTranslations('workOrderModal');
   const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'evidence' | 'costs'>('details');
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -140,10 +142,10 @@ export function WorkOrderDetailModal({
   };
 
   const tabs = [
-    { id: 'details' as const, label: 'Details' },
-    { id: 'timeline' as const, label: 'Timeline' },
-    { id: 'evidence' as const, label: 'Evidence' },
-    ...(showApproval ? [{ id: 'costs' as const, label: 'Cost Analysis' }] : []),
+    { id: 'details' as const, label: t('tabDetails') },
+    { id: 'timeline' as const, label: t('tabTimeline') },
+    { id: 'evidence' as const, label: t('tabEvidence') },
+    ...(showApproval ? [{ id: 'costs' as const, label: t('tabCostAnalysis') }] : []),
   ];
 
   return (
@@ -188,14 +190,14 @@ export function WorkOrderDetailModal({
             <Shield className="h-5 w-5 text-orange-600 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-orange-800">
-                This work order requires your approval
+                {t('requiresApproval')}
                 {workOrder.approvalThreshold && (
-                  <span> (threshold: {formatCurrency(workOrder.approvalThreshold)})</span>
+                  <span> {t('thresholdSuffix', { amount: formatCurrency(workOrder.approvalThreshold) })}</span>
                 )}
               </p>
               <p className="text-xs text-orange-600 mt-0.5">
-                Estimated cost: {formatCurrency(workOrder.estimatedCost || 0)} •{' '}
-                {workOrder.category} • {workOrder.priority} Priority
+                {t('estimatedCostPrefix')}: {formatCurrency(workOrder.estimatedCost || 0)} •{' '}
+                {workOrder.category} • {workOrder.priority} {t('priority')}
               </p>
             </div>
           </div>
@@ -227,28 +229,28 @@ export function WorkOrderDetailModal({
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 mb-1">
                     <Building2 className="h-4 w-4" />
-                    <span className="text-sm">Property</span>
+                    <span className="text-sm">{t('property')}</span>
                   </div>
                   <p className="font-medium text-gray-900">
                     {workOrder.property?.name || 'N/A'}
                   </p>
                   {workOrder.unit && (
                     <p className="text-sm text-gray-500">
-                      Unit {workOrder.unit.unitNumber}
+                      {t('unitPrefix', { unit: workOrder.unit.unitNumber })}
                     </p>
                   )}
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 mb-1">
                     <Wrench className="h-4 w-4" />
-                    <span className="text-sm">Category</span>
+                    <span className="text-sm">{t('category')}</span>
                   </div>
                   <p className="font-medium text-gray-900">{workOrder.category}</p>
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 mb-1">
                     <Calendar className="h-4 w-4" />
-                    <span className="text-sm">Reported</span>
+                    <span className="text-sm">{t('reported')}</span>
                   </div>
                   <p className="font-medium text-gray-900">
                     {formatDate(workOrder.reportedAt || workOrder.createdAt || '')}
@@ -257,27 +259,27 @@ export function WorkOrderDetailModal({
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 mb-1">
                     <DollarSign className="h-4 w-4" />
-                    <span className="text-sm">Cost</span>
+                    <span className="text-sm">{t('cost')}</span>
                   </div>
                   <p className="font-medium text-gray-900">
                     {workOrder.actualCost
                       ? formatCurrency(workOrder.actualCost)
                       : workOrder.estimatedCost
-                      ? `Est. ${formatCurrency(workOrder.estimatedCost)}`
-                      : 'TBD'}
+                      ? t('estAbbrev', { amount: formatCurrency(workOrder.estimatedCost) })
+                      : t('tbd')}
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-medium text-gray-900 mb-2">Description</h3>
+                <h3 className="font-medium text-gray-900 mb-2">{t('description')}</h3>
                 <p className="text-gray-600">{workOrder.description}</p>
               </div>
 
               {/* Reported By */}
               {(workOrder.customer || workOrder.tenant) && (
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Reported By</h3>
+                  <h3 className="font-medium text-gray-900 mb-2">{t('reportedBy')}</h3>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <User className="h-5 w-5 text-blue-600" />
@@ -300,7 +302,7 @@ export function WorkOrderDetailModal({
               {workOrder.vendor && (
                 <div>
                   <h3 className="font-medium text-gray-900 mb-2">
-                    Assigned Vendor
+                    {t('assignedVendor')}
                   </h3>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -328,7 +330,7 @@ export function WorkOrderDetailModal({
               {workOrder.timeline.length === 0 ? (
                 <div className="text-center py-8">
                   <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No timeline events yet</p>
+                  <p className="text-gray-500">{t('noTimeline')}</p>
                 </div>
               ) : (
                 workOrder.timeline.map((event, index) => (
@@ -386,7 +388,7 @@ export function WorkOrderDetailModal({
               {workOrder.evidence.length === 0 ? (
                 <div className="text-center py-8">
                   <Camera className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No evidence attached yet</p>
+                  <p className="text-gray-500">{t('noEvidence')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
@@ -417,7 +419,7 @@ export function WorkOrderDetailModal({
                       </div>
                       <div className="p-3">
                         <p className="text-sm text-gray-900">
-                          {item.caption || item.description || 'Photo'}
+                          {item.caption || item.description || t('photo')}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           {formatDate(item.uploadedAt || item.timestamp || '')}
@@ -434,48 +436,48 @@ export function WorkOrderDetailModal({
           {activeTab === 'costs' && showApproval && (
             <div className="space-y-6">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <h4 className="font-medium text-orange-800 mb-3">Cost Summary</h4>
+                <h4 className="font-medium text-orange-800 mb-3">{t('costSummary')}</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-white rounded-lg">
-                    <p className="text-xs text-gray-500">Estimated Cost</p>
+                    <p className="text-xs text-gray-500">{t('estimatedCost')}</p>
                     <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(workOrder.estimatedCost || 0)}
                     </p>
                   </div>
                   <div className="p-3 bg-white rounded-lg">
-                    <p className="text-xs text-gray-500">Approval Threshold</p>
+                    <p className="text-xs text-gray-500">{t('approvalThreshold')}</p>
                     <p className="text-xl font-bold text-gray-900">
                       {workOrder.approvalThreshold
                         ? formatCurrency(workOrder.approvalThreshold)
-                        : 'N/A'}
+                        : t('na')}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Cost Justification</h4>
+                <h4 className="font-medium text-gray-900 mb-3">{t('costJustification')}</h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Labor</span>
+                    <span className="text-sm text-gray-600">{t('labor')}</span>
                     <span className="font-medium text-gray-900">
                       {formatCurrency((workOrder.estimatedCost || 0) * 0.4)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Parts & Materials</span>
+                    <span className="text-sm text-gray-600">{t('partsAndMaterials')}</span>
                     <span className="font-medium text-gray-900">
                       {formatCurrency((workOrder.estimatedCost || 0) * 0.45)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Service Fee</span>
+                    <span className="text-sm text-gray-600">{t('serviceFee')}</span>
                     <span className="font-medium text-gray-900">
                       {formatCurrency((workOrder.estimatedCost || 0) * 0.15)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className="text-sm font-medium text-blue-800">Total</span>
+                    <span className="text-sm font-medium text-blue-800">{t('total')}</span>
                     <span className="font-bold text-blue-800">
                       {formatCurrency(workOrder.estimatedCost || 0)}
                     </span>
@@ -485,7 +487,7 @@ export function WorkOrderDetailModal({
 
               {workOrder.vendor && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Vendor Details</h4>
+                  <h4 className="font-medium text-gray-900 mb-3">{t('vendorDetails')}</h4>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
                       <Wrench className="h-5 w-5 text-green-600" />
@@ -510,12 +512,12 @@ export function WorkOrderDetailModal({
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    Reason for rejection <span className="text-red-500">*</span>
+                    {t('reasonForRejection')} <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Please provide a reason for rejecting this work order..."
+                    placeholder={t('reasonPlaceholder')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     rows={3}
                   />
@@ -528,7 +530,7 @@ export function WorkOrderDetailModal({
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={handleReject}
@@ -537,7 +539,7 @@ export function WorkOrderDetailModal({
                   >
                     {rejecting && <Spinner size="sm" />}
                     <ThumbsDown className="h-4 w-4" />
-                    Confirm Rejection
+                    {t('confirmRejection')}
                   </button>
                 </div>
               </div>
@@ -549,7 +551,7 @@ export function WorkOrderDetailModal({
                     type="text"
                     value={approvalComment}
                     onChange={(e) => setApprovalComment(e.target.value)}
-                    placeholder="Add a comment (optional)..."
+                    placeholder={t('commentPlaceholder')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
@@ -557,7 +559,7 @@ export function WorkOrderDetailModal({
                   <div className="flex items-center gap-2 text-orange-700 bg-orange-50 px-3 py-2 rounded-lg">
                     <AlertTriangle className="h-4 w-4" />
                     <span className="text-sm font-medium">
-                      Cost: {formatCurrency(workOrder.estimatedCost || 0)}
+                      {t('costPrefix', { amount: formatCurrency(workOrder.estimatedCost || 0) })}
                     </span>
                   </div>
                   <div className="flex gap-3">
@@ -566,7 +568,7 @@ export function WorkOrderDetailModal({
                       className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
                     >
                       <ThumbsDown className="h-4 w-4" />
-                      Reject
+                      {t('reject')}
                     </button>
                     <button
                       onClick={handleApprove}
@@ -578,7 +580,7 @@ export function WorkOrderDetailModal({
                       ) : (
                         <ThumbsUp className="h-4 w-4" />
                       )}
-                      Approve
+                      {t('approve')}
                     </button>
                   </div>
                 </div>

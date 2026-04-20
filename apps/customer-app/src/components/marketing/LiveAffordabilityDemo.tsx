@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 function classify(rent: number, income: number): {
   readonly ratio: number;
@@ -29,6 +30,7 @@ const STATUS_COLOR: Record<'green' | 'yellow' | 'red', string> = {
 };
 
 export function LiveAffordabilityDemo() {
+  const t = useTranslations('liveAffordability');
   const [rent, setRent] = useState(450_000);
   const [income, setIncome] = useState(1_500_000);
   const { ratio, status, label } = classify(rent, income);
@@ -39,14 +41,14 @@ export function LiveAffordabilityDemo() {
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
         Live demo — rent affordability
       </div>
-      <h3 className="mb-2 text-lg font-semibold">Try a live affordability check.</h3>
+      <h3 className="mb-2 text-lg font-semibold">{t('heading')}</h3>
       <p className="mb-4 text-sm text-slate-700">
         Adjust rent and gross monthly income. Mr. Mwikila uses the same rule of thumb for
         tenant screening across your portfolio.
       </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">Monthly rent (TZS)</span>
+          <span className="mb-1 block font-medium text-slate-700">{t('monthlyRent')}</span>
           <input
             type="number"
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -56,7 +58,7 @@ export function LiveAffordabilityDemo() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">Gross monthly income (TZS)</span>
+          <span className="mb-1 block font-medium text-slate-700">{t('grossIncome')}</span>
           <input
             type="number"
             className="w-full rounded-lg border border-slate-300 px-3 py-2"

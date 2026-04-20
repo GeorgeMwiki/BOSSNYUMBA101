@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -31,9 +32,10 @@ const rules = [
 ];
 
 export default function PropertyRulesPage() {
+  const t = useTranslations('propertyRules');
   return (
     <>
-      <PageHeader title="Property Rules" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         <div className="flex items-center gap-3 mb-4">
@@ -41,8 +43,8 @@ export default function PropertyRulesPage() {
             <FileText className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h2 className="font-semibold">Building Guidelines</h2>
-            <p className="text-sm text-gray-500">Please follow these rules for a pleasant community</p>
+            <h2 className="font-semibold">{t('buildingGuidelines')}</h2>
+            <p className="text-sm text-gray-500">{t('followRules')}</p>
           </div>
         </div>
 

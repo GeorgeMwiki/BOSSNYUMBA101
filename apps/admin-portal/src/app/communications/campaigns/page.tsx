@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   BarChart3,
   Plus,
@@ -105,6 +106,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function CommunicationsCampaignsPage() {
+  const t = useTranslations('campaignsPage');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -119,15 +121,15 @@ export default function CommunicationsCampaignsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Marketing Campaigns
+            {t('title')}
           </h1>
           <p className="text-gray-500">
-            Create and manage email/SMS campaigns
+            {t('subtitle')}
           </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
           <Plus className="h-4 w-4" />
-          New Campaign
+          {t('newCampaign')}
         </button>
       </div>
 
@@ -135,25 +137,25 @@ export default function CommunicationsCampaignsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">{campaigns.length}</p>
-          <p className="text-sm text-gray-500">Total Campaigns</p>
+          <p className="text-sm text-gray-500">{t('stats.total')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-green-600">
             {campaigns.filter((c) => c.status === 'running').length}
           </p>
-          <p className="text-sm text-gray-500">Running</p>
+          <p className="text-sm text-gray-500">{t('stats.running')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-blue-600">
             {campaigns.filter((c) => c.status === 'scheduled').length}
           </p>
-          <p className="text-sm text-gray-500">Scheduled</p>
+          <p className="text-sm text-gray-500">{t('stats.scheduled')}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">
             {campaigns.filter((c) => c.status === 'completed').length}
           </p>
-          <p className="text-sm text-gray-500">Completed</p>
+          <p className="text-sm text-gray-500">{t('stats.completed')}</p>
         </div>
       </div>
 
@@ -163,7 +165,7 @@ export default function CommunicationsCampaignsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search campaigns..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -174,12 +176,12 @@ export default function CommunicationsCampaignsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
-          <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="running">Running</option>
-          <option value="completed">Completed</option>
-          <option value="paused">Paused</option>
+          <option value="all">{t('filters.all')}</option>
+          <option value="draft">{t('filters.draft')}</option>
+          <option value="scheduled">{t('filters.scheduled')}</option>
+          <option value="running">{t('filters.running')}</option>
+          <option value="completed">{t('filters.completed')}</option>
+          <option value="paused">{t('filters.paused')}</option>
         </select>
         {/* "More Filters" button removed — the status select is the only
             real filter dimension today. Re-add as a panel when we add
@@ -192,25 +194,25 @@ export default function CommunicationsCampaignsPage() {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Campaign
+                {t('cols.campaign')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                {t('cols.status')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Channel
+                {t('cols.channel')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sent
+                {t('cols.sent')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Open Rate
+                {t('cols.openRate')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Click Rate
+                {t('cols.clickRate')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {t('cols.actions')}
               </th>
             </tr>
           </thead>
@@ -272,8 +274,8 @@ export default function CommunicationsCampaignsPage() {
       {filteredCampaigns.length === 0 && (
         <EmptyState
           icon={<BarChart3 className="h-8 w-8" />}
-          title="No campaigns found"
-          description="Create your first campaign to reach your audience."
+          title={t('empty.title')}
+          description={t('empty.description')}
         />
       )}
     </div>

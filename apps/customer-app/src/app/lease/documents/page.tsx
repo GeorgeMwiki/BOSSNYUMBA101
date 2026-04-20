@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { FileText, Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -11,9 +12,10 @@ const documents = [
 ];
 
 export default function LeaseDocumentsPage() {
+  const t = useTranslations('pageHeaders');
   return (
     <>
-      <PageHeader title="Lease Documents" showBack />
+      <PageHeader title={t('leaseDocuments')} showBack />
 
       <div className="px-4 py-4 space-y-4">
         <p className="text-sm text-gray-500 mb-4">

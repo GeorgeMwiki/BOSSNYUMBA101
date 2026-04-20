@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Brain, Send, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
@@ -27,6 +28,7 @@ interface Msg {
 }
 
 export default function TenantAssistantPage() {
+  const t = useTranslations('assistantPage');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -89,8 +91,8 @@ export default function TenantAssistantPage() {
   return (
     <>
       <PageHeader
-        title="BossNyumba Assistant"
-        subtitle="Ask anything about your lease, payments, or maintenance"
+        title={t('title')}
+        subtitle={t('subtitle')}
         showBack
       />
       <div ref={scrollRef} className="px-4 py-3 pb-32 flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -100,7 +102,7 @@ export default function TenantAssistantPage() {
         ))}
         {sending && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
-            <Spinner size="sm" /> Thinking…
+            <Spinner size="sm" /> {t('thinking')}
           </div>
         )}
         {error && (
@@ -122,7 +124,7 @@ export default function TenantAssistantPage() {
               }
             }}
             rows={2}
-            placeholder="Ask about your rent, lease, requests, notices…"
+            placeholder={t('inputPlaceholder')}
             className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
           <button
@@ -132,7 +134,7 @@ export default function TenantAssistantPage() {
             className="rounded-xl bg-sky-500 text-white px-3 py-2 text-sm font-medium hover:bg-sky-600 disabled:opacity-50 flex items-center gap-1"
           >
             {sending ? <Spinner size="sm" /> : <Send className="w-4 h-4" />}
-            Send
+            {t('send')}
           </button>
         </div>
       </div>
@@ -141,21 +143,22 @@ export default function TenantAssistantPage() {
 }
 
 function Empty() {
+  const t = useTranslations('assistantPage');
   return (
     <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-sky-50 to-white p-5 flex flex-col gap-2">
       <div className="flex items-center gap-2 text-gray-900">
         <Brain className="w-5 h-5 text-sky-500" />
-        <span className="font-medium">BossNyumba is here to help.</span>
+        <span className="font-medium">{t('hereToHelp')}</span>
       </div>
       <p className="text-sm text-gray-600">
-        Ask about your rent, lease clauses, when your next payment is due, or
-        open a maintenance request — anything about your unit.
+        {t('emptyBody')}
       </p>
     </div>
   );
 }
 
 function Bubble({ msg }: { msg: Msg }) {
+  const t = useTranslations('assistantPage');
   if (msg.role === 'user') {
     return (
       <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-sky-500 text-white px-3 py-2 text-sm whitespace-pre-wrap">
@@ -167,7 +170,7 @@ function Bubble({ msg }: { msg: Msg }) {
     <div className="self-start max-w-[90%] flex flex-col gap-1">
       <div className="flex items-center gap-1.5 text-[11px] text-gray-500 pl-1">
         <Brain className="w-3 h-3" />
-        <span>Assistant</span>
+        <span>{t('assistantLabel')}</span>
       </div>
       <div className="rounded-2xl rounded-bl-sm bg-white border border-gray-100 px-3 py-2 text-sm text-gray-900 whitespace-pre-wrap">
         {msg.text}
@@ -177,9 +180,9 @@ function Bubble({ msg }: { msg: Msg }) {
           <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
             <div className="font-medium">
-              Proposed: {msg.proposedAction.verb} {msg.proposedAction.object}
+              {t('proposedLabel')}: {msg.proposedAction.verb} {msg.proposedAction.object}
             </div>
-            <div className="opacity-80">Risk: {msg.proposedAction.riskLevel}</div>
+            <div className="opacity-80">{t('riskLabel')}: {msg.proposedAction.riskLevel}</div>
           </div>
         </div>
       )}

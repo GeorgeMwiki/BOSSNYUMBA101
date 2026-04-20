@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../../components/LiveDataRequiredPage';
 
 export default function CommunicationsBroadcastsPage() {
+  const t = useTranslations('communicationsBroadcastsPage');
   return (
     <LiveDataRequiredPage
-      title="Broadcasts"
-      feature="broadcast messaging data"
-      description="Synthetic broadcast campaigns have been removed. This page now requires live communications campaign data."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

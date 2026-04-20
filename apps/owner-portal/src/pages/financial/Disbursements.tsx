@@ -30,6 +30,7 @@ import {
   Legend,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatCurrency, formatDate, formatDateTime } from '../../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ interface DisbursementStats {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function DisbursementsPage() {
+  const t = useTranslations('disbursementsPage');
   const navigate = useNavigate();
   const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
   const [stats, setStats] = useState<DisbursementStats | null>(null);
@@ -199,7 +201,7 @@ export function DisbursementsPage() {
         <Alert variant="danger">
           <AlertDescription>
             {error}
-            <Button size="sm" onClick={loadData} className="ml-2">Retry</Button>
+            <Button size="sm" onClick={loadData} className="ml-2">{t('retry')}</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -213,8 +215,8 @@ export function DisbursementsPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Disbursements</h1>
-            <p className="text-gray-500">Track owner payouts and statement history</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
       </div>
@@ -225,7 +227,7 @@ export function DisbursementsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Disbursed</span>
+              <span className="text-sm font-medium">{t('totalDisbursed')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatCurrency(stats.totalDisbursed)}
@@ -234,7 +236,7 @@ export function DisbursementsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-yellow-600">
               <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">Pending</span>
+              <span className="text-sm font-medium">{t('pending')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatCurrency(stats.pendingAmount)}
@@ -243,7 +245,7 @@ export function DisbursementsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-blue-600">
               <Calendar className="h-4 w-4" />
-              <span className="text-sm font-medium">Next Payout</span>
+              <span className="text-sm font-medium">{t('nextPayout')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatDate(stats.nextDisbursementDate)}
@@ -252,7 +254,7 @@ export function DisbursementsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-purple-600">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-sm font-medium">Year to Date</span>
+              <span className="text-sm font-medium">{t('yearToDate')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatCurrency(stats.yearToDate)}
@@ -261,7 +263,7 @@ export function DisbursementsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-gray-600">
               <Banknote className="h-4 w-4" />
-              <span className="text-sm font-medium">Avg Monthly</span>
+              <span className="text-sm font-medium">{t('avgMonthly')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">
               {formatCurrency(stats.averageMonthly)}
@@ -274,9 +276,9 @@ export function DisbursementsPage() {
       {stats && stats.pendingAmount > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <p className="font-medium text-blue-800">Upcoming Disbursement</p>
+            <p className="font-medium text-blue-800">{t('upcomingDisbursement')}</p>
             <p className="text-sm text-blue-600">
-              Next payout scheduled for {formatDate(stats.nextDisbursementDate)}
+              {t('nextPayoutScheduled', { date: formatDate(stats.nextDisbursementDate) })}
             </p>
           </div>
           <p className="text-2xl font-bold text-blue-700">
@@ -289,8 +291,8 @@ export function DisbursementsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Disbursement Trend</h3>
-            <p className="text-sm text-gray-500">Monthly disbursements by property</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('disbursementTrend')}</h3>
+            <p className="text-sm text-gray-500">{t('disbursementTrendDesc')}</p>
           </div>
         </div>
         <div className="h-64">
@@ -325,7 +327,7 @@ export function DisbursementsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
-              Disbursement trend is unavailable until live payout data is wired.
+              {t('trendUnavailable')}
             </div>
           )}
         </div>
@@ -340,7 +342,7 @@ export function DisbursementsPage() {
             onChange={(e) => setPropertyFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">All Properties</option>
+            <option value="all">{t('allProperties')}</option>
             {propertyOptions.map((property) => (
               <option key={property.id} value={property.id}>
                 {property.name}
@@ -354,10 +356,10 @@ export function DisbursementsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="PROCESSING">Processing</option>
+            <option value="all">{t('allStatus')}</option>
+            <option value="PENDING">{t('statusPending')}</option>
+            <option value="COMPLETED">{t('statusCompleted')}</option>
+            <option value="PROCESSING">{t('statusProcessing')}</option>
           </select>
         </div>
       </div>
@@ -444,17 +446,17 @@ export function DisbursementsPage() {
                     <div>
                       <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-green-500" />
-                        Gross Income
+                        {t('grossIncome')}
                       </h4>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Rent Collected</span>
+                          <span className="text-gray-600">{t('rentCollected')}</span>
                           <span className="font-medium text-gray-900">
                             {formatCurrency(disbursement.breakdown.rentCollected)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm font-medium border-t pt-2">
-                          <span className="text-gray-900">Total Income</span>
+                          <span className="text-gray-900">{t('totalIncome')}</span>
                           <span className="text-green-600">
                             {formatCurrency(disbursement.breakdown.rentCollected)}
                           </span>
@@ -466,42 +468,42 @@ export function DisbursementsPage() {
                     <div>
                       <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                         <TrendingDown className="h-4 w-4 text-red-500" />
-                        Deductions
+                        {t('deductions')}
                       </h4>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Management Fees (10%)</span>
+                          <span className="text-gray-600">{t('managementFees10')}</span>
                           <span className="text-gray-900">
                             -{formatCurrency(disbursement.breakdown.managementFees)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Maintenance</span>
+                          <span className="text-gray-600">{t('maintenance')}</span>
                           <span className="text-gray-900">
                             -{formatCurrency(disbursement.breakdown.maintenanceCosts)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Utilities</span>
+                          <span className="text-gray-600">{t('utilities')}</span>
                           <span className="text-gray-900">
                             -{formatCurrency(disbursement.breakdown.utilities)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Insurance</span>
+                          <span className="text-gray-600">{t('insurance')}</span>
                           <span className="text-gray-900">
                             -{formatCurrency(disbursement.breakdown.insurance)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Repairs</span>
+                          <span className="text-gray-600">{t('repairs')}</span>
                           <span className="text-gray-900">
                             -{formatCurrency(disbursement.breakdown.repairs)}
                           </span>
                         </div>
                         {disbursement.breakdown.otherDeductions > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Other Deductions</span>
+                            <span className="text-gray-600">{t('otherDeductions')}</span>
                             <span className="text-gray-900">
                               -
                               {formatCurrency(
@@ -511,7 +513,7 @@ export function DisbursementsPage() {
                           </div>
                         )}
                         <div className="flex justify-between text-sm font-medium border-t pt-2">
-                          <span className="text-gray-900">Total Deductions</span>
+                          <span className="text-gray-900">{t('totalDeductions')}</span>
                           <span className="text-red-600">
                             -
                             {formatCurrency(
@@ -525,7 +527,7 @@ export function DisbursementsPage() {
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">
-                    Detailed breakdown not available for this disbursement.
+                    {t('breakdownUnavailable')}
                   </p>
                 )}
 
@@ -534,11 +536,11 @@ export function DisbursementsPage() {
                   <div className="mt-6 bg-green-50 rounded-lg p-4 flex items-center justify-between">
                     <div>
                       <span className="font-medium text-green-800">
-                        Net Disbursement
+                        {t('netDisbursement')}
                       </span>
                       {disbursement.bankAccount && (
                         <p className="text-sm text-green-600 mt-0.5">
-                          To bank account ending {disbursement.bankAccount}
+                          {t('toBankAccount', { account: disbursement.bankAccount })}
                         </p>
                       )}
                     </div>
@@ -561,12 +563,12 @@ export function DisbursementsPage() {
                       ) : (
                         <Download className="h-4 w-4" />
                       )}
-                      Download Statement
+                      {t('downloadStatement')}
                     </button>
                   )}
                   <button className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium">
                     <Eye className="h-4 w-4" />
-                    View Full Report
+                    {t('viewFullReport')}
                   </button>
                 </div>
               </div>
@@ -578,7 +580,7 @@ export function DisbursementsPage() {
       {filteredDisbursements.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p>No disbursements found</p>
+          <p>{t('noDisbursements')}</p>
         </div>
       )}
     </div>

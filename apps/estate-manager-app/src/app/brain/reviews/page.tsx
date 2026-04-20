@@ -16,6 +16,7 @@ import {
   Brain,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
@@ -31,6 +32,8 @@ interface QueueItem {
 }
 
 export default function ReviewsPage() {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const [items, setItems] = useState<QueueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -75,8 +78,8 @@ export default function ReviewsPage() {
   return (
     <>
       <PageHeader
-        title="Brain Reviews"
-        subtitle="Approve or reject pending Brain-proposed actions"
+        title={tSimple('brainReviews')}
+        subtitle={tSimple('brainReviewsSubtitle')}
         showBack
       />
       <div className="px-4 py-3 pb-24 max-w-3xl mx-auto flex flex-col gap-3">
@@ -94,7 +97,7 @@ export default function ReviewsPage() {
         {items?.length === 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white p-6 flex flex-col items-center text-center gap-2 text-gray-600">
             <ShieldCheck className="w-8 h-8 text-green-500" />
-            <p className="font-medium text-gray-900">Inbox zero.</p>
+            <p className="font-medium text-gray-900">{tMisc('inboxZero')}</p>
             <p className="text-sm">
               The Brain has nothing waiting for your approval right now.
             </p>

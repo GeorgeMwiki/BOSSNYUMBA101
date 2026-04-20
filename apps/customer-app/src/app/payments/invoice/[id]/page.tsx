@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Download, CreditCard, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -114,6 +115,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function InvoicePage() {
+  const t = useTranslations('invoicePage');
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -122,9 +124,9 @@ export default function InvoicePage() {
   if (!invoice) {
     return (
       <div className="px-4 py-8 text-center">
-        <p className="text-gray-600">Invoice not found</p>
+        <p className="text-gray-600">{t('notFound')}</p>
         <button onClick={() => router.back()} className="btn-primary mt-4">
-          Go Back
+          {t('goBack')}
         </button>
       </div>
     );
@@ -135,7 +137,7 @@ export default function InvoicePage() {
 
   return (
     <>
-      <PageHeader title="Invoice" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-24">
         {/* Invoice Header */}
@@ -158,7 +160,7 @@ export default function InvoicePage() {
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-medium flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Invoice Details
+              {t('invoiceDetails')}
             </h3>
           </div>
           <div className="divide-y divide-gray-100">
@@ -167,7 +169,7 @@ export default function InvoicePage() {
                 <div>
                   <div className="font-medium">{item.description}</div>
                   {item.quantity && item.quantity > 1 && (
-                    <div className="text-sm text-gray-500">Qty: {item.quantity}</div>
+                    <div className="text-sm text-gray-500">{t('qty')}: {item.quantity}</div>
                   )}
                 </div>
                 <div className="font-medium">KES {item.amount.toLocaleString()}</div>
@@ -176,7 +178,7 @@ export default function InvoicePage() {
           </div>
           <div className="p-4 bg-gray-50 border-t border-gray-100">
             <div className="flex justify-between font-semibold">
-              <span>Total</span>
+              <span>{t('total')}</span>
               <span>KES {invoice.amount.toLocaleString()}</span>
             </div>
           </div>
@@ -185,21 +187,21 @@ export default function InvoicePage() {
         {/* Payment Info for paid invoices */}
         {invoice.status === 'paid' && invoice.paidDate && (
           <div className="card p-4">
-            <h3 className="font-medium mb-3">Payment Information</h3>
+            <h3 className="font-medium mb-3">{t('paymentInformation')}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Paid on</span>
+                <span className="text-gray-600">{t('paidOn')}</span>
                 <span>{new Date(invoice.paidDate).toLocaleDateString()}</span>
               </div>
               {invoice.channel && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Method</span>
+                  <span className="text-gray-600">{t('method')}</span>
                   <span>{invoice.channel}</span>
                 </div>
               )}
               {invoice.reference && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Reference</span>
+                  <span className="text-gray-600">{t('reference')}</span>
                   <span className="font-mono text-xs">{invoice.reference}</span>
                 </div>
               )}
@@ -213,7 +215,7 @@ export default function InvoicePage() {
             <Link href={`/payments/pay?amount=${invoice.amount}`}>
               <button className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Pay this Invoice
+                {t('payThisInvoice')}
               </button>
             </Link>
           )}
@@ -222,7 +224,7 @@ export default function InvoicePage() {
             className="btn-secondary w-full py-4 flex items-center justify-center gap-2"
           >
             <Download className="w-5 h-5" />
-            Download PDF
+            {t('downloadPdf')}
           </button>
         </div>
       </div>

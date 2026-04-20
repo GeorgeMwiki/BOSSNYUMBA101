@@ -22,6 +22,7 @@ import {
   Eye,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { useBrainChat, type BrainMessage } from '@/lib/brain-client';
@@ -29,6 +30,7 @@ import { useBrainChat, type BrainMessage } from '@/lib/brain-client';
 type Scope = 'private' | 'team' | 'management' | 'public';
 
 export default function CoworkerPage() {
+  const t = useTranslations('coworker');
   const [input, setInput] = useState('');
   const [defaultScope, setDefaultScope] = useState<Scope>('private');
   const { messages, sending, error, sendMessage } = useBrainChat({
@@ -53,8 +55,8 @@ export default function CoworkerPage() {
   return (
     <>
       <PageHeader
-        title="Your Coworker"
-        subtitle="Private by default — only you can see this unless you share it"
+        title={t('title')}
+        subtitle={t('subtitle')}
         showBack
       />
 
@@ -69,14 +71,14 @@ export default function CoworkerPage() {
         ref={scrollRef}
         className="px-4 py-3 pb-32 flex flex-col gap-3 max-h-[calc(100vh-240px)] overflow-y-auto"
       >
-        {messages.length === 0 && <EmptyState />}
+        {messages.length === 0 && <Empty />}
         {messages.map((m) => (
           <Bubble key={m.id} msg={m} />
         ))}
         {sending && (
           <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
             <Spinner size="sm" />
-            Thinking privately…
+            {t('thinkingPrivately')}
           </div>
         )}
         {error && (
@@ -99,7 +101,7 @@ export default function CoworkerPage() {
               }
             }}
             rows={2}
-            placeholder="Ask anything about your tasks, shifts, tenants — private by default."
+            placeholder={t('inputPlaceholder')}
             className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
           <button
@@ -113,7 +115,7 @@ export default function CoworkerPage() {
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Send
+            {t('send')}
           </button>
         </div>
       </div>
@@ -128,73 +130,79 @@ function VisibilityBanner({
   defaultScope: Scope;
   onChangeScope: (s: Scope) => void;
 }) {
+  const t = useTranslations('coworker');
   const tones: Record<Scope, string> = {
     private: 'bg-gray-100 text-gray-800',
     team: 'bg-sky-100 text-sky-800',
     management: 'bg-amber-100 text-amber-900',
     public: 'bg-green-100 text-green-900',
   };
+  const scopeLabelKey: Record<Scope, 'scopePrivate' | 'scopeTeam' | 'scopeManagement' | 'scopePublic'> = {
+    private: 'scopePrivate',
+    team: 'scopeTeam',
+    management: 'scopeManagement',
+    public: 'scopePublic',
+  };
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-3 text-xs flex flex-wrap items-center gap-2">
       <ShieldCheck className="w-4 h-4 text-green-600" />
-      <span className="font-medium text-gray-900">Visibility contract</span>
+      <span className="font-medium text-gray-900">{t('visibilityContract')}</span>
       <span className={`rounded-full px-2 py-0.5 ${tones[defaultScope]}`}>
-        {defaultScope}
+        {t(scopeLabelKey[defaultScope])}
       </span>
       <span className="text-gray-500">
         — {defaultScope === 'private'
-          ? 'only you'
+          ? t('onlyYou')
           : defaultScope === 'team'
-            ? 'your team + management'
+            ? t('teamAndMgmt')
             : defaultScope === 'management'
-              ? 'your managers'
-              : 'tenant-wide'}{' '}
-        can see messages.
+              ? t('yourMgrs')
+              : t('tenantWide')}{' '}
+        {t('seenBy')}
       </span>
       <div className="ml-auto flex items-center gap-1">
-        <label className="text-gray-500">Default:</label>
+        <label className="text-gray-500">{t('default')}</label>
         <select
           value={defaultScope}
           onChange={(e) => onChangeScope(e.target.value as Scope)}
           className="rounded-md border border-gray-200 px-1.5 py-0.5 text-xs"
         >
-          <option value="private">Private</option>
-          <option value="team">Team</option>
-          <option value="management">Management</option>
+          <option value="private">{t('optPrivate')}</option>
+          <option value="team">{t('optTeam')}</option>
+          <option value="management">{t('optManagement')}</option>
         </select>
       </div>
       <span className="basis-full text-gray-400 text-[10px]">
-        Server enforces your role's max scope — promotion requests above your
-        permission are clamped automatically.
+        {t('clampNote')}
       </span>
     </div>
   );
 }
 
-function EmptyState() {
+function Empty() {
+  const t = useTranslations('coworker');
+  const examples: Array<'egLeak' | 'egSwahili' | 'egAuthorize' | 'egLateFee'> = [
+    'egLeak',
+    'egSwahili',
+    'egAuthorize',
+    'egLateFee',
+  ];
   return (
     <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-sky-50 to-white p-5 flex flex-col gap-2">
       <div className="flex items-center gap-2 text-gray-900">
         <Users className="w-5 h-5 text-sky-500" />
-        <span className="font-medium">This is your private coworker.</span>
+        <span className="font-medium">{t('emptyTitle')}</span>
       </div>
       <p className="text-sm text-gray-600">
-        Ask how to do a task, draft a reply to a tenant, get a lease clause
-        explained, or request permission from your manager. Nothing is shared
-        unless you ask.
+        {t('emptyDesc')}
       </p>
       <div className="flex flex-wrap gap-2 mt-1">
-        {[
-          'How do I log an emergency water leak?',
-          'Draft a Swahili reply confirming 10am plumber visit.',
-          'Ask my manager to authorize KES 12,000 repair.',
-          "Explain the late-fee clause in my tenant's lease.",
-        ].map((p) => (
+        {examples.map((p) => (
           <span
             key={p}
             className="text-xs rounded-full border border-gray-200 bg-white px-2.5 py-1"
           >
-            {p}
+            {t(p)}
           </span>
         ))}
       </div>
@@ -203,6 +211,7 @@ function EmptyState() {
 }
 
 function Bubble({ msg }: { msg: BrainMessage }) {
+  const t = useTranslations('coworker');
   if (msg.role === 'user') {
     return (
       <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-sky-500 text-white px-3 py-2 text-sm whitespace-pre-wrap">
@@ -214,7 +223,7 @@ function Bubble({ msg }: { msg: BrainMessage }) {
     <div className="self-start max-w-[90%] flex flex-col gap-1">
       <div className="flex items-center gap-1.5 text-[11px] text-gray-500 pl-1">
         <Users className="w-3 h-3" />
-        <span>Coworker</span>
+        <span>{t('coworkerLabel')}</span>
         {msg.advisorConsulted && (
           <span className="text-[10px] bg-amber-100 text-amber-800 rounded-full px-1.5 py-px">
             +advisor
@@ -230,11 +239,18 @@ function Bubble({ msg }: { msg: BrainMessage }) {
 }
 
 function ScopePill({ scope }: { scope: Scope }) {
+  const t = useTranslations('coworker');
   const tones: Record<Scope, string> = {
     private: 'bg-gray-100 text-gray-700',
     team: 'bg-sky-100 text-sky-800',
     management: 'bg-amber-100 text-amber-900',
     public: 'bg-green-100 text-green-900',
+  };
+  const scopeLabelKey: Record<Scope, 'scopePrivate' | 'scopeTeam' | 'scopeManagement' | 'scopePublic'> = {
+    private: 'scopePrivate',
+    team: 'scopeTeam',
+    management: 'scopeManagement',
+    public: 'scopePublic',
   };
   const Icon = scope === 'private' ? EyeOff : Eye;
   return (
@@ -242,7 +258,7 @@ function ScopePill({ scope }: { scope: Scope }) {
       className={`inline-flex items-center gap-1 rounded-full text-[10px] px-1.5 py-px ${tones[scope]}`}
     >
       <Icon className="w-3 h-3" />
-      {scope}
+      {t(scopeLabelKey[scope])}
     </span>
   );
 }

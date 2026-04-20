@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface Negotiation {
   readonly id: string;
@@ -26,6 +27,7 @@ interface Negotiation {
 }
 
 export default function NegotiationsPage(): React.ReactElement {
+  const t = useTranslations('negotiationsPage');
   const router = useRouter();
   const [items, setItems] = useState<ReadonlyArray<Negotiation>>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -47,10 +49,10 @@ export default function NegotiationsPage(): React.ReactElement {
       }
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Failed to load negotiations');
+      setError(err instanceof Error ? err.message : t('failedLoad'));
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -74,22 +76,22 @@ export default function NegotiationsPage(): React.ReactElement {
         prev.map((n) => (n.id === id ? { ...n, status: 'escalated' } : n))
       );
     } catch (err) {
-      setEscalateError(err instanceof Error ? err.message : 'Failed to escalate');
+      setEscalateError(err instanceof Error ? err.message : t('failedEscalate'));
     } finally {
       setEscalating(null);
     }
-  }, []);
+  }, [t]);
 
   return (
     <main className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Negotiations</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
 
       {error && (
         <Alert variant="danger">
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -109,8 +111,8 @@ export default function NegotiationsPage(): React.ReactElement {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="No active negotiations"
-          description="Active rent negotiations for your managed units will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDesc')}
         />
       ) : (
         <div className="grid gap-3">
@@ -124,16 +126,19 @@ export default function NegotiationsPage(): React.ReactElement {
               </CardHeader>
               <CardContent>
                 <p className="text-sm">
-                  {n.customerName} · proposed {n.proposedRent.toLocaleString()} vs{' '}
-                  {n.askingRent.toLocaleString()}
+                  {t('offerLine', {
+                    name: n.customerName,
+                    proposed: n.proposedRent.toLocaleString(),
+                    asking: n.askingRent.toLocaleString(),
+                  })}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <Button
                     size="sm"
                     onClick={() => handleCounter(n.id)}
-                    aria-label={`Counter proposal for ${n.unitLabel}`}
+                    aria-label={t('counterAria', { unit: n.unitLabel })}
                   >
-                    Counter
+                    {t('counter')}
                   </Button>
                   <Button
                     size="sm"
@@ -141,9 +146,9 @@ export default function NegotiationsPage(): React.ReactElement {
                     loading={escalating === n.id}
                     disabled={escalating === n.id || n.status === 'escalated'}
                     onClick={() => handleEscalate(n.id)}
-                    aria-label={`Escalate ${n.unitLabel} to owner`}
+                    aria-label={t('escalateAria', { unit: n.unitLabel })}
                   >
-                    {n.status === 'escalated' ? 'Escalated' : 'Escalate to owner'}
+                    {n.status === 'escalated' ? t('escalated') : t('escalateToOwner')}
                   </Button>
                 </div>
               </CardContent>

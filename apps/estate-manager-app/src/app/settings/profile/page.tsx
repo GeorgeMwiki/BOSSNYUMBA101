@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Camera } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function ProfileSettingsPage() {
+  const t = useTranslations('profileSettings');
   const router = useRouter();
   // Profile is blank until the /profile endpoint is wired — no placeholder
   // demo identity in production code.
@@ -25,7 +27,7 @@ export default function ProfileSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Profile Settings" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 max-w-2xl mx-auto">
         {/* Avatar */}
@@ -39,13 +41,13 @@ export default function ProfileSettingsPage() {
               <Camera className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">Tap to change photo</p>
+          <p className="text-sm text-gray-500 mt-2">{t('tapToChange')}</p>
         </div>
 
         <div className="card p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">First Name</label>
+              <label className="label">{t('firstName')}</label>
               <input
                 type="text"
                 className="input"
@@ -54,7 +56,7 @@ export default function ProfileSettingsPage() {
               />
             </div>
             <div>
-              <label className="label">Last Name</label>
+              <label className="label">{t('lastName')}</label>
               <input
                 type="text"
                 className="input"
@@ -65,7 +67,7 @@ export default function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className="label">Email</label>
+            <label className="label">{t('email')}</label>
             <input
               type="email"
               className="input"
@@ -75,7 +77,7 @@ export default function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('phone')}</label>
             <input
               type="tel"
               className="input"
@@ -86,7 +88,7 @@ export default function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className="label">Role</label>
+            <label className="label">{t('role')}</label>
             <input
               type="text"
               className="input opacity-50"
@@ -98,10 +100,10 @@ export default function ProfileSettingsPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button type="submit" className="btn-primary flex-1">
-            Save Changes
+            {t('saveChanges')}
           </button>
         </div>
       </form>

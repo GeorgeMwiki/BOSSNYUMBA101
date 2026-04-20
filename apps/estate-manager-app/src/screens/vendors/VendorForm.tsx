@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const categories = [
@@ -17,6 +18,7 @@ const categories = [
 ];
 
 export default function VendorForm() {
+  const t = useTranslations('vendorForm');
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
@@ -51,16 +53,16 @@ export default function VendorForm() {
 
   return (
     <>
-      <PageHeader title="Add Vendor" showBack />
+      <PageHeader title={t('addTitle')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
         {/* Basic Info */}
         <div className="space-y-3">
-          <label className="label">Vendor Name</label>
+          <label className="label">{t('vendorName')}</label>
           <input
             type="text"
             className="input"
-            placeholder="Company or individual name"
+            placeholder={t('vendorNamePlaceholder')}
             value={formData.name}
             onChange={(e) =>
               setFormData({ ...formData, name: e.target.value })
@@ -70,7 +72,7 @@ export default function VendorForm() {
         </div>
 
         <div className="space-y-3">
-          <label className="label">Type</label>
+          <label className="label">{t('type')}</label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -79,7 +81,7 @@ export default function VendorForm() {
                 formData.type === 'company' ? 'btn-primary' : 'btn-secondary'
               }`}
             >
-              Company
+              {t('company')}
             </button>
             <button
               type="button"
@@ -88,18 +90,18 @@ export default function VendorForm() {
                 formData.type === 'individual' ? 'btn-primary' : 'btn-secondary'
               }`}
             >
-              Individual
+              {t('individual')}
             </button>
           </div>
         </div>
 
         {/* Contact */}
         <div className="space-y-3">
-          <label className="label">Phone</label>
+          <label className="label">{t('phone')}</label>
           <input
             type="tel"
             className="input"
-            placeholder="+XXX XXX XXX XXX"
+            placeholder={t('phonePlaceholder')}
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
@@ -109,11 +111,11 @@ export default function VendorForm() {
         </div>
 
         <div className="space-y-3">
-          <label className="label">Email</label>
+          <label className="label">{t('email')}</label>
           <input
             type="email"
             className="input"
-            placeholder="vendor@example.com"
+            placeholder={t('emailPlaceholder')}
             value={formData.email}
             onChange={(e) =>
               setFormData({ ...formData, email: e.target.value })
@@ -122,11 +124,11 @@ export default function VendorForm() {
         </div>
 
         <div className="space-y-3">
-          <label className="label">Address</label>
+          <label className="label">{t('address')}</label>
           <input
             type="text"
             className="input"
-            placeholder="Physical address"
+            placeholder={t('addressPlaceholder')}
             value={formData.address}
             onChange={(e) =>
               setFormData({ ...formData, address: e.target.value })
@@ -136,7 +138,7 @@ export default function VendorForm() {
 
         {/* Specializations */}
         <div className="space-y-3">
-          <label className="label">Service Categories</label>
+          <label className="label">{t('serviceCategories')}</label>
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
               <button
@@ -160,9 +162,9 @@ export default function VendorForm() {
 
         {/* Rate Card */}
         <div className="card p-4 space-y-3">
-          <h3 className="font-medium">Rate Card</h3>
+          <h3 className="font-medium">{t('rateCard')}</h3>
           <div>
-            <label className="label">Hourly Rate (KES)</label>
+            <label className="label">{t('hourlyRate')}</label>
             <input
               type="text"
               className="input"
@@ -174,7 +176,7 @@ export default function VendorForm() {
             />
           </div>
           <div>
-            <label className="label">Call-out Fee (KES)</label>
+            <label className="label">{t('callOutFee')}</label>
             <input
               type="text"
               className="input"
@@ -186,7 +188,7 @@ export default function VendorForm() {
             />
           </div>
           <div>
-            <label className="label">Payment Terms</label>
+            <label className="label">{t('paymentTerms')}</label>
             <select
               className="input"
               value={formData.paymentTerms}
@@ -209,14 +211,14 @@ export default function VendorForm() {
             onClick={() => router.back()}
             className="btn-secondary flex-1"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
             className="btn-primary flex-1"
           >
-            {isSubmitting ? 'Saving...' : 'Add Vendor'}
+            {isSubmitting ? t('saving') : t('addVendor')}
           </button>
         </div>
       </form>

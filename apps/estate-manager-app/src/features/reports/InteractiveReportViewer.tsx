@@ -8,6 +8,7 @@
  */
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 
 export interface ActionPlanView {
   readonly id: string;
@@ -36,6 +37,7 @@ export interface InteractiveReportViewerProps {
 export const InteractiveReportViewer: React.FC<InteractiveReportViewerProps> = (
   props
 ) => {
+  const t = useTranslations('reportViewer');
   const { signedUrl, actionPlans, onAcknowledge, onPrint } = props;
   const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const [acking, setAcking] = React.useState<string | null>(null);
@@ -55,30 +57,30 @@ export const InteractiveReportViewer: React.FC<InteractiveReportViewerProps> = (
   return (
     <div className="interactive-report-viewer">
       <header className="interactive-report-viewer__toolbar">
-        <h2>Interactive report</h2>
+        <h2>{t('heading')}</h2>
         <div>
           <button type="button" onClick={onPrint}>
-            Print / export PDF
+            {t('printExport')}
           </button>
         </div>
       </header>
       <iframe
         ref={iframeRef}
-        title="Interactive report"
+        title={t('iframeTitle')}
         src={signedUrl}
         sandbox="allow-scripts allow-same-origin"
         style={{ width: '100%', height: '70vh', border: '1px solid #e2e8f0' }}
       />
       <section className="interactive-report-viewer__action-plans">
-        <h3>Action plans</h3>
-        {actionPlans.length === 0 && <p>No action plans.</p>}
+        <h3>{t('actionPlans')}</h3>
+        {actionPlans.length === 0 && <p>{t('noActionPlans')}</p>}
         <ul>
           {actionPlans.map((plan) => (
             <li key={plan.id} data-severity={plan.severity}>
               <strong>{plan.title}</strong>
               <p>{plan.description}</p>
               <small>
-                Status: {plan.status} · Kind: {plan.actionKind}
+                {t('statusKindLine', { status: plan.status, kind: plan.actionKind })}
               </small>
               <div>
                 <button
@@ -86,7 +88,7 @@ export const InteractiveReportViewer: React.FC<InteractiveReportViewerProps> = (
                   disabled={plan.status !== 'pending' || acking === plan.id}
                   onClick={() => handleAck(plan.id)}
                 >
-                  {acking === plan.id ? 'Routing…' : 'Acknowledge & route'}
+                  {acking === plan.id ? t('routing') : t('acknowledgeRoute')}
                 </button>
               </div>
             </li>

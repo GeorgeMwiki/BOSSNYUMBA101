@@ -11,6 +11,7 @@
  */
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 
 export interface OccupancyTimelineSegment {
   readonly id: string;
@@ -51,6 +52,7 @@ function parseDate(iso: string): number {
 }
 
 export const OccupancyTimeline: React.FC<OccupancyTimelineProps> = (props) => {
+  const tMisc = useTranslations('misc');
   const { unitId, segments, onSegmentClick, onExportPng, onExportPdf } = props;
 
   const { minTs, maxTs } = React.useMemo(() => {
@@ -83,7 +85,7 @@ export const OccupancyTimeline: React.FC<OccupancyTimelineProps> = (props) => {
           alignItems: 'baseline',
         }}
       >
-        <h3>Occupancy timeline — unit {unitId}</h3>
+        <h3>{tMisc('occupancyTimelineTitle', { unitId })}</h3>
         <div>
           <button type="button" onClick={onExportPng}>
             Export PNG
@@ -95,7 +97,7 @@ export const OccupancyTimeline: React.FC<OccupancyTimelineProps> = (props) => {
       </header>
 
       {segments.length === 0 ? (
-        <p>No occupancy history recorded.</p>
+        <p>{tMisc('noOccupancyHistory')}</p>
       ) : (
         <div
           style={{

@@ -671,5 +671,1263 @@
   },
   "integrationsPage": {
     "webhooks": "Webhooks"
+  },
+  "onboardingWizard": {
+    "steps": {
+      "organization": { "label": "Organization", "description": "Basic company details" },
+      "policy": { "label": "Policy Constitution", "description": "Define operating rules" },
+      "subscription": { "label": "Subscription Plan", "description": "Choose a plan" },
+      "admin": { "label": "Admin User", "description": "Create admin account" },
+      "review": { "label": "Review & Activate", "description": "Confirm and go live" }
+    },
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "features": {
+          "0": "Up to 10 properties",
+          "1": "Up to 50 units",
+          "2": "3 users",
+          "3": "Basic reporting",
+          "4": "Email support"
+        }
+      },
+      "professional": {
+        "name": "Professional",
+        "features": {
+          "0": "Up to 50 properties",
+          "1": "Up to 500 units",
+          "2": "15 users",
+          "3": "Advanced reporting",
+          "4": "Priority support",
+          "5": "API access",
+          "6": "Custom branding"
+        }
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "features": {
+          "0": "Unlimited properties",
+          "1": "Unlimited units",
+          "2": "Unlimited users",
+          "3": "AI-powered insights",
+          "4": "24/7 dedicated support",
+          "5": "Custom integrations",
+          "6": "SLA guarantee",
+          "7": "Dedicated account manager"
+        }
+      }
+    },
+    "success": {
+      "title": "Tenant Created Successfully!",
+      "onboarded": "{name} has been onboarded and is ready to go.",
+      "invitePrefix": "An invitation email has been sent to",
+      "summary": "Summary",
+      "organizationLabel": "Organization:",
+      "planLabel": "Plan:",
+      "adminLabel": "Admin:",
+      "trialLabel": "Trial:",
+      "trialYes": "14-day free trial",
+      "trialNo": "No trial",
+      "backToTenants": "Back to Tenants",
+      "onboardAnother": "Onboard Another"
+    },
+    "header": {
+      "title": "Onboard New Tenant",
+      "subtitle": "Set up a new tenant organization step by step"
+    },
+    "org": {
+      "title": "Organization Details",
+      "subtitle": "Enter the basic information about the tenant organization",
+      "nameLabel": "Organization Name *",
+      "namePlaceholder": "e.g., Acme Properties Ltd",
+      "industryLabel": "Industry",
+      "industry": {
+        "realEstate": "Real Estate Management",
+        "propertyDevelopment": "Property Development",
+        "hospitality": "Hospitality",
+        "commercial": "Commercial Property",
+        "residential": "Residential Only"
+      },
+      "registrationLabel": "Registration Number",
+      "registrationPlaceholder": "Company registration number",
+      "addressLabel": "Address *",
+      "addressPlaceholder": "Street address",
+      "cityLabel": "City *",
+      "cityPlaceholder": "e.g., Nairobi",
+      "countryLabel": "Country",
+      "phoneLabel": "Phone *",
+      "phonePlaceholder": "+XXX XXX XXX XXX",
+      "websiteLabel": "Website",
+      "websitePlaceholder": "https://www.company.co.ke"
+    },
+    "policy": {
+      "title": "Policy Constitution",
+      "subtitle": "Define the operating rules and policies for this tenant",
+      "paymentPolicies": "Payment Policies",
+      "lateFeeType": "Late Fee Type",
+      "lateFeePercentage": "Percentage of rent",
+      "lateFeeFixed": "Fixed amount (KES)",
+      "lateFeeValue": "Late Fee Value ({unit})",
+      "gracePeriod": "Grace Period (days)",
+      "maxRetries": "Max Payment Retries",
+      "autoLateFee": "Auto-apply late fees",
+      "communication": "Communication & Reminders",
+      "autoReminders": "Enable automatic payment reminders",
+      "daysBeforeDue": "Days before due date",
+      "leasePolicies": "Lease Policies",
+      "securityDeposit": "Security Deposit (months)",
+      "noticePeriod": "Notice Period (days)",
+      "autoRenewal": "Enable automatic lease renewal"
+    },
+    "subscription": {
+      "title": "Choose Subscription Plan",
+      "subtitle": "Select the right plan for this organization",
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "saveLabel": "(Save 17%)",
+      "mostPopular": "Most Popular",
+      "mo": "mo",
+      "yr": "yr",
+      "trialStart": "Start with 14-day free trial",
+      "trialNote": "No charges until the trial period ends"
+    },
+    "admin": {
+      "title": "Create Admin User",
+      "subtitle": "Set up the primary administrator for {org}",
+      "thisOrganization": "this organization",
+      "firstNameLabel": "First Name *",
+      "firstNamePlaceholder": "First name",
+      "lastNameLabel": "Last Name *",
+      "lastNamePlaceholder": "Last name",
+      "emailLabel": "Email *",
+      "emailPlaceholder": "admin@company.com",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "+XXX XXX XXX XXX",
+      "roleLabel": "Role",
+      "roleTenantAdmin": "Tenant Admin",
+      "rolePropertyManager": "Property Manager",
+      "sendInvite": "Send email invitation",
+      "invitePrefix": "An invitation email with login credentials will be sent to",
+      "inviteSuffix": "upon activation.",
+      "adminEmailFallback": "the admin email"
+    },
+    "review": {
+      "title": "Review & Activate",
+      "subtitle": "Please review all details before activating this tenant",
+      "organization": "Organization",
+      "policies": "Policies",
+      "subscription": "Subscription",
+      "adminUser": "Admin User",
+      "edit": "Edit",
+      "nameLabel": "Name:",
+      "cityLabel": "City:",
+      "phoneLabel": "Phone:",
+      "regLabel": "Reg #:",
+      "lateFeeLabel": "Late Fee:",
+      "gracePeriodLabel": "Grace Period:",
+      "securityDepositLabel": "Security Deposit:",
+      "autoRemindersLabel": "Auto Reminders:",
+      "daysValue": "{count} days",
+      "monthsValue": "{count} months",
+      "yes": "Yes",
+      "no": "No",
+      "planLabel": "Plan:",
+      "billingLabel": "Billing:",
+      "priceLabel": "Price:",
+      "trialLabel": "Trial:",
+      "trialYes": "14-day trial",
+      "trialNo": "No trial",
+      "emailLabel": "Email:",
+      "roleLabel": "Role:",
+      "inviteLabel": "Invite:",
+      "inviteYes": "Will be sent",
+      "inviteNo": "Not sending",
+      "importantTitle": "Important",
+      "importantBody": "Once activated, the tenant will receive access to the platform. Make sure all details are correct."
+    },
+    "nav": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "activating": "Activating...",
+      "activate": "Activate Tenant"
+    }
+  },
+  "approvalMatrix": {
+    "title": "Approval Matrix",
+    "subtitle": "Configure who can approve what, and at what thresholds",
+    "addRule": "Add Rule",
+    "saveAll": "Save All",
+    "saving": "Saving...",
+    "notifications": {
+      "ruleDeleted": "Approval rule deleted",
+      "saved": "Approval matrix saved successfully",
+      "saveFailed": "Failed to save"
+    },
+    "newRule": {
+      "defaultName": "New Approval Rule"
+    },
+    "stats": {
+      "totalRules": "Total Rules",
+      "active": "Active",
+      "inactive": "Inactive",
+      "approverRoles": "Approver Roles"
+    },
+    "rule": {
+      "noDescription": "No description",
+      "alwaysRequires": "Always requires approval",
+      "thresholdSummary": "Threshold: {value} {currency}",
+      "approvalLevels": "{count, plural, one {# approval level} other {# approval levels}}"
+    },
+    "form": {
+      "ruleName": "Rule Name",
+      "category": "Category",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "e.g., disbursement.created",
+      "thresholdType": "Threshold Type",
+      "thresholdValue": "Threshold Value",
+      "unit": "Unit",
+      "escalationAfter": "Escalation after (hours)",
+      "autoRejectAfter": "Auto-reject after (hours)"
+    },
+    "categories": {
+      "finance": "Finance",
+      "maintenance": "Maintenance",
+      "leasing": "Leasing",
+      "users": "Users"
+    },
+    "thresholdTypes": {
+      "amount": "Amount-based",
+      "count": "Count-based",
+      "always": "Always require"
+    },
+    "units": {
+      "percentage": "Percentage",
+      "units": "Units"
+    },
+    "approvalChain": {
+      "title": "Approval Chain",
+      "addLevel": "Add Level",
+      "approverRole": "Approver Role",
+      "requiredApprovals": "Required Approvals",
+      "autoApproveAfter": "Auto-approve after (hrs)"
+    },
+    "roles": {
+      "superAdmin": "Super Admin",
+      "financeManager": "Finance Manager",
+      "financeDirector": "Finance Director",
+      "operationsLead": "Operations Lead",
+      "propertyManager": "Property Manager"
+    },
+    "actions": {
+      "deactivate": "Deactivate Rule",
+      "activate": "Activate Rule",
+      "deleteRule": "Delete Rule"
+    },
+    "empty": {
+      "noRules": "No approval rules configured",
+      "addFirst": "Add First Rule"
+    }
+  },
+  "supportPage": {
+    "title": "Support Center",
+    "subtitle": "Manage customer support tickets",
+    "customerTimeline": "Customer Timeline",
+    "escalationQueue": "Escalation Queue",
+    "searchPlaceholder": "Search tickets...",
+    "stats": {
+      "open": "Open",
+      "inProgress": "In Progress",
+      "critical": "Critical",
+      "resolvedToday": "Resolved Today"
+    },
+    "statusFilter": {
+      "all": "All Status",
+      "open": "Open",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "caseDetail": {
+      "createdAt": "Created {date}",
+      "internal": "Internal"
+    },
+    "reply": {
+      "placeholder": "Type your reply...",
+      "internalNote": "Internal note",
+      "keepOpen": "Keep Open",
+      "markInProgress": "Mark In Progress",
+      "markResolved": "Mark Resolved",
+      "closeTicket": "Close Ticket",
+      "send": "Send"
+    },
+    "empty": {
+      "selectTicket": "Select a ticket to view details"
+    }
+  },
+  "tenantCredit": {
+    "title": "Tenant credit ratings",
+    "subtitle": "FICO-scale 300-850 rating from real payment data. Click a row for the full dimension breakdown.",
+    "searchPlaceholder": "Search tenant…",
+    "loading": "Loading tenants…",
+    "errors": {
+      "loadFailed": "Unable to load tenants."
+    },
+    "bands": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Poor",
+      "veryPoor": "Very poor",
+      "insufficient": "Not enough data"
+    },
+    "filters": {
+      "allBands": "All bands",
+      "excellent": "Excellent (750+)",
+      "good": "Good (660-749)",
+      "fair": "Fair (550-659)",
+      "poor": "Poor (450-549)",
+      "veryPoor": "Very poor (<450)",
+      "insufficient": "Insufficient data"
+    },
+    "table": {
+      "tenant": "Tenant",
+      "score": "Score",
+      "band": "Band",
+      "weakestFactor": "Weakest factor",
+      "freshness": "Freshness",
+      "actions": "Actions"
+    },
+    "actions": {
+      "details": "Details",
+      "recompute": "Recompute"
+    },
+    "empty": {
+      "noMatches": "No tenants match these filters."
+    },
+    "dimensions": {
+      "paymentHistory": "Payment history",
+      "promiseKeeping": "Promise keeping",
+      "rentToIncome": "Rent-to-income",
+      "tenancyLength": "Tenancy length",
+      "disputeHistory": "Dispute history"
+    },
+    "detail": {
+      "title": "Dimension breakdown",
+      "close": "Close",
+      "recommendations": "Recommendations"
+    }
+  },
+  "rolesPage": {
+    "title": "User Roles",
+    "subtitle": "Manage roles and permissions for platform access",
+    "searchPlaceholder": "Search roles...",
+    "systemRole": "System Role",
+    "retry": "Retry",
+    "viewPermissions": "View Permissions",
+    "duplicateName": "{name} (Copy)",
+    "permissionsCount": "{count, plural, one {# permission} other {# permissions}}",
+    "usersCount": "{count, plural, one {# user} other {# users}}",
+    "errors": {
+      "loadFailed": "Failed to load roles"
+    },
+    "toasts": {
+      "created": "Role created successfully",
+      "updated": "Role updated successfully",
+      "deleted": "Role deleted successfully",
+      "cannotDeleteSystem": "Cannot delete system roles",
+      "cannotDeleteAssigned": "Cannot delete role with assigned users"
+    },
+    "nav": {
+      "permissionMatrix": "Permission Matrix",
+      "approvalMatrix": "Approval Matrix",
+      "auditLog": "Audit Log",
+      "createRole": "Create Role"
+    },
+    "actions": {
+      "duplicate": "Duplicate",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "modal": {
+      "createTitle": "Create New Role",
+      "editTitle": "Edit Role: {name}",
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes",
+      "createRole": "Create Role"
+    },
+    "form": {
+      "roleName": "Role Name",
+      "roleNamePlaceholder": "e.g., Property Manager",
+      "description": "Description",
+      "descriptionPlaceholder": "Brief description of this role",
+      "permissions": "Permissions",
+      "selectedCount": "{count} selected",
+      "systemReadOnly": "System roles cannot be modified"
+    },
+    "audit": {
+      "title": "Permission Change Audit Log",
+      "time": "Time",
+      "action": "Action",
+      "actor": "Actor",
+      "target": "Target",
+      "changes": "Changes"
+    },
+    "categories": {
+      "properties": {
+        "name": "Properties",
+        "perms": {
+          "view": "View Properties",
+          "create": "Create Properties",
+          "edit": "Edit Properties",
+          "delete": "Delete Properties"
+        },
+        "descs": {
+          "view": "View property details and listings",
+          "create": "Add new properties to the system",
+          "edit": "Modify property details",
+          "delete": "Remove properties from the system"
+        }
+      },
+      "units": {
+        "name": "Units",
+        "perms": {
+          "view": "View Units",
+          "create": "Create Units",
+          "edit": "Edit Units",
+          "delete": "Delete Units"
+        },
+        "descs": {
+          "view": "View unit details and availability",
+          "create": "Add new units to properties",
+          "edit": "Modify unit details and pricing",
+          "delete": "Remove units from properties"
+        }
+      },
+      "tenants": {
+        "name": "Tenant Organizations",
+        "perms": {
+          "view": "View Tenants",
+          "create": "Create Tenants",
+          "edit": "Edit Tenants",
+          "suspend": "Suspend/Activate Tenants",
+          "delete": "Delete Tenants"
+        },
+        "descs": {
+          "view": "View tenant organization details",
+          "create": "Onboard new tenant organizations",
+          "edit": "Modify tenant settings and policies",
+          "suspend": "Suspend or reactivate tenant accounts",
+          "delete": "Permanently remove tenant organizations"
+        }
+      },
+      "users": {
+        "name": "Users",
+        "perms": {
+          "view": "View Users",
+          "create": "Create Users",
+          "edit": "Edit Users",
+          "delete": "Delete Users",
+          "impersonate": "Impersonate Users"
+        },
+        "descs": {
+          "view": "View user profiles and activity",
+          "create": "Add new users to the system",
+          "edit": "Modify user details and roles",
+          "delete": "Remove users from the system",
+          "impersonate": "Access system as another user"
+        }
+      },
+      "finance": {
+        "name": "Finance",
+        "perms": {
+          "view": "View Financials",
+          "invoices": "Manage Invoices",
+          "payments": "Process Payments",
+          "disbursements": "Manage Disbursements",
+          "adjustments": "Apply Adjustments"
+        },
+        "descs": {
+          "view": "View financial reports and transactions",
+          "invoices": "Create and modify invoices",
+          "payments": "Record and process payments",
+          "disbursements": "Create and approve disbursements",
+          "adjustments": "Apply credits and adjustments"
+        }
+      },
+      "maintenance": {
+        "name": "Maintenance",
+        "perms": {
+          "view": "View Work Orders",
+          "create": "Create Work Orders",
+          "assign": "Assign Work Orders",
+          "approve": "Approve Work Orders",
+          "complete": "Complete Work Orders"
+        },
+        "descs": {
+          "view": "View maintenance requests",
+          "create": "Submit maintenance requests",
+          "assign": "Assign work to vendors/staff",
+          "approve": "Approve high-value work orders",
+          "complete": "Mark work orders as complete"
+        }
+      },
+      "documents": {
+        "name": "Documents",
+        "perms": {
+          "view": "View Documents",
+          "upload": "Upload Documents",
+          "delete": "Delete Documents",
+          "sign": "E-Sign Documents"
+        },
+        "descs": {
+          "view": "Access and view documents",
+          "upload": "Upload new documents",
+          "delete": "Remove documents",
+          "sign": "Sign documents electronically"
+        }
+      },
+      "settings": {
+        "name": "Settings",
+        "perms": {
+          "view": "View Settings",
+          "edit": "Edit Settings",
+          "roles": "Manage Roles",
+          "audit": "View Audit Logs"
+        },
+        "descs": {
+          "view": "View system configuration",
+          "edit": "Modify system configuration",
+          "roles": "Create and modify roles",
+          "audit": "Access audit trail"
+        }
+      }
+    }
+  },
+  "configurationPage": {
+    "title": "System Configuration",
+    "subtitle": "Manage platform-wide settings",
+    "saveChanges": "Save Changes",
+    "sidebarTitle": "Settings",
+    "sections": {
+      "general": { "name": "General Settings", "description": "Platform name, timezone, and basic settings" },
+      "payments": { "name": "Payment Gateways", "description": "M-Pesa, bank transfers, and payment settings" },
+      "email": { "name": "Email Configuration", "description": "SMTP settings and email templates" },
+      "notifications": { "name": "Notifications", "description": "Push notifications and SMS settings" },
+      "security": { "name": "Security", "description": "Authentication and security policies" },
+      "database": { "name": "Database", "description": "Database connections and backups" },
+      "branding": { "name": "Branding", "description": "Logo, colors, and white-label settings" }
+    },
+    "general": {
+      "platformName": "Platform Name",
+      "defaultTimezone": "Default Timezone",
+      "defaultCurrency": "Default Currency",
+      "defaultLanguage": "Default Language",
+      "currency": {
+        "kes": "Kenyan Shilling (KES)",
+        "usd": "US Dollar (USD)",
+        "ugx": "Ugandan Shilling (UGX)",
+        "tzs": "Tanzanian Shilling (TZS)"
+      },
+      "language": {
+        "en": "English",
+        "sw": "Swahili",
+        "fr": "French"
+      },
+      "allowNewTenants": "Allow new tenant registrations",
+      "allowNewTenantsHint": "Enable self-service tenant sign-up",
+      "enableTrial": "Enable trial period",
+      "enableTrialHint": "New tenants get a 14-day free trial"
+    },
+    "payments": {
+      "mpesaConnected": "M-Pesa Connected",
+      "mpesaStatus": "Paybill: 123456 | Account: Active",
+      "bankTransfer": "Bank Transfer",
+      "bankTransferNotConfigured": "Not configured - Manual reconciliation required",
+      "mpesaSettings": "M-Pesa Settings",
+      "consumerKey": "Consumer Key",
+      "consumerSecret": "Consumer Secret",
+      "paybill": "Paybill Number",
+      "paybillPlaceholder": "Enter paybill (e.g. 522533)",
+      "callbackUrl": "Callback URL"
+    },
+    "security": {
+      "passwordPolicy": "Password Policy",
+      "minPasswordLength": "Minimum Password Length",
+      "requireUppercase": "Require uppercase letter",
+      "requireNumber": "Require number",
+      "requireSpecial": "Require special character",
+      "sessionSettings": "Session Settings",
+      "sessionTimeout": "Session Timeout (minutes)",
+      "requireReauth": "Require re-authentication for sensitive actions",
+      "twoFactor": "Two-Factor Authentication",
+      "enforce2faAdmins": "Enforce 2FA for admins",
+      "enforce2faAdminsHint": "Require 2FA for all admin users",
+      "enforce2faAll": "Enforce 2FA for all users",
+      "enforce2faAllHint": "Require 2FA for all platform users"
+    },
+    "defaultSection": {
+      "title": "{name} configuration",
+      "body": "This section is not yet available. Choose another section from the sidebar, or check back after the next platform release."
+    }
+  },
+  "reportsPage": {
+    "title": "Reports & Analytics",
+    "subtitle": "Platform-wide insights and reporting",
+    "export": "Export",
+    "dateRange": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days",
+      "thisYear": "This year"
+    },
+    "tabs": {
+      "dashboard": "Analytics Dashboard",
+      "templates": "Report Templates",
+      "scheduled": "Scheduled Reports"
+    },
+    "kpis": {
+      "mrr": "Total MRR",
+      "mrrDelta": "+9.4% vs last month",
+      "activeTenants": "Active Tenants",
+      "activeDelta": "+20 this month",
+      "totalUnits": "Total Units",
+      "unitsDelta": "+342 this month",
+      "churnRate": "Churn Rate",
+      "churnDelta": "-0.3% vs last month"
+    },
+    "charts": {
+      "mrrTrend": "MRR Trend",
+      "acquisitionVsChurn": "Tenant Acquisition vs Churn",
+      "acquired": "Acquired",
+      "churned": "Churned",
+      "revenueByPlan": "Revenue by Plan",
+      "topTenants": "Top Performing Tenants",
+      "topTenantsEmpty": "Tenant performance data will appear here once the reports service is wired up for this view."
+    },
+    "plans": {
+      "enterprise": "Enterprise",
+      "professional": "Professional",
+      "starter": "Starter",
+      "trial": "Trial"
+    },
+    "categories": {
+      "financial": "Financial",
+      "growth": "Growth",
+      "usage": "Usage",
+      "operations": "Operations"
+    },
+    "templates": {
+      "revenue": { "name": "Revenue Analysis", "description": "Monthly revenue breakdown by tenant and plan" },
+      "growth": { "name": "Tenant Growth", "description": "New tenant signups and churn analysis" },
+      "usage": { "name": "Platform Usage", "description": "Feature usage statistics across tenants" },
+      "portfolio": { "name": "Property Portfolio", "description": "Summary of all properties and units managed" },
+      "payments": { "name": "Payment Performance", "description": "Payment success rates and failure analysis" },
+      "subscriptions": { "name": "Subscription Summary", "description": "Active subscriptions by plan and billing status" },
+      "lastRun": "Last run: {date}",
+      "generate": "Generate"
+    },
+    "scheduled": {
+      "title": "Scheduled Reports",
+      "scheduleNew": "Schedule New",
+      "recipientsCount": "{count} recipients",
+      "edit": "Edit",
+      "cols": {
+        "report": "Report",
+        "schedule": "Schedule",
+        "recipients": "Recipients",
+        "status": "Status",
+        "nextRun": "Next Run",
+        "actions": "Actions"
+      },
+      "rows": {
+        "weeklyRevenue": "Weekly Revenue Summary",
+        "weeklyRevenueSchedule": "Weekly (Monday 9 AM)",
+        "monthlyGrowth": "Monthly Growth Report",
+        "monthlyGrowthSchedule": "Monthly (1st day)",
+        "dailyOps": "Daily Operations Summary",
+        "dailyOpsSchedule": "Daily (6 AM)"
+      }
+    }
+  },
+  "campaignsPage": {
+    "title": "Marketing Campaigns",
+    "subtitle": "Create and manage email/SMS campaigns",
+    "newCampaign": "New Campaign",
+    "searchPlaceholder": "Search campaigns...",
+    "stats": {
+      "total": "Total Campaigns",
+      "running": "Running",
+      "scheduled": "Scheduled",
+      "completed": "Completed"
+    },
+    "filters": {
+      "all": "All Status",
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "running": "Running",
+      "completed": "Completed",
+      "paused": "Paused"
+    },
+    "cols": {
+      "campaign": "Campaign",
+      "status": "Status",
+      "channel": "Channel",
+      "sent": "Sent",
+      "openRate": "Open Rate",
+      "clickRate": "Click Rate",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No campaigns found",
+      "description": "Create your first campaign to reach your audience."
+    }
+  },
+  "complianceSettings": {
+    "title": "Compliance plugins",
+    "subtitle": "Read-only catalog of registered compliance plugins.",
+    "loading": "Loading compliance plugins…",
+    "noData": "No data.",
+    "registeredInfo": "{count} registered. Active jurisdiction: {code}.",
+    "profileTitle": "{country} — compliance profile",
+    "errors": {
+      "loadFailed": "Unable to load compliance catalog."
+    },
+    "profile": {
+      "depositCap": "Deposit cap",
+      "noticePeriod": "Notice period",
+      "minimumLease": "Minimum lease",
+      "subleaseConsent": "Sublease consent",
+      "lateFeeCap": "Late-fee cap",
+      "depositReturn": "Deposit return window",
+      "monthsRange": "{min}–{max} months",
+      "daysValue": "{count} days",
+      "monthsValue": "{count} months",
+      "kycProviders": "KYC providers ({count})",
+      "paymentGateways": "Payment gateways ({count})"
+    }
+  },
+  "analyticsExports": {
+    "title": "Export Analytics Data",
+    "subtitle": "Generate and download platform analytics reports",
+    "scope": "Platform",
+    "dateRange": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days",
+      "custom": "Custom range"
+    },
+    "templatesTitle": "Export Templates",
+    "tpls": {
+      "tenantSummary": { "name": "Tenant Summary", "description": "All tenants with subscription and usage data" },
+      "revenue": { "name": "Revenue Report", "description": "MRR, ARR, and payment history by tenant" },
+      "userActivity": { "name": "User Activity Log", "description": "Login and audit events per tenant" },
+      "portfolio": { "name": "Property Portfolio", "description": "All properties and units across tenants" },
+      "apiUsage": { "name": "API Usage Analytics", "description": "API calls, endpoints, and errors by tenant" },
+      "compliance": { "name": "Compliance Report", "description": "GDPR data requests and processing status" }
+    },
+    "lastExported": "Last exported: {date}",
+    "exportFormat": "Export {format}",
+    "recentTitle": "Recent Exports",
+    "cols": {
+      "export": "Export",
+      "format": "Format",
+      "size": "Size",
+      "status": "Status",
+      "exported": "Exported",
+      "actions": "Actions"
+    },
+    "inProgress": "In progress...",
+    "download": "Download",
+    "scheduledTitle": "Scheduled Exports",
+    "scheduledEmpty": "No scheduled exports. Set up automated exports for recurring reports.",
+    "scheduleExport": "Schedule Export"
+  },
+  "permissionMatrix": {
+    "title": "Permission Matrix",
+    "subtitle": "Visual editor for role-permission assignments",
+    "export": "Export",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "searchPlaceholder": "Search modules or permissions...",
+    "unsavedChanges": "You have unsaved changes",
+    "notifications": {
+      "saved": "Permission matrix saved successfully",
+      "saveFailed": "Failed to save"
+    },
+    "legend": {
+      "granted": "Granted",
+      "notGranted": "Not granted",
+      "systemRole": "System role (read-only)"
+    },
+    "table": {
+      "moduleHeader": "Module / Permission",
+      "permsCount": "{count} perms"
+    }
+  },
+  "propertyGrades": {
+    "title": "Property grades",
+    "subtitle": "A–F report cards powered by Mr. Mwikila's six-dimension scoring model.",
+    "loading": "Loading property grades…",
+    "recomputeAll": "Recompute all",
+    "portfolioGrade": "Portfolio grade",
+    "scoreAndProperties": "Score {score} · {count} properties",
+    "score": "Score {score}",
+    "close": "Close",
+    "dimensions": "Dimensions",
+    "reasons": "Reasons",
+    "history": "History",
+    "errors": {
+      "loadFailed": "Unable to load portfolio grade."
+    }
+  },
+  "orgInsights": {
+    "title": "Organisation insights",
+    "subtitle": "Bottlenecks, improvements, and process performance.",
+    "loading": "Loading…",
+    "bottlenecksTitle": "Current bottlenecks ({count})",
+    "noBottlenecks": "No bottlenecks detected.",
+    "improvementsTitle": "Improvements (last {days}d)",
+    "slaBreaches": "{count} SLA breaches",
+    "noData": "No data.",
+    "errors": {
+      "orgUnavailable": "Org service unavailable."
+    },
+    "table": {
+      "metric": "Metric",
+      "baseline": "Baseline",
+      "current": "Current",
+      "delta": "Delta"
+    }
+  },
+  "apiIntegrations": {
+    "title": "API integrations",
+    "subtitle": "Agent certifications (scoped tokens) and revocation history.",
+    "issueNewCert": "Issue new certificate",
+    "issue": "Issue",
+    "loading": "Loading…",
+    "activeCerts": "Active certificates",
+    "noCertsYet": "No certificates issued yet.",
+    "revoke": "revoke",
+    "revokePrompt": "Revocation reason?",
+    "revocationHistory": "Revocation history",
+    "certLabel": "Cert",
+    "scopesLabel": "Scopes: {list}",
+    "expiresLabel": "Expires {date}",
+    "errors": {
+      "loadFailed": "Unable to load certifications.",
+      "issueFailed": "Issue failed.",
+      "revokeFailed": "Revoke failed."
+    },
+    "form": {
+      "agentId": "Agent ID",
+      "scopes": "Scopes (comma-separated)",
+      "validFor": "Valid for (days)"
+    }
+  },
+  "systemHealth": {
+    "title": "System Health",
+    "subtitle": "Live metrics from /api/v1/metrics. Refreshes every 5 seconds.",
+    "loading": "Loading metrics…",
+    "breakers": "Circuit breakers",
+    "noBreakers": "No breakers have reported yet.",
+    "rawSnapshot": "Raw snapshot (for debugging)",
+    "cards": {
+      "uptime": "Uptime",
+      "uptimeSub": "since last gateway restart",
+      "eventsPerSec": "Events/sec",
+      "eventsSub": "total stream events: {count}",
+      "latency": "LLM latency p50",
+      "dailyCost": "Daily cost",
+      "costSub": "{turns} turns, {errors} errors",
+      "activePersonas": "Active brain personas",
+      "heartbeat": "Heartbeat last tick",
+      "juniorAsleep": "Junior brains asleep",
+      "bgSuccessRate": "Background task success rate",
+      "bgSub": "{ok} ok / {failed} failed"
+    }
+  },
+  "stationMasterCoverage": {
+    "title": "Edit coverage — {id}",
+    "subtitle": "Add tags, cities, regions, or property IDs. Priority is sorted ascending — lower number wins.",
+    "polygonPlaceholder": "Polygon drawing placeholder (googlemaps loader pending)",
+    "polygonPlaceholderAria": "Polygon drawing placeholder",
+    "polygonPending": "polygon (pending)",
+    "emptyCoverage": "No coverage rules yet. Add one to start assigning properties.",
+    "invalidJson": "Invalid JSON",
+    "fixJsonFirst": "Fix invalid JSON before saving.",
+    "saveFailed": "Failed to save coverage",
+    "remove": "Remove",
+    "removeAria": "Remove coverage row {row}",
+    "addCoverage": "Add coverage",
+    "save": "Save",
+    "cols": {
+      "kind": "Kind",
+      "value": "Value (JSON)",
+      "priority": "Priority",
+      "actions": "Actions"
+    },
+    "labels": {
+      "kind": "Coverage kind for row {row}",
+      "value": "Coverage value JSON for row {row}",
+      "priority": "Priority for row {row}"
+    }
+  },
+  "apiKeysPage": {
+    "title": "API Keys",
+    "subtitle": "Manage tenant and platform API keys",
+    "createKey": "Create API Key",
+    "retry": "Retry",
+    "searchPlaceholder": "Search API keys...",
+    "never": "Never",
+    "errors": {
+      "loadFailed": "Failed to load API keys"
+    },
+    "scopes": {
+      "all": "All Scopes",
+      "platform": "Platform",
+      "tenant": "Tenant"
+    },
+    "cols": {
+      "key": "Key",
+      "scope": "Scope",
+      "permissions": "Permissions",
+      "lastUsed": "Last Used",
+      "created": "Created",
+      "expires": "Expires",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No API keys found",
+      "description": "Create an API key to give integrations access to your data."
+    },
+    "modal": {
+      "title": "Create API Key",
+      "subtitle": "Generate a new API key for platform or tenant access",
+      "keyName": "Key Name",
+      "keyNamePlaceholder": "e.g. Integration Name",
+      "scope": "Scope",
+      "permissions": "Permissions",
+      "cancel": "Cancel",
+      "generate": "Generate Key"
+    }
+  },
+  "managerChat": {
+    "title": "Manager Chat — Estate Training",
+    "typing": "Typing…",
+    "errorPrefix": "Error",
+    "placeholder": "Ask about rent affordability, arrears, 5 Ps …",
+    "stop": "Stop",
+    "send": "Send",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "maintenanceTaxonomy": {
+    "title": "Maintenance taxonomy",
+    "subtitle": "Categories and problems (platform defaults + your overrides).",
+    "loading": "Loading…",
+    "categories": "Categories",
+    "all": "All",
+    "save": "Save",
+    "problemsTitle": "Problems ({count})",
+    "noProblems": "No problems in this category.",
+    "placeholders": {
+      "code": "code",
+      "name": "name"
+    },
+    "errors": {
+      "loadFailed": "Unable to load taxonomy.",
+      "createFailed": "Create failed."
+    }
+  },
+  "stationMasterCoverageMap": {
+    "title": "Station Master Coverage",
+    "reassignRegions": "Reassign regions",
+    "reassignUnavailable": "Reassignment flow not yet available",
+    "reassignAria": "Reassign regions to station masters",
+    "retry": "Retry",
+    "coverageMap": "Coverage Map",
+    "mapPlaceholder": "Map placeholder — renders region polygons colored by assigned station master.",
+    "mapPlaceholderAria": "Coverage map placeholder",
+    "emptyTitle": "No station masters assigned",
+    "emptyDescription": "Once station masters are assigned to regions, their coverage summary will appear here.",
+    "noRegions": "No regions assigned.",
+    "propsCount": "{count} props",
+    "errors": {
+      "loadFailed": "Failed to load coverage"
+    }
+  },
+  "training": {
+    "title": "Training & coaching",
+    "subtitle": "Generate adaptive learning paths with AI, assign them, and track mastery.",
+    "generateTitle": "Generate a learning path",
+    "generateSubtitle": "AI will produce 5-level Bloom-aligned steps, auto-translate Swahili, and build mastery gates.",
+    "generateCta": "Generate path",
+    "topicLabel": "Topic",
+    "topicPlaceholder": "e.g. Arrears triage conversations",
+    "audienceLabel": "Audience",
+    "durationLabel": "Duration (hours)",
+    "languageLabel": "Language",
+    "saveCta": "Save to library",
+    "discardCta": "Discard",
+    "pathsTitle": "Library",
+    "assignmentsTitle": "Active assignments",
+    "assignmentsEmpty": "No active assignments yet.",
+    "masteryTitle": "Mastery heatmap",
+    "masteryEmpty": "Mastery heatmap fills once concepts and assignments exist.",
+    "masteryEmployee": "Employee",
+    "languages": {
+      "en": "English",
+      "sw": "Swahili",
+      "both": "Both"
+    }
+  },
+  "gepgCredentials": {
+    "title": "GePG Credentials",
+    "spCode": "SP Code",
+    "spName": "SP Name",
+    "endpointUrl": "Endpoint URL",
+    "signingCert": "Signing Certificate (PEM)",
+    "signingKey": "Signing Key (PEM) — stored as secret",
+    "save": "Save credentials",
+    "saving": "Saving...",
+    "savedMessage": "GePG credentials saved.",
+    "saveFailed": "Save failed."
+  },
+  "complianceExports": {
+    "title": "Compliance Exports",
+    "scheduleNew": "Schedule new export",
+    "recentExports": "Recent exports",
+    "download": "Download",
+    "downloadAria": "Download {type} export for {period}",
+    "retry": "Retry",
+    "emptyTitle": "No exports scheduled",
+    "emptyDescription": "Schedule an export above — KRA iTax, NSSF, NHIF, GePG or audit log.",
+    "exportQueued": "{type} export queued.",
+    "errors": {
+      "loadFailed": "Failed to load exports",
+      "scheduleFailed": "Schedule export failed"
+    }
+  },
+  "communicationsPage": {
+    "title": "Communication Dashboard",
+    "subtitle": "Marketing campaigns, templates, and broadcasts",
+    "recentBroadcasts": "Recent Broadcasts",
+    "viewAll": "View all",
+    "stats": {
+      "emails": "Emails Sent (30d)",
+      "sms": "SMS Sent (30d)",
+      "activeCampaigns": "Active Campaigns",
+      "templates": "Templates",
+      "twoRunning": "2 running",
+      "emailSms": "Email + SMS"
+    },
+    "broadcasts": {
+      "rentReminder": "January Rent Reminder",
+      "maintenanceNotice": "Maintenance Notice - Building A",
+      "paymentSuccess": "Payment Success Confirmation"
+    },
+    "nav": {
+      "templates": "Templates",
+      "templatesDesc": "Email and SMS templates",
+      "campaigns": "Campaigns",
+      "campaignsDesc": "Marketing campaigns",
+      "broadcasts": "Broadcasts",
+      "broadcastsDesc": "System-wide broadcasts"
+    },
+    "cols": {
+      "broadcast": "Broadcast",
+      "channel": "Channel",
+      "recipients": "Recipients",
+      "openRate": "Open Rate",
+      "sent": "Sent"
+    }
+  },
+  "templatesPage": {
+    "title": "Email & SMS Templates",
+    "subtitle": "Manage communication templates across tenants",
+    "newTemplate": "New Template",
+    "searchPlaceholder": "Search templates...",
+    "usesCount": "{count} uses",
+    "updatedOn": "Updated {date}",
+    "filters": {
+      "all": "All Types",
+      "email": "Email",
+      "sms": "SMS"
+    },
+    "empty": {
+      "title": "No templates found",
+      "description": "Create your first message template."
+    }
+  },
+  "approvalPolicyEditor": {
+    "title": "Approval Policies",
+    "newPolicy": "New Policy",
+    "newPolicyAria": "Create new policy (unavailable)",
+    "createUnavailable": "Create flow pending POST /admin/approval-policies",
+    "editUnavailable": "Edit flow pending PATCH /admin/approval-policies/:id",
+    "editUnavailableAria": "Edit {name} (unavailable)",
+    "disableAria": "Disable {name}",
+    "enableAria": "Enable {name}",
+    "edit": "Edit",
+    "disable": "Disable",
+    "enable": "Enable",
+    "entityLabel": "Entity: {entity}",
+    "stageLine": "Stage {order}: {role} (SLA {sla}h)",
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "empty": {
+      "title": "No approval policies defined",
+      "description": "Create an approval policy to define who signs off on sensitive operations."
+    },
+    "errors": {
+      "loadFailed": "Failed to load policies",
+      "toggleFailed": "Failed to toggle policy"
+    }
+  },
+  "notificationBell": {
+    "buttonAria": "Notifications ({count} pending)",
+    "exceptionInbox": "Exception inbox",
+    "proposedActionsDesc": "Proposed actions awaiting approval",
+    "proactiveInsights": "Proactive insights",
+    "brainFindings": "New findings from the brain"
+  },
+  "shortcutCheatSheet": {
+    "title": "Keyboard shortcuts",
+    "closeAria": "Close shortcut cheat sheet",
+    "groups": {
+      "global": "Global",
+      "navigation": "Navigation",
+      "actions": "Actions"
+    },
+    "shortcuts": {
+      "openCheat": "Open this cheat sheet",
+      "openSpotlight": "Open Spotlight search",
+      "closeDialog": "Close dialog / cheat sheet",
+      "goHome": "Go to Home (Dashboard)",
+      "goTenants": "Go to Tenants",
+      "goOperations": "Go to Operations",
+      "goExceptions": "Go to Exceptions inbox",
+      "goAi": "Go to AI Cockpit",
+      "goReports": "Go to Reports",
+      "newTenant": "New tenant",
+      "newCase": "New maintenance case",
+      "focusSearch": "Focus search bar"
+    }
+  },
+  "layout": {
+    "internalAdmin": "Internal Admin",
+    "searchAria": "Open search (Cmd+K)",
+    "searchAnywhere": "Search anywhere",
+    "pageTitles": {
+      "tenantOnboarding": "Tenant Onboarding",
+      "permissionMatrix": "Permission Matrix",
+      "approvalMatrix": "Approval Matrix",
+      "controlTower": "Control Tower",
+      "customerTimeline": "Customer Timeline",
+      "caseEscalation": "Case Escalation",
+      "platform": "Platform",
+      "communications": "Communications",
+      "compliance": "Compliance",
+      "analytics": "Analytics",
+      "integrations": "Integrations",
+      "default": "Admin Portal"
+    },
+    "nav": {
+      "overview": "Overview",
+      "operations": "Operations",
+      "finance": "Finance",
+      "aiBrain": "AI Brain",
+      "aiCockpit": "AI Cockpit",
+      "exceptions": "Exceptions",
+      "orgInsights": "Org Insights",
+      "settings": "Settings",
+      "rolesAndPermissions": "Roles & Permissions",
+      "auditLog": "Audit Log",
+      "systemHealth": "System Health"
+    }
+  },
+  "controlTower": {
+    "title": "Operations Control Tower",
+    "subtitle": "Cross-tenant monitoring requires live telemetry and workflow streams.",
+    "unavailableTitle": "Live operations data unavailable",
+    "unavailableBody": "This control tower is disabled until production monitoring feeds are connected."
+  },
+  "integrationsPage": {
+    "title": "Integrations",
+    "subtitle": "Manage third-party integrations and API connections",
+    "webhooksTitle": "Webhooks",
+    "webhooksDesc": "Manage outbound webhook endpoints",
+    "apiKeysTitle": "API Keys",
+    "apiKeysDesc": "Manage tenant and platform API keys",
+    "lastSync": "Last sync: {date}",
+    "configure": "Configure",
+    "connect": "Connect",
+    "types": {
+      "payment": "Payment",
+      "email": "Email",
+      "sms": "SMS",
+      "analytics": "Analytics",
+      "notifications": "Notifications"
+    },
+    "items": {
+      "mpesa": "Mobile money payments via Safaricom",
+      "sendgrid": "Transactional email delivery",
+      "africasTalking": "SMS delivery across East Africa",
+      "stripe": "Card payments (optional)",
+      "googleAnalytics": "Platform analytics tracking",
+      "slack": "Admin alert notifications"
+    }
+  },
+  "webhooks": {
+    "emptyTitle": "No webhooks found",
+    "emptyDescription": "Add a webhook to receive real-time events from the platform."
+  },
+  "featureFlagsPage": {
+    "title": "Feature Flags",
+    "feature": "feature-flag registry",
+    "description": "Static feature-flag definitions and toggle state have been removed. This page now requires live feature configuration data."
+  },
+  "platformBillingPage": {
+    "title": "Billing & Invoices",
+    "feature": "platform billing data",
+    "description": "Static subscription invoices and collection metrics have been removed. This page now requires live platform billing data."
+  },
+  "complianceDataRequestsPage": {
+    "title": "Data Subject Requests",
+    "feature": "data request workflow",
+    "description": "Synthetic privacy requests have been removed. This page now requires live compliance case-management data."
+  },
+  "complianceDocumentsPage": {
+    "title": "Compliance Documents",
+    "feature": "compliance document data",
+    "description": "Static compliance documents have been removed. This page now requires live document management and review services."
+  },
+  "compliancePage": {
+    "title": "Compliance Overview",
+    "feature": "compliance overview data",
+    "description": "Synthetic compliance scorecards and tenant review status have been removed. This view now requires live compliance records."
+  },
+  "communicationsBroadcastsPage": {
+    "title": "Broadcasts",
+    "feature": "broadcast messaging data",
+    "description": "Synthetic broadcast campaigns have been removed. This page now requires live communications campaign data."
+  },
+  "analyticsUsagePage": {
+    "title": "Usage Analytics",
+    "feature": "usage analytics",
+    "description": "Static usage analytics have been removed. This page now requires live product usage telemetry."
+  },
+  "analyticsGrowthPage": {
+    "title": "Growth Analytics",
+    "feature": "growth analytics",
+    "description": "Static growth analytics have been removed. This page now requires live growth and revenue telemetry."
+  },
+  "analyticsPage": {
+    "title": "Analytics Dashboard",
+    "feature": "analytics telemetry",
+    "description": "Static analytics dashboards have been removed. This page now requires live analytics and product telemetry."
   }
 }

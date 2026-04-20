@@ -6,6 +6,7 @@
  * auto-opens the chat in owner context.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
@@ -15,12 +16,13 @@ export const metadata = {
     'Automate the grind, keep the judgement. Rent reminders, M-Pesa reconciliation, and owner-grade reports in one place.',
 };
 
-export default function ForOwnersPage() {
+export default async function ForOwnersPage() {
+  const t = await getTranslations('forOwners');
   return (
     <MarketingShell
-      title="Run your portfolio like it is ten times its size."
-      subtitle="Whether you own 8 units or 80, BOSSNYUMBA absorbs the admin you do on Sundays so your Mondays are about the big decisions. Mr. Mwikila does the reminders, the reconciliation, and the reporting — you keep the judgement."
-      heroCtaLabel="Talk to Mr. Mwikila about your portfolio"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <FeatureGrid
         heading="What changes in your week"

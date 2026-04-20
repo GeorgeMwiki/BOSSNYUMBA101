@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface SubdivisionNode {
   readonly id: string;
@@ -58,6 +59,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, onSubdivide }) => (
 );
 
 export default function UnitSubdividePage(): React.ReactElement {
+  const tMisc = useTranslations('misc');
+  const tSimple = useTranslations('simple');
   const params = useParams();
   const unitId = params?.id as string;
   const [tree, setTree] = useState<SubdivisionNode | null>(null);
@@ -126,7 +129,7 @@ export default function UnitSubdividePage(): React.ReactElement {
 
   return (
     <main className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Subdivide unit — {unitId}</h1>
+      <h1 className="text-2xl font-semibold">{tMisc('subdivideTitle', { unitId })}</h1>
 
       {error && (
         <Alert variant="danger">
@@ -141,7 +144,7 @@ export default function UnitSubdividePage(): React.ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Subdivision tree</CardTitle>
+          <CardTitle>{tMisc('subdivisionTree')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -161,7 +164,7 @@ export default function UnitSubdividePage(): React.ReactElement {
             </>
           ) : (
             <EmptyState
-              title="No subdivisions yet"
+              title={tSimple('noSubdivisionsYet')}
               description="Split this unit into rooms, beds, or parking bays for granular rent tracking."
               action={
                 <Button

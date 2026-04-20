@@ -17,6 +17,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 
@@ -64,6 +65,7 @@ const DIM_LABELS: Record<string, string> = {
 };
 
 export default function MyCreditPage(): JSX.Element {
+  const t = useTranslations('myCredit');
   const [rating, setRating] = useState<CreditRating | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export default function MyCreditPage(): JSX.Element {
 
   return (
     <>
-      <PageHeader title="My credit rating" showSettings />
+      <PageHeader title={t('title')} showSettings />
       <div className="space-y-4 px-4 py-4 pb-24">
         {error && (
           <div className="card p-3 bg-red-900/20 text-red-300 text-sm">
@@ -132,11 +134,11 @@ export default function MyCreditPage(): JSX.Element {
         )}
 
         {loading || !rating ? (
-          <div className="card p-6 text-center text-gray-400">Loading…</div>
+          <div className="card p-6 text-center text-gray-400">{t('loading')}</div>
         ) : (
           <>
             <div className="card p-5 text-center">
-              <div className="text-sm text-gray-400">Your score</div>
+              <div className="text-sm text-gray-400">{t('yourScore')}</div>
               <div className="mt-2 text-5xl font-bold text-white">
                 {rating.numericScore ?? '—'}
               </div>
@@ -226,7 +228,7 @@ export default function MyCreditPage(): JSX.Element {
                 </p>
                 <input
                   type="text"
-                  placeholder="Organization / landlord name"
+                  placeholder={t('orgNamePlaceholder')}
                   value={shareForm.shareWithOrg}
                   onChange={(e) =>
                     setShareForm((s) => ({

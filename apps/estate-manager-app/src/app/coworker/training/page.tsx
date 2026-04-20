@@ -6,6 +6,7 @@
  * Mount point: /coworker/training
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -37,6 +38,7 @@ interface ChatMessage {
 }
 
 export default function CoworkerTrainingPage() {
+  const t = useTranslations('coworkerTraining');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
@@ -142,21 +144,21 @@ export default function CoworkerTrainingPage() {
             )}
           </li>
         ))}
-        {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>Typing…</li>}
+        {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>{t('typing')}</li>}
         {state.toolCalls.length > 0 && (
           <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {state.toolCalls.map((t, i) => (
+            {state.toolCalls.map((tc, i) => (
               <span
-                key={`${t.name}-${i}`}
+                key={`${tc.name}-${i}`}
                 style={{
                   fontSize: 11,
                   padding: '2px 8px',
                   borderRadius: 999,
-                  background: t.ok === false ? '#fee2e2' : '#ecfdf5',
-                  color: t.ok === false ? '#991b1b' : '#065f46',
+                  background: tc.ok === false ? '#fee2e2' : '#ecfdf5',
+                  color: tc.ok === false ? '#991b1b' : '#065f46',
                 }}
               >
-                {t.ok === undefined ? 'running' : t.ok ? 'ok' : 'fail'}: {t.name}
+                {tc.ok === undefined ? t('runningLabel') : tc.ok ? t('okLabel') : t('failLabel')}: {tc.name}
               </span>
             ))}
           </li>
@@ -164,25 +166,25 @@ export default function CoworkerTrainingPage() {
         {state.proposedAction && !state.proposedAction.decision && (
           <li style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 12 }}>
             <div style={{ fontSize: 12, color: '#9a3412', marginBottom: 6 }}>
-              Proposed ({state.proposedAction.risk}): {state.proposedAction.description}
+              {t('proposedLine', { risk: state.proposedAction.risk, description: state.proposedAction.description })}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={approveAction}
                 style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6 }}
               >
-                Approve
+                {t('approve')}
               </button>
               <button
                 onClick={rejectAction}
                 style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6 }}
               >
-                Reject
+                {t('reject')}
               </button>
             </div>
           </li>
         )}
-        {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>Error: {state.error}</li>}
+        {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>{t('errorLine', { error: state.error })}</li>}
       </ul>
       {modeState.mode === 'quiz' && modeState.quizData && (
         <QuizLockdownOverlay
@@ -203,7 +205,7 @@ export default function CoworkerTrainingPage() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about tenancy risk, arrears, maintenance workflows …"
+          placeholder={t('inputPlaceholder')}
           style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }}
         />
         {state.isStreaming ? (
@@ -212,14 +214,14 @@ export default function CoworkerTrainingPage() {
             onClick={cancel}
             style={{ padding: '8px 14px', background: '#ef4444', color: '#fff', borderRadius: 8, border: 'none' }}
           >
-            Stop
+            {t('stop')}
           </button>
         ) : (
           <button
             type="submit"
             style={{ padding: '8px 14px', background: '#3b82f6', color: '#fff', borderRadius: 8, border: 'none' }}
           >
-            Send
+            {t('send')}
           </button>
         )}
       </form>
@@ -229,7 +231,7 @@ export default function CoworkerTrainingPage() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, padding: 16 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Coworker — Training</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
         {modeState.mode === 'classroom' ? (
           <ClassroomChatAdapter data={classroom} mode={modeState.mode} language="en">
             {chat}

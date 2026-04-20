@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   DollarSign,
   TrendingUp,
@@ -91,6 +92,7 @@ interface TransactionDetail {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function FinancialPage() {
+  const t = useTranslations('financialPage');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -162,12 +164,12 @@ export function FinancialPage() {
   );
 
   const expenseBreakdown = statements.length > 0 ? [
-    { name: 'Operating', value: statements.reduce((s, st) => s + st.operatingExpenses, 0), color: '#3B82F6' },
-    { name: 'Maintenance', value: statements.reduce((s, st) => s + st.maintenanceCosts, 0), color: '#F59E0B' },
-    { name: 'Mgmt Fees', value: statements.reduce((s, st) => s + st.managementFees, 0), color: '#10B981' },
-    { name: 'Utilities', value: statements.reduce((s, st) => s + st.utilities, 0), color: '#8B5CF6' },
-    { name: 'Insurance', value: statements.reduce((s, st) => s + st.insurance, 0), color: '#EC4899' },
-    { name: 'Taxes', value: statements.reduce((s, st) => s + st.taxes, 0), color: '#6B7280' },
+    { name: t('expOperating'), value: statements.reduce((s, st) => s + st.operatingExpenses, 0), color: '#3B82F6' },
+    { name: t('expMaintenance'), value: statements.reduce((s, st) => s + st.maintenanceCosts, 0), color: '#F59E0B' },
+    { name: t('expMgmtFees'), value: statements.reduce((s, st) => s + st.managementFees, 0), color: '#10B981' },
+    { name: t('expUtilities'), value: statements.reduce((s, st) => s + st.utilities, 0), color: '#8B5CF6' },
+    { name: t('expInsurance'), value: statements.reduce((s, st) => s + st.insurance, 0), color: '#EC4899' },
+    { name: t('expTaxes'), value: statements.reduce((s, st) => s + st.taxes, 0), color: '#6B7280' },
   ] : [];
 
   const getStatusIcon = (status: string) => {
@@ -209,27 +211,27 @@ export function FinancialPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error}
-          <Button size="sm" onClick={() => loadData()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => loadData()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'statements', label: 'Income Statements' },
-    { id: 'transactions', label: 'Transactions' },
-    { id: 'invoices', label: 'Invoices' },
-    { id: 'payments', label: 'Payments' },
-    { id: 'disbursements', label: 'Disbursements' },
+    { id: 'overview', label: t('tabOverview') },
+    { id: 'statements', label: t('tabIncomeStatements') },
+    { id: 'transactions', label: t('tabTransactions') },
+    { id: 'invoices', label: t('tabInvoices') },
+    { id: 'payments', label: t('tabPayments') },
+    { id: 'disbursements', label: t('tabDisbursements') },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financial</h1>
-          <p className="text-gray-500">Track invoices, payments, and revenue</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -248,16 +250,16 @@ export function FinancialPage() {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               {exporting ? <Spinner size="sm" /> : <Download className="h-4 w-4" />}
-              Export
+              {t('export')}
               <ChevronDown className="h-4 w-4" />
             </button>
             {exportMenuOpen && (
               <div role="menu" className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                 <button role="menuitem" onClick={() => { handleExport('pdf'); setExportMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Export as PDF
+                  <FileText className="h-4 w-4" /> {t('exportAsPdf')}
                 </button>
                 <button role="menuitem" onClick={() => { handleExport('excel'); setExportMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Export as Excel
+                  <FileText className="h-4 w-4" /> {t('exportAsExcel')}
                 </button>
               </div>
             )}
@@ -271,28 +273,28 @@ export function FinancialPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-gray-500">
               <FileText className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Invoiced</span>
+              <span className="text-sm font-medium">{t('totalInvoiced')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(stats.totalInvoiced)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-green-600">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-sm font-medium">Collected</span>
+              <span className="text-sm font-medium">{t('collected')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(stats.totalCollected)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-yellow-600">
               <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">Outstanding</span>
+              <span className="text-sm font-medium">{t('outstanding')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(stats.totalOutstanding)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 text-blue-600">
               <DollarSign className="h-4 w-4" />
-              <span className="text-sm font-medium">Collection Rate</span>
+              <span className="text-sm font-medium">{t('collectionRate')}</span>
             </div>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{formatPercentage(stats.collectionRate)}</p>
           </div>
@@ -300,7 +302,7 @@ export function FinancialPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-purple-600">
                 <DollarSign className="h-4 w-4" />
-                <span className="text-sm font-medium">Pending Disbursement</span>
+                <span className="text-sm font-medium">{t('pendingDisbursement')}</span>
               </div>
               <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
             </div>
@@ -335,7 +337,7 @@ export function FinancialPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 h-72">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Collection Overview</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('collectionOverview')}</h3>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -343,8 +345,8 @@ export function FinancialPage() {
                       <YAxis stroke="#9CA3AF" fontSize={12} tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }} />
                       <Legend />
-                      <Bar dataKey="collected" name="Collected" fill="#10B981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="outstanding" name="Outstanding" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="collected" name={t('collected')} fill="#10B981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="outstanding" name={t('outstanding')} fill="#F59E0B" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -352,7 +354,7 @@ export function FinancialPage() {
                 {/* Expense Breakdown Pie Chart */}
                 {expenseBreakdown.length > 0 && (
                   <div className="h-72">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('expenseBreakdown')}</h3>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -390,12 +392,12 @@ export function FinancialPage() {
                         <div>
                           <p className="text-sm text-green-700 font-medium">{st.propertyName}</p>
                           <p className="text-2xl font-bold text-green-800 mt-1">{formatCurrency(st.netOperatingIncome)}</p>
-                          <p className="text-xs text-green-600 mt-1">Net Operating Income - {st.month}</p>
+                          <p className="text-xs text-green-600 mt-1">{t('netOperatingIncome')} - {st.month}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-500">Income</p>
+                          <p className="text-sm text-gray-500">{t('income')}</p>
                           <p className="font-medium text-gray-900">{formatCurrency(st.totalIncome)}</p>
-                          <p className="text-sm text-gray-500 mt-1">Expenses</p>
+                          <p className="text-sm text-gray-500 mt-1">{t('expenses')}</p>
                           <p className="font-medium text-red-600">{formatCurrency(st.totalExpenses)}</p>
                         </div>
                       </div>
@@ -412,14 +414,14 @@ export function FinancialPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option>Feb 2026</option>
-                    <option>Jan 2026</option>
-                    <option>Dec 2025</option>
+                    <option>{'Feb 2026'}</option>
+                    <option>{'Jan 2026'}</option>
+                    <option>{'Dec 2025'}</option>
                   </select>
                   <select value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="all">All Properties</option>
-                    <option value="1">Palm Gardens</option>
-                    <option value="2">Ocean View Apartments</option>
+                    <option value="all">{t('allProperties')}</option>
+                    <option value="1">{'Palm Gardens'}</option>
+                    <option value="2">{'Ocean View Apartments'}</option>
                   </select>
                 </div>
                 <button
@@ -427,7 +429,7 @@ export function FinancialPage() {
                   className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
                 >
                   <Download className="h-4 w-4" />
-                  Download Statement
+                  {t('downloadStatement')}
                 </button>
               </div>
 
@@ -435,19 +437,19 @@ export function FinancialPage() {
               {statements.length > 1 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-blue-600">Total Income</p>
+                    <p className="text-sm text-blue-600">{t('totalIncome')}</p>
                     <p className="text-xl font-bold text-blue-800">
                       {formatCurrency(statements.reduce((s, st) => s + st.totalIncome, 0))}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-blue-600">Total Expenses</p>
+                    <p className="text-sm text-blue-600">{t('totalExpenses')}</p>
                     <p className="text-xl font-bold text-red-700">
                       {formatCurrency(statements.reduce((s, st) => s + st.totalExpenses, 0))}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-blue-600">Combined NOI</p>
+                    <p className="text-sm text-blue-600">{t('combinedNoi')}</p>
                     <p className="text-xl font-bold text-green-700">
                       {formatCurrency(statements.reduce((s, st) => s + st.netOperatingIncome, 0))}
                     </p>
@@ -470,7 +472,7 @@ export function FinancialPage() {
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <p className="text-sm text-gray-500">NOI</p>
+                        <p className="text-sm text-gray-500">{t('noi')}</p>
                         <p className="font-semibold text-green-600">{formatCurrency(statement.netOperatingIncome)}</p>
                       </div>
                       {expandedStatement === statement.propertyId ? <ChevronDown className="h-5 w-5 text-gray-400" /> : <ChevronRight className="h-5 w-5 text-gray-400" />}
@@ -482,61 +484,61 @@ export function FinancialPage() {
                       <div className="grid grid-cols-2 gap-8">
                         <div>
                           <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-green-500" /> Income
+                            <TrendingUp className="h-4 w-4 text-green-500" /> {t('income')}
                           </h4>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Rent Collected</span>
+                              <span className="text-gray-600">{t('rentCollected')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.rentCollected)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Other Income</span>
+                              <span className="text-gray-600">{t('otherIncome')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.otherIncome)}</span>
                             </div>
                             <div className="flex justify-between text-sm font-medium border-t pt-2">
-                              <span className="text-gray-900">Total Income</span>
+                              <span className="text-gray-900">{t('totalIncome')}</span>
                               <span className="text-green-600">{formatCurrency(statement.totalIncome)}</span>
                             </div>
                           </div>
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                            <TrendingDown className="h-4 w-4 text-red-500" /> Expenses
+                            <TrendingDown className="h-4 w-4 text-red-500" /> {t('expenses')}
                           </h4>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Operating Expenses</span>
+                              <span className="text-gray-600">{t('operatingExpenses')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.operatingExpenses)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Maintenance</span>
+                              <span className="text-gray-600">{t('maintenance')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.maintenanceCosts)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Management Fees</span>
+                              <span className="text-gray-600">{t('managementFees')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.managementFees)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Utilities</span>
+                              <span className="text-gray-600">{t('utilities')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.utilities)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Insurance</span>
+                              <span className="text-gray-600">{t('insurance')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.insurance)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Taxes</span>
+                              <span className="text-gray-600">{t('taxes')}</span>
                               <span className="text-gray-900">{formatCurrency(statement.taxes)}</span>
                             </div>
                             <div className="flex justify-between text-sm font-medium border-t pt-2">
-                              <span className="text-gray-900">Total Expenses</span>
+                              <span className="text-gray-900">{t('totalExpenses')}</span>
                               <span className="text-red-600">{formatCurrency(statement.totalExpenses)}</span>
                             </div>
                           </div>
                         </div>
                       </div>
                       <div className="bg-green-50 rounded-lg p-4 flex items-center justify-between">
-                        <span className="font-medium text-green-800">Net Operating Income</span>
+                        <span className="font-medium text-green-800">{t('netOperatingIncome')}</span>
                         <span className="text-2xl font-bold text-green-600">{formatCurrency(statement.netOperatingIncome)}</span>
                       </div>
                     </div>
@@ -550,12 +552,12 @@ export function FinancialPage() {
           {activeTab === 'transactions' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-500">{transactions.length} transactions</p>
+                <p className="text-sm text-gray-500">{t('transactionsCount', { count: transactions.length })}</p>
                 <div className="flex items-center gap-2">
                   <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="all">All Types</option>
-                    <option value="income">Income</option>
-                    <option value="expense">Expense</option>
+                    <option value="all">{t('allTypes')}</option>
+                    <option value="income">{t('income')}</option>
+                    <option value="expense">{t('expense')}</option>
                   </select>
                 </div>
               </div>
@@ -564,12 +566,12 @@ export function FinancialPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Details</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDescription')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colCategory')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperty')}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('colAmount')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('colDetails')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -618,13 +620,13 @@ export function FinancialPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property / Unit</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colInvoice')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colTenant')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPropertyUnit')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDueDate')}</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('colAmount')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('colActions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -639,13 +641,13 @@ export function FinancialPage() {
                       <td className="px-4 py-3 text-sm text-gray-600">{invoice.customer?.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         <div>{invoice.property?.name}</div>
-                        <div className="text-xs text-gray-400">Unit {invoice.unit?.unitNumber}</div>
+                        <div className="text-xs text-gray-400">{t('unitPrefix', { unit: invoice.unit?.unitNumber ?? '' })}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatDate(invoice.dueDate)}</td>
                       <td className="px-4 py-3 text-right">
                         <p className="font-medium text-gray-900">{formatCurrency(invoice.total)}</p>
                         {invoice.amountDue > 0 && invoice.amountDue < invoice.total && (
-                          <p className="text-xs text-gray-500">Due: {formatCurrency(invoice.amountDue)}</p>
+                          <p className="text-xs text-gray-500">{t('duePrefix')}: {formatCurrency(invoice.amountDue)}</p>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -671,12 +673,12 @@ export function FinancialPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colReference')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colTenant')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colMethod')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('colAmount')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -709,8 +711,8 @@ export function FinancialPage() {
               <div className="flex items-center justify-between">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between flex-1">
                   <div>
-                    <p className="font-medium text-blue-800">Pending Disbursement</p>
-                    <p className="text-sm text-blue-600">Next disbursement scheduled for Feb 28, 2026</p>
+                    <p className="font-medium text-blue-800">{t('pendingDisbursement')}</p>
+                    <p className="text-sm text-blue-600">{t('nextDisbursementScheduled')}</p>
                   </div>
                   <p className="text-2xl font-bold text-blue-700">{formatCurrency(stats?.pendingDisbursement || 0)}</p>
                 </div>
@@ -718,7 +720,7 @@ export function FinancialPage() {
                   to="/financial/disbursements"
                   className="ml-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
                 >
-                  View Full Details
+                  {t('viewFullDetails')}
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               </div>
@@ -727,12 +729,12 @@ export function FinancialPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colReference')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperty')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPeriod')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('colAmount')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -765,7 +767,7 @@ export function FinancialPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedTransaction(null)} />
             <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Transaction Detail</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('transactionDetail')}</h3>
                 <button onClick={() => setSelectedTransaction(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
@@ -784,26 +786,26 @@ export function FinancialPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500">Date</p>
+                    <p className="text-xs text-gray-500">{t('colDate')}</p>
                     <p className="font-medium text-gray-900">{formatDate(selectedTransaction.date)}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500">Category</p>
+                    <p className="text-xs text-gray-500">{t('colCategory')}</p>
                     <p className="font-medium text-gray-900">{selectedTransaction.category}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500">Reference</p>
+                    <p className="text-xs text-gray-500">{t('colReference')}</p>
                     <p className="font-medium text-gray-900">{selectedTransaction.reference}</p>
                   </div>
                   {selectedTransaction.paymentMethod && (
                     <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Payment Method</p>
+                      <p className="text-xs text-gray-500">{t('paymentMethod')}</p>
                       <p className="font-medium text-gray-900">{selectedTransaction.paymentMethod}</p>
                     </div>
                   )}
                   {selectedTransaction.property && (
                     <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Property</p>
+                      <p className="text-xs text-gray-500">{t('colProperty')}</p>
                       <p className="font-medium text-gray-900">
                         {selectedTransaction.property.name}
                         {selectedTransaction.unit && ` - ${selectedTransaction.unit.unitNumber}`}
@@ -812,13 +814,13 @@ export function FinancialPage() {
                   )}
                   {selectedTransaction.customer && (
                     <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Tenant</p>
+                      <p className="text-xs text-gray-500">{t('colTenant')}</p>
                       <p className="font-medium text-gray-900">{selectedTransaction.customer.name}</p>
                     </div>
                   )}
                   {selectedTransaction.relatedInvoice && (
                     <div className="p-3 bg-gray-50 rounded-lg col-span-2">
-                      <p className="text-xs text-gray-500">Related Invoice</p>
+                      <p className="text-xs text-gray-500">{t('relatedInvoice')}</p>
                       <p className="font-medium text-blue-600">{selectedTransaction.relatedInvoice}</p>
                     </div>
                   )}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Settings,
   Globe,
@@ -21,52 +22,21 @@ interface ConfigSection {
   icon: React.ElementType;
 }
 
-const configSections: ConfigSection[] = [
-  {
-    id: 'general',
-    name: 'General Settings',
-    description: 'Platform name, timezone, and basic settings',
-    icon: Globe,
-  },
-  {
-    id: 'payments',
-    name: 'Payment Gateways',
-    description: 'M-Pesa, bank transfers, and payment settings',
-    icon: CreditCard,
-  },
-  {
-    id: 'email',
-    name: 'Email Configuration',
-    description: 'SMTP settings and email templates',
-    icon: Mail,
-  },
-  {
-    id: 'notifications',
-    name: 'Notifications',
-    description: 'Push notifications and SMS settings',
-    icon: Bell,
-  },
-  {
-    id: 'security',
-    name: 'Security',
-    description: 'Authentication and security policies',
-    icon: Shield,
-  },
-  {
-    id: 'database',
-    name: 'Database',
-    description: 'Database connections and backups',
-    icon: Database,
-  },
-  {
-    id: 'branding',
-    name: 'Branding',
-    description: 'Logo, colors, and white-label settings',
-    icon: Palette,
-  },
-];
+function buildConfigSections(t: (key: string) => string): ConfigSection[] {
+  return [
+    { id: 'general', name: t('sections.general.name'), description: t('sections.general.description'), icon: Globe },
+    { id: 'payments', name: t('sections.payments.name'), description: t('sections.payments.description'), icon: CreditCard },
+    { id: 'email', name: t('sections.email.name'), description: t('sections.email.description'), icon: Mail },
+    { id: 'notifications', name: t('sections.notifications.name'), description: t('sections.notifications.description'), icon: Bell },
+    { id: 'security', name: t('sections.security.name'), description: t('sections.security.description'), icon: Shield },
+    { id: 'database', name: t('sections.database.name'), description: t('sections.database.description'), icon: Database },
+    { id: 'branding', name: t('sections.branding.name'), description: t('sections.branding.description'), icon: Palette },
+  ];
+}
 
 export function ConfigurationPage() {
+  const t = useTranslations('configurationPage');
+  const configSections = buildConfigSections(t);
   const [activeSection, setActiveSection] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -77,7 +47,7 @@ export function ConfigurationPage() {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Platform Name
+                {t('general.platformName')}
               </label>
               <input
                 type="text"
@@ -89,7 +59,7 @@ export function ConfigurationPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Timezone
+                {t('general.defaultTimezone')}
               </label>
               <select
                 defaultValue="Africa/Nairobi"
@@ -105,32 +75,32 @@ export function ConfigurationPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Currency
+                {t('general.defaultCurrency')}
               </label>
               <select
                 defaultValue="KES"
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
-                <option value="KES">Kenyan Shilling (KES)</option>
-                <option value="USD">US Dollar (USD)</option>
-                <option value="UGX">Ugandan Shilling (UGX)</option>
-                <option value="TZS">Tanzanian Shilling (TZS)</option>
+                <option value="KES">{t('general.currency.kes')}</option>
+                <option value="USD">{t('general.currency.usd')}</option>
+                <option value="UGX">{t('general.currency.ugx')}</option>
+                <option value="TZS">{t('general.currency.tzs')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Language
+                {t('general.defaultLanguage')}
               </label>
               <select
                 defaultValue="en"
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
-                <option value="en">English</option>
-                <option value="sw">Swahili</option>
-                <option value="fr">French</option>
+                <option value="en">{t('general.language.en')}</option>
+                <option value="sw">{t('general.language.sw')}</option>
+                <option value="fr">{t('general.language.fr')}</option>
               </select>
             </div>
 
@@ -144,10 +114,10 @@ export function ConfigurationPage() {
                 />
                 <div>
                   <span className="text-sm font-medium text-gray-700">
-                    Allow new tenant registrations
+                    {t('general.allowNewTenants')}
                   </span>
                   <p className="text-sm text-gray-500">
-                    Enable self-service tenant sign-up
+                    {t('general.allowNewTenantsHint')}
                   </p>
                 </div>
               </label>
@@ -163,10 +133,10 @@ export function ConfigurationPage() {
                 />
                 <div>
                   <span className="text-sm font-medium text-gray-700">
-                    Enable trial period
+                    {t('general.enableTrial')}
                   </span>
                   <p className="text-sm text-gray-500">
-                    New tenants get a 14-day free trial
+                    {t('general.enableTrialHint')}
                   </p>
                 </div>
               </label>
@@ -180,9 +150,9 @@ export function ConfigurationPage() {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
               <Check className="h-5 w-5 text-green-600 mt-0.5" />
               <div>
-                <p className="font-medium text-green-800">M-Pesa Connected</p>
+                <p className="font-medium text-green-800">{t('payments.mpesaConnected')}</p>
                 <p className="text-sm text-green-600">
-                  Paybill: 123456 | Account: Active
+                  {t('payments.mpesaStatus')}
                 </p>
               </div>
             </div>
@@ -190,19 +160,19 @@ export function ConfigurationPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div>
-                <p className="font-medium text-amber-800">Bank Transfer</p>
+                <p className="font-medium text-amber-800">{t('payments.bankTransfer')}</p>
                 <p className="text-sm text-amber-600">
-                  Not configured - Manual reconciliation required
+                  {t('payments.bankTransferNotConfigured')}
                 </p>
               </div>
             </div>
 
             <div className="space-y-4 pt-4">
-              <h3 className="font-medium text-gray-900">M-Pesa Settings</h3>
+              <h3 className="font-medium text-gray-900">{t('payments.mpesaSettings')}</h3>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Consumer Key
+                  {t('payments.consumerKey')}
                 </label>
                 <input
                   type="password"
@@ -213,7 +183,7 @@ export function ConfigurationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Consumer Secret
+                  {t('payments.consumerSecret')}
                 </label>
                 <input
                   type="password"
@@ -224,11 +194,11 @@ export function ConfigurationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Paybill Number
+                  {t('payments.paybill')}
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter paybill (e.g. 522533)"
+                  placeholder={t('payments.paybillPlaceholder')}
                   onChange={() => setHasChanges(true)}
                   className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
@@ -236,7 +206,7 @@ export function ConfigurationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Callback URL
+                  {t('payments.callbackUrl')}
                 </label>
                 <input
                   type="url"
@@ -253,11 +223,11 @@ export function ConfigurationPage() {
         return (
           <div className="space-y-6">
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Password Policy</h3>
+              <h3 className="font-medium text-gray-900">{t('security.passwordPolicy')}</h3>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimum Password Length
+                  {t('security.minPasswordLength')}
                 </label>
                 <input
                   type="number"
@@ -278,7 +248,7 @@ export function ConfigurationPage() {
                     className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Require uppercase letter
+                    {t('security.requireUppercase')}
                   </span>
                 </label>
               </div>
@@ -292,7 +262,7 @@ export function ConfigurationPage() {
                     className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Require number
+                    {t('security.requireNumber')}
                   </span>
                 </label>
               </div>
@@ -306,18 +276,18 @@ export function ConfigurationPage() {
                     className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Require special character
+                    {t('security.requireSpecial')}
                   </span>
                 </label>
               </div>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-gray-200">
-              <h3 className="font-medium text-gray-900">Session Settings</h3>
+              <h3 className="font-medium text-gray-900">{t('security.sessionSettings')}</h3>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Session Timeout (minutes)
+                  {t('security.sessionTimeout')}
                 </label>
                 <input
                   type="number"
@@ -337,7 +307,7 @@ export function ConfigurationPage() {
                     className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Require re-authentication for sensitive actions
+                    {t('security.requireReauth')}
                   </span>
                 </label>
               </div>
@@ -345,7 +315,7 @@ export function ConfigurationPage() {
 
             <div className="space-y-4 pt-4 border-t border-gray-200">
               <h3 className="font-medium text-gray-900">
-                Two-Factor Authentication
+                {t('security.twoFactor')}
               </h3>
 
               <div>
@@ -358,10 +328,10 @@ export function ConfigurationPage() {
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">
-                      Enforce 2FA for admins
+                      {t('security.enforce2faAdmins')}
                     </span>
                     <p className="text-sm text-gray-500">
-                      Require 2FA for all admin users
+                      {t('security.enforce2faAdminsHint')}
                     </p>
                   </div>
                 </label>
@@ -376,10 +346,10 @@ export function ConfigurationPage() {
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-700">
-                      Enforce 2FA for all users
+                      {t('security.enforce2faAll')}
                     </span>
                     <p className="text-sm text-gray-500">
-                      Require 2FA for all platform users
+                      {t('security.enforce2faAllHint')}
                     </p>
                   </div>
                 </label>
@@ -399,11 +369,10 @@ export function ConfigurationPage() {
           >
             <Settings className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <h3 className="text-base font-semibold text-gray-700 mb-1">
-              {sectionName} configuration
+              {t('defaultSection.title', { name: sectionName })}
             </h3>
             <p className="text-sm max-w-md mx-auto">
-              This section is not yet available. Choose another section from the
-              sidebar, or check back after the next platform release.
+              {t('defaultSection.body')}
             </p>
           </div>
         );
@@ -416,9 +385,9 @@ export function ConfigurationPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            System Configuration
+            {t('title')}
           </h1>
-          <p className="text-gray-500">Manage platform-wide settings</p>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         {hasChanges && (
           <button
@@ -426,7 +395,7 @@ export function ConfigurationPage() {
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
           >
             <Save className="h-4 w-4" />
-            Save Changes
+            {t('saveChanges')}
           </button>
         )}
       </div>
@@ -435,7 +404,7 @@ export function ConfigurationPage() {
         {/* Sidebar */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden h-fit">
           <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-gray-900">Settings</h2>
+            <h2 className="font-semibold text-gray-900">{t('sidebarTitle')}</h2>
           </div>
           <nav className="divide-y divide-gray-100">
             {configSections.map((section) => (

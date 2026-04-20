@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '@/components/LiveDataRequiredPage';
 
 interface VendorRecommendationProps {
@@ -11,9 +12,10 @@ interface VendorRecommendationProps {
 }
 
 export function VendorRecommendation(_props: VendorRecommendationProps) {
+  const t = useTranslations('simple');
   return (
     <LiveDataRequiredPage
-      title="Vendor Recommendation"
+      title={t('vendorRecommendation')}
       feature="vendor recommendation data"
       description="Static vendor recommendations have been removed. This component now requires live vendor ranking and assignment data."
     />

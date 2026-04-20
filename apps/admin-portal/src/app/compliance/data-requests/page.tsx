@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../../components/LiveDataRequiredPage';
 
 export default function ComplianceDataRequestsPage() {
+  const t = useTranslations('complianceDataRequestsPage');
   return (
     <LiveDataRequiredPage
-      title="Data Subject Requests"
-      feature="data request workflow"
-      description="Synthetic privacy requests have been removed. This page now requires live compliance case-management data."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

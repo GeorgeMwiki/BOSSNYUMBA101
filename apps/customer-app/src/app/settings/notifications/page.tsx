@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -31,15 +32,15 @@ const defaults: NotificationPreferences = {
   emergencies: { email: true, sms: true, push: true },
 };
 
-const labels: Record<Category, string> = {
-  rentReminders: 'Rent reminders',
-  maintenanceUpdates: 'Maintenance updates',
-  announcements: 'Building announcements',
-  marketing: 'Marketing / promotions',
-  emergencies: 'Emergencies',
-};
-
 export default function NotificationSettingsPage(): React.ReactElement {
+  const t = useTranslations('notificationSettings');
+  const labels: Record<Category, string> = {
+    rentReminders: t('labels.rentReminders'),
+    maintenanceUpdates: t('labels.maintenanceUpdates'),
+    announcements: t('labels.announcements'),
+    marketing: t('labels.marketing'),
+    emergencies: t('labels.emergencies'),
+  };
   const [prefs, setPrefs] = useState<NotificationPreferences>(defaults);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -105,14 +106,14 @@ export default function NotificationSettingsPage(): React.ReactElement {
 
   return (
     <main className="p-6 max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">Notification preferences</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
 
       {loadError && (
         <Alert variant="danger">
           <AlertDescription>
             {loadError}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -126,7 +127,7 @@ export default function NotificationSettingsPage(): React.ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Channels per category</CardTitle>
+          <CardTitle>{t('channelsPerCategory')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -140,10 +141,10 @@ export default function NotificationSettingsPage(): React.ReactElement {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left">
-                    <th scope="col" className="p-2"><span className="sr-only">Category</span></th>
-                    <th scope="col" className="p-2">Email</th>
+                    <th scope="col" className="p-2"><span className="sr-only">{t('categoryHeader')}</span></th>
+                    <th scope="col" className="p-2">{t('emailHeader')}</th>
                     <th scope="col" className="p-2">SMS</th>
-                    <th scope="col" className="p-2">Push</th>
+                    <th scope="col" className="p-2">{t('pushHeader')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,9 +171,9 @@ export default function NotificationSettingsPage(): React.ReactElement {
                 onClick={save}
                 loading={saving}
                 disabled={saving}
-                aria-label="Save notification preferences"
+                aria-label={t('savePreferencesAria')}
               >
-                Save preferences
+                {t('savePreferences')}
               </Button>
             </>
           )}

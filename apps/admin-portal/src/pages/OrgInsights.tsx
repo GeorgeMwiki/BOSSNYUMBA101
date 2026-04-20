@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { TrendingUp, Loader2, AlertOctagon } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -43,6 +44,7 @@ interface ProcessStats {
 const PROCESS_KINDS = ['rent_collection', 'maintenance_resolution', 'lease_renewal'] as const;
 
 export default function OrgInsights(): JSX.Element {
+  const t = useTranslations('orgInsights');
   const [bottlenecks, setBottlenecks] = useState<readonly Bottleneck[]>([]);
   const [improvements, setImprovements] = useState<Improvements | null>(null);
   const [statsByKind, setStatsByKind] = useState<Record<string, ProcessStats | null>>({});
@@ -56,7 +58,7 @@ export default function OrgInsights(): JSX.Element {
       api.get<Improvements>('/org/improvements'),
     ]);
     if (b.success && b.data) setBottlenecks(b.data);
-    else if (!b.success) setError(b.error ?? 'Org service unavailable.');
+    else if (!b.success) setError(b.error ?? t('errors.orgUnavailable'));
     if (imp.success && imp.data) setImprovements(imp.data);
 
     const stats: Record<string, ProcessStats | null> = {};
@@ -66,7 +68,7 @@ export default function OrgInsights(): JSX.Element {
     }
     setStatsByKind(stats);
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -77,9 +79,9 @@ export default function OrgInsights(): JSX.Element {
       <header className="flex items-center gap-3">
         <TrendingUp className="h-6 w-6 text-violet-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Organisation insights</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Bottlenecks, improvements, and process performance.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -92,18 +94,18 @@ export default function OrgInsights(): JSX.Element {
 
       {loading ? (
         <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       ) : (
         <>
           <section>
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <AlertOctagon className="h-4 w-4 text-amber-500" />
-              Current bottlenecks ({bottlenecks.length})
+              {t('bottlenecksTitle', { count: bottlenecks.length })}
             </h3>
             {bottlenecks.length === 0 ? (
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-sm text-gray-500">
-                No bottlenecks detected.
+                {t('noBottlenecks')}
               </div>
             ) : (
               <ul className="space-y-2">
@@ -132,15 +134,15 @@ export default function OrgInsights(): JSX.Element {
           {improvements && (
             <section className="bg-white border border-gray-200 rounded-xl p-5">
               <h3 className="font-semibold text-gray-900 mb-3">
-                Improvements (last {improvements.windowDays}d)
+                {t('improvementsTitle', { days: improvements.windowDays })}
               </h3>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-gray-500">
-                    <th className="py-2">Metric</th>
-                    <th>Baseline</th>
-                    <th>Current</th>
-                    <th>Delta</th>
+                    <th className="py-2">{t('table.metric')}</th>
+                    <th>{t('table.baseline')}</th>
+                    <th>{t('table.current')}</th>
+                    <th>{t('table.delta')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,12 +188,12 @@ export default function OrgInsights(): JSX.Element {
                       </p>
                       {s.slaBreachCount > 0 && (
                         <p className="text-xs text-red-600 mt-1">
-                          {s.slaBreachCount} SLA breaches
+                          {t('slaBreaches', { count: s.slaBreachCount })}
                         </p>
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-gray-400">No data.</p>
+                    <p className="text-sm text-gray-400">{t('noData')}</p>
                   )}
                 </div>
               );

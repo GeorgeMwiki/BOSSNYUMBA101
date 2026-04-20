@@ -17,6 +17,7 @@ import {
   Save,
   Info,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 
@@ -47,15 +48,16 @@ interface MeterReading {
   photo?: string;
 }
 
-const INSPECTION_AREAS: Omit<InspectionArea, 'items'>[] = [
-  { id: 'entrance', name: 'Entrance & Hallway', description: 'Front door, locks, flooring, lights' },
-  { id: 'living', name: 'Living Room', description: 'Walls, ceiling, windows, outlets' },
-  { id: 'kitchen', name: 'Kitchen', description: 'Appliances, cabinets, plumbing, surfaces' },
-  { id: 'bedroom1', name: 'Master Bedroom', description: 'Walls, flooring, closet, windows' },
-  { id: 'bedroom2', name: 'Second Bedroom', description: 'Walls, flooring, closet, windows' },
-  { id: 'bathroom1', name: 'Main Bathroom', description: 'Fixtures, tiles, plumbing, ventilation' },
-  { id: 'bathroom2', name: 'Second Bathroom', description: 'Fixtures, tiles, plumbing, ventilation' },
-  { id: 'outdoor', name: 'Balcony/Outdoor', description: 'Railings, surfaces, drainage' },
+type AreaKey = 'entrance' | 'living' | 'kitchen' | 'bedroom1' | 'bedroom2' | 'bathroom1' | 'bathroom2' | 'outdoor';
+const AREA_DEFS: { id: AreaKey; nameKey: string; descKey: string }[] = [
+  { id: 'entrance', nameKey: 'areaEntrance', descKey: 'areaEntranceDesc' },
+  { id: 'living', nameKey: 'areaLiving', descKey: 'areaLivingDesc' },
+  { id: 'kitchen', nameKey: 'areaKitchen', descKey: 'areaKitchenDesc' },
+  { id: 'bedroom1', nameKey: 'areaBedroom1', descKey: 'areaBedroom1Desc' },
+  { id: 'bedroom2', nameKey: 'areaBedroom2', descKey: 'areaBedroom2Desc' },
+  { id: 'bathroom1', nameKey: 'areaBathroom1', descKey: 'areaBathroom1Desc' },
+  { id: 'bathroom2', nameKey: 'areaBathroom2', descKey: 'areaBathroom2Desc' },
+  { id: 'outdoor', nameKey: 'areaOutdoor', descKey: 'areaOutdoorDesc' },
 ];
 
 const AREA_ITEMS: Record<string, string[]> = {
@@ -77,27 +79,30 @@ const conditionColors: Record<ConditionRating, { bg: string; text: string; borde
   not_applicable: { bg: 'bg-gray-50', text: 'text-gray-500', border: 'border-gray-200' },
 };
 
-const conditionLabels: Record<ConditionRating, string> = {
-  excellent: 'Excellent',
-  good: 'Good',
-  fair: 'Fair',
-  poor: 'Poor',
-  not_applicable: 'N/A',
+const conditionLabelKeys: Record<ConditionRating, string> = {
+  excellent: 'condExcellent',
+  good: 'condGood',
+  fair: 'condFair',
+  poor: 'condPoor',
+  not_applicable: 'condNA',
 };
 
 export default function ConductInspectionPage() {
+  const t = useTranslations('conductInspection');
   const rawParams = useParams();
   const params = { id: (rawParams?.id ?? '') as string };
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [inspectionType] = useState<InspectionType>('move_in'); // Would come from API
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [areas, setAreas] = useState<InspectionArea[]>(() =>
-    INSPECTION_AREAS.map((area) => ({
-      ...area,
-      items: AREA_ITEMS[area.id].map((name) => ({
-        id: `${area.id}_${name.replace(/\s/g, '_').toLowerCase()}`,
+    AREA_DEFS.map((def) => ({
+      id: def.id,
+      name: t(def.nameKey as never),
+      description: t(def.descKey as never),
+      items: AREA_ITEMS[def.id].map((name) => ({
+        id: `${def.id}_${name.replace(/\s/g, '_').toLowerCase()}`,
         name,
         condition: 'good' as ConditionRating,
         photos: [],
@@ -308,7 +313,7 @@ export default function ConductInspectionPage() {
       }
       router.push(`/inspections/${params.id}?completed=true`);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to submit inspection.');
+      setSubmitError(err instanceof Error ? err.message : t('failedSubmit'));
     } finally {
       setIsSubmitting(false);
     }
@@ -316,7 +321,7 @@ export default function ConductInspectionPage() {
 
   return (
     <>
-      <PageHeader title="Conduct Inspection" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <input
         ref={fileInputRef}
@@ -329,7 +334,7 @@ export default function ConductInspectionPage() {
       {/* Progress Bar */}
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 sticky top-14 z-10">
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-600">Overall Progress</span>
+          <span className="text-gray-600">{t('overallProgress')}</span>
           <span className="font-medium">{Math.round(progress * 100)}%</span>
         </div>
         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -353,11 +358,11 @@ export default function ConductInspectionPage() {
             <div className="flex gap-3">
               <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
               <div className="text-sm text-primary-800">
-                <p className="font-medium mb-1">Inspection Tips</p>
+                <p className="font-medium mb-1">{t('tipsTitle')}</p>
                 <ul className="text-primary-700 space-y-1 text-xs">
-                  <li>• Take clear photos of any damage or defects</li>
-                  <li>• Check all switches, outlets, and appliances</li>
-                  <li>• Note any issues, even minor ones</li>
+                  <li>• {t('tipPhotos')}</li>
+                  <li>• {t('tipCheck')}</li>
+                  <li>• {t('tipNote')}</li>
                 </ul>
               </div>
             </div>
@@ -380,7 +385,7 @@ export default function ConductInspectionPage() {
                 <div className="text-center">
                   <h2 className="font-semibold">{currentArea.name}</h2>
                   <p className="text-xs text-gray-500">
-                    Area {currentAreaIndex + 1} of {areas.length}
+                    {t('areaOf', { current: currentAreaIndex + 1, total: areas.length })}
                   </p>
                 </div>
                 <button
@@ -405,13 +410,13 @@ export default function ConductInspectionPage() {
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="font-medium">{item.name}</h3>
                         {conditionChanged && (
-                          <span className="badge-warning text-xs">Changed</span>
+                          <span className="badge-warning text-xs">{t('changed')}</span>
                         )}
                       </div>
 
                       {/* Condition Buttons */}
                       <div className="flex gap-2 mb-4">
-                        {(Object.keys(conditionLabels) as ConditionRating[]).map((cond) => (
+                        {(Object.keys(conditionLabelKeys) as ConditionRating[]).map((cond) => (
                           <button
                             key={cond}
                             onClick={() => setItemCondition(item.id, cond)}
@@ -421,7 +426,7 @@ export default function ConductInspectionPage() {
                                 : 'border-gray-200 text-gray-500 hover:border-gray-300'
                             }`}
                           >
-                            {conditionLabels[cond]}
+                            {t(conditionLabelKeys[cond] as never)}
                           </button>
                         ))}
                       </div>
@@ -429,7 +434,7 @@ export default function ConductInspectionPage() {
                       {/* Previous Condition (for move-out) */}
                       {hasPreviousCondition && (
                         <div className="text-xs text-gray-500 mb-3">
-                          Move-in condition: {conditionLabels[item.previousCondition!]}
+                          {t('moveInCondition', { label: t(conditionLabelKeys[item.previousCondition!] as never) })}
                         </div>
                       )}
 
@@ -455,13 +460,13 @@ export default function ConductInspectionPage() {
                           className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 flex-shrink-0"
                         >
                           <Camera className="w-5 h-5" />
-                          <span className="text-xs mt-1">Photo</span>
+                          <span className="text-xs mt-1">{t('photo')}</span>
                         </button>
                       </div>
 
                       {/* Notes */}
                       <textarea
-                        placeholder="Add notes about this item..."
+                        placeholder={t('notesPlaceholder')}
                         value={item.notes}
                         onChange={(e) => setItemNotes(item.id, e.target.value)}
                         className="input text-sm min-h-[60px]"
@@ -479,19 +484,19 @@ export default function ConductInspectionPage() {
           <div className="px-4 py-4 space-y-6">
             <div className="text-center mb-6">
               <Gauge className="w-12 h-12 text-primary-500 mx-auto mb-2" />
-              <h2 className="text-xl font-semibold">Meter Readings</h2>
-              <p className="text-sm text-gray-500">Record current meter readings</p>
+              <h2 className="text-xl font-semibold">{t('meterReadings')}</h2>
+              <p className="text-sm text-gray-500">{t('recordReadings')}</p>
             </div>
 
             {meterReadings.map((meter, idx) => (
               <div key={meter.type} className="card p-4">
-                <label className="label capitalize">{meter.type} Meter</label>
+                <label className="label capitalize">{t('meterSuffix', { type: meter.type })}</label>
                 <div className="flex gap-3">
                   <div className="relative flex-1">
                     <input
                       type="number"
                       className="input pr-14"
-                      placeholder="Enter reading"
+                      placeholder={t('enterReading')}
                       value={meter.reading}
                       onChange={(e) => {
                         const newReadings = [...meterReadings];
@@ -517,7 +522,7 @@ export default function ConductInspectionPage() {
                   <div className="mt-2">
                     <img
                       src={meter.photo}
-                      alt={`${meter.type} meter`}
+                      alt={t('meterAlt', { type: meter.type })}
                       className="w-24 h-24 rounded-lg object-cover"
                     />
                   </div>
@@ -532,9 +537,9 @@ export default function ConductInspectionPage() {
           <div className="px-4 py-4 space-y-6">
             <div className="text-center mb-6">
               <PenLine className="w-12 h-12 text-primary-500 mx-auto mb-2" />
-              <h2 className="text-xl font-semibold">Customer Signature</h2>
+              <h2 className="text-xl font-semibold">{t('customerSignature')}</h2>
               <p className="text-sm text-gray-500">
-                Ask the customer to sign below to confirm the inspection
+                {t('signCaption')}
               </p>
             </div>
 
@@ -557,11 +562,11 @@ export default function ConductInspectionPage() {
 
               <div className="flex gap-3">
                 <button onClick={clearSignature} className="btn-secondary flex-1">
-                  Clear
+                  {t('clear')}
                 </button>
                 <button onClick={saveSignature} className="btn-primary flex-1">
                   <PenLine className="w-4 h-4 mr-2" />
-                  Apply Signature
+                  {t('applySignature')}
                 </button>
               </div>
             </div>
@@ -570,7 +575,7 @@ export default function ConductInspectionPage() {
               <div className="card p-4 bg-success-50 border-success-200">
                 <div className="flex items-center gap-2 text-success-700">
                   <CheckCircle className="w-5 h-5" />
-                  <span className="font-medium">Signature captured</span>
+                  <span className="font-medium">{t('signatureCaptured')}</span>
                 </div>
               </div>
             )}
@@ -583,7 +588,7 @@ export default function ConductInspectionPage() {
         <div className="flex gap-3">
           <button onClick={goToPrevArea} className="btn-secondary flex-1 py-4">
             <ChevronLeft className="w-5 h-5 mr-1" />
-            Previous
+            {t('previous')}
           </button>
           {showSignatureStep ? (
             <>
@@ -602,7 +607,7 @@ export default function ConductInspectionPage() {
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Complete Inspection
+                  {t('completeInspection')}
                 </>
               )}
             </button>
@@ -612,12 +617,12 @@ export default function ConductInspectionPage() {
               onClick={() => setShowSignatureStep(true)}
               className="btn-primary flex-1 py-4"
             >
-              Continue to Signature
+              {t('continueSignature')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </button>
           ) : (
             <button onClick={goToNextArea} className="btn-primary flex-1 py-4">
-              {currentAreaIndex === areas.length - 1 ? 'Continue to Meters' : 'Next Area'}
+              {currentAreaIndex === areas.length - 1 ? t('continueMeters') : t('nextArea')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </button>
           )}

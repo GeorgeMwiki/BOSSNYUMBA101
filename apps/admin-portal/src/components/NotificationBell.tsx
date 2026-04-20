@@ -13,6 +13,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import { Bell } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -24,6 +25,7 @@ interface NotificationSummary {
 const REFRESH_MS = 60_000;
 
 export function NotificationBell(): JSX.Element {
+  const t = useTranslations('notificationBell');
   const [summary, setSummary] = useState<NotificationSummary>({
     pendingExceptions: 0,
     newInsights: 0,
@@ -68,7 +70,7 @@ export function NotificationBell(): JSX.Element {
     <div className="relative">
       <button
         type="button"
-        aria-label={`Notifications (${total} pending)`}
+        aria-label={t('buttonAria', { count: total })}
         className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
         onClick={() => setOpen((p) => !p)}
       >
@@ -94,13 +96,13 @@ export function NotificationBell(): JSX.Element {
             onClick={() => setOpen(false)}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Exception inbox</span>
+              <span className="text-sm font-medium text-gray-900">{t('exceptionInbox')}</span>
               <span className="text-xs font-semibold text-red-600">
                 {summary.pendingExceptions}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              Proposed actions awaiting approval
+              {t('proposedActionsDesc')}
             </p>
           </Link>
           <Link
@@ -110,13 +112,13 @@ export function NotificationBell(): JSX.Element {
             onClick={() => setOpen(false)}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Proactive insights</span>
+              <span className="text-sm font-medium text-gray-900">{t('proactiveInsights')}</span>
               <span className="text-xs font-semibold text-violet-600">
                 {summary.newInsights}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              New findings from the brain
+              {t('brainFindings')}
             </p>
           </Link>
         </div>

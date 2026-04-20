@@ -11,6 +11,7 @@ import {
   ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
@@ -25,6 +26,8 @@ interface ThreadRow {
 }
 
 export default function ThreadsPage() {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const [rows, setRows] = useState<ThreadRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +42,7 @@ export default function ThreadsPage() {
 
   return (
     <>
-      <PageHeader title="Brain Threads" subtitle="All conversations with the Brain" showBack />
+      <PageHeader title={tSimple('brainThreads')} subtitle={tSimple('brainThreadsSubtitle')} showBack />
       <div className="px-4 py-3 pb-24 max-w-3xl mx-auto flex flex-col gap-2">
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex items-start gap-2">
@@ -55,9 +58,12 @@ export default function ThreadsPage() {
         {rows?.length === 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white p-6 flex flex-col items-center text-center gap-2 text-gray-600">
             <Brain className="w-8 h-8 text-sky-500" />
-            <p className="font-medium text-gray-900">No threads yet.</p>
+            <p className="font-medium text-gray-900">{tMisc('noThreads')}</p>
             <p className="text-sm">
-              Start a conversation from <Link href="/brain" className="text-sky-600 underline">Brain</Link>.
+              {tMisc.rich('startFromBrain', {
+                brain: tMisc('brainLabel'),
+                link: (chunks) => <Link href="/brain" className="text-sky-600 underline">{chunks}</Link>,
+              })}
             </p>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   PartyPopper,
   Home,
@@ -75,6 +76,7 @@ const TIME_SLOTS = [
 ];
 
 export default function OnboardingCompletePage() {
+  const t = useTranslations('onboardingComplete');
   const router = useRouter();
   const { user } = useAuth();
   const [welcomeItems, setWelcomeItems] = useState(WELCOME_ITEMS);
@@ -186,7 +188,7 @@ export default function OnboardingCompletePage() {
       <div className="px-4 -mt-8 pb-8 max-w-md mx-auto space-y-6">
         {/* Move-in Details Card */}
         <div className="card p-5 shadow-lg">
-          <h2 className="font-semibold text-lg mb-4">Move-in Details</h2>
+          <h2 className="font-semibold text-lg mb-4">{t('moveInDetails')}</h2>
           <div className="space-y-4">
             {MOVE_IN_DETAILS.map((detail, idx) => {
               const Icon = detail.icon;
@@ -206,8 +208,7 @@ export default function OnboardingCompletePage() {
 
           <div className="mt-4 p-3 bg-primary-50 rounded-lg">
             <p className="text-sm text-primary-800">
-              <strong>Important:</strong> Please bring a valid ID when collecting
-              your keys.
+              <strong>{t('importantLabel')}:</strong> {t('bringValidId')}
             </p>
           </div>
         </div>
@@ -220,7 +221,7 @@ export default function OnboardingCompletePage() {
                 <Calendar className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <h3 className="font-semibold">Schedule First Check-In</h3>
+                <h3 className="font-semibold">{t('scheduleFirstCheckIn')}</h3>
                 <p className="text-sm text-gray-500">
                   We&apos;ll check in after your first week
                 </p>
@@ -230,13 +231,13 @@ export default function OnboardingCompletePage() {
             {showScheduler ? (
               <div className="space-y-4 mt-4">
                 <div>
-                  <label className="label">Select Date</label>
+                  <label className="label">{t('selectDate')}</label>
                   <select
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     className="input"
                   >
-                    <option value="">Choose a date</option>
+                    <option value="">{t('chooseDate')}</option>
                     {getAvailableDates().map((date) => (
                       <option key={date} value={date}>
                         {new Date(date).toLocaleDateString('en-US', {
@@ -250,7 +251,7 @@ export default function OnboardingCompletePage() {
                 </div>
 
                 <div>
-                  <label className="label">Select Time</label>
+                  <label className="label">{t('selectTime')}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {TIME_SLOTS.map((slot) => (
                       <button
@@ -371,35 +372,35 @@ export default function OnboardingCompletePage() {
 
         {/* Quick Actions */}
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Quick Actions</h3>
+          <h3 className="font-medium text-gray-700">{t('quickActions')}</h3>
           <div className="grid grid-cols-2 gap-3">
             <Link
               href="/lease"
               className="card p-4 text-center hover:bg-gray-50 transition-colors"
             >
               <FileText className="w-6 h-6 text-primary-600 mx-auto mb-2" />
-              <div className="text-sm font-medium">View Lease</div>
+              <div className="text-sm font-medium">{t('viewLease')}</div>
             </Link>
             <Link
               href="/support"
               className="card p-4 text-center hover:bg-gray-50 transition-colors"
             >
               <MessageCircle className="w-6 h-6 text-primary-600 mx-auto mb-2" />
-              <div className="text-sm font-medium">Get Support</div>
+              <div className="text-sm font-medium">{t('getSupport')}</div>
             </Link>
           </div>
         </div>
 
         {/* Contact Manager */}
         <div className="card p-4">
-          <h3 className="font-medium mb-3">Your Property Manager</h3>
+          <h3 className="font-medium mb-3">{t('yourPropertyManager')}</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
                 <span className="text-primary-700 font-semibold">JM</span>
               </div>
               <div>
-                <div className="font-medium">Jane Mwangi</div>
+                <div className="font-medium">{t('sampleManagerName')}</div>
                 <div className="text-sm text-gray-500">{SUPPORT_PHONE || '—'}</div>
               </div>
             </div>

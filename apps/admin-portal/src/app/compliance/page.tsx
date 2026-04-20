@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../components/LiveDataRequiredPage';
 
 export default function CompliancePage() {
+  const t = useTranslations('compliancePage');
   return (
     <LiveDataRequiredPage
-      title="Compliance Overview"
-      feature="compliance overview data"
-      description="Synthetic compliance scorecards and tenant review status have been removed. This view now requires live compliance records."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

@@ -242,8 +242,8 @@ export default function IntegrationsWebhooksPage() {
       {filteredWebhooks.length === 0 && (
         <EmptyState
           icon={<Webhook className="h-8 w-8" />}
-          title="No webhooks found"
-          description="Add a webhook to receive real-time events from the platform."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   CheckCircle,
   Sparkles,
@@ -95,6 +96,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
 ];
 
 export default function OnboardingPage() {
+  const t = useTranslations('onboardingDashboard');
   const router = useRouter();
   const { isAuthenticated, loading, user } = useAuth();
   const [steps, setSteps] = useState<OnboardingStep[]>(ONBOARDING_STEPS);
@@ -149,18 +151,17 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="bg-gradient-to-br from-primary-600 to-primary-700 text-white px-4 pt-8 pb-12 rounded-b-3xl">
         <div className="max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-2">Welcome to BOSSNYUMBA</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('welcomeHeading')}</h1>
           <p className="text-primary-100 text-sm">
-            Let&apos;s get you set up in your new home,{' '}
-            {user?.firstName || 'there'}!
+            {t('welcomeGreeting', { name: user?.firstName || t('youFallback') })}
           </p>
 
           {/* Progress Indicator */}
           <div className="mt-6">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-primary-100">Your Progress</span>
+              <span className="text-primary-100">{t('yourProgress')}</span>
               <span className="font-medium">
-                {completedCount} of {steps.length} steps
+                {t('stepProgress', { current: completedCount, total: steps.length })}
               </span>
             </div>
             <div className="h-2 bg-primary-800/50 rounded-full overflow-hidden">
@@ -186,7 +187,7 @@ export default function OnboardingPage() {
             </div>
             <div className="flex-1">
               <div className="text-xs text-primary-600 font-medium uppercase tracking-wide mb-1">
-                Step {steps.indexOf(currentStep) + 1} &middot;{' '}
+                {t('stepLabel', { step: steps.indexOf(currentStep) + 1 })} &middot;{' '}
                 {currentStep.stateCode}
               </div>
               <h2 className="font-semibold text-gray-900">
@@ -211,13 +212,13 @@ export default function OnboardingPage() {
             </div>
             <div className="flex-1">
               <div className="text-xs text-success-600 font-medium uppercase tracking-wide mb-1">
-                All steps complete
+                {t('allStepsComplete')}
               </div>
               <h2 className="font-semibold text-gray-900">
-                Finish Onboarding
+                {t('finishOnboarding')}
               </h2>
               <p className="text-sm text-gray-500">
-                Get your welcome badge and move-in details
+                {t('getWelcomeBadge')}
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-success-600" />
@@ -226,7 +227,7 @@ export default function OnboardingPage() {
 
         {/* Steps List */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-500">All Steps</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('allSteps')}</h3>
 
           <div className="card divide-y divide-gray-100">
             {steps.map((step, index) => {
@@ -297,7 +298,7 @@ export default function OnboardingPage() {
 
                   {/* Status indicator */}
                   {isCompleted && (
-                    <span className="badge-success text-xs">Done</span>
+                    <span className="badge-success text-xs">{t('done')}</span>
                   )}
                   {isCurrent && (
                     <ChevronRight className="w-5 h-5 text-primary-500" />
@@ -315,7 +316,7 @@ export default function OnboardingPage() {
             className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-2"
           >
             <Home className="w-4 h-4" />
-            Go to Dashboard
+            {t('goToDashboard')}
           </Link>
           <p className="text-xs text-gray-400 mt-2">
             You can complete onboarding later from your profile

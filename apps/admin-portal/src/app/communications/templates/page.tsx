@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   Mail,
@@ -80,6 +81,7 @@ const templates: Template[] = [
 ];
 
 export default function CommunicationsTemplatesPage() {
+  const tr = useTranslations('templatesPage');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -96,15 +98,15 @@ export default function CommunicationsTemplatesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Email & SMS Templates
+            {tr('title')}
           </h1>
           <p className="text-gray-500">
-            Manage communication templates across tenants
+            {tr('subtitle')}
           </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
           <Plus className="h-4 w-4" />
-          New Template
+          {tr('newTemplate')}
         </button>
       </div>
 
@@ -114,7 +116,7 @@ export default function CommunicationsTemplatesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search templates..."
+            placeholder={tr('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -125,9 +127,9 @@ export default function CommunicationsTemplatesPage() {
           onChange={(e) => setTypeFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
-          <option value="all">All Types</option>
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
+          <option value="all">{tr('filters.all')}</option>
+          <option value="email">{tr('filters.email')}</option>
+          <option value="sms">{tr('filters.sms')}</option>
         </select>
         {/* "Category" filter button removed until we model template
             categories server-side. The type select above is the only
@@ -174,11 +176,11 @@ export default function CommunicationsTemplatesPage() {
                 {template.category}
               </span>
               <span className="text-xs text-gray-500">
-                {template.usageCount.toLocaleString()} uses
+                {tr('usesCount', { count: template.usageCount })}
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Updated {new Date(template.lastUpdated).toLocaleDateString()}
+              {tr('updatedOn', { date: new Date(template.lastUpdated).toLocaleDateString() })}
             </p>
           </div>
         ))}
@@ -187,8 +189,8 @@ export default function CommunicationsTemplatesPage() {
       {filteredTemplates.length === 0 && (
         <EmptyState
           icon={<FileText className="h-8 w-8" />}
-          title="No templates found"
-          description="Create your first message template."
+          title={tr('empty.title')}
+          description={tr('empty.description')}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface ConditionalSurvey {
   readonly id: string;
@@ -24,6 +25,7 @@ interface ConditionalSurvey {
 }
 
 export default function ConditionalSurveysPage(): React.ReactElement {
+  const t = useTranslations('conditionalSurveys');
   const router = useRouter();
   const [surveys, setSurveys] = useState<ReadonlyArray<ConditionalSurvey>>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,10 +47,10 @@ export default function ConditionalSurveysPage(): React.ReactElement {
       }
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Failed to load surveys');
+      setError(err instanceof Error ? err.message : t('failedLoad'));
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -63,9 +65,9 @@ export default function ConditionalSurveysPage(): React.ReactElement {
   return (
     <main className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Conditional Surveys</h1>
-        <Button onClick={handleNewSurvey} aria-label="Create new conditional survey">
-          + New survey
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <Button onClick={handleNewSurvey} aria-label={t('newSurveyAria')}>
+          {t('newSurvey')}
         </Button>
       </div>
 
@@ -74,7 +76,7 @@ export default function ConditionalSurveysPage(): React.ReactElement {
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -88,11 +90,11 @@ export default function ConditionalSurveysPage(): React.ReactElement {
         </div>
       ) : surveys.length === 0 ? (
         <EmptyState
-          title="No conditional surveys"
-          description="Surveys triggered by move-ins and maintenance visits will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDesc')}
           action={
-            <Button onClick={handleNewSurvey} aria-label="Create new conditional survey">
-              + New survey
+            <Button onClick={handleNewSurvey} aria-label={t('newSurveyAria')}>
+              {t('newSurvey')}
             </Button>
           }
         />
@@ -107,8 +109,8 @@ export default function ConditionalSurveysPage(): React.ReactElement {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">Trigger: {s.triggeredBy}</p>
-                <p className="text-sm">Severity: {s.severityEstimate}</p>
+                <p className="text-sm">{t('triggerLabel', { triggeredBy: s.triggeredBy })}</p>
+                <p className="text-sm">{t('severityLabel', { severity: s.severityEstimate })}</p>
               </CardContent>
             </Card>
           ))}

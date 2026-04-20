@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   BarChart3,
   Download,
@@ -38,56 +39,16 @@ interface ReportTemplate {
   lastRun: string | null;
 }
 
-const reportTemplates: ReportTemplate[] = [
-  {
-    id: '1',
-    name: 'Revenue Analysis',
-    description: 'Monthly revenue breakdown by tenant and plan',
-    category: 'Financial',
-    icon: TrendingUp,
-    lastRun: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Tenant Growth',
-    description: 'New tenant signups and churn analysis',
-    category: 'Growth',
-    icon: Users,
-    lastRun: new Date(Date.now() - 172800000).toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Platform Usage',
-    description: 'Feature usage statistics across tenants',
-    category: 'Usage',
-    icon: BarChart3,
-    lastRun: null,
-  },
-  {
-    id: '4',
-    name: 'Property Portfolio',
-    description: 'Summary of all properties and units managed',
-    category: 'Operations',
-    icon: Building2,
-    lastRun: new Date(Date.now() - 259200000).toISOString(),
-  },
-  {
-    id: '5',
-    name: 'Payment Performance',
-    description: 'Payment success rates and failure analysis',
-    category: 'Financial',
-    icon: CreditCard,
-    lastRun: new Date(Date.now() - 43200000).toISOString(),
-  },
-  {
-    id: '6',
-    name: 'Subscription Summary',
-    description: 'Active subscriptions by plan and billing status',
-    category: 'Financial',
-    icon: FileText,
-    lastRun: new Date(Date.now() - 604800000).toISOString(),
-  },
-];
+function buildReportTemplates(t: (key: string) => string): ReportTemplate[] {
+  return [
+    { id: '1', name: t('templates.revenue.name'), description: t('templates.revenue.description'), category: t('categories.financial'), icon: TrendingUp, lastRun: new Date(Date.now() - 86400000).toISOString() },
+    { id: '2', name: t('templates.growth.name'), description: t('templates.growth.description'), category: t('categories.growth'), icon: Users, lastRun: new Date(Date.now() - 172800000).toISOString() },
+    { id: '3', name: t('templates.usage.name'), description: t('templates.usage.description'), category: t('categories.usage'), icon: BarChart3, lastRun: null },
+    { id: '4', name: t('templates.portfolio.name'), description: t('templates.portfolio.description'), category: t('categories.operations'), icon: Building2, lastRun: new Date(Date.now() - 259200000).toISOString() },
+    { id: '5', name: t('templates.payments.name'), description: t('templates.payments.description'), category: t('categories.financial'), icon: CreditCard, lastRun: new Date(Date.now() - 43200000).toISOString() },
+    { id: '6', name: t('templates.subscriptions.name'), description: t('templates.subscriptions.description'), category: t('categories.financial'), icon: FileText, lastRun: new Date(Date.now() - 604800000).toISOString() },
+  ];
+}
 
 const revenueData = [
   { month: 'Aug', mrr: 2100000, newMrr: 180000, churnedMrr: 50000 },
@@ -98,12 +59,14 @@ const revenueData = [
   { month: 'Jan', mrr: 3500000, newMrr: 420000, churnedMrr: 120000 },
 ];
 
-const planDistribution = [
-  { name: 'Enterprise', value: 35, color: '#8b5cf6' },
-  { name: 'Professional', value: 45, color: '#3b82f6' },
-  { name: 'Starter', value: 15, color: '#22c55e' },
-  { name: 'Trial', value: 5, color: '#f59e0b' },
-];
+function buildPlanDistribution(t: (key: string) => string) {
+  return [
+    { name: t('plans.enterprise'), value: 35, color: '#8b5cf6' },
+    { name: t('plans.professional'), value: 45, color: '#3b82f6' },
+    { name: t('plans.starter'), value: 15, color: '#22c55e' },
+    { name: t('plans.trial'), value: 5, color: '#f59e0b' },
+  ];
+}
 
 const tenantGrowthData = [
   { month: 'Aug', acquired: 12, churned: 2 },
@@ -115,6 +78,9 @@ const tenantGrowthData = [
 ];
 
 export function ReportsPage() {
+  const t = useTranslations('reportsPage');
+  const reportTemplates = buildReportTemplates(t);
+  const planDistribution = buildPlanDistribution(t);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'templates' | 'scheduled'>('dashboard');
   const [dateRange, setDateRange] = useState('last30');
 
@@ -130,9 +96,9 @@ export function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Reports & Analytics
+            {t('title')}
           </h1>
-          <p className="text-gray-500">Platform-wide insights and reporting</p>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -140,14 +106,14 @@ export function ReportsPage() {
             onChange={(e) => setDateRange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
-            <option value="last7">Last 7 days</option>
-            <option value="last30">Last 30 days</option>
-            <option value="last90">Last 90 days</option>
-            <option value="thisYear">This year</option>
+            <option value="last7">{t('dateRange.last7')}</option>
+            <option value="last30">{t('dateRange.last30')}</option>
+            <option value="last90">{t('dateRange.last90')}</option>
+            <option value="thisYear">{t('dateRange.thisYear')}</option>
           </select>
           <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
             <Download className="h-4 w-4" />
-            Export
+            {t('export')}
           </button>
         </div>
       </div>
@@ -163,7 +129,7 @@ export function ReportsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Analytics Dashboard
+            {t('tabs.dashboard')}
           </button>
           <button
             onClick={() => setActiveTab('templates')}
@@ -173,7 +139,7 @@ export function ReportsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Report Templates
+            {t('tabs.templates')}
           </button>
           <button
             onClick={() => setActiveTab('scheduled')}
@@ -183,7 +149,7 @@ export function ReportsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Scheduled Reports
+            {t('tabs.scheduled')}
           </button>
         </nav>
       </div>
@@ -194,33 +160,33 @@ export function ReportsPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Total MRR</p>
+              <p className="text-sm text-gray-500 mb-1">{t('kpis.mrr')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {formatCurrency(3500000)}
               </p>
-              <p className="text-sm text-green-600 mt-1">+9.4% vs last month</p>
+              <p className="text-sm text-green-600 mt-1">{t('kpis.mrrDelta')}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Active Tenants</p>
+              <p className="text-sm text-gray-500 mb-1">{t('kpis.activeTenants')}</p>
               <p className="text-2xl font-bold text-gray-900">118</p>
-              <p className="text-sm text-green-600 mt-1">+20 this month</p>
+              <p className="text-sm text-green-600 mt-1">{t('kpis.activeDelta')}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Total Units</p>
+              <p className="text-sm text-gray-500 mb-1">{t('kpis.totalUnits')}</p>
               <p className="text-2xl font-bold text-gray-900">4,536</p>
-              <p className="text-sm text-green-600 mt-1">+342 this month</p>
+              <p className="text-sm text-green-600 mt-1">{t('kpis.unitsDelta')}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500 mb-1">Churn Rate</p>
+              <p className="text-sm text-gray-500 mb-1">{t('kpis.churnRate')}</p>
               <p className="text-2xl font-bold text-gray-900">2.1%</p>
-              <p className="text-sm text-green-600 mt-1">-0.3% vs last month</p>
+              <p className="text-sm text-green-600 mt-1">{t('kpis.churnDelta')}</p>
             </div>
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">MRR Trend</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('charts.mrrTrend')}</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueData}>
@@ -254,7 +220,7 @@ export function ReportsPage() {
 
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-semibold text-gray-900 mb-4">
-                Tenant Acquisition vs Churn
+                {t('charts.acquisitionVsChurn')}
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -266,13 +232,13 @@ export function ReportsPage() {
                     <Bar
                       dataKey="acquired"
                       fill="#22c55e"
-                      name="Acquired"
+                      name={t('charts.acquired')}
                       radius={[4, 4, 0, 0]}
                     />
                     <Bar
                       dataKey="churned"
                       fill="#ef4444"
-                      name="Churned"
+                      name={t('charts.churned')}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -284,7 +250,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-semibold text-gray-900 mb-4">
-                Revenue by Plan
+                {t('charts.revenueByPlan')}
               </h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -313,13 +279,12 @@ export function ReportsPage() {
 
             <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-semibold text-gray-900 mb-4">
-                Top Performing Tenants
+                {t('charts.topTenants')}
               </h3>
               {/* Live wiring pending — top-tenants endpoint not yet mounted.
                   Render an empty-state placeholder rather than fixture names. */}
               <div className="text-sm text-gray-500 py-6 text-center">
-                Tenant performance data will appear here once the reports
-                service is wired up for this view.
+                {t('charts.topTenantsEmpty')}
               </div>
             </div>
           </div>
@@ -348,13 +313,13 @@ export function ReportsPage() {
               </p>
               {template.lastRun && (
                 <p className="text-xs text-gray-400 mt-3">
-                  Last run: {formatDate(template.lastRun)}
+                  {t('templates.lastRun', { date: formatDate(template.lastRun) })}
                 </p>
               )}
               <div className="flex items-center gap-2 mt-4">
                 <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
                   <Play className="h-4 w-4" />
-                  Generate
+                  {t('templates.generate')}
                 </button>
                 <button className="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                   <Calendar className="h-4 w-4" />
@@ -369,53 +334,53 @@ export function ReportsPage() {
       {activeTab === 'scheduled' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Scheduled Reports</h3>
+            <h3 className="font-semibold text-gray-900">{t('scheduled.title')}</h3>
             <button className="px-4 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
-              Schedule New
+              {t('scheduled.scheduleNew')}
             </button>
           </div>
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Report
+                  {t('scheduled.cols.report')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Schedule
+                  {t('scheduled.cols.schedule')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Recipients
+                  {t('scheduled.cols.recipients')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('scheduled.cols.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Next Run
+                  {t('scheduled.cols.nextRun')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('scheduled.cols.actions')}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[
                 {
-                  name: 'Weekly Revenue Summary',
-                  schedule: 'Weekly (Monday 9 AM)',
+                  name: t('scheduled.rows.weeklyRevenue'),
+                  schedule: t('scheduled.rows.weeklyRevenueSchedule'),
                   recipients: 3,
                   status: 'active',
                   nextRun: '2025-02-17',
                 },
                 {
-                  name: 'Monthly Growth Report',
-                  schedule: 'Monthly (1st day)',
+                  name: t('scheduled.rows.monthlyGrowth'),
+                  schedule: t('scheduled.rows.monthlyGrowthSchedule'),
                   recipients: 5,
                   status: 'active',
                   nextRun: '2025-03-01',
                 },
                 {
-                  name: 'Daily Operations Summary',
-                  schedule: 'Daily (6 AM)',
+                  name: t('scheduled.rows.dailyOps'),
+                  schedule: t('scheduled.rows.dailyOpsSchedule'),
                   recipients: 2,
                   status: 'paused',
                   nextRun: null,
@@ -431,7 +396,7 @@ export function ReportsPage() {
                     {report.schedule}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {report.recipients} recipients
+                    {t('scheduled.recipientsCount', { count: report.recipients })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -454,7 +419,7 @@ export function ReportsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button className="text-sm text-violet-600 hover:text-violet-700">
-                      Edit
+                      {t('scheduled.edit')}
                     </button>
                   </td>
                 </tr>

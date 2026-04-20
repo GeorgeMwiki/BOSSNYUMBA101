@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@bossnyumba/design-system';
 import { Button, Badge, Alert, AlertDescription, Skeleton, EmptyState } from '@bossnyumba/design-system';
 // TODO: Wire up shared API client once approval_policies endpoints exist.
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
+  const t = useTranslations('approvalPolicyEditor');
   const [policies, setPolicies] = useState<ReadonlyArray<ApprovalPolicy>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,11 +47,11 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
       }
     } catch (err) {
       if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to load policies');
+        setError(err instanceof Error ? err.message : t('errors.loadFailed'));
         setLoading(false);
       }
     }
-  }, [tenantId]);
+  }, [tenantId, t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -58,8 +60,8 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
   }, [loadPolicies]);
 
   // Buttons are disabled with tooltips until backend endpoints land.
-  const createUnavailableMsg = 'Create flow pending POST /admin/approval-policies';
-  const editUnavailableMsg = 'Edit flow pending PATCH /admin/approval-policies/:id';
+  const createUnavailableMsg = t('createUnavailable');
+  const editUnavailableMsg = t('editUnavailable');
 
   const handleToggleActive = useCallback(async (policy: ApprovalPolicy) => {
     setPendingToggle(policy.id);
@@ -75,18 +77,18 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
       setPolicies((prev) =>
         prev.map((p) => (p.id === policy.id ? { ...p, active: policy.active } : p))
       );
-      setError(err instanceof Error ? err.message : 'Failed to toggle policy');
+      setError(err instanceof Error ? err.message : t('errors.toggleFailed'));
     } finally {
       setPendingToggle(null);
     }
-  }, []);
+  }, [t]);
 
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Approval Policies</h1>
-        <Button disabled title={createUnavailableMsg} aria-label="Create new policy (unavailable)">
-          + New Policy
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <Button disabled title={createUnavailableMsg} aria-label={t('newPolicyAria')}>
+          + {t('newPolicy')}
         </Button>
       </div>
 
@@ -104,8 +106,8 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
         </div>
       ) : policies.length === 0 ? (
         <EmptyState
-          title="No approval policies defined"
-          description="Create an approval policy to define who signs off on sensitive operations."
+          title={t('empty.title')}
+          description={t('empty.description')}
         />
       ) : (
         <div className="grid gap-4">
@@ -114,15 +116,15 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>{p.name}</CardTitle>
-                  <Badge>{p.active ? 'Active' : 'Disabled'}</Badge>
+                  <Badge>{p.active ? t('status.active') : t('status.disabled')}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Entity: {p.entityType}</p>
+                <p className="text-sm text-muted-foreground">{t('entityLabel', { entity: p.entityType })}</p>
                 <ol className="mt-2 text-sm space-y-1">
                   {p.stages.map((s) => (
                     <li key={s.order}>
-                      Stage {s.order}: {s.role} (SLA {s.slaHours}h)
+                      {t('stageLine', { order: s.order, role: s.role, sla: s.slaHours })}
                     </li>
                   ))}
                 </ol>
@@ -132,18 +134,18 @@ export const ApprovalPolicyEditor: React.FC<Props> = ({ tenantId }) => {
                     size="sm"
                     disabled
                     title={editUnavailableMsg}
-                    aria-label={`Edit ${p.name} (unavailable)`}
+                    aria-label={t('editUnavailableAria', { name: p.name })}
                   >
-                    Edit
+                    {t('edit')}
                   </Button>
                   <Button
                     variant={p.active ? 'destructive' : 'primary'}
                     size="sm"
                     loading={pendingToggle === p.id}
                     onClick={() => handleToggleActive(p)}
-                    aria-label={`${p.active ? 'Disable' : 'Enable'} ${p.name}`}
+                    aria-label={p.active ? t('disableAria', { name: p.name }) : t('enableAria', { name: p.name })}
                   >
-                    {p.active ? 'Disable' : 'Enable'}
+                    {p.active ? t('disable') : t('enable')}
                   </Button>
                 </div>
               </CardContent>

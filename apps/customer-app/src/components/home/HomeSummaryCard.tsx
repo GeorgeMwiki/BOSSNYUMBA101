@@ -21,6 +21,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
 
 interface HomeSummary {
@@ -59,6 +60,7 @@ function daysBetween(iso: string): number {
 }
 
 export function HomeSummaryCard(): JSX.Element {
+  const t = useTranslations('homeSummary');
   const [summary, setSummary] = useState<HomeSummary>(INITIAL);
   const [loading, setLoading] = useState(true);
 
@@ -158,12 +160,12 @@ export function HomeSummaryCard(): JSX.Element {
       className="bg-white rounded-xl border border-gray-200 p-6 space-y-5"
     >
       <h2 id="home-summary-heading" className="sr-only">
-        Home summary
+        {t('heading')}
       </h2>
 
       <div>
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Current lease
+          {t('currentLease')}
         </p>
         {summary.lease ? (
           <div className="mt-1">
@@ -175,12 +177,12 @@ export function HomeSummaryCard(): JSX.Element {
             </p>
             {summary.lease.endDate && (
               <p className="text-sm text-gray-500">
-                Ends {new Date(summary.lease.endDate).toLocaleDateString()}
+                {t('endsPrefix')} {new Date(summary.lease.endDate).toLocaleDateString()}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-400 mt-1">No active lease on file.</p>
+          <p className="text-sm text-gray-400 mt-1">{t('noActiveLease')}</p>
         )}
       </div>
 
@@ -190,7 +192,7 @@ export function HomeSummaryCard(): JSX.Element {
           className="block border border-gray-100 rounded-lg p-3 hover:bg-gray-50"
         >
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Next payment due
+            {t('nextPaymentDue')}
           </p>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-lg font-semibold text-gray-900">
@@ -204,7 +206,7 @@ export function HomeSummaryCard(): JSX.Element {
                   : 'text-gray-600'
               }`}
             >
-              in {summary.nextPayment.daysUntil}d
+              {t('inDays', { days: summary.nextPayment.daysUntil })}
             </span>
           </div>
         </Link>
@@ -215,7 +217,7 @@ export function HomeSummaryCard(): JSX.Element {
           href="/requests"
           className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50"
         >
-          <p className="text-xs text-gray-500">Open maintenance</p>
+          <p className="text-xs text-gray-500">{t('openMaintenance')}</p>
           <p className="text-xl font-semibold text-orange-600 mt-1">
             {summary.openMaintenance ?? '—'}
           </p>
@@ -224,7 +226,7 @@ export function HomeSummaryCard(): JSX.Element {
           href="/messages"
           className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50"
         >
-          <p className="text-xs text-gray-500">Unread messages</p>
+          <p className="text-xs text-gray-500">{t('unreadMessages')}</p>
           <p className="text-xl font-semibold text-blue-600 mt-1">
             {summary.unreadMessages ?? '—'}
           </p>
@@ -233,8 +235,8 @@ export function HomeSummaryCard(): JSX.Element {
           href="/my-credit"
           className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50"
         >
-          <p className="text-xs text-gray-500">My credit</p>
-          <p className="text-xl font-semibold text-violet-600 mt-1">View</p>
+          <p className="text-xs text-gray-500">{t('myCredit')}</p>
+          <p className="text-xl font-semibold text-violet-600 mt-1">{t('view')}</p>
         </Link>
       </div>
     </section>

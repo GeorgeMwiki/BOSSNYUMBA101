@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Key,
   Plus,
@@ -26,6 +27,7 @@ interface ApiKey {
 }
 
 export default function IntegrationsApiKeysPage() {
+  const t = useTranslations('apiKeysPage');
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,14 +43,14 @@ export default function IntegrationsApiKeysPage() {
       if (res.success) {
         setApiKeys(res.data ?? []);
       } else {
-        setError(res.error ?? 'Failed to load API keys');
+        setError(res.error ?? t('errors.loadFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load API keys');
+      setError(err instanceof Error ? err.message : t('errors.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -67,10 +69,10 @@ export default function IntegrationsApiKeysPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            API Keys
+            {t('title')}
           </h1>
           <p className="text-gray-500">
-            Manage tenant and platform API keys
+            {t('subtitle')}
           </p>
         </div>
         <button
@@ -78,7 +80,7 @@ export default function IntegrationsApiKeysPage() {
           className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
         >
           <Plus className="h-4 w-4" />
-          Create API Key
+          {t('createKey')}
         </button>
       </div>
 
@@ -87,7 +89,7 @@ export default function IntegrationsApiKeysPage() {
           <AlertDescription>
             {error}
             <Button size="sm" variant="link" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -106,7 +108,7 @@ export default function IntegrationsApiKeysPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search API keys..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -117,9 +119,9 @@ export default function IntegrationsApiKeysPage() {
           onChange={(e) => setScopeFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
-          <option value="all">All Scopes</option>
-          <option value="platform">Platform</option>
-          <option value="tenant">Tenant</option>
+          <option value="all">{t('scopes.all')}</option>
+          <option value="platform">{t('scopes.platform')}</option>
+          <option value="tenant">{t('scopes.tenant')}</option>
         </select>
         {/* "More Filters" button removed — scope select above is the
             only honest filter. Add back as a panel when created-by /
@@ -132,25 +134,25 @@ export default function IntegrationsApiKeysPage() {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Key
+                {t('cols.key')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Scope
+                {t('cols.scope')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Permissions
+                {t('cols.permissions')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Used
+                {t('cols.lastUsed')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
+                {t('cols.created')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Expires
+                {t('cols.expires')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {t('cols.actions')}
               </th>
             </tr>
           </thead>
@@ -195,7 +197,7 @@ export default function IntegrationsApiKeysPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {key.lastUsed
                     ? formatDateTime(key.lastUsed)
-                    : 'Never'}
+                    : t('never')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDateTime(key.createdAt)}
@@ -203,7 +205,7 @@ export default function IntegrationsApiKeysPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {key.expiresAt
                     ? formatDateTime(key.expiresAt)
-                    : 'Never'}
+                    : t('never')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -224,8 +226,8 @@ export default function IntegrationsApiKeysPage() {
       {filteredKeys.length === 0 && (
         <EmptyState
           icon={<Key className="h-8 w-8" />}
-          title="No API keys found"
-          description="Create an API key to give integrations access to your data."
+          title={t('empty.title')}
+          description={t('empty.description')}
         />
       )}
 
@@ -235,35 +237,35 @@ export default function IntegrationsApiKeysPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
-                Create API Key
+                {t('modal.title')}
               </h2>
               <p className="text-sm text-gray-500">
-                Generate a new API key for platform or tenant access
+                {t('modal.subtitle')}
               </p>
             </div>
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Key Name
+                  {t('modal.keyName')}
                 </label>
                 <input
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  placeholder="e.g. Integration Name"
+                  placeholder={t('modal.keyNamePlaceholder')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Scope
+                  {t('modal.scope')}
                 </label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500">
-                  <option value="platform">Platform</option>
-                  <option value="tenant">Tenant</option>
+                  <option value="platform">{t('scopes.platform')}</option>
+                  <option value="tenant">{t('scopes.tenant')}</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Permissions
+                  {t('modal.permissions')}
                 </label>
                 <div className="space-y-2">
                   {['read', 'write', 'admin'].map((perm) => (
@@ -288,13 +290,13 @@ export default function IntegrationsApiKeysPage() {
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                Cancel
+                {t('modal.cancel')}
               </button>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
               >
-                Generate Key
+                {t('modal.generate')}
               </button>
             </div>
           </div>

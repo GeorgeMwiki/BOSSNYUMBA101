@@ -21,6 +21,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { inspectionsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
@@ -29,22 +30,22 @@ type InspectionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type InspectionType = 'MOVE_IN' | 'MOVE_OUT' | 'ROUTINE' | 'ANNUAL';
 type Condition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 
-const typeLabels: Record<string, string> = {
-  MOVE_IN: 'Move-In', move_in: 'Move-In',
-  MOVE_OUT: 'Move-Out', move_out: 'Move-Out',
-  ROUTINE: 'Routine', routine: 'Routine',
-  ANNUAL: 'Annual', annual: 'Annual',
+const typeLabelKeys: Record<string, string> = {
+  MOVE_IN: 'typeMoveIn', move_in: 'typeMoveIn',
+  MOVE_OUT: 'typeMoveOut', move_out: 'typeMoveOut',
+  ROUTINE: 'typeRoutine', routine: 'typeRoutine',
+  ANNUAL: 'typeAnnual', annual: 'typeAnnual',
 };
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  SCHEDULED: { label: 'Scheduled', color: 'badge-info' },
-  scheduled: { label: 'Scheduled', color: 'badge-info' },
-  IN_PROGRESS: { label: 'In Progress', color: 'badge-warning' },
-  in_progress: { label: 'In Progress', color: 'badge-warning' },
-  COMPLETED: { label: 'Completed', color: 'badge-success' },
-  completed: { label: 'Completed', color: 'badge-success' },
-  CANCELLED: { label: 'Cancelled', color: 'badge-danger' },
-  missed: { label: 'Missed', color: 'badge-danger' },
+const statusConfig: Record<string, { labelKey: string; color: string }> = {
+  SCHEDULED: { labelKey: 'labelScheduled', color: 'badge-info' },
+  scheduled: { labelKey: 'labelScheduled', color: 'badge-info' },
+  IN_PROGRESS: { labelKey: 'labelInProgress', color: 'badge-warning' },
+  in_progress: { labelKey: 'labelInProgress', color: 'badge-warning' },
+  COMPLETED: { labelKey: 'labelCompleted', color: 'badge-success' },
+  completed: { labelKey: 'labelCompleted', color: 'badge-success' },
+  CANCELLED: { labelKey: 'labelCancelled', color: 'badge-danger' },
+  missed: { labelKey: 'labelMissed', color: 'badge-danger' },
 };
 
 const conditionColors: Record<string, string> = {
@@ -71,6 +72,7 @@ function capitalize(s: string) {
 }
 
 export default function InspectionDetailPage() {
+  const t = useTranslations('inspectionDetail');
   const params = useParams();
   const router = useRouter();
   const id = (params?.id ?? '') as string;
@@ -103,8 +105,8 @@ export default function InspectionDetailPage() {
       scheduledDate: String(ins.scheduledDate ?? ''),
       scheduledTime: String(ins.scheduledTimeSlot ?? ''),
       customerName: customer
-        ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || String(customer.name ?? 'Tenant')
-        : 'Tenant',
+        ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || String(customer.name ?? t('customer'))
+        : t('customer'),
       overallCondition: ins.overallCondition ? String(ins.overallCondition) : null,
       summary: ins.summary ? String(ins.summary) : null,
       recommendations: ins.recommendations ? String(ins.recommendations) : null,
@@ -150,7 +152,7 @@ export default function InspectionDetailPage() {
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Inspection" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="flex justify-center py-12">
           <Spinner size="lg" className="text-primary-500" />
         </div>
@@ -161,12 +163,12 @@ export default function InspectionDetailPage() {
   if (!inspection) {
     return (
       <>
-        <PageHeader title="Inspection" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-8 text-center">
           <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-4">Inspection not found</p>
+          <p className="text-gray-500 mb-4">{t('notFound')}</p>
           <button onClick={() => router.back()} className="btn-secondary">
-            Go Back
+            {t('goBack')}
           </button>
         </div>
       </>
@@ -181,7 +183,7 @@ export default function InspectionDetailPage() {
     <>
       <PageHeader
         title={inspection.inspectionNumber}
-        subtitle={`${typeLabels[inspection.type] ?? inspection.type} • Unit ${inspection.unit}`}
+        subtitle={`${typeLabelKeys[inspection.type] ? t(typeLabelKeys[inspection.type] as never) : inspection.type} • ${t('unitPrefix', { unit: inspection.unit })}`}
         showBack
         action={
           <div className="flex gap-2">
@@ -195,12 +197,12 @@ export default function InspectionDetailPage() {
             )}
             {isScheduled && (
               <Link href={`/inspections/${id}/conduct`} className="btn-primary text-sm flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> Start
+                <CheckCircle className="w-4 h-4" /> {t('start')}
               </Link>
             )}
             {isCompleted && (
               <button onClick={handleGenerateReport} className="btn-secondary text-sm flex items-center gap-1">
-                <Download className="w-4 h-4" /> Report
+                <Download className="w-4 h-4" /> {t('report')}
               </button>
             )}
           </div>
@@ -211,7 +213,7 @@ export default function InspectionDetailPage() {
         {/* Status & Overview */}
         <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
-            <span className={status.color}>{status.label}</span>
+            <span className={status.color}>{t(status.labelKey as never)}</span>
             {inspection.overallCondition && (
               <span className={conditionColors[inspection.overallCondition]}>
                 {capitalize(inspection.overallCondition)}
@@ -235,7 +237,7 @@ export default function InspectionDetailPage() {
             )}
             <div className="flex items-center gap-3 text-sm">
               <MapPin className="w-4 h-4 text-gray-400" />
-              <span>{inspection.property} &bull; Unit {inspection.unit}</span>
+              <span>{inspection.property} &bull; {t('unitPrefix', { unit: inspection.unit })}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <User className="w-4 h-4 text-gray-400" />
@@ -247,18 +249,18 @@ export default function InspectionDetailPage() {
         {/* Summary (for completed inspections) */}
         {inspection.summary && (
           <div className="card p-4">
-            <h2 className="font-semibold mb-2">Summary</h2>
+            <h2 className="font-semibold mb-2">{t('summary')}</h2>
             <p className="text-sm text-gray-600">{inspection.summary}</p>
             {inspection.recommendations && (
               <div className="mt-3 pt-3 border-t border-gray-100">
-                <h3 className="text-sm font-medium text-gray-700 mb-1">Recommendations</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-1">{t('recommendations')}</h3>
                 <p className="text-sm text-gray-500">{inspection.recommendations}</p>
               </div>
             )}
             {inspection.followUpRequired && (
               <div className="mt-3 p-3 bg-warning-50 rounded-lg flex items-center gap-2 text-warning-700 text-sm">
                 <AlertTriangle className="w-4 h-4" />
-                Follow-up required
+                {t('followUpRequired')}
               </div>
             )}
           </div>
@@ -269,20 +271,20 @@ export default function InspectionDetailPage() {
           <div className="card p-4">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <ArrowLeftRight className="w-5 h-5 text-primary-500" />
-              Move-In vs Move-Out Comparison
+              {t('comparison')}
             </h2>
 
             {!moveInInspection ? (
               <div className="text-center py-6 text-gray-500 text-sm">
-                <p>No move-in inspection found for this unit.</p>
-                <p className="text-xs text-gray-400 mt-1">Comparison requires a completed move-in inspection.</p>
+                <p>{t('noMoveInFound')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('comparisonRequires')}</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Overall Condition Comparison */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-primary-50 rounded-lg text-center">
-                    <div className="text-xs text-gray-500 mb-1">Move-In</div>
+                    <div className="text-xs text-gray-500 mb-1">{t('moveIn')}</div>
                     <div className={`text-lg font-bold ${conditionTextColors[moveInInspection.overallCondition ?? ''] ?? 'text-gray-600'}`}>
                       {moveInInspection.overallCondition ? capitalize(moveInInspection.overallCondition) : '—'}
                     </div>
@@ -293,7 +295,7 @@ export default function InspectionDetailPage() {
                     )}
                   </div>
                   <div className="p-3 bg-warning-50 rounded-lg text-center">
-                    <div className="text-xs text-gray-500 mb-1">Move-Out</div>
+                    <div className="text-xs text-gray-500 mb-1">{t('moveOut')}</div>
                     <div className={`text-lg font-bold ${conditionTextColors[inspection.overallCondition ?? ''] ?? 'text-gray-600'}`}>
                       {inspection.overallCondition ? capitalize(inspection.overallCondition) : '—'}
                     </div>
@@ -308,7 +310,7 @@ export default function InspectionDetailPage() {
                 {/* Item-by-Item Comparison */}
                 {items.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Room-by-Room</h3>
+                    <h3 className="text-sm font-medium mb-2">{t('roomByRoom')}</h3>
                     <div className="space-y-2">
                       {items.map((item, idx) => {
                         const area = String(item.area ?? item.category ?? '');
@@ -331,14 +333,14 @@ export default function InspectionDetailPage() {
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="text-center">
-                                <div className="text-xs text-gray-400">In</div>
+                                <div className="text-xs text-gray-400">{t('in')}</div>
                                 <span className={`text-xs font-medium ${conditionTextColors[moveInCond] ?? 'text-gray-500'}`}>
                                   {moveInCond ? capitalize(moveInCond) : '—'}
                                 </span>
                               </div>
                               <ChevronRight className="w-3 h-3 text-gray-300" />
                               <div className="text-center">
-                                <div className="text-xs text-gray-400">Out</div>
+                                <div className="text-xs text-gray-400">{t('out')}</div>
                                 <span className={`text-xs font-medium ${conditionTextColors[moveOutCond] ?? 'text-gray-500'}`}>
                                   {moveOutCond ? capitalize(moveOutCond) : '—'}
                                 </span>
@@ -355,7 +357,7 @@ export default function InspectionDetailPage() {
                 {/* Meter Reading Comparison */}
                 {(meterReadings.length > 0 || moveInInspection.meterReadings.length > 0) && (
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Meter Readings</h3>
+                    <h3 className="text-sm font-medium mb-2">{t('meterReadings')}</h3>
                     <div className="space-y-2">
                       {meterReadings.map((meter, idx) => {
                         const type = String(meter.type ?? '');
@@ -371,14 +373,14 @@ export default function InspectionDetailPage() {
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="text-center">
-                                <div className="text-xs text-gray-400">Move-In</div>
+                                <div className="text-xs text-gray-400">{t('moveIn')}</div>
                                 <span className="text-xs font-medium">
                                   {moveInMeter?.reading ? String(moveInMeter.reading) : '—'}
                                 </span>
                               </div>
                               <ChevronRight className="w-3 h-3 text-gray-300" />
                               <div className="text-center">
-                                <div className="text-xs text-gray-400">Move-Out</div>
+                                <div className="text-xs text-gray-400">{t('moveOut')}</div>
                                 <span className="text-xs font-medium">{meter.reading ? String(meter.reading) : '—'}</span>
                               </div>
                               {Boolean(moveInMeter?.reading) && Boolean(meter.reading) && (
@@ -403,7 +405,7 @@ export default function InspectionDetailPage() {
           <div className="card p-4">
             <h2 className="font-semibold mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Inspection Checklist
+              {t('inspectionChecklist')}
             </h2>
             <div className="space-y-2">
               {items.map((item, idx) => {
@@ -422,7 +424,7 @@ export default function InspectionDetailPage() {
                         {notes && <div className="text-xs text-gray-500 mt-1">{notes}</div>}
                         {requiresAction && (
                           <div className="flex items-center gap-1 text-xs text-warning-600 mt-1">
-                            <AlertTriangle className="w-3 h-3" /> Action required
+                            <AlertTriangle className="w-3 h-3" /> {t('actionRequired')}
                           </div>
                         )}
                       </div>
@@ -451,7 +453,7 @@ export default function InspectionDetailPage() {
         {/* Meter Readings */}
         {meterReadings.length > 0 && !showComparison && (
           <div className="card p-4">
-            <h2 className="font-semibold mb-3">Meter Readings</h2>
+            <h2 className="font-semibold mb-3">{t('meterReadings')}</h2>
             <div className="space-y-2">
               {meterReadings.map((meter, idx) => {
                 const type = String(meter.type ?? '');
@@ -475,27 +477,27 @@ export default function InspectionDetailPage() {
         {/* Signatures */}
         {(inspection.inspectorSignatureUrl || inspection.customerSignatureUrl) && (
           <div className="card p-4">
-            <h2 className="font-semibold mb-3">Signatures</h2>
+            <h2 className="font-semibold mb-3">{t('signatures')}</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="text-center">
-                <div className="text-xs text-gray-500 mb-1">Inspector</div>
+                <div className="text-xs text-gray-500 mb-1">{t('inspector')}</div>
                 {inspection.inspectorSignatureUrl ? (
                   <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center">
                     <CheckCircle className="w-6 h-6 text-success-500" />
                   </div>
                 ) : (
-                  <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gray-400">Not signed</div>
+                  <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gray-400">{t('notSigned')}</div>
                 )}
               </div>
               <div className="text-center">
-                <div className="text-xs text-gray-500 mb-1">Customer</div>
+                <div className="text-xs text-gray-500 mb-1">{t('customer')}</div>
                 {inspection.customerSignatureUrl ? (
                   <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center">
                     <CheckCircle className="w-6 h-6 text-success-500" />
                   </div>
                 ) : (
                   <div className="h-16 bg-gray-50 rounded-lg flex items-center justify-center text-xs text-gray-400">
-                    {inspection.customerPresent ? 'Not signed' : 'Not present'}
+                    {inspection.customerPresent ? t('notSigned') : t('notPresent')}
                   </div>
                 )}
               </div>
@@ -507,9 +509,9 @@ export default function InspectionDetailPage() {
         {isScheduled && (
           <div className="flex gap-3">
             <Link href={`/inspections/${id}/conduct`} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              <CheckCircle className="w-4 h-4" /> Start Inspection
+              <CheckCircle className="w-4 h-4" /> {t('startInspection')}
             </Link>
-            <button className="btn-secondary">Reschedule</button>
+            <button className="btn-secondary">{t('reschedule')}</button>
           </div>
         )}
       </div>

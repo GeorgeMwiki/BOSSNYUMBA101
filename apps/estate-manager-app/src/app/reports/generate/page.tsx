@@ -2,25 +2,30 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, FileText, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
 
-const reportTypes: Record<ReportType, { label: string; description: string }> = {
-  occupancy: { label: 'Occupancy Report', description: 'Unit occupancy rates, vacancies, and trends' },
-  revenue: { label: 'Revenue Report', description: 'Rent collection, payment history, and arrears' },
-  maintenance: { label: 'Maintenance Report', description: 'Work orders, costs, and completion metrics' },
-  inspections: { label: 'Inspections Report', description: 'Inspection completion and condition summaries' },
+const reportTypeKeys: Record<ReportType, {
+  labelKey: 'occupancyTitle' | 'revenueTitle' | 'maintenanceTitle' | 'inspectionsTitle';
+  descKey: 'occupancyDesc' | 'revenueDesc' | 'maintenanceDesc' | 'inspectionsDesc';
+}> = {
+  occupancy: { labelKey: 'occupancyTitle', descKey: 'occupancyDesc' },
+  revenue: { labelKey: 'revenueTitle', descKey: 'revenueDesc' },
+  maintenance: { labelKey: 'maintenanceTitle', descKey: 'maintenanceDesc' },
+  inspections: { labelKey: 'inspectionsTitle', descKey: 'inspectionsDesc' },
 };
 
 function GenerateReportPageInner() {
+  const t = useTranslations('reportGenerate');
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams?.get('type') as ReportType | null;
 
   const [formData, setFormData] = useState({
-    type: (typeParam && reportTypes[typeParam] ? typeParam : 'occupancy') as ReportType,
+    type: (typeParam && reportTypeKeys[typeParam] ? typeParam : 'occupancy') as ReportType,
     dateFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     dateTo: new Date().toISOString().split('T')[0],
     format: 'pdf' as 'pdf' | 'csv' | 'excel',
@@ -35,27 +40,27 @@ function GenerateReportPageInner() {
 
   return (
     <>
-      <PageHeader title="Generate Report" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
         <div className="card p-4 space-y-4">
           <div>
-            <label className="label">Report Type</label>
+            <label className="label">{t('reportType')}</label>
             <select
               className="input"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as ReportType })}
             >
-              {(Object.entries(reportTypes) as [ReportType, { label: string }][]).map(([value, { label }]) => (
-                <option key={value} value={value}>{label}</option>
+              {(Object.entries(reportTypeKeys) as [ReportType, { labelKey: 'occupancyTitle' | 'revenueTitle' | 'maintenanceTitle' | 'inspectionsTitle' }][]).map(([value, { labelKey }]) => (
+                <option key={value} value={value}>{t(labelKey)}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">{reportTypes[formData.type].description}</p>
+            <p className="text-xs text-gray-500 mt-1">{t(reportTypeKeys[formData.type].descKey)}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">From Date</label>
+              <label className="label">{t('fromDate')}</label>
               <input
                 type="date"
                 className="input"
@@ -65,7 +70,7 @@ function GenerateReportPageInner() {
               />
             </div>
             <div>
-              <label className="label">To Date</label>
+              <label className="label">{t('toDate')}</label>
               <input
                 type="date"
                 className="input"
@@ -77,20 +82,20 @@ function GenerateReportPageInner() {
           </div>
 
           <div>
-            <label className="label">Property (optional)</label>
+            <label className="label">{t('property')}</label>
             <select
               className="input"
               value={formData.propertyId}
               onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
             >
-              <option value="">All Properties</option>
+              <option value="">{t('allProperties')}</option>
               <option value="1">Sunset Apartments</option>
               <option value="2">Riverside Towers</option>
             </select>
           </div>
 
           <div>
-            <label className="label">Export Format</label>
+            <label className="label">{t('exportFormat')}</label>
             <select
               className="input"
               value={formData.format}
@@ -105,14 +110,14 @@ function GenerateReportPageInner() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="submit"
             className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Generate Report
+            {t('generateReport')}
           </button>
         </div>
       </form>
@@ -120,9 +125,14 @@ function GenerateReportPageInner() {
   );
 }
 
+function GenerateReportFallback() {
+  const t = useTranslations('reportGenerate');
+  return <PageHeader title={t('title')} showBack />;
+}
+
 export default function GenerateReportPage() {
   return (
-    <Suspense fallback={<PageHeader title="Generate Report" showBack />}>
+    <Suspense fallback={<GenerateReportFallback />}>
       <GenerateReportPageInner />
     </Suspense>
   );

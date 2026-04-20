@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Building2, Calendar } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '../../../lib/api';
 import { useInsurancePolicies } from '../../../lib/hooks';
 
 export default function InsurancePage() {
+  const t = useTranslations('insurancePage');
   const { data: policies = [], isLoading, error, refetch } = useInsurancePolicies();
 
   // No fixture fallback — show real data or an empty state.
@@ -31,8 +33,8 @@ export default function InsurancePage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load insurance policies'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -45,8 +47,8 @@ export default function InsurancePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Insurance Tracking</h1>
-          <p className="text-gray-500">Manage property insurance policies</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -56,7 +58,7 @@ export default function InsurancePage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Shield className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total Coverage</span>
+            <span className="text-sm font-medium text-gray-500">{t('totalCoverage')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(totalCoverage)}
@@ -67,7 +69,7 @@ export default function InsurancePage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <Shield className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Annual Premium</span>
+            <span className="text-sm font-medium text-gray-500">{t('annualPremium')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(totalPremium)}
@@ -77,8 +79,8 @@ export default function InsurancePage() {
 
       {displayPolicies.length === 0 ? (
         <EmptyState
-          title="No insurance policies yet"
-          description="Add a property or liability insurance policy to track coverage and premiums."
+          title={t('noPolicies')}
+          description={t('noPoliciesDesc')}
         />
       ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -86,12 +88,12 @@ export default function InsurancePage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Policy</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Coverage</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Premium</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Validity</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPolicy')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperty')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colCoverage')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPremium')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colValidity')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -123,7 +125,7 @@ export default function InsurancePage() {
                     {formatCurrency(policy.coverage)}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {formatCurrency(policy.premium)}/yr
+                    {t('premiumPerYear', { amount: formatCurrency(policy.premium) })}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -142,7 +144,7 @@ export default function InsurancePage() {
                   </td>
                   <td className="px-4 py-3">
                     <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                      View
+                      {t('view')}
                     </button>
                   </td>
                 </tr>

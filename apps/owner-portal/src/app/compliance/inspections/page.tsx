@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Building2, Calendar, CheckCircle } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDate } from '../../../lib/api';
 import { useInspections } from '../../../lib/hooks';
 
 export default function InspectionsPage() {
+  const t = useTranslations('inspectionsPage');
   const { data: inspections = [], isLoading, error, refetch } = useInspections();
 
   // No fixture fallback — show real data or an empty state.
@@ -32,8 +34,8 @@ export default function InspectionsPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load inspections'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -46,8 +48,8 @@ export default function InspectionsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inspection Schedule</h1>
-          <p className="text-gray-500">Track property inspections and compliance checks</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -57,7 +59,7 @@ export default function InspectionsPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Calendar className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Upcoming</span>
+            <span className="text-sm font-medium text-gray-500">{t('upcoming')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">{upcoming.length}</p>
         </div>
@@ -66,7 +68,7 @@ export default function InspectionsPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Completed</span>
+            <span className="text-sm font-medium text-gray-500">{t('completed')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">{completed.length}</p>
         </div>
@@ -75,7 +77,7 @@ export default function InspectionsPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <ClipboardList className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total</span>
+            <span className="text-sm font-medium text-gray-500">{t('total')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">{displayInspections.length}</p>
         </div>
@@ -83,23 +85,23 @@ export default function InspectionsPage() {
 
       {displayInspections.length === 0 ? (
         <EmptyState
-          title="No inspections scheduled"
-          description="Schedule a fire-safety, electrical, or other compliance inspection to see it here."
+          title={t('noScheduled')}
+          description={t('noScheduledDesc')}
         />
       ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">All Inspections</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('allInspections')}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scheduled</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colType')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperty')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colScheduled')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colCompleted')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -147,7 +149,7 @@ export default function InspectionsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                      View
+                      {t('view')}
                     </button>
                   </td>
                 </tr>

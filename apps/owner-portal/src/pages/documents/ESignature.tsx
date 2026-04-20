@@ -19,6 +19,7 @@ import {
   History,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatDate, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -58,6 +59,7 @@ function SignatureCanvas({
   onSave: (dataUrl: string) => void;
   onClear: () => void;
 }) {
+  const t = useTranslations('eSignaturePage');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -149,7 +151,7 @@ function SignatureCanvas({
         />
         {!hasDrawn && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-gray-400 text-sm">Draw your signature here</p>
+            <p className="text-gray-400 text-sm">{t('drawSignatureHere')}</p>
           </div>
         )}
         <div className="absolute bottom-3 left-4 right-4 border-b border-gray-300" />
@@ -160,7 +162,7 @@ function SignatureCanvas({
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
         >
           <RotateCcw className="h-4 w-4" />
-          Clear
+          {t('clear')}
         </button>
         <button
           onClick={saveSignature}
@@ -168,7 +170,7 @@ function SignatureCanvas({
           className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Pen className="h-4 w-4" />
-          Apply Signature
+          {t('applySignature')}
         </button>
       </div>
     </div>
@@ -177,6 +179,7 @@ function SignatureCanvas({
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function ESignaturePage() {
+  const t = useTranslations('eSignaturePage');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [pendingDocs, setPendingDocs] = useState<SignatureDocument[]>([]);
@@ -317,14 +320,14 @@ export function ESignaturePage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">E-Signatures</h1>
-            <p className="text-gray-500">Review and sign documents electronically</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
         {pendingDocs.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
             <Edit3 className="h-4 w-4" />
-            {pendingDocs.length} pending
+            {t('pendingCount', { count: pendingDocs.length })}
           </div>
         )}
       </div>
@@ -333,7 +336,7 @@ export function ESignaturePage() {
         <Alert variant="danger">
           <AlertDescription>
             {error}
-            <Button size="sm" onClick={loadData} className="ml-2">Retry</Button>
+            <Button size="sm" onClick={loadData} className="ml-2">{t('retry')}</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -343,7 +346,7 @@ export function ESignaturePage() {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 animate-in fade-in">
           <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
           <div>
-            <p className="font-medium text-green-800">Document signed successfully</p>
+            <p className="font-medium text-green-800">{t('signedSuccessfully')}</p>
             <p className="text-sm text-green-600">{successDoc}</p>
           </div>
         </div>
@@ -362,7 +365,7 @@ export function ESignaturePage() {
               }`}
             >
               <Edit3 className="h-4 w-4" />
-              Pending Signatures
+              {t('pendingSignatures')}
               {pendingDocs.length > 0 && (
                 <span className="ml-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                   {pendingDocs.length}
@@ -378,7 +381,7 @@ export function ESignaturePage() {
               }`}
             >
               <History className="h-4 w-4" />
-              Signature History
+              {t('signatureHistory')}
             </button>
           </div>
         </div>
@@ -390,8 +393,8 @@ export function ESignaturePage() {
               {pendingDocs.length === 0 ? (
                 <EmptyState
                   icon={<CheckCircle className="h-8 w-8" />}
-                  title="All caught up!"
-                  description="No documents require your signature."
+                  title={t('allCaughtUp')}
+                  description={t('noDocsRequireSignature')}
                 />
               ) : (
                 pendingDocs.map((doc) => (
@@ -410,7 +413,7 @@ export function ESignaturePage() {
                                 <div className="flex items-center gap-1">
                                   <Building2 className="h-3.5 w-3.5" />
                                   {doc.property.name}
-                                  {doc.unit && ` - Unit ${doc.unit.unitNumber}`}
+                                  {doc.unit && t('dashUnitPrefix', { unit: doc.unit.unitNumber })}
                                 </div>
                               )}
                               {doc.customer && (
@@ -421,7 +424,7 @@ export function ESignaturePage() {
                               )}
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3.5 w-3.5" />
-                                Created {formatDate(doc.createdAt)}
+                                {t('createdPrefix', { date: formatDate(doc.createdAt) })}
                               </div>
                               <span className="text-xs text-gray-400">
                                 {formatFileSize(doc.size)}
@@ -430,7 +433,7 @@ export function ESignaturePage() {
                           </div>
                           {doc.expiresAt && (
                             <div className="text-right flex-shrink-0">
-                              <p className="text-xs text-gray-500">Expires</p>
+                              <p className="text-xs text-gray-500">{t('expires')}</p>
                               <p className="text-sm font-medium text-orange-600">
                                 {formatDate(doc.expiresAt)}
                               </p>
@@ -443,7 +446,7 @@ export function ESignaturePage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
                           >
                             <Eye className="h-4 w-4" />
-                            Preview
+                            {t('preview')}
                           </button>
                           <button
                             onClick={() => {
@@ -454,7 +457,7 @@ export function ESignaturePage() {
                             className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
                           >
                             <Edit3 className="h-4 w-4" />
-                            Sign Document
+                            {t('signDocument')}
                           </button>
                         </div>
                       </div>
@@ -471,8 +474,8 @@ export function ESignaturePage() {
               {history.length === 0 ? (
                 <EmptyState
                   icon={<History className="h-8 w-8" />}
-                  title="No signature history yet"
-                  description="Documents you sign will appear here."
+                  title={t('noHistoryYet')}
+                  description={t('noHistoryDesc')}
                 />
               ) : (
                 history.map((entry) => (
@@ -505,7 +508,7 @@ export function ESignaturePage() {
                         <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
                           <span>{formatDateTime(entry.signedAt)}</span>
                           {entry.property && <span>{entry.property.name}</span>}
-                          {entry.ipAddress && <span>IP: {entry.ipAddress}</span>}
+                          {entry.ipAddress && <span>{t('ipPrefix', { ip: entry.ipAddress })}</span>}
                         </div>
                       </div>
                     </div>
@@ -545,7 +548,7 @@ export function ESignaturePage() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Sign Document</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('signDocument')}</h3>
                   <p className="text-sm text-gray-500 truncate max-w-md">{signingDoc.name}</p>
                 </div>
                 <button
@@ -565,27 +568,27 @@ export function ESignaturePage() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-500">Document</p>
+                      <p className="text-gray-500">{t('document')}</p>
                       <p className="font-medium text-gray-900">{signingDoc.name}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Type</p>
+                      <p className="text-gray-500">{t('typeLabel')}</p>
                       <p className="font-medium text-gray-900">
                         {signingDoc.type.replace('_', ' ')}
                       </p>
                     </div>
                     {signingDoc.property && (
                       <div>
-                        <p className="text-gray-500">Property</p>
+                        <p className="text-gray-500">{t('property')}</p>
                         <p className="font-medium text-gray-900">
                           {signingDoc.property.name}
-                          {signingDoc.unit && ` - Unit ${signingDoc.unit.unitNumber}`}
+                          {signingDoc.unit && t('dashUnitPrefix', { unit: signingDoc.unit.unitNumber })}
                         </p>
                       </div>
                     )}
                     {signingDoc.expiresAt && (
                       <div>
-                        <p className="text-gray-500">Signature Deadline</p>
+                        <p className="text-gray-500">{t('signatureDeadline')}</p>
                         <p className="font-medium text-orange-600">
                           {formatDate(signingDoc.expiresAt)}
                         </p>
@@ -596,27 +599,27 @@ export function ESignaturePage() {
 
                 {/* Signature Area */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Your Signature</h4>
+                  <h4 className="font-medium text-gray-900 mb-3">{t('yourSignature')}</h4>
                   {signatureData ? (
                     <div className="space-y-3">
                       <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50 flex items-center justify-center">
                         <img
                           src={signatureData}
-                          alt="Your signature"
+                          alt={t('yourSignature')}
                           className="max-h-24"
                         />
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-green-600">
                           <CheckCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">Signature applied</span>
+                          <span className="text-sm font-medium">{t('signatureApplied')}</span>
                         </div>
                         <button
                           onClick={() => setSignatureData(null)}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
                         >
                           <RotateCcw className="h-4 w-4" />
-                          Re-sign
+                          {t('reSign')}
                         </button>
                       </div>
                     </div>
@@ -639,9 +642,7 @@ export function ESignaturePage() {
                     />
                     <div className="text-sm text-gray-600">
                       <p>
-                        I confirm that I have reviewed the document and agree to sign it
-                        electronically. I understand that this electronic signature is legally
-                        binding and has the same effect as a handwritten signature.
+                        {t('legalConsent')}
                       </p>
                     </div>
                   </label>
@@ -658,7 +659,7 @@ export function ESignaturePage() {
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={handleSignAndSubmit}
@@ -668,12 +669,12 @@ export function ESignaturePage() {
                   {submitting ? (
                     <>
                       <Spinner size="sm" />
-                      Signing...
+                      {t('signingEllipsis')}
                     </>
                   ) : (
                     <>
                       <Edit3 className="h-4 w-4" />
-                      Sign & Submit
+                      {t('signAndSubmit')}
                     </>
                   )}
                 </button>

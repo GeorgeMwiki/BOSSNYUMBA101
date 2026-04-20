@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Info } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -42,6 +43,7 @@ const QUICK_DESCRIPTIONS: Record<string, string[]> = {
 };
 
 export default function NewRequestPage() {
+  const t = useTranslations('newRequestPage');
   const router = useRouter();
   const [formData, setFormData] = useState({
     category: '',
@@ -68,12 +70,12 @@ export default function NewRequestPage() {
 
   return (
     <>
-      <PageHeader title="New Request" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-8">
         {/* Category */}
         <section>
-          <label className="label">What type of issue?</label>
+          <label className="label">{t('whatType')}</label>
           <CategorySelector
             value={formData.category}
             onChange={(value) => setFormData({ ...formData, category: value })}
@@ -82,7 +84,7 @@ export default function NewRequestPage() {
 
         {/* Priority */}
         <section>
-          <label className="label">How urgent is this?</label>
+          <label className="label">{t('howUrgent')}</label>
           <PrioritySelector
             value={formData.priority}
             onChange={(value) => setFormData({ ...formData, priority: value })}
@@ -92,7 +94,7 @@ export default function NewRequestPage() {
         {/* Problem Description */}
         <section>
           <label className="label" htmlFor="description">
-            Describe the problem
+            {t('describeProblem')}
           </label>
           {formData.category && QUICK_DESCRIPTIONS[formData.category] && (
             <div className="flex flex-wrap gap-2 mb-3">
@@ -115,7 +117,7 @@ export default function NewRequestPage() {
           <textarea
             id="description"
             className="input min-h-[100px]"
-            placeholder="e.g., Water is dripping from under the kitchen sink..."
+            placeholder={t('descriptionPlaceholder')}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             required
@@ -124,7 +126,7 @@ export default function NewRequestPage() {
 
         {/* Location in Unit */}
         <section>
-          <label className="label">Where in the unit?</label>
+          <label className="label">{t('whereInUnit')}</label>
           <div className="grid grid-cols-2 gap-2">
             {LOCATIONS.map((loc) => {
               const isSelected = formData.location === loc.value;
@@ -148,7 +150,7 @@ export default function NewRequestPage() {
 
         {/* Photo Upload */}
         <section>
-          <label className="label">Photos (optional but helpful)</label>
+          <label className="label">{t('photosLabel')}</label>
           <PhotoCapture
             photos={photos}
             onChange={setPhotos}
@@ -170,10 +172,10 @@ export default function NewRequestPage() {
             />
             <div>
               <label htmlFor="permission" className="font-medium text-sm cursor-pointer">
-                Permission to enter if I&apos;m not home
+                {t('permissionLabel')}
               </label>
               <p className="text-xs text-gray-500 mt-1">
-                Allow maintenance staff to enter your unit to address this issue
+                {t('permissionDesc')}
               </p>
             </div>
           </div>
@@ -181,7 +183,7 @@ export default function NewRequestPage() {
 
         {/* Preferred Time Slots */}
         <section>
-          <label className="label">Preferred time (optional)</label>
+          <label className="label">{t('preferredTime')}</label>
           <div className="space-y-2">
             {TIME_SLOTS.map((slot) => {
               const isSelected = formData.preferredSlot === slot.value;
@@ -210,9 +212,9 @@ export default function NewRequestPage() {
           <div className="bg-primary-50 rounded-lg p-4 flex items-start gap-3">
             <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-medium text-primary-900">Expected Response</p>
+              <p className="font-medium text-primary-900">{t('expectedResponse')}</p>
               <p className="text-primary-700">
-                We aim to respond within <strong>{selectedPriority.sla}</strong>.
+                {t('aimRespond', { sla: selectedPriority.sla })}
               </p>
             </div>
           </div>
@@ -224,7 +226,7 @@ export default function NewRequestPage() {
           className="btn-primary w-full py-3"
           disabled={!formData.category || !formData.description || isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+          {isSubmitting ? t('submitting') : t('submitRequest')}
         </button>
       </form>
     </>

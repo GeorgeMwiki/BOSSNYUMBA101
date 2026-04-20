@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
 export default function CustomerEditPage() {
+  const t = useTranslations('customerForm');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -65,7 +67,7 @@ export default function CustomerEditPage() {
   if (isLoading || !customer) {
     return (
       <>
-        <PageHeader title="Edit Customer" showBack />
+        <PageHeader title={t('editTitle')} showBack />
         <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -77,25 +79,25 @@ export default function CustomerEditPage() {
 
   return (
     <>
-      <PageHeader title="Edit Customer" showBack />
+      <PageHeader title={t('editTitle')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
         <div className="card p-4 space-y-4">
           <div>
-            <label className="label">Customer Type</label>
+            <label className="label">{t('customerType')}</label>
             <select
               className="input"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             >
-              <option value="INDIVIDUAL">Individual</option>
-              <option value="COMPANY">Company</option>
+              <option value="INDIVIDUAL">{t('typeIndividual')}</option>
+              <option value="COMPANY">{t('typeCompany')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">First Name *</label>
+              <label className="label">{t('firstName')}</label>
               <input
                 type="text"
                 className="input"
@@ -105,7 +107,7 @@ export default function CustomerEditPage() {
               />
             </div>
             <div>
-              <label className="label">Last Name *</label>
+              <label className="label">{t('lastName')}</label>
               <input
                 type="text"
                 className="input"
@@ -117,7 +119,7 @@ export default function CustomerEditPage() {
           </div>
 
           <div>
-            <label className="label">Email *</label>
+            <label className="label">{t('email')}</label>
             <input
               type="email"
               className="input"
@@ -128,7 +130,7 @@ export default function CustomerEditPage() {
           </div>
 
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('phone')}</label>
             <input
               type="tel"
               className="input"
@@ -146,10 +148,10 @@ export default function CustomerEditPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button type="submit" className="btn-primary flex-1" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving...' : 'Save Changes'}
+            {mutation.isPending ? t('saving') : t('saveChanges')}
           </button>
         </div>
       </form>

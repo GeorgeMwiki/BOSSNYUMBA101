@@ -5,6 +5,8 @@
  * served from the tenant-specific portal, not here.
  */
 
+import { getTranslations } from 'next-intl/server';
+
 export const dynamic = 'force-dynamic';
 
 async function loadPosts(): Promise<
@@ -25,16 +27,16 @@ async function loadPosts(): Promise<
 }
 
 export default async function BlogIndexPage() {
+  const t = await getTranslations('blogIndex');
   const posts = await loadPosts();
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-semibold">Estate-management insights</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       <p className="text-gray-600">
-        Notes from Mr. Mwikila on running estates, managing tenants, and staying on top of
-        compliance.
+        {t('intro')}
       </p>
       {posts.length === 0 ? (
-        <p className="text-gray-500">No posts yet. Check back soon.</p>
+        <p className="text-gray-500">{t('noPosts')}</p>
       ) : (
         <ul className="space-y-4">
           {posts.map((p) => (

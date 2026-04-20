@@ -17,6 +17,7 @@ import {
   StickyNote,
   CheckCircle2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import { brainFetch } from '@/lib/brain-client';
@@ -57,6 +58,7 @@ interface Thread {
 }
 
 export default function ThreadDetailPage() {
+  const tMisc = useTranslations('misc');
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
   const [data, setData] = useState<{ thread: Thread; events: ThreadEvent[] } | null>(null);
@@ -91,7 +93,7 @@ export default function ThreadDetailPage() {
           </div>
         )}
         {data?.events?.length === 0 && (
-          <div className="text-sm text-gray-500 px-2">No events visible to you on this thread.</div>
+          <div className="text-sm text-gray-500 px-2">{tMisc('noEventsVisible')}</div>
         )}
         {data?.events?.map((e) => (
           <EventRow key={e.id} event={e} />

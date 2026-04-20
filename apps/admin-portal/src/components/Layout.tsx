@@ -50,90 +50,95 @@ interface NavGroup {
   readonly items: readonly NavItem[];
 }
 
-const NAV_GROUPS: readonly NavGroup[] = [
-  {
-    heading: 'Overview',
-    items: [{ name: 'Dashboard', href: '/', icon: LayoutDashboard }],
-  },
-  {
-    heading: 'Operations',
-    items: [
-      { name: 'Tenants', href: '/tenants', icon: Building2 },
-      { name: 'Operations', href: '/operations', icon: Activity },
-      { name: 'Support', href: '/support', icon: HeadphonesIcon },
-      { name: 'Maintenance Taxonomy', href: '/maintenance-taxonomy', icon: Wrench },
-      { name: 'Warehouse', href: '/warehouse', icon: Boxes },
-      { name: 'IoT Sensors', href: '/iot', icon: Radio },
-      { name: 'Workflows', href: '/workflows', icon: Workflow },
-    ],
-  },
-  {
-    heading: 'Finance',
-    items: [
-      { name: 'Reports', href: '/reports', icon: BarChart3 },
-      { name: 'AI Costs', href: '/ai-costs', icon: Coins },
-    ],
-  },
-  {
-    heading: 'AI Brain',
-    items: [
-      { name: 'AI Cockpit', href: '/ai', icon: Brain },
-      { name: 'Classroom', href: '/classroom', icon: GraduationCap },
-      { name: 'Exceptions', href: '/exceptions', icon: Inbox },
-    ],
-  },
-  {
-    heading: 'Org Insights',
-    items: [
-      { name: 'Org Insights', href: '/org-insights', icon: TrendingUp },
-      { name: 'Platform', href: '/platform', icon: BarChart2 },
-      { name: 'Analytics', href: '/analytics', icon: LineChart },
-      { name: 'Communications', href: '/communications', icon: Mail },
-      { name: 'Compliance', href: '/compliance', icon: ShieldCheck },
-    ],
-  },
-  {
-    heading: 'Settings',
-    items: [
-      { name: 'Users', href: '/users', icon: Users },
-      { name: 'Roles & Permissions', href: '/roles', icon: Shield },
-      { name: 'Integrations', href: '/integrations', icon: Plug },
-      { name: 'API Integrations', href: '/api-integrations', icon: KeyRound },
-      { name: 'Configuration', href: '/configuration', icon: Settings },
-      { name: 'Feature Flags', href: '/feature-flags', icon: Flag },
-      { name: 'Compliance Settings', href: '/compliance-settings', icon: ShieldCheckIcon },
-      { name: 'Data Privacy', href: '/data-privacy', icon: Lock },
-      { name: 'Audit Log', href: '/audit', icon: FileText },
-      { name: 'System Health', href: '/system', icon: Server },
-      { name: 'Webhook DLQ', href: '/webhook-dlq', icon: Inbox },
-      { name: 'Legacy Migration', href: '/legacy-migration', icon: UploadCloud },
-    ],
-  },
-];
-
-const FLAT_NAV: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+function buildNavGroups(tNav: (k: string) => string, tGroup: (k: string) => string): readonly NavGroup[] {
+  return [
+    {
+      heading: tGroup('overview'),
+      items: [{ name: tNav('dashboard'), href: '/', icon: LayoutDashboard }],
+    },
+    {
+      heading: tGroup('operations'),
+      items: [
+        { name: tNav('tenants'), href: '/tenants', icon: Building2 },
+        { name: tNav('operations'), href: '/operations', icon: Activity },
+        { name: tNav('support'), href: '/support', icon: HeadphonesIcon },
+        { name: tNav('maintenanceTaxonomy'), href: '/maintenance-taxonomy', icon: Wrench },
+        { name: tNav('warehouse'), href: '/warehouse', icon: Boxes },
+        { name: tNav('iot'), href: '/iot', icon: Radio },
+        { name: tNav('workflows'), href: '/workflows', icon: Workflow },
+      ],
+    },
+    {
+      heading: tGroup('finance'),
+      items: [
+        { name: tNav('reports'), href: '/reports', icon: BarChart3 },
+        { name: tNav('aiCosts'), href: '/ai-costs', icon: Coins },
+      ],
+    },
+    {
+      heading: tGroup('aiBrain'),
+      items: [
+        { name: tGroup('aiCockpit'), href: '/ai', icon: Brain },
+        { name: tNav('classroom'), href: '/classroom', icon: GraduationCap },
+        { name: tGroup('exceptions'), href: '/exceptions', icon: Inbox },
+      ],
+    },
+    {
+      heading: tGroup('orgInsights'),
+      items: [
+        { name: tNav('orgInsights'), href: '/org-insights', icon: TrendingUp },
+        { name: tNav('platform'), href: '/platform', icon: BarChart2 },
+        { name: tNav('analytics'), href: '/analytics', icon: LineChart },
+        { name: tNav('communications'), href: '/communications', icon: Mail },
+        { name: tNav('compliance'), href: '/compliance', icon: ShieldCheck },
+      ],
+    },
+    {
+      heading: tGroup('settings'),
+      items: [
+        { name: tNav('users'), href: '/users', icon: Users },
+        { name: tGroup('rolesAndPermissions'), href: '/roles', icon: Shield },
+        { name: tNav('integrations'), href: '/integrations', icon: Plug },
+        { name: tNav('apiIntegrations'), href: '/api-integrations', icon: KeyRound },
+        { name: tNav('configuration'), href: '/configuration', icon: Settings },
+        { name: tNav('featureFlags'), href: '/feature-flags', icon: Flag },
+        { name: tNav('complianceSettings'), href: '/compliance-settings', icon: ShieldCheckIcon },
+        { name: tNav('dataPrivacy'), href: '/data-privacy', icon: Lock },
+        { name: tGroup('auditLog'), href: '/audit', icon: FileText },
+        { name: tGroup('systemHealth'), href: '/system', icon: Server },
+        { name: tNav('webhookDlq'), href: '/webhook-dlq', icon: Inbox },
+        { name: tNav('legacyMigration'), href: '/legacy-migration', icon: UploadCloud },
+      ],
+    },
+  ];
+}
 
 export function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const tActions = useTranslations('actions');
   const tApp = useTranslations('app');
+  const tLayout = useTranslations('layout');
+  const tNav = useTranslations('nav');
+  const tNavGroup = useTranslations('layout.nav');
+  const NAV_GROUPS = buildNavGroups(tNav, tNavGroup);
+  const FLAT_NAV = NAV_GROUPS.flatMap((g) => g.items);
 
   const getPageTitle = () => {
     const current = FLAT_NAV.find((item) => item.href === location.pathname);
     if (current) return current.name;
-    if (location.pathname.startsWith('/tenants/onboard')) return 'Tenant Onboarding';
-    if (location.pathname.startsWith('/roles/permissions')) return 'Permission Matrix';
-    if (location.pathname.startsWith('/roles/approvals')) return 'Approval Matrix';
-    if (location.pathname.startsWith('/operations/control-tower')) return 'Control Tower';
-    if (location.pathname.startsWith('/support/timeline')) return 'Customer Timeline';
-    if (location.pathname.startsWith('/support/escalation')) return 'Case Escalation';
-    if (location.pathname.startsWith('/platform')) return 'Platform';
-    if (location.pathname.startsWith('/communications')) return 'Communications';
-    if (location.pathname.startsWith('/compliance')) return 'Compliance';
-    if (location.pathname.startsWith('/analytics')) return 'Analytics';
-    if (location.pathname.startsWith('/integrations')) return 'Integrations';
-    return 'Admin Portal';
+    if (location.pathname.startsWith('/tenants/onboard')) return tLayout('pageTitles.tenantOnboarding');
+    if (location.pathname.startsWith('/roles/permissions')) return tLayout('pageTitles.permissionMatrix');
+    if (location.pathname.startsWith('/roles/approvals')) return tLayout('pageTitles.approvalMatrix');
+    if (location.pathname.startsWith('/operations/control-tower')) return tLayout('pageTitles.controlTower');
+    if (location.pathname.startsWith('/support/timeline')) return tLayout('pageTitles.customerTimeline');
+    if (location.pathname.startsWith('/support/escalation')) return tLayout('pageTitles.caseEscalation');
+    if (location.pathname.startsWith('/platform')) return tLayout('pageTitles.platform');
+    if (location.pathname.startsWith('/communications')) return tLayout('pageTitles.communications');
+    if (location.pathname.startsWith('/compliance')) return tLayout('pageTitles.compliance');
+    if (location.pathname.startsWith('/analytics')) return tLayout('pageTitles.analytics');
+    if (location.pathname.startsWith('/integrations')) return tLayout('pageTitles.integrations');
+    return tLayout('pageTitles.default');
   };
 
   return (
@@ -147,7 +152,7 @@ export function Layout() {
             </div>
             <div>
               <h1 className="font-bold text-lg">{tApp('title')}</h1>
-              <p className="text-xs text-slate-400">Internal Admin</p>
+              <p className="text-xs text-slate-400">{tLayout('internalAdmin')}</p>
             </div>
           </div>
         </div>
@@ -223,7 +228,7 @@ export function Layout() {
               <LocaleSwitcher />
               <button
                 type="button"
-                aria-label="Open search (Cmd+K)"
+                aria-label={tLayout('searchAria')}
                 onClick={() => {
                   const isMac = navigator.platform.toUpperCase().includes('MAC');
                   const event = new KeyboardEvent('keydown', {
@@ -238,7 +243,7 @@ export function Layout() {
                 className="flex items-center gap-2 pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-500 w-64 text-left"
               >
                 <Search aria-hidden="true" className="h-4 w-4 text-gray-400" />
-                <span className="flex-1">Search anywhere</span>
+                <span className="flex-1">{tLayout('searchAnywhere')}</span>
                 <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 border border-gray-200 rounded">
                   {navigator.platform.toUpperCase().includes('MAC') ? 'Cmd K' : 'Ctrl K'}
                 </kbd>

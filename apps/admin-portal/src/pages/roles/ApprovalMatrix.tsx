@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Plus,
@@ -85,6 +86,7 @@ const initialRules: ApprovalRule[] = [
 
 export default function ApprovalMatrix() {
   const navigate = useNavigate();
+  const t = useTranslations('approvalMatrix');
   const [rules, setRules] = useState<ApprovalRule[]>(initialRules);
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -103,7 +105,7 @@ export default function ApprovalMatrix() {
 
   const deleteRule = (id: string) => {
     setRules(rules.filter((r) => r.id !== id));
-    setNotification({ type: 'success', message: 'Approval rule deleted' });
+    setNotification({ type: 'success', message: t('notifications.ruleDeleted') });
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -116,11 +118,11 @@ export default function ApprovalMatrix() {
         body: JSON.stringify({ rules }),
       });
       if (!res.ok) throw new Error(`save failed: ${res.status}`);
-      setNotification({ type: 'success', message: 'Approval matrix saved successfully' });
+      setNotification({ type: 'success', message: t('notifications.saved') });
     } catch (err) {
       setNotification({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to save',
+        message: err instanceof Error ? err.message : t('notifications.saveFailed'),
       });
     } finally {
       setSaving(false);
@@ -131,7 +133,7 @@ export default function ApprovalMatrix() {
   const addNewRule = () => {
     const newRule: ApprovalRule = {
       id: String(Date.now()),
-      name: 'New Approval Rule',
+      name: t('newRule.defaultName'),
       category: 'finance',
       description: '',
       trigger: '',
@@ -177,18 +179,18 @@ export default function ApprovalMatrix() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Approval Matrix</h1>
-            <p className="text-sm text-gray-500 mt-1">Configure who can approve what, and at what thresholds</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={addNewRule} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Plus className="h-4 w-4" />
-            Add Rule
+            {t('addRule')}
           </button>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50">
             {saving ? <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? 'Saving...' : 'Save All'}
+            {saving ? t('saving') : t('saveAll')}
           </button>
         </div>
       </div>
@@ -208,19 +210,19 @@ export default function ApprovalMatrix() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-2xl font-bold text-gray-900">{rules.length}</p>
-          <p className="text-sm text-gray-500">Total Rules</p>
+          <p className="text-sm text-gray-500">{t('stats.totalRules')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-2xl font-bold text-green-600">{rules.filter((r) => r.isActive).length}</p>
-          <p className="text-sm text-gray-500">Active</p>
+          <p className="text-sm text-gray-500">{t('stats.active')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-2xl font-bold text-amber-600">{rules.filter((r) => !r.isActive).length}</p>
-          <p className="text-sm text-gray-500">Inactive</p>
+          <p className="text-sm text-gray-500">{t('stats.inactive')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-2xl font-bold text-violet-600">{new Set(rules.flatMap((r) => r.approvers.map((a) => a.role))).size}</p>
-          <p className="text-sm text-gray-500">Approver Roles</p>
+          <p className="text-sm text-gray-500">{t('stats.approverRoles')}</p>
         </div>
       </div>
 
@@ -242,19 +244,19 @@ export default function ApprovalMatrix() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-900">{rule.name}</h3>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${rule.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {rule.isActive ? 'Active' : 'Inactive'}
+                        {rule.isActive ? t('stats.active') : t('stats.inactive')}
                       </span>
                       <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-700">{rule.category}</span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-0.5">{rule.description || 'No description'}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{rule.description || t('rule.noDescription')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right mr-4">
                     <p className="text-sm font-medium text-gray-700">
-                      {rule.thresholdType === 'always' ? 'Always requires approval' : `Threshold: ${rule.thresholdValue} ${rule.thresholdCurrency || ''}`}
+                      {rule.thresholdType === 'always' ? t('rule.alwaysRequires') : t('rule.thresholdSummary', { value: rule.thresholdValue, currency: rule.thresholdCurrency || '' })}
                     </p>
-                    <p className="text-xs text-gray-400">{rule.approvers.length} approval level{rule.approvers.length > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-400">{t('rule.approvalLevels', { count: rule.approvers.length })}</p>
                   </div>
                   {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
                 </div>
@@ -266,46 +268,46 @@ export default function ApprovalMatrix() {
                   {/* Rule Settings */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.ruleName')}</label>
                       <input type="text" value={rule.name} onChange={(e) => updateRule(rule.id, { name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.category')}</label>
                       <select value={rule.category} onChange={(e) => updateRule(rule.id, { category: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
-                        <option value="finance">Finance</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="leasing">Leasing</option>
-                        <option value="users">Users</option>
+                        <option value="finance">{t('categories.finance')}</option>
+                        <option value="maintenance">{t('categories.maintenance')}</option>
+                        <option value="leasing">{t('categories.leasing')}</option>
+                        <option value="users">{t('categories.users')}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Trigger</label>
-                      <input type="text" value={rule.trigger} onChange={(e) => updateRule(rule.id, { trigger: e.target.value })} placeholder="e.g., disbursement.created" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.trigger')}</label>
+                      <input type="text" value={rule.trigger} onChange={(e) => updateRule(rule.id, { trigger: e.target.value })} placeholder={t('form.triggerPlaceholder')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                     </div>
                   </div>
 
                   {/* Threshold */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Threshold Type</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.thresholdType')}</label>
                       <select value={rule.thresholdType} onChange={(e) => updateRule(rule.id, { thresholdType: e.target.value as 'amount' | 'count' | 'always' })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
-                        <option value="amount">Amount-based</option>
-                        <option value="count">Count-based</option>
-                        <option value="always">Always require</option>
+                        <option value="amount">{t('thresholdTypes.amount')}</option>
+                        <option value="count">{t('thresholdTypes.count')}</option>
+                        <option value="always">{t('thresholdTypes.always')}</option>
                       </select>
                     </div>
                     {rule.thresholdType !== 'always' && (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Threshold Value</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.thresholdValue')}</label>
                           <input type="number" value={rule.thresholdValue} onChange={(e) => updateRule(rule.id, { thresholdValue: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.unit')}</label>
                           <select value={rule.thresholdCurrency} onChange={(e) => updateRule(rule.id, { thresholdCurrency: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
                             <option value="KES">KES</option>
-                            <option value="%">Percentage</option>
-                            <option value="units">Units</option>
+                            <option value="%">{t('units.percentage')}</option>
+                            <option value="units">{t('units.units')}</option>
                           </select>
                         </div>
                       </>
@@ -315,9 +317,9 @@ export default function ApprovalMatrix() {
                   {/* Approval Chain */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-900">Approval Chain</h4>
+                      <h4 className="font-medium text-gray-900">{t('approvalChain.title')}</h4>
                       <button onClick={() => addApproverLevel(rule.id)} className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700">
-                        <Plus className="h-4 w-4" />Add Level
+                        <Plus className="h-4 w-4" />{t('approvalChain.addLevel')}
                       </button>
                     </div>
                     <div className="space-y-3">
@@ -328,7 +330,7 @@ export default function ApprovalMatrix() {
                           </div>
                           <div className="flex-1 grid grid-cols-3 gap-3">
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">Approver Role</label>
+                              <label className="block text-xs text-gray-500 mb-1">{t('approvalChain.approverRole')}</label>
                               <select
                                 value={approver.role}
                                 onChange={(e) => {
@@ -338,15 +340,15 @@ export default function ApprovalMatrix() {
                                 }}
                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
                               >
-                                <option value="Super Admin">Super Admin</option>
-                                <option value="Finance Manager">Finance Manager</option>
-                                <option value="Finance Director">Finance Director</option>
-                                <option value="Operations Lead">Operations Lead</option>
-                                <option value="Property Manager">Property Manager</option>
+                                <option value="Super Admin">{t('roles.superAdmin')}</option>
+                                <option value="Finance Manager">{t('roles.financeManager')}</option>
+                                <option value="Finance Director">{t('roles.financeDirector')}</option>
+                                <option value="Operations Lead">{t('roles.operationsLead')}</option>
+                                <option value="Property Manager">{t('roles.propertyManager')}</option>
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">Required Approvals</label>
+                              <label className="block text-xs text-gray-500 mb-1">{t('approvalChain.requiredApprovals')}</label>
                               <input
                                 type="number"
                                 min={1}
@@ -360,7 +362,7 @@ export default function ApprovalMatrix() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">Auto-approve after (hrs)</label>
+                              <label className="block text-xs text-gray-500 mb-1">{t('approvalChain.autoApproveAfter')}</label>
                               <input
                                 type="number"
                                 min={0}
@@ -387,11 +389,11 @@ export default function ApprovalMatrix() {
                   {/* Escalation */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Escalation after (hours)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.escalationAfter')}</label>
                       <input type="number" value={rule.escalationHours} onChange={(e) => updateRule(rule.id, { escalationHours: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Auto-reject after (hours)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.autoRejectAfter')}</label>
                       <input type="number" value={rule.autoRejectAfterHours} onChange={(e) => updateRule(rule.id, { autoRejectAfterHours: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500" />
                     </div>
                   </div>
@@ -399,11 +401,11 @@ export default function ApprovalMatrix() {
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                     <button onClick={() => toggleActive(rule.id)} className={`px-4 py-2 text-sm font-medium rounded-lg ${rule.isActive ? 'text-amber-700 bg-amber-50 hover:bg-amber-100' : 'text-green-700 bg-green-50 hover:bg-green-100'}`}>
-                      {rule.isActive ? 'Deactivate Rule' : 'Activate Rule'}
+                      {rule.isActive ? t('actions.deactivate') : t('actions.activate')}
                     </button>
                     <button onClick={() => deleteRule(rule.id)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">
                       <Trash2 className="h-4 w-4" />
-                      Delete Rule
+                      {t('actions.deleteRule')}
                     </button>
                   </div>
                 </div>
@@ -416,8 +418,8 @@ export default function ApprovalMatrix() {
       {rules.length === 0 && (
         <div className="text-center py-12">
           <Shield className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No approval rules configured</p>
-          <button onClick={addNewRule} className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Add First Rule</button>
+          <p className="text-gray-500">{t('empty.noRules')}</p>
+          <button onClick={addNewRule} className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">{t('empty.addFirst')}</button>
         </div>
       )}
     </div>

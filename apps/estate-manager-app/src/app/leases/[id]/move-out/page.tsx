@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Badge, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface MoveOutItem {
   readonly id: string;
@@ -11,6 +12,7 @@ interface MoveOutItem {
 }
 
 export default function LeaseMoveOutPage(): React.ReactElement {
+  const t = useTranslations('leaseMoveOut');
   const params = useParams();
   const id = params?.id as string;
   const [items, setItems] = useState<ReadonlyArray<MoveOutItem>>([]);
@@ -20,12 +22,12 @@ export default function LeaseMoveOutPage(): React.ReactElement {
 
   const addItem = (): void => {
     if (!description.trim() || !amount.trim()) {
-      setError('Description and amount are required.');
+      setError(t('descAmountRequired'));
       return;
     }
     const parsed = Number(amount);
     if (Number.isNaN(parsed) || parsed < 0) {
-      setError('Amount must be a non-negative number.');
+      setError(t('amountNonNegative'));
       return;
     }
     setError(null);
@@ -47,7 +49,7 @@ export default function LeaseMoveOutPage(): React.ReactElement {
         body: JSON.stringify({ items }),
       });
     } catch {
-      setError('Submission failed.');
+      setError(t('submissionFailed'));
     }
   };
 
@@ -55,25 +57,25 @@ export default function LeaseMoveOutPage(): React.ReactElement {
 
   return (
     <main className="p-6 max-w-3xl space-y-4">
-      <h1 className="text-2xl font-semibold">Move-out — Lease {id}</h1>
+      <h1 className="text-2xl font-semibold">{t('title', { id })}</h1>
 
       {error && <Alert variant="danger"><AlertDescription>{error}</AlertDescription></Alert>}
 
       <Card>
         <CardHeader>
-          <CardTitle>Damage / deduction items</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-[1fr_140px_100px] gap-2 items-end mb-3">
             <div>
-              <Label htmlFor="desc">Description</Label>
+              <Label htmlFor="desc">{t('description')}</Label>
               <Input id="desc" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="amt">Amount</Label>
+              <Label htmlFor="amt">{t('amount')}</Label>
               <Input id="amt" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
-            <Button onClick={addItem}>Add</Button>
+            <Button onClick={addItem}>{t('add')}</Button>
           </div>
 
           <ul className="divide-y">
@@ -84,10 +86,10 @@ export default function LeaseMoveOutPage(): React.ReactElement {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-sm font-medium">Total: {total.toLocaleString()}</p>
+          <p className="mt-3 text-sm font-medium">{t('total', { amount: total.toLocaleString() })}</p>
 
           <Button className="mt-4" onClick={submit} disabled={items.length === 0}>
-            Submit for owner approval
+            {t('submitForApproval')}
           </Button>
         </CardContent>
       </Card>

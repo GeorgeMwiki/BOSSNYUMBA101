@@ -314,6 +314,679 @@
     "continue": "Continue",
     "confirm": "Confirm"
   },
+  "feedbackHistory": {
+    "title": "Feedback History",
+    "submitNew": "Submit new feedback",
+    "submitNewSubtitle": "Share your suggestions or report issues",
+    "pastSubmissions": "Past submissions",
+    "emptyTitle": "No feedback yet",
+    "emptyBody": "Your feedback submissions will appear here",
+    "emptyCta": "Submit feedback"
+  },
+  "requestFeedback": {
+    "title": "Rate Service",
+    "howWasService": "How was the service?",
+    "tapToRate": "Tap to rate",
+    "poor": "Poor",
+    "fair": "Fair",
+    "good": "Good",
+    "veryGood": "Very Good",
+    "excellent": "Excellent",
+    "additionalFeedback": "Additional feedback (optional)",
+    "feedbackPlaceholder": "Anything else you'd like to share about the service?",
+    "issueNotResolved": "Issue was not fully resolved",
+    "issueNotResolvedBody": "Check this if the problem persists or wasn't fixed properly",
+    "describeWrong": "Describe what's still wrong",
+    "issueDetailsPlaceholder": "Please describe what still needs to be fixed...",
+    "submitting": "Submitting...",
+    "submit": "Submit Feedback"
+  },
+  "submitReading": {
+    "title": "Submit Meter Reading",
+    "add": "Add"
+  },
+  "onboardingWelcomePage": {
+    "preferredLanguage": "Preferred Language",
+    "communicationChannels": "Communication Channels"
+  },
+  "onboardingESign": {
+    "title": "Sign Documents",
+    "allSigned": "All Signed",
+    "drawSignature": "Draw Your Signature"
+  },
+  "myCredit": {
+    "title": "My credit rating",
+    "loading": "Loading…",
+    "yourScore": "Your score",
+    "orgNamePlaceholder": "Organization / landlord name"
+  },
+  "negotiatePage": {
+    "offerPrefix": "Offer",
+    "messagePlaceholder": "Message...",
+    "messageAria": "Negotiation message",
+    "offerPlaceholder": "Offer",
+    "offerAria": "Offer amount",
+    "send": "Send",
+    "sendAria": "Send message"
+  },
+  "liveConsultant": {
+    "heading": "Ask him anything. Live answer below.",
+    "questionPlaceholder": "Ask a real estate question...",
+    "youAskedPrefix": "You asked"
+  },
+  "liveAffordability": {
+    "heading": "Try a live affordability check.",
+    "monthlyRent": "Monthly rent (TZS)",
+    "grossIncome": "Gross monthly income (TZS)"
+  },
+  "liveArrears": {
+    "heading": "Watch Mr. Mwikila triage a 45-day case."
+  },
+  "serviceRating": {
+    "thankYou": "Thank You!",
+    "feedbackHelps": "Your feedback helps us improve our service.",
+    "howWasService": "How was the service?",
+    "rateExperienceWith": "Rate your experience with {name}",
+    "whatDidYouLike": "What did you like? (optional)",
+    "additionalComments": "Additional comments (optional)",
+    "commentsPlaceholder": "Share more details about your experience...",
+    "skip": "Skip",
+    "submitRating": "Submit Rating",
+    "ratingLabels": {
+      "excellent": "Excellent!",
+      "good": "Good",
+      "okay": "Okay",
+      "poor": "Poor",
+      "veryPoor": "Very Poor",
+      "tapToRate": "Tap to rate"
+    },
+    "tag": {
+      "quickResponse": "Quick response",
+      "professionalService": "Professional service",
+      "cleanWork": "Clean work area",
+      "explainedWell": "Explained the issue well",
+      "friendlyHelpful": "Friendly and helpful",
+      "problemResolved": "Problem fully resolved"
+    }
+  },
+  "redeemCode": {
+    "codePlaceholder": "ACME-A3F9"
+  },
+  "howItWorks": {
+    "heroTitle": "One brain, across every role, in every language.",
+    "heroSubtitle": "BOSSNYUMBA is not a chat bolted onto software. The product is the AI — and Mr. Mwikila is the same brain whether you are an owner on Monday, a tenant on Wednesday, or a station master at 2am.",
+    "askHim": "Ask him anything",
+    "step1Title": "Talk to Mr. Mwikila anywhere",
+    "step2Title": "He teaches, then he acts",
+    "step3Title": "He remembers, and he learns"
+  },
+  "forOwners": {
+    "heroTitle": "Run your portfolio like it is ten times its size.",
+    "heroSubtitle": "Whether you own 8 units or 80, BOSSNYUMBA absorbs the admin you do on Sundays so your Mondays are about the big decisions. Mr. Mwikila does the reminders, the reconciliation, and the reporting — you keep the judgement.",
+    "heroCta": "Talk to Mr. Mwikila about your portfolio"
+  },
+  "forManagers": {
+    "heroTitle": "Run 200 units the way a senior partner would run them.",
+    "heroSubtitle": "BOSSNYUMBA is built for managers who are in the middle: accountable to owners, responsible for tenants, responsible for vendors, and somehow also doing the rent roll. Mr. Mwikila absorbs the volume so you can be excellent on the calls that matter.",
+    "heroCta": "Show me a manager dashboard"
+  },
+  "forTenants": {
+    "heroTitle": "Your home, on your terms.",
+    "heroSubtitle": "Every shilling of rent you pay shows up in your own dashboard. Every maintenance request has a timeline. Every notice comes in English or Swahili — your choice. BOSSNYUMBA gives you the same truth your landlord sees.",
+    "heroCta": "See what a tenant dashboard looks like"
+  },
+  "forStationMasters": {
+    "heroTitle": "The watchman who finally gets heard.",
+    "heroSubtitle": "If you keep the estate running — gate logs, meter readings, reports on what happened overnight — BOSSNYUMBA is the first tool built for your role. Talk to your phone in Swahili. It handles the rest.",
+    "heroCta": "See a station-master walkthrough"
+  },
+  "pricingPage": {
+    "heroTitle": "Four tiers. Talk to Mr. Mwikila for a custom quote.",
+    "heroSubtitle": "We built pricing around East African portfolios. No per-user seats, no surprise overage bills. If you cross a ceiling, Mr. Mwikila tells you 30 days ahead so you decide, not the invoice.",
+    "heroCta": "Talk to Mr. Mwikila for a custom quote",
+    "numbersCompare": "How the numbers compare"
+  },
+  "comparePage": {
+    "heroTitle": "An honest comparison.",
+    "heroSubtitle": "Where BOSSNYUMBA wins, where it does not, and when you should pick someone else. No marketing spin — if AppFolio fits you better, we will tell you.",
+    "heroCta": "Ask Mr. Mwikila which is right for you",
+    "criterion": "Criterion",
+    "appfolioHeader": "AppFolio",
+    "yardiHeader": "Yardi",
+    "spreadsheet": "Spreadsheet",
+    "pickAppfolio": "Pick AppFolio if...",
+    "pickYardi": "Pick Yardi if...",
+    "pickSpreadsheet": "Pick a spreadsheet if...",
+    "pickBossnyumba": "Pick BOSSNYUMBA if..."
+  },
+  "blogIndex": {
+    "title": "Estate-management insights",
+    "intro": "Notes from Mr. Mwikila on running estates, managing tenants, and staying on top of compliance.",
+    "noPosts": "No posts yet. Check back soon."
+  },
+  "blogPost": {
+    "notFound": "Post not found"
+  },
+  "photoCapture": {
+    "camera": "Camera",
+    "gallery": "Gallery"
+  },
+  "requestCard": {
+    "scheduled": "Scheduled"
+  },
+  "screenUnavailable": {
+    "paymentsTitle": "Payments unavailable",
+    "paymentsMessage": "Hardcoded payment data has been removed. This legacy payments surface now requires live balance and ledger data.",
+    "chatTitle": "Chat unavailable",
+    "chatMessage": "Hardcoded chat threads have been removed. This legacy chat surface now requires a live messaging backend.",
+    "storiesTitle": "Stories unavailable",
+    "storiesMessage": "Static stories have been removed. This widget now requires a live resident feed.",
+    "voiceTitle": "Voice capture unavailable",
+    "voiceMessage": "Simulated recording and transcription have been removed. Voice maintenance intake now requires a live recording and speech-to-text pipeline. Maximum configured duration remains {duration} seconds.",
+    "qualityAnalysisTitle": "Document quality analysis unavailable"
+  },
+  "pageHeaders": {
+    "marketplace": "Marketplace",
+    "messages": "Messages",
+    "conversation": "Conversation",
+    "notifications": "Notifications",
+    "paymentReceipt": "Payment Receipt",
+    "paymentPlan": "Payment Plan",
+    "mpesa": "Pay with M-Pesa",
+    "bankTransfer": "Bank Transfer",
+    "myDocuments": "My Documents",
+    "document": "Document",
+    "documentNotFound": "Document not found.",
+    "noDocuments": "No documents",
+    "moveOutNotice": "Move Out Notice",
+    "leaseDocuments": "Lease Documents",
+    "utilitiesSetup": "Utilities Setup",
+    "houseRules": "House Rules",
+    "requestDetail": "Request Detail",
+    "maintenanceRequest": "Maintenance Request",
+    "downloadDocument": "Download document"
+  },
+  "feedbackPage": {
+    "title": "Submit Feedback",
+    "typeSuggestion": "Suggestion",
+    "typeComplaint": "Complaint",
+    "typeCompliment": "Compliment",
+    "typeOther": "Other",
+    "thankYou": "Thank you for your feedback!",
+    "appreciation": "We appreciate you taking the time to help us improve.",
+    "viewHistory": "View history",
+    "submitAnother": "Submit another",
+    "history": "History",
+    "intro": "Share your suggestions, report issues, or let us know what we're doing well.",
+    "typeLabel": "Type of feedback",
+    "subjectLabel": "Subject (optional)",
+    "subjectPlaceholder": "Brief summary",
+    "messageLabel": "Your feedback",
+    "messagePlaceholder": "Share your suggestions or report an issue...",
+    "submitting": "Submitting...",
+    "submit": "Submit Feedback"
+  },
+  "propertyRules": {
+    "title": "Property Rules",
+    "buildingGuidelines": "Building Guidelines",
+    "followRules": "Please follow these rules for a pleasant community"
+  },
+  "announcementsList": {
+    "title": "Announcements",
+    "noAnnouncements": "No announcements"
+  },
+  "announcementDetail": {
+    "title": "Announcement",
+    "notFound": "Announcement not found."
+  },
+  "leaseDocument": {
+    "title": "Document",
+    "notFound": "Document not found.",
+    "datePrefix": "Date",
+    "downloadDocument": "Download document"
+  },
+  "reportEmergency": {
+    "title": "Report Emergency",
+    "whatType": "What type of emergency?",
+    "descriptionPlaceholder": "Describe what is happening...",
+    "locationPlaceholder": "e.g., Unit A-204, main bathroom",
+    "whatHappensNext": "What happens next",
+    "whatHappensNextBody": "We will contact you immediately. For urgent issues, please also call the emergency numbers.",
+    "submitting": "Submitting...",
+    "reportEmergency": "Report Emergency"
+  },
+  "appError": {
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try again"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "body": "The page you're looking for doesn't exist or has been moved.",
+    "goHome": "Go Home"
+  },
+  "assistantPage": {
+    "title": "BossNyumba Assistant",
+    "subtitle": "Ask anything about your lease, payments, or maintenance",
+    "thinking": "Thinking…",
+    "inputPlaceholder": "Ask about your rent, lease, requests, notices…",
+    "send": "Send",
+    "hereToHelp": "BossNyumba is here to help.",
+    "emptyBody": "Ask about your rent, lease clauses, when your next payment is due, or open a maintenance request — anything about your unit.",
+    "assistantLabel": "Assistant",
+    "proposedLabel": "Proposed",
+    "riskLabel": "Risk"
+  },
+  "assistantTraining": {
+    "title": "Tenant Assistant — Training",
+    "typing": "Typing…",
+    "errorLabel": "Error",
+    "inputPlaceholder": "Ask about rent, my lease, deposit, arrears …"
+  },
+  "authRegister": {
+    "title": "Create Account",
+    "subtitle": "Register to manage your tenancy",
+    "firstNamePlaceholder": "John",
+    "lastNamePlaceholder": "Kamau"
+  },
+  "authWhatsapp": {
+    "invalidLink": "Invalid registration link. Please request a new link from your property manager.",
+    "notWired": "WhatsApp registration verification is not wired to a live backend in this build.",
+    "verifying": "Verifying Your Link",
+    "verifyingBody": "Please wait while we verify your registration link...",
+    "verificationFailed": "Verification Failed",
+    "requestNewLink": "Request New Link",
+    "loading": "Loading"
+  },
+  "recentActivity": {
+    "heading": "Recent Activity"
+  },
+  "quickActions": {
+    "heading": "Quick Actions",
+    "payRent": "Pay Rent",
+    "reportIssue": "Report Issue",
+    "lease": "Lease",
+    "support": "Support"
+  },
+  "updatePrompt": {
+    "title": "Update available",
+    "body": "A new version is ready. Refresh to get the latest features.",
+    "refreshNow": "Refresh now",
+    "later": "Later"
+  },
+  "installPrompt": {
+    "title": "Install BOSSNYUMBA",
+    "body": "Add to your home screen for quick access and offline use.",
+    "install": "Install",
+    "notNow": "Not now",
+    "bannerAria": "Install app",
+    "dismissAria": "Dismiss"
+  },
+  "offlineIndicator": {
+    "message": "You're offline. Some features may be limited."
+  },
+  "onboardingDocuments": {
+    "title": "Upload Documents",
+    "documentUpload": "Document Upload",
+    "uploadedCount": "{current} of {total} uploaded",
+    "uploadInstructions": "Please upload clear, legible photos of your documents. Make sure all text is visible and not blurry.",
+    "qualityScore": "Quality Score: {score}%",
+    "needsReview": "Needs Review",
+    "qualityLow": "The image quality is lower than recommended. You can continue or retake for better results.",
+    "retake": "Retake",
+    "useAnyway": "Use Anyway",
+    "checkingQuality": "Checking document quality...",
+    "takePhoto": "Take Photo",
+    "gallery": "Gallery",
+    "qualityCheckTitle": "Document Quality Check"
+  },
+  "disputesPage": {
+    "title": "Damage proposal — counter / dispute",
+    "emptyTitle": "No active damage proposal",
+    "managerPrefix": "Manager",
+    "amountPlaceholder": "Your amount",
+    "notePlaceholder": "Your note / evidence...",
+    "submitCounterAria": "Submit counter proposal"
+  },
+  "onboardingDashboard": {
+    "welcomeHeading": "Welcome to BOSSNYUMBA",
+    "welcomeGreeting": "Let's get you set up in your new home, {name}!",
+    "youFallback": "there",
+    "yourProgress": "Your Progress",
+    "stepProgress": "{current} of {total} steps",
+    "stepLabel": "Step {step}",
+    "allStepsComplete": "All steps complete",
+    "finishOnboarding": "Finish Onboarding",
+    "getWelcomeBadge": "Get your welcome badge and move-in details",
+    "allSteps": "All Steps",
+    "done": "Done",
+    "goToDashboard": "Go to Dashboard"
+  },
+  "paymentHistory": {
+    "title": "Payment History",
+    "retry": "Retry",
+    "emptyTitle": "No payments yet",
+    "emptyDescription": "Your payment history will appear here."
+  },
+  "paymentsPay": {
+    "title": "Make Payment",
+    "amountToPay": "Amount to Pay",
+    "cancel": "Cancel",
+    "change": "Change",
+    "enterCustomAmount": "Enter custom amount",
+    "halfAmount": "Half (KES {amount})",
+    "fullBalance": "Full Balance",
+    "partialPayment": "Partial payment. Remaining balance: KES {remaining}",
+    "selectPaymentMethod": "Select Payment Method",
+    "popular": "Popular",
+    "securityNote": "All payments are secured with bank-level encryption. Your financial information is never stored on our servers.",
+    "needPaymentPlan": "Need a payment plan?",
+    "splitBalance": "Split your balance into manageable installments",
+    "continueTo": "Continue to {method}",
+    "selectMethodPrompt": "Select a payment method"
+  },
+  "profileEdit": {
+    "title": "Edit Profile",
+    "profilePhoto": "Profile photo",
+    "tapToChange": "Tap to change",
+    "personalInformation": "Personal Information",
+    "emergencyContact": "Emergency Contact",
+    "firstNamePlaceholder": "First name",
+    "lastNamePlaceholder": "Last name",
+    "fullNamePlaceholder": "Full name"
+  },
+  "notificationSettings": {
+    "title": "Notification preferences",
+    "retry": "Retry",
+    "channelsPerCategory": "Channels per category",
+    "categoryHeader": "Category",
+    "emailHeader": "Email",
+    "pushHeader": "Push",
+    "savePreferences": "Save preferences",
+    "savePreferencesAria": "Save notification preferences",
+    "labels": {
+      "rentReminders": "Rent reminders",
+      "maintenanceUpdates": "Maintenance updates",
+      "announcements": "Building announcements",
+      "marketing": "Marketing / promotions",
+      "emergencies": "Emergencies"
+    }
+  },
+  "leaseSummary": {
+    "heading": "Current Lease",
+    "endsIn": "Ends in {days} days",
+    "viewFullLease": "View full lease details"
+  },
+  "upcomingPayment": {
+    "heading": "Upcoming Payment",
+    "duePrefix": "Due",
+    "sampleDueDate": "March 1, 2024",
+    "daysCount": "{days} days",
+    "monthlyRent": "Monthly Rent",
+    "serviceCharge": "Service Charge",
+    "waterBill": "Water Bill",
+    "payNow": "Pay Now"
+  },
+  "homeSummary": {
+    "heading": "Home summary",
+    "currentLease": "Current lease",
+    "endsPrefix": "Ends",
+    "noActiveLease": "No active lease on file.",
+    "nextPaymentDue": "Next payment due",
+    "inDays": "in {days}d",
+    "openMaintenance": "Open maintenance",
+    "unreadMessages": "Unread messages",
+    "myCredit": "My credit",
+    "view": "View"
+  },
+  "communityPage": {
+    "title": "Community",
+    "propertyRules": "Property Rules",
+    "buildingGuidelines": "Building guidelines",
+    "announcements": "Announcements",
+    "propertyUpdates": "Property updates",
+    "communityBoard": "Community Board",
+    "connectIntro": "Connect with neighbors—share updates, ask questions, or help out.",
+    "unitLabel": "Unit {unit}"
+  },
+  "newRequestPage": {
+    "title": "New Request",
+    "whatType": "What type of issue?",
+    "howUrgent": "How urgent is this?",
+    "describeProblem": "Describe the problem",
+    "descriptionPlaceholder": "e.g., Water is dripping from under the kitchen sink...",
+    "whereInUnit": "Where in the unit?",
+    "photosLabel": "Photos (optional but helpful)",
+    "permissionLabel": "Permission to enter if I'm not home",
+    "permissionDesc": "Allow maintenance staff to enter your unit to address this issue",
+    "preferredTime": "Preferred time (optional)",
+    "expectedResponse": "Expected Response",
+    "aimRespond": "We aim to respond within {sla}.",
+    "submitting": "Submitting...",
+    "submitRequest": "Submit Request"
+  },
+  "leaseRenewal": {
+    "title": "Lease Renewal",
+    "loadingOffer": "Loading offer…",
+    "noActiveOffer": "No active renewal offer for your lease.",
+    "offerHeader": "Renewal offer for your unit",
+    "newRent": "New rent",
+    "term": "Term",
+    "monthsCount": "{count} months",
+    "start": "Start",
+    "end": "End",
+    "depositTopUp": "Deposit top-up",
+    "offerExpires": "Offer expires",
+    "conditions": "Conditions",
+    "accept": "Accept",
+    "decline": "Decline",
+    "counterOfferPrompt": "Counter-offer a different monthly rent:",
+    "counter": "Counter",
+    "currentStatus": "Current status"
+  },
+  "invoicePage": {
+    "title": "Invoice",
+    "notFound": "Invoice not found",
+    "goBack": "Go Back",
+    "invoiceDetails": "Invoice Details",
+    "qty": "Qty",
+    "total": "Total",
+    "paymentInformation": "Payment Information",
+    "paidOn": "Paid on",
+    "method": "Method",
+    "reference": "Reference",
+    "payThisInvoice": "Pay this Invoice",
+    "downloadPdf": "Download PDF"
+  },
+  "subleasePage": {
+    "title": "Request a sublease",
+    "prospectName": "Prospect name",
+    "prospectEmail": "Prospect email",
+    "prospectPhone": "Prospect phone",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "proposedRent": "Proposed rent",
+    "reason": "Reason for sublease",
+    "submitRequest": "Submit request",
+    "submitRequestAria": "Submit sublease request"
+  },
+  "maintenanceFeedback": {
+    "title": "Rate Service",
+    "submittedTitle": "Feedback Submitted",
+    "thankYou": "Thank You!",
+    "thankYouBody": "Your feedback helps us improve our maintenance services.",
+    "backToMaintenance": "Back to Maintenance",
+    "howWasService": "How was the service?",
+    "tapToRate": "Tap to rate your overall experience",
+    "excellent": "Excellent!",
+    "great": "Great!",
+    "good": "Good",
+    "fair": "Fair",
+    "poor": "Poor",
+    "rateSpecificAspects": "Rate specific aspects",
+    "whatStoodOut": "What stood out? (optional)",
+    "wouldRecommend": "Would you recommend this technician?",
+    "yes": "Yes",
+    "no": "No",
+    "additionalComments": "Additional comments (optional)",
+    "commentsPlaceholder": "Share more details about your experience...",
+    "submitting": "Submitting...",
+    "submitFeedback": "Submit Feedback",
+    "category": {
+      "quality": { "label": "Work Quality", "description": "Was the issue properly fixed?" },
+      "timeliness": { "label": "Timeliness", "description": "Was the service completed on time?" },
+      "communication": { "label": "Communication", "description": "Were you kept informed?" },
+      "professionalism": { "label": "Professionalism", "description": "Was the technician courteous?" }
+    },
+    "tag": {
+      "professional": "Professional",
+      "friendly": "Friendly",
+      "quick": "Quick",
+      "thorough": "Thorough",
+      "cleanWork": "Clean work",
+      "goodCommunication": "Good communication",
+      "onTime": "On time",
+      "knowledgeable": "Knowledgeable"
+    }
+  },
+  "leaseIndex": {
+    "title": "My Lease",
+    "loadingLease": "Loading lease...",
+    "start": "Start",
+    "end": "End",
+    "rent": "Rent",
+    "status": "Status",
+    "renewal": "Renewal",
+    "renewalDesc": "Review extension options",
+    "moveOut": "Move Out",
+    "moveOutDesc": "Give notice"
+  },
+  "maintenanceNew": {
+    "title": "Report Issue",
+    "titlePlaceholder": "e.g. Kitchen sink leaking",
+    "descriptionPlaceholder": "Describe the issue and when it started",
+    "catPlumbing": "Plumbing",
+    "catElectrical": "Electrical",
+    "catAppliance": "Appliance",
+    "catLighting": "Lighting",
+    "catGeneral": "General",
+    "sevLow": "Low",
+    "sevMedium": "Medium",
+    "sevHigh": "High",
+    "sevCritical": "Critical",
+    "sevEmergency": "Emergency"
+  },
+  "lettersPage": {
+    "title": "Request a letter",
+    "letterType": "Letter type",
+    "proofOfResidence": "Proof of residence",
+    "rentStatement": "Rent statement",
+    "noObjection": "No-objection letter",
+    "reference": "Reference letter",
+    "custom": "Custom",
+    "addressedTo": "Addressed to",
+    "reason": "Reason",
+    "customText": "Custom text",
+    "submitting": "Submitting...",
+    "submitRequest": "Submit request"
+  },
+  "onboardingComplete": {
+    "moveInDetails": "Move-in Details",
+    "importantLabel": "Important",
+    "bringValidId": "Please bring a valid ID when collecting your keys.",
+    "scheduleFirstCheckIn": "Schedule First Check-In",
+    "selectDate": "Select Date",
+    "chooseDate": "Choose a date",
+    "selectTime": "Select Time",
+    "quickActions": "Quick Actions",
+    "viewLease": "View Lease",
+    "getSupport": "Get Support",
+    "yourPropertyManager": "Your Property Manager",
+    "sampleManagerName": "Jane Mwangi"
+  },
+  "inspectionPage": {
+    "title": "Move-in Inspection",
+    "meterReadings": "Meter Readings",
+    "signoffTitle": "Inspection Sign-off",
+    "recordCurrentReadings": "Record Current Readings",
+    "takeNoteReadings": "Take note of all meter readings before you move in",
+    "meterLabel": "Meter",
+    "required": "* Required",
+    "meterInfo": "Record the exact meter readings shown on each meter. Take a photo of each meter for your records. These readings establish your starting point for utility billing.",
+    "back": "Back",
+    "continue": "Continue",
+    "inspectionSummary": "Inspection Summary",
+    "roomsInspected": "Rooms Inspected",
+    "itemsChecked": "Items Checked",
+    "photosTaken": "Photos Taken",
+    "tenantSignature": "Tenant Signature",
+    "signoffHint": "By signing below, you confirm that this inspection report accurately reflects the condition of the unit at move-in.",
+    "saving": "Saving...",
+    "completeInspection": "Complete Inspection",
+    "overallProgress": "Overall Progress",
+    "roomProgress": "Room {current} of {total}",
+    "inspectionTips": "Inspection Tips",
+    "tipPhotos": "Take clear, well-lit photos of any existing damage",
+    "tipScratches": "Note any scratches, stains, or wear",
+    "tipSwitches": "Test all switches, outlets, and faucets",
+    "photo": "Photo",
+    "addNotesPlaceholder": "Add notes about this item...",
+    "previous": "Previous",
+    "nextRoom": "Next Room"
+  },
+  "paymentsIndex": {
+    "title": "Payments",
+    "retry": "Retry",
+    "totalBalanceDue": "Total balance due",
+    "activeCharges": "{count} active charge(s)",
+    "noActiveCharges": "No active charges",
+    "paymentHistory": "Payment History",
+    "reviewLedger": "Review your ledger",
+    "payNow": "Pay Now",
+    "mpesaAndMore": "M-Pesa and more",
+    "pendingPayments": "Pending payments",
+    "noPendingPayments": "No pending payments.",
+    "recentActivity": "Recent activity",
+    "seeAll": "See all",
+    "noPaymentHistory": "No payment history yet.",
+    "liveNotice": "Live balances and history are enabled. Plan management and receipt generation are still being wired."
+  },
+  "maintenanceScreen": {
+    "title": "Maintenance",
+    "newRequest": "New Request",
+    "open": "Open",
+    "atRisk": "At Risk",
+    "completed": "Completed",
+    "emptyOpen": "No open requests",
+    "emptyOpenHint": "Create a new request to report an issue",
+    "emptyClosed": "No closed requests",
+    "emptyClosedHint": "Completed requests will appear here",
+    "category": "Category",
+    "issueTitle": "Issue Title",
+    "issueTitlePlaceholder": "Brief description of the issue",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the problem in detail...",
+    "priority": "Priority",
+    "photosOptional": "Photos (optional)",
+    "addPhoto": "Add Photo",
+    "scheduledPrefix": "Scheduled"
+  },
+  "documentsScreen": {
+    "title": "Documents",
+    "activeLease": "Active Lease",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "monthlyRent": "Monthly Rent",
+    "status": "Status",
+    "active": "Active",
+    "leaseDocuments": "Lease Documents",
+    "paymentStatements": "Payment Statements",
+    "important": "Important",
+    "completeHouseRules": "Complete House Rules",
+    "sampleUnit": "Unit A-204 • Sunset Apartments",
+    "sampleStartDate": "June 1, 2023",
+    "sampleEndDate": "May 31, 2024"
+  },
   "onboarding": {
     "headerTitle": "Setup Your Account",
     "stepOf": "Step {current} of {total}",
@@ -361,6 +1034,9 @@
     "back": "Back",
     "completing": "Completing...",
     "completeSetup": "Complete Setup",
-    "continue": "Continue"
+    "continue": "Continue",
+    "sampleUnitTerm": "Unit A-204 • 12 months",
+    "sampleStartDate": "June 1, 2024",
+    "sampleEndDate": "May 31, 2025"
   }
 }

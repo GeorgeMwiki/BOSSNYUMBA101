@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Camera,
   Upload,
@@ -69,6 +70,7 @@ const REQUIRED_DOCUMENTS: Omit<DocumentUpload, 'file' | 'preview' | 'status'>[] 
 ];
 
 export default function OnboardingDocumentsPage() {
+  const t = useTranslations('onboardingDocuments');
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<DocumentUpload[]>(
@@ -253,7 +255,7 @@ export default function OnboardingDocumentsPage() {
 
   return (
     <>
-      <PageHeader title="Upload Documents" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <input
         ref={fileInputRef}
@@ -267,9 +269,9 @@ export default function OnboardingDocumentsPage() {
         {/* Progress */}
         <div className="card p-4 bg-primary-50 border-primary-100">
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-primary-700 font-medium">Document Upload</span>
+            <span className="text-primary-700 font-medium">{t('documentUpload')}</span>
             <span className="text-primary-600">
-              {uploadedCount} of {documents.length} uploaded
+              {t('uploadedCount', { current: uploadedCount, total: documents.length })}
             </span>
           </div>
           <div className="h-2 bg-primary-200 rounded-full overflow-hidden">
@@ -284,8 +286,7 @@ export default function OnboardingDocumentsPage() {
         <div className="flex items-start gap-3 text-sm text-gray-600">
           <AlertCircle className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
           <p>
-            Please upload clear, legible photos of your documents. Make sure all text is
-            visible and not blurry.
+            {t('uploadInstructions')}
           </p>
         </div>
 
@@ -353,12 +354,12 @@ export default function OnboardingDocumentsPage() {
                   <div className="mt-3 p-3 bg-warning-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-warning-700">
-                        Quality Score: {doc.qualityScore}%
+                        {t('qualityScore', { score: doc.qualityScore })}
                       </span>
-                      <span className="badge-warning">Needs Review</span>
+                      <span className="badge-warning">{t('needsReview')}</span>
                     </div>
                     <p className="text-xs text-warning-600 mb-3">
-                      The image quality is lower than recommended. You can continue or retake for better results.
+                      {t('qualityLow')}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -366,13 +367,13 @@ export default function OnboardingDocumentsPage() {
                         className="flex-1 btn bg-warning-100 text-warning-700 py-2 text-sm flex items-center justify-center gap-1"
                       >
                         <RefreshCw className="w-4 h-4" />
-                        Retake
+                        {t('retake')}
                       </button>
                       <button
                         onClick={() => acceptQualityWarning(doc.id)}
                         className="flex-1 btn bg-warning-600 text-white py-2 text-sm"
                       >
-                        Use Anyway
+                        {t('useAnyway')}
                       </button>
                     </div>
                   </div>
@@ -383,7 +384,7 @@ export default function OnboardingDocumentsPage() {
                   <div className="mt-3 p-3 bg-primary-50 rounded-lg">
                     <div className="flex items-center gap-2 text-primary-700">
                       <Sparkles className="w-4 h-4 animate-pulse" />
-                      <span className="text-sm font-medium">Checking document quality...</span>
+                      <span className="text-sm font-medium">{t('checkingQuality')}</span>
                     </div>
                   </div>
                 )}
@@ -396,14 +397,14 @@ export default function OnboardingDocumentsPage() {
                       className="flex-1 btn bg-primary-50 text-primary-600 py-3 flex items-center justify-center gap-2"
                     >
                       <Camera className="w-5 h-5" />
-                      Take Photo
+                      {t('takePhoto')}
                     </button>
                     <button
                       onClick={() => openFilePicker(doc.id, false)}
                       className="flex-1 btn bg-gray-100 text-gray-700 py-3 flex items-center justify-center gap-2"
                     >
                       <ImageIcon className="w-5 h-5" />
-                      Gallery
+                      {t('gallery')}
                     </button>
                   </div>
                 )}
@@ -418,7 +419,7 @@ export default function OnboardingDocumentsPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
           <div className="bg-white w-full max-w-lg rounded-t-2xl p-4 space-y-4 animate-slide-up max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Document Quality Check</h3>
+              <h3 className="text-lg font-semibold">{t('qualityCheckTitle')}</h3>
               <button
                 onClick={() => {
                   setShowQualityModal(false);

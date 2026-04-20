@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Mail, Phone, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
@@ -18,6 +19,7 @@ const initialData = {
 };
 
 export default function EditProfilePage() {
+  const t = useTranslations('profileEdit');
   const router = useRouter();
   const [formData, setFormData] = useState(initialData);
   const [emailVerified] = useState(true);
@@ -50,7 +52,7 @@ export default function EditProfilePage() {
 
   return (
     <>
-      <PageHeader title="Edit Profile" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSave} className="px-4 py-4 space-y-6">
         {/* Profile Picture */}
@@ -60,8 +62,8 @@ export default function EditProfilePage() {
             size="lg"
           />
           <div>
-            <h3 className="font-medium text-gray-900">Profile photo</h3>
-            <p className="text-sm text-gray-500">Tap to change</p>
+            <h3 className="font-medium text-gray-900">{t('profilePhoto')}</h3>
+            <p className="text-sm text-gray-500">{t('tapToChange')}</p>
           </div>
           <button type="button" className="btn-secondary text-sm ml-auto">
             Change
@@ -70,7 +72,7 @@ export default function EditProfilePage() {
 
         {/* Name Fields */}
         <section className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-500">Personal Information</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('personalInformation')}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="label">
@@ -83,7 +85,7 @@ export default function EditProfilePage() {
                 value={formData.firstName}
                 onChange={handleChange}
                 className="input"
-                placeholder="First name"
+                placeholder={t('firstNamePlaceholder')}
               />
             </div>
             <div>
@@ -97,7 +99,7 @@ export default function EditProfilePage() {
                 value={formData.lastName}
                 onChange={handleChange}
                 className="input"
-                placeholder="Last name"
+                placeholder={t('lastNamePlaceholder')}
               />
             </div>
           </div>
@@ -163,7 +165,7 @@ export default function EditProfilePage() {
 
         {/* Emergency Contact */}
         <section className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-500">Emergency Contact</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('emergencyContact')}</h3>
           <div>
             <label htmlFor="emergencyContactName" className="label">
               Contact name
@@ -175,7 +177,7 @@ export default function EditProfilePage() {
               value={formData.emergencyContactName}
               onChange={handleChange}
               className="input"
-              placeholder="Full name"
+              placeholder={t('fullNamePlaceholder')}
             />
           </div>
           <div>

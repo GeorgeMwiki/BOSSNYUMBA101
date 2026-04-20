@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   Check,
@@ -109,6 +110,7 @@ const DOCUMENTS: Document[] = [
 ];
 
 export default function OnboardingESignPage() {
+  const t = useTranslations('onboardingESign');
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>(DOCUMENTS);
   const [expandedDocId, setExpandedDocId] = useState<string | null>('lease');
@@ -173,7 +175,7 @@ export default function OnboardingESignPage() {
 
   return (
     <>
-      <PageHeader title="Sign Documents" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-32">
         {/* Progress Summary */}
@@ -193,7 +195,7 @@ export default function OnboardingESignPage() {
                 </p>
               </div>
             </div>
-            {allSigned && <span className="badge-success">All Signed</span>}
+            {allSigned && <span className="badge-success">{t('allSigned')}</span>}
           </div>
         </div>
 
@@ -333,7 +335,7 @@ export default function OnboardingESignPage() {
           setActiveDocId(null);
         }}
         onSave={handleSignatureSave}
-        title="Draw Your Signature"
+        title={t('drawSignature')}
       />
 
       {/* Fixed Bottom Button */}

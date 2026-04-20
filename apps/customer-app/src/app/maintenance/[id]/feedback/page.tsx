@@ -2,31 +2,25 @@
 
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Star, ThumbsUp, ThumbsDown, CheckCircle, Send, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const feedbackCategories = [
-  { id: 'quality', label: 'Work Quality', description: 'Was the issue properly fixed?' },
-  { id: 'timeliness', label: 'Timeliness', description: 'Was the service completed on time?' },
-  { id: 'communication', label: 'Communication', description: 'Were you kept informed?' },
-  { id: 'professionalism', label: 'Professionalism', description: 'Was the technician courteous?' },
-];
-
-const quickTags = [
-  'Professional',
-  'Friendly',
-  'Quick',
-  'Thorough',
-  'Clean work',
-  'Good communication',
-  'On time',
-  'Knowledgeable',
-];
+const FEEDBACK_CATEGORY_IDS = ['quality', 'timeliness', 'communication', 'professionalism'] as const;
+const QUICK_TAG_IDS = ['professional', 'friendly', 'quick', 'thorough', 'cleanWork', 'goodCommunication', 'onTime', 'knowledgeable'] as const;
 
 export default function MaintenanceFeedbackPage() {
+  const t = useTranslations('maintenanceFeedback');
   const router = useRouter();
   const params = useParams();
   const ticketId = params.id as string;
+
+  const feedbackCategories = FEEDBACK_CATEGORY_IDS.map((id) => ({
+    id,
+    label: t(`category.${id}.label`),
+    description: t(`category.${id}.description`),
+  }));
+  const quickTags = QUICK_TAG_IDS.map((id) => ({ id, label: t(`tag.${id}`) }));
 
   const [overallRating, setOverallRating] = useState(0);
   const [categoryRatings, setCategoryRatings] = useState<Record<string, number>>({});
@@ -43,7 +37,7 @@ export default function MaintenanceFeedbackPage() {
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
     );
   };
 
@@ -77,15 +71,15 @@ export default function MaintenanceFeedbackPage() {
   if (isSubmitted) {
     return (
       <>
-        <PageHeader title="Feedback Submitted" />
+        <PageHeader title={t('submittedTitle')} />
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
           <div className="w-20 h-20 bg-success-50 rounded-full flex items-center justify-center mb-6">
             <CheckCircle className="w-12 h-12 text-success-600" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">Thank You!</h2>
-          <p className="text-gray-600 mb-8">Your feedback helps us improve our maintenance services.</p>
+          <h2 className="text-xl font-semibold mb-2">{t('thankYou')}</h2>
+          <p className="text-gray-600 mb-8">{t('thankYouBody')}</p>
           <button onClick={() => router.push('/maintenance')} className="btn-primary w-full max-w-xs py-4 flex items-center justify-center gap-2">
-            Back to Maintenance
+            {t('backToMaintenance')}
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -95,11 +89,11 @@ export default function MaintenanceFeedbackPage() {
 
   return (
     <>
-      <PageHeader title="Rate Service" showBack />
+      <PageHeader title={t('title')} showBack />
       <div className="px-4 py-4 space-y-6 pb-32">
         <section className="card p-5 text-center">
-          <h2 className="text-lg font-semibold mb-2">How was the service?</h2>
-          <p className="text-sm text-gray-500 mb-4">Tap to rate your overall experience</p>
+          <h2 className="text-lg font-semibold mb-2">{t('howWasService')}</h2>
+          <p className="text-sm text-gray-500 mb-4">{t('tapToRate')}</p>
           <div className="flex justify-center gap-2 mb-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -113,14 +107,14 @@ export default function MaintenanceFeedbackPage() {
           </div>
           {overallRating > 0 && (
             <p className="text-sm font-medium text-primary-600">
-              {overallRating === 5 ? 'Excellent!' : overallRating === 4 ? 'Great!' : overallRating === 3 ? 'Good' : overallRating === 2 ? 'Fair' : 'Poor'}
+              {overallRating === 5 ? t('excellent') : overallRating === 4 ? t('great') : overallRating === 3 ? t('good') : overallRating === 2 ? t('fair') : t('poor')}
             </p>
           )}
         </section>
 
         {overallRating > 0 && (
           <section className="card p-4">
-            <h3 className="font-medium mb-4">Rate specific aspects</h3>
+            <h3 className="font-medium mb-4">{t('rateSpecificAspects')}</h3>
             <div className="space-y-4">
               {feedbackCategories.map((category) => (
                 <div key={category.id} className="flex items-center justify-between">
@@ -147,15 +141,15 @@ export default function MaintenanceFeedbackPage() {
 
         {overallRating > 0 && (
           <section>
-            <h3 className="text-sm font-medium text-gray-500 mb-3">What stood out? (optional)</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-3">{t('whatStoodOut')}</h3>
             <div className="flex flex-wrap gap-2">
               {quickTags.map((tag) => (
                 <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTags.includes(tag) ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  key={tag.id}
+                  onClick={() => toggleTag(tag.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTags.includes(tag.id) ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
-                  {tag}
+                  {tag.label}
                 </button>
               ))}
             </div>
@@ -164,15 +158,15 @@ export default function MaintenanceFeedbackPage() {
 
         {overallRating > 0 && (
           <section className="card p-4">
-            <h3 className="font-medium mb-3">Would you recommend this technician?</h3>
+            <h3 className="font-medium mb-3">{t('wouldRecommend')}</h3>
             <div className="flex gap-3">
               <button onClick={() => setWouldRecommend(true)} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${wouldRecommend === true ? 'bg-success-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 <ThumbsUp className="w-5 h-5" />
-                Yes
+                {t('yes')}
               </button>
               <button onClick={() => setWouldRecommend(false)} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${wouldRecommend === false ? 'bg-danger-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 <ThumbsDown className="w-5 h-5" />
-                No
+                {t('no')}
               </button>
             </div>
           </section>
@@ -180,8 +174,8 @@ export default function MaintenanceFeedbackPage() {
 
         {overallRating > 0 && (
           <section>
-            <label className="label">Additional comments (optional)</label>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="input min-h-[100px]" placeholder="Share more details about your experience..." />
+            <label className="label">{t('additionalComments')}</label>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="input min-h-[100px]" placeholder={t('commentsPlaceholder')} />
           </section>
         )}
       </div>
@@ -195,12 +189,12 @@ export default function MaintenanceFeedbackPage() {
             {isSubmitting ? (
               <>
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Submitting...
+                {t('submitting')}
               </>
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                Submit Feedback
+                {t('submitFeedback')}
               </>
             )}
           </button>

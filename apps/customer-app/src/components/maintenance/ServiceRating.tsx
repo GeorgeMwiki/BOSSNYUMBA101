@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Star, Send, ThumbsUp } from 'lucide-react';
 import { Spinner } from '@bossnyumba/design-system';
 
@@ -10,16 +11,18 @@ interface ServiceRatingProps {
   technicianName?: string;
 }
 
-const QUICK_FEEDBACK = [
-  'Quick response',
-  'Professional service',
-  'Clean work area',
-  'Explained the issue well',
-  'Friendly and helpful',
-  'Problem fully resolved',
-];
+const QUICK_FEEDBACK_KEYS = [
+  'quickResponse',
+  'professionalService',
+  'cleanWork',
+  'explainedWell',
+  'friendlyHelpful',
+  'problemResolved',
+] as const;
 
 export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRatingProps) {
+  const t = useTranslations('serviceRating');
+  const quickFeedback = QUICK_FEEDBACK_KEYS.map((k) => ({ key: k, label: t(`tag.${k}`) }));
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -54,12 +57,12 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
   };
 
   const getRatingLabel = (score: number) => {
-    if (score === 5) return 'Excellent!';
-    if (score === 4) return 'Good';
-    if (score === 3) return 'Okay';
-    if (score === 2) return 'Poor';
-    if (score === 1) return 'Very Poor';
-    return 'Tap to rate';
+    if (score === 5) return t('ratingLabels.excellent');
+    if (score === 4) return t('ratingLabels.good');
+    if (score === 3) return t('ratingLabels.okay');
+    if (score === 2) return t('ratingLabels.poor');
+    if (score === 1) return t('ratingLabels.veryPoor');
+    return t('ratingLabels.tapToRate');
   };
 
   if (showThankYou) {
@@ -69,9 +72,9 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
           <div className="w-16 h-16 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ThumbsUp className="w-8 h-8 text-success-600" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">Thank You!</h3>
+          <h3 className="text-xl font-semibold mb-2">{t('thankYou')}</h3>
           <p className="text-gray-500">
-            Your feedback helps us improve our service.
+            {t('feedbackHelps')}
           </p>
         </div>
         <style jsx>{`
@@ -98,10 +101,10 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
       <div className="bg-white w-full max-w-lg rounded-t-2xl p-6 space-y-6 max-h-[85vh] overflow-y-auto animate-slide-up">
         {/* Header */}
         <div className="text-center">
-          <h3 className="text-xl font-semibold mb-2">How was the service?</h3>
+          <h3 className="text-xl font-semibold mb-2">{t('howWasService')}</h3>
           {technicianName && (
             <p className="text-sm text-gray-500">
-              Rate your experience with {technicianName}
+              {t('rateExperienceWith', { name: technicianName })}
             </p>
           )}
         </div>
@@ -136,20 +139,20 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
         {rating > 0 && (
           <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700">
-              What did you like? (optional)
+              {t('whatDidYouLike')}
             </label>
             <div className="flex flex-wrap gap-2">
-              {QUICK_FEEDBACK.map((feedback) => (
+              {quickFeedback.map((feedback) => (
                 <button
-                  key={feedback}
-                  onClick={() => toggleFeedback(feedback)}
+                  key={feedback.key}
+                  onClick={() => toggleFeedback(feedback.key)}
                   className={`px-3 py-2 rounded-full text-sm border transition-colors ${
-                    selectedFeedback.includes(feedback)
+                    selectedFeedback.includes(feedback.key)
                       ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  {feedback}
+                  {feedback.label}
                 </button>
               ))}
             </div>
@@ -160,11 +163,11 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
         {rating > 0 && (
           <div>
             <label className="text-sm font-medium text-gray-700">
-              Additional comments (optional)
+              {t('additionalComments')}
             </label>
             <textarea
               className="input mt-2 min-h-[80px]"
-              placeholder="Share more details about your experience..."
+              placeholder={t('commentsPlaceholder')}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
@@ -174,7 +177,7 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
         {/* Actions */}
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="btn-secondary flex-1 py-3">
-            Skip
+            {t('skip')}
           </button>
           <button
             onClick={handleSubmit}
@@ -186,7 +189,7 @@ export function ServiceRating({ onSubmit, onClose, technicianName }: ServiceRati
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                Submit Rating
+                {t('submitRating')}
               </>
             )}
           </button>

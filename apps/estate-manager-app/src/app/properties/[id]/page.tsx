@@ -2,13 +2,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Building2, Home, Edit, MapPin } from 'lucide-react';
+import { Building2, Home, Edit, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
 
 export default function PropertyDetailPage() {
+  const t = useTranslations('propertyDetail');
   const params = useParams();
   const router = useRouter();
   const id = (params?.id ?? '') as string;
@@ -24,7 +26,7 @@ export default function PropertyDetailPage() {
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Property" showBack />
+        <PageHeader title={t('title')} showBack />
         <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -36,12 +38,12 @@ export default function PropertyDetailPage() {
   if (error) {
     return (
       <>
-        <PageHeader title="Property" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-4">
           <Alert variant="danger">
             <AlertDescription>
-              {error instanceof Error ? error.message : 'Failed to load property'}
-              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+              {error instanceof Error ? error.message : t('failedToLoad')}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">{t('retry')}</Button>
             </AlertDescription>
           </Alert>
         </div>
@@ -52,15 +54,15 @@ export default function PropertyDetailPage() {
   if (!property) {
     return (
       <>
-        <PageHeader title="Property" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-4">
           <EmptyState
             icon={<Building2 className="h-8 w-8" />}
-            title="Property not found"
-            description="This property may have been removed."
+            title={t('notFound')}
+            description={t('removedDesc')}
             action={
               <button onClick={() => router.back()} className="btn-secondary">
-                Go Back
+                {t('goBack')}
               </button>
             }
           />
@@ -87,7 +89,7 @@ export default function PropertyDetailPage() {
         action={
           <Link href={`/properties/${id}/edit`} className="btn-secondary text-sm flex items-center gap-1">
             <Edit className="w-4 h-4" />
-            Edit
+            {t('edit')}
           </Link>
         }
       />
@@ -96,24 +98,24 @@ export default function PropertyDetailPage() {
         <div className="card p-4">
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <Building2 className="w-5 h-5" />
-            Overview
+            {t('overview')}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <div className="text-2xl font-bold">{stats.totalUnits}</div>
-              <div className="text-xs text-gray-500">Total Units</div>
+              <div className="text-xs text-gray-500">{t('totalUnits')}</div>
             </div>
             <div>
               <div className="text-2xl font-bold">{stats.occupiedUnits}</div>
-              <div className="text-xs text-gray-500">Occupied</div>
+              <div className="text-xs text-gray-500">{t('occupied')}</div>
             </div>
             <div>
               <div className="text-2xl font-bold">{stats.availableUnits ?? 0}</div>
-              <div className="text-xs text-gray-500">Available</div>
+              <div className="text-xs text-gray-500">{t('available')}</div>
             </div>
             <div>
               <div className="text-2xl font-bold">{occupancyRate}%</div>
-              <div className="text-xs text-gray-500">Occupancy</div>
+              <div className="text-xs text-gray-500">{t('occupancy')}</div>
             </div>
           </div>
         </div>
@@ -122,7 +124,7 @@ export default function PropertyDetailPage() {
           <div className="card p-4">
             <h2 className="font-semibold mb-3 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Address
+              {t('address')}
             </h2>
             <p className="text-sm text-gray-600">
               {property.address.line1}
@@ -137,7 +139,7 @@ export default function PropertyDetailPage() {
 
         {property.description && (
           <div className="card p-4">
-            <h2 className="font-semibold mb-3">Description</h2>
+            <h2 className="font-semibold mb-3">{t('description')}</h2>
             <p className="text-sm text-gray-600">{property.description}</p>
           </div>
         )}
@@ -151,8 +153,8 @@ export default function PropertyDetailPage() {
               <Home className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <div className="font-medium">View Units</div>
-              <div className="text-sm text-gray-500">{stats.totalUnits} units</div>
+              <div className="font-medium">{t('viewUnits')}</div>
+              <div className="text-sm text-gray-500">{t('unitsCount', { count: stats.totalUnits })}</div>
             </div>
             <span className="ml-auto text-primary-600">→</span>
           </Link>

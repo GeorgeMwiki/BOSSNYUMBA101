@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, Download } from 'lucide-react';
 import {
   isInstallable,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/pwa/install-prompt';
 
 export function InstallPrompt() {
+  const t = useTranslations('installPrompt');
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -43,36 +45,36 @@ export function InstallPrompt() {
     <div
       className="fixed bottom-20 left-4 right-4 z-50 rounded-xl border border-gray-200 bg-white p-4 shadow-lg  md:left-auto md:right-4 md:max-w-sm"
       role="banner"
-      aria-label="Install app"
+      aria-label={t('bannerAria')}
     >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-500/10">
           <Download className="h-5 w-5 text-primary" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-gray-900">Install BOSSNYUMBA</h3>
+          <h3 className="font-semibold text-gray-900">{t('title')}</h3>
           <p className="mt-0.5 text-sm text-gray-500">
-            Add to your home screen for quick access and offline use.
+            {t('body')}
           </p>
           <div className="mt-3 flex gap-2">
             <button
               onClick={handleInstall}
               className="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500/90"
             >
-              Install
+              {t('install')}
             </button>
             <button
               onClick={handleDismiss}
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-100"
             >
-              Not now
+              {t('notNow')}
             </button>
           </div>
         </div>
         <button
           onClick={handleDismiss}
           className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          aria-label="Dismiss"
+          aria-label={t('dismissAria')}
         >
           <X className="h-5 w-5" />
         </button>

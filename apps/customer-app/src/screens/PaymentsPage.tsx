@@ -1,11 +1,13 @@
+import { getTranslations } from 'next-intl/server';
 import { LiveDataRequiredPanel } from '@/components/LiveDataRequired';
 
-export default function PaymentsPage() {
+export default async function PaymentsPage() {
+  const t = await getTranslations('screenUnavailable');
   return (
     <div className="px-4 py-4">
       <LiveDataRequiredPanel
-        title="Payments unavailable"
-        message="Hardcoded payment data has been removed. This legacy payments surface now requires live balance and ledger data."
+        title={t('paymentsTitle')}
+        message={t('paymentsMessage')}
       />
     </div>
   );

@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface CounterSnapshot {
   name: string;
@@ -155,6 +156,7 @@ function Card({ title, value, sub, tone = 'ok' }: CardProps) {
 }
 
 export function SystemHealth() {
+  const t = useTranslations('systemHealth');
   const [state, setState] = useState<FetchState>({
     status: 'idle',
     snapshot: null,
@@ -247,9 +249,9 @@ export function SystemHealth() {
   return (
     <div data-testid="system-health-root" style={{ padding: 24, fontFamily: 'system-ui' }}>
       <header style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>System Health</h1>
+        <h1 style={{ margin: 0 }}>{t('title')}</h1>
         <p style={{ margin: '4px 0', color: '#555' }}>
-          Live metrics from /api/v1/metrics. Refreshes every 5 seconds.
+          {t('subtitle')}
         </p>
         <p data-testid="system-health-status" style={{ fontSize: 12, color: '#888' }}>
           Status: {state.status}
@@ -261,7 +263,7 @@ export function SystemHealth() {
       </header>
 
       {!derived ? (
-        <div data-testid="system-health-empty">Loading metrics…</div>
+        <div data-testid="system-health-empty">{t('loading')}</div>
       ) : (
         <>
           <section
@@ -274,32 +276,32 @@ export function SystemHealth() {
             }}
           >
             <Card
-              title="Uptime"
+              title={t('cards.uptime')}
               value={`${derived.uptimeMinutes} min`}
-              sub={`since last gateway restart`}
+              sub={t('cards.uptimeSub')}
             />
             <Card
-              title="Events/sec"
+              title={t('cards.eventsPerSec')}
               value={derived.eventsPerSecond.toFixed(2)}
-              sub={`total stream events: ${derived.streamEvents}`}
+              sub={t('cards.eventsSub', { count: derived.streamEvents })}
             />
             <Card
-              title="LLM latency p50"
+              title={t('cards.latency')}
               value={formatMs(derived.latencyHist?.p50 ?? null)}
               sub={`p95 ${formatMs(derived.latencyHist?.p95 ?? null)} / p99 ${formatMs(derived.latencyHist?.p99 ?? null)}`}
             />
             <Card
-              title="Daily cost"
+              title={t('cards.dailyCost')}
               value={formatUsd(derived.costMicro)}
-              sub={`${derived.turns} turns, ${derived.errors} errors`}
+              sub={t('cards.costSub', { turns: derived.turns, errors: derived.errors })}
               tone={derived.errors > 0 ? 'warn' : 'ok'}
             />
             <Card
-              title="Active brain personas"
+              title={t('cards.activePersonas')}
               value={String(derived.activePersonas?.value ?? 'n/a')}
             />
             <Card
-              title="Heartbeat last tick"
+              title={t('cards.heartbeat')}
               value={formatMs(derived.lastTickAgo?.value ?? null)}
               tone={
                 (derived.lastTickAgo?.value ?? 0) > 30_000
@@ -310,13 +312,13 @@ export function SystemHealth() {
               }
             />
             <Card
-              title="Junior brains asleep"
+              title={t('cards.juniorAsleep')}
               value={String(derived.sleepCount?.value ?? 'n/a')}
             />
             <Card
-              title="Background task success rate"
+              title={t('cards.bgSuccessRate')}
               value={derived.bgRate === null ? 'n/a' : `${derived.bgRate.toFixed(1)}%`}
-              sub={`${derived.bgSuccess} ok / ${derived.bgFailure} failed`}
+              sub={t('cards.bgSub', { ok: derived.bgSuccess, failed: derived.bgFailure })}
               tone={
                 derived.bgRate !== null && derived.bgRate < 80
                   ? 'bad'
@@ -331,9 +333,9 @@ export function SystemHealth() {
             data-testid="system-health-breakers"
             style={{ marginBottom: 24 }}
           >
-            <h2 style={{ fontSize: 18, marginBottom: 8 }}>Circuit breakers</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 8 }}>{t('breakers')}</h2>
             {derived.breakerGauges.length === 0 ? (
-              <p style={{ color: '#888' }}>No breakers have reported yet.</p>
+              <p style={{ color: '#888' }}>{t('noBreakers')}</p>
             ) : (
               <ul>
                 {derived.breakerGauges.map((g) => {
@@ -354,7 +356,7 @@ export function SystemHealth() {
           </section>
 
           <details style={{ fontSize: 12, color: '#555' }}>
-            <summary>Raw snapshot (for debugging)</summary>
+            <summary>{t('rawSnapshot')}</summary>
             <pre data-testid="system-health-raw">
               {JSON.stringify(state.snapshot, null, 2)}
             </pre>

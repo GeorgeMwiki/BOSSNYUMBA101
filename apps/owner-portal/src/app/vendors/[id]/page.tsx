@@ -11,10 +11,12 @@ import {
   Calendar,
 } from 'lucide-react';
 import { Skeleton, EmptyState, Button, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '../../../lib/api';
 import { useVendor } from '../../../lib/hooks';
 
 export default function VendorDetailPage() {
+  const t = useTranslations('vendorDetailPage');
   const { id } = useParams<{ id: string }>();
   const { data: vendor, isLoading, error, refetch } = useVendor(id || '');
 
@@ -32,8 +34,8 @@ export default function VendorDetailPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load vendor'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -43,15 +45,15 @@ export default function VendorDetailPage() {
     return (
       <EmptyState
         icon={<Building2 className="h-8 w-8" />}
-        title="Vendor not found"
-        description="This vendor may have been removed."
+        title={t('notFound')}
+        description={t('notFoundDesc')}
         action={
           <Link
             to="/vendors"
             className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to vendors
+            {t('backToVendors')}
           </Link>
         }
       />
@@ -78,19 +80,19 @@ export default function VendorDetailPage() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
           <Briefcase className="h-4 w-4" />
-          View Contracts
+          {t('viewContracts')}
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('contactInformation')}</h3>
           <div className="space-y-4">
             {displayVendor.email && (
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-gray-500">{t('email')}</p>
                   <p className="font-medium text-gray-900">{displayVendor.email}</p>
                 </div>
               </div>
@@ -99,7 +101,7 @@ export default function VendorDetailPage() {
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-sm text-gray-500">{t('phone')}</p>
                   <p className="font-medium text-gray-900">{displayVendor.phone}</p>
                 </div>
               </div>
@@ -108,7 +110,7 @@ export default function VendorDetailPage() {
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="text-sm text-gray-500">{t('address')}</p>
                   <p className="font-medium text-gray-900">{displayVendor.address}</p>
                 </div>
               </div>
@@ -117,7 +119,7 @@ export default function VendorDetailPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Associated Properties</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('associatedProperties')}</h3>
           <div className="space-y-3">
             {displayVendor.properties?.map((prop) => (
               <Link
@@ -128,14 +130,14 @@ export default function VendorDetailPage() {
                   <Building2 className="h-5 w-5 text-blue-600" />
                   <span className="font-medium text-gray-900">{prop.name}</span>
                 </div>
-                <span className="text-sm text-blue-600">View</span>
+                <span className="text-sm text-blue-600">{t('view')}</span>
               </Link>
             ))}
             {(!displayVendor.properties || displayVendor.properties.length === 0) && (
               <EmptyState
                 icon={<Building2 className="h-8 w-8" />}
-                title="No properties assigned"
-                description="Assign this vendor to a property to see it here."
+                title={t('noPropertiesAssigned')}
+                description={t('noPropertiesAssignedDesc')}
               />
             )}
           </div>
@@ -143,15 +145,15 @@ export default function VendorDetailPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Work Orders</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('recentWorkOrders')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colId')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDescription')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -180,8 +182,8 @@ export default function VendorDetailPage() {
         {(!displayVendor.recentWorkOrders || displayVendor.recentWorkOrders.length === 0) && (
           <EmptyState
             icon={<FileText className="h-8 w-8" />}
-            title="No recent work orders"
-            description="Work orders assigned to this vendor will appear here."
+            title={t('noRecentWorkOrders')}
+            description={t('noRecentWorkOrdersDesc')}
           />
         )}
       </div>

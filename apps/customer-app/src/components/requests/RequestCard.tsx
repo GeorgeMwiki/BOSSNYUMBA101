@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Clock, CheckCircle, Wrench, AlertCircle } from 'lucide-react';
 
 export type RequestStatus = 'submitted' | 'in_progress' | 'scheduled' | 'completed';
@@ -41,6 +42,7 @@ interface RequestCardProps {
 }
 
 export function RequestCard({ request, href }: RequestCardProps) {
+  const t = useTranslations('requestCard');
   const status = statusConfig[request.status];
   const StatusIcon = status.icon;
   const linkHref = href ?? `/requests/${request.id}`;
@@ -63,7 +65,7 @@ export function RequestCard({ request, href }: RequestCardProps) {
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span>{request.category}</span>
           {request.scheduledDate && (
-            <span>Scheduled: {new Date(request.scheduledDate).toLocaleDateString()}</span>
+            <span>{t('scheduled')}: {new Date(request.scheduledDate).toLocaleDateString()}</span>
           )}
         </div>
       </div>

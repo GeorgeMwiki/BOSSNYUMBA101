@@ -3,6 +3,7 @@
  * Swahili-first UX, and receipts/maintenance in one place.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
@@ -12,12 +13,13 @@ export const metadata = {
     'Receipts, maintenance tickets, and notices in one place. Bilingual English + Swahili. Your landlord and you see the same truth.',
 };
 
-export default function ForTenantsPage() {
+export default async function ForTenantsPage() {
+  const t = await getTranslations('forTenants');
   return (
     <MarketingShell
-      title="Your home, on your terms."
-      subtitle="Every shilling of rent you pay shows up in your own dashboard. Every maintenance request has a timeline. Every notice comes in English or Swahili — your choice. BOSSNYUMBA gives you the same truth your landlord sees."
-      heroCtaLabel="See what a tenant dashboard looks like"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <FeatureGrid
         heading="What it does for you"

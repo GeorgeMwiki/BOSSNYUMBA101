@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Megaphone, ChevronRight, Calendar, Pin } from 'lucide-react';
+import { Plus, Megaphone, ChevronRight, Pin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type AnnouncementPriority = 'normal' | 'important' | 'urgent';
@@ -22,13 +23,14 @@ interface Announcement {
 // Empty array keeps prod honest; empty state renders below.
 const announcements: Announcement[] = [];
 
-const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
-  normal: { label: 'Normal', color: 'badge-gray' },
-  important: { label: 'Important', color: 'badge-warning' },
-  urgent: { label: 'Urgent', color: 'badge-danger' },
+const priorityConfig: Record<AnnouncementPriority, { labelKey: 'priorityNormal' | 'priorityImportant' | 'priorityUrgent'; color: string }> = {
+  normal: { labelKey: 'priorityNormal', color: 'badge-gray' },
+  important: { labelKey: 'priorityImportant', color: 'badge-warning' },
+  urgent: { labelKey: 'priorityUrgent', color: 'badge-danger' },
 };
 
 export default function AnnouncementsPage() {
+  const t = useTranslations('announcementsList');
   const [filter, setFilter] = useState<string>('all');
 
   const filteredAnnouncements = announcements.filter((a) => {
@@ -46,12 +48,12 @@ export default function AnnouncementsPage() {
   return (
     <>
       <PageHeader
-        title="Announcements"
-        subtitle={`${announcements.length} active`}
+        title={t('title')}
+        subtitle={t('countLabel', { count: announcements.length })}
         action={
           <Link href="/announcements/create" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            Create
+            {t('create')}
           </Link>
         }
       />
@@ -60,8 +62,8 @@ export default function AnnouncementsPage() {
         {/* Filter Tabs */}
         <div className="flex gap-2">
           {[
-            { value: 'all', label: 'All' },
-            { value: 'pinned', label: 'Pinned' },
+            { value: 'all', label: t('filterAll') },
+            { value: 'pinned', label: t('filterPinned') },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -96,7 +98,7 @@ export default function AnnouncementsPage() {
                           {announcement.content}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className={priority.color}>{priority.label}</span>
+                          <span className={priority.color}>{t(priority.labelKey)}</span>
                           <span className="text-xs text-gray-400">
                             {new Date(announcement.publishedAt).toLocaleDateString()}
                           </span>
@@ -117,13 +119,13 @@ export default function AnnouncementsPage() {
         {filteredAnnouncements.length === 0 && (
           <div className="text-center py-12">
             <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No announcements</h3>
+            <h3 className="font-medium text-gray-900">{t('noAnnouncements')}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filter === 'pinned' ? 'No pinned announcements' : 'Create an announcement to notify residents'}
+              {filter === 'pinned' ? t('noPinned') : t('createToNotify')}
             </p>
             {filter !== 'pinned' && (
               <Link href="/announcements/create" className="btn-primary mt-4 inline-block">
-                Create Announcement
+                {t('createAnnouncement')}
               </Link>
             )}
           </div>

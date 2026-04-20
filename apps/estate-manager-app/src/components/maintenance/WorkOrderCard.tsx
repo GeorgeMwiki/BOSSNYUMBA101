@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, Clock, Timer } from 'lucide-react';
-import { PriorityBadge } from './PriorityBadge';
+import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { SLATimer } from './SLATimer';
 
 export type WorkOrderStatus =
@@ -33,13 +33,21 @@ export interface WorkOrderCardData {
   };
 }
 
-const statusConfig: Record<WorkOrderStatus, { label: string; color: string }> = {
-  submitted: { label: 'Submitted', color: 'badge-info' },
-  triaged: { label: 'Triaged', color: 'badge-info' },
-  assigned: { label: 'Assigned', color: 'badge-warning' },
-  scheduled: { label: 'Scheduled', color: 'badge-warning' },
-  in_progress: { label: 'In Progress', color: 'badge-warning' },
-  completed: { label: 'Completed', color: 'badge-success' },
+const statusLabelKey: Record<WorkOrderStatus, 'submitted' | 'triaged' | 'assigned' | 'scheduled' | 'inProgress' | 'completed'> = {
+  submitted: 'submitted',
+  triaged: 'triaged',
+  assigned: 'assigned',
+  scheduled: 'scheduled',
+  in_progress: 'inProgress',
+  completed: 'completed',
+};
+const statusColor: Record<WorkOrderStatus, string> = {
+  submitted: 'badge-info',
+  triaged: 'badge-info',
+  assigned: 'badge-warning',
+  scheduled: 'badge-warning',
+  in_progress: 'badge-warning',
+  completed: 'badge-success',
 };
 
 const priorityBorder: Record<string, string> = {
@@ -59,7 +67,9 @@ export function WorkOrderCard({
   workOrder,
   isDraggable = false,
 }: WorkOrderCardProps) {
-  const status = statusConfig[workOrder.status];
+  const tStatus = useTranslations('workOrderStatus');
+  const tSla = useTranslations('sla');
+  const tMisc = useTranslations('misc');
   const hasSLAIssue =
     workOrder.sla.responseBreached || workOrder.sla.resolutionBreached;
 
@@ -81,11 +91,11 @@ export function WorkOrderCard({
           </div>
           <div className="font-medium mt-1">{workOrder.title}</div>
         </div>
-        <span className={status.color}>{status.label}</span>
+        <span className={statusColor[workOrder.status]}>{tStatus(statusLabelKey[workOrder.status])}</span>
       </div>
 
       <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-        <span>Unit {workOrder.unit}</span>
+        <span>{tMisc('unitPrefix', { unit: workOrder.unit })}</span>
         <span>{workOrder.category}</span>
       </div>
 
@@ -112,7 +122,7 @@ export function WorkOrderCard({
           {hasSLAIssue && (
             <span className="text-danger-600 font-medium flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
-              SLA Breached
+              {tSla('slaBreached')}
             </span>
           )}
         </div>

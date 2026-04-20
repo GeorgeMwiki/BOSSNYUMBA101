@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   CreditCard,
   Smartphone,
@@ -62,6 +63,7 @@ const paymentOptions: PaymentOption[] = [
 ];
 
 function PayPageInner() {
+  const t = useTranslations('paymentsPay');
   const router = useRouter();
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
@@ -88,14 +90,14 @@ function PayPageInner() {
 
   return (
     <>
-      <PageHeader title="Make Payment" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-32">
         {/* Amount Section */}
         <section className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-sm text-gray-500">Amount to Pay</div>
+              <div className="text-sm text-gray-500">{t('amountToPay')}</div>
               <div className="text-3xl font-bold text-gray-900">
                 KES {paymentAmount.toLocaleString()}
               </div>
@@ -104,13 +106,13 @@ function PayPageInner() {
               onClick={() => setShowAmountInput(!showAmountInput)}
               className="text-sm text-primary-600 font-medium"
             >
-              {showAmountInput ? 'Cancel' : 'Change'}
+              {showAmountInput ? t('cancel') : t('change')}
             </button>
           </div>
 
           {showAmountInput && (
             <div className="space-y-3 pt-4 border-t border-gray-100">
-              <label className="label">Enter custom amount</label>
+              <label className="label">{t('enterCustomAmount')}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
                   KES
@@ -133,19 +135,19 @@ function PayPageInner() {
                   onClick={() => setCustomAmount(Math.round(amount / 2))}
                   className="btn-secondary text-xs flex-1"
                 >
-                  Half (KES {Math.round(amount / 2).toLocaleString()})
+                  {t('halfAmount', { amount: Math.round(amount / 2).toLocaleString() })}
                 </button>
                 <button
                   onClick={() => setCustomAmount(amount)}
                   className="btn-secondary text-xs flex-1"
                 >
-                  Full Balance
+                  {t('fullBalance')}
                 </button>
               </div>
               {customAmount && customAmount < amount && (
                 <div className="p-3 bg-warning-50 rounded-lg text-sm text-warning-700">
                   <Info className="w-4 h-4 inline mr-1" />
-                  Partial payment. Remaining balance: KES {(amount - customAmount).toLocaleString()}
+                  {t('partialPayment', { remaining: (amount - customAmount).toLocaleString() })}
                 </div>
               )}
             </div>
@@ -154,7 +156,7 @@ function PayPageInner() {
 
         {/* Payment Methods */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Select Payment Method</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('selectPaymentMethod')}</h2>
           <div className="space-y-3">
             {paymentOptions.map((option) => {
               const Icon = option.icon;
@@ -186,7 +188,7 @@ function PayPageInner() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{option.name}</span>
                         {option.popular && (
-                          <span className="badge-success text-xs">Popular</span>
+                          <span className="badge-success text-xs">{t('popular')}</span>
                         )}
                       </div>
                       <p className="text-sm text-gray-500">{option.description}</p>
@@ -220,8 +222,7 @@ function PayPageInner() {
         <div className="flex items-start gap-3 text-sm text-gray-600">
           <Shield className="w-5 h-5 text-success-500 flex-shrink-0 mt-0.5" />
           <p>
-            All payments are secured with bank-level encryption. Your financial
-            information is never stored on our servers.
+            {t('securityNote')}
           </p>
         </div>
 
@@ -234,9 +235,9 @@ function PayPageInner() {
             <Clock className="w-5 h-5 text-primary-600" />
           </div>
           <div className="flex-1">
-            <div className="font-medium text-primary-900">Need a payment plan?</div>
+            <div className="font-medium text-primary-900">{t('needPaymentPlan')}</div>
             <div className="text-sm text-primary-700">
-              Split your balance into manageable installments
+              {t('splitBalance')}
             </div>
           </div>
           <ChevronRight className="w-5 h-5 text-primary-600" />
@@ -252,11 +253,11 @@ function PayPageInner() {
         >
           {selectedMethod ? (
             <span className="flex items-center justify-center gap-2">
-              Continue to {paymentOptions.find((o) => o.id === selectedMethod)?.name}
+              {t('continueTo', { method: paymentOptions.find((o) => o.id === selectedMethod)?.name ?? '' })}
               <ChevronRight className="w-5 h-5" />
             </span>
           ) : (
-            'Select a payment method'
+            t('selectMethodPrompt')
           )}
         </button>
       </div>
@@ -264,9 +265,14 @@ function PayPageInner() {
   );
 }
 
+function PayPageFallback() {
+  const t = useTranslations('paymentsPay');
+  return <PageHeader title={t('title')} showBack />;
+}
+
 export default function PayPage() {
   return (
-    <Suspense fallback={<PageHeader title="Make Payment" showBack />}>
+    <Suspense fallback={<PayPageFallback />}>
       <PayPageInner />
     </Suspense>
   );

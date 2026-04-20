@@ -4,6 +4,7 @@ import { Home, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide
 import { useForm } from 'react-hook-form';
 import { createZodResolver, Spinner } from '@bossnyumba/design-system';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface MfaSetup {
@@ -64,6 +65,7 @@ const validatePassword = (password: string) => ({
 });
 
 export function RegisterPage() {
+  const t = useTranslations('registerPage');
   const [step, setStep] = useState<'details' | 'verify' | 'mfa-setup' | 'mfa-verify' | 'success'>('details');
   const [mfaSetup, setMfaSetup] = useState<MfaSetup | null>(null);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
@@ -220,11 +222,11 @@ export function RegisterPage() {
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
-          <p className="text-gray-600 mb-2">Your account has been created with two-factor authentication enabled.</p>
-          <p className="text-sm text-gray-500 mb-6">You can now log in to access your owner portal.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('registrationSuccessful')}</h2>
+          <p className="text-gray-600 mb-2">{t('accountCreated')}</p>
+          <p className="text-sm text-gray-500 mb-6">{t('youCanLogIn')}</p>
           <Link to="/login" className="inline-flex items-center justify-center gap-2 w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700">
-            Sign in to your account
+            {t('signInToAccount')}
           </Link>
         </div>
       </div>
@@ -244,29 +246,29 @@ export function RegisterPage() {
           <span className="text-2xl font-bold text-white">BOSSNYUMBA</span>
         </div>
         <div>
-          <h1 className="text-4xl font-bold text-white mb-4">Join the Future of Property Management</h1>
-          <p className="text-blue-100 text-lg">Create your owner account to access real-time portfolio analytics, automated rent collection reports, and streamlined maintenance approvals.</p>
+          <h1 className="text-4xl font-bold text-white mb-4">{t('joinFutureTitle')}</h1>
+          <p className="text-blue-100 text-lg">{t('joinFutureDesc')}</p>
           <div className="mt-8 space-y-4">
             <div className="flex items-center gap-3 text-white">
               <CheckCircle className="h-5 w-5 text-green-300" />
-              <span>Real-time portfolio performance tracking</span>
+              <span>{t('bullet1')}</span>
             </div>
             <div className="flex items-center gap-3 text-white">
               <CheckCircle className="h-5 w-5 text-green-300" />
-              <span>Detailed financial statements & reports</span>
+              <span>{t('bullet2')}</span>
             </div>
             <div className="flex items-center gap-3 text-white">
               <CheckCircle className="h-5 w-5 text-green-300" />
-              <span>Maintenance approval workflows</span>
+              <span>{t('bullet3')}</span>
             </div>
             <div className="flex items-center gap-3 text-white">
               <CheckCircle className="h-5 w-5 text-green-300" />
-              <span>Two-factor authentication security</span>
+              <span>{t('bullet4')}</span>
             </div>
           </div>
         </div>
         <div className="text-blue-200 text-sm">
-          Already have an account? <Link to="/login" className="text-white underline">Sign in</Link>
+          {t('alreadyHaveAccount')} <Link to="/login" className="text-white underline">{t('signIn')}</Link>
         </div>
       </div>
 
@@ -295,62 +297,62 @@ export function RegisterPage() {
 
           {step === 'details' && (
             <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h2>
-              <p className="text-gray-500 mb-8">Register as a property owner to get started</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('createAccountTitle')}</h2>
+              <p className="text-gray-500 mb-8">{t('createAccountSubtitle')}</p>
 
               {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
               <form onSubmit={onSubmitDetails} className="space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
                     <input id="firstName" type="text" {...registerDetails('firstName')} aria-invalid={!!detailsState.errors.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     {detailsState.errors.firstName && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.firstName.message}</p>}
                   </div>
                   <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
                     <input id="lastName" type="text" {...registerDetails('lastName')} aria-invalid={!!detailsState.errors.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     {detailsState.errors.lastName && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.lastName.message}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
                   <input id="register-email" type="email" {...registerDetails('email')} aria-invalid={!!detailsState.errors.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@example.com" />
                   {detailsState.errors.email && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.email.message}</p>}
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
                   <input id="phone" type="tel" {...registerDetails('phone')} aria-invalid={!!detailsState.errors.phone} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="+255 xxx xxx xxx" />
                   {detailsState.errors.phone && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.phone.message}</p>}
                 </div>
 
                 <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">Company Name (Optional)</label>
-                  <input id="companyName" type="text" {...registerDetails('companyName')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your company or portfolio name" />
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">{t('companyNameOptional')}</label>
+                  <input id="companyName" type="text" {...registerDetails('companyName')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={t('companyPlaceholder')} />
                 </div>
 
                 <div>
-                  <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
                   <div className="relative">
                     <input id="register-password" type={showPassword ? 'text' : 'password'} {...registerDetails('password')} aria-invalid={!!detailsState.errors.password} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? t('hidePassword') : t('showPassword')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
-                    <span className={passwordReqs.length ? 'text-green-600' : 'text-gray-400'}>✓ 8+ characters</span>
-                    <span className={passwordReqs.uppercase ? 'text-green-600' : 'text-gray-400'}>✓ Uppercase</span>
-                    <span className={passwordReqs.lowercase ? 'text-green-600' : 'text-gray-400'}>✓ Lowercase</span>
-                    <span className={passwordReqs.number ? 'text-green-600' : 'text-gray-400'}>✓ Number</span>
-                    <span className={passwordReqs.special ? 'text-green-600' : 'text-gray-400'}>✓ Special character</span>
+                    <span className={passwordReqs.length ? 'text-green-600' : 'text-gray-400'}>{t('reqLength')}</span>
+                    <span className={passwordReqs.uppercase ? 'text-green-600' : 'text-gray-400'}>{t('reqUppercase')}</span>
+                    <span className={passwordReqs.lowercase ? 'text-green-600' : 'text-gray-400'}>{t('reqLowercase')}</span>
+                    <span className={passwordReqs.number ? 'text-green-600' : 'text-gray-400'}>{t('reqNumber')}</span>
+                    <span className={passwordReqs.special ? 'text-green-600' : 'text-gray-400'}>{t('reqSpecial')}</span>
                   </div>
                   {detailsState.errors.password && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.password.message}</p>}
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPassword')}</label>
                   <input id="confirmPassword" type="password" {...registerDetails('confirmPassword')} aria-invalid={!!detailsState.errors.confirmPassword} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   {detailsState.errors.confirmPassword && <p role="alert" className="mt-1 text-xs text-red-600">{detailsState.errors.confirmPassword.message}</p>}
                 </div>
@@ -358,33 +360,33 @@ export function RegisterPage() {
                 <div className="flex items-start gap-2">
                   <input type="checkbox" id="acceptTerms" {...registerDetails('acceptTerms')} className="mt-1" />
                   <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                    I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
+                    {t('iAgreeTo')} <a href="#" className="text-blue-600 hover:underline">{t('termsOfService')}</a> {t('and')} <a href="#" className="text-blue-600 hover:underline">{t('privacyPolicy')}</a>
                   </label>
                 </div>
                 {detailsState.errors.acceptTerms && <p role="alert" className="text-xs text-red-600">{detailsState.errors.acceptTerms.message}</p>}
 
                 <button type="submit" disabled={detailsState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   {detailsState.isSubmitting && <Spinner size="sm" />}
-                  Create Account
+                  {t('createAccount')}
                 </button>
               </form>
 
               <p className="mt-6 text-center text-sm text-gray-500">
-                Already have an account? <Link to="/login" className="text-blue-600 font-medium hover:underline">Sign in</Link>
+                {t('alreadyHaveAccount')} <Link to="/login" className="text-blue-600 font-medium hover:underline">{t('signIn')}</Link>
               </p>
             </>
           )}
 
           {step === 'verify' && (
             <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify your email</h2>
-              <p className="text-gray-500 mb-8">We've sent a verification code to <span className="font-medium">{submittedEmail}</span></p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('verifyEmailTitle')}</h2>
+              <p className="text-gray-500 mb-8">{t('verifyEmailSubtitle')} <span className="font-medium">{submittedEmail}</span></p>
 
               {topLevelError && <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{topLevelError}</div>}
 
               <form onSubmit={onSubmitVerify} className="space-y-4" noValidate>
                 <div>
-                  <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-1">Verification Code</label>
+                  <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-1">{t('verificationCode')}</label>
                   <input
                     id="verificationCode"
                     type="text"
@@ -401,12 +403,12 @@ export function RegisterPage() {
 
                 <button type="submit" disabled={verifyState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   {verifyState.isSubmitting && <Spinner size="sm" />}
-                  Verify Email
+                  {t('verifyEmail')}
                 </button>
               </form>
 
               <p className="mt-6 text-center text-sm text-gray-500">
-                Didn't receive the code? <button className="text-blue-600 font-medium hover:underline">Resend</button>
+                {t('didntReceive')} <button className="text-blue-600 font-medium hover:underline">{t('resend')}</button>
               </p>
             </>
           )}
@@ -418,8 +420,8 @@ export function RegisterPage() {
                   <Shield className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Set up Two-Factor Authentication</h2>
-                  <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{t('mfaSetupTitle')}</h2>
+                  <p className="text-sm text-gray-500">{t('mfaSetupSubtitle')}</p>
                 </div>
               </div>
 
@@ -429,20 +431,20 @@ export function RegisterPage() {
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
                     <Smartphone className="h-5 w-5 text-gray-600" />
-                    <span className="font-medium text-gray-900">Step 1: Install an authenticator app</span>
+                    <span className="font-medium text-gray-900">{t('mfaStep1Title')}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Download Google Authenticator, Authy, or any TOTP authenticator app on your phone.</p>
+                  <p className="text-sm text-gray-600">{t('mfaStep1Desc')}</p>
                 </div>
 
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="font-medium text-gray-900">Step 2: Scan this QR code</span>
+                    <span className="font-medium text-gray-900">{t('mfaStep2Title')}</span>
                   </div>
                   {mfaSetup && (
                     <div className="flex flex-col items-center gap-4">
-                      <img src={mfaSetup.qrCodeUrl} alt="MFA QR Code" className="w-48 h-48 rounded-lg border border-gray-200" />
+                      <img src={mfaSetup.qrCodeUrl} alt={t('qrAlt')} className="w-48 h-48 rounded-lg border border-gray-200" />
                       <div className="text-center">
-                        <p className="text-xs text-gray-500 mb-1">Or enter this code manually:</p>
+                        <p className="text-xs text-gray-500 mb-1">{t('orEnterManual')}</p>
                         <code className="px-3 py-1 bg-gray-100 rounded text-sm font-mono text-gray-700">{mfaSetup.secret}</code>
                       </div>
                     </div>
@@ -451,9 +453,9 @@ export function RegisterPage() {
 
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-yellow-800">Backup Codes (Save these!)</span>
+                    <span className="font-medium text-yellow-800">{t('backupCodesTitle')}</span>
                     <button onClick={() => setShowBackupCodes(!showBackupCodes)} className="text-sm text-yellow-700 hover:underline">
-                      {showBackupCodes ? 'Hide' : 'Show'}
+                      {showBackupCodes ? t('hide') : t('show')}
                     </button>
                   </div>
                   {showBackupCodes && mfaSetup && (
@@ -465,15 +467,15 @@ export function RegisterPage() {
                       </div>
                       <button onClick={copyBackupCodes} className="flex items-center gap-2 text-sm text-yellow-700 hover:underline mt-2">
                         <Copy className="h-4 w-4" />
-                        {copiedBackupCodes ? 'Copied!' : 'Copy all codes'}
+                        {copiedBackupCodes ? t('copied') : t('copyAllCodes')}
                       </button>
-                      <p className="text-xs text-yellow-700 mt-2">Store these codes in a safe place. You can use them to access your account if you lose your authenticator app.</p>
+                      <p className="text-xs text-yellow-700 mt-2">{t('storeSafely')}</p>
                     </div>
                   )}
                 </div>
 
                 <button onClick={() => setStep('mfa-verify')} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700">
-                  Continue to Verification
+                  {t('continueToVerification')}
                 </button>
               </div>
             </>
@@ -486,8 +488,8 @@ export function RegisterPage() {
                   <Shield className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Verify Your Setup</h2>
-                  <p className="text-sm text-gray-500">Enter the code from your authenticator app</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{t('verifySetupTitle')}</h2>
+                  <p className="text-sm text-gray-500">{t('verifySetupSubtitle')}</p>
                 </div>
               </div>
 
@@ -495,7 +497,7 @@ export function RegisterPage() {
 
               <form onSubmit={onSubmitMfa} className="space-y-4" noValidate>
                 <div>
-                  <label htmlFor="register-mfa-code" className="block text-sm font-medium text-gray-700 mb-1">Authentication Code</label>
+                  <label htmlFor="register-mfa-code" className="block text-sm font-medium text-gray-700 mb-1">{t('authCode')}</label>
                   <input
                     id="register-mfa-code"
                     type="text"
@@ -507,17 +509,17 @@ export function RegisterPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest"
                     placeholder="000000"
                   />
-                  <p className="mt-2 text-xs text-gray-500">Open your authenticator app and enter the 6-digit code shown for BOSSNYUMBA.</p>
+                  <p className="mt-2 text-xs text-gray-500">{t('openAuthApp')}</p>
                   {mfaState.errors.code && <p role="alert" className="mt-1 text-xs text-red-600">{mfaState.errors.code.message}</p>}
                 </div>
 
                 <button type="submit" disabled={mfaState.isSubmitting} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   {mfaState.isSubmitting && <Spinner size="sm" />}
-                  Complete Setup
+                  {t('completeSetup')}
                 </button>
               </form>
 
-              <button onClick={() => setStep('mfa-setup')} className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700">← Back to QR code</button>
+              <button onClick={() => setStep('mfa-setup')} className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700">{t('backToQr')}</button>
             </>
           )}
         </div>

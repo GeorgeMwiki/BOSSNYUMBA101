@@ -3,6 +3,7 @@
  * Three sections: talk anywhere, teach + act, remember + learn.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
@@ -11,18 +12,19 @@ export const metadata = {
     'One brain across every role. Talk anywhere, and Mr. Mwikila teaches, acts, and learns.',
 };
 
-export default function HowItWorksPage() {
+export default async function HowItWorksPage() {
+  const t = await getTranslations('howItWorks');
   return (
     <MarketingShell
-      title="One brain, across every role, in every language."
-      subtitle="BOSSNYUMBA is not a chat bolted onto software. The product is the AI — and Mr. Mwikila is the same brain whether you are an owner on Monday, a tenant on Wednesday, or a station master at 2am."
-      heroCtaLabel="Ask him anything"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('askHim')}
     >
       <section className="mb-16 rounded-xl border border-slate-200 bg-white p-8">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
           Step 1
         </div>
-        <h2 className="mb-3 text-2xl font-semibold text-slate-900">Talk to Mr. Mwikila anywhere</h2>
+        <h2 className="mb-3 text-2xl font-semibold text-slate-900">{t('step1Title')}</h2>
         <p className="mb-2 text-slate-700">
           There is a single chat available on every page of the platform — the web app, the mobile
           app, WhatsApp, and even voice notes from a station master at the gate. Whatever role you
@@ -39,7 +41,7 @@ export default function HowItWorksPage() {
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
           Step 2
         </div>
-        <h2 className="mb-3 text-2xl font-semibold text-slate-900">He teaches, then he acts</h2>
+        <h2 className="mb-3 text-2xl font-semibold text-slate-900">{t('step2Title')}</h2>
         <p className="mb-2 text-slate-700">
           Most AI assistants answer questions. Mr. Mwikila does two things: he teaches you what to
           think about, and then he acts — drafts the reminder, dispatches the vendor, compiles
@@ -56,7 +58,7 @@ export default function HowItWorksPage() {
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
           Step 3
         </div>
-        <h2 className="mb-3 text-2xl font-semibold text-slate-900">He remembers, and he learns</h2>
+        <h2 className="mb-3 text-2xl font-semibold text-slate-900">{t('step3Title')}</h2>
         <p className="mb-2 text-slate-700">
           Tell Mr. Mwikila once that you prefer Swahili reminders for ground-floor tenants and
           English for the upper floors, and he will do it forever. Every decision you correct

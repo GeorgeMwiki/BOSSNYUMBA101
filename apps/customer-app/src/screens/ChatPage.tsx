@@ -1,11 +1,13 @@
+import { getTranslations } from 'next-intl/server';
 import { LiveDataRequiredPanel } from '@/components/LiveDataRequired';
 
-export default function ChatPage() {
+export default async function ChatPage() {
+  const t = await getTranslations('screenUnavailable');
   return (
     <div className="px-4 py-4">
       <LiveDataRequiredPanel
-        title="Chat unavailable"
-        message="Hardcoded chat threads have been removed. This legacy chat surface now requires a live messaging backend."
+        title={t('chatTitle')}
+        message={t('chatMessage')}
       />
     </div>
   );

@@ -18,6 +18,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardCheck, Wrench, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface TileState {
   readonly count: number | null;
@@ -38,6 +39,7 @@ const INITIAL: DayState = {
 };
 
 export function MyDayWidget(): JSX.Element {
+  const t = useTranslations('simple');
   const [state, setState] = useState<DayState>(INITIAL);
 
   useEffect(() => {
@@ -80,21 +82,21 @@ export function MyDayWidget(): JSX.Element {
         <Tile
           href="/inspections?when=today"
           icon={ClipboardCheck}
-          label="Inspections"
+          label={t('inspectionsLabel')}
           accent="text-blue-600"
           state={state.inspections}
         />
         <Tile
           href="/work-orders?when=today"
           icon={Wrench}
-          label="Work orders"
+          label={t('workOrdersLabel')}
           accent="text-orange-600"
           state={state.workOrders}
         />
         <Tile
           href="/cases?filter=sla-breached"
           icon={AlertTriangle}
-          label="SLA breached"
+          label={t('slaBreachedLabel')}
           accent="text-red-600"
           state={state.slaBreached}
         />

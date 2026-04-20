@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPanel } from '@/components/LiveDataRequired';
 
 interface VoiceRecorderProps {
@@ -11,10 +12,11 @@ export function VoiceRecorder({
   onRecordingComplete: _onRecordingComplete,
   maxDuration = 120,
 }: VoiceRecorderProps) {
+  const t = useTranslations('screenUnavailable');
   return (
     <LiveDataRequiredPanel
-      title="Voice capture unavailable"
-      message={`Simulated recording and transcription have been removed. Voice maintenance intake now requires a live recording and speech-to-text pipeline. Maximum configured duration remains ${maxDuration} seconds.`}
+      title={t('voiceTitle')}
+      message={t('voiceMessage', { duration: maxDuration })}
     />
   );
 }

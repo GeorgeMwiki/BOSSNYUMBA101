@@ -5,6 +5,7 @@
  */
 
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
@@ -83,12 +84,13 @@ const TIERS: readonly Tier[] = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const t = await getTranslations('pricingPage');
   return (
     <MarketingShell
-      title="Four tiers. Talk to Mr. Mwikila for a custom quote."
-      subtitle="We built pricing around East African portfolios. No per-user seats, no surprise overage bills. If you cross a ceiling, Mr. Mwikila tells you 30 days ahead so you decide, not the invoice."
-      heroCtaLabel="Talk to Mr. Mwikila for a custom quote"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {TIERS.map((tier) => (
@@ -132,7 +134,7 @@ export default function PricingPage() {
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-white p-8">
-        <h2 className="mb-3 text-xl font-semibold">How the numbers compare</h2>
+        <h2 className="mb-3 text-xl font-semibold">{t('numbersCompare')}</h2>
         <p className="mb-4 text-sm text-slate-700">
           A junior estate officer in Nairobi costs $300-$500/month fully loaded. BOSSNYUMBA does
           not replace the officer — it multiplies them. An officer with BOSSNYUMBA handles 60-80

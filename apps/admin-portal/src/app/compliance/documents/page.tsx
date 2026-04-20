@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../../components/LiveDataRequiredPage';
 
 export default function ComplianceDocumentsPage() {
+  const t = useTranslations('complianceDocumentsPage');
   return (
     <LiveDataRequiredPage
-      title="Compliance Documents"
-      feature="compliance document data"
-      description="Static compliance documents have been removed. This page now requires live document management and review services."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

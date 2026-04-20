@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Clock,
@@ -104,6 +105,7 @@ const priorityConfig: Record<Priority, { label: string; color: string; borderCol
 };
 
 export default function MaintenancePage() {
+  const t = useTranslations('maintenanceScreen');
   const [showNewRequestForm, setShowNewRequestForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
   
@@ -117,8 +119,8 @@ export default function MaintenancePage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const openTickets = tickets.filter((t) => t.status !== 'completed');
-  const closedTickets = tickets.filter((t) => t.status === 'completed');
+  const openTickets = tickets.filter((ticket) => ticket.status !== 'completed');
+  const closedTickets = tickets.filter((ticket) => ticket.status === 'completed');
   const displayedTickets = activeTab === 'open' ? openTickets : closedTickets;
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,14 +160,14 @@ export default function MaintenancePage() {
   return (
     <>
       <PageHeader
-        title="Maintenance"
+        title={t('title')}
         action={
           <button
             onClick={() => setShowNewRequestForm(true)}
             className="btn-primary text-sm"
           >
             <Plus className="w-4 h-4 mr-1" />
-            New Request
+            {t('newRequest')}
           </button>
         }
       />
@@ -184,17 +186,17 @@ export default function MaintenancePage() {
         <div className="grid grid-cols-3 gap-3">
           <div className="card p-3 text-center">
             <div className="text-2xl font-bold text-primary-600">{openTickets.length}</div>
-            <div className="text-xs text-gray-500">Open</div>
+            <div className="text-xs text-gray-500">{t('open')}</div>
           </div>
           <div className="card p-3 text-center">
             <div className="text-2xl font-bold text-warning-600">
-              {openTickets.filter((t) => t.slaStatus === 'at_risk').length}
+              {openTickets.filter((ticket) => ticket.slaStatus === 'at_risk').length}
             </div>
-            <div className="text-xs text-gray-500">At Risk</div>
+            <div className="text-xs text-gray-500">{t('atRisk')}</div>
           </div>
           <div className="card p-3 text-center">
             <div className="text-2xl font-bold text-success-600">{closedTickets.length}</div>
-            <div className="text-xs text-gray-500">Completed</div>
+            <div className="text-xs text-gray-500">{t('completed')}</div>
           </div>
         </div>
 
@@ -231,11 +233,11 @@ export default function MaintenancePage() {
             {displayedTickets.length === 0 && (
               <div className="card p-8 text-center text-gray-500">
                 <Wrench className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p className="font-medium mb-1">No {activeTab} requests</p>
+                <p className="font-medium mb-1">
+                  {activeTab === 'open' ? t('emptyOpen') : t('emptyClosed')}
+                </p>
                 <p className="text-sm">
-                  {activeTab === 'open'
-                    ? 'Create a new request to report an issue'
-                    : 'Completed requests will appear here'}
+                  {activeTab === 'open' ? t('emptyOpenHint') : t('emptyClosedHint')}
                 </p>
               </div>
             )}
@@ -254,7 +256,7 @@ export default function MaintenancePage() {
               >
                 <X className="w-5 h-5" />
               </button>
-              <h1 className="text-lg font-semibold">New Request</h1>
+              <h1 className="text-lg font-semibold">{t('newRequest')}</h1>
               <div className="w-9" />
             </div>
           </header>
@@ -262,7 +264,7 @@ export default function MaintenancePage() {
           <div className="px-4 py-6 pb-32 space-y-6">
             {/* Category Selection */}
             <div>
-              <label className="label">Category</label>
+              <label className="label">{t('category')}</label>
               <div className="grid grid-cols-3 gap-3">
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
@@ -288,23 +290,23 @@ export default function MaintenancePage() {
 
             {/* Title */}
             <div>
-              <label className="label">Issue Title</label>
+              <label className="label">{t('issueTitle')}</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Brief description of the issue"
+                placeholder={t('issueTitlePlaceholder')}
                 className="input"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="label">Description</label>
+              <label className="label">{t('description')}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the problem in detail..."
+                placeholder={t('descriptionPlaceholder')}
                 rows={4}
                 className="input min-h-[120px]"
               />
@@ -312,7 +314,7 @@ export default function MaintenancePage() {
 
             {/* Priority */}
             <div>
-              <label className="label">Priority</label>
+              <label className="label">{t('priority')}</label>
               <div className="flex gap-2">
                 {(['low', 'medium', 'high', 'emergency'] as Priority[]).map((p) => (
                   <button
@@ -344,7 +346,7 @@ export default function MaintenancePage() {
 
             {/* Photo Upload */}
             <div>
-              <label className="label">Photos (optional)</label>
+              <label className="label">{t('photosOptional')}</label>
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {photos.map((photo, idx) => (
                   <div key={idx} className="relative flex-shrink-0">
@@ -367,7 +369,7 @@ export default function MaintenancePage() {
                     className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 flex-shrink-0"
                   >
                     <Camera className="w-6 h-6" />
-                    <span className="text-xs mt-1">Add Photo</span>
+                    <span className="text-xs mt-1">{t('addPhoto')}</span>
                   </button>
                 )}
               </div>
@@ -404,6 +406,7 @@ export default function MaintenancePage() {
 }
 
 function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
+  const tCard = useTranslations('maintenanceScreen');
   const status = statusConfig[ticket.status];
   const priorityCfg = priorityConfig[ticket.priority];
   const StatusIcon = status.icon;
@@ -433,7 +436,7 @@ function TicketCard({ ticket }: { ticket: MaintenanceTicket }) {
               {ticket.scheduledDate && (
                 <>
                   <span>•</span>
-                  <span>Scheduled: {new Date(ticket.scheduledDate).toLocaleDateString()}</span>
+                  <span>{tCard('scheduledPrefix')}: {new Date(ticket.scheduledDate).toLocaleDateString()}</span>
                 </>
               )}
               {ticket.photoCount && (

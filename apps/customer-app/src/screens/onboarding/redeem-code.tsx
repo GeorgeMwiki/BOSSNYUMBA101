@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
@@ -37,6 +38,7 @@ const INITIAL_STATE: RedeemCodeFormState = {
 };
 
 export default function RedeemCodePage() {
+  const t = useTranslations('redeemCode');
   const { redeemInviteCode, user } = useAuth();
   const [state, setState] = useState<RedeemCodeFormState>(INITIAL_STATE);
 
@@ -109,7 +111,7 @@ export default function RedeemCodePage() {
             inputMode="text"
             spellCheck={false}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-base uppercase tracking-wider shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="ACME-A3F9"
+            placeholder={t('codePlaceholder')}
             value={state.code}
             onChange={handleChange}
             aria-invalid={validationMessage !== null}

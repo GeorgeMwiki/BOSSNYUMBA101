@@ -10,10 +10,12 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '../../lib/api';
 import { useTenants } from '../../lib/hooks';
 
 export default function TenantsPage() {
+  const t = useTranslations('tenantsPage');
   const { data: tenants = [], isLoading, error, refetch } = useTenants();
   const [search, setSearch] = useState('');
 
@@ -42,8 +44,8 @@ export default function TenantsPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {error instanceof Error ? error.message : 'Failed to load tenants'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          {error instanceof Error ? error.message : t('failedToLoad')}
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -53,15 +55,15 @@ export default function TenantsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
-          <p className="text-gray-500">All tenants across your properties</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <Link
           to="/tenants/communications"
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
           <MessageSquare className="h-4 w-4" />
-          Communications
+          {t('communications')}
         </Link>
       </div>
 
@@ -69,7 +71,7 @@ export default function TenantsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search tenants..."
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -81,12 +83,12 @@ export default function TenantsPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property / Unit</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rent</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lease End</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colTenant')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPropertyUnit')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colContact')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colRent')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colLeaseEnd')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -110,7 +112,7 @@ export default function TenantsPage() {
                         <Building2 className="h-4 w-4" />
                         {tenant.propertyName}
                       </Link>
-                      <p className="text-sm text-gray-500">Unit {tenant.unitNumber}</p>
+                      <p className="text-sm text-gray-500">{t('unitPrefix', { unit: tenant.unitNumber ?? '' })}</p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -150,7 +152,7 @@ export default function TenantsPage() {
                       to={`/tenants/${tenant.id}`}
                       className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
-                      View <ArrowRight className="h-4 w-4" />
+                      {t('view')} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </td>
                 </tr>
@@ -163,11 +165,11 @@ export default function TenantsPage() {
       {displayTenants.length === 0 && (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
-          title={search ? 'No matches' : 'No tenants yet'}
+          title={search ? t('noMatches') : t('noTenantsYet')}
           description={
             search
-              ? 'Try adjusting your search to find what you\u2019re looking for.'
-              : 'When tenants are onboarded they\u2019ll appear here.'
+              ? t('noMatchesDesc')
+              : t('noTenantsDesc')
           }
         />
       )}

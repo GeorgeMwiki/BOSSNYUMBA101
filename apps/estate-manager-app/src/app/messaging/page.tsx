@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, MessageCircle, ChevronRight, Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ConversationStatus = 'unread' | 'read';
@@ -35,6 +36,7 @@ function formatTime(dateStr: string) {
 }
 
 export default function MessagingPage() {
+  const t = useTranslations('messagingList');
   const [search, setSearch] = useState('');
 
   const filteredConversations = conversations.filter(
@@ -48,12 +50,12 @@ export default function MessagingPage() {
   return (
     <>
       <PageHeader
-        title="Messages"
-        subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+        title={t('title')}
+        subtitle={unreadCount > 0 ? t('unreadCount', { count: unreadCount }) : t('allCaughtUp')}
         action={
           <Link href="/messaging/new" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            New
+            {t('newBtn')}
           </Link>
         }
       />
@@ -63,7 +65,7 @@ export default function MessagingPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search conversations..."
+            placeholder={t('searchPlaceholder')}
             className="input pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -111,13 +113,13 @@ export default function MessagingPage() {
         {filteredConversations.length === 0 && (
           <div className="text-center py-12">
             <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No conversations</h3>
+            <h3 className="font-medium text-gray-900">{t('noConversations')}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {search ? 'No conversations match your search' : 'Start a new conversation'}
+              {search ? t('noMatches') : t('startNew')}
             </p>
             {!search && (
               <Link href="/messaging/new" className="btn-primary mt-4 inline-block">
-                New Message
+                {t('newMessage')}
               </Link>
             )}
           </div>

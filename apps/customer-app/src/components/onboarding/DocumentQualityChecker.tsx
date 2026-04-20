@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, type ElementType, type ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { Eye } from 'lucide-react';
 import { LiveDataRequiredPanel } from '@/components/LiveDataRequired';
 
@@ -21,6 +22,7 @@ export function DocumentQualityChecker({
   imageFile,
   onQualityResult,
 }: DocumentQualityCheckerProps): ReactElement | null {
+  const t = useTranslations('screenUnavailable');
   useEffect(() => {
     if (!imageFile) {
       return;
@@ -43,7 +45,7 @@ export function DocumentQualityChecker({
 
   return (
     <LiveDataRequiredPanel
-      title="Document quality analysis unavailable"
+      title={t('qualityAnalysisTitle')}
       message="Simulated image-quality scoring has been removed. Document validation now requires a live OCR or vision service."
     />
   );

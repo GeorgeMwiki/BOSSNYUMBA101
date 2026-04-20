@@ -1,11 +1,13 @@
+import { useTranslations } from 'next-intl';
 import { LiveDataRequiredPage } from '../../components/LiveDataRequiredPage';
 
 export default function AnalyticsPage() {
+  const t = useTranslations('analyticsPage');
   return (
     <LiveDataRequiredPage
-      title="Analytics Dashboard"
-      feature="analytics telemetry"
-      description="Static analytics dashboards have been removed. This page now requires live analytics and product telemetry."
+      title={t('title')}
+      feature={t('feature')}
+      description={t('description')}
     />
   );
 }

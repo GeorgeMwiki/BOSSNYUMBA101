@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Bell, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -32,6 +33,7 @@ function apiBase(): string {
 }
 
 export default function NotificationsPage() {
+  const t = useTranslations('pageHeaders');
   const [items, setItems] = useState<readonly NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <PageHeader title="Notifications" showSettings />
+      <PageHeader title={t('notifications')} showSettings />
       <div className="px-4 py-4 pb-24 space-y-3">
         {loading && (
           <p className="text-sm text-gray-400 flex items-center gap-2">

@@ -18,6 +18,7 @@ import {
   AlertDescription,
   Skeleton,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface RenewalProposal {
   readonly leaseId: string;
@@ -39,6 +40,7 @@ const renewalSchema = z.object({
 type RenewalForm = z.infer<typeof renewalSchema>;
 
 export default function LeaseRenewalPage(): React.ReactElement {
+  const t = useTranslations('leaseRenewal');
   const params = useParams();
   const id = params?.id as string;
   const [data, setData] = useState<RenewalProposal | null>(null);
@@ -73,11 +75,11 @@ export default function LeaseRenewalPage(): React.ReactElement {
         }
       } catch (err) {
         if (signal?.aborted) return;
-        setLoadError(err instanceof Error ? err.message : 'Failed to load lease');
+        setLoadError(err instanceof Error ? err.message : t('failedLoad'));
         setLoading(false);
       }
     },
-    [id, reset]
+    [id, reset, t]
   );
 
   useEffect(() => {
@@ -96,11 +98,11 @@ export default function LeaseRenewalPage(): React.ReactElement {
         body: JSON.stringify({ proposedRent: values.proposedRent, termMonths: values.termMonths }),
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      setFeedback({ kind: 'success', message: 'Proposal sent to tenant.' });
+      setFeedback({ kind: 'success', message: t('proposalSent') });
     } catch (err) {
       setFeedback({
         kind: 'error',
-        message: err instanceof Error ? err.message : 'Failed to send proposal',
+        message: err instanceof Error ? err.message : t('failedSend'),
       });
     }
   });
@@ -109,7 +111,7 @@ export default function LeaseRenewalPage(): React.ReactElement {
     <main className="p-6 max-w-2xl">
       <Card>
         <CardHeader>
-          <CardTitle>Lease Renewal — {id}</CardTitle>
+          <CardTitle>{t('title', { id })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {loadError && (
@@ -117,7 +119,7 @@ export default function LeaseRenewalPage(): React.ReactElement {
               <AlertDescription>
                 {loadError}
                 <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-                  Retry
+                  {t('retry')}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -138,20 +140,20 @@ export default function LeaseRenewalPage(): React.ReactElement {
           ) : data ? (
             <>
               <p className="text-sm">
-                Current rent: <strong>{data.currentRent.toLocaleString()}</strong>
+                {t('currentRent')} <strong>{data.currentRent.toLocaleString()}</strong>
               </p>
-              <p className="text-sm">Lease expires: {new Date(data.expiryDate).toLocaleDateString()}</p>
+              <p className="text-sm">{t('leaseExpires')} {new Date(data.expiryDate).toLocaleDateString()}</p>
               <p className="text-sm">
-                Tenant acceptance: <Badge>{data.tenantAcceptance}</Badge>
+                {t('tenantAcceptance')} <Badge>{data.tenantAcceptance}</Badge>
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Lease data unavailable.</p>
+            <p className="text-sm text-muted-foreground">{t('leaseUnavailable')}</p>
           )}
 
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <div>
-              <Label htmlFor="rent">Proposed rent</Label>
+              <Label htmlFor="rent">{t('proposedRent')}</Label>
               <Input
                 id="rent"
                 type="number"
@@ -166,7 +168,7 @@ export default function LeaseRenewalPage(): React.ReactElement {
               )}
             </div>
             <div>
-              <Label htmlFor="term">Renewal term (months)</Label>
+              <Label htmlFor="term">{t('renewalTerm')}</Label>
               <Input
                 id="term"
                 type="number"
@@ -184,9 +186,9 @@ export default function LeaseRenewalPage(): React.ReactElement {
               type="submit"
               loading={isSubmitting}
               disabled={isSubmitting || loading}
-              aria-label="Send renewal proposal to tenant"
+              aria-label={t('sendProposalAria')}
             >
-              Send proposal to tenant
+              {t('sendProposal')}
             </Button>
           </form>
         </CardContent>

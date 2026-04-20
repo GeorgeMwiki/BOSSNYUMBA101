@@ -3,6 +3,7 @@
  * Voice-first + offline-first is the pitch.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
@@ -12,12 +13,13 @@ export const metadata = {
     'Voice-first incident logging in Swahili. Offline when connectivity dies. Your work, finally visible to the manager.',
 };
 
-export default function ForStationMastersPage() {
+export default async function ForStationMastersPage() {
+  const t = await getTranslations('forStationMasters');
   return (
     <MarketingShell
-      title="The watchman who finally gets heard."
-      subtitle="If you keep the estate running — gate logs, meter readings, reports on what happened overnight — BOSSNYUMBA is the first tool built for your role. Talk to your phone in Swahili. It handles the rest."
-      heroCtaLabel="See a station-master walkthrough"
+      title={t('heroTitle')}
+      subtitle={t('heroSubtitle')}
+      heroCtaLabel={t('heroCta')}
     >
       <FeatureGrid
         heading="What the app does on your phone"

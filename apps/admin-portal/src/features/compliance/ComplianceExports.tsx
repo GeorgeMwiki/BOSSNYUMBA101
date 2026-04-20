@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -23,6 +24,7 @@ export interface ComplianceExport {
 }
 
 export const ComplianceExports: React.FC = () => {
+  const t = useTranslations('complianceExports');
   const [exports, setExports] = useState<ReadonlyArray<ComplianceExport>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,11 +43,11 @@ export const ComplianceExports: React.FC = () => {
       }
     } catch (err) {
       if (!signal?.aborted) {
-        setLoadError(err instanceof Error ? err.message : 'Failed to load exports');
+        setLoadError(err instanceof Error ? err.message : t('errors.loadFailed'));
         setLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -59,20 +61,20 @@ export const ComplianceExports: React.FC = () => {
     try {
       // TODO: wire POST /admin/compliance/exports { type, period } endpoint.
       await api.post?.('/admin/compliance/exports', { type });
-      setFeedback({ kind: 'success', message: `${type.toUpperCase()} export queued.` });
+      setFeedback({ kind: 'success', message: t('exportQueued', { type: type.toUpperCase() }) });
       // Refresh list immutably.
       await loadExports();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Schedule export failed';
+      const message = err instanceof Error ? err.message : t('errors.scheduleFailed');
       setFeedback({ kind: 'error', message });
     } finally {
       setSchedulingType(null);
     }
-  }, [loadExports]);
+  }, [loadExports, t]);
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Compliance Exports</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
 
       {feedback && (
         <Alert variant={feedback.kind === 'success' ? 'success' : 'danger'}>
@@ -82,7 +84,7 @@ export const ComplianceExports: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Schedule new export</CardTitle>
+          <CardTitle>{t('scheduleNew')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
@@ -126,7 +128,7 @@ export const ComplianceExports: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent exports</CardTitle>
+          <CardTitle>{t('recentExports')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -145,14 +147,14 @@ export const ComplianceExports: React.FC = () => {
                   onClick={() => void loadExports()}
                   className="ml-2"
                 >
-                  Retry
+                  {t('retry')}
                 </Button>
               </AlertDescription>
             </Alert>
           ) : exports.length === 0 ? (
             <EmptyState
-              title="No exports scheduled"
-              description="Schedule an export above — KRA iTax, NSSF, NHIF, GePG or audit log."
+              title={t('emptyTitle')}
+              description={t('emptyDescription')}
             />
           ) : (
             <ul className="divide-y">
@@ -165,8 +167,8 @@ export const ComplianceExports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Badge>{e.status}</Badge>
                     {e.status === 'ready' && e.downloadUrl && (
-                      <a href={e.downloadUrl} download aria-label={`Download ${e.type} export for ${e.period}`}>
-                        <Button size="sm">Download</Button>
+                      <a href={e.downloadUrl} download aria-label={t('downloadAria', { type: e.type, period: e.period })}>
+                        <Button size="sm">{t('download')}</Button>
                       </a>
                     )}
                   </div>

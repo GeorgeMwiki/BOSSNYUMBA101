@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { MessageSquare, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -45,9 +46,10 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function FeedbackHistoryPage() {
+  const t = useTranslations('feedbackHistory');
   return (
     <>
-      <PageHeader title="Feedback History" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-4">
         <Link
@@ -59,9 +61,9 @@ export default function FeedbackHistoryPage() {
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-medium">Submit new feedback</div>
+              <div className="font-medium">{t('submitNew')}</div>
               <div className="text-sm text-gray-600">
-                Share your suggestions or report issues
+                {t('submitNewSubtitle')}
               </div>
             </div>
           </div>
@@ -70,7 +72,7 @@ export default function FeedbackHistoryPage() {
 
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Past submissions
+            {t('pastSubmissions')}
           </h3>
           <div className="space-y-3">
             {feedbackHistory.map((item) => (
@@ -98,12 +100,12 @@ export default function FeedbackHistoryPage() {
           {feedbackHistory.length === 0 && (
             <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="font-medium text-gray-900">No feedback yet</h3>
+              <h3 className="font-medium text-gray-900">{t('emptyTitle')}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Your feedback submissions will appear here
+                {t('emptyBody')}
               </p>
               <Link href="/feedback" className="btn-primary mt-4 inline-flex">
-                Submit feedback
+                {t('emptyCta')}
               </Link>
             </div>
           )}

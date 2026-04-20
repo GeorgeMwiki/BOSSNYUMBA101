@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService } from '@bossnyumba/api-client';
 
 export default function UnitEditPage() {
+  const t = useTranslations('unitForm');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -77,7 +79,7 @@ export default function UnitEditPage() {
   if (isLoading || !unit) {
     return (
       <>
-        <PageHeader title="Edit Unit" showBack />
+        <PageHeader title={t('editTitle')} showBack />
         <div aria-busy="true" aria-live="polite" className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -89,12 +91,12 @@ export default function UnitEditPage() {
 
   return (
     <>
-      <PageHeader title="Edit Unit" showBack />
+      <PageHeader title={t('editTitle')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
         <div className="card p-4 space-y-4">
           <div>
-            <label className="label">Unit Number *</label>
+            <label className="label">{t('unitNumber')}</label>
             <input
               type="text"
               className="input"
@@ -105,7 +107,7 @@ export default function UnitEditPage() {
           </div>
 
           <div>
-            <label className="label">Floor</label>
+            <label className="label">{t('floor')}</label>
             <input
               type="number"
               className="input"
@@ -118,23 +120,23 @@ export default function UnitEditPage() {
           </div>
 
           <div>
-            <label className="label">Unit Type</label>
+            <label className="label">{t('unitType')}</label>
             <select
               className="input"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             >
-              <option value="studio">Studio</option>
-              <option value="one_bedroom">1 Bedroom</option>
-              <option value="two_bedroom">2 Bedroom</option>
-              <option value="three_bedroom">3 Bedroom</option>
-              <option value="four_bedroom_plus">4+ Bedroom</option>
+              <option value="studio">{t('typeStudio')}</option>
+              <option value="one_bedroom">{t('typeOneBedroom')}</option>
+              <option value="two_bedroom">{t('typeTwoBedroom')}</option>
+              <option value="three_bedroom">{t('typeThreeBedroom')}</option>
+              <option value="four_bedroom_plus">{t('typeFourBedroomPlus')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Bedrooms *</label>
+              <label className="label">{t('bedrooms')}</label>
               <input
                 type="number"
                 className="input"
@@ -147,7 +149,7 @@ export default function UnitEditPage() {
               />
             </div>
             <div>
-              <label className="label">Bathrooms *</label>
+              <label className="label">{t('bathrooms')}</label>
               <input
                 type="number"
                 className="input"
@@ -162,7 +164,7 @@ export default function UnitEditPage() {
           </div>
 
           <div>
-            <label className="label">Square Meters</label>
+            <label className="label">{t('squareMeters')}</label>
             <input
               type="number"
               className="input"
@@ -175,7 +177,7 @@ export default function UnitEditPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Monthly Rent (KES) *</label>
+              <label className="label">{t('monthlyRent')}</label>
               <input
                 type="number"
                 className="input"
@@ -186,7 +188,7 @@ export default function UnitEditPage() {
               />
             </div>
             <div>
-              <label className="label">Deposit (KES)</label>
+              <label className="label">{t('deposit')}</label>
               <input
                 type="number"
                 className="input"
@@ -198,16 +200,16 @@ export default function UnitEditPage() {
           </div>
 
           <div>
-            <label className="label">Status</label>
+            <label className="label">{t('status')}</label>
             <select
               className="input"
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
             >
-              <option value="AVAILABLE">Available</option>
-              <option value="OCCUPIED">Occupied</option>
-              <option value="MAINTENANCE">Maintenance</option>
-              <option value="RESERVED">Reserved</option>
+              <option value="AVAILABLE">{t('statusAvailable')}</option>
+              <option value="OCCUPIED">{t('statusOccupied')}</option>
+              <option value="MAINTENANCE">{t('statusMaintenance')}</option>
+              <option value="RESERVED">{t('statusReserved')}</option>
             </select>
           </div>
         </div>
@@ -220,10 +222,10 @@ export default function UnitEditPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button type="submit" className="btn-primary flex-1" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving...' : 'Save Changes'}
+            {mutation.isPending ? t('saving') : t('saveChanges')}
           </button>
         </div>
       </form>

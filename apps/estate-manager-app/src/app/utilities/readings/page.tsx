@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, TrendingUp, Droplet, Zap, Flame } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type UtilityType = 'water' | 'electricity' | 'gas';
@@ -38,6 +39,8 @@ const utilityLabels: Record<UtilityType, string> = {
 const readings: Reading[] = [];
 
 export default function MeterReadingsPage() {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const [filter, setFilter] = useState<'all' | 'pending'>('pending');
   const [utilityFilter, setUtilityFilter] = useState<UtilityType | 'all'>('all');
 
@@ -52,7 +55,7 @@ export default function MeterReadingsPage() {
   return (
     <>
       <PageHeader
-        title="Meter Readings"
+        title={tSimple('meterReadings')}
         subtitle={pendingCount > 0 ? `${pendingCount} pending` : 'All recorded'}
         showBack
         action={
@@ -102,7 +105,7 @@ export default function MeterReadingsPage() {
                       <Icon className="w-5 h-5 text-gray-600" />
                     </div>
                     <div>
-                      <div className="font-medium">Unit {reading.unit}</div>
+                      <div className="font-medium">{tMisc('unitPrefix', { unit: reading.unit })}</div>
                       <div className="text-sm text-gray-500">{reading.property}</div>
                       <div className="text-xs text-gray-400 mt-1">
                         {utilityLabels[reading.utilityType]} • {reading.unitLabel}
@@ -121,7 +124,7 @@ export default function MeterReadingsPage() {
                         )}
                       </>
                     ) : (
-                      <span className="badge-warning">Pending</span>
+                      <span className="badge-warning">{tMisc('pending')}</span>
                     )}
                   </div>
                 </div>
@@ -133,7 +136,7 @@ export default function MeterReadingsPage() {
         {filteredReadings.length === 0 && (
           <EmptyState
             icon={<TrendingUp className="h-8 w-8" />}
-            title="No readings found"
+            title={tSimple('noReadingsFound')}
             description={filter === 'pending' ? 'All readings have been recorded.' : 'Record meter readings to get started.'}
             action={
               <Link href="/utilities/readings/record" className="btn-primary inline-block">

@@ -12,25 +12,26 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
 
 const priorities = [
-  { value: 'EMERGENCY', label: 'Emergency' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'LOW', label: 'Low' },
+  { value: 'EMERGENCY', labelKey: 'priorityEmergency' as const },
+  { value: 'HIGH', labelKey: 'priorityHigh' as const },
+  { value: 'MEDIUM', labelKey: 'priorityMedium' as const },
+  { value: 'LOW', labelKey: 'priorityLow' as const },
 ];
 
 const categories = [
-  { value: 'PLUMBING', label: 'Plumbing' },
-  { value: 'ELECTRICAL', label: 'Electrical' },
-  { value: 'HVAC', label: 'HVAC' },
-  { value: 'APPLIANCE', label: 'Appliances' },
-  { value: 'STRUCTURAL', label: 'Structural' },
-  { value: 'GENERAL', label: 'General' },
+  { value: 'PLUMBING', labelKey: 'categoryPlumbing' as const },
+  { value: 'ELECTRICAL', labelKey: 'categoryElectrical' as const },
+  { value: 'HVAC', labelKey: 'categoryHvac' as const },
+  { value: 'APPLIANCE', labelKey: 'categoryAppliance' as const },
+  { value: 'STRUCTURAL', labelKey: 'categoryStructural' as const },
+  { value: 'GENERAL', labelKey: 'categoryGeneral' as const },
 ];
 
 function normPriority(s: string): 'emergency' | 'high' | 'medium' | 'low' {
@@ -46,6 +47,7 @@ function slaColor(rate: number) {
 }
 
 export default function WorkOrderTriage() {
+  const t = useTranslations('workOrderTriage');
   const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
@@ -133,7 +135,7 @@ export default function WorkOrderTriage() {
   if (loadingWO) {
     return (
       <>
-        <PageHeader title="Triage Work Order" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="flex justify-center py-12">
           <Spinner size="lg" className="text-primary-500" />
         </div>
@@ -143,7 +145,7 @@ export default function WorkOrderTriage() {
 
   return (
     <>
-      <PageHeader title="Triage Work Order" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
         {/* Work Order Summary */}
@@ -151,9 +153,9 @@ export default function WorkOrderTriage() {
           <div className="text-xs text-gray-400 mb-1">
             {wo?.workOrderNumber ? String(wo.workOrderNumber) : workOrderId}
           </div>
-          <h2 className="font-semibold text-lg">{wo?.title ? String(wo.title) : 'Work Order'}</h2>
+          <h2 className="font-semibold text-lg">{wo?.title ? String(wo.title) : t('workOrderFallback')}</h2>
           <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-            <span>Unit {unit?.unitNumber ? String(unit.unitNumber) : ''}</span>
+            <span>{t('unitPrefix', { unit: unit?.unitNumber ? String(unit.unitNumber) : '' })}</span>
             <span>&bull;</span>
             <span>{property?.name ? String(property.name) : ''}</span>
           </div>
@@ -165,7 +167,7 @@ export default function WorkOrderTriage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Priority */}
           <div>
-            <label className="label">Set Priority</label>
+            <label className="label">{t('setPriority')}</label>
             <div className="flex gap-2 flex-wrap">
               {priorities.map((p) => (
                 <button
@@ -174,7 +176,7 @@ export default function WorkOrderTriage() {
                   onClick={() => setPriority(p.value)}
                   className={`btn text-sm ${priority === p.value ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  {p.label}
+                  {t(p.labelKey)}
                 </button>
               ))}
             </div>
@@ -187,35 +189,35 @@ export default function WorkOrderTriage() {
 
           {/* Category */}
           <div>
-            <label className="label">Category</label>
+            <label className="label">{t('category')}</label>
             <select
               className="input"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
               {categories.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
               ))}
             </select>
           </div>
 
           {/* Assign To */}
           <div>
-            <label className="label">Assign To</label>
+            <label className="label">{t('assignTo')}</label>
             <div className="flex gap-2 mb-3">
               <button
                 type="button"
                 onClick={() => { setAssigneeType('technician'); setAssigneeId(''); }}
                 className={`btn flex-1 ${assigneeType === 'technician' ? 'btn-primary' : 'btn-secondary'}`}
               >
-                <User className="w-4 h-4" /> Technician
+                <User className="w-4 h-4" /> {t('technician')}
               </button>
               <button
                 type="button"
                 onClick={() => { setAssigneeType('vendor'); setAssigneeId(''); }}
                 className={`btn flex-1 ${assigneeType === 'vendor' ? 'btn-primary' : 'btn-secondary'}`}
               >
-                <Building2 className="w-4 h-4" /> Vendor
+                <Building2 className="w-4 h-4" /> {t('vendor')}
               </button>
             </div>
 
@@ -225,7 +227,7 @@ export default function WorkOrderTriage() {
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
               >
-                <option value="">Select technician</option>
+                <option value="">{t('selectTechnician')}</option>
                 <option value="tech-1">James Mwangi</option>
                 <option value="tech-2">Peter Ochieng</option>
               </select>
@@ -236,12 +238,12 @@ export default function WorkOrderTriage() {
                 {loadingVendors ? (
                   <div className="flex items-center justify-center py-4">
                     <Spinner className="h-5 w-5 text-primary-500" />
-                    <span className="text-sm text-gray-500 ml-2">Loading vendors...</span>
+                    <span className="text-sm text-gray-500 ml-2">{t('loadingVendors')}</span>
                   </div>
                 ) : vendors.length === 0 ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500">No vendors available for this category</p>
-                    <Link href="/vendors/new" className="text-sm text-primary-600 mt-1 inline-block">Add a vendor</Link>
+                    <p className="text-sm text-gray-500">{t('noVendorsForCategory')}</p>
+                    <Link href="/vendors/new" className="text-sm text-primary-600 mt-1 inline-block">{t('addVendor')}</Link>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -267,10 +269,10 @@ export default function WorkOrderTriage() {
                               {v.responseTimeHours && (
                                 <span className="flex items-center gap-0.5">
                                   <Clock className="w-3 h-3" />
-                                  {v.responseTimeHours}h avg
+                                  {t('avgHours', { hours: v.responseTimeHours })}
                                 </span>
                               )}
-                              <span>{v.completedJobs} jobs</span>
+                              <span>{t('completedJobs', { count: v.completedJobs })}</span>
                             </div>
                           </div>
                           {assigneeId === v.id && (
@@ -289,10 +291,10 @@ export default function WorkOrderTriage() {
 
           {/* Notes */}
           <div>
-            <label className="label">Triage Notes</label>
+            <label className="label">{t('triageNotes')}</label>
             <textarea
               className="input min-h-[80px]"
-              placeholder="Any additional notes..."
+              placeholder={t('notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -301,7 +303,7 @@ export default function WorkOrderTriage() {
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <Link href={`/work-orders/${workOrderId}`} className="btn-secondary flex-1">
-              Cancel
+              {t('cancel')}
             </Link>
             <button
               type="submit"
@@ -311,7 +313,7 @@ export default function WorkOrderTriage() {
               {triageMutation.isPending ? (
                 <Spinner size="sm" />
               ) : null}
-              {triageMutation.isPending ? 'Saving...' : 'Complete Triage'}
+              {triageMutation.isPending ? t('saving') : t('completeTriage')}
             </button>
           </div>
         </form>

@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ClipboardList, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -78,6 +79,7 @@ function prettyGrade(grade: Grade): string {
 }
 
 export default function PropertyGradesPage(): JSX.Element {
+  const t = useTranslations('propertyGrades');
   const [portfolio, setPortfolio] = useState<PortfolioGrade | null>(null);
   const [reports, setReports] = useState<readonly PropertyGradeReport[]>([]);
   const [selected, setSelected] = useState<PropertyGradeReport | null>(null);
@@ -100,10 +102,10 @@ export default function PropertyGradesPage(): JSX.Element {
       );
       setReports(deduped);
     } else {
-      setError(res.error ?? 'Unable to load portfolio grade.');
+      setError(res.error ?? t('errors.loadFailed'));
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -140,7 +142,7 @@ export default function PropertyGradesPage(): JSX.Element {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-gray-500">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading property grades…
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> {t('loading')}
       </div>
     );
   }
@@ -151,9 +153,9 @@ export default function PropertyGradesPage(): JSX.Element {
         <div className="flex items-center gap-3">
           <ClipboardList className="h-6 w-6 text-indigo-600" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Property grades</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
             <p className="text-sm text-gray-500">
-              A–F report cards powered by Mr. Mwikila's six-dimension scoring model.
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -164,7 +166,7 @@ export default function PropertyGradesPage(): JSX.Element {
           className="rounded bg-indigo-600 text-white px-4 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-50"
         >
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Recompute all
+          {t('recomputeAll')}
         </button>
       </header>
 
@@ -179,10 +181,10 @@ export default function PropertyGradesPage(): JSX.Element {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wide opacity-75">
-                Portfolio grade
+                {t('portfolioGrade')}
               </p>
               <p className="text-4xl font-bold">{prettyGrade(portfolio.grade)}</p>
-              <p className="text-sm mt-1">Score {portfolio.score.toFixed(1)} · {portfolio.totalProperties} properties</p>
+              <p className="text-sm mt-1">{t('scoreAndProperties', { score: portfolio.score.toFixed(1), count: portfolio.totalProperties })}</p>
             </div>
             <div className="text-right text-sm">
               <p>A: {family.A} · B: {family.B} · C: {family.C} · D: {family.D} · F: {family.F}</p>
@@ -225,16 +227,16 @@ export default function PropertyGradesPage(): JSX.Element {
               onClick={() => { setSelected(null); setHistory([]); }}
               className="text-sm text-gray-500"
             >
-              Close
+              {t('close')}
             </button>
           </header>
           <div className={`mt-4 rounded p-4 ${gradeColor(selected.grade)}`}>
             <p className="text-3xl font-bold">{prettyGrade(selected.grade)}</p>
-            <p className="text-sm mt-1">Score {selected.score.toFixed(1)}</p>
+            <p className="text-sm mt-1">{t('score', { score: selected.score.toFixed(1) })}</p>
           </div>
           {selected.dimensions && (
             <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-semibold text-gray-700">Dimensions</h4>
+              <h4 className="text-sm font-semibold text-gray-700">{t('dimensions')}</h4>
               {Object.entries(selected.dimensions).map(([dim, detail]) => (
                 <div
                   key={dim}
@@ -251,7 +253,7 @@ export default function PropertyGradesPage(): JSX.Element {
           )}
           {selected.reasons && selected.reasons.length > 0 && (
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-gray-700">Reasons</h4>
+              <h4 className="text-sm font-semibold text-gray-700">{t('reasons')}</h4>
               <ul className="mt-2 space-y-1 text-sm text-gray-700 list-disc pl-5">
                 {selected.reasons.map((reason, i) => (
                   <li key={i}>{reason}</li>
@@ -261,7 +263,7 @@ export default function PropertyGradesPage(): JSX.Element {
           )}
           {history.length > 0 && (
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-gray-700">History</h4>
+              <h4 className="text-sm font-semibold text-gray-700">{t('history')}</h4>
               <div className="mt-2 flex items-end gap-1 h-24">
                 {history.map((entry) => (
                   <div

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { FileText, ChevronRight, Home } from 'lucide-react';
 
 // Mock lease data - would come from API/React Query
@@ -13,9 +14,10 @@ const lease = {
 };
 
 export function LeaseSummary() {
+  const t = useTranslations('leaseSummary');
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-500 mb-3">Current Lease</h2>
+      <h2 className="text-sm font-medium text-gray-500 mb-3">{t('heading')}</h2>
       <Link href="/lease">
         <div className="card p-4 active:scale-[0.99] transition-transform">
           <div className="flex items-start justify-between gap-3">
@@ -28,7 +30,7 @@ export function LeaseSummary() {
                   {lease.property} · {lease.unit}
                 </div>
                 <div className="text-sm text-gray-500 mt-0.5">
-                  {lease.type} · Ends in {lease.daysRemaining} days
+                  {lease.type} · {t('endsIn', { days: lease.daysRemaining })}
                 </div>
               </div>
             </div>
@@ -36,7 +38,7 @@ export function LeaseSummary() {
           </div>
           <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-sm text-primary-600">
             <FileText className="w-4 h-4" />
-            <span>View full lease details</span>
+            <span>{t('viewFullLease')}</span>
           </div>
         </div>
       </Link>

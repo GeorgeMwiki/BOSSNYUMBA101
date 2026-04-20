@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   Download,
@@ -172,6 +173,7 @@ const categoryConfig = {
 };
 
 export default function DocumentsPage() {
+  const t = useTranslations('documentsScreen');
   const [activeTab, setActiveTab] = useState<'documents' | 'rules'>('documents');
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -185,7 +187,7 @@ export default function DocumentsPage() {
 
   return (
     <>
-      <PageHeader title="Documents" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-24">
         {/* Tabs */}
@@ -222,28 +224,28 @@ export default function DocumentsPage() {
                     <Home className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Active Lease</h3>
-                    <p className="text-sm opacity-90">Unit A-204 • Sunset Apartments</p>
+                    <h3 className="font-semibold">{t('activeLease')}</h3>
+                    <p className="text-sm opacity-90">{t('sampleUnit')}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="opacity-75 mb-0.5">Start Date</div>
-                    <div className="font-medium">June 1, 2023</div>
+                    <div className="opacity-75 mb-0.5">{t('startDate')}</div>
+                    <div className="font-medium">{t('sampleStartDate')}</div>
                   </div>
                   <div>
-                    <div className="opacity-75 mb-0.5">End Date</div>
-                    <div className="font-medium">May 31, 2024</div>
+                    <div className="opacity-75 mb-0.5">{t('endDate')}</div>
+                    <div className="font-medium">{t('sampleEndDate')}</div>
                   </div>
                   <div>
-                    <div className="opacity-75 mb-0.5">Monthly Rent</div>
+                    <div className="opacity-75 mb-0.5">{t('monthlyRent')}</div>
                     <div className="font-medium">KES 40,000</div>
                   </div>
                   <div>
-                    <div className="opacity-75 mb-0.5">Status</div>
+                    <div className="opacity-75 mb-0.5">{t('status')}</div>
                     <div className="flex items-center gap-1">
                       <CheckCircle className="w-4 h-4" />
-                      <span className="font-medium">Active</span>
+                      <span className="font-medium">{t('active')}</span>
                     </div>
                   </div>
                 </div>
@@ -269,7 +271,7 @@ export default function DocumentsPage() {
 
             {/* Lease Documents */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Lease Documents</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('leaseDocuments')}</h2>
               <div className="card divide-y divide-gray-100">
                 {leaseDocuments.map((doc) => (
                   <DocumentRow key={doc.id} document={doc} onSelect={setSelectedDocument} />
@@ -279,7 +281,7 @@ export default function DocumentsPage() {
 
             {/* Payment Statements */}
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Payment Statements</h2>
+              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('paymentStatements')}</h2>
               <div className="card divide-y divide-gray-100">
                 {paymentDocuments.map((doc) => (
                   <DocumentRow key={doc.id} document={doc} onSelect={setSelectedDocument} />
@@ -302,7 +304,7 @@ export default function DocumentsPage() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-warning-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-medium text-warning-900 mb-1">Important</h3>
+                  <h3 className="font-medium text-warning-900 mb-1">{t('important')}</h3>
                   <p className="text-sm text-warning-800">
                     Violation of house rules may result in warnings, fines, or lease termination.
                     Please review all rules carefully.
@@ -361,7 +363,7 @@ export default function DocumentsPage() {
                     <FileText className="w-5 h-5 text-gray-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Complete House Rules</h3>
+                    <h3 className="font-medium">{t('completeHouseRules')}</h3>
                     <p className="text-sm text-gray-500">PDF • 890 KB</p>
                   </div>
                 </div>

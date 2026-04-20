@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Megaphone, Pin, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Pin, Calendar, Edit } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type AnnouncementPriority = 'normal' | 'important' | 'urgent';
@@ -21,13 +22,14 @@ const announcementData: Record<string, {
   author?: string;
 }> = {};
 
-const priorityConfig: Record<AnnouncementPriority, { label: string; color: string }> = {
-  normal: { label: 'Normal', color: 'badge-gray' },
-  important: { label: 'Important', color: 'badge-warning' },
-  urgent: { label: 'Urgent', color: 'badge-danger' },
+const priorityConfig: Record<AnnouncementPriority, { labelKey: 'priorityNormal' | 'priorityImportant' | 'priorityUrgent'; color: string }> = {
+  normal: { labelKey: 'priorityNormal', color: 'badge-gray' },
+  important: { labelKey: 'priorityImportant', color: 'badge-warning' },
+  urgent: { labelKey: 'priorityUrgent', color: 'badge-danger' },
 };
 
 export default function AnnouncementDetailPage() {
+  const t = useTranslations('announcementDetail');
   const params = useParams();
   const router = useRouter();
   const id = (params?.id ?? '') as string;
@@ -37,11 +39,11 @@ export default function AnnouncementDetailPage() {
   if (!announcement) {
     return (
       <>
-        <PageHeader title="Announcement" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-8 text-center">
-          <p className="text-gray-500 mb-4">Announcement not found</p>
+          <p className="text-gray-500 mb-4">{t('notFound')}</p>
           <button onClick={() => router.back()} className="btn-secondary">
-            Go Back
+            {t('goBack')}
           </button>
         </div>
       </>
@@ -59,7 +61,7 @@ export default function AnnouncementDetailPage() {
           <div className="flex gap-2">
             <Link href={`/announcements/${id}/edit`} className="btn-secondary text-sm flex items-center gap-1">
               <Edit className="w-4 h-4" />
-              Edit
+              {t('edit')}
             </Link>
           </div>
         }
@@ -68,11 +70,11 @@ export default function AnnouncementDetailPage() {
       <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-4">
-            <span className={priority.color}>{priority.label}</span>
+            <span className={priority.color}>{t(priority.labelKey)}</span>
             {announcement.isPinned && (
               <span className="badge-info flex items-center gap-1">
                 <Pin className="w-3 h-3" />
-                Pinned
+                {t('pinned')}
               </span>
             )}
           </div>
@@ -84,7 +86,7 @@ export default function AnnouncementDetailPage() {
           <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-gray-100 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              Published {new Date(announcement.publishedAt).toLocaleDateString('en-US', {
+              {t('published')} {new Date(announcement.publishedAt).toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
@@ -92,13 +94,13 @@ export default function AnnouncementDetailPage() {
               })}
             </span>
             {announcement.expiresAt && (
-              <span>Expires {new Date(announcement.expiresAt).toLocaleDateString()}</span>
+              <span>{t('expires', { date: new Date(announcement.expiresAt).toLocaleDateString() })}</span>
             )}
             {announcement.property && (
               <span>{announcement.property}</span>
             )}
             {announcement.author && (
-              <span>By {announcement.author}</span>
+              <span>{t('byAuthor', { author: announcement.author })}</span>
             )}
           </div>
         </div>

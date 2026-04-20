@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Star, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -13,6 +14,7 @@ const workOrder = {
 };
 
 export default function FeedbackPage() {
+  const t = useTranslations('requestFeedback');
   const params = useParams();
   const router = useRouter();
   const [rating, setRating] = useState(0);
@@ -36,7 +38,7 @@ export default function FeedbackPage() {
 
   return (
     <>
-      <PageHeader title="Rate Service" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6 pb-8">
         {/* Request Context */}
@@ -48,7 +50,7 @@ export default function FeedbackPage() {
 
         {/* Star Rating */}
         <section>
-          <label className="label">How was the service?</label>
+          <label className="label">{t('howWasService')}</label>
           <div className="flex gap-2 justify-center py-4">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -70,24 +72,24 @@ export default function FeedbackPage() {
             ))}
           </div>
           <div className="text-center text-sm text-gray-500">
-            {rating === 0 && 'Tap to rate'}
-            {rating === 1 && 'Poor'}
-            {rating === 2 && 'Fair'}
-            {rating === 3 && 'Good'}
-            {rating === 4 && 'Very Good'}
-            {rating === 5 && 'Excellent'}
+            {rating === 0 && t('tapToRate')}
+            {rating === 1 && t('poor')}
+            {rating === 2 && t('fair')}
+            {rating === 3 && t('good')}
+            {rating === 4 && t('veryGood')}
+            {rating === 5 && t('excellent')}
           </div>
         </section>
 
         {/* Feedback Comment */}
         <section>
           <label className="label" htmlFor="feedback">
-            Additional feedback (optional)
+            {t('additionalFeedback')}
           </label>
           <textarea
             id="feedback"
             className="input min-h-[100px]"
-            placeholder="Anything else you'd like to share about the service?"
+            placeholder={t('feedbackPlaceholder')}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
           />
@@ -109,10 +111,10 @@ export default function FeedbackPage() {
                 className="font-medium text-sm cursor-pointer flex items-center gap-2"
               >
                 <AlertTriangle className="w-4 h-4 text-danger-500" />
-                Issue was not fully resolved
+                {t('issueNotResolved')}
               </label>
               <p className="text-xs text-gray-500 mt-1">
-                Check this if the problem persists or wasn&apos;t fixed properly
+                {t('issueNotResolvedBody')}
               </p>
             </div>
           </div>
@@ -120,12 +122,12 @@ export default function FeedbackPage() {
           {issueNotResolved && (
             <div className="mt-4">
               <label className="label" htmlFor="issueDetails">
-                Describe what&apos;s still wrong
+                {t('describeWrong')}
               </label>
               <textarea
                 id="issueDetails"
                 className="input min-h-[80px]"
-                placeholder="Please describe what still needs to be fixed..."
+                placeholder={t('issueDetailsPlaceholder')}
                 value={issueDetails}
                 onChange={(e) => setIssueDetails(e.target.value)}
               />
@@ -139,7 +141,7 @@ export default function FeedbackPage() {
           className="btn-primary w-full py-3"
           disabled={rating === 0 || isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+          {isSubmitting ? t('submitting') : t('submit')}
         </button>
       </form>
     </>

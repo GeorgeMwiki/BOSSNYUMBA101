@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Shortcut {
   readonly keys: readonly string[];
@@ -17,37 +18,41 @@ interface ShortcutGroup {
   readonly items: readonly Shortcut[];
 }
 
-const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
-  {
-    heading: 'Global',
-    items: [
-      { keys: ['?'], description: 'Open this cheat sheet' },
-      { keys: ['Cmd', 'K'], description: 'Open Spotlight search' },
-      { keys: ['Esc'], description: 'Close dialog / cheat sheet' },
-      { keys: ['G', 'H'], description: 'Go to Home (Dashboard)' },
-    ],
-  },
-  {
-    heading: 'Navigation',
-    items: [
-      { keys: ['G', 'T'], description: 'Go to Tenants' },
-      { keys: ['G', 'O'], description: 'Go to Operations' },
-      { keys: ['G', 'E'], description: 'Go to Exceptions inbox' },
-      { keys: ['G', 'A'], description: 'Go to AI Cockpit' },
-      { keys: ['G', 'R'], description: 'Go to Reports' },
-    ],
-  },
-  {
-    heading: 'Actions',
-    items: [
-      { keys: ['N', 'T'], description: 'New tenant' },
-      { keys: ['N', 'C'], description: 'New maintenance case' },
-      { keys: ['/',], description: 'Focus search bar' },
-    ],
-  },
-];
+function buildShortcutGroups(t: (k: string) => string): readonly ShortcutGroup[] {
+  return [
+    {
+      heading: t('groups.global'),
+      items: [
+        { keys: ['?'], description: t('shortcuts.openCheat') },
+        { keys: ['Cmd', 'K'], description: t('shortcuts.openSpotlight') },
+        { keys: ['Esc'], description: t('shortcuts.closeDialog') },
+        { keys: ['G', 'H'], description: t('shortcuts.goHome') },
+      ],
+    },
+    {
+      heading: t('groups.navigation'),
+      items: [
+        { keys: ['G', 'T'], description: t('shortcuts.goTenants') },
+        { keys: ['G', 'O'], description: t('shortcuts.goOperations') },
+        { keys: ['G', 'E'], description: t('shortcuts.goExceptions') },
+        { keys: ['G', 'A'], description: t('shortcuts.goAi') },
+        { keys: ['G', 'R'], description: t('shortcuts.goReports') },
+      ],
+    },
+    {
+      heading: t('groups.actions'),
+      items: [
+        { keys: ['N', 'T'], description: t('shortcuts.newTenant') },
+        { keys: ['N', 'C'], description: t('shortcuts.newCase') },
+        { keys: ['/',], description: t('shortcuts.focusSearch') },
+      ],
+    },
+  ];
+}
 
 export function ShortcutCheatSheet(): JSX.Element | null {
+  const t = useTranslations('shortcutCheatSheet');
+  const SHORTCUT_GROUPS = buildShortcutGroups(t);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -74,7 +79,7 @@ export function ShortcutCheatSheet(): JSX.Element | null {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Keyboard shortcuts"
+      aria-label={t('title')}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={() => setOpen(false)}
     >
@@ -83,12 +88,12 @@ export function ShortcutCheatSheet(): JSX.Element | null {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Keyboard shortcuts</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('title')}</h2>
           <button
             type="button"
             className="text-gray-400 hover:text-gray-600"
             onClick={() => setOpen(false)}
-            aria-label="Close shortcut cheat sheet"
+            aria-label={t('closeAria')}
           >
             &times;
           </button>

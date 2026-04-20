@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Step {
   readonly t: number; // ms offset
@@ -26,6 +27,7 @@ const SCRIPT: readonly Step[] = [
 ];
 
 export function LiveArrearsDemo() {
+  const t = useTranslations('liveArrears');
   const [running, setRunning] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState<number>(0);
 
@@ -52,7 +54,7 @@ export function LiveArrearsDemo() {
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
         Live demo — arrears triage
       </div>
-      <h3 className="mb-2 text-lg font-semibold">Watch Mr. Mwikila triage a 45-day case.</h3>
+      <h3 className="mb-2 text-lg font-semibold">{t('heading')}</h3>
       <p className="mb-4 text-sm text-slate-700">
         Canned walkthrough — no signup. Click start and watch each step narrate in real time.
       </p>

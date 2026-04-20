@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Megaphone } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -32,6 +33,7 @@ const announcements: Record<
 };
 
 export default function AnnouncementDetailPage() {
+  const t = useTranslations('announcementDetail');
   const params = useParams();
   const id = params.id as string;
   const ann = announcements[id];
@@ -39,9 +41,9 @@ export default function AnnouncementDetailPage() {
   if (!ann) {
     return (
       <>
-        <PageHeader title="Announcement" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="p-4">
-          <p className="text-gray-500">Announcement not found.</p>
+          <p className="text-gray-500">{t('notFound')}</p>
         </div>
       </>
     );

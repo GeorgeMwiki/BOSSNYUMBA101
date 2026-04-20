@@ -28,6 +28,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@bossnyumba/design-system';
 import {
@@ -54,6 +55,8 @@ function personaIcon(id: string) {
 }
 
 export default function BrainPage() {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   const [input, setInput] = useState('');
   const [showTrace, setShowTrace] = useState(false);
   const { personae } = usePersonae();
@@ -77,8 +80,8 @@ export default function BrainPage() {
   return (
     <>
       <PageHeader
-        title="BossNyumba Brain"
-        subtitle="Talk to your estate — the Brain delegates to the right Junior"
+        title={tSimple('bossnyumbaBrain')}
+        subtitle={tSimple('bossnyumbaBrainSubtitle')}
         action={
           <button
             type="button"
@@ -146,7 +149,7 @@ export default function BrainPage() {
               }
             }}
             rows={2}
-            placeholder="Ask the Brain to do anything — portfolio, leasing, maintenance, finance, compliance, communications…"
+            placeholder={tSimple('brainInputPlaceholder')}
             className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
           <button
@@ -193,6 +196,7 @@ function PersonaRoster({ personae }: { personae: PersonaInfo[] }) {
 }
 
 function EmptyState() {
+  const tMisc = useTranslations('misc');
   const prompts = [
     'Give me the state of the portfolio right now.',
     'Who is in arrears over 30 days at Block A? Draft firm notices.',
@@ -204,7 +208,7 @@ function EmptyState() {
     <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-sky-50 to-white p-5 flex flex-col gap-3">
       <div className="flex items-center gap-2 text-gray-900">
         <Brain className="w-5 h-5 text-sky-500" />
-        <span className="font-medium">BossNyumba Brain is ready.</span>
+        <span className="font-medium">{tMisc('brainReady')}</span>
       </div>
       <p className="text-sm text-gray-600">
         Talk to your estate. The Brain will choose the right Junior — Leasing,
@@ -245,6 +249,8 @@ function MessageBubble({
   message: BrainMessage;
   showTrace: boolean;
 }) {
+  const tSimple = useTranslations('simple');
+  const tMisc = useTranslations('misc');
   if (message.role === 'user') {
     return (
       <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-sky-500 text-white px-3 py-2 text-sm whitespace-pre-wrap">
@@ -262,7 +268,7 @@ function MessageBubble({
         {message.advisorConsulted && (
           <span
             className="text-[10px] bg-amber-100 text-amber-800 rounded-full px-1.5 py-px"
-            title="Opus advisor consulted"
+            title={tSimple('opusAdvisorConsulted')}
           >
             +advisor
           </span>
@@ -294,7 +300,7 @@ function MessageBubble({
       )}
       {showTrace && (message.handoffs?.length || message.toolCalls?.length) ? (
         <details className="text-[11px] text-gray-500 pl-1">
-          <summary className="cursor-pointer select-none">Decision trace</summary>
+          <summary className="cursor-pointer select-none">{tMisc('decisionTrace')}</summary>
           <div className="mt-1 space-y-0.5 font-mono">
             {(message.handoffs ?? []).map((h, i) => (
               <div key={`h-${i}`}>↳ handoff {h.from} → {h.to}: {h.objective}</div>

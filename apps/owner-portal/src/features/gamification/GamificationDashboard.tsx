@@ -10,6 +10,7 @@ import {
   AlertDescription,
   Skeleton,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
 
 export interface GamificationConfig {
@@ -26,6 +27,7 @@ export interface GamificationStats {
 }
 
 export const GamificationDashboard: React.FC = () => {
+  const t = useTranslations('gamification');
   const [config, setConfig] = useState<GamificationConfig | null>(null);
   const [stats, setStats] = useState<GamificationStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -48,7 +50,7 @@ export const GamificationDashboard: React.FC = () => {
       }
     } catch (err) {
       if (!signal?.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to load gamification data');
+        setError(err instanceof Error ? err.message : t('failedToLoad'));
         setLoading(false);
       }
     }
@@ -74,7 +76,7 @@ export const GamificationDashboard: React.FC = () => {
     } catch (err) {
       // Roll back on failure.
       setConfig(prev);
-      setError(err instanceof Error ? err.message : 'Failed to update gamification config');
+      setError(err instanceof Error ? err.message : t('failedToUpdate'));
     } finally {
       setToggling(false);
     }
@@ -82,14 +84,14 @@ export const GamificationDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Gamification</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
 
       {error && (
         <Alert variant="danger">
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -98,15 +100,15 @@ export const GamificationDashboard: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Configuration</CardTitle>
+            <CardTitle>{t('configuration')}</CardTitle>
             <Button
               onClick={toggle}
               variant={config?.enabled ? 'destructive' : 'primary'}
               loading={toggling}
               disabled={!config || toggling}
-              aria-label={config?.enabled ? 'Disable gamification' : 'Enable gamification'}
+              aria-label={config?.enabled ? t('disableAria') : t('enableAria')}
             >
-              {config?.enabled ? 'Disable' : 'Enable'}
+              {config?.enabled ? t('disable') : t('enable')}
             </Button>
           </div>
         </CardHeader>
@@ -119,19 +121,19 @@ export const GamificationDashboard: React.FC = () => {
             </div>
           ) : config ? (
             <ul className="text-sm space-y-1">
-              <li>On-time rent: {config.onTimeRentPoints} pts</li>
-              <li>Referral: {config.referralPoints} pts</li>
-              <li>Review: {config.reviewPoints} pts</li>
+              <li>{t('onTimeRent', { points: config.onTimeRentPoints })}</li>
+              <li>{t('referral', { points: config.referralPoints })}</li>
+              <li>{t('review', { points: config.reviewPoints })}</li>
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No configuration available.</p>
+            <p className="text-sm text-muted-foreground">{t('noConfig')}</p>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Aggregate stats</CardTitle>
+          <CardTitle>{t('aggregateStats')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -147,30 +149,30 @@ export const GamificationDashboard: React.FC = () => {
             <>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Active participants</p>
+                  <p className="text-xs text-muted-foreground">{t('activeParticipants')}</p>
                   <p className="text-2xl font-semibold">{stats.activeParticipants}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total points issued</p>
+                  <p className="text-xs text-muted-foreground">{t('totalPointsIssued')}</p>
                   <p className="text-2xl font-semibold">{stats.totalPointsIssued.toLocaleString()}</p>
                 </div>
               </div>
-              <h4 className="text-sm font-medium mb-2">Top tenants</h4>
+              <h4 className="text-sm font-medium mb-2">{t('topTenants')}</h4>
               {stats.topTenants.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No participants yet.</p>
+                <p className="text-sm text-muted-foreground">{t('noParticipants')}</p>
               ) : (
                 <ul className="text-sm">
-                  {stats.topTenants.map((t) => (
-                    <li key={t.tenantId} className="flex justify-between py-1">
-                      <span>{t.name}</span>
-                      <Badge>{t.points} pts</Badge>
+                  {stats.topTenants.map((tenant) => (
+                    <li key={tenant.tenantId} className="flex justify-between py-1">
+                      <span>{tenant.name}</span>
+                      <Badge>{t('pointsAbbrev', { points: tenant.points })}</Badge>
                     </li>
                   ))}
                 </ul>
               )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No stats available.</p>
+            <p className="text-sm text-muted-foreground">{t('noStats')}</p>
           )}
         </CardContent>
       </Card>

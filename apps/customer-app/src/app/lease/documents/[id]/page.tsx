@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Download } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -11,6 +12,7 @@ const documents: Record<string, { name: string; date: string }> = {
 };
 
 export default function LeaseDocumentPage() {
+  const t = useTranslations('leaseDocument');
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -24,9 +26,9 @@ export default function LeaseDocumentPage() {
   if (!doc) {
     return (
       <>
-        <PageHeader title="Document" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="p-4">
-          <p className="text-gray-500">Document not found.</p>
+          <p className="text-gray-500">{t('notFound')}</p>
         </div>
       </>
     );
@@ -37,10 +39,10 @@ export default function LeaseDocumentPage() {
       <PageHeader title={doc.name} showBack />
       <div className="p-4 space-y-4">
         <div className="card p-4">
-          <p className="text-sm text-gray-500 mb-2">Date: {new Date(doc.date).toLocaleDateString()}</p>
+          <p className="text-sm text-gray-500 mb-2">{t('datePrefix')}: {new Date(doc.date).toLocaleDateString()}</p>
           <button onClick={handleDownload} className="btn-primary w-full flex items-center justify-center gap-2">
             <Download className="w-5 h-5" />
-            Download document
+            {t('downloadDocument')}
           </button>
         </div>
       </div>

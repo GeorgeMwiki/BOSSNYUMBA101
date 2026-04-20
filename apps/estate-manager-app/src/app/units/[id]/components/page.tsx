@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 /**
  * FAR (Fixtures, Appliances, Rooms) grid for a unit.
@@ -30,6 +31,7 @@ interface Component {
 }
 
 export default function UnitComponentsPage(): React.ReactElement {
+  const t = useTranslations('unitComponents');
   const params = useParams();
   const router = useRouter();
   const unitId = params?.id as string;
@@ -51,10 +53,10 @@ export default function UnitComponentsPage(): React.ReactElement {
       }
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Failed to load components');
+      setError(err instanceof Error ? err.message : t('failedLoad'));
       setLoading(false);
     }
-  }, [unitId]);
+  }, [unitId, t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -74,9 +76,9 @@ export default function UnitComponentsPage(): React.ReactElement {
   return (
     <main className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Unit components — {unitId}</h1>
-        <Button onClick={handleAdd} aria-label="Add new component">
-          + Add component
+        <h1 className="text-2xl font-semibold">{t('title', { unitId })}</h1>
+        <Button onClick={handleAdd} aria-label={t('addComponentAria')}>
+          {t('addComponent')}
         </Button>
       </div>
 
@@ -85,7 +87,7 @@ export default function UnitComponentsPage(): React.ReactElement {
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -93,7 +95,7 @@ export default function UnitComponentsPage(): React.ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fixtures / Appliances / Rooms</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -104,11 +106,11 @@ export default function UnitComponentsPage(): React.ReactElement {
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
-              title="No components recorded"
-              description="Add fixtures, appliances, rooms or finishes to track condition and warranty."
+              title={t('emptyTitle')}
+              description={t('emptyDesc')}
               action={
-                <Button onClick={handleAdd} aria-label="Add new component">
-                  + Add component
+                <Button onClick={handleAdd} aria-label={t('addComponentAria')}>
+                  {t('addComponent')}
                 </Button>
               }
             />
@@ -116,12 +118,12 @@ export default function UnitComponentsPage(): React.ReactElement {
             <table className="w-full text-sm">
               <thead className="bg-muted">
                 <tr>
-                  <th scope="col" className="p-2 text-left">Category</th>
-                  <th scope="col" className="p-2 text-left">Name</th>
-                  <th scope="col" className="p-2 text-left">Condition</th>
-                  <th scope="col" className="p-2 text-right">Age (mo)</th>
-                  <th scope="col" className="p-2 text-left">Warranty ends</th>
-                  <th scope="col" className="p-2"><span className="sr-only">Actions</span></th>
+                  <th scope="col" className="p-2 text-left">{t('colCategory')}</th>
+                  <th scope="col" className="p-2 text-left">{t('colName')}</th>
+                  <th scope="col" className="p-2 text-left">{t('colCondition')}</th>
+                  <th scope="col" className="p-2 text-right">{t('colAge')}</th>
+                  <th scope="col" className="p-2 text-left">{t('colWarranty')}</th>
+                  <th scope="col" className="p-2"><span className="sr-only">{t('actions')}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -137,9 +139,9 @@ export default function UnitComponentsPage(): React.ReactElement {
                         size="sm"
                         variant="outline"
                         onClick={() => handleEdit(r.id)}
-                        aria-label={`Edit ${r.name}`}
+                        aria-label={t('editAria', { name: r.name })}
                       >
-                        Edit
+                        {t('edit')}
                       </Button>
                     </td>
                   </tr>

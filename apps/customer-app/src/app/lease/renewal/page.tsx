@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { FileSignature, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -41,6 +42,7 @@ function token(): string {
 }
 
 export default function LeaseRenewalPage() {
+  const t = useTranslations('leaseRenewal');
   const [offer, setOffer] = useState<RenewalOffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +112,11 @@ export default function LeaseRenewalPage() {
 
   return (
     <>
-      <PageHeader title="Lease Renewal" showBack />
+      <PageHeader title={t('title')} showBack />
       <div className="px-4 py-4 pb-24 space-y-4">
         {loading && (
           <p className="text-sm text-gray-400 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading offer…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingOffer')}
           </p>
         )}
         {error && (
@@ -125,48 +127,48 @@ export default function LeaseRenewalPage() {
         {!loading && !offer && !error && (
           <div className="rounded-lg bg-gray-800 border border-gray-700 p-5 text-sm text-gray-400 flex items-center gap-2">
             <FileSignature className="h-4 w-4" />
-            No active renewal offer for your lease.
+            {t('noActiveOffer')}
           </div>
         )}
         {offer && (
           <>
             <section className="rounded-lg bg-gray-800 border border-gray-700 p-5 space-y-3">
               <h2 className="text-lg font-semibold text-white">
-                Renewal offer for your unit
+                {t('offerHeader')}
               </h2>
               <dl className="grid grid-cols-2 gap-3 text-sm text-gray-300">
                 <div>
-                  <dt className="text-gray-500">New rent</dt>
+                  <dt className="text-gray-500">{t('newRent')}</dt>
                   <dd>
                     {offer.currency} {offer.newMonthlyRent.toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Term</dt>
-                  <dd>{offer.newTermMonths} months</dd>
+                  <dt className="text-gray-500">{t('term')}</dt>
+                  <dd>{t('monthsCount', { count: offer.newTermMonths })}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Start</dt>
+                  <dt className="text-gray-500">{t('start')}</dt>
                   <dd>{new Date(offer.startDate).toLocaleDateString()}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">End</dt>
+                  <dt className="text-gray-500">{t('end')}</dt>
                   <dd>{new Date(offer.endDate).toLocaleDateString()}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Deposit top-up</dt>
+                  <dt className="text-gray-500">{t('depositTopUp')}</dt>
                   <dd>
                     {offer.currency} {offer.depositTopUp.toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Offer expires</dt>
+                  <dt className="text-gray-500">{t('offerExpires')}</dt>
                   <dd>{new Date(offer.expiresAt).toLocaleDateString()}</dd>
                 </div>
               </dl>
               {offer.conditions.length > 0 && (
                 <div>
-                  <p className="text-gray-500 text-sm mb-1">Conditions</p>
+                  <p className="text-gray-500 text-sm mb-1">{t('conditions')}</p>
                   <ul className="list-disc ml-5 text-sm text-gray-300 space-y-1">
                     {offer.conditions.map((c, idx) => (
                       <li key={idx}>{c}</li>
@@ -185,7 +187,7 @@ export default function LeaseRenewalPage() {
                     disabled={working}
                     className="rounded-lg bg-emerald-600 text-white py-3 font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <CheckCircle2 className="h-4 w-4" /> Accept
+                    <CheckCircle2 className="h-4 w-4" /> {t('accept')}
                   </button>
                   <button
                     type="button"
@@ -193,13 +195,13 @@ export default function LeaseRenewalPage() {
                     disabled={working}
                     className="rounded-lg bg-red-600 text-white py-3 font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <XCircle className="h-4 w-4" /> Decline
+                    <XCircle className="h-4 w-4" /> {t('decline')}
                   </button>
                 </div>
 
                 <div className="rounded-lg bg-gray-800 border border-gray-700 p-4 space-y-2">
                   <p className="text-sm text-gray-300">
-                    Counter-offer a different monthly rent:
+                    {t('counterOfferPrompt')}
                   </p>
                   <div className="flex gap-2">
                     <input
@@ -216,7 +218,7 @@ export default function LeaseRenewalPage() {
                       disabled={working || !counterRent}
                       className="rounded bg-amber-600 text-white px-4 py-2 text-sm disabled:opacity-50"
                     >
-                      Counter
+                      {t('counter')}
                     </button>
                   </div>
                 </div>
@@ -225,7 +227,7 @@ export default function LeaseRenewalPage() {
 
             {offer.status !== 'pending' && (
               <p className="text-sm text-gray-400">
-                Current status: <strong>{offer.status}</strong>
+                {t('currentStatus')}: <strong>{offer.status}</strong>
               </p>
             )}
           </>

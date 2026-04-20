@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Camera,
   ChevronRight,
@@ -102,6 +103,7 @@ const INITIAL_METER_READINGS: MeterReading[] = [
 ];
 
 export default function OnboardingInspectionPage() {
+  const t = useTranslations('inspectionPage');
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -270,16 +272,16 @@ export default function OnboardingInspectionPage() {
   if (phase === 'meters') {
     return (
       <>
-        <PageHeader title="Meter Readings" showBack />
+        <PageHeader title={t('meterReadings')} showBack />
 
         <div className="px-4 py-4 space-y-6 pb-32">
           <div className="card p-4 bg-primary-50 border-primary-100">
             <div className="flex items-center gap-3">
               <Gauge className="w-5 h-5 text-primary-600" />
               <div>
-                <h3 className="font-medium text-primary-900">Record Current Readings</h3>
+                <h3 className="font-medium text-primary-900">{t('recordCurrentReadings')}</h3>
                 <p className="text-sm text-primary-700">
-                  Take note of all meter readings before you move in
+                  {t('takeNoteReadings')}
                 </p>
               </div>
             </div>
@@ -300,7 +302,7 @@ export default function OnboardingInspectionPage() {
                     <div>
                       <h3 className="font-medium text-sm">{meter.name}</h3>
                       <p className="text-xs text-gray-500">
-                        Meter: <span className="font-mono">{meter.meterNumber}</span>
+                        {t('meterLabel')}: <span className="font-mono">{meter.meterNumber}</span>
                       </p>
                     </div>
                     {isValid && <Check className="w-5 h-5 text-success-500 ml-auto" />}
@@ -322,7 +324,7 @@ export default function OnboardingInspectionPage() {
 
                   {meter.required && !hasValue && (
                     <p className="text-xs text-gray-400 mt-1">
-                      * Required
+                      {t('required')}
                     </p>
                   )}
                 </div>
@@ -333,9 +335,7 @@ export default function OnboardingInspectionPage() {
           <div className="flex items-start gap-3 text-sm text-gray-600">
             <Info className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
             <p>
-              Record the exact meter readings shown on each meter. Take a photo
-              of each meter for your records. These readings establish your
-              starting point for utility billing.
+              {t('meterInfo')}
             </p>
           </div>
         </div>
@@ -347,14 +347,14 @@ export default function OnboardingInspectionPage() {
               className="btn-secondary flex-1 py-4"
             >
               <ChevronLeft className="w-5 h-5 mr-1" />
-              Back
+              {t('back')}
             </button>
             <button
               onClick={() => setPhase('signoff')}
               disabled={!meterReadingsValid}
               className="btn-primary flex-1 py-4 disabled:opacity-50"
             >
-              Continue
+              {t('continue')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </button>
           </div>
@@ -367,20 +367,20 @@ export default function OnboardingInspectionPage() {
   if (phase === 'signoff') {
     return (
       <>
-        <PageHeader title="Inspection Sign-off" showBack />
+        <PageHeader title={t('signoffTitle')} showBack />
 
         <div className="px-4 py-4 space-y-6 pb-32">
           {/* Summary */}
           <div className="card p-5">
-            <h2 className="font-semibold text-lg mb-4">Inspection Summary</h2>
+            <h2 className="font-semibold text-lg mb-4">{t('inspectionSummary')}</h2>
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Rooms Inspected</span>
+                <span className="text-gray-500">{t('roomsInspected')}</span>
                 <span className="font-medium">{rooms.length}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Items Checked</span>
+                <span className="text-gray-500">{t('itemsChecked')}</span>
                 <span className="font-medium">
                   {rooms.reduce(
                     (acc, r) =>
@@ -391,7 +391,7 @@ export default function OnboardingInspectionPage() {
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Photos Taken</span>
+                <span className="text-gray-500">{t('photosTaken')}</span>
                 <span className="font-medium">
                   {rooms.reduce(
                     (acc, r) => acc + r.checkpoints.reduce((a, c) => a + c.photos.length, 0),
@@ -414,10 +414,9 @@ export default function OnboardingInspectionPage() {
 
           {/* Digital Signature */}
           <div className="card p-5">
-            <h3 className="font-semibold mb-2">Tenant Signature</h3>
+            <h3 className="font-semibold mb-2">{t('tenantSignature')}</h3>
             <p className="text-sm text-gray-500 mb-4">
-              By signing below, you confirm that this inspection report
-              accurately reflects the condition of the unit at move-in.
+              {t('signoffHint')}
             </p>
             <ESignature
               onSave={(dataUrl) => setSignature(dataUrl)}
@@ -434,7 +433,7 @@ export default function OnboardingInspectionPage() {
               className="btn-secondary flex-1 py-4"
             >
               <ChevronLeft className="w-5 h-5 mr-1" />
-              Back
+              {t('back')}
             </button>
             <button
               onClick={handleSubmit}
@@ -444,11 +443,11 @@ export default function OnboardingInspectionPage() {
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
+                  {t('saving')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Complete Inspection
+                  {t('completeInspection')}
                   <Check className="w-5 h-5" />
                 </span>
               )}
@@ -462,7 +461,7 @@ export default function OnboardingInspectionPage() {
   // ====== Render: Room Inspection Phase ======
   return (
     <>
-      <PageHeader title="Move-in Inspection" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <input
         ref={fileInputRef}
@@ -476,7 +475,7 @@ export default function OnboardingInspectionPage() {
         {/* Overall Progress */}
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-600">Overall Progress</span>
+            <span className="text-gray-600">{t('overallProgress')}</span>
             <span className="font-medium">{Math.round(overallProgress * 100)}%</span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -500,7 +499,7 @@ export default function OnboardingInspectionPage() {
             <div className="text-center">
               <h2 className="font-semibold">{currentRoom.name}</h2>
               <p className="text-xs text-gray-500">
-                Room {currentRoomIndex + 1} of {rooms.length}
+                {t('roomProgress', { current: currentRoomIndex + 1, total: rooms.length })}
               </p>
             </div>
             <button
@@ -531,11 +530,11 @@ export default function OnboardingInspectionPage() {
             <div className="flex gap-3">
               <Info className="w-5 h-5 text-primary-600 flex-shrink-0" />
               <div className="text-sm text-primary-800">
-                <p className="font-medium mb-1">Inspection Tips</p>
+                <p className="font-medium mb-1">{t('inspectionTips')}</p>
                 <ul className="text-primary-700 space-y-1">
-                  <li>Take clear, well-lit photos of any existing damage</li>
-                  <li>Note any scratches, stains, or wear</li>
-                  <li>Test all switches, outlets, and faucets</li>
+                  <li>{t('tipPhotos')}</li>
+                  <li>{t('tipScratches')}</li>
+                  <li>{t('tipSwitches')}</li>
                 </ul>
               </div>
             </div>
@@ -604,13 +603,13 @@ export default function OnboardingInspectionPage() {
                     className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 flex-shrink-0"
                   >
                     <Camera className="w-5 h-5" />
-                    <span className="text-xs mt-1">Photo</span>
+                    <span className="text-xs mt-1">{t('photo')}</span>
                   </button>
                 </div>
 
                 {/* Notes */}
                 <textarea
-                  placeholder="Add notes about this item..."
+                  placeholder={t('addNotesPlaceholder')}
                   value={checkpoint.notes}
                   onChange={(e) => setNotes(checkpoint.id, e.target.value)}
                   className="input text-sm min-h-[60px]"
@@ -627,7 +626,7 @@ export default function OnboardingInspectionPage() {
           {currentRoomIndex > 0 && (
             <button onClick={goToPrevRoom} className="btn-secondary flex-1 py-4">
               <ChevronLeft className="w-5 h-5 mr-1" />
-              Previous
+              {t('previous')}
             </button>
           )}
           {isLastRoom ? (
@@ -640,13 +639,13 @@ export default function OnboardingInspectionPage() {
               className="btn-primary flex-1 py-4 text-base font-semibold disabled:opacity-50"
             >
               <span className="flex items-center justify-center gap-2">
-                Meter Readings
+                {t('meterReadings')}
                 <Gauge className="w-5 h-5" />
               </span>
             </button>
           ) : (
             <button onClick={goToNextRoom} className="btn-primary flex-1 py-4">
-              Next Room
+              {t('nextRoom')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </button>
           )}

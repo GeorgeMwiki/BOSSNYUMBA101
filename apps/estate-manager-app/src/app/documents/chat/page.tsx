@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface Citation {
   readonly documentId: string;
@@ -18,6 +19,7 @@ interface ChatMessage {
 }
 
 export default function DocumentChatPage(): React.ReactElement {
+  const t = useTranslations('simple');
   const [messages, setMessages] = useState<ReadonlyArray<ChatMessage>>([]);
   const [input, setInput] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
@@ -80,7 +82,7 @@ export default function DocumentChatPage(): React.ReactElement {
 
   return (
     <main className="p-6 max-w-4xl mx-auto h-[calc(100vh-3rem)] flex flex-col">
-      <h1 className="text-2xl font-semibold mb-2">Ask the documents</h1>
+      <h1 className="text-2xl font-semibold mb-2">{t('askDocuments')}</h1>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-2" aria-live="polite">
         {messages.length === 0 ? (
@@ -121,10 +123,10 @@ export default function DocumentChatPage(): React.ReactElement {
 
       <div className="flex gap-2 pt-2">
         <Input
-          placeholder="Ask about leases, inspections, policies..."
+          placeholder={t('docsChatPlaceholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          aria-label="Ask the documents"
+          aria-label={t('askDocuments')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -136,7 +138,7 @@ export default function DocumentChatPage(): React.ReactElement {
           onClick={send}
           loading={busy}
           disabled={busy || input.trim().length === 0}
-          aria-label="Send question"
+          aria-label={t('sendQuestion')}
         >
           Send
         </Button>

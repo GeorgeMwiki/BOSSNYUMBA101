@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
@@ -23,6 +24,7 @@ const customerSchema = z.object({
 type CustomerForm = z.infer<typeof customerSchema>;
 
 export default function CustomerFormPage() {
+  const t = useTranslations('customerForm');
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -63,24 +65,24 @@ export default function CustomerFormPage() {
 
   return (
     <>
-      <PageHeader title="Add Customer" showBack />
+      <PageHeader title={t('newTitle')} showBack />
 
       <form onSubmit={onSubmit} className="px-4 py-4 space-y-4 max-w-2xl mx-auto" noValidate>
         <div className="card p-4 space-y-4">
           <div>
             <label htmlFor="type" className="label">
-              Customer Type
+              {t('customerType')}
             </label>
             <select id="type" className="input" {...register('type')}>
-              <option value="INDIVIDUAL">Individual</option>
-              <option value="COMPANY">Company</option>
+              <option value="INDIVIDUAL">{t('typeIndividual')}</option>
+              <option value="COMPANY">{t('typeCompany')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="label">
-                First Name *
+                {t('firstName')}
               </label>
               <input
                 id="firstName"
@@ -97,7 +99,7 @@ export default function CustomerFormPage() {
             </div>
             <div>
               <label htmlFor="lastName" className="label">
-                Last Name *
+                {t('lastName')}
               </label>
               <input
                 id="lastName"
@@ -116,7 +118,7 @@ export default function CustomerFormPage() {
 
           <div>
             <label htmlFor="email" className="label">
-              Email *
+              {t('email')}
             </label>
             <input
               id="email"
@@ -134,7 +136,7 @@ export default function CustomerFormPage() {
 
           <div>
             <label htmlFor="phone" className="label">
-              Phone
+              {t('phone')}
             </label>
             <input
               id="phone"
@@ -160,10 +162,10 @@ export default function CustomerFormPage() {
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">
-            Cancel
+            {t('cancel')}
           </button>
           <button type="submit" className="btn-primary flex-1" disabled={isSubmitting || mutation.isPending}>
-            {isSubmitting || mutation.isPending ? 'Saving...' : 'Create Customer'}
+            {isSubmitting || mutation.isPending ? t('saving') : t('createCustomer')}
           </button>
         </div>
       </form>

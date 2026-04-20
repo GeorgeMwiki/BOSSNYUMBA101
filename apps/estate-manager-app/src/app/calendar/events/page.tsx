@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, MapPin, Wrench, ClipboardCheck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type EventType = 'work_order' | 'inspection' | 'appointment';
@@ -21,13 +22,14 @@ interface Event {
 // keeps the UI honest until the calendar service is plumbed.
 const allEvents: Event[] = [];
 
-const typeConfig: Record<EventType, { label: string; icon: React.ElementType; color: string }> = {
-  work_order: { label: 'Work Order', icon: Wrench, color: 'bg-warning-100 text-warning-800' },
-  inspection: { label: 'Inspection', icon: ClipboardCheck, color: 'bg-success-100 text-success-800' },
-  appointment: { label: 'Appointment', icon: Calendar, color: 'bg-primary-100 text-primary-800' },
+const typeConfig: Record<EventType, { labelKey: 'typeWorkOrder' | 'typeInspection' | 'typeAppointment'; icon: React.ElementType; color: string }> = {
+  work_order: { labelKey: 'typeWorkOrder', icon: Wrench, color: 'bg-warning-100 text-warning-800' },
+  inspection: { labelKey: 'typeInspection', icon: ClipboardCheck, color: 'bg-success-100 text-success-800' },
+  appointment: { labelKey: 'typeAppointment', icon: Calendar, color: 'bg-primary-100 text-primary-800' },
 };
 
 export default function EventsListPage() {
+  const t = useTranslations('eventsList');
   const [filter, setFilter] = useState<EventType | 'all'>('all');
 
   const filteredEvents = allEvents
@@ -46,16 +48,16 @@ export default function EventsListPage() {
 
   return (
     <>
-      <PageHeader title="Events" subtitle="All scheduled events" showBack />
+      <PageHeader title={t('title')} subtitle={t('subtitle')} showBack />
 
       <div className="px-4 py-4 space-y-4">
         {/* Filter */}
         <div className="flex gap-2 overflow-x-auto pb-2">
           {[
-            { value: 'all', label: 'All' },
+            { value: 'all' as const, label: t('filterAll') },
             ...(Object.entries(typeConfig) as [EventType, typeof typeConfig[EventType]][]).map(([value, cfg]) => ({
               value,
-              label: cfg.label,
+              label: t(cfg.labelKey),
             })),
           ].map((tab) => (
             <button
@@ -101,7 +103,7 @@ export default function EventsListPage() {
                               {event.unit && (
                                 <>
                                   <MapPin className="w-4 h-4" />
-                                  Unit {event.unit}
+                                  {t('unitPrefix', { unit: event.unit })}
                                 </>
                               )}
                             </div>
@@ -122,9 +124,9 @@ export default function EventsListPage() {
         {filteredEvents.length === 0 && (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900">No events</h3>
+            <h3 className="font-medium text-gray-900">{t('noEvents')}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              {filter === 'all' ? 'No scheduled events' : `No ${filter.replace('_', ' ')} events`}
+              {filter === 'all' ? t('noScheduled') : t('noTypeEvents', { type: filter.replace('_', ' ') })}
             </p>
           </div>
         )}

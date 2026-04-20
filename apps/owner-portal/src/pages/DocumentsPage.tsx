@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDate, formatDateTime } from '../lib/api';
 import { useDocuments, type OwnerDocument as Document } from '../lib/hooks';
 
@@ -33,6 +34,7 @@ interface DocumentCategory {
 }
 
 export function DocumentsPage() {
+  const t = useTranslations('documentsPageFull');
   const navigate = useNavigate();
   const { data: documents = [], isLoading: loading, error: queryError, refetch } = useDocuments();
   const error = queryError instanceof Error ? queryError.message : null;
@@ -44,12 +46,12 @@ export function DocumentsPage() {
   const [showESignModal, setShowESignModal] = useState(false);
 
   const categories: DocumentCategory[] = [
-    { id: 'leases', name: 'Leases & Agreements', icon: '📄', count: 0, description: 'Rental agreements, addendums' },
-    { id: 'financial', name: 'Financial Documents', icon: '💰', count: 0, description: 'Statements, receipts, invoices' },
-    { id: 'compliance', name: 'Compliance & Legal', icon: '⚖️', count: 0, description: 'Licenses, permits, legal notices' },
-    { id: 'reports', name: 'Reports', icon: '📊', count: 0, description: 'Inspection, maintenance reports' },
-    { id: 'identity', name: 'Identity Documents', icon: '🪪', count: 0, description: 'ID copies, verification docs' },
-    { id: 'other', name: 'Other', icon: '📁', count: 0, description: 'Miscellaneous documents' },
+    { id: 'leases', name: t('catLeases'), icon: '📄', count: 0, description: t('catLeasesDesc') },
+    { id: 'financial', name: t('catFinancial'), icon: '💰', count: 0, description: t('catFinancialDesc') },
+    { id: 'compliance', name: t('catCompliance'), icon: '⚖️', count: 0, description: t('catComplianceDesc') },
+    { id: 'reports', name: t('catReports'), icon: '📊', count: 0, description: t('catReportsDesc') },
+    { id: 'identity', name: t('catIdentity'), icon: '🪪', count: 0, description: t('catIdentityDesc') },
+    { id: 'other', name: t('catOther'), icon: '📁', count: 0, description: t('catOtherDesc') },
   ];
 
   const getCategoryCount = (categoryId: string) => {
@@ -134,18 +136,18 @@ export function DocumentsPage() {
         <Alert variant="danger">
           <AlertDescription>
             {error}
-            <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+            <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
           </AlertDescription>
         </Alert>
       )}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-          <p className="text-gray-500">View and manage property documents</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
           <Upload className="h-4 w-4" />
-          Upload Document
+          {t('uploadDocument')}
         </button>
       </div>
 
@@ -163,7 +165,7 @@ export function DocumentsPage() {
           >
             <div className="text-2xl mb-2">{category.icon}</div>
             <p className="font-medium text-gray-900 text-sm">{category.name}</p>
-            <p className="text-xs text-gray-500">{getCategoryCount(category.id)} documents</p>
+            <p className="text-xs text-gray-500">{t('documentsCount', { count: getCategoryCount(category.id) })}</p>
           </button>
         ))}
       </div>
@@ -174,7 +176,7 @@ export function DocumentsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search documents by name or tag..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -188,7 +190,7 @@ export function DocumentsPage() {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {documentTypes.map((type) => (
-              <option key={type} value={type}>{type === 'all' ? 'All Types' : type.replace('_', ' ')}</option>
+              <option key={type} value={type}>{type === 'all' ? t('allTypes') : type.replace('_', ' ')}</option>
             ))}
           </select>
         </div>
@@ -200,9 +202,9 @@ export function DocumentsPage() {
           <div className="flex items-center gap-3">
             <Edit3 className="h-5 w-5 text-orange-600" />
             <div>
-              <p className="font-medium text-orange-800">Documents awaiting signature</p>
+              <p className="font-medium text-orange-800">{t('awaitingSignature')}</p>
               <p className="text-sm text-orange-600">
-                {documents.filter(d => d.signatureStatus === 'PENDING').length} document(s) require your signature
+                {t('awaitingSignatureCount', { count: documents.filter(d => d.signatureStatus === 'PENDING').length })}
               </p>
             </div>
           </div>
@@ -210,7 +212,7 @@ export function DocumentsPage() {
             onClick={() => navigate('/documents/e-signature')}
             className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700"
           >
-            Review & Sign
+            {t('reviewAndSign')}
           </button>
         </div>
       )}
@@ -221,12 +223,12 @@ export function DocumentsPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Property / Tenant</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Signature</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDocument')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colPropertyTenant')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colDate')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colSignature')}</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -268,25 +270,25 @@ export function DocumentsPage() {
                   <td className="px-4 py-3">
                     {doc.requiresSignature ? (
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getSignatureStatusColor(doc.signatureStatus)}`}>
-                        {doc.signatureStatus === 'SIGNED' ? `Signed ${formatDate(doc.signedAt || '')}` : doc.signatureStatus}
+                        {doc.signatureStatus === 'SIGNED' ? t('signedOn', { date: formatDate(doc.signedAt || '') }) : doc.signatureStatus}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">N/A</span>
+                      <span className="text-xs text-gray-400">{t('na')}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="View">
+                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('view')}>
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Download">
+                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('download')}>
                         <Download className="h-4 w-4" />
                       </button>
                       {doc.versions && doc.versions.length > 1 && (
                         <button
                           onClick={() => { setSelectedDocument(doc); setShowVersionHistory(true); }}
                           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                          title="Version History"
+                          title={t('versionHistory')}
                         >
                           <History className="h-4 w-4" />
                         </button>
@@ -295,7 +297,7 @@ export function DocumentsPage() {
                         <button
                           onClick={() => navigate('/documents/e-signature')}
                           className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded"
-                          title="Sign Document"
+                          title={t('signDocument')}
                         >
                           <Edit3 className="h-4 w-4" />
                         </button>
@@ -312,11 +314,11 @@ export function DocumentsPage() {
       {filteredDocs.length === 0 && (
         <EmptyState
           icon={<FolderOpen className="h-8 w-8" />}
-          title="No documents found"
+          title={t('noDocuments')}
           description={
             search || typeFilter !== 'all' || categoryFilter !== 'all'
-              ? 'Try adjusting your filters to find what you\u2019re looking for.'
-              : 'Upload a document to get started.'
+              ? t('noDocumentsFiltered')
+              : t('noDocumentsEmpty')
           }
         />
       )}
@@ -329,7 +331,7 @@ export function DocumentsPage() {
             <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
               <div className="flex items-center justify-between p-4 border-b">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Version History</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('versionHistory')}</h3>
                   <p className="text-sm text-gray-500">{selectedDocument.name}</p>
                 </div>
                 <button onClick={() => setShowVersionHistory(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -347,7 +349,7 @@ export function DocumentsPage() {
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${index === 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                           v{version.versionNumber}
                         </span>
-                        {index === 0 && <span className="text-xs text-blue-600">Current</span>}
+                        {index === 0 && <span className="text-xs text-blue-600">{t('current')}</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         <button className="p-1 text-gray-400 hover:text-gray-600">
@@ -358,10 +360,10 @@ export function DocumentsPage() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{version.changeNote || 'No description'}</p>
+                    <p className="text-sm text-gray-600 mt-2">{version.changeNote || t('noDescription')}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                       <span>{formatDateTime(version.uploadedAt)}</span>
-                      <span>by {version.uploadedBy}</span>
+                      <span>{t('byPrefix', { user: version.uploadedBy })}</span>
                       <span>{formatFileSize(version.size)}</span>
                     </div>
                   </div>
@@ -380,8 +382,8 @@ export function DocumentsPage() {
             <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full">
               <div className="flex items-center justify-between p-4 border-b">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">E-Signature</h3>
-                  <p className="text-sm text-gray-500">Review and sign documents</p>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('eSignature')}</h3>
+                  <p className="text-sm text-gray-500">{t('reviewAndSignDocs')}</p>
                 </div>
                 <button onClick={() => setShowESignModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="h-5 w-5 text-gray-500" />
@@ -392,16 +394,16 @@ export function DocumentsPage() {
                   <div className="flex items-start gap-3">
                     <Edit3 className="h-5 w-5 text-blue-600 mt-0.5" />
                     <div>
-                      <p className="font-medium text-blue-800">E-Signature Integration</p>
+                      <p className="font-medium text-blue-800">{t('eSignIntegrationTitle')}</p>
                       <p className="text-sm text-blue-600 mt-1">
-                        Live e-signature delivery is not yet wired to a production provider in this build.
+                        {t('eSignIntegrationDesc')}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900">Documents Awaiting Your Signature</h4>
+                  <h4 className="font-medium text-gray-900">{t('awaitingSignatureTitle')}</h4>
                   {documents.filter(d => d.signatureStatus === 'PENDING').map((doc) => (
                     <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
@@ -409,13 +411,13 @@ export function DocumentsPage() {
                         <div>
                           <p className="font-medium text-gray-900">{doc.name}</p>
                           <p className="text-sm text-gray-500">
-                            {doc.property?.name} {doc.unit && `- Unit ${doc.unit.unitNumber}`}
+                            {doc.property?.name} {doc.unit && t('dashUnitPrefix', { unit: doc.unit.unitNumber })}
                           </p>
                         </div>
                       </div>
                       <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                         <Edit3 className="h-4 w-4" />
-                        Sign Now
+                        {t('signNow')}
                       </button>
                     </div>
                   ))}
@@ -423,8 +425,7 @@ export function DocumentsPage() {
 
                 <div className="mt-6 pt-6 border-t">
                   <p className="text-xs text-gray-500">
-                    By signing these documents electronically, you agree to the terms and conditions outlined in each document.
-                    Electronic signatures are legally binding under applicable laws.
+                    {t('eSignLegalDisclaimer')}
                   </p>
                 </div>
               </div>

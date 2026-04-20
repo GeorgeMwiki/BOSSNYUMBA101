@@ -671,5 +671,1263 @@
   },
   "integrationsPage": {
     "webhooks": "Webhooks"
+  },
+  "onboardingWizard": {
+    "steps": {
+      "organization": { "label": "Shirika", "description": "Maelezo ya msingi ya kampuni" },
+      "policy": { "label": "Katiba ya Sera", "description": "Weka kanuni za uendeshaji" },
+      "subscription": { "label": "Mpango wa Usajili", "description": "Chagua mpango" },
+      "admin": { "label": "Mtumiaji Msimamizi", "description": "Unda akaunti ya msimamizi" },
+      "review": { "label": "Kagua na Anzisha", "description": "Thibitisha na anza" }
+    },
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "features": {
+          "0": "Hadi mali 10",
+          "1": "Hadi vyumba 50",
+          "2": "Watumiaji 3",
+          "3": "Ripoti za msingi",
+          "4": "Usaidizi wa barua pepe"
+        }
+      },
+      "professional": {
+        "name": "Professional",
+        "features": {
+          "0": "Hadi mali 50",
+          "1": "Hadi vyumba 500",
+          "2": "Watumiaji 15",
+          "3": "Ripoti za kina",
+          "4": "Usaidizi wa kipaumbele",
+          "5": "Ufikiaji wa API",
+          "6": "Utambulisho wa kibinafsi"
+        }
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "features": {
+          "0": "Mali bila kikomo",
+          "1": "Vyumba bila kikomo",
+          "2": "Watumiaji bila kikomo",
+          "3": "Maarifa ya AI",
+          "4": "Usaidizi wa saa 24/7",
+          "5": "Muunganisho wa kibinafsi",
+          "6": "Dhamana ya SLA",
+          "7": "Meneja wa akaunti aliyejitolea"
+        }
+      }
+    },
+    "success": {
+      "title": "Mpangaji Ameundwa Kwa Mafanikio!",
+      "onboarded": "{name} amesajiliwa na yuko tayari kuanza.",
+      "invitePrefix": "Barua pepe ya mwaliko imetumwa kwa",
+      "summary": "Muhtasari",
+      "organizationLabel": "Shirika:",
+      "planLabel": "Mpango:",
+      "adminLabel": "Msimamizi:",
+      "trialLabel": "Jaribio:",
+      "trialYes": "Jaribio la siku 14 bila malipo",
+      "trialNo": "Hakuna jaribio",
+      "backToTenants": "Rudi kwa Wapangaji",
+      "onboardAnother": "Sajili Mwingine"
+    },
+    "header": {
+      "title": "Sajili Mpangaji Mpya",
+      "subtitle": "Anzisha shirika jipya la mpangaji hatua kwa hatua"
+    },
+    "org": {
+      "title": "Maelezo ya Shirika",
+      "subtitle": "Weka taarifa za msingi kuhusu shirika la mpangaji",
+      "nameLabel": "Jina la Shirika *",
+      "namePlaceholder": "mfano: Acme Properties Ltd",
+      "industryLabel": "Sekta",
+      "industry": {
+        "realEstate": "Usimamizi wa Mali",
+        "propertyDevelopment": "Uendelezaji wa Mali",
+        "hospitality": "Ukarimu",
+        "commercial": "Mali ya Biashara",
+        "residential": "Makazi Pekee"
+      },
+      "registrationLabel": "Nambari ya Usajili",
+      "registrationPlaceholder": "Nambari ya usajili wa kampuni",
+      "addressLabel": "Anwani *",
+      "addressPlaceholder": "Anwani ya mtaa",
+      "cityLabel": "Mji *",
+      "cityPlaceholder": "mfano: Nairobi",
+      "countryLabel": "Nchi",
+      "phoneLabel": "Simu *",
+      "phonePlaceholder": "+XXX XXX XXX XXX",
+      "websiteLabel": "Tovuti",
+      "websitePlaceholder": "https://www.company.co.ke"
+    },
+    "policy": {
+      "title": "Katiba ya Sera",
+      "subtitle": "Weka kanuni na sera za uendeshaji kwa mpangaji huyu",
+      "paymentPolicies": "Sera za Malipo",
+      "lateFeeType": "Aina ya Ada ya Kuchelewa",
+      "lateFeePercentage": "Asilimia ya kodi",
+      "lateFeeFixed": "Kiasi kisichobadilika (KES)",
+      "lateFeeValue": "Thamani ya Ada ya Kuchelewa ({unit})",
+      "gracePeriod": "Kipindi cha Neema (siku)",
+      "maxRetries": "Upeo wa Majaribio ya Malipo",
+      "autoLateFee": "Weka ada za kuchelewa kiotomatiki",
+      "communication": "Mawasiliano na Vikumbusho",
+      "autoReminders": "Wezesha vikumbusho vya malipo vya kiotomatiki",
+      "daysBeforeDue": "Siku kabla ya tarehe ya kustahili",
+      "leasePolicies": "Sera za Mikataba",
+      "securityDeposit": "Amana ya Usalama (miezi)",
+      "noticePeriod": "Kipindi cha Taarifa (siku)",
+      "autoRenewal": "Wezesha upya wa mkataba kiotomatiki"
+    },
+    "subscription": {
+      "title": "Chagua Mpango wa Usajili",
+      "subtitle": "Chagua mpango sahihi kwa shirika hili",
+      "monthly": "Kila Mwezi",
+      "annual": "Kila Mwaka",
+      "saveLabel": "(Okoa 17%)",
+      "mostPopular": "Maarufu Zaidi",
+      "mo": "mwz",
+      "yr": "mwk",
+      "trialStart": "Anza na jaribio la siku 14 bila malipo",
+      "trialNote": "Hakuna malipo hadi kipindi cha jaribio kitakapokwisha"
+    },
+    "admin": {
+      "title": "Unda Mtumiaji Msimamizi",
+      "subtitle": "Anzisha msimamizi mkuu wa {org}",
+      "thisOrganization": "shirika hili",
+      "firstNameLabel": "Jina la Kwanza *",
+      "firstNamePlaceholder": "Jina la kwanza",
+      "lastNameLabel": "Jina la Familia *",
+      "lastNamePlaceholder": "Jina la familia",
+      "emailLabel": "Barua pepe *",
+      "emailPlaceholder": "admin@company.com",
+      "phoneLabel": "Simu",
+      "phonePlaceholder": "+XXX XXX XXX XXX",
+      "roleLabel": "Jukumu",
+      "roleTenantAdmin": "Msimamizi wa Mpangaji",
+      "rolePropertyManager": "Meneja wa Mali",
+      "sendInvite": "Tuma mwaliko wa barua pepe",
+      "invitePrefix": "Barua pepe ya mwaliko yenye kitambulisho cha kuingia itatumwa kwa",
+      "inviteSuffix": "baada ya kuanzishwa.",
+      "adminEmailFallback": "barua pepe ya msimamizi"
+    },
+    "review": {
+      "title": "Kagua na Anzisha",
+      "subtitle": "Tafadhali kagua maelezo yote kabla ya kuanzisha mpangaji huyu",
+      "organization": "Shirika",
+      "policies": "Sera",
+      "subscription": "Usajili",
+      "adminUser": "Mtumiaji Msimamizi",
+      "edit": "Hariri",
+      "nameLabel": "Jina:",
+      "cityLabel": "Mji:",
+      "phoneLabel": "Simu:",
+      "regLabel": "Na. ya Usajili:",
+      "lateFeeLabel": "Ada ya Kuchelewa:",
+      "gracePeriodLabel": "Kipindi cha Neema:",
+      "securityDepositLabel": "Amana ya Usalama:",
+      "autoRemindersLabel": "Vikumbusho vya Kiotomatiki:",
+      "daysValue": "Siku {count}",
+      "monthsValue": "Miezi {count}",
+      "yes": "Ndiyo",
+      "no": "Hapana",
+      "planLabel": "Mpango:",
+      "billingLabel": "Ankara:",
+      "priceLabel": "Bei:",
+      "trialLabel": "Jaribio:",
+      "trialYes": "Jaribio la siku 14",
+      "trialNo": "Hakuna jaribio",
+      "emailLabel": "Barua pepe:",
+      "roleLabel": "Jukumu:",
+      "inviteLabel": "Mwaliko:",
+      "inviteYes": "Utatumwa",
+      "inviteNo": "Hautatumwa",
+      "importantTitle": "Muhimu",
+      "importantBody": "Mara baada ya kuanzishwa, mpangaji atapata ufikiaji wa jukwaa. Hakikisha maelezo yote ni sahihi."
+    },
+    "nav": {
+      "back": "Rudi",
+      "cancel": "Ghairi",
+      "continue": "Endelea",
+      "activating": "Inaanzisha...",
+      "activate": "Anzisha Mpangaji"
+    }
+  },
+  "approvalMatrix": {
+    "title": "Matrix ya Idhini",
+    "subtitle": "Sanidi nani anaweza kuidhinisha nini, na kwa vipimo vipi",
+    "addRule": "Ongeza Kanuni",
+    "saveAll": "Hifadhi Yote",
+    "saving": "Inahifadhi...",
+    "notifications": {
+      "ruleDeleted": "Kanuni ya idhini imefutwa",
+      "saved": "Matrix ya idhini imehifadhiwa kwa mafanikio",
+      "saveFailed": "Imeshindwa kuhifadhi"
+    },
+    "newRule": {
+      "defaultName": "Kanuni Mpya ya Idhini"
+    },
+    "stats": {
+      "totalRules": "Jumla ya Kanuni",
+      "active": "Inayoendelea",
+      "inactive": "Haifanyi kazi",
+      "approverRoles": "Majukumu ya Waidhinishaji"
+    },
+    "rule": {
+      "noDescription": "Hakuna maelezo",
+      "alwaysRequires": "Inahitaji idhini daima",
+      "thresholdSummary": "Kipimo: {value} {currency}",
+      "approvalLevels": "{count, plural, one {Ngazi # ya idhini} other {Ngazi # za idhini}}"
+    },
+    "form": {
+      "ruleName": "Jina la Kanuni",
+      "category": "Jamii",
+      "trigger": "Kianzishaji",
+      "triggerPlaceholder": "mfano: disbursement.created",
+      "thresholdType": "Aina ya Kipimo",
+      "thresholdValue": "Thamani ya Kipimo",
+      "unit": "Kitengo",
+      "escalationAfter": "Upandishaji baada ya (masaa)",
+      "autoRejectAfter": "Kataa kiotomatiki baada ya (masaa)"
+    },
+    "categories": {
+      "finance": "Fedha",
+      "maintenance": "Matengenezo",
+      "leasing": "Ukodishaji",
+      "users": "Watumiaji"
+    },
+    "thresholdTypes": {
+      "amount": "Kulingana na kiasi",
+      "count": "Kulingana na idadi",
+      "always": "Inahitajika daima"
+    },
+    "units": {
+      "percentage": "Asilimia",
+      "units": "Vitengo"
+    },
+    "approvalChain": {
+      "title": "Mnyororo wa Idhini",
+      "addLevel": "Ongeza Ngazi",
+      "approverRole": "Jukumu la Mwidhinishaji",
+      "requiredApprovals": "Idhini Zinazohitajika",
+      "autoApproveAfter": "Idhinisha kiotomatiki baada ya (masaa)"
+    },
+    "roles": {
+      "superAdmin": "Msimamizi Mkuu",
+      "financeManager": "Meneja wa Fedha",
+      "financeDirector": "Mkurugenzi wa Fedha",
+      "operationsLead": "Kiongozi wa Uendeshaji",
+      "propertyManager": "Meneja wa Mali"
+    },
+    "actions": {
+      "deactivate": "Zima Kanuni",
+      "activate": "Wezesha Kanuni",
+      "deleteRule": "Futa Kanuni"
+    },
+    "empty": {
+      "noRules": "Hakuna kanuni za idhini zilizosanidiwa",
+      "addFirst": "Ongeza Kanuni ya Kwanza"
+    }
+  },
+  "supportPage": {
+    "title": "Kituo cha Usaidizi",
+    "subtitle": "Simamia tiketi za usaidizi wa wateja",
+    "customerTimeline": "Historia ya Mteja",
+    "escalationQueue": "Foleni ya Upandishaji",
+    "searchPlaceholder": "Tafuta tiketi...",
+    "stats": {
+      "open": "Wazi",
+      "inProgress": "Inaendelea",
+      "critical": "Muhimu Sana",
+      "resolvedToday": "Zilizotatuliwa Leo"
+    },
+    "statusFilter": {
+      "all": "Hali Zote",
+      "open": "Wazi",
+      "inProgress": "Inaendelea",
+      "resolved": "Imetatuliwa",
+      "closed": "Imefungwa"
+    },
+    "caseDetail": {
+      "createdAt": "Iliundwa {date}",
+      "internal": "Ndani"
+    },
+    "reply": {
+      "placeholder": "Andika jibu lako...",
+      "internalNote": "Dokezo la ndani",
+      "keepOpen": "Weka Wazi",
+      "markInProgress": "Weka Inaendelea",
+      "markResolved": "Weka Imetatuliwa",
+      "closeTicket": "Funga Tiketi",
+      "send": "Tuma"
+    },
+    "empty": {
+      "selectTicket": "Chagua tiketi ili kuona maelezo"
+    }
+  },
+  "tenantCredit": {
+    "title": "Ukadiriaji wa mkopo wa mpangaji",
+    "subtitle": "Ukadiriaji wa kipimo cha FICO 300-850 kutoka kwa data halisi ya malipo. Bofya safu kuona muhtasari kamili wa vipengele.",
+    "searchPlaceholder": "Tafuta mpangaji…",
+    "loading": "Inapakia wapangaji…",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia wapangaji."
+    },
+    "bands": {
+      "excellent": "Bora sana",
+      "good": "Nzuri",
+      "fair": "Wastani",
+      "poor": "Dhaifu",
+      "veryPoor": "Dhaifu sana",
+      "insufficient": "Data haitoshi"
+    },
+    "filters": {
+      "allBands": "Bendi zote",
+      "excellent": "Bora sana (750+)",
+      "good": "Nzuri (660-749)",
+      "fair": "Wastani (550-659)",
+      "poor": "Dhaifu (450-549)",
+      "veryPoor": "Dhaifu sana (<450)",
+      "insufficient": "Data haitoshi"
+    },
+    "table": {
+      "tenant": "Mpangaji",
+      "score": "Alama",
+      "band": "Bendi",
+      "weakestFactor": "Kipengele dhaifu",
+      "freshness": "Uchanga wa data",
+      "actions": "Vitendo"
+    },
+    "actions": {
+      "details": "Maelezo",
+      "recompute": "Kokotoa upya"
+    },
+    "empty": {
+      "noMatches": "Hakuna wapangaji wanaolingana na vichujio hivi."
+    },
+    "dimensions": {
+      "paymentHistory": "Historia ya malipo",
+      "promiseKeeping": "Kushika ahadi",
+      "rentToIncome": "Kodi-kwa-mapato",
+      "tenancyLength": "Urefu wa ukaaji",
+      "disputeHistory": "Historia ya migogoro"
+    },
+    "detail": {
+      "title": "Muhtasari wa vipengele",
+      "close": "Funga",
+      "recommendations": "Mapendekezo"
+    }
+  },
+  "rolesPage": {
+    "title": "Majukumu ya Watumiaji",
+    "subtitle": "Simamia majukumu na idhini za ufikiaji wa jukwaa",
+    "searchPlaceholder": "Tafuta majukumu...",
+    "systemRole": "Jukumu la Mfumo",
+    "retry": "Jaribu tena",
+    "viewPermissions": "Tazama Idhini",
+    "duplicateName": "{name} (Nakala)",
+    "permissionsCount": "{count, plural, one {Idhini #} other {Idhini #}}",
+    "usersCount": "{count, plural, one {Mtumiaji #} other {Watumiaji #}}",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia majukumu"
+    },
+    "toasts": {
+      "created": "Jukumu limeundwa kwa mafanikio",
+      "updated": "Jukumu limesasishwa kwa mafanikio",
+      "deleted": "Jukumu limefutwa kwa mafanikio",
+      "cannotDeleteSystem": "Haiwezi kufuta majukumu ya mfumo",
+      "cannotDeleteAssigned": "Haiwezi kufuta jukumu lenye watumiaji waliopewa"
+    },
+    "nav": {
+      "permissionMatrix": "Matrix ya Idhini",
+      "approvalMatrix": "Matrix ya Idhini",
+      "auditLog": "Kumbukumbu ya Ukaguzi",
+      "createRole": "Unda Jukumu"
+    },
+    "actions": {
+      "duplicate": "Nakili",
+      "edit": "Hariri",
+      "delete": "Futa"
+    },
+    "modal": {
+      "createTitle": "Unda Jukumu Jipya",
+      "editTitle": "Hariri Jukumu: {name}",
+      "cancel": "Ghairi",
+      "saveChanges": "Hifadhi Mabadiliko",
+      "createRole": "Unda Jukumu"
+    },
+    "form": {
+      "roleName": "Jina la Jukumu",
+      "roleNamePlaceholder": "mfano: Meneja wa Mali",
+      "description": "Maelezo",
+      "descriptionPlaceholder": "Maelezo mafupi ya jukumu hili",
+      "permissions": "Idhini",
+      "selectedCount": "{count} zimechaguliwa",
+      "systemReadOnly": "Majukumu ya mfumo hayawezi kurekebishwa"
+    },
+    "audit": {
+      "title": "Kumbukumbu ya Mabadiliko ya Idhini",
+      "time": "Muda",
+      "action": "Kitendo",
+      "actor": "Mtendaji",
+      "target": "Lengo",
+      "changes": "Mabadiliko"
+    },
+    "categories": {
+      "properties": {
+        "name": "Mali",
+        "perms": {
+          "view": "Tazama Mali",
+          "create": "Unda Mali",
+          "edit": "Hariri Mali",
+          "delete": "Futa Mali"
+        },
+        "descs": {
+          "view": "Tazama maelezo ya mali na orodha",
+          "create": "Ongeza mali mpya kwenye mfumo",
+          "edit": "Rekebisha maelezo ya mali",
+          "delete": "Ondoa mali kutoka kwenye mfumo"
+        }
+      },
+      "units": {
+        "name": "Vyumba",
+        "perms": {
+          "view": "Tazama Vyumba",
+          "create": "Unda Vyumba",
+          "edit": "Hariri Vyumba",
+          "delete": "Futa Vyumba"
+        },
+        "descs": {
+          "view": "Tazama maelezo ya vyumba na upatikanaji",
+          "create": "Ongeza vyumba vipya kwenye mali",
+          "edit": "Rekebisha maelezo ya vyumba na bei",
+          "delete": "Ondoa vyumba kutoka kwenye mali"
+        }
+      },
+      "tenants": {
+        "name": "Mashirika ya Wapangaji",
+        "perms": {
+          "view": "Tazama Wapangaji",
+          "create": "Unda Wapangaji",
+          "edit": "Hariri Wapangaji",
+          "suspend": "Simamisha/Wezesha Wapangaji",
+          "delete": "Futa Wapangaji"
+        },
+        "descs": {
+          "view": "Tazama maelezo ya shirika la mpangaji",
+          "create": "Sajili mashirika mapya ya wapangaji",
+          "edit": "Rekebisha mipangilio na sera za mpangaji",
+          "suspend": "Simamisha au wezesha tena akaunti za wapangaji",
+          "delete": "Ondoa mashirika ya wapangaji kabisa"
+        }
+      },
+      "users": {
+        "name": "Watumiaji",
+        "perms": {
+          "view": "Tazama Watumiaji",
+          "create": "Unda Watumiaji",
+          "edit": "Hariri Watumiaji",
+          "delete": "Futa Watumiaji",
+          "impersonate": "Jifanya Watumiaji"
+        },
+        "descs": {
+          "view": "Tazama profaili na shughuli za watumiaji",
+          "create": "Ongeza watumiaji wapya kwenye mfumo",
+          "edit": "Rekebisha maelezo na majukumu ya watumiaji",
+          "delete": "Ondoa watumiaji kutoka kwenye mfumo",
+          "impersonate": "Fikia mfumo kama mtumiaji mwingine"
+        }
+      },
+      "finance": {
+        "name": "Fedha",
+        "perms": {
+          "view": "Tazama Fedha",
+          "invoices": "Simamia Ankara",
+          "payments": "Chakata Malipo",
+          "disbursements": "Simamia Malipo ya Nje",
+          "adjustments": "Tekeleza Marekebisho"
+        },
+        "descs": {
+          "view": "Tazama ripoti na miamala ya kifedha",
+          "invoices": "Unda na rekebisha ankara",
+          "payments": "Andika na chakata malipo",
+          "disbursements": "Unda na idhinisha malipo ya nje",
+          "adjustments": "Tekeleza mikopo na marekebisho"
+        }
+      },
+      "maintenance": {
+        "name": "Matengenezo",
+        "perms": {
+          "view": "Tazama Maagizo ya Kazi",
+          "create": "Unda Maagizo ya Kazi",
+          "assign": "Toa Maagizo ya Kazi",
+          "approve": "Idhinisha Maagizo ya Kazi",
+          "complete": "Kamilisha Maagizo ya Kazi"
+        },
+        "descs": {
+          "view": "Tazama maombi ya matengenezo",
+          "create": "Wasilisha maombi ya matengenezo",
+          "assign": "Toa kazi kwa wachuuzi/wafanyakazi",
+          "approve": "Idhinisha maagizo ya thamani kubwa",
+          "complete": "Weka maagizo ya kazi kama yamekamilika"
+        }
+      },
+      "documents": {
+        "name": "Nyaraka",
+        "perms": {
+          "view": "Tazama Nyaraka",
+          "upload": "Pakia Nyaraka",
+          "delete": "Futa Nyaraka",
+          "sign": "Saini Nyaraka Kielektroniki"
+        },
+        "descs": {
+          "view": "Fikia na tazama nyaraka",
+          "upload": "Pakia nyaraka mpya",
+          "delete": "Ondoa nyaraka",
+          "sign": "Saini nyaraka kwa njia ya kielektroniki"
+        }
+      },
+      "settings": {
+        "name": "Mipangilio",
+        "perms": {
+          "view": "Tazama Mipangilio",
+          "edit": "Hariri Mipangilio",
+          "roles": "Simamia Majukumu",
+          "audit": "Tazama Kumbukumbu za Ukaguzi"
+        },
+        "descs": {
+          "view": "Tazama usanidi wa mfumo",
+          "edit": "Rekebisha usanidi wa mfumo",
+          "roles": "Unda na rekebisha majukumu",
+          "audit": "Fikia njia ya ukaguzi"
+        }
+      }
+    }
+  },
+  "configurationPage": {
+    "title": "Usanidi wa Mfumo",
+    "subtitle": "Simamia mipangilio ya jukwaa zima",
+    "saveChanges": "Hifadhi Mabadiliko",
+    "sidebarTitle": "Mipangilio",
+    "sections": {
+      "general": { "name": "Mipangilio ya Jumla", "description": "Jina la jukwaa, saa za eneo, na mipangilio ya msingi" },
+      "payments": { "name": "Milango ya Malipo", "description": "M-Pesa, uhamisho wa benki, na mipangilio ya malipo" },
+      "email": { "name": "Usanidi wa Barua Pepe", "description": "Mipangilio ya SMTP na violezo vya barua pepe" },
+      "notifications": { "name": "Arifa", "description": "Arifa za msukumo na mipangilio ya SMS" },
+      "security": { "name": "Usalama", "description": "Sera za uthibitishaji na usalama" },
+      "database": { "name": "Hifadhidata", "description": "Miunganisho ya hifadhidata na hifadhi rudufu" },
+      "branding": { "name": "Utambulisho", "description": "Nembo, rangi, na mipangilio ya utambulisho" }
+    },
+    "general": {
+      "platformName": "Jina la Jukwaa",
+      "defaultTimezone": "Saa za Eneo Chaguo-msingi",
+      "defaultCurrency": "Sarafu Chaguo-msingi",
+      "defaultLanguage": "Lugha Chaguo-msingi",
+      "currency": {
+        "kes": "Shilingi ya Kenya (KES)",
+        "usd": "Dola ya Marekani (USD)",
+        "ugx": "Shilingi ya Uganda (UGX)",
+        "tzs": "Shilingi ya Tanzania (TZS)"
+      },
+      "language": {
+        "en": "Kiingereza",
+        "sw": "Kiswahili",
+        "fr": "Kifaransa"
+      },
+      "allowNewTenants": "Ruhusu usajili mpya wa wapangaji",
+      "allowNewTenantsHint": "Wezesha kujisajili wenyewe kwa wapangaji",
+      "enableTrial": "Wezesha kipindi cha jaribio",
+      "enableTrialHint": "Wapangaji wapya wanapata jaribio la siku 14 bila malipo"
+    },
+    "payments": {
+      "mpesaConnected": "M-Pesa Imeunganishwa",
+      "mpesaStatus": "Paybill: 123456 | Akaunti: Inafanya Kazi",
+      "bankTransfer": "Uhamisho wa Benki",
+      "bankTransferNotConfigured": "Haijasanidiwa - Usuluhishi wa mkono unahitajika",
+      "mpesaSettings": "Mipangilio ya M-Pesa",
+      "consumerKey": "Ufunguo wa Mteja",
+      "consumerSecret": "Siri ya Mteja",
+      "paybill": "Nambari ya Paybill",
+      "paybillPlaceholder": "Weka paybill (mfano: 522533)",
+      "callbackUrl": "URL ya Rudisho"
+    },
+    "security": {
+      "passwordPolicy": "Sera ya Nenosiri",
+      "minPasswordLength": "Urefu wa Chini wa Nenosiri",
+      "requireUppercase": "Hitaji herufi kubwa",
+      "requireNumber": "Hitaji nambari",
+      "requireSpecial": "Hitaji herufi maalum",
+      "sessionSettings": "Mipangilio ya Kikao",
+      "sessionTimeout": "Muda wa Kuisha Kikao (dakika)",
+      "requireReauth": "Hitaji uthibitishaji upya kwa vitendo nyeti",
+      "twoFactor": "Uthibitishaji wa Hatua Mbili",
+      "enforce2faAdmins": "Lazimisha 2FA kwa wasimamizi",
+      "enforce2faAdminsHint": "Hitaji 2FA kwa watumiaji wote wasimamizi",
+      "enforce2faAll": "Lazimisha 2FA kwa watumiaji wote",
+      "enforce2faAllHint": "Hitaji 2FA kwa watumiaji wote wa jukwaa"
+    },
+    "defaultSection": {
+      "title": "Usanidi wa {name}",
+      "body": "Sehemu hii bado haipatikani. Chagua sehemu nyingine kutoka kwenye upau wa pembeni, au rudi baada ya toleo lijalo la jukwaa."
+    }
+  },
+  "reportsPage": {
+    "title": "Ripoti na Uchambuzi",
+    "subtitle": "Maarifa na ripoti za jukwaa zima",
+    "export": "Hamisha",
+    "dateRange": {
+      "last7": "Siku 7 za mwisho",
+      "last30": "Siku 30 za mwisho",
+      "last90": "Siku 90 za mwisho",
+      "thisYear": "Mwaka huu"
+    },
+    "tabs": {
+      "dashboard": "Dashibodi ya Uchambuzi",
+      "templates": "Violezo vya Ripoti",
+      "scheduled": "Ripoti Zilizopangwa"
+    },
+    "kpis": {
+      "mrr": "Jumla ya MRR",
+      "mrrDelta": "+9.4% ikilinganishwa na mwezi uliopita",
+      "activeTenants": "Wapangaji Wanaofanya Kazi",
+      "activeDelta": "+20 mwezi huu",
+      "totalUnits": "Jumla ya Vyumba",
+      "unitsDelta": "+342 mwezi huu",
+      "churnRate": "Kiwango cha Kuondoka",
+      "churnDelta": "-0.3% ikilinganishwa na mwezi uliopita"
+    },
+    "charts": {
+      "mrrTrend": "Mwelekeo wa MRR",
+      "acquisitionVsChurn": "Upatikanaji wa Wapangaji dhidi ya Kuondoka",
+      "acquired": "Waliopatikana",
+      "churned": "Walioondoka",
+      "revenueByPlan": "Mapato kwa Mpango",
+      "topTenants": "Wapangaji Wanaofanya Vizuri Zaidi",
+      "topTenantsEmpty": "Data ya utendaji wa wapangaji itaonekana hapa mara huduma ya ripoti itakapounganishwa kwa mtazamo huu."
+    },
+    "plans": {
+      "enterprise": "Enterprise",
+      "professional": "Professional",
+      "starter": "Starter",
+      "trial": "Jaribio"
+    },
+    "categories": {
+      "financial": "Kifedha",
+      "growth": "Ukuaji",
+      "usage": "Matumizi",
+      "operations": "Uendeshaji"
+    },
+    "templates": {
+      "revenue": { "name": "Uchambuzi wa Mapato", "description": "Muhtasari wa mapato ya kila mwezi kwa mpangaji na mpango" },
+      "growth": { "name": "Ukuaji wa Wapangaji", "description": "Usajili mpya wa wapangaji na uchambuzi wa kuondoka" },
+      "usage": { "name": "Matumizi ya Jukwaa", "description": "Takwimu za matumizi ya vipengele katika wapangaji" },
+      "portfolio": { "name": "Muhtasari wa Mali", "description": "Muhtasari wa mali na vyumba vyote vinavyosimamiwa" },
+      "payments": { "name": "Utendaji wa Malipo", "description": "Viwango vya mafanikio ya malipo na uchambuzi wa kushindwa" },
+      "subscriptions": { "name": "Muhtasari wa Usajili", "description": "Usajili unaofanya kazi kwa mpango na hali ya ankara" },
+      "lastRun": "Uliendeshwa mwisho: {date}",
+      "generate": "Tengeneza"
+    },
+    "scheduled": {
+      "title": "Ripoti Zilizopangwa",
+      "scheduleNew": "Panga Mpya",
+      "recipientsCount": "Wapokeaji {count}",
+      "edit": "Hariri",
+      "cols": {
+        "report": "Ripoti",
+        "schedule": "Ratiba",
+        "recipients": "Wapokeaji",
+        "status": "Hali",
+        "nextRun": "Muendesho Ujao",
+        "actions": "Vitendo"
+      },
+      "rows": {
+        "weeklyRevenue": "Muhtasari wa Mapato wa Kila Wiki",
+        "weeklyRevenueSchedule": "Kila Wiki (Jumatatu 9 AM)",
+        "monthlyGrowth": "Ripoti ya Ukuaji wa Kila Mwezi",
+        "monthlyGrowthSchedule": "Kila Mwezi (siku ya 1)",
+        "dailyOps": "Muhtasari wa Uendeshaji wa Kila Siku",
+        "dailyOpsSchedule": "Kila Siku (6 AM)"
+      }
+    }
+  },
+  "campaignsPage": {
+    "title": "Kampeni za Masoko",
+    "subtitle": "Unda na simamia kampeni za barua pepe/SMS",
+    "newCampaign": "Kampeni Mpya",
+    "searchPlaceholder": "Tafuta kampeni...",
+    "stats": {
+      "total": "Jumla ya Kampeni",
+      "running": "Zinaendelea",
+      "scheduled": "Zilizopangwa",
+      "completed": "Zilizokamilika"
+    },
+    "filters": {
+      "all": "Hali Zote",
+      "draft": "Rasimu",
+      "scheduled": "Zilizopangwa",
+      "running": "Zinaendelea",
+      "completed": "Zilizokamilika",
+      "paused": "Zilizosimamishwa"
+    },
+    "cols": {
+      "campaign": "Kampeni",
+      "status": "Hali",
+      "channel": "Njia",
+      "sent": "Zilizotumwa",
+      "openRate": "Kiwango cha Kufunguliwa",
+      "clickRate": "Kiwango cha Kubofya",
+      "actions": "Vitendo"
+    },
+    "empty": {
+      "title": "Hakuna kampeni zilizopatikana",
+      "description": "Unda kampeni yako ya kwanza kufikia hadhira yako."
+    }
+  },
+  "complianceSettings": {
+    "title": "Programu-jalizi za kufuata kanuni",
+    "subtitle": "Katalogi ya programu-jalizi za kufuata kanuni zilizosajiliwa (kusoma tu).",
+    "loading": "Inapakia programu-jalizi za kufuata kanuni…",
+    "noData": "Hakuna data.",
+    "registeredInfo": "{count} zimesajiliwa. Eneo la utendaji: {code}.",
+    "profileTitle": "{country} — wasifu wa kufuata kanuni",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia katalogi ya kufuata kanuni."
+    },
+    "profile": {
+      "depositCap": "Kiwango cha juu cha amana",
+      "noticePeriod": "Kipindi cha taarifa",
+      "minimumLease": "Mkataba wa chini",
+      "subleaseConsent": "Idhini ya ukodishaji mdogo",
+      "lateFeeCap": "Kiwango cha juu cha ada ya kuchelewa",
+      "depositReturn": "Muda wa kurudisha amana",
+      "monthsRange": "Miezi {min}–{max}",
+      "daysValue": "Siku {count}",
+      "monthsValue": "Miezi {count}",
+      "kycProviders": "Watoa huduma wa KYC ({count})",
+      "paymentGateways": "Milango ya malipo ({count})"
+    }
+  },
+  "analyticsExports": {
+    "title": "Hamisha Data ya Uchambuzi",
+    "subtitle": "Tengeneza na pakua ripoti za uchambuzi wa jukwaa",
+    "scope": "Jukwaa",
+    "dateRange": {
+      "last7": "Siku 7 za mwisho",
+      "last30": "Siku 30 za mwisho",
+      "last90": "Siku 90 za mwisho",
+      "custom": "Upeo maalum"
+    },
+    "templatesTitle": "Violezo vya Kuhamisha",
+    "tpls": {
+      "tenantSummary": { "name": "Muhtasari wa Wapangaji", "description": "Wapangaji wote wenye data ya usajili na matumizi" },
+      "revenue": { "name": "Ripoti ya Mapato", "description": "MRR, ARR, na historia ya malipo kwa mpangaji" },
+      "userActivity": { "name": "Kumbukumbu ya Shughuli za Watumiaji", "description": "Matukio ya kuingia na ukaguzi kwa mpangaji" },
+      "portfolio": { "name": "Muhtasari wa Mali", "description": "Mali na vyumba vyote katika wapangaji" },
+      "apiUsage": { "name": "Uchambuzi wa Matumizi ya API", "description": "Simu za API, vituo, na hitilafu kwa mpangaji" },
+      "compliance": { "name": "Ripoti ya Kufuata Kanuni", "description": "Maombi ya data ya GDPR na hali ya uchakataji" }
+    },
+    "lastExported": "Ilihamishwa mwisho: {date}",
+    "exportFormat": "Hamisha {format}",
+    "recentTitle": "Uhamishaji wa Hivi Karibuni",
+    "cols": {
+      "export": "Uhamishaji",
+      "format": "Muundo",
+      "size": "Ukubwa",
+      "status": "Hali",
+      "exported": "Ilihamishwa",
+      "actions": "Vitendo"
+    },
+    "inProgress": "Inaendelea...",
+    "download": "Pakua",
+    "scheduledTitle": "Uhamishaji Uliopangwa",
+    "scheduledEmpty": "Hakuna uhamishaji uliopangwa. Sanidi uhamishaji wa kiotomatiki kwa ripoti za mara kwa mara.",
+    "scheduleExport": "Panga Uhamishaji"
+  },
+  "permissionMatrix": {
+    "title": "Matrix ya Idhini",
+    "subtitle": "Kihariri cha kuona cha mgao wa idhini za majukumu",
+    "export": "Hamisha",
+    "saveChanges": "Hifadhi Mabadiliko",
+    "saving": "Inahifadhi...",
+    "searchPlaceholder": "Tafuta moduli au idhini...",
+    "unsavedChanges": "Una mabadiliko ambayo hayajahifadhiwa",
+    "notifications": {
+      "saved": "Matrix ya idhini imehifadhiwa kwa mafanikio",
+      "saveFailed": "Imeshindwa kuhifadhi"
+    },
+    "legend": {
+      "granted": "Imetolewa",
+      "notGranted": "Haijatolewa",
+      "systemRole": "Jukumu la mfumo (kusoma tu)"
+    },
+    "table": {
+      "moduleHeader": "Moduli / Idhini",
+      "permsCount": "Idhini {count}"
+    }
+  },
+  "propertyGrades": {
+    "title": "Madaraja ya mali",
+    "subtitle": "Kadi za ripoti za A–F zinazoendeshwa na mfano wa Mr. Mwikila wa vipimo sita.",
+    "loading": "Inapakia madaraja ya mali…",
+    "recomputeAll": "Kokotoa yote upya",
+    "portfolioGrade": "Daraja la muhtasari",
+    "scoreAndProperties": "Alama {score} · Mali {count}",
+    "score": "Alama {score}",
+    "close": "Funga",
+    "dimensions": "Vipimo",
+    "reasons": "Sababu",
+    "history": "Historia",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia daraja la muhtasari."
+    }
+  },
+  "orgInsights": {
+    "title": "Maarifa ya shirika",
+    "subtitle": "Vizuizi, maboresho, na utendaji wa mchakato.",
+    "loading": "Inapakia…",
+    "bottlenecksTitle": "Vizuizi vya sasa ({count})",
+    "noBottlenecks": "Hakuna vizuizi vilivyogunduliwa.",
+    "improvementsTitle": "Maboresho (siku {days} zilizopita)",
+    "slaBreaches": "Ukiukaji wa SLA {count}",
+    "noData": "Hakuna data.",
+    "errors": {
+      "orgUnavailable": "Huduma ya shirika haipatikani."
+    },
+    "table": {
+      "metric": "Kipimo",
+      "baseline": "Msingi",
+      "current": "Sasa",
+      "delta": "Mabadiliko"
+    }
+  },
+  "apiIntegrations": {
+    "title": "Muunganisho wa API",
+    "subtitle": "Vyeti vya wakala (tokeni za upeo) na historia ya kufutwa.",
+    "issueNewCert": "Toa cheti kipya",
+    "issue": "Toa",
+    "loading": "Inapakia…",
+    "activeCerts": "Vyeti vinavyofanya kazi",
+    "noCertsYet": "Hakuna vyeti vilivyotolewa bado.",
+    "revoke": "futa",
+    "revokePrompt": "Sababu ya kufuta?",
+    "revocationHistory": "Historia ya kufutwa",
+    "certLabel": "Cheti",
+    "scopesLabel": "Upeo: {list}",
+    "expiresLabel": "Inaisha {date}",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia vyeti.",
+      "issueFailed": "Kutoa kumeshindwa.",
+      "revokeFailed": "Kufuta kumeshindwa."
+    },
+    "form": {
+      "agentId": "Kitambulisho cha Wakala",
+      "scopes": "Upeo (tenganisha kwa koma)",
+      "validFor": "Halali kwa (siku)"
+    }
+  },
+  "systemHealth": {
+    "title": "Afya ya Mfumo",
+    "subtitle": "Vipimo hai kutoka /api/v1/metrics. Inasasisha kila sekunde 5.",
+    "loading": "Inapakia vipimo…",
+    "breakers": "Vivunja mzunguko",
+    "noBreakers": "Hakuna vivunja vimeripoti bado.",
+    "rawSnapshot": "Picha ya asili (kwa utatuzi)",
+    "cards": {
+      "uptime": "Muda wa Kufanya Kazi",
+      "uptimeSub": "tangu kuanza tena kwa lango",
+      "eventsPerSec": "Matukio/sek",
+      "eventsSub": "jumla ya matukio ya mtiririko: {count}",
+      "latency": "Ucheleweshaji wa LLM p50",
+      "dailyCost": "Gharama ya kila siku",
+      "costSub": "Zamu {turns}, hitilafu {errors}",
+      "activePersonas": "Akili za ubongo zinazofanya kazi",
+      "heartbeat": "Mpigo wa moyo wa mwisho",
+      "juniorAsleep": "Akili changa zilizolala",
+      "bgSuccessRate": "Kiwango cha mafanikio cha kazi za nyuma",
+      "bgSub": "{ok} sawa / {failed} zimeshindwa"
+    }
+  },
+  "stationMasterCoverage": {
+    "title": "Hariri eneo — {id}",
+    "subtitle": "Ongeza lebo, miji, maeneo, au vitambulisho vya mali. Kipaumbele kinapangwa kwa kupanda — nambari ndogo inashinda.",
+    "polygonPlaceholder": "Kishikilio cha kuchora polygon (kipakiaji cha googlemaps kinangoja)",
+    "polygonPlaceholderAria": "Kishikilio cha kuchora polygon",
+    "polygonPending": "polygon (inangoja)",
+    "emptyCoverage": "Hakuna kanuni za eneo bado. Ongeza moja kuanza kutoa mali.",
+    "invalidJson": "JSON batili",
+    "fixJsonFirst": "Rekebisha JSON batili kabla ya kuhifadhi.",
+    "saveFailed": "Imeshindwa kuhifadhi eneo",
+    "remove": "Ondoa",
+    "removeAria": "Ondoa safu ya eneo {row}",
+    "addCoverage": "Ongeza eneo",
+    "save": "Hifadhi",
+    "cols": {
+      "kind": "Aina",
+      "value": "Thamani (JSON)",
+      "priority": "Kipaumbele",
+      "actions": "Vitendo"
+    },
+    "labels": {
+      "kind": "Aina ya eneo kwa safu {row}",
+      "value": "JSON ya thamani ya eneo kwa safu {row}",
+      "priority": "Kipaumbele kwa safu {row}"
+    }
+  },
+  "apiKeysPage": {
+    "title": "Funguo za API",
+    "subtitle": "Simamia funguo za API za mpangaji na jukwaa",
+    "createKey": "Unda Ufunguo wa API",
+    "retry": "Jaribu tena",
+    "searchPlaceholder": "Tafuta funguo za API...",
+    "never": "Kamwe",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia funguo za API"
+    },
+    "scopes": {
+      "all": "Upeo Wote",
+      "platform": "Jukwaa",
+      "tenant": "Mpangaji"
+    },
+    "cols": {
+      "key": "Ufunguo",
+      "scope": "Upeo",
+      "permissions": "Idhini",
+      "lastUsed": "Zilizotumika Mwisho",
+      "created": "Ilizoundwa",
+      "expires": "Inaisha",
+      "actions": "Vitendo"
+    },
+    "empty": {
+      "title": "Hakuna funguo za API zilizopatikana",
+      "description": "Unda ufunguo wa API kutoa muunganisho ufikiaji wa data yako."
+    },
+    "modal": {
+      "title": "Unda Ufunguo wa API",
+      "subtitle": "Tengeneza ufunguo mpya wa API kwa ufikiaji wa jukwaa au mpangaji",
+      "keyName": "Jina la Ufunguo",
+      "keyNamePlaceholder": "mfano: Jina la Muunganisho",
+      "scope": "Upeo",
+      "permissions": "Idhini",
+      "cancel": "Ghairi",
+      "generate": "Tengeneza Ufunguo"
+    }
+  },
+  "managerChat": {
+    "title": "Gumzo la Meneja — Mafunzo ya Mali",
+    "typing": "Inaandika…",
+    "errorPrefix": "Hitilafu",
+    "placeholder": "Uliza kuhusu uwezo wa kodi, madeni, 5 Ps …",
+    "stop": "Simamisha",
+    "send": "Tuma",
+    "approve": "Idhinisha",
+    "reject": "Kataa"
+  },
+  "maintenanceTaxonomy": {
+    "title": "Taxonomia ya matengenezo",
+    "subtitle": "Jamii na matatizo (chaguo-msingi la jukwaa + mabadiliko yako).",
+    "loading": "Inapakia…",
+    "categories": "Jamii",
+    "all": "Yote",
+    "save": "Hifadhi",
+    "problemsTitle": "Matatizo ({count})",
+    "noProblems": "Hakuna matatizo katika jamii hii.",
+    "placeholders": {
+      "code": "msimbo",
+      "name": "jina"
+    },
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia taxonomia.",
+      "createFailed": "Kuunda kumeshindwa."
+    }
+  },
+  "stationMasterCoverageMap": {
+    "title": "Eneo la Bwana Kituo",
+    "reassignRegions": "Gawa tena maeneo",
+    "reassignUnavailable": "Mtiririko wa ugawaji upya haupatikani bado",
+    "reassignAria": "Gawa tena maeneo kwa mabwana vituo",
+    "retry": "Jaribu tena",
+    "coverageMap": "Ramani ya Eneo",
+    "mapPlaceholder": "Kishikilio cha ramani — huonyesha polygon za maeneo zilizopakwa rangi kwa bwana kituo aliyepangwa.",
+    "mapPlaceholderAria": "Kishikilio cha ramani ya eneo",
+    "emptyTitle": "Hakuna mabwana vituo waliopangwa",
+    "emptyDescription": "Mara tu mabwana vituo watakapopangwa kwa maeneo, muhtasari wao wa eneo utaonekana hapa.",
+    "noRegions": "Hakuna maeneo yaliyopangwa.",
+    "propsCount": "Mali {count}",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia eneo"
+    }
+  },
+  "training": {
+    "title": "Mafunzo na mwongozo",
+    "subtitle": "Tengeneza njia za kujifunza zinazojirekebisha na AI, zitoe, na fuatilia umahiri.",
+    "generateTitle": "Tengeneza njia ya kujifunza",
+    "generateSubtitle": "AI itatoa hatua za ngazi 5 zilizopangiliwa na Bloom, itatafsiri Kiswahili kiotomatiki, na kujenga milango ya umahiri.",
+    "generateCta": "Tengeneza njia",
+    "topicLabel": "Mada",
+    "topicPlaceholder": "mfano: Mazungumzo ya uchunguzi wa madeni",
+    "audienceLabel": "Hadhira",
+    "durationLabel": "Muda (masaa)",
+    "languageLabel": "Lugha",
+    "saveCta": "Hifadhi kwenye maktaba",
+    "discardCta": "Tupa",
+    "pathsTitle": "Maktaba",
+    "assignmentsTitle": "Mgawo unaoendelea",
+    "assignmentsEmpty": "Hakuna mgawo unaoendelea bado.",
+    "masteryTitle": "Ramani ya joto ya umahiri",
+    "masteryEmpty": "Ramani ya joto ya umahiri inajaza mara dhana na mgawo zinapokuwepo.",
+    "masteryEmployee": "Mfanyakazi",
+    "languages": {
+      "en": "Kiingereza",
+      "sw": "Kiswahili",
+      "both": "Zote"
+    }
+  },
+  "gepgCredentials": {
+    "title": "Kitambulisho cha GePG",
+    "spCode": "Msimbo wa SP",
+    "spName": "Jina la SP",
+    "endpointUrl": "URL ya Mwisho",
+    "signingCert": "Cheti cha Kusaini (PEM)",
+    "signingKey": "Ufunguo wa Kusaini (PEM) — huhifadhiwa kama siri",
+    "save": "Hifadhi kitambulisho",
+    "saving": "Inahifadhi...",
+    "savedMessage": "Kitambulisho cha GePG kimehifadhiwa.",
+    "saveFailed": "Kuhifadhi kumeshindwa."
+  },
+  "complianceExports": {
+    "title": "Uhamishaji wa Kufuata Kanuni",
+    "scheduleNew": "Panga uhamishaji mpya",
+    "recentExports": "Uhamishaji wa hivi karibuni",
+    "download": "Pakua",
+    "downloadAria": "Pakua uhamishaji wa {type} kwa {period}",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna uhamishaji uliopangwa",
+    "emptyDescription": "Panga uhamishaji hapo juu — KRA iTax, NSSF, NHIF, GePG au kumbukumbu ya ukaguzi.",
+    "exportQueued": "Uhamishaji wa {type} umewekwa kwenye foleni.",
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia uhamishaji",
+      "scheduleFailed": "Kupanga uhamishaji kumeshindwa"
+    }
+  },
+  "communicationsPage": {
+    "title": "Dashibodi ya Mawasiliano",
+    "subtitle": "Kampeni za masoko, violezo, na matangazo",
+    "recentBroadcasts": "Matangazo ya Hivi Karibuni",
+    "viewAll": "Tazama yote",
+    "stats": {
+      "emails": "Barua Pepe Zilizotumwa (siku 30)",
+      "sms": "SMS Zilizotumwa (siku 30)",
+      "activeCampaigns": "Kampeni Zinazofanya Kazi",
+      "templates": "Violezo",
+      "twoRunning": "2 zinaendelea",
+      "emailSms": "Barua pepe + SMS"
+    },
+    "broadcasts": {
+      "rentReminder": "Ukumbusho wa Kodi wa Januari",
+      "maintenanceNotice": "Tangazo la Matengenezo - Jengo A",
+      "paymentSuccess": "Uthibitisho wa Mafanikio ya Malipo"
+    },
+    "nav": {
+      "templates": "Violezo",
+      "templatesDesc": "Violezo vya barua pepe na SMS",
+      "campaigns": "Kampeni",
+      "campaignsDesc": "Kampeni za masoko",
+      "broadcasts": "Matangazo",
+      "broadcastsDesc": "Matangazo ya mfumo mzima"
+    },
+    "cols": {
+      "broadcast": "Tangazo",
+      "channel": "Njia",
+      "recipients": "Wapokeaji",
+      "openRate": "Kiwango cha Kufunguliwa",
+      "sent": "Imetumwa"
+    }
+  },
+  "templatesPage": {
+    "title": "Violezo vya Barua Pepe na SMS",
+    "subtitle": "Simamia violezo vya mawasiliano katika wapangaji",
+    "newTemplate": "Kiolezo Kipya",
+    "searchPlaceholder": "Tafuta violezo...",
+    "usesCount": "Matumizi {count}",
+    "updatedOn": "Imesasishwa {date}",
+    "filters": {
+      "all": "Aina Zote",
+      "email": "Barua Pepe",
+      "sms": "SMS"
+    },
+    "empty": {
+      "title": "Hakuna violezo vilivyopatikana",
+      "description": "Unda kiolezo chako cha kwanza cha ujumbe."
+    }
+  },
+  "approvalPolicyEditor": {
+    "title": "Sera za Idhini",
+    "newPolicy": "Sera Mpya",
+    "newPolicyAria": "Unda sera mpya (haipatikani)",
+    "createUnavailable": "Mtiririko wa kuunda unangoja POST /admin/approval-policies",
+    "editUnavailable": "Mtiririko wa kuhariri unangoja PATCH /admin/approval-policies/:id",
+    "editUnavailableAria": "Hariri {name} (haipatikani)",
+    "disableAria": "Zima {name}",
+    "enableAria": "Wezesha {name}",
+    "edit": "Hariri",
+    "disable": "Zima",
+    "enable": "Wezesha",
+    "entityLabel": "Huluki: {entity}",
+    "stageLine": "Hatua {order}: {role} (SLA {sla}h)",
+    "status": {
+      "active": "Inayoendelea",
+      "disabled": "Imezimwa"
+    },
+    "empty": {
+      "title": "Hakuna sera za idhini zilizofafanuliwa",
+      "description": "Unda sera ya idhini kufafanua nani anaidhinisha shughuli nyeti."
+    },
+    "errors": {
+      "loadFailed": "Imeshindwa kupakia sera",
+      "toggleFailed": "Imeshindwa kubadilisha sera"
+    }
+  },
+  "notificationBell": {
+    "buttonAria": "Arifa ({count} zinasubiri)",
+    "exceptionInbox": "Sanduku la hitilafu",
+    "proposedActionsDesc": "Vitendo vilivyopendekezwa vinavyosubiri idhini",
+    "proactiveInsights": "Maarifa ya mbele",
+    "brainFindings": "Matokeo mapya kutoka kwa ubongo"
+  },
+  "shortcutCheatSheet": {
+    "title": "Njia za mkato za kibodi",
+    "closeAria": "Funga karatasi ya njia za mkato",
+    "groups": {
+      "global": "Jumla",
+      "navigation": "Usafiri",
+      "actions": "Vitendo"
+    },
+    "shortcuts": {
+      "openCheat": "Fungua karatasi hii ya njia za mkato",
+      "openSpotlight": "Fungua utafutaji wa Spotlight",
+      "closeDialog": "Funga mazungumzo / karatasi ya njia za mkato",
+      "goHome": "Nenda Nyumbani (Dashibodi)",
+      "goTenants": "Nenda kwa Wapangaji",
+      "goOperations": "Nenda kwa Uendeshaji",
+      "goExceptions": "Nenda kwa sanduku la hitilafu",
+      "goAi": "Nenda kwa AI Cockpit",
+      "goReports": "Nenda kwa Ripoti",
+      "newTenant": "Mpangaji mpya",
+      "newCase": "Kesi mpya ya matengenezo",
+      "focusSearch": "Kazia upau wa utafutaji"
+    }
+  },
+  "layout": {
+    "internalAdmin": "Msimamizi wa Ndani",
+    "searchAria": "Fungua utafutaji (Cmd+K)",
+    "searchAnywhere": "Tafuta popote",
+    "pageTitles": {
+      "tenantOnboarding": "Usajili wa Mpangaji",
+      "permissionMatrix": "Matrix ya Idhini",
+      "approvalMatrix": "Matrix ya Uidhinishaji",
+      "controlTower": "Mnara wa Udhibiti",
+      "customerTimeline": "Historia ya Mteja",
+      "caseEscalation": "Upandishaji wa Kesi",
+      "platform": "Jukwaa",
+      "communications": "Mawasiliano",
+      "compliance": "Kufuata Kanuni",
+      "analytics": "Uchambuzi",
+      "integrations": "Muunganisho",
+      "default": "Tovuti ya Msimamizi"
+    },
+    "nav": {
+      "overview": "Muhtasari",
+      "operations": "Uendeshaji",
+      "finance": "Fedha",
+      "aiBrain": "Ubongo wa AI",
+      "aiCockpit": "AI Cockpit",
+      "exceptions": "Hitilafu",
+      "orgInsights": "Maarifa ya Shirika",
+      "settings": "Mipangilio",
+      "rolesAndPermissions": "Majukumu na Idhini",
+      "auditLog": "Kumbukumbu ya Ukaguzi",
+      "systemHealth": "Afya ya Mfumo"
+    }
+  },
+  "controlTower": {
+    "title": "Mnara wa Udhibiti wa Uendeshaji",
+    "subtitle": "Ufuatiliaji wa mpangaji mbalimbali unahitaji telemetri hai na mitiririko ya kazi.",
+    "unavailableTitle": "Data ya uendeshaji hai haipatikani",
+    "unavailableBody": "Mnara huu wa udhibiti umezimwa hadi milisho ya ufuatiliaji wa uzalishaji iunganishwe."
+  },
+  "integrationsPage": {
+    "title": "Muunganisho",
+    "subtitle": "Simamia muunganisho wa watu wengine na miunganisho ya API",
+    "webhooksTitle": "Webhooks",
+    "webhooksDesc": "Simamia vituo vya webhook vya nje",
+    "apiKeysTitle": "Funguo za API",
+    "apiKeysDesc": "Simamia funguo za API za mpangaji na jukwaa",
+    "lastSync": "Usawazishaji wa mwisho: {date}",
+    "configure": "Sanidi",
+    "connect": "Unganisha",
+    "types": {
+      "payment": "Malipo",
+      "email": "Barua Pepe",
+      "sms": "SMS",
+      "analytics": "Uchambuzi",
+      "notifications": "Arifa"
+    },
+    "items": {
+      "mpesa": "Malipo ya pesa ya simu kupitia Safaricom",
+      "sendgrid": "Utoaji wa barua pepe za kibiashara",
+      "africasTalking": "Utoaji wa SMS katika Afrika Mashariki",
+      "stripe": "Malipo ya kadi (hiari)",
+      "googleAnalytics": "Ufuatiliaji wa uchambuzi wa jukwaa",
+      "slack": "Arifa za tahadhari za msimamizi"
+    }
+  },
+  "webhooks": {
+    "emptyTitle": "Hakuna webhooks zilizopatikana",
+    "emptyDescription": "Ongeza webhook kupokea matukio ya wakati halisi kutoka kwa jukwaa."
+  },
+  "featureFlagsPage": {
+    "title": "Bendera za Vipengele",
+    "feature": "sajili ya bendera ya vipengele",
+    "description": "Ufafanuzi wa bendera za vipengele na hali ya kubadili zimeondolewa. Ukurasa huu sasa unahitaji data hai ya usanidi wa vipengele."
+  },
+  "platformBillingPage": {
+    "title": "Ankara na Malipo",
+    "feature": "data ya ankara ya jukwaa",
+    "description": "Ankara za usajili na vipimo vya ukusanyaji vimeondolewa. Ukurasa huu sasa unahitaji data hai ya ankara ya jukwaa."
+  },
+  "complianceDataRequestsPage": {
+    "title": "Maombi ya Mhusika wa Data",
+    "feature": "mtiririko wa kazi wa ombi la data",
+    "description": "Maombi ya faragha ya kubuni yameondolewa. Ukurasa huu sasa unahitaji data hai ya usimamizi wa kesi za kufuata kanuni."
+  },
+  "complianceDocumentsPage": {
+    "title": "Nyaraka za Kufuata Kanuni",
+    "feature": "data ya nyaraka za kufuata kanuni",
+    "description": "Nyaraka za kufuata kanuni za statiki zimeondolewa. Ukurasa huu sasa unahitaji huduma hai za usimamizi na ukaguzi wa nyaraka."
+  },
+  "compliancePage": {
+    "title": "Muhtasari wa Kufuata Kanuni",
+    "feature": "data ya muhtasari wa kufuata kanuni",
+    "description": "Kadi za alama za kufuata kanuni na hali ya ukaguzi wa mpangaji zimeondolewa. Mtazamo huu sasa unahitaji kumbukumbu hai za kufuata kanuni."
+  },
+  "communicationsBroadcastsPage": {
+    "title": "Matangazo",
+    "feature": "data ya ujumbe wa matangazo",
+    "description": "Kampeni za matangazo za kubuni zimeondolewa. Ukurasa huu sasa unahitaji data hai ya kampeni za mawasiliano."
+  },
+  "analyticsUsagePage": {
+    "title": "Uchambuzi wa Matumizi",
+    "feature": "uchambuzi wa matumizi",
+    "description": "Uchambuzi wa matumizi wa statiki umeondolewa. Ukurasa huu sasa unahitaji telemetri hai ya matumizi ya bidhaa."
+  },
+  "analyticsGrowthPage": {
+    "title": "Uchambuzi wa Ukuaji",
+    "feature": "uchambuzi wa ukuaji",
+    "description": "Uchambuzi wa ukuaji wa statiki umeondolewa. Ukurasa huu sasa unahitaji telemetri hai ya ukuaji na mapato."
+  },
+  "analyticsPage": {
+    "title": "Dashibodi ya Uchambuzi",
+    "feature": "telemetri ya uchambuzi",
+    "description": "Dashibodi za uchambuzi za statiki zimeondolewa. Ukurasa huu sasa unahitaji telemetri hai ya uchambuzi na bidhaa."
   }
 }

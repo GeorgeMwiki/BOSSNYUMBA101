@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { BarChart3, FileText, Calendar, TrendingUp, ChevronRight, DollarSign, Home } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface ReportCard {
   id: string;
-  title: string;
-  description: string;
+  titleKey: 'occupancyTitle' | 'revenueTitle' | 'maintenanceTitle' | 'inspectionsTitle';
+  descKey: 'occupancyDesc' | 'revenueDesc' | 'maintenanceDesc' | 'inspectionsDesc';
   icon: React.ElementType;
   href: string;
 }
@@ -15,29 +16,29 @@ interface ReportCard {
 const reportTypes: ReportCard[] = [
   {
     id: 'occupancy',
-    title: 'Occupancy Report',
-    description: 'Unit occupancy rates and vacancies',
+    titleKey: 'occupancyTitle',
+    descKey: 'occupancyDesc',
     icon: Home,
     href: '/reports/generate?type=occupancy',
   },
   {
     id: 'revenue',
-    title: 'Revenue Report',
-    description: 'Rent collection and payment history',
+    titleKey: 'revenueTitle',
+    descKey: 'revenueDesc',
     icon: DollarSign,
     href: '/reports/generate?type=revenue',
   },
   {
     id: 'maintenance',
-    title: 'Maintenance Report',
-    description: 'Work orders and repair costs',
+    titleKey: 'maintenanceTitle',
+    descKey: 'maintenanceDesc',
     icon: BarChart3,
     href: '/reports/generate?type=maintenance',
   },
   {
     id: 'inspections',
-    title: 'Inspections Report',
-    description: 'Inspection completion and conditions',
+    titleKey: 'inspectionsTitle',
+    descKey: 'inspectionsDesc',
     icon: FileText,
     href: '/reports/generate?type=inspections',
   },
@@ -48,15 +49,16 @@ const reportTypes: ReportCard[] = [
 const recentReports: Array<{ id: string; name: string; generatedAt: string; type: string }> = [];
 
 export default function ReportsDashboardPage() {
+  const t = useTranslations('reportsDashboard');
   return (
     <>
       <PageHeader
-        title="Reports"
-        subtitle="Analytics & insights"
+        title={t('title')}
+        subtitle={t('subtitle')}
         action={
           <Link href="/reports/generate" className="btn-primary text-sm flex items-center gap-1">
             <FileText className="w-4 h-4" />
-            Generate
+            {t('generate')}
           </Link>
         }
       />
@@ -64,7 +66,7 @@ export default function ReportsDashboardPage() {
       <div className="px-4 py-4 space-y-6">
         {/* Report Types */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Report Types</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('reportTypes')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {reportTypes.map((report) => {
               const Icon = report.icon;
@@ -76,8 +78,8 @@ export default function ReportsDashboardPage() {
                         <Icon className="w-5 h-5 text-primary-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium">{report.title}</div>
-                        <div className="text-sm text-gray-500 mt-1">{report.description}</div>
+                        <div className="font-medium">{t(report.titleKey)}</div>
+                        <div className="text-sm text-gray-500 mt-1">{t(report.descKey)}</div>
                       </div>
                       <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
                     </div>
@@ -90,7 +92,7 @@ export default function ReportsDashboardPage() {
 
         {/* Quick Actions */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
           <div className="space-y-3">
             <Link href="/reports/generate">
               <div className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow border-primary-200 bg-primary-50/30">
@@ -98,8 +100,8 @@ export default function ReportsDashboardPage() {
                   <TrendingUp className="w-5 h-5 text-primary-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Generate New Report</div>
-                  <div className="text-sm text-gray-500">Choose report type and date range</div>
+                  <div className="font-medium">{t('generateNew')}</div>
+                  <div className="text-sm text-gray-500">{t('generateNewDesc')}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
@@ -110,8 +112,8 @@ export default function ReportsDashboardPage() {
                   <Calendar className="w-5 h-5 text-success-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Scheduled Reports</div>
-                  <div className="text-sm text-gray-500">Manage automated report delivery</div>
+                  <div className="font-medium">{t('scheduledReports')}</div>
+                  <div className="text-sm text-gray-500">{t('scheduledReportsDesc')}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
@@ -121,7 +123,7 @@ export default function ReportsDashboardPage() {
 
         {/* Recent Reports */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Recent Reports</h2>
+          <h2 className="text-sm font-medium text-gray-500 mb-3">{t('recentReports')}</h2>
           <div className="card divide-y divide-gray-100">
             {recentReports.map((report) => (
               <div key={report.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
@@ -130,11 +132,11 @@ export default function ReportsDashboardPage() {
                   <div>
                     <div className="font-medium text-sm">{report.name}</div>
                     <div className="text-xs text-gray-500">
-                      Generated {new Date(report.generatedAt).toLocaleDateString()}
+                      {t('generatedLabel')} {new Date(report.generatedAt).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
-                <button className="text-sm text-primary-600">View</button>
+                <button className="text-sm text-primary-600">{t('view')}</button>
               </div>
             ))}
           </div>

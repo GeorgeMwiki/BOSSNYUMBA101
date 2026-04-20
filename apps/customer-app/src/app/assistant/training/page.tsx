@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
   Blackboard,
@@ -37,6 +38,7 @@ interface ChatMessage {
 }
 
 export default function TenantTrainingPage() {
+  const t = useTranslations('assistantTraining');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
@@ -105,7 +107,7 @@ export default function TenantTrainingPage() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, padding: 16 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Tenant Assistant — Training</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
         {modeState.mode === 'teaching' && modeState.teachingData && (
           <TeachingModeLayout data={modeState.teachingData} language="en" />
         )}
@@ -128,7 +130,7 @@ export default function TenantTrainingPage() {
               )}
             </li>
           ))}
-          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>Typing…</li>}
+          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>{t('typing')}</li>}
           {state.toolCalls.length > 0 && (
             <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {state.toolCalls.map((t, i) => (
@@ -168,7 +170,7 @@ export default function TenantTrainingPage() {
               </div>
             </li>
           )}
-          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>Error: {state.error}</li>}
+          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>{t('errorLabel')}: {state.error}</li>}
         </ul>
         {modeState.mode === 'quiz' && modeState.quizData && (
           <QuizLockdownOverlay
@@ -189,7 +191,7 @@ export default function TenantTrainingPage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about rent, my lease, deposit, arrears …"
+            placeholder={t('inputPlaceholder')}
             style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }}
           />
           {state.isStreaming ? (

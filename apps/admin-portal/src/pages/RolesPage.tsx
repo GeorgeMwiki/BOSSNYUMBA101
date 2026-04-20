@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslations } from 'next-intl';
 import { Skeleton, Alert, AlertDescription, Button, toast } from '@bossnyumba/design-system';
 import {
   useRoles,
@@ -40,102 +41,106 @@ interface Permission {
 }
 
 
-const permissionCategories = [
-  {
-    id: 'properties',
-    name: 'Properties',
-    icon: Building2,
-    permissions: [
-      { id: 'properties.view', name: 'View Properties', description: 'View property details and listings' },
-      { id: 'properties.create', name: 'Create Properties', description: 'Add new properties to the system' },
-      { id: 'properties.edit', name: 'Edit Properties', description: 'Modify property details' },
-      { id: 'properties.delete', name: 'Delete Properties', description: 'Remove properties from the system' },
-    ],
-  },
-  {
-    id: 'units',
-    name: 'Units',
-    icon: Building2,
-    permissions: [
-      { id: 'units.view', name: 'View Units', description: 'View unit details and availability' },
-      { id: 'units.create', name: 'Create Units', description: 'Add new units to properties' },
-      { id: 'units.edit', name: 'Edit Units', description: 'Modify unit details and pricing' },
-      { id: 'units.delete', name: 'Delete Units', description: 'Remove units from properties' },
-    ],
-  },
-  {
-    id: 'tenants',
-    name: 'Tenant Organizations',
-    icon: Users,
-    permissions: [
-      { id: 'tenants.view', name: 'View Tenants', description: 'View tenant organization details' },
-      { id: 'tenants.create', name: 'Create Tenants', description: 'Onboard new tenant organizations' },
-      { id: 'tenants.edit', name: 'Edit Tenants', description: 'Modify tenant settings and policies' },
-      { id: 'tenants.suspend', name: 'Suspend/Activate Tenants', description: 'Suspend or reactivate tenant accounts' },
-      { id: 'tenants.delete', name: 'Delete Tenants', description: 'Permanently remove tenant organizations' },
-    ],
-  },
-  {
-    id: 'users',
-    name: 'Users',
-    icon: Users,
-    permissions: [
-      { id: 'users.view', name: 'View Users', description: 'View user profiles and activity' },
-      { id: 'users.create', name: 'Create Users', description: 'Add new users to the system' },
-      { id: 'users.edit', name: 'Edit Users', description: 'Modify user details and roles' },
-      { id: 'users.delete', name: 'Delete Users', description: 'Remove users from the system' },
-      { id: 'users.impersonate', name: 'Impersonate Users', description: 'Access system as another user' },
-    ],
-  },
-  {
-    id: 'finance',
-    name: 'Finance',
-    icon: DollarSign,
-    permissions: [
-      { id: 'finance.view', name: 'View Financials', description: 'View financial reports and transactions' },
-      { id: 'finance.invoices', name: 'Manage Invoices', description: 'Create and modify invoices' },
-      { id: 'finance.payments', name: 'Process Payments', description: 'Record and process payments' },
-      { id: 'finance.disbursements', name: 'Manage Disbursements', description: 'Create and approve disbursements' },
-      { id: 'finance.adjustments', name: 'Apply Adjustments', description: 'Apply credits and adjustments' },
-    ],
-  },
-  {
-    id: 'maintenance',
-    name: 'Maintenance',
-    icon: Wrench,
-    permissions: [
-      { id: 'maintenance.view', name: 'View Work Orders', description: 'View maintenance requests' },
-      { id: 'maintenance.create', name: 'Create Work Orders', description: 'Submit maintenance requests' },
-      { id: 'maintenance.assign', name: 'Assign Work Orders', description: 'Assign work to vendors/staff' },
-      { id: 'maintenance.approve', name: 'Approve Work Orders', description: 'Approve high-value work orders' },
-      { id: 'maintenance.complete', name: 'Complete Work Orders', description: 'Mark work orders as complete' },
-    ],
-  },
-  {
-    id: 'documents',
-    name: 'Documents',
-    icon: FileText,
-    permissions: [
-      { id: 'documents.view', name: 'View Documents', description: 'Access and view documents' },
-      { id: 'documents.upload', name: 'Upload Documents', description: 'Upload new documents' },
-      { id: 'documents.delete', name: 'Delete Documents', description: 'Remove documents' },
-      { id: 'documents.sign', name: 'E-Sign Documents', description: 'Sign documents electronically' },
-    ],
-  },
-  {
-    id: 'settings',
-    name: 'Settings',
-    icon: Settings,
-    permissions: [
-      { id: 'settings.view', name: 'View Settings', description: 'View system configuration' },
-      { id: 'settings.edit', name: 'Edit Settings', description: 'Modify system configuration' },
-      { id: 'settings.roles', name: 'Manage Roles', description: 'Create and modify roles' },
-      { id: 'settings.audit', name: 'View Audit Logs', description: 'Access audit trail' },
-    ],
-  },
-];
+function buildPermissionCategories(t: (key: string) => string) {
+  return [
+    {
+      id: 'properties',
+      name: t('categories.properties.name'),
+      icon: Building2,
+      permissions: [
+        { id: 'properties.view', name: t('categories.properties.perms.view'), description: t('categories.properties.descs.view') },
+        { id: 'properties.create', name: t('categories.properties.perms.create'), description: t('categories.properties.descs.create') },
+        { id: 'properties.edit', name: t('categories.properties.perms.edit'), description: t('categories.properties.descs.edit') },
+        { id: 'properties.delete', name: t('categories.properties.perms.delete'), description: t('categories.properties.descs.delete') },
+      ],
+    },
+    {
+      id: 'units',
+      name: t('categories.units.name'),
+      icon: Building2,
+      permissions: [
+        { id: 'units.view', name: t('categories.units.perms.view'), description: t('categories.units.descs.view') },
+        { id: 'units.create', name: t('categories.units.perms.create'), description: t('categories.units.descs.create') },
+        { id: 'units.edit', name: t('categories.units.perms.edit'), description: t('categories.units.descs.edit') },
+        { id: 'units.delete', name: t('categories.units.perms.delete'), description: t('categories.units.descs.delete') },
+      ],
+    },
+    {
+      id: 'tenants',
+      name: t('categories.tenants.name'),
+      icon: Users,
+      permissions: [
+        { id: 'tenants.view', name: t('categories.tenants.perms.view'), description: t('categories.tenants.descs.view') },
+        { id: 'tenants.create', name: t('categories.tenants.perms.create'), description: t('categories.tenants.descs.create') },
+        { id: 'tenants.edit', name: t('categories.tenants.perms.edit'), description: t('categories.tenants.descs.edit') },
+        { id: 'tenants.suspend', name: t('categories.tenants.perms.suspend'), description: t('categories.tenants.descs.suspend') },
+        { id: 'tenants.delete', name: t('categories.tenants.perms.delete'), description: t('categories.tenants.descs.delete') },
+      ],
+    },
+    {
+      id: 'users',
+      name: t('categories.users.name'),
+      icon: Users,
+      permissions: [
+        { id: 'users.view', name: t('categories.users.perms.view'), description: t('categories.users.descs.view') },
+        { id: 'users.create', name: t('categories.users.perms.create'), description: t('categories.users.descs.create') },
+        { id: 'users.edit', name: t('categories.users.perms.edit'), description: t('categories.users.descs.edit') },
+        { id: 'users.delete', name: t('categories.users.perms.delete'), description: t('categories.users.descs.delete') },
+        { id: 'users.impersonate', name: t('categories.users.perms.impersonate'), description: t('categories.users.descs.impersonate') },
+      ],
+    },
+    {
+      id: 'finance',
+      name: t('categories.finance.name'),
+      icon: DollarSign,
+      permissions: [
+        { id: 'finance.view', name: t('categories.finance.perms.view'), description: t('categories.finance.descs.view') },
+        { id: 'finance.invoices', name: t('categories.finance.perms.invoices'), description: t('categories.finance.descs.invoices') },
+        { id: 'finance.payments', name: t('categories.finance.perms.payments'), description: t('categories.finance.descs.payments') },
+        { id: 'finance.disbursements', name: t('categories.finance.perms.disbursements'), description: t('categories.finance.descs.disbursements') },
+        { id: 'finance.adjustments', name: t('categories.finance.perms.adjustments'), description: t('categories.finance.descs.adjustments') },
+      ],
+    },
+    {
+      id: 'maintenance',
+      name: t('categories.maintenance.name'),
+      icon: Wrench,
+      permissions: [
+        { id: 'maintenance.view', name: t('categories.maintenance.perms.view'), description: t('categories.maintenance.descs.view') },
+        { id: 'maintenance.create', name: t('categories.maintenance.perms.create'), description: t('categories.maintenance.descs.create') },
+        { id: 'maintenance.assign', name: t('categories.maintenance.perms.assign'), description: t('categories.maintenance.descs.assign') },
+        { id: 'maintenance.approve', name: t('categories.maintenance.perms.approve'), description: t('categories.maintenance.descs.approve') },
+        { id: 'maintenance.complete', name: t('categories.maintenance.perms.complete'), description: t('categories.maintenance.descs.complete') },
+      ],
+    },
+    {
+      id: 'documents',
+      name: t('categories.documents.name'),
+      icon: FileText,
+      permissions: [
+        { id: 'documents.view', name: t('categories.documents.perms.view'), description: t('categories.documents.descs.view') },
+        { id: 'documents.upload', name: t('categories.documents.perms.upload'), description: t('categories.documents.descs.upload') },
+        { id: 'documents.delete', name: t('categories.documents.perms.delete'), description: t('categories.documents.descs.delete') },
+        { id: 'documents.sign', name: t('categories.documents.perms.sign'), description: t('categories.documents.descs.sign') },
+      ],
+    },
+    {
+      id: 'settings',
+      name: t('categories.settings.name'),
+      icon: Settings,
+      permissions: [
+        { id: 'settings.view', name: t('categories.settings.perms.view'), description: t('categories.settings.descs.view') },
+        { id: 'settings.edit', name: t('categories.settings.perms.edit'), description: t('categories.settings.descs.edit') },
+        { id: 'settings.roles', name: t('categories.settings.perms.roles'), description: t('categories.settings.descs.roles') },
+        { id: 'settings.audit', name: t('categories.settings.perms.audit'), description: t('categories.settings.descs.audit') },
+      ],
+    },
+  ];
+}
 
 export function RolesPage() {
+  const t = useTranslations('rolesPage');
+  const permissionCategories = buildPermissionCategories(t);
   const rolesQuery = useRoles();
   const auditQuery = useRolesAudit();
   const roles = rolesQuery.data ?? [];
@@ -191,7 +196,7 @@ export function RolesPage() {
     setSaving(false);
     setShowCreateModal(false);
     setRoleForm({ name: '', description: '', permissions: [] });
-    toast.success('Role created successfully');
+    toast.success(t('toasts.created'));
   };
 
   const handleUpdateRole = async () => {
@@ -207,20 +212,20 @@ export function RolesPage() {
     setSaving(false);
     setSelectedRole(null);
     setRoleForm({ name: '', description: '', permissions: [] });
-    toast.success('Role updated successfully');
+    toast.success(t('toasts.updated'));
   };
 
   const handleDeleteRole = async (role: Role) => {
     if (role.isSystem) {
-      toast.error('Cannot delete system roles');
+      toast.error(t('toasts.cannotDeleteSystem'));
       return;
     }
     if (role.userCount > 0) {
-      toast.error('Cannot delete role with assigned users');
+      toast.error(t('toasts.cannotDeleteAssigned'));
       return;
     }
     setLocalRoles(displayRoles.filter(r => r.id !== role.id));
-    toast.success('Role deleted successfully');
+    toast.success(t('toasts.deleted'));
   };
 
   const togglePermission = (permissionId: string) => {
@@ -255,7 +260,7 @@ export function RolesPage() {
 
   const duplicateRole = (role: Role) => {
     setRoleForm({
-      name: `${role.name} (Copy)`,
+      name: t('duplicateName', { name: role.name }),
       description: role.description,
       permissions: [...role.permissions],
     });
@@ -276,8 +281,8 @@ export function RolesPage() {
     return (
       <Alert variant="danger">
         <AlertDescription>
-          {queryError instanceof Error ? queryError.message : 'Failed to load roles'}
-          <Button size="sm" onClick={() => rolesQuery.refetch()} className="ml-2">Retry</Button>
+          {queryError instanceof Error ? queryError.message : t('errors.loadFailed')}
+          <Button size="sm" onClick={() => rolesQuery.refetch()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -288,8 +293,8 @@ export function RolesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Roles</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage roles and permissions for platform access</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -297,28 +302,28 @@ export function RolesPage() {
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Grid3X3 className="h-4 w-4" />
-            Permission Matrix
+            {t('nav.permissionMatrix')}
           </Link>
           <Link
             to="/roles/approvals"
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <GitBranch className="h-4 w-4" />
-            Approval Matrix
+            {t('nav.approvalMatrix')}
           </Link>
           <button
             onClick={() => setShowPermissionAudit(true)}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Eye className="h-4 w-4" />
-            Audit Log
+            {t('nav.auditLog')}
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
           >
             <Plus className="h-4 w-4" />
-            Create Role
+            {t('nav.createRole')}
           </button>
         </div>
       </div>
@@ -330,7 +335,7 @@ export function RolesPage() {
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search roles..."
+          placeholder={t('searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
@@ -349,7 +354,7 @@ export function RolesPage() {
                 <div>
                   <h3 className="font-semibold text-gray-900">{role.name}</h3>
                   {role.isSystem && (
-                    <span className="text-xs text-violet-600 font-medium">System Role</span>
+                    <span className="text-xs text-violet-600 font-medium">{t('systemRole')}</span>
                   )}
                 </div>
               </div>
@@ -357,7 +362,7 @@ export function RolesPage() {
                 <button
                   onClick={() => duplicateRole(role)}
                   className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                  title="Duplicate"
+                  title={t('actions.duplicate')}
                 >
                   <Copy className="h-4 w-4" />
                 </button>
@@ -366,14 +371,14 @@ export function RolesPage() {
                     <button
                       onClick={() => editRole(role)}
                       className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded"
-                      title="Edit"
+                      title={t('actions.edit')}
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteRole(role)}
                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      title="Delete"
+                      title={t('actions.delete')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -388,11 +393,11 @@ export function RolesPage() {
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1 text-gray-500">
                   <Lock className="h-4 w-4" />
-                  {role.permissions.length} permissions
+                  {t('permissionsCount', { count: role.permissions.length })}
                 </span>
                 <span className="flex items-center gap-1 text-gray-500">
                   <Users className="h-4 w-4" />
-                  {role.userCount} users
+                  {t('usersCount', { count: role.userCount })}
                 </span>
               </div>
             </div>
@@ -401,7 +406,7 @@ export function RolesPage() {
               onClick={() => editRole(role)}
               className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-violet-600 bg-violet-50 rounded-lg hover:bg-violet-100"
             >
-              View Permissions
+              {t('viewPermissions')}
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -416,7 +421,7 @@ export function RolesPage() {
             <div className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedRole ? `Edit Role: ${selectedRole.name}` : 'Create New Role'}
+                  {selectedRole ? t('modal.editTitle', { name: selectedRole.name }) : t('modal.createTitle')}
                 </h3>
                 <button
                   onClick={() => { setShowCreateModal(false); setSelectedRole(null); setRoleForm({ name: '', description: '', permissions: [] }); }}
@@ -430,24 +435,24 @@ export function RolesPage() {
                 {/* Role Details */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.roleName')}</label>
                     <input
                       type="text"
                       value={roleForm.name}
                       onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
-                      placeholder="e.g., Property Manager"
+                      placeholder={t('form.roleNamePlaceholder')}
                       disabled={selectedRole?.isSystem}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.description')}</label>
                     <input
                       type="text"
                       value={roleForm.description}
                       onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
-                      placeholder="Brief description of this role"
+                      placeholder={t('form.descriptionPlaceholder')}
                       disabled={selectedRole?.isSystem}
                     />
                   </div>
@@ -456,14 +461,14 @@ export function RolesPage() {
                 {/* Permissions */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-gray-900">Permissions</h4>
-                    <span className="text-sm text-gray-500">{roleForm.permissions.length} selected</span>
+                    <h4 className="font-medium text-gray-900">{t('form.permissions')}</h4>
+                    <span className="text-sm text-gray-500">{t('form.selectedCount', { count: roleForm.permissions.length })}</span>
                   </div>
 
                   {selectedRole?.isSystem && (
                     <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-amber-600" />
-                      <span className="text-sm text-amber-800">System roles cannot be modified</span>
+                      <span className="text-sm text-amber-800">{t('form.systemReadOnly')}</span>
                     </div>
                   )}
 
@@ -527,7 +532,7 @@ export function RolesPage() {
                   onClick={() => { setShowCreateModal(false); setSelectedRole(null); setRoleForm({ name: '', description: '', permissions: [] }); }}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
                 >
-                  Cancel
+                  {t('modal.cancel')}
                 </button>
                 {!selectedRole?.isSystem && (
                   <button
@@ -536,7 +541,7 @@ export function RolesPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 disabled:opacity-50"
                   >
                     {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {selectedRole ? 'Save Changes' : 'Create Role'}
+                    {selectedRole ? t('modal.saveChanges') : t('modal.createRole')}
                   </button>
                 )}
               </div>
@@ -552,7 +557,7 @@ export function RolesPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowPermissionAudit(false)} />
             <div className="relative bg-white rounded-xl shadow-xl max-w-3xl w-full">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Permission Change Audit Log</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('audit.title')}</h3>
                 <button onClick={() => setShowPermissionAudit(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
@@ -562,11 +567,11 @@ export function RolesPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actor</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Target</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Changes</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('audit.time')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('audit.action')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('audit.actor')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('audit.target')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('audit.changes')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">

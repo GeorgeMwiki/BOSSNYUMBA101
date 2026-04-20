@@ -12,6 +12,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface DualSignOffProps {
   workOrder: {
@@ -27,6 +28,7 @@ interface DualSignOffProps {
 type SignOffStep = 'photos' | 'notes' | 'tenant_signature' | 'technician_signature' | 'confirm';
 
 export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps) {
+  const t = useTranslations('dualSignOff');
   const [step, setStep] = useState<SignOffStep>('photos');
   const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
@@ -127,11 +129,11 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
   };
 
   const steps = [
-    { id: 'photos', label: 'Photos' },
-    { id: 'notes', label: 'Notes' },
-    { id: 'tenant_signature', label: 'Tenant Sign' },
-    { id: 'technician_signature', label: 'Tech Sign' },
-    { id: 'confirm', label: 'Confirm' },
+    { id: 'photos', label: t('stepPhotos') },
+    { id: 'notes', label: t('stepNotes') },
+    { id: 'tenant_signature', label: t('stepTenantSign') },
+    { id: 'technician_signature', label: t('stepTechSign') },
+    { id: 'confirm', label: t('stepConfirm') },
   ];
 
   const currentStepIndex = steps.findIndex((s) => s.id === step);
@@ -143,7 +145,7 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Completion Sign-Off</h3>
+            <h3 className="text-lg font-semibold">{t('title')}</h3>
             <p className="text-sm text-gray-500">{workOrder.title}</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400">×</button>
@@ -173,12 +175,12 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
         {step === 'photos' && (
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Upload before and after photos to document the completed work.
+              {t('photosIntro')}
             </p>
 
             {/* Before Photos */}
             <div>
-              <label className="label">Before Photos</label>
+              <label className="label">{t('beforePhotos')}</label>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {beforePhotos.map((photo, idx) => (
                   <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative">
@@ -196,14 +198,14 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                   className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"
                 >
                   <Camera className="w-5 h-5" />
-                  <span className="text-xs mt-1">Add</span>
+                  <span className="text-xs mt-1">{t('add')}</span>
                 </button>
               </div>
             </div>
 
             {/* After Photos */}
             <div>
-              <label className="label">After Photos (showing completed work)</label>
+              <label className="label">{t('afterPhotosLabel')}</label>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {afterPhotos.map((photo, idx) => (
                   <div key={idx} className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative">
@@ -221,7 +223,7 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                   className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"
                 >
                   <Camera className="w-5 h-5" />
-                  <span className="text-xs mt-1">Add</span>
+                  <span className="text-xs mt-1">{t('add')}</span>
                 </button>
               </div>
             </div>
@@ -231,7 +233,7 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
               disabled={afterPhotos.length === 0}
               className="btn-primary w-full py-3"
             >
-              Continue
+              {t('continueBtn')}
             </button>
           </div>
         )}
@@ -239,31 +241,31 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
         {step === 'notes' && (
           <div className="space-y-4">
             <div>
-              <label className="label">Work Completed</label>
+              <label className="label">{t('workCompleted')}</label>
               <textarea
                 className="input min-h-[100px]"
-                placeholder="Describe what was done..."
+                placeholder={t('describeWork')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="label">Materials Used</label>
+              <label className="label">{t('materialsUsed')}</label>
               <textarea
                 className="input"
-                placeholder="List materials and quantities..."
+                placeholder={t('materialsPlaceholder')}
                 value={materialsUsed}
                 onChange={(e) => setMaterialsUsed(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="label">Labor Hours</label>
+              <label className="label">{t('laborHours')}</label>
               <input
                 type="number"
                 className="input"
-                placeholder="e.g., 2.5"
+                placeholder={t('laborPlaceholder')}
                 value={laborHours}
                 onChange={(e) => setLaborHours(e.target.value)}
               />
@@ -271,14 +273,14 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
 
             <div className="flex gap-3">
               <button onClick={() => setStep('photos')} className="btn-secondary flex-1">
-                Back
+                {t('back')}
               </button>
               <button
                 onClick={() => setStep('tenant_signature')}
                 disabled={!notes.trim()}
                 className="btn-primary flex-1"
               >
-                Continue
+                {t('continueBtn')}
               </button>
             </div>
           </div>
@@ -295,14 +297,14 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                 )}
                 <span className="font-medium">
                   {step === 'tenant_signature'
-                    ? `Tenant: ${workOrder.customer.name}`
-                    : `Technician: ${workOrder.assignedVendor?.name || 'Technician'}`}
+                    ? t('tenantLabel', { name: workOrder.customer.name })
+                    : t('technicianLabel', { name: workOrder.assignedVendor?.name || t('technicianFallback') })}
                 </span>
               </div>
               <p className="text-sm text-primary-600">
                 {step === 'tenant_signature'
-                  ? 'Please sign to confirm the work has been completed satisfactorily.'
-                  : 'Please sign to confirm the work was completed as described.'}
+                  ? t('tenantSignPrompt')
+                  : t('techSignPrompt')}
               </p>
             </div>
 
@@ -323,16 +325,16 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
             </div>
 
             <p className="text-xs text-gray-500 text-center">
-              Sign using your finger or mouse in the box above
+              {t('signHint')}
             </p>
 
             <div className="flex gap-3">
               <button onClick={clearSignature} className="btn-secondary flex-1">
-                Clear
+                {t('clear')}
               </button>
               <button onClick={saveSignature} className="btn-primary flex-1">
                 <PenLine className="w-4 h-4 mr-2" />
-                Apply Signature
+                {t('applySignature')}
               </button>
             </div>
           </div>
@@ -342,26 +344,26 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
           <div className="space-y-4">
             <div className="p-4 bg-success-50 rounded-lg">
               <CheckCircle className="w-8 h-8 text-success-600 mx-auto mb-2" />
-              <h4 className="font-medium text-success-900 text-center">Ready to Complete</h4>
+              <h4 className="font-medium text-success-900 text-center">{t('readyToComplete')}</h4>
               <p className="text-sm text-success-700 text-center mt-1">
-                Both signatures have been captured.
+                {t('signaturesCaptured')}
               </p>
             </div>
 
             {/* Summary */}
             <div className="card p-4 space-y-3">
               <div>
-                <div className="text-xs text-gray-500">Work Notes</div>
+                <div className="text-xs text-gray-500">{t('workNotes')}</div>
                 <div className="text-sm">{notes}</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs text-gray-500">Photos</div>
-                  <div className="text-sm">{afterPhotos.length} after photos</div>
+                  <div className="text-xs text-gray-500">{t('photosLabel')}</div>
+                  <div className="text-sm">{t('afterPhotosCount', { count: afterPhotos.length })}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Labor</div>
-                  <div className="text-sm">{laborHours || '0'} hours</div>
+                  <div className="text-xs text-gray-500">{t('laborLabel')}</div>
+                  <div className="text-sm">{t('hoursLabel', { hours: laborHours || '0' })}</div>
                 </div>
               </div>
             </div>
@@ -369,22 +371,22 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
             {/* Signatures Preview */}
             <div className="grid grid-cols-2 gap-3">
               <div className="border rounded-lg p-2">
-                <div className="text-xs text-gray-500 mb-1">Tenant Signature</div>
+                <div className="text-xs text-gray-500 mb-1">{t('tenantSignature')}</div>
                 {tenantSignature && (
-                  <img src={tenantSignature} alt="Tenant signature" className="h-12 object-contain" />
+                  <img src={tenantSignature} alt={t('tenantSignatureAlt')} className="h-12 object-contain" />
                 )}
               </div>
               <div className="border rounded-lg p-2">
-                <div className="text-xs text-gray-500 mb-1">Technician Signature</div>
+                <div className="text-xs text-gray-500 mb-1">{t('technicianSignature')}</div>
                 {technicianSignature && (
-                  <img src={technicianSignature} alt="Technician signature" className="h-12 object-contain" />
+                  <img src={technicianSignature} alt={t('technicianSignatureAlt')} className="h-12 object-contain" />
                 )}
               </div>
             </div>
 
             <div className="flex gap-3">
               <button onClick={() => setStep('technician_signature')} className="btn-secondary flex-1">
-                Back
+                {t('back')}
               </button>
               <button
                 onClick={handleSubmit}
@@ -396,7 +398,7 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5 mr-2" />
-                    Complete Work Order
+                    {t('completeWorkOrder')}
                   </>
                 )}
               </button>

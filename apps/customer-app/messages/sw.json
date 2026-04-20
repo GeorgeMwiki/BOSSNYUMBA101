@@ -314,6 +314,679 @@
     "continue": "Endelea",
     "confirm": "Thibitisha"
   },
+  "feedbackHistory": {
+    "title": "Historia ya Maoni",
+    "submitNew": "Wasilisha maoni mapya",
+    "submitNewSubtitle": "Shiriki mapendekezo yako au ripoti masuala",
+    "pastSubmissions": "Maoni ya awali",
+    "emptyTitle": "Bado hakuna maoni",
+    "emptyBody": "Maoni yako yatakayowasilishwa yataonekana hapa",
+    "emptyCta": "Wasilisha maoni"
+  },
+  "requestFeedback": {
+    "title": "Kadiria Huduma",
+    "howWasService": "Huduma ilikuwaje?",
+    "tapToRate": "Gusa kutathmini",
+    "poor": "Duni",
+    "fair": "Wastani",
+    "good": "Vyema",
+    "veryGood": "Nzuri sana",
+    "excellent": "Bora zaidi",
+    "additionalFeedback": "Maoni ya ziada (si lazima)",
+    "feedbackPlaceholder": "Je, kuna kitu kingine ungependa kushiriki kuhusu huduma?",
+    "issueNotResolved": "Suala halijatatuliwa kabisa",
+    "issueNotResolvedBody": "Weka alama kama tatizo bado lipo au halikurekebishwa vizuri",
+    "describeWrong": "Eleza kinachokosea bado",
+    "issueDetailsPlaceholder": "Tafadhali eleza kinachohitaji kurekebishwa...",
+    "submitting": "Inawasilisha...",
+    "submit": "Wasilisha Maoni"
+  },
+  "submitReading": {
+    "title": "Wasilisha Usomaji wa Mita",
+    "add": "Ongeza"
+  },
+  "onboardingWelcomePage": {
+    "preferredLanguage": "Lugha Unayopendelea",
+    "communicationChannels": "Njia za Mawasiliano"
+  },
+  "onboardingESign": {
+    "title": "Saini Hati",
+    "allSigned": "Zote Zimesainiwa",
+    "drawSignature": "Chora Sahihi Yako"
+  },
+  "myCredit": {
+    "title": "Mkopo wangu",
+    "loading": "Inapakia…",
+    "yourScore": "Alama yako",
+    "orgNamePlaceholder": "Jina la shirika / mwenye nyumba"
+  },
+  "negotiatePage": {
+    "offerPrefix": "Ofa",
+    "messagePlaceholder": "Ujumbe...",
+    "messageAria": "Ujumbe wa mazungumzo",
+    "offerPlaceholder": "Ofa",
+    "offerAria": "Kiasi cha ofa",
+    "send": "Tuma",
+    "sendAria": "Tuma ujumbe"
+  },
+  "liveConsultant": {
+    "heading": "Muulize chochote. Jibu la moja kwa moja hapa chini.",
+    "questionPlaceholder": "Uliza swali la mali isiyohamishika...",
+    "youAskedPrefix": "Uliuliza"
+  },
+  "liveAffordability": {
+    "heading": "Jaribu ukaguzi wa uwezo wa kulipa moja kwa moja.",
+    "monthlyRent": "Kodi ya kila mwezi (TZS)",
+    "grossIncome": "Mapato ya jumla ya kila mwezi (TZS)"
+  },
+  "liveArrears": {
+    "heading": "Mwangalie Bw. Mwikila akifanyia kazi kesi ya siku 45."
+  },
+  "serviceRating": {
+    "thankYou": "Asante!",
+    "feedbackHelps": "Maoni yako yanatusaidia kuboresha huduma zetu.",
+    "howWasService": "Huduma ilikuwaje?",
+    "rateExperienceWith": "Kadiria uzoefu wako na {name}",
+    "whatDidYouLike": "Ni nini kilikuvutia? (si lazima)",
+    "additionalComments": "Maoni ya ziada (si lazima)",
+    "commentsPlaceholder": "Shiriki maelezo zaidi ya uzoefu wako...",
+    "skip": "Ruka",
+    "submitRating": "Wasilisha Ukadiriaji",
+    "ratingLabels": {
+      "excellent": "Bora zaidi!",
+      "good": "Vyema",
+      "okay": "Sawa",
+      "poor": "Duni",
+      "veryPoor": "Duni sana",
+      "tapToRate": "Gusa kutathmini"
+    },
+    "tag": {
+      "quickResponse": "Jibu la haraka",
+      "professionalService": "Huduma ya kitaalamu",
+      "cleanWork": "Eneo la kazi safi",
+      "explainedWell": "Alieleza tatizo vizuri",
+      "friendlyHelpful": "Mkarimu na msaidizi",
+      "problemResolved": "Tatizo limetatuliwa kabisa"
+    }
+  },
+  "redeemCode": {
+    "codePlaceholder": "ACME-A3F9"
+  },
+  "howItWorks": {
+    "heroTitle": "Akili moja, katika kila jukumu, katika kila lugha.",
+    "heroSubtitle": "BOSSNYUMBA siyo gumzo tu lililoongezwa kwenye programu. Bidhaa ni AI — na Bw. Mwikila ni akili ile ile iwe wewe ni mmiliki Jumatatu, mpangaji Jumatano, au mlinzi saa 2 usiku.",
+    "askHim": "Muulize chochote",
+    "step1Title": "Zungumza na Bw. Mwikila popote",
+    "step2Title": "Anafundisha, kisha anafanya",
+    "step3Title": "Anakumbuka, na anajifunza"
+  },
+  "forOwners": {
+    "heroTitle": "Endesha mali yako kama mara kumi ya ukubwa wake.",
+    "heroSubtitle": "Iwe una vitengo 8 au 80, BOSSNYUMBA inashughulikia kazi ya usimamizi ya Jumapili ili Jumatatu yako iweze kuhusu maamuzi makubwa. Bw. Mwikila anafanya vikumbusho, upatanisho, na ripoti — unabaki na uamuzi.",
+    "heroCta": "Zungumza na Bw. Mwikila kuhusu mali yako"
+  },
+  "forManagers": {
+    "heroTitle": "Endesha vitengo 200 kama mshirika mkuu angeviendesha.",
+    "heroSubtitle": "BOSSNYUMBA imejengwa kwa mameneja walio katikati: wanaowajibika kwa wamiliki, kwa wapangaji, kwa wauzaji, na bado wanafanya rent roll. Bw. Mwikila anachukua wingi ili uwe bora kwa simu muhimu.",
+    "heroCta": "Nionyeshe dashibodi ya meneja"
+  },
+  "forTenants": {
+    "heroTitle": "Nyumba yako, kwa masharti yako.",
+    "heroSubtitle": "Kila shilingi ya kodi unayolipa inaonekana kwenye dashibodi yako. Kila ombi la matengenezo lina ratiba. Kila notisi inakuja kwa Kiingereza au Kiswahili — chaguo lako. BOSSNYUMBA inakupa ukweli sawa anaona mwenye nyumba.",
+    "heroCta": "Ona dashibodi ya mpangaji inavyoonekana"
+  },
+  "forStationMasters": {
+    "heroTitle": "Mlinzi ambaye hatimaye anasikika.",
+    "heroSubtitle": "Ikiwa unaendesha mali — kumbukumbu za lango, usomaji wa mita, ripoti za yaliyotokea usiku — BOSSNYUMBA ni zana ya kwanza iliyojengwa kwa kazi yako. Zungumza na simu kwa Kiswahili. Inafanya mengine.",
+    "heroCta": "Ona mfano wa mlinzi"
+  },
+  "pricingPage": {
+    "heroTitle": "Viwango vinne. Zungumza na Bw. Mwikila kwa nukuu maalum.",
+    "heroSubtitle": "Tulijenga bei kulingana na mali za Afrika Mashariki. Hakuna ada kwa mtumiaji, hakuna bili za ziada. Ukivuka kiwango, Bw. Mwikila anakuambia siku 30 kabla.",
+    "heroCta": "Zungumza na Bw. Mwikila kwa nukuu maalum",
+    "numbersCompare": "Jinsi nambari zinavyolinganishwa"
+  },
+  "comparePage": {
+    "heroTitle": "Ulinganisho wa ukweli.",
+    "heroSubtitle": "Ambapo BOSSNYUMBA inashinda, ambapo haifai, na lini unapaswa kuchagua mwingine. Hakuna uuzaji wa uongo — kama AppFolio itakufaa zaidi, tutakuambia.",
+    "heroCta": "Muulize Bw. Mwikila ni ipi inayokufaa",
+    "criterion": "Kigezo",
+    "appfolioHeader": "AppFolio",
+    "yardiHeader": "Yardi",
+    "spreadsheet": "Laha ya Hesabu",
+    "pickAppfolio": "Chagua AppFolio kama...",
+    "pickYardi": "Chagua Yardi kama...",
+    "pickSpreadsheet": "Chagua laha ya hesabu kama...",
+    "pickBossnyumba": "Chagua BOSSNYUMBA kama..."
+  },
+  "blogIndex": {
+    "title": "Maarifa ya usimamizi wa mali",
+    "intro": "Maelezo kutoka kwa Bw. Mwikila kuhusu kuendesha mali, kusimamia wapangaji, na kufuata kanuni.",
+    "noPosts": "Bado hakuna posts. Rudi baadaye."
+  },
+  "blogPost": {
+    "notFound": "Post haijapatikana"
+  },
+  "photoCapture": {
+    "camera": "Kamera",
+    "gallery": "Picha"
+  },
+  "requestCard": {
+    "scheduled": "Imepangwa"
+  },
+  "screenUnavailable": {
+    "paymentsTitle": "Malipo hayapatikani",
+    "paymentsMessage": "Data ya malipo iliyo hardcoded imeondolewa. Uso huu wa urithi wa malipo sasa unahitaji data hai ya salio na ledger.",
+    "chatTitle": "Gumzo halipatikani",
+    "chatMessage": "Mazungumzo yaliyo hardcoded yameondolewa. Uso huu wa gumzo sasa unahitaji seva hai ya ujumbe.",
+    "storiesTitle": "Hadithi hazipatikani",
+    "storiesMessage": "Hadithi za mfano zimeondolewa. Kifaa hiki sasa kinahitaji feed hai ya wakazi.",
+    "voiceTitle": "Kurekodi sauti hakupatikani",
+    "voiceMessage": "Kurekodi na unukuzi wa mfano vimeondolewa. Ingizo la sauti la matengenezo sasa linahitaji kurekodi hai na speech-to-text. Muda wa juu uliosanidiwa ni sekunde {duration}.",
+    "qualityAnalysisTitle": "Uchambuzi wa ubora wa hati haupatikani"
+  },
+  "pageHeaders": {
+    "marketplace": "Soko",
+    "messages": "Ujumbe",
+    "conversation": "Mazungumzo",
+    "notifications": "Arifa",
+    "paymentReceipt": "Risiti ya Malipo",
+    "paymentPlan": "Mpango wa Malipo",
+    "mpesa": "Lipa kwa M-Pesa",
+    "bankTransfer": "Uhamisho wa Benki",
+    "myDocuments": "Nyaraka Zangu",
+    "document": "Hati",
+    "documentNotFound": "Hati haijapatikana.",
+    "noDocuments": "Hakuna nyaraka",
+    "moveOutNotice": "Notisi ya Kuhama",
+    "leaseDocuments": "Nyaraka za Mkataba",
+    "utilitiesSetup": "Usanidi wa Huduma",
+    "houseRules": "Kanuni za Nyumba",
+    "requestDetail": "Maelezo ya Ombi",
+    "maintenanceRequest": "Ombi la Matengenezo",
+    "downloadDocument": "Pakua hati"
+  },
+  "feedbackPage": {
+    "title": "Wasilisha Maoni",
+    "typeSuggestion": "Pendekezo",
+    "typeComplaint": "Malalamiko",
+    "typeCompliment": "Pongezi",
+    "typeOther": "Nyingine",
+    "thankYou": "Asante kwa maoni yako!",
+    "appreciation": "Tunashukuru kwa muda uliotoa kutusaidia kuboresha.",
+    "viewHistory": "Tazama historia",
+    "submitAnother": "Wasilisha nyingine",
+    "history": "Historia",
+    "intro": "Shiriki mapendekezo yako, ripoti masuala, au tufahamishe tunachofanya vizuri.",
+    "typeLabel": "Aina ya maoni",
+    "subjectLabel": "Mada (si lazima)",
+    "subjectPlaceholder": "Muhtasari mfupi",
+    "messageLabel": "Maoni yako",
+    "messagePlaceholder": "Shiriki mapendekezo yako au ripoti suala...",
+    "submitting": "Inawasilisha...",
+    "submit": "Wasilisha Maoni"
+  },
+  "propertyRules": {
+    "title": "Kanuni za Mali",
+    "buildingGuidelines": "Miongozo ya Jengo",
+    "followRules": "Tafadhali fuata kanuni hizi kwa jamii yenye utulivu"
+  },
+  "announcementsList": {
+    "title": "Matangazo",
+    "noAnnouncements": "Hakuna matangazo"
+  },
+  "announcementDetail": {
+    "title": "Tangazo",
+    "notFound": "Tangazo halijapatikana."
+  },
+  "leaseDocument": {
+    "title": "Hati",
+    "notFound": "Hati haijapatikana.",
+    "datePrefix": "Tarehe",
+    "downloadDocument": "Pakua hati"
+  },
+  "reportEmergency": {
+    "title": "Ripoti Dharura",
+    "whatType": "Ni aina gani ya dharura?",
+    "descriptionPlaceholder": "Eleza kinachoendelea...",
+    "locationPlaceholder": "mfano: Kitengo A-204, bafu kuu",
+    "whatHappensNext": "Nini kitatokea baadaye",
+    "whatHappensNextBody": "Tutawasiliana nawe mara moja. Kwa masuala ya dharura, tafadhali piga nambari za dharura.",
+    "submitting": "Inawasilisha...",
+    "reportEmergency": "Ripoti Dharura"
+  },
+  "appError": {
+    "title": "Hitilafu imetokea",
+    "body": "Hitilafu isiyotarajiwa imetokea. Tafadhali jaribu tena.",
+    "tryAgain": "Jaribu tena"
+  },
+  "notFound": {
+    "title": "Ukurasa Haujapatikana",
+    "body": "Ukurasa unaotafuta haupo au umehamishwa.",
+    "goHome": "Nenda Nyumbani"
+  },
+  "assistantPage": {
+    "title": "Msaidizi wa BossNyumba",
+    "subtitle": "Uliza chochote kuhusu mkataba wako, malipo, au matengenezo",
+    "thinking": "Inafikiri…",
+    "inputPlaceholder": "Uliza kuhusu kodi yako, mkataba, maombi, notisi…",
+    "send": "Tuma",
+    "hereToHelp": "BossNyumba yuko hapa kukusaidia.",
+    "emptyBody": "Uliza kuhusu kodi yako, vifungu vya mkataba, malipo yako ya pili yanastahili lini, au fungua ombi la matengenezo — chochote kuhusu kitengo chako.",
+    "assistantLabel": "Msaidizi",
+    "proposedLabel": "Pendekezo",
+    "riskLabel": "Hatari"
+  },
+  "assistantTraining": {
+    "title": "Msaidizi wa Mpangaji — Mafunzo",
+    "typing": "Inaandika…",
+    "errorLabel": "Hitilafu",
+    "inputPlaceholder": "Uliza kuhusu kodi, mkataba wangu, amana, madeni …"
+  },
+  "authRegister": {
+    "title": "Fungua Akaunti",
+    "subtitle": "Jisajili kusimamia upangaji wako",
+    "firstNamePlaceholder": "John",
+    "lastNamePlaceholder": "Kamau"
+  },
+  "authWhatsapp": {
+    "invalidLink": "Kiungo batili cha usajili. Tafadhali omba kiungo kipya kutoka kwa meneja wako wa mali.",
+    "notWired": "Uthibitishaji wa usajili wa WhatsApp haujaunganishwa na seva ya moja kwa moja.",
+    "verifying": "Inathibitisha Kiungo Chako",
+    "verifyingBody": "Tafadhali subiri tunathibitisha kiungo chako cha usajili...",
+    "verificationFailed": "Uthibitishaji Umeshindwa",
+    "requestNewLink": "Omba Kiungo Kipya",
+    "loading": "Inapakia"
+  },
+  "recentActivity": {
+    "heading": "Shughuli za Hivi Karibuni"
+  },
+  "quickActions": {
+    "heading": "Vitendo vya Haraka",
+    "payRent": "Lipa Kodi",
+    "reportIssue": "Ripoti Tatizo",
+    "lease": "Mkataba",
+    "support": "Msaada"
+  },
+  "updatePrompt": {
+    "title": "Sasisho linapatikana",
+    "body": "Toleo jipya lipo tayari. Onyesha upya kupata vipengele vipya.",
+    "refreshNow": "Onyesha upya sasa",
+    "later": "Baadaye"
+  },
+  "installPrompt": {
+    "title": "Sakinisha BOSSNYUMBA",
+    "body": "Ongeza kwenye skrini yako ya nyumbani kwa ufikiaji wa haraka na matumizi ya nje ya mtandao.",
+    "install": "Sakinisha",
+    "notNow": "Si sasa",
+    "bannerAria": "Sakinisha programu",
+    "dismissAria": "Ondoa"
+  },
+  "offlineIndicator": {
+    "message": "Uko nje ya mtandao. Baadhi ya vipengele vinaweza kuwa na mipaka."
+  },
+  "onboardingDocuments": {
+    "title": "Pakia Nyaraka",
+    "documentUpload": "Upakiaji wa Nyaraka",
+    "uploadedCount": "{current} kati ya {total} zimepakiwa",
+    "uploadInstructions": "Tafadhali pakia picha wazi na zinazosomeka za nyaraka zako. Hakikisha maandishi yote yanaonekana wazi.",
+    "qualityScore": "Alama ya Ubora: {score}%",
+    "needsReview": "Inahitaji Kupitiwa",
+    "qualityLow": "Ubora wa picha ni chini ya kiwango. Unaweza kuendelea au kupiga tena kwa matokeo bora.",
+    "retake": "Piga Tena",
+    "useAnyway": "Tumia Hivyohivyo",
+    "checkingQuality": "Inakagua ubora wa hati...",
+    "takePhoto": "Piga Picha",
+    "gallery": "Picha",
+    "qualityCheckTitle": "Ukaguzi wa Ubora wa Hati"
+  },
+  "disputesPage": {
+    "title": "Pendekezo la uharibifu — pinga / pendekeza",
+    "emptyTitle": "Hakuna pendekezo la uharibifu lililoanza",
+    "managerPrefix": "Meneja",
+    "amountPlaceholder": "Kiasi chako",
+    "notePlaceholder": "Kumbuka / ushahidi wako...",
+    "submitCounterAria": "Wasilisha pendekezo la kukataa"
+  },
+  "onboardingDashboard": {
+    "welcomeHeading": "Karibu BOSSNYUMBA",
+    "welcomeGreeting": "Hebu tukuandae katika nyumba yako mpya, {name}!",
+    "youFallback": "wewe",
+    "yourProgress": "Maendeleo Yako",
+    "stepProgress": "{current} kati ya hatua {total}",
+    "stepLabel": "Hatua {step}",
+    "allStepsComplete": "Hatua zote zimekamilika",
+    "finishOnboarding": "Kamilisha Ufunguzi",
+    "getWelcomeBadge": "Pata beji yako ya karibu na maelezo ya kuhamia",
+    "allSteps": "Hatua Zote",
+    "done": "Imekamilika",
+    "goToDashboard": "Nenda Dashibodi"
+  },
+  "paymentHistory": {
+    "title": "Historia ya Malipo",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Bado hakuna malipo",
+    "emptyDescription": "Historia yako ya malipo itaonekana hapa."
+  },
+  "paymentsPay": {
+    "title": "Fanya Malipo",
+    "amountToPay": "Kiasi cha Kulipa",
+    "cancel": "Ghairi",
+    "change": "Badilisha",
+    "enterCustomAmount": "Ingiza kiasi maalum",
+    "halfAmount": "Nusu (KES {amount})",
+    "fullBalance": "Salio Kamili",
+    "partialPayment": "Malipo ya sehemu. Salio lililobaki: KES {remaining}",
+    "selectPaymentMethod": "Chagua Njia ya Malipo",
+    "popular": "Maarufu",
+    "securityNote": "Malipo yote yamelindwa kwa usalama wa kiwango cha benki. Maelezo yako ya kifedha hayahifadhiwi kwenye seva zetu.",
+    "needPaymentPlan": "Unahitaji mpango wa malipo?",
+    "splitBalance": "Gawanya salio lako kuwa awamu rahisi",
+    "continueTo": "Endelea kwa {method}",
+    "selectMethodPrompt": "Chagua njia ya malipo"
+  },
+  "profileEdit": {
+    "title": "Hariri Wasifu",
+    "profilePhoto": "Picha ya wasifu",
+    "tapToChange": "Gusa kubadilisha",
+    "personalInformation": "Maelezo Binafsi",
+    "emergencyContact": "Mawasiliano ya Dharura",
+    "firstNamePlaceholder": "Jina la kwanza",
+    "lastNamePlaceholder": "Jina la ukoo",
+    "fullNamePlaceholder": "Jina kamili"
+  },
+  "notificationSettings": {
+    "title": "Mapendeleo ya arifa",
+    "retry": "Jaribu tena",
+    "channelsPerCategory": "Njia kwa kila aina",
+    "categoryHeader": "Aina",
+    "emailHeader": "Barua pepe",
+    "pushHeader": "Push",
+    "savePreferences": "Hifadhi mapendeleo",
+    "savePreferencesAria": "Hifadhi mapendeleo ya arifa",
+    "labels": {
+      "rentReminders": "Vikumbusho vya kodi",
+      "maintenanceUpdates": "Masasisho ya matengenezo",
+      "announcements": "Matangazo ya jengo",
+      "marketing": "Uuzaji / matangazo",
+      "emergencies": "Dharura"
+    }
+  },
+  "leaseSummary": {
+    "heading": "Mkataba wa Sasa",
+    "endsIn": "Inaisha baada ya siku {days}",
+    "viewFullLease": "Tazama maelezo kamili ya mkataba"
+  },
+  "upcomingPayment": {
+    "heading": "Malipo Yanayokuja",
+    "duePrefix": "Inastahili",
+    "sampleDueDate": "1 Machi 2024",
+    "daysCount": "Siku {days}",
+    "monthlyRent": "Kodi ya Mwezi",
+    "serviceCharge": "Ada ya Huduma",
+    "waterBill": "Bili ya Maji",
+    "payNow": "Lipa Sasa"
+  },
+  "homeSummary": {
+    "heading": "Muhtasari wa nyumbani",
+    "currentLease": "Mkataba wa sasa",
+    "endsPrefix": "Inaisha",
+    "noActiveLease": "Hakuna mkataba hai kwenye faili.",
+    "nextPaymentDue": "Malipo yanayofuata",
+    "inDays": "baada ya {days}d",
+    "openMaintenance": "Matengenezo yaliyo wazi",
+    "unreadMessages": "Ujumbe usiosomwa",
+    "myCredit": "Mkopo wangu",
+    "view": "Tazama"
+  },
+  "communityPage": {
+    "title": "Jamii",
+    "propertyRules": "Kanuni za Mali",
+    "buildingGuidelines": "Miongozo ya jengo",
+    "announcements": "Matangazo",
+    "propertyUpdates": "Masasisho ya mali",
+    "communityBoard": "Bao la Jamii",
+    "connectIntro": "Unganisha na majirani — shiriki masasisho, uliza maswali, au saidia.",
+    "unitLabel": "Kitengo {unit}"
+  },
+  "newRequestPage": {
+    "title": "Ombi Jipya",
+    "whatType": "Ni aina gani ya tatizo?",
+    "howUrgent": "Hii ni ya dharura kiasi gani?",
+    "describeProblem": "Eleza tatizo",
+    "descriptionPlaceholder": "mfano: Maji yanatiririka chini ya sinki ya jikoni...",
+    "whereInUnit": "Wapi katika kitengo?",
+    "photosLabel": "Picha (si lazima lakini husaidia)",
+    "permissionLabel": "Ruhusa ya kuingia ikiwa sipo nyumbani",
+    "permissionDesc": "Ruhusu wafanyakazi wa matengenezo waingie kitengo chako kushughulikia tatizo hili",
+    "preferredTime": "Wakati unaopendekezwa (si lazima)",
+    "expectedResponse": "Jibu Linalotarajiwa",
+    "aimRespond": "Tunalenga kujibu ndani ya {sla}.",
+    "submitting": "Inawasilisha...",
+    "submitRequest": "Wasilisha Ombi"
+  },
+  "leaseRenewal": {
+    "title": "Upyaji wa Mkataba",
+    "loadingOffer": "Inapakia ofa…",
+    "noActiveOffer": "Hakuna ofa hai ya upyaji kwa mkataba wako.",
+    "offerHeader": "Ofa ya upyaji kwa kitengo chako",
+    "newRent": "Kodi mpya",
+    "term": "Muda",
+    "monthsCount": "Miezi {count}",
+    "start": "Mwanzo",
+    "end": "Mwisho",
+    "depositTopUp": "Ongezeko la amana",
+    "offerExpires": "Ofa inaisha",
+    "conditions": "Masharti",
+    "accept": "Kubali",
+    "decline": "Kataa",
+    "counterOfferPrompt": "Pendekeza kiasi tofauti cha kodi ya mwezi:",
+    "counter": "Pendekeza",
+    "currentStatus": "Hali ya sasa"
+  },
+  "invoicePage": {
+    "title": "Ankara",
+    "notFound": "Ankara haijapatikana",
+    "goBack": "Rudi Nyuma",
+    "invoiceDetails": "Maelezo ya Ankara",
+    "qty": "Idadi",
+    "total": "Jumla",
+    "paymentInformation": "Maelezo ya Malipo",
+    "paidOn": "Imelipwa tarehe",
+    "method": "Njia",
+    "reference": "Rejeleo",
+    "payThisInvoice": "Lipa Ankara Hii",
+    "downloadPdf": "Pakua PDF"
+  },
+  "subleasePage": {
+    "title": "Omba upangaji wa kujazia",
+    "prospectName": "Jina la mteja",
+    "prospectEmail": "Barua pepe ya mteja",
+    "prospectPhone": "Simu ya mteja",
+    "startDate": "Tarehe ya kuanza",
+    "endDate": "Tarehe ya mwisho",
+    "proposedRent": "Kodi iliyopendekezwa",
+    "reason": "Sababu ya kujazia",
+    "submitRequest": "Wasilisha ombi",
+    "submitRequestAria": "Wasilisha ombi la kujazia"
+  },
+  "maintenanceFeedback": {
+    "title": "Kadiria Huduma",
+    "submittedTitle": "Maoni Yamewasilishwa",
+    "thankYou": "Asante!",
+    "thankYouBody": "Maoni yako yanatusaidia kuboresha huduma zetu za matengenezo.",
+    "backToMaintenance": "Rudi Matengenezo",
+    "howWasService": "Huduma ilikuwaje?",
+    "tapToRate": "Gusa kutathmini uzoefu wako kwa jumla",
+    "excellent": "Bora sana!",
+    "great": "Vizuri sana!",
+    "good": "Vyema",
+    "fair": "Wastani",
+    "poor": "Duni",
+    "rateSpecificAspects": "Kadiria vipengele maalum",
+    "whatStoodOut": "Nini kilichovutia? (si lazima)",
+    "wouldRecommend": "Je, ungemshauri fundi huyu?",
+    "yes": "Ndiyo",
+    "no": "Hapana",
+    "additionalComments": "Maoni ya ziada (si lazima)",
+    "commentsPlaceholder": "Shiriki maelezo zaidi ya uzoefu wako...",
+    "submitting": "Inawasilisha...",
+    "submitFeedback": "Wasilisha Maoni",
+    "category": {
+      "quality": { "label": "Ubora wa Kazi", "description": "Je, tatizo lilirekebishwa vizuri?" },
+      "timeliness": { "label": "Wakati", "description": "Je, huduma ilikamilika kwa wakati?" },
+      "communication": { "label": "Mawasiliano", "description": "Je, ulipata taarifa?" },
+      "professionalism": { "label": "Utaalamu", "description": "Je, fundi alikuwa na adabu?" }
+    },
+    "tag": {
+      "professional": "Mtaalamu",
+      "friendly": "Mwenye urafiki",
+      "quick": "Haraka",
+      "thorough": "Makini",
+      "cleanWork": "Kazi safi",
+      "goodCommunication": "Mawasiliano mazuri",
+      "onTime": "Kwa wakati",
+      "knowledgeable": "Mwenye ujuzi"
+    }
+  },
+  "leaseIndex": {
+    "title": "Mkataba Wangu",
+    "loadingLease": "Inapakia mkataba...",
+    "start": "Mwanzo",
+    "end": "Mwisho",
+    "rent": "Kodi",
+    "status": "Hali",
+    "renewal": "Upyaji",
+    "renewalDesc": "Kagua chaguzi za kuongeza",
+    "moveOut": "Hama",
+    "moveOutDesc": "Toa notisi"
+  },
+  "maintenanceNew": {
+    "title": "Ripoti Tatizo",
+    "titlePlaceholder": "mfano: Sinki jikoni inavuja",
+    "descriptionPlaceholder": "Eleza tatizo na lilipoanza",
+    "catPlumbing": "Mabomba",
+    "catElectrical": "Umeme",
+    "catAppliance": "Vifaa",
+    "catLighting": "Taa",
+    "catGeneral": "Jumla",
+    "sevLow": "Chini",
+    "sevMedium": "Wastani",
+    "sevHigh": "Juu",
+    "sevCritical": "Hatari",
+    "sevEmergency": "Dharura"
+  },
+  "lettersPage": {
+    "title": "Omba barua",
+    "letterType": "Aina ya barua",
+    "proofOfResidence": "Uthibitisho wa makazi",
+    "rentStatement": "Taarifa ya kodi",
+    "noObjection": "Barua ya kutokupinga",
+    "reference": "Barua ya marejeleo",
+    "custom": "Desturi",
+    "addressedTo": "Imeelekezwa kwa",
+    "reason": "Sababu",
+    "customText": "Maandishi ya desturi",
+    "submitting": "Inawasilisha...",
+    "submitRequest": "Wasilisha ombi"
+  },
+  "onboardingComplete": {
+    "moveInDetails": "Maelezo ya Kuhamia",
+    "importantLabel": "Muhimu",
+    "bringValidId": "Tafadhali lete kitambulisho halali unapokuja kuchukua funguo zako.",
+    "scheduleFirstCheckIn": "Panga Ziara ya Kwanza",
+    "selectDate": "Chagua Tarehe",
+    "chooseDate": "Chagua tarehe",
+    "selectTime": "Chagua Wakati",
+    "quickActions": "Vitendo vya Haraka",
+    "viewLease": "Tazama Mkataba",
+    "getSupport": "Pata Msaada",
+    "yourPropertyManager": "Meneja wa Mali Yako",
+    "sampleManagerName": "Jane Mwangi"
+  },
+  "inspectionPage": {
+    "title": "Ukaguzi wa Kuhamia",
+    "meterReadings": "Usomaji wa Mita",
+    "signoffTitle": "Kusaini Ukaguzi",
+    "recordCurrentReadings": "Rekodi Usomaji wa Sasa",
+    "takeNoteReadings": "Andika usomaji wote wa mita kabla ya kuhamia",
+    "meterLabel": "Mita",
+    "required": "* Lazima",
+    "meterInfo": "Rekodi usomaji kamili wa mita kama unavyoonyeshwa. Piga picha ya kila mita kwa kumbukumbu zako. Usomaji huu unaweka msingi wa bili zako za huduma.",
+    "back": "Rudi",
+    "continue": "Endelea",
+    "inspectionSummary": "Muhtasari wa Ukaguzi",
+    "roomsInspected": "Vyumba Vilivyokaguliwa",
+    "itemsChecked": "Vitu Vilivyokaguliwa",
+    "photosTaken": "Picha Zilizopigwa",
+    "tenantSignature": "Sahihi ya Mpangaji",
+    "signoffHint": "Kwa kusaini hapa chini, unathibitisha kuwa ripoti hii ya ukaguzi inawakilisha hali ya kitengo wakati wa kuhamia.",
+    "saving": "Inahifadhi...",
+    "completeInspection": "Kamilisha Ukaguzi",
+    "overallProgress": "Maendeleo ya Jumla",
+    "roomProgress": "Chumba {current} kati ya {total}",
+    "inspectionTips": "Vidokezo vya Ukaguzi",
+    "tipPhotos": "Piga picha wazi zenye mwanga mzuri za uharibifu uliopo",
+    "tipScratches": "Andika mikwaruzo, madoa au uchakavu",
+    "tipSwitches": "Jaribu swichi zote, plagi na mikoba",
+    "photo": "Picha",
+    "addNotesPlaceholder": "Ongeza maelezo kuhusu kitu hiki...",
+    "previous": "Iliyotangulia",
+    "nextRoom": "Chumba Kifuatacho"
+  },
+  "paymentsIndex": {
+    "title": "Malipo",
+    "retry": "Jaribu tena",
+    "totalBalanceDue": "Jumla ya salio linalodaiwa",
+    "activeCharges": "Malipo hai {count}",
+    "noActiveCharges": "Hakuna malipo hai",
+    "paymentHistory": "Historia ya Malipo",
+    "reviewLedger": "Kagua ledger yako",
+    "payNow": "Lipa Sasa",
+    "mpesaAndMore": "M-Pesa na zaidi",
+    "pendingPayments": "Malipo yanayosubiri",
+    "noPendingPayments": "Hakuna malipo yanayosubiri.",
+    "recentActivity": "Shughuli za hivi karibuni",
+    "seeAll": "Ona zote",
+    "noPaymentHistory": "Bado hakuna historia ya malipo.",
+    "liveNotice": "Salio la moja kwa moja na historia zimewezeshwa. Usimamizi wa mpango na utoaji wa risiti bado unawekwa."
+  },
+  "maintenanceScreen": {
+    "title": "Matengenezo",
+    "newRequest": "Ombi Jipya",
+    "open": "Wazi",
+    "atRisk": "Hatarini",
+    "completed": "Imekamilika",
+    "emptyOpen": "Hakuna maombi yaliyo wazi",
+    "emptyOpenHint": "Tengeneza ombi jipya kuripoti tatizo",
+    "emptyClosed": "Hakuna maombi yaliyofungwa",
+    "emptyClosedHint": "Maombi yaliyokamilika yataonekana hapa",
+    "category": "Aina",
+    "issueTitle": "Kichwa cha Suala",
+    "issueTitlePlaceholder": "Maelezo mafupi ya tatizo",
+    "description": "Maelezo",
+    "descriptionPlaceholder": "Eleza tatizo kwa kina...",
+    "priority": "Kipaumbele",
+    "photosOptional": "Picha (si lazima)",
+    "addPhoto": "Ongeza Picha",
+    "scheduledPrefix": "Imepangwa"
+  },
+  "documentsScreen": {
+    "title": "Nyaraka",
+    "activeLease": "Mkataba Uliopo",
+    "startDate": "Tarehe ya Kuanza",
+    "endDate": "Tarehe ya Mwisho",
+    "monthlyRent": "Kodi ya Mwezi",
+    "status": "Hali",
+    "active": "Hai",
+    "leaseDocuments": "Nyaraka za Mkataba",
+    "paymentStatements": "Taarifa za Malipo",
+    "important": "Muhimu",
+    "completeHouseRules": "Kanuni Kamili za Nyumba",
+    "sampleUnit": "Kitengo A-204 • Sunset Apartments",
+    "sampleStartDate": "1 Juni 2023",
+    "sampleEndDate": "31 Mei 2024"
+  },
   "onboarding": {
     "headerTitle": "Sanidi Akaunti Yako",
     "stepOf": "Hatua {current} ya {total}",
@@ -361,6 +1034,9 @@
     "back": "Rudi",
     "completing": "Inakamilisha...",
     "completeSetup": "Kamilisha Usanidi",
-    "continue": "Endelea"
+    "continue": "Endelea",
+    "sampleUnitTerm": "Kitengo A-204 • miezi 12",
+    "sampleStartDate": "1 Juni 2024",
+    "sampleEndDate": "31 Mei 2025"
   }
 }

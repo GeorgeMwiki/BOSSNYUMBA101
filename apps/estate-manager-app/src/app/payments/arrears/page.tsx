@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 /**
  * Excel-like arrears grid.
@@ -57,6 +58,7 @@ function toCsv(rows: ReadonlyArray<ArrearsRow>): string {
 }
 
 export default function ArrearsPage(): React.ReactElement {
+  const t = useTranslations('arrearsGrid');
   const [rows, setRows] = useState<ReadonlyArray<ArrearsRow>>([]);
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -78,10 +80,10 @@ export default function ArrearsPage(): React.ReactElement {
       }
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Failed to load arrears');
+      setError(err instanceof Error ? err.message : t('failedLoad'));
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -125,46 +127,48 @@ export default function ArrearsPage(): React.ReactElement {
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       setFeedback({
         kind: 'success',
-        message: `Reminders queued for ${filtered.length} tenant${filtered.length === 1 ? '' : 's'}.`,
+        message: filtered.length === 1
+          ? t('remindersQueuedOne', { count: filtered.length })
+          : t('remindersQueued', { count: filtered.length }),
       });
     } catch (err) {
       setFeedback({
         kind: 'error',
-        message: err instanceof Error ? err.message : 'Failed to send reminders',
+        message: err instanceof Error ? err.message : t('failedRemind'),
       });
     } finally {
       setSendingReminders(false);
     }
-  }, [filtered]);
+  }, [filtered, t]);
 
   return (
     <main className="p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-semibold">Arrears Grid</h1>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <div className="flex gap-2 flex-wrap">
           <Input
-            placeholder="Filter units or tenants..."
+            placeholder={t('filterPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Filter arrears"
+            aria-label={t('filterAria')}
           />
           <Button
             variant="outline"
             onClick={handleExportCsv}
             disabled={filtered.length === 0 || loading}
-            title={filtered.length === 0 ? 'Nothing to export' : undefined}
-            aria-label="Export arrears to CSV"
+            title={filtered.length === 0 ? t('nothingToExport') : undefined}
+            aria-label={t('exportCsvAria')}
           >
-            Export CSV
+            {t('exportCsv')}
           </Button>
           <Button
             onClick={handleSendReminders}
             loading={sendingReminders}
             disabled={filtered.length === 0 || loading || sendingReminders}
-            title={filtered.length === 0 ? 'No tenants to remind' : undefined}
-            aria-label="Send payment reminders"
+            title={filtered.length === 0 ? t('noTenantsRemind') : undefined}
+            aria-label={t('sendRemindersAria')}
           >
-            Send reminders
+            {t('sendReminders')}
           </Button>
         </div>
       </div>
@@ -174,7 +178,7 @@ export default function ArrearsPage(): React.ReactElement {
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -188,7 +192,7 @@ export default function ArrearsPage(): React.ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Overdue balances — total {total.toLocaleString()}</CardTitle>
+          <CardTitle>{t('totalLabel', { total: total.toLocaleString() })}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -199,16 +203,16 @@ export default function ArrearsPage(): React.ReactElement {
             </div>
           ) : filtered.length === 0 ? (
             <EmptyState
-              title={query ? 'No matches' : 'No arrears'}
+              title={query ? t('emptyTitleNoMatch') : t('emptyTitleNoArrears')}
               description={
                 query
-                  ? 'No tenants or units match your filter. Try a different search.'
-                  : 'All tenants are up to date. Great work.'
+                  ? t('emptyDescNoMatch')
+                  : t('emptyDescNoArrears')
               }
               action={
                 query ? (
                   <Button variant="outline" onClick={() => setQuery('')}>
-                    Clear filter
+                    {t('clearFilter')}
                   </Button>
                 ) : undefined
               }
@@ -218,12 +222,12 @@ export default function ArrearsPage(): React.ReactElement {
               <table className="w-full text-sm border-collapse">
                 <thead className="bg-muted">
                   <tr>
-                    <th scope="col" className="p-2 text-left">Unit</th>
-                    <th scope="col" className="p-2 text-left">Tenant</th>
-                    <th scope="col" className="p-2 text-right">Months</th>
-                    <th scope="col" className="p-2 text-right">Owed</th>
-                    <th scope="col" className="p-2 text-left">Last payment</th>
-                    <th scope="col" className="p-2 text-left">Risk</th>
+                    <th scope="col" className="p-2 text-left">{t('colUnit')}</th>
+                    <th scope="col" className="p-2 text-left">{t('colTenant')}</th>
+                    <th scope="col" className="p-2 text-right">{t('colMonths')}</th>
+                    <th scope="col" className="p-2 text-right">{t('colOwed')}</th>
+                    <th scope="col" className="p-2 text-left">{t('colLastPayment')}</th>
+                    <th scope="col" className="p-2 text-left">{t('colRisk')}</th>
                   </tr>
                 </thead>
                 <tbody>

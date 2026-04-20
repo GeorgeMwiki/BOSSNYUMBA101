@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { z } from 'zod';
 import {
   Card,
@@ -37,6 +38,7 @@ const gepgSchema = z.object({
 type GepgForm = z.infer<typeof gepgSchema>;
 
 export const GepgCredentialsForm: React.FC = () => {
+  const t = useTranslations('gepgCredentials');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,9 +66,9 @@ export const GepgCredentialsForm: React.FC = () => {
       const { api } = await import('../../lib/api');
       // TODO: wire POST /admin/gepg/credentials (stores signingKey as secret reference).
       await api.post?.('/admin/gepg/credentials', values);
-      setMessage('GePG credentials saved.');
+      setMessage(t('savedMessage'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed.');
+      setError(err instanceof Error ? err.message : t('saveFailed'));
     }
   });
 
@@ -74,7 +76,7 @@ export const GepgCredentialsForm: React.FC = () => {
     <form onSubmit={onSubmit} className="p-6 max-w-2xl" noValidate>
       <Card>
         <CardHeader>
-          <CardTitle>GePG Credentials</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -89,7 +91,7 @@ export const GepgCredentialsForm: React.FC = () => {
           )}
 
           <div>
-            <Label htmlFor="spCode">SP Code</Label>
+            <Label htmlFor="spCode">{t('spCode')}</Label>
             <Input id="spCode" error={!!errors.spCode} {...register('spCode')} />
             {errors.spCode && (
               <p role="alert" className="mt-1 text-xs text-destructive">
@@ -98,7 +100,7 @@ export const GepgCredentialsForm: React.FC = () => {
             )}
           </div>
           <div>
-            <Label htmlFor="spName">SP Name</Label>
+            <Label htmlFor="spName">{t('spName')}</Label>
             <Input id="spName" error={!!errors.spName} {...register('spName')} />
             {errors.spName && (
               <p role="alert" className="mt-1 text-xs text-destructive">
@@ -107,7 +109,7 @@ export const GepgCredentialsForm: React.FC = () => {
             )}
           </div>
           <div>
-            <Label htmlFor="endpointUrl">Endpoint URL</Label>
+            <Label htmlFor="endpointUrl">{t('endpointUrl')}</Label>
             <Input id="endpointUrl" type="url" error={!!errors.endpointUrl} {...register('endpointUrl')} />
             {errors.endpointUrl && (
               <p role="alert" className="mt-1 text-xs text-destructive">
@@ -116,7 +118,7 @@ export const GepgCredentialsForm: React.FC = () => {
             )}
           </div>
           <div>
-            <Label htmlFor="cert">Signing Certificate (PEM)</Label>
+            <Label htmlFor="cert">{t('signingCert')}</Label>
             <textarea
               id="cert"
               className="w-full border rounded-md p-2 font-mono text-xs"
@@ -131,7 +133,7 @@ export const GepgCredentialsForm: React.FC = () => {
             )}
           </div>
           <div>
-            <Label htmlFor="key">Signing Key (PEM) — stored as secret</Label>
+            <Label htmlFor="key">{t('signingKey')}</Label>
             <textarea
               id="key"
               className="w-full border rounded-md p-2 font-mono text-xs"
@@ -147,7 +149,7 @@ export const GepgCredentialsForm: React.FC = () => {
           </div>
 
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save credentials'}
+            {isSubmitting ? t('saving') : t('save')}
           </Button>
         </CardContent>
       </Card>

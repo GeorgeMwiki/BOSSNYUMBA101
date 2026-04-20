@@ -14,6 +14,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 interface MoveOutInspection {
   readonly id: string;
@@ -24,6 +25,8 @@ interface MoveOutInspection {
 }
 
 export default function MoveOutInspectionsPage(): React.ReactElement {
+  const tMisc = useTranslations('misc');
+  const tSimple = useTranslations('simple');
   const router = useRouter();
   const [items, setItems] = useState<ReadonlyArray<MoveOutInspection>>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -44,6 +47,7 @@ export default function MoveOutInspectionsPage(): React.ReactElement {
     } catch (err) {
       if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : 'Failed to load move-out inspections');
+      // TODO-SW: move-out loader error fallback could gain its own key
       setLoading(false);
     }
   }, []);
@@ -63,7 +67,7 @@ export default function MoveOutInspectionsPage(): React.ReactElement {
 
   return (
     <main className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Move-out Inspections</h1>
+      <h1 className="text-2xl font-semibold">{tMisc('moveOutInspections')}</h1>
 
       {error && (
         <Alert variant="danger">
@@ -84,7 +88,7 @@ export default function MoveOutInspectionsPage(): React.ReactElement {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="No move-outs scheduled"
+          title={tSimple('noMoveOutsScheduled')}
           description="Move-out inspections will appear here once leases approach expiry."
         />
       ) : (
@@ -98,7 +102,7 @@ export default function MoveOutInspectionsPage(): React.ReactElement {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">Tenant: {i.tenantName}</p>
+                <p className="text-sm">{tMisc('tenantLine', { name: i.tenantName })}</p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(i.scheduledAt).toLocaleString()}
                 </p>

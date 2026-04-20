@@ -3,17 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Send, MessageSquare, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const feedbackTypes = [
-  { value: 'suggestion', label: 'Suggestion' },
-  { value: 'complaint', label: 'Complaint' },
-  { value: 'compliment', label: 'Compliment' },
-  { value: 'other', label: 'Other' },
-];
-
 export default function FeedbackPage() {
+  const t = useTranslations('feedbackPage');
+  const feedbackTypes = [
+    { value: 'suggestion', label: t('typeSuggestion') },
+    { value: 'complaint', label: t('typeComplaint') },
+    { value: 'compliment', label: t('typeCompliment') },
+    { value: 'other', label: t('typeOther') },
+  ];
   const router = useRouter();
   const [formData, setFormData] = useState({
     type: '',
@@ -37,27 +38,27 @@ export default function FeedbackPage() {
   if (submitted) {
     return (
       <>
-        <PageHeader title="Submit Feedback" showBack />
+        <PageHeader title={t('title')} showBack />
         <div className="px-4 py-4">
           <div className="card p-6 bg-success-50 border-success-200 text-center">
             <div className="w-12 h-12 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <Send className="w-6 h-6 text-white" />
             </div>
             <h3 className="font-semibold text-success-900">
-              Thank you for your feedback!
+              {t('thankYou')}
             </h3>
             <p className="text-sm text-success-700 mt-1">
-              We appreciate you taking the time to help us improve.
+              {t('appreciation')}
             </p>
             <div className="flex gap-3 mt-6 justify-center">
               <Link href="/feedback/history" className="btn-secondary">
-                View history
+                {t('viewHistory')}
               </Link>
               <button
                 onClick={() => setSubmitted(false)}
                 className="btn-primary"
               >
-                Submit another
+                {t('submitAnother')}
               </button>
             </div>
           </div>
@@ -69,25 +70,24 @@ export default function FeedbackPage() {
   return (
     <>
       <PageHeader
-        title="Submit Feedback"
+        title={t('title')}
         action={
           <Link
             href="/feedback/history"
             className="p-2 rounded-lg hover:bg-gray-100 text-sm text-gray-600"
           >
-            History
+            {t('history')}
           </Link>
         }
       />
 
       <form onSubmit={handleSubmit} className="px-4 py-4 space-y-6">
         <p className="text-sm text-gray-500">
-          Share your suggestions, report issues, or let us know what we&apos;re
-          doing well.
+          {t('intro')}
         </p>
 
         <section>
-          <label className="label">Type of feedback</label>
+          <label className="label">{t('typeLabel')}</label>
           <div className="flex flex-wrap gap-2">
             {feedbackTypes.map((type) => (
               <button
@@ -108,13 +108,13 @@ export default function FeedbackPage() {
 
         <section>
           <label className="label" htmlFor="subject">
-            Subject (optional)
+            {t('subjectLabel')}
           </label>
           <input
             type="text"
             id="subject"
             className="input"
-            placeholder="Brief summary"
+            placeholder={t('subjectPlaceholder')}
             value={formData.subject}
             onChange={(e) =>
               setFormData({ ...formData, subject: e.target.value })
@@ -124,12 +124,12 @@ export default function FeedbackPage() {
 
         <section>
           <label className="label" htmlFor="message">
-            Your feedback
+            {t('messageLabel')}
           </label>
           <textarea
             id="message"
             className="input min-h-[120px]"
-            placeholder="Share your suggestions or report an issue..."
+            placeholder={t('messagePlaceholder')}
             value={formData.message}
             onChange={(e) =>
               setFormData({ ...formData, message: e.target.value })
@@ -144,7 +144,7 @@ export default function FeedbackPage() {
           disabled={!formData.message.trim() || isSubmitting}
         >
           <Send className="w-5 h-5" />
-          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+          {isSubmitting ? t('submitting') : t('submit')}
         </button>
       </form>
     </>

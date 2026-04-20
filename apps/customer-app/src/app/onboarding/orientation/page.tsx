@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   BookOpen,
   ChevronRight,
@@ -140,6 +141,7 @@ const HOUSE_RULES: HouseRule[] = [
 ];
 
 export default function OnboardingOrientationPage() {
+  const t = useTranslations('pageHeaders');
   const router = useRouter();
   const [rules, setRules] = useState<HouseRule[]>(HOUSE_RULES);
   const [expandedId, setExpandedId] = useState<string | null>(
@@ -200,7 +202,7 @@ export default function OnboardingOrientationPage() {
 
   return (
     <>
-      <PageHeader title="House Rules" showBack />
+      <PageHeader title={t('houseRules')} showBack />
 
       <div className="px-4 py-4 space-y-6 pb-36">
         {/* Progress */}
