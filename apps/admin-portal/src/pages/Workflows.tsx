@@ -9,6 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Workflow, Play, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface WorkflowDef {
@@ -35,6 +36,7 @@ interface WorkflowRun {
 }
 
 export default function WorkflowsPage(): JSX.Element {
+  const t = useTranslations('workflows');
   const [defs, setDefs] = useState<readonly WorkflowDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +47,9 @@ export default function WorkflowsPage(): JSX.Element {
     setLoading(true);
     const res = await api.get<readonly WorkflowDef[]>('/workflows');
     if (res.success && res.data) setDefs(res.data);
-    else setError(res.error ?? 'Unable to load workflows.');
+    else setError(res.error ?? t('errorLoad'));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -61,7 +63,7 @@ export default function WorkflowsPage(): JSX.Element {
     if (res.success && res.data) {
       setRun(res.data);
     } else {
-      setError(res.error ?? 'Workflow run failed.');
+      setError(res.error ?? t('errorRun'));
     }
   }
 
@@ -71,7 +73,7 @@ export default function WorkflowsPage(): JSX.Element {
       `/workflows/${encodeURIComponent(inspect)}`,
     );
     if (res.success && res.data) setRun(res.data);
-    else setError(res.error ?? 'Run lookup failed.');
+    else setError(res.error ?? t('errorLookup'));
   }
 
   async function advance(approve: boolean): Promise<void> {
@@ -88,9 +90,9 @@ export default function WorkflowsPage(): JSX.Element {
       <header className="flex items-center gap-3">
         <Workflow className="h-6 w-6 text-sky-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Workflows</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Orchestrated multi-step automations with human approval gates.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -103,7 +105,7 @@ export default function WorkflowsPage(): JSX.Element {
 
       {loading ? (
         <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       ) : (
         <section className="grid gap-3 md:grid-cols-2">
@@ -116,7 +118,7 @@ export default function WorkflowsPage(): JSX.Element {
                 <div>
                   <p className="font-semibold text-gray-900">{d.name}</p>
                   <p className="text-xs text-gray-500">
-                    {d.id} v{d.version} · {d.stepCount} steps
+                    {d.id} v{d.version} · {t('stepCount', { count: d.stepCount })}
                   </p>
                 </div>
                 <button
@@ -124,7 +126,7 @@ export default function WorkflowsPage(): JSX.Element {
                   onClick={() => void start(d)}
                   className="rounded bg-sky-600 text-white px-3 py-1 text-xs inline-flex items-center gap-1"
                 >
-                  <Play className="h-3 w-3" /> run
+                  <Play className="h-3 w-3" /> {t('runCta')}
                 </button>
               </div>
               {d.description && (
@@ -132,25 +134,25 @@ export default function WorkflowsPage(): JSX.Element {
               )}
               {d.defaultRoles && d.defaultRoles.length > 0 && (
                 <p className="text-xs text-gray-400">
-                  Roles: {d.defaultRoles.join(', ')}
+                  {t('rolesLabel')}: {d.defaultRoles.join(', ')}
                 </p>
               )}
             </div>
           ))}
           {defs.length === 0 && (
-            <p className="text-sm text-gray-500">No workflow definitions registered.</p>
+            <p className="text-sm text-gray-500">{t('emptyDefs')}</p>
           )}
         </section>
       )}
 
       <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 max-w-xl">
-        <h3 className="font-semibold text-gray-900">Inspect run</h3>
+        <h3 className="font-semibold text-gray-900">{t('inspectTitle')}</h3>
         <div className="flex gap-2">
           <input
             type="text"
             value={inspect}
             onChange={(e) => setInspect(e.target.value)}
-            placeholder="Run ID"
+            placeholder={t('runIdPlaceholder')}
             className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <button
@@ -158,7 +160,7 @@ export default function WorkflowsPage(): JSX.Element {
             onClick={() => void fetchRun()}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
           >
-            Fetch
+            {t('fetchCta')}
           </button>
         </div>
       </section>
@@ -166,11 +168,11 @@ export default function WorkflowsPage(): JSX.Element {
       {run && (
         <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm space-y-2">
           <p className="font-semibold text-gray-900">
-            Run {run.id} · {run.workflowId}
+            {t('runHeader', { id: run.id, workflowId: run.workflowId })}
           </p>
           <p className="text-gray-600">
-            Status: <span className="font-medium">{run.status}</span>
-            {run.currentStep ? ` · step: ${run.currentStep}` : ''}
+            {t('statusLabel')}: <span className="font-medium">{run.status}</span>
+            {run.currentStep ? ` · ${t('stepLabel')}: ${run.currentStep}` : ''}
           </p>
           {run.status === 'awaiting_human' && (
             <div className="flex gap-2">
@@ -179,14 +181,14 @@ export default function WorkflowsPage(): JSX.Element {
                 onClick={() => void advance(true)}
                 className="rounded bg-emerald-600 text-white px-4 py-2 text-xs"
               >
-                Approve step
+                {t('approveStep')}
               </button>
               <button
                 type="button"
                 onClick={() => void advance(false)}
                 className="rounded bg-red-600 text-white px-4 py-2 text-xs"
               >
-                Reject step
+                {t('rejectStep')}
               </button>
             </div>
           )}

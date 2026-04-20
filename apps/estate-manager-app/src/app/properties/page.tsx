@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Plus, Search, Building2, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
 
 export default function PropertiesListPage() {
+  const t = useTranslations('propertiesListPage');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -31,12 +33,12 @@ export default function PropertiesListPage() {
   return (
     <>
       <PageHeader
-        title="Properties"
-        subtitle={`${pagination?.totalItems ?? properties.length} total`}
+        title={t('title')}
+        subtitle={t('totalCount', { count: pagination?.totalItems ?? properties.length })}
         action={
           <Link href="/properties/new" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            Add
+            {t('add')}
           </Link>
         }
       />
@@ -47,7 +49,7 @@ export default function PropertiesListPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search properties..."
+              placeholder={t('searchPlaceholder')}
               className="input pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -58,10 +60,10 @@ export default function PropertiesListPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="UNDER_CONSTRUCTION">Under Construction</option>
+            <option value="">{t('allStatus')}</option>
+            <option value="ACTIVE">{t('statusActive')}</option>
+            <option value="INACTIVE">{t('statusInactive')}</option>
+            <option value="UNDER_CONSTRUCTION">{t('statusUnderConstruction')}</option>
           </select>
         </div>
 
@@ -74,18 +76,18 @@ export default function PropertiesListPage() {
         ) : error ? (
           <Alert variant="danger">
             <AlertDescription>
-              {error instanceof Error ? error.message : 'Failed to load properties'}
-              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+              {error instanceof Error ? error.message : t('failedToLoad')}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">{t('retry')}</Button>
             </AlertDescription>
           </Alert>
         ) : properties.length === 0 ? (
           <EmptyState
             icon={<Building2 className="h-8 w-8" />}
-            title="No properties found"
-            description={search || statusFilter ? 'Try adjusting your search or filters.' : 'Add your first property to get started.'}
+            title={t('emptyTitle')}
+            description={search || statusFilter ? t('emptyFilteredDesc') : t('emptyDesc')}
             action={
               <Link href="/properties/new" className="btn-primary inline-block">
-                Add Property
+                {t('addProperty')}
               </Link>
             }
           />
@@ -102,8 +104,7 @@ export default function PropertiesListPage() {
                       <div>
                         <div className="font-medium">{property.name}</div>
                         <div className="text-sm text-gray-500">
-                          {property.address?.city} • {property.totalUnits ?? 0} units •{' '}
-                          {property.occupiedUnits ?? 0} occupied
+                          {property.address?.city} • {t('unitsLabel', { count: property.totalUnits ?? 0 })} • {t('occupiedLabel', { count: property.occupiedUnits ?? 0 })}
                         </div>
                       </div>
                     </div>
@@ -125,17 +126,17 @@ export default function PropertiesListPage() {
               disabled={!pagination.hasPreviousPage}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              {t('previous')}
             </button>
             <span className="py-2 text-sm text-gray-500">
-              Page {pagination.page} of {pagination.totalPages}
+              {t('pageOf', { page: pagination.page, total: pagination.totalPages })}
             </span>
             <button
               className="btn-secondary"
               disabled={!pagination.hasNextPage}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {t('next')}
             </button>
           </div>
         )}

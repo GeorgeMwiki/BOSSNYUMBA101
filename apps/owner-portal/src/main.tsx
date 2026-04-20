@@ -29,7 +29,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <LocaleProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+          {/* Opt into v7 behaviour early so console.warn stays clean and
+              the upgrade to react-router@7 is a no-op semantically.
+              `BrowserRouter` only accepts the two non-data-router futures;
+              the rest (v7_fetcherPersist, v7_normalizeFormMethod, etc.)
+              are only valid on createBrowserRouter. Silences Wave-20
+              Agent N's deprecation warnings. */}
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
             <App />
             <Toaster />
           </BrowserRouter>

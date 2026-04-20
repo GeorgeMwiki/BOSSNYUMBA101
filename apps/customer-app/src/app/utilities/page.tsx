@@ -2,55 +2,45 @@
 
 import Link from 'next/link';
 import { Zap, Droplets, Plus, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-const utilities = [
-  {
-    id: 'water',
-    type: 'Water',
-    icon: Droplets,
-    lastReading: 245,
-    unit: 'm³',
-    dueDate: '2024-03-01',
-    amount: 3200,
-    status: 'pending' as const,
-  },
-  {
-    id: 'electricity',
-    type: 'Electricity',
-    icon: Zap,
-    lastReading: 1250,
-    unit: 'kWh',
-    dueDate: '2024-03-01',
-    amount: 8750,
-    status: 'paid' as const,
-  },
-];
-
-const recentBills = [
-  {
-    id: '1',
-    month: 'February 2024',
-    total: 11950,
-    paid: true,
-  },
-  {
-    id: '2',
-    month: 'January 2024',
-    total: 10800,
-    paid: true,
-  },
-];
-
 export default function UtilitiesPage() {
+  const t = useTranslations('utilitiesPage');
+  const utilities = [
+    {
+      id: 'water',
+      type: t('water'),
+      icon: Droplets,
+      lastReading: 245,
+      unit: 'm³',
+      dueDate: '2024-03-01',
+      amount: 3200,
+      status: 'pending' as const,
+    },
+    {
+      id: 'electricity',
+      type: t('electricity'),
+      icon: Zap,
+      lastReading: 1250,
+      unit: 'kWh',
+      dueDate: '2024-03-01',
+      amount: 8750,
+      status: 'paid' as const,
+    },
+  ];
+  const recentBills = [
+    { id: '1', month: t('februaryYear', { year: 2024 }), total: 11950, paid: true },
+    { id: '2', month: t('januaryYear', { year: 2024 }), total: 10800, paid: true },
+  ];
   return (
     <>
       <PageHeader
-        title="Utilities"
+        title={t('title')}
         action={
           <Link href="/utilities/submit-reading" className="btn-primary text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            Submit Reading
+            {t('submitReading')}
           </Link>
         }
       />
@@ -66,9 +56,9 @@ export default function UtilitiesPage() {
               <Plus className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-medium">Submit meter reading</div>
+              <div className="font-medium">{t('submitMeterReading')}</div>
               <div className="text-sm text-gray-600">
-                Enter your current readings
+                {t('enterCurrentReadings')}
               </div>
             </div>
           </div>
@@ -78,7 +68,7 @@ export default function UtilitiesPage() {
         {/* Current Readings */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Current Readings
+            {t('currentReadings')}
           </h3>
           <div className="space-y-3">
             {utilities.map((util) => {
@@ -93,22 +83,22 @@ export default function UtilitiesPage() {
                       <div>
                         <div className="font-medium">{util.type}</div>
                         <div className="text-xs text-gray-500">
-                          Last: {util.lastReading} {util.unit}
+                          {t('lastPrefix')}: {util.lastReading} {util.unit}
                         </div>
                       </div>
                     </div>
                   </div>
                   <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
-                    <span className="text-gray-500">Due {util.dueDate}</span>
+                    <span className="text-gray-500">{t('duePrefix')} {util.dueDate}</span>
                     <span className="font-medium">
                       KES {util.amount.toLocaleString()}
                     </span>
                   </div>
                   {util.status === 'pending' && (
-                    <span className="badge-warning mt-2 inline-block">Pending</span>
+                    <span className="badge-warning mt-2 inline-block">{t('pending')}</span>
                   )}
                   {util.status === 'paid' && (
-                    <span className="badge-success mt-2 inline-block">Paid</span>
+                    <span className="badge-success mt-2 inline-block">{t('paid')}</span>
                   )}
                 </div>
               );
@@ -119,7 +109,7 @@ export default function UtilitiesPage() {
         {/* Recent Bills */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Recent Bills
+            {t('recentBills')}
           </h3>
           <div className="card divide-y divide-gray-100">
             {recentBills.map((bill) => (
@@ -138,7 +128,7 @@ export default function UtilitiesPage() {
                     bill.paid ? 'badge-success' : 'badge-warning'
                   }
                 >
-                  {bill.paid ? 'Paid' : 'Pending'}
+                  {bill.paid ? t('paid') : t('pending')}
                 </span>
               </div>
             ))}

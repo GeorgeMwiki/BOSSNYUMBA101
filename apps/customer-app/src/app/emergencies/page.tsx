@@ -2,19 +2,21 @@
 
 import Link from 'next/link';
 import { Phone, AlertTriangle, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getEmergencyContacts } from '@/lib/constants';
 
 export default function EmergenciesPage() {
+  const t = useTranslations('emergenciesPage');
   const emergencyContacts = getEmergencyContacts();
   return (
     <>
       <PageHeader
-        title="Emergency Contacts"
+        title={t('title')}
         action={
           <Link href="/emergencies/report" className="btn-primary text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            Report
+            {t('reportCta')}
           </Link>
         }
       />
@@ -25,11 +27,12 @@ export default function EmergenciesPage() {
             <AlertTriangle className="w-5 h-5 text-danger-600 flex-shrink-0" />
             <div>
               <h3 className="font-medium text-danger-900">
-                Life-threatening emergency?
+                {t('lifeThreateningTitle')}
               </h3>
               <p className="text-sm text-danger-700 mt-1">
-                Call <strong>999</strong> immediately for police, fire, or
-                ambulance.
+                {t.rich('lifeThreateningBody', {
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
             </div>
           </div>
@@ -44,9 +47,9 @@ export default function EmergenciesPage() {
               <Plus className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-medium">Report an emergency</div>
+              <div className="font-medium">{t('reportEmergency')}</div>
               <div className="text-sm text-gray-600">
-                Water leak, power outage, security issue
+                {t('reportExamples')}
               </div>
             </div>
           </div>
@@ -54,7 +57,7 @@ export default function EmergenciesPage() {
 
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Emergency Numbers
+            {t('emergencyNumbers')}
           </h3>
           <div className="card divide-y divide-gray-100">
             {emergencyContacts.map((contact, index) => (
@@ -73,7 +76,7 @@ export default function EmergenciesPage() {
                       {contact.phone}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      Available: {contact.available}
+                      {t('availableLabel')}: {contact.available}
                     </div>
                   </div>
                 </div>

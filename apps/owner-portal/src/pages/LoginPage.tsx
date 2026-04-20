@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
+import { LocaleSwitcher } from '../components/LocaleSwitcher';
 
 type LoginStep = 'credentials' | 'mfa_verify' | 'mfa_setup';
 
@@ -144,7 +145,13 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Wave-21: visible locale switcher on the public login page — previously
+          only rendered inside the authenticated Layout, so users couldn't
+          pick Swahili before logging in. */}
+      <div className="absolute top-4 right-4 z-10">
+        <LocaleSwitcher className="inline-flex items-center gap-2 text-xs text-gray-600" />
+      </div>
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between">
         <div className="flex items-center gap-3">

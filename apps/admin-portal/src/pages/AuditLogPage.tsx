@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FileText, Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatDateTime } from '../lib/api';
 
 interface AutonomousAuditRow {
@@ -35,6 +36,7 @@ const DOMAINS = [
 ] as const;
 
 export function AuditLogPage() {
+  const t = useTranslations('auditLog');
   const [rows, setRows] = useState<readonly AutonomousAuditRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +52,9 @@ export function AuditLogPage() {
       `/audit/autonomous-actions${qs}`,
     );
     if (res.success && res.data) setRows(res.data);
-    else setError(res.error ?? 'Unable to load audit trail.');
+    else setError(res.error ?? t('errorLoad'));
     setLoading(false);
-  }, [domain]);
+  }, [domain, t]);
 
   useEffect(() => {
     void load();
@@ -73,9 +75,9 @@ export function AuditLogPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-gray-500">
-            Every autonomous action Mr. Mwikila took on its own authority.
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -85,7 +87,7 @@ export function AuditLogPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search reasoning, subject, action…"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -96,7 +98,7 @@ export function AuditLogPage() {
           onChange={(e) => setDomain(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg"
         >
-          <option value="all">All domains</option>
+          <option value="all">{t('allDomains')}</option>
           {DOMAINS.map((d) => (
             <option key={d} value={d}>
               {d}
@@ -113,13 +115,13 @@ export function AuditLogPage() {
 
       {loading ? (
         <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading audit trail…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingTrail')}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-8 w-8" />}
-          title="No audit entries"
-          description="Autonomous actions will appear here once Mr. Mwikila acts on his own authority."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -148,7 +150,7 @@ export function AuditLogPage() {
                             {row.domain} · {row.actionType}
                           </span>
                           <span className="text-xs text-violet-600 bg-violet-50 rounded px-2">
-                            {(row.confidence * 100).toFixed(0)}% conf
+                            {t('confShort', { percent: (row.confidence * 100).toFixed(0) })}
                           </span>
                           {row.outcome && (
                             <span className="text-xs text-gray-500">{row.outcome}</span>
@@ -157,8 +159,8 @@ export function AuditLogPage() {
                         <p className="text-sm text-gray-600 mt-1">{row.reasoning}</p>
                         <p className="text-xs text-gray-400 mt-1">
                           {formatDateTime(row.executedAt)}
-                          {row.subjectId ? ` · subject ${row.subjectId}` : ''}
-                          {row.policyRuleId ? ` · rule ${row.policyRuleId}` : ''}
+                          {row.subjectId ? ` · ${t('subjectLabel')} ${row.subjectId}` : ''}
+                          {row.policyRuleId ? ` · ${t('ruleLabel')} ${row.policyRuleId}` : ''}
                         </p>
                       </div>
                     </div>

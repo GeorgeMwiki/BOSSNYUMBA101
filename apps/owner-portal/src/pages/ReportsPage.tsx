@@ -9,6 +9,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatCurrency, formatPercentage } from '../lib/api';
 
 interface FinancialReport {
@@ -65,6 +66,7 @@ interface MaintenanceReport {
 }
 
 export function ReportsPage() {
+  const t = useTranslations('reportsPage');
   const [activeReport, setActiveReport] = useState<'financial' | 'occupancy' | 'maintenance'>('financial');
   const [financial, setFinancial] = useState<FinancialReport | null>(null);
   const [occupancy, setOccupancy] = useState<OccupancyReport | null>(null);
@@ -98,20 +100,20 @@ export function ReportsPage() {
         setExportState({
           status: 'success',
           type,
-          message: 'Export queued. You will receive an email when it is ready.',
+          message: t('exportQueued'),
         });
       } else {
         setExportState({
           status: 'error',
           type,
-          message: response.error?.message ?? 'Export failed.',
+          message: response.error?.message ?? t('exportFailed'),
         });
       }
     } catch (err) {
       setExportState({
         status: 'error',
         type,
-        message: err instanceof Error ? err.message : 'Export failed.',
+        message: err instanceof Error ? err.message : t('exportFailed'),
       });
     }
   };
@@ -132,17 +134,17 @@ export function ReportsPage() {
   }
 
   const reports = [
-    { id: 'financial', label: 'Financial', icon: DollarSign },
-    { id: 'occupancy', label: 'Occupancy', icon: Home },
-    { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+    { id: 'financial', label: t('tabFinancial'), icon: DollarSign },
+    { id: 'occupancy', label: t('tabOccupancy'), icon: Home },
+    { id: 'maintenance', label: t('tabMaintenance'), icon: Wrench },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-gray-500">Detailed analytics and insights</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <button
@@ -151,7 +153,7 @@ export function ReportsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
-            {exportState.status === 'pending' ? 'Exporting…' : 'Export'}
+            {exportState.status === 'pending' ? t('exporting') : t('exportCta')}
           </button>
           {exportState.status === 'success' && (
             <p className="text-xs text-green-600" role="status">{exportState.message}</p>
@@ -185,25 +187,25 @@ export function ReportsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Invoiced</p>
+              <p className="text-sm text-gray-500">{t('totalInvoiced')}</p>
               <p className="mt-1 text-xl font-semibold text-gray-900">
                 {formatCurrency(financial.summary.totalInvoiced)}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Collected</p>
+              <p className="text-sm text-gray-500">{t('totalCollected')}</p>
               <p className="mt-1 text-xl font-semibold text-green-600">
                 {formatCurrency(financial.summary.totalCollected)}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Outstanding</p>
+              <p className="text-sm text-gray-500">{t('outstanding')}</p>
               <p className="mt-1 text-xl font-semibold text-yellow-600">
                 {formatCurrency(financial.summary.totalOutstanding)}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Collection Rate</p>
+              <p className="text-sm text-gray-500">{t('collectionRate')}</p>
               <p className="mt-1 text-xl font-semibold text-blue-600">
                 {formatPercentage(financial.summary.collectionRate)}
               </p>
@@ -211,16 +213,16 @@ export function ReportsPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Arrears Aging</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('arrearsAging')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-700">Current</p>
+                <p className="text-sm text-green-700">{t('current')}</p>
                 <p className="text-lg font-semibold text-green-800">
                   {formatCurrency(financial.arrearsAging.current)}
                 </p>
               </div>
               <div className="p-4 bg-red-50 rounded-lg">
-                <p className="text-sm text-red-700">Overdue</p>
+                <p className="text-sm text-red-700">{t('overdue')}</p>
                 <p className="text-lg font-semibold text-red-800">
                   {formatCurrency(financial.arrearsAging.overdue)}
                 </p>
@@ -235,31 +237,31 @@ export function ReportsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Units</p>
+              <p className="text-sm text-gray-500">{t('totalUnits')}</p>
               <p className="mt-1 text-xl font-semibold text-gray-900">
                 {occupancy.summary.totalUnits}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Occupied</p>
+              <p className="text-sm text-gray-500">{t('occupied')}</p>
               <p className="mt-1 text-xl font-semibold text-green-600">
                 {occupancy.summary.occupiedUnits}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Available</p>
+              <p className="text-sm text-gray-500">{t('available')}</p>
               <p className="mt-1 text-xl font-semibold text-yellow-600">
                 {occupancy.summary.availableUnits}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Maintenance</p>
+              <p className="text-sm text-gray-500">{t('maintenance')}</p>
               <p className="mt-1 text-xl font-semibold text-orange-600">
                 {occupancy.summary.maintenanceUnits}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Occupancy Rate</p>
+              <p className="text-sm text-gray-500">{t('occupancyRate')}</p>
               <p className="mt-1 text-xl font-semibold text-blue-600">
                 {formatPercentage(occupancy.summary.occupancyRate)}
               </p>
@@ -267,7 +269,7 @@ export function ReportsPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">By Property</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('byProperty')}</h3>
             <div className="space-y-3">
               {occupancy.byProperty.map((prop) => (
                 <div
@@ -277,7 +279,7 @@ export function ReportsPage() {
                   <div>
                     <p className="font-medium text-gray-900">{prop.name}</p>
                     <p className="text-sm text-gray-500">
-                      {prop.occupiedUnits}/{prop.totalUnits} units occupied
+                      {t('unitsOccupied', { occupied: prop.occupiedUnits, total: prop.totalUnits })}
                     </p>
                   </div>
                   <div className="text-right">
@@ -297,12 +299,12 @@ export function ReportsPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Expiring Leases</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('expiringLeases')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-yellow-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-yellow-600" />
-                  <p className="text-sm text-yellow-700">Next 30 Days</p>
+                  <p className="text-sm text-yellow-700">{t('next30Days')}</p>
                 </div>
                 <p className="text-2xl font-semibold text-yellow-800 mt-2">
                   {occupancy.leaseExpiry.next30Days}
@@ -311,7 +313,7 @@ export function ReportsPage() {
               <div className="p-4 bg-orange-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-orange-600" />
-                  <p className="text-sm text-orange-700">Next 60 Days</p>
+                  <p className="text-sm text-orange-700">{t('next60Days')}</p>
                 </div>
                 <p className="text-2xl font-semibold text-orange-800 mt-2">
                   {occupancy.leaseExpiry.next60Days}
@@ -327,28 +329,28 @@ export function ReportsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Work Orders</p>
+              <p className="text-sm text-gray-500">{t('totalWorkOrders')}</p>
               <p className="mt-1 text-xl font-semibold text-gray-900">
                 {maintenance.summary.total}
               </p>
               <div className="mt-2 flex items-center gap-2 text-sm">
                 <span className="text-green-600">
-                  {maintenance.summary.completed} completed
+                  {t('completedCount', { count: maintenance.summary.completed })}
                 </span>
                 <span className="text-gray-300">|</span>
                 <span className="text-yellow-600">
-                  {maintenance.summary.open} open
+                  {t('openCount', { count: maintenance.summary.open })}
                 </span>
               </div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Avg Resolution Time</p>
+              <p className="text-sm text-gray-500">{t('avgResolutionTime')}</p>
               <p className="mt-1 text-xl font-semibold text-gray-900">
-                {maintenance.summary.avgResolutionTimeHours} hrs
+                {t('hoursValue', { hours: maintenance.summary.avgResolutionTimeHours })}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Cost</p>
+              <p className="text-sm text-gray-500">{t('totalCost')}</p>
               <p className="mt-1 text-xl font-semibold text-gray-900">
                 {formatCurrency(maintenance.summary.totalCost)}
               </p>
@@ -357,7 +359,7 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">By Category</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('byCategory')}</h3>
               <div className="space-y-3">
                 {maintenance.byCategory.map((cat) => (
                   <div key={cat.category} className="flex items-center justify-between">
@@ -369,33 +371,33 @@ export function ReportsPage() {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">By Priority</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('byPriority')}</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    Emergency
+                    {t('priorityEmergency')}
                   </span>
                   <span className="font-medium">{maintenance.byPriority.emergency}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                    High
+                    {t('priorityHigh')}
                   </span>
                   <span className="font-medium">{maintenance.byPriority.high}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    Medium
+                    {t('priorityMedium')}
                   </span>
                   <span className="font-medium">{maintenance.byPriority.medium}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                    Low
+                    {t('priorityLow')}
                   </span>
                   <span className="font-medium">{maintenance.byPriority.low}</span>
                 </div>

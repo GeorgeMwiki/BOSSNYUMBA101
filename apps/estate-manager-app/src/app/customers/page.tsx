@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Plus, Search, Users, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
 export default function CustomersListPage() {
+  const t = useTranslations('customersListPage');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
@@ -29,12 +31,12 @@ export default function CustomersListPage() {
   return (
     <>
       <PageHeader
-        title="Customers"
-        subtitle={`${pagination?.totalItems ?? customers.length} total`}
+        title={t('title')}
+        subtitle={t('totalCount', { count: pagination?.totalItems ?? customers.length })}
         action={
           <Link href="/customers/new" className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />
-            Add
+            {t('add')}
           </Link>
         }
       />
@@ -44,7 +46,7 @@ export default function CustomersListPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search customers..."
+            placeholder={t('searchPlaceholder')}
             className="input pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -60,18 +62,18 @@ export default function CustomersListPage() {
         ) : error ? (
           <Alert variant="danger">
             <AlertDescription>
-              {error instanceof Error ? error.message : 'Failed to load customers'}
-              <Button size="sm" onClick={() => refetch()} className="ml-2">Retry</Button>
+              {error instanceof Error ? error.message : t('failedToLoad')}
+              <Button size="sm" onClick={() => refetch()} className="ml-2">{t('retry')}</Button>
             </AlertDescription>
           </Alert>
         ) : customers.length === 0 ? (
           <EmptyState
             icon={<Users className="h-8 w-8" />}
-            title="No customers found"
-            description={search ? 'Try adjusting your search.' : 'Add your first customer to get started.'}
+            title={t('emptyTitle')}
+            description={search ? t('emptyFilteredDesc') : t('emptyDesc')}
             action={
               <Link href="/customers/new" className="btn-primary inline-block">
-                Add Customer
+                {t('addCustomer')}
               </Link>
             }
           />
@@ -103,7 +105,7 @@ export default function CustomersListPage() {
                           <div className="text-sm text-gray-500">
                             {customer.email}
                             {customer.currentLease?.unitNumber && (
-                              <> • Unit {customer.currentLease.unitNumber}</>
+                              <> • {t('unitPrefix', { unit: customer.currentLease.unitNumber })}</>
                             )}
                           </div>
                         </div>
@@ -124,17 +126,17 @@ export default function CustomersListPage() {
               disabled={!pagination.hasPreviousPage}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              {t('previous')}
             </button>
             <span className="py-2 text-sm text-gray-500">
-              Page {pagination.page} of {pagination.totalPages}
+              {t('pageOf', { page: pagination.page, total: pagination.totalPages })}
             </span>
             <button
               className="btn-secondary"
               disabled={!pagination.hasNextPage}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {t('next')}
             </button>
           </div>
         )}

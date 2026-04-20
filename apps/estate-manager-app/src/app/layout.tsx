@@ -5,8 +5,11 @@ import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { AppShell } from '@/providers/AppShell';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
-import { SpotlightMount } from '@/components/SpotlightMount';
-import { MwikilaWidgetMount } from '@/components/MwikilaWidgetMount';
+// Wave-21 Agent R: DeferredMounts is a 'use client' boundary that lazy-loads
+// the Mwikila chat widget + Spotlight command palette via `next/dynamic`
+// with `ssr: false`. Keeps chat-ui and spotlight's module graph out of every
+// route's cold-compile (this layout is the ancestor of every route).
+import { DeferredMounts } from '@/components/DeferredMounts';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -40,11 +43,9 @@ export default async function RootLayout({
       <body className={`${inter.className} pb-20`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AppShell>
-            <MwikilaWidgetMount>
+            <DeferredMounts bottomNavigation={<BottomNavigation />}>
               {children}
-              <BottomNavigation />
-              <SpotlightMount />
-            </MwikilaWidgetMount>
+            </DeferredMounts>
           </AppShell>
         </NextIntlClientProvider>
       </body>

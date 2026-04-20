@@ -9,6 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Radio, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface Sensor {
@@ -32,6 +33,7 @@ interface Anomaly {
 }
 
 export default function IotSensors(): JSX.Element {
+  const t = useTranslations('iotSensors');
   const [sensors, setSensors] = useState<readonly Sensor[]>([]);
   const [anomalies, setAnomalies] = useState<readonly Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,10 +47,10 @@ export default function IotSensors(): JSX.Element {
       api.get<readonly Anomaly[]>('/iot/anomalies?unresolved=true'),
     ]);
     if (s.success && s.data) setSensors(s.data);
-    else setError(s.error ?? 'Unable to load sensors.');
+    else setError(s.error ?? t('errorLoadSensors'));
     if (a.success && a.data) setAnomalies(a.data);
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -68,8 +70,8 @@ export default function IotSensors(): JSX.Element {
       <header className="flex items-center gap-3">
         <Radio className="h-6 w-6 text-cyan-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">IoT sensors</h2>
-          <p className="text-sm text-gray-500">Registered devices and open anomalies.</p>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
       </header>
 
@@ -85,7 +87,7 @@ export default function IotSensors(): JSX.Element {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {key}
+            {t(key === 'anomalies' ? 'tabAnomalies' : 'tabSensors')}
             {key === 'anomalies' && anomalies.length > 0 ? ` (${anomalies.length})` : ''}
           </button>
         ))}
@@ -99,7 +101,7 @@ export default function IotSensors(): JSX.Element {
 
       {loading && (
         <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       )}
 
@@ -108,7 +110,7 @@ export default function IotSensors(): JSX.Element {
           {anomalies.length === 0 ? (
             <li className="bg-white border border-gray-200 rounded-xl p-5 text-sm text-gray-500 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              No open anomalies — all sensors nominal.
+              {t('emptyAnomalies')}
             </li>
           ) : (
             anomalies.map((a) => (
@@ -129,7 +131,7 @@ export default function IotSensors(): JSX.Element {
                       {a.description}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Sensor {a.sensorId} · {new Date(a.observedAt).toLocaleString()} ·{' '}
+                      {t('sensorLabel')} {a.sensorId} · {new Date(a.observedAt).toLocaleString()} ·{' '}
                       {a.severity}
                     </p>
                   </div>
@@ -140,7 +142,7 @@ export default function IotSensors(): JSX.Element {
                         onClick={() => void ack(a.id)}
                         className="rounded border border-gray-300 bg-white px-3 py-1 text-xs"
                       >
-                        Acknowledge
+                        {t('acknowledge')}
                       </button>
                     )}
                     {!a.resolvedAt && (
@@ -149,7 +151,7 @@ export default function IotSensors(): JSX.Element {
                         onClick={() => void resolve(a.id)}
                         className="rounded bg-cyan-600 text-white px-3 py-1 text-xs"
                       >
-                        Resolve
+                        {t('resolve')}
                       </button>
                     )}
                   </div>
@@ -163,16 +165,16 @@ export default function IotSensors(): JSX.Element {
       {!loading && tab === 'sensors' && (
         <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           {sensors.length === 0 ? (
-            <p className="p-5 text-sm text-gray-500">No sensors registered.</p>
+            <p className="p-5 text-sm text-gray-500">{t('emptySensors')}</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr className="text-left text-xs text-gray-500">
-                  <th className="px-3 py-2">Kind</th>
-                  <th className="px-3 py-2">External ID</th>
-                  <th className="px-3 py-2">Vendor</th>
-                  <th className="px-3 py-2">Unit</th>
-                  <th className="px-3 py-2">Last obs.</th>
+                  <th className="px-3 py-2">{t('colKind')}</th>
+                  <th className="px-3 py-2">{t('colExternalId')}</th>
+                  <th className="px-3 py-2">{t('colVendor')}</th>
+                  <th className="px-3 py-2">{t('colUnit')}</th>
+                  <th className="px-3 py-2">{t('colLastObs')}</th>
                 </tr>
               </thead>
               <tbody>

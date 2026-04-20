@@ -10,39 +10,20 @@ import {
   ChevronRight,
   Send,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FAQItem } from '@/components/support/FAQItem';
 import { SUPPORT_PHONE, SUPPORT_EMAIL, getEmergencyContacts } from '@/lib/constants';
 
-const faqs = [
-  {
-    question: 'How do I pay my rent?',
-    answer:
-      'You can pay rent through M-Pesa or bank transfer. Go to Payments > Pay and follow the instructions. Payment confirmation is sent within 24 hours.',
-  },
-  {
-    question: 'How do I submit a maintenance request?',
-    answer:
-      'Go to Requests > New Request, select the issue category, describe the problem, and add photos if needed. We typically respond within 24–48 hours.',
-  },
-  {
-    question: 'When is my rent due?',
-    answer:
-      'Rent is due on the 1st of each month. You can view your exact due date and amount in the Lease section. We send reminders 5 days before the due date.',
-  },
-  {
-    question: 'How do I download my lease document?',
-    answer:
-      'Go to Lease > Documents and tap the download icon next to your lease agreement. You can also access it from the lease details page.',
-  },
-  {
-    question: 'Who do I contact for emergencies?',
-    answer:
-      'For urgent maintenance (water leaks, power outages, security issues), call the emergency contact numbers listed below. For life-threatening emergencies, dial 999.',
-  },
-];
-
 export default function SupportPage() {
+  const t = useTranslations('supportPage');
+  const faqs = [
+    { question: t('faq1Q'), answer: t('faq1A') },
+    { question: t('faq2Q'), answer: t('faq2A') },
+    { question: t('faq3Q'), answer: t('faq3A') },
+    { question: t('faq4Q'), answer: t('faq4A') },
+    { question: t('faq5Q'), answer: t('faq5A') },
+  ];
   const emergencyContacts = getEmergencyContacts();
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -56,13 +37,13 @@ export default function SupportPage() {
 
   return (
     <>
-      <PageHeader title="Help & Support" showBack />
+      <PageHeader title={t('title')} showBack />
 
       <div className="px-4 py-4 space-y-6">
         {/* Contact Property Management */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Contact Property Management
+            {t('contactPropertyMgmt')}
           </h3>
           <div className="card divide-y divide-gray-100">
             {SUPPORT_PHONE && (
@@ -74,7 +55,7 @@ export default function SupportPage() {
                   <Phone className="w-5 h-5 text-primary-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Call us</div>
+                  <div className="font-medium">{t('callUs')}</div>
                   <div className="text-sm text-gray-500">{SUPPORT_PHONE}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -89,7 +70,7 @@ export default function SupportPage() {
                   <Mail className="w-5 h-5 text-primary-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Email us</div>
+                  <div className="font-medium">{t('emailUs')}</div>
                   <div className="text-sm text-gray-500">{SUPPORT_EMAIL}</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -103,8 +84,8 @@ export default function SupportPage() {
                 <MessageSquare className="w-5 h-5 text-primary-600" />
               </div>
               <div className="flex-1">
-                <div className="font-medium">Submit a request</div>
-                <div className="text-sm text-gray-500">Maintenance or inquiries</div>
+                <div className="font-medium">{t('submitRequest')}</div>
+                <div className="text-sm text-gray-500">{t('maintenanceOrInquiries')}</div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </Link>
@@ -114,7 +95,7 @@ export default function SupportPage() {
         {/* Quick Links */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            More Resources
+            {t('moreResources')}
           </h3>
           <div className="card divide-y divide-gray-100">
             <Link
@@ -122,8 +103,8 @@ export default function SupportPage() {
               className="flex items-center gap-3 p-4 hover:bg-gray-50"
             >
               <div className="flex-1">
-                <div className="font-medium">Announcements</div>
-                <div className="text-sm text-gray-500">Property updates</div>
+                <div className="font-medium">{t('announcements')}</div>
+                <div className="text-sm text-gray-500">{t('propertyUpdates')}</div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </Link>
@@ -132,8 +113,8 @@ export default function SupportPage() {
               className="flex items-center gap-3 p-4 hover:bg-gray-50"
             >
               <div className="flex-1">
-                <div className="font-medium">Emergency Contacts</div>
-                <div className="text-sm text-gray-500">24/7 numbers</div>
+                <div className="font-medium">{t('emergencyContacts')}</div>
+                <div className="text-sm text-gray-500">{t('emergency247')}</div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </Link>
@@ -144,7 +125,7 @@ export default function SupportPage() {
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-danger-500" />
-            Emergency Contacts
+            {t('emergencyContacts')}
           </h3>
           <div className="card divide-y divide-gray-100">
             {emergencyContacts.map((contact, index) => (
@@ -157,7 +138,7 @@ export default function SupportPage() {
                   <div className="font-medium">{contact.name}</div>
                   <div className="text-sm text-gray-500">{contact.phone}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Available: {contact.available}
+                    {t('availableLabel')}: {contact.available}
                   </div>
                 </div>
                 <Phone className="w-5 h-5 text-primary-600" />
@@ -169,7 +150,7 @@ export default function SupportPage() {
         {/* FAQ */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Frequently Asked Questions
+            {t('faqTitle')}
           </h3>
           <div className="space-y-3">
             {faqs.map((faq, index) => (
@@ -186,28 +167,28 @@ export default function SupportPage() {
         {/* Submit Feedback */}
         <section>
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Submit Feedback
+            {t('submitFeedback')}
           </h3>
           <p className="text-sm text-gray-500 mb-2">
-            Or use our full feedback form for more options and history.
+            {t('feedbackDesc')}
           </p>
           <Link
             href="/feedback"
             className="text-sm text-primary-600 font-medium mb-3 block"
           >
-            Go to Feedback →
+            {t('goToFeedback')}
           </Link>
           {submitted ? (
             <div className="card p-4 bg-success-50 text-success-700">
               <p className="text-sm font-medium">
-                Thank you! Your feedback has been submitted.
+                {t('feedbackThanks')}
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmitFeedback} className="card p-4 space-y-4">
               <div>
                 <label htmlFor="feedback" className="label">
-                  Your feedback helps us improve
+                  {t('feedbackLabel')}
                 </label>
                 <textarea
                   id="feedback"
@@ -215,12 +196,12 @@ export default function SupportPage() {
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={4}
                   className="input min-h-[100px]"
-                  placeholder="Share your suggestions or report an issue..."
+                  placeholder={t('feedbackPlaceholder')}
                 />
               </div>
               <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
                 <Send className="w-4 h-4" />
-                Submit feedback
+                {t('submitCta')}
               </button>
             </form>
           )}

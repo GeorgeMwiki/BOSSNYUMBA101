@@ -9,6 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Boxes, Plus, Loader2, ArrowRightLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface Item {
@@ -31,6 +32,7 @@ interface Movement {
 }
 
 export default function WarehousePage(): JSX.Element {
+  const t = useTranslations('warehouse');
   const [items, setItems] = useState<readonly Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +44,9 @@ export default function WarehousePage(): JSX.Element {
     setLoading(true);
     const res = await api.get<readonly Item[]>('/warehouse/items');
     if (res.success && res.data) setItems(res.data);
-    else setError(res.error ?? 'Unable to load items.');
+    else setError(res.error ?? t('errorLoad'));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void reload();
@@ -65,8 +67,8 @@ export default function WarehousePage(): JSX.Element {
         <div className="flex items-center gap-3">
           <Boxes className="h-6 w-6 text-blue-600" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Warehouse inventory</h2>
-            <p className="text-sm text-gray-500">Stock on hand across properties.</p>
+            <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
+            <p className="text-sm text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
         <button
@@ -74,7 +76,7 @@ export default function WarehousePage(): JSX.Element {
           onClick={() => setDrawer('create')}
           className="rounded bg-blue-600 text-white px-4 py-2 text-sm inline-flex items-center gap-2"
         >
-          <Plus className="h-4 w-4" /> Add item
+          <Plus className="h-4 w-4" /> {t('addItem')}
         </button>
       </header>
 
@@ -86,13 +88,13 @@ export default function WarehousePage(): JSX.Element {
 
       {loading && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       )}
 
       {!loading && items.length === 0 && !error && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-500">
-          No items in warehouse yet.
+          {t('emptyItems')}
         </div>
       )}
 
@@ -101,12 +103,12 @@ export default function WarehousePage(): JSX.Element {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left text-xs text-gray-500">
-                <th className="px-3 py-2">SKU</th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Qty</th>
-                <th className="px-3 py-2">Condition</th>
-                <th className="px-3 py-2">Location</th>
+                <th className="px-3 py-2">{t('colSku')}</th>
+                <th className="px-3 py-2">{t('colName')}</th>
+                <th className="px-3 py-2">{t('colCategory')}</th>
+                <th className="px-3 py-2">{t('colQty')}</th>
+                <th className="px-3 py-2">{t('colCondition')}</th>
+                <th className="px-3 py-2">{t('colLocation')}</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -125,7 +127,7 @@ export default function WarehousePage(): JSX.Element {
                       onClick={() => void selectItem(i)}
                       className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
                     >
-                      <ArrowRightLeft className="h-3 w-3" /> History
+                      <ArrowRightLeft className="h-3 w-3" /> {t('history')}
                     </button>
                   </td>
                 </tr>
@@ -139,18 +141,18 @@ export default function WarehousePage(): JSX.Element {
         <section className="bg-gray-50 border border-gray-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">
-              {selected.name} — stock movements
+              {t('movementsFor', { name: selected.name })}
             </h3>
             <button
               type="button"
               onClick={() => setSelected(null)}
               className="text-xs text-gray-500"
             >
-              Close
+              {t('close')}
             </button>
           </div>
           {movements.length === 0 ? (
-            <p className="text-sm text-gray-500 mt-3">No movements yet.</p>
+            <p className="text-sm text-gray-500 mt-3">{t('noMovements')}</p>
           ) : (
             <ul className="mt-3 space-y-1 text-sm">
               {movements.map((m) => (
@@ -211,6 +213,7 @@ function CreateItemDrawer({
   onClose: () => void;
   onCreated: () => void;
 }): JSX.Element {
+  const t = useTranslations('warehouse');
   const [form, setForm] = useState<CreateFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,13 +232,13 @@ function CreateItemDrawer({
     if (res.success) {
       onCreated();
     } else {
-      setError(res.error ?? 'Create failed.');
+      setError(res.error ?? t('errorCreate'));
     }
   }
 
   return (
     <section className="bg-white border border-blue-200 rounded-xl p-5 space-y-3 max-w-lg">
-      <h3 className="font-semibold text-gray-900">New warehouse item</h3>
+      <h3 className="font-semibold text-gray-900">{t('newItemTitle')}</h3>
       {(['sku', 'name', 'category', 'quantity', 'warehouseLocation'] as const).map(
         (field) => (
           <label key={field} className="block text-sm">
@@ -257,14 +260,14 @@ function CreateItemDrawer({
           disabled={saving}
           className="rounded bg-blue-600 text-white px-4 py-2 text-sm disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Create'}
+          {saving ? t('saving') : t('create')}
         </button>
         <button
           type="button"
           onClick={onClose}
           className="rounded border border-gray-300 px-4 py-2 text-sm"
         >
-          Cancel
+          {t('cancel')}
         </button>
       </div>
     </section>

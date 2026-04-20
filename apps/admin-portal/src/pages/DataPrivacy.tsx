@@ -12,6 +12,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Lock, Shield, Download, Loader2, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface DeleteRequestRecord {
@@ -24,6 +25,7 @@ interface DeleteRequestRecord {
 }
 
 export default function DataPrivacy(): JSX.Element {
+  const t = useTranslations('dataPrivacy');
   const [customerId, setCustomerId] = useState('');
   const [notes, setNotes] = useState('');
   const [record, setRecord] = useState<DeleteRequestRecord | null>(null);
@@ -43,11 +45,11 @@ export default function DataPrivacy(): JSX.Element {
     setLoading(false);
     if (res.success && res.data) {
       setRecord(res.data);
-      setMessage(`Request ${res.data.id} recorded (status: ${res.data.status}).`);
+      setMessage(t('requestRecorded', { id: res.data.id, status: res.data.status }));
     } else {
-      setError(res.error ?? 'Request failed.');
+      setError(res.error ?? t('errorRequest'));
     }
-  }, [customerId, notes]);
+  }, [customerId, notes, t]);
 
   const lookup = useCallback(async () => {
     if (!lookupId) return;
@@ -60,9 +62,9 @@ export default function DataPrivacy(): JSX.Element {
     if (res.success && res.data) {
       setRecord(res.data);
     } else {
-      setError(res.error ?? 'Lookup failed.');
+      setError(res.error ?? t('errorLookup'));
     }
-  }, [lookupId]);
+  }, [lookupId, t]);
 
   const execute = useCallback(async () => {
     if (!record) return;
@@ -75,20 +77,20 @@ export default function DataPrivacy(): JSX.Element {
     setLoading(false);
     if (res.success && res.data) {
       setRecord(res.data);
-      setMessage('Deletion executed.');
+      setMessage(t('deletionExecuted'));
     } else {
-      setError(res.error ?? 'Execute failed.');
+      setError(res.error ?? t('errorExecute'));
     }
-  }, [record]);
+  }, [record, t]);
 
   return (
     <div className="space-y-6 max-w-3xl">
       <header className="flex items-center gap-3">
         <Lock className="h-6 w-6 text-rose-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Data privacy</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            GDPR-aligned subject requests. Every action is audited.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -107,10 +109,10 @@ export default function DataPrivacy(): JSX.Element {
       <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-rose-500" />
-          <h3 className="font-semibold text-gray-900">New deletion request</h3>
+          <h3 className="font-semibold text-gray-900">{t('newRequestTitle')}</h3>
         </div>
         <label className="block text-sm">
-          <span className="text-gray-700">Customer ID</span>
+          <span className="text-gray-700">{t('customerIdLabel')}</span>
           <input
             type="text"
             value={customerId}
@@ -121,7 +123,7 @@ export default function DataPrivacy(): JSX.Element {
           />
         </label>
         <label className="block text-sm">
-          <span className="text-gray-700">Notes (optional)</span>
+          <span className="text-gray-700">{t('notesLabel')}</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -138,21 +140,21 @@ export default function DataPrivacy(): JSX.Element {
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
           ) : null}
-          Submit deletion request
+          {t('submitDeletion')}
         </button>
       </section>
 
       <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Download className="h-4 w-4 text-indigo-500" />
-          <h3 className="font-semibold text-gray-900">Look up a request</h3>
+          <h3 className="font-semibold text-gray-900">{t('lookupTitle')}</h3>
         </div>
         <div className="flex gap-2">
           <input
             type="text"
             value={lookupId}
             onChange={(e) => setLookupId(e.target.value)}
-            placeholder="Request ID"
+            placeholder={t('requestIdPlaceholder')}
             className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <button
@@ -161,28 +163,28 @@ export default function DataPrivacy(): JSX.Element {
             disabled={!lookupId || loading}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
           >
-            Fetch status
+            {t('fetchStatus')}
           </button>
         </div>
       </section>
 
       {record && (
         <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-sm space-y-2">
-          <p className="font-semibold text-gray-900">Request {record.id}</p>
-          <p className="text-gray-600">Customer: {record.customerId}</p>
-          <p className="text-gray-600">Status: {record.status}</p>
-          <p className="text-gray-600">Created: {record.createdAt}</p>
+          <p className="font-semibold text-gray-900">{t('requestHeader', { id: record.id })}</p>
+          <p className="text-gray-600">{t('customerField')}: {record.customerId}</p>
+          <p className="text-gray-600">{t('statusField')}: {record.status}</p>
+          <p className="text-gray-600">{t('createdField')}: {record.createdAt}</p>
           {record.executedAt && (
-            <p className="text-gray-600">Executed: {record.executedAt}</p>
+            <p className="text-gray-600">{t('executedField')}: {record.executedAt}</p>
           )}
-          {record.notes && <p className="text-gray-600">Notes: {record.notes}</p>}
+          {record.notes && <p className="text-gray-600">{t('notesField')}: {record.notes}</p>}
           {record.status !== 'executed' && (
             <button
               type="button"
               onClick={() => void execute()}
               className="rounded bg-red-600 text-white px-4 py-2 text-sm mt-2"
             >
-              Execute deletion (super-admin)
+              {t('executeDeletion')}
             </button>
           )}
         </section>

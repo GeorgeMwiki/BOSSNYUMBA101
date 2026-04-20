@@ -19,6 +19,7 @@ import {
   Building2,
   Key,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { api, formatDate } from '../lib/api';
 
@@ -36,6 +37,7 @@ interface CoOwner {
 }
 
 export function SettingsPage() {
+  const t = useTranslations('settingsPage');
   const { user, tenant } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -81,11 +83,11 @@ export function SettingsPage() {
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'preferences', label: 'Preferences', icon: Globe },
+    { id: 'profile', label: t('tabProfile'), icon: User },
+    { id: 'notifications', label: t('tabNotifications'), icon: Bell },
+    { id: 'security', label: t('tabSecurity'), icon: Shield },
+    { id: 'users', label: t('tabUsers'), icon: Users },
+    { id: 'preferences', label: t('tabPreferences'), icon: Globe },
   ];
 
   const properties = ['Palm Gardens', 'Ocean View Apartments', 'Sunset Villas', 'Garden Estate'];
@@ -94,7 +96,7 @@ export function SettingsPage() {
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     setSaving(false);
-    setNotification({ type: 'success', message: 'Settings saved successfully' });
+    setNotification({ type: 'success', message: t('savedSuccess') });
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -108,18 +110,18 @@ export function SettingsPage() {
     setCoOwners([...coOwners, newUser]);
     setShowInviteModal(false);
     setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
-    setNotification({ type: 'success', message: 'Invitation sent successfully' });
+    setNotification({ type: 'success', message: t('invitationSent') });
     setTimeout(() => setNotification(null), 3000);
   };
 
   const handleRemoveUser = (id: string) => {
     setCoOwners(coOwners.filter(u => u.id !== id));
-    setNotification({ type: 'success', message: 'User removed successfully' });
+    setNotification({ type: 'success', message: t('userRemoved') });
     setTimeout(() => setNotification(null), 3000);
   };
 
   const handleResendInvite = (id: string) => {
-    setNotification({ type: 'success', message: 'Invitation resent successfully' });
+    setNotification({ type: 'success', message: t('invitationResent') });
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -144,8 +146,8 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500">Manage your account and preferences</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500">{t('subtitle')}</p>
       </div>
 
       {/* Notification */}
@@ -197,45 +199,45 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
-                    Change Photo
+                    {t('changePhoto')}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
                   <input type="text" defaultValue={user?.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
                   <input type="text" defaultValue={user?.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
                 <input type="email" defaultValue={user?.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
                 <input
                   type="tel"
                   defaultValue={(user as { phone?: string } | null)?.phone ?? ''}
-                  placeholder="e.g. +255712345678"
+                  placeholder={t('phonePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('organization')}</label>
                 <input type="text" defaultValue={tenant?.name} disabled className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500" />
               </div>
 
               <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                 <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? t('savingLoading') : t('saveChanges')}
               </button>
             </div>
           )}
@@ -243,16 +245,16 @@ export function SettingsPage() {
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <div className="space-y-6 max-w-xl">
-              <p className="text-sm text-gray-500">Choose how you want to be notified about activity on your properties.</p>
+              <p className="text-sm text-gray-500">{t('notifDesc')}</p>
 
               <div className="space-y-4">
                 {[
-                  { id: 'payment', label: 'Payment Received', desc: 'Get notified when a tenant makes a payment', default: true },
-                  { id: 'maintenance', label: 'Maintenance Request', desc: 'Get notified when a new maintenance request is submitted', default: true },
-                  { id: 'approval', label: 'Approval Required', desc: 'Get notified when something needs your approval', default: true },
-                  { id: 'overdue', label: 'Overdue Payments', desc: 'Get notified when payments become overdue', default: true },
-                  { id: 'weekly', label: 'Weekly Summary', desc: 'Receive a weekly summary of property activity', default: false },
-                  { id: 'monthly', label: 'Monthly Report', desc: 'Receive monthly financial reports', default: true },
+                  { id: 'payment', label: t('notifPayment'), desc: t('notifPaymentDesc'), default: true },
+                  { id: 'maintenance', label: t('notifMaintenance'), desc: t('notifMaintenanceDesc'), default: true },
+                  { id: 'approval', label: t('notifApproval'), desc: t('notifApprovalDesc'), default: true },
+                  { id: 'overdue', label: t('notifOverdue'), desc: t('notifOverdueDesc'), default: true },
+                  { id: 'weekly', label: t('notifWeekly'), desc: t('notifWeeklyDesc'), default: false },
+                  { id: 'monthly', label: t('notifMonthly'), desc: t('notifMonthlyDesc'), default: true },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
@@ -269,7 +271,7 @@ export function SettingsPage() {
 
               <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                 <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Preferences'}
+                {saving ? t('savingLoading') : t('savePreferences')}
               </button>
             </div>
           )}
@@ -278,22 +280,22 @@ export function SettingsPage() {
           {activeTab === 'security' && (
             <div className="space-y-6 max-w-xl">
               <div>
-                <h3 className="font-medium text-gray-900 mb-4">Change Password</h3>
+                <h3 className="font-medium text-gray-900 mb-4">{t('changePassword')}</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('currentPassword')}</label>
                     <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
                     <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmNewPassword')}</label>
                     <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-                    Update Password
+                    {t('updatePassword')}
                   </button>
                 </div>
               </div>
@@ -301,25 +303,25 @@ export function SettingsPage() {
               <hr />
 
               <div>
-                <h3 className="font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
-                <p className="text-sm text-gray-500 mb-4">Add an extra layer of security to your account.</p>
+                <h3 className="font-medium text-gray-900 mb-4">{t('twoFactor')}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t('twoFactorDesc')}</p>
                 <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
                   <Key className="h-4 w-4" />
-                  Enable 2FA
+                  {t('enable2fa')}
                 </button>
               </div>
 
               <hr />
 
               <div>
-                <h3 className="font-medium text-gray-900 mb-4">Active Sessions</h3>
+                <h3 className="font-medium text-gray-900 mb-4">{t('activeSessions')}</h3>
                 <div className="space-y-3">
                   <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">Current Session</p>
-                      <p className="text-sm text-gray-500">Chrome on macOS - Dar es Salaam, Tanzania</p>
+                      <p className="font-medium text-gray-900">{t('currentSession')}</p>
+                      <p className="text-sm text-gray-500">{t('sessionLocation')}</p>
                     </div>
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Active</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">{t('activeBadge')}</span>
                   </div>
                 </div>
               </div>
@@ -331,12 +333,12 @@ export function SettingsPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-gray-900">Team Members</h3>
-                  <p className="text-sm text-gray-500">Manage co-owners and viewers for your properties</p>
+                  <h3 className="font-medium text-gray-900">{t('teamMembers')}</h3>
+                  <p className="text-sm text-gray-500">{t('teamMembersDesc')}</p>
                 </div>
                 <button onClick={() => setShowInviteModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                   <Plus className="h-4 w-4" />
-                  Invite User
+                  {t('inviteUser')}
                 </button>
               </div>
 
@@ -344,12 +346,12 @@ export function SettingsPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Properties</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Active</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colUser')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colRole')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colProperties')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colStatus')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('colLastActive')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -374,7 +376,7 @@ export function SettingsPage() {
                         <td className="px-4 py-3 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
-                            {member.properties.length > 1 ? `${member.properties.length} properties` : member.properties[0]}
+                            {member.properties.length > 1 ? t('propertiesCount', { count: member.properties.length }) : member.properties[0]}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -384,21 +386,21 @@ export function SettingsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {member.lastLogin ? formatDate(member.lastLogin) : 'Never'}
+                          {member.lastLogin ? formatDate(member.lastLogin) : t('never')}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
                             {member.status === 'PENDING' && (
-                              <button onClick={() => handleResendInvite(member.id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Resend Invite">
+                              <button onClick={() => handleResendInvite(member.id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title={t('resendInvite')}>
                                 <Mail className="h-4 w-4" />
                               </button>
                             )}
                             {member.role !== 'OWNER' && (
                               <>
-                                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Edit">
+                                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title={t('editBtn')}>
                                   <Edit className="h-4 w-4" />
                                 </button>
-                                <button onClick={() => handleRemoveUser(member.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Remove">
+                                <button onClick={() => handleRemoveUser(member.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title={t('removeBtn')}>
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               </>
@@ -414,16 +416,16 @@ export function SettingsPage() {
               {/* Role Descriptions */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                 <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                  <h4 className="font-medium text-purple-800 mb-2">Owner</h4>
-                  <p className="text-sm text-purple-600">Full access to all properties and settings. Can invite and manage users.</p>
+                  <h4 className="font-medium text-purple-800 mb-2">{t('roleOwner')}</h4>
+                  <p className="text-sm text-purple-600">{t('roleOwnerDesc')}</p>
                 </div>
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <h4 className="font-medium text-blue-800 mb-2">Co-Owner</h4>
-                  <p className="text-sm text-blue-600">Can view and manage assigned properties. Can approve work orders and access financial data.</p>
+                  <h4 className="font-medium text-blue-800 mb-2">{t('roleCoOwner')}</h4>
+                  <p className="text-sm text-blue-600">{t('roleCoOwnerDesc')}</p>
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="font-medium text-gray-800 mb-2">Viewer</h4>
-                  <p className="text-sm text-gray-600">Read-only access to assigned properties. Can view reports and documents.</p>
+                  <h4 className="font-medium text-gray-800 mb-2">{t('roleViewer')}</h4>
+                  <p className="text-sm text-gray-600">{t('roleViewerDesc')}</p>
                 </div>
               </div>
             </div>
@@ -433,31 +435,31 @@ export function SettingsPage() {
           {activeTab === 'preferences' && (
             <div className="space-y-6 max-w-xl">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('language')}</label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="en">English</option>
-                  <option value="sw">Swahili</option>
+                  <option value="en">{t('langEnglish')}</option>
+                  <option value="sw">{t('langSwahili')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('timezone')}</label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="Africa/Dar_es_Salaam">East Africa Time (EAT)</option>
+                  <option value="Africa/Dar_es_Salaam">{t('tzEat')}</option>
                   <option value="UTC">UTC</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('currency')}</label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="TZS">Tanzanian Shilling (TZS)</option>
-                  <option value="USD">US Dollar (USD)</option>
+                  <option value="TZS">{t('currencyTzs')}</option>
+                  <option value="USD">{t('currencyUsd')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date Format</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('dateFormat')}</label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -467,7 +469,7 @@ export function SettingsPage() {
 
               <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                 <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Preferences'}
+                {saving ? t('savingLoading') : t('savePreferences')}
               </button>
             </div>
           )}
@@ -481,7 +483,7 @@ export function SettingsPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowInviteModal(false)} />
             <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Invite User</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('inviteUser')}</h3>
                 <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
@@ -489,30 +491,30 @@ export function SettingsPage() {
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
                     <input type="text" value={inviteForm.firstName} onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
                     <input type="text" value={inviteForm.lastName} onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
                   <input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('colRole')}</label>
                   <select value={inviteForm.role} onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="VIEWER">Viewer</option>
-                    <option value="CO_OWNER">Co-Owner</option>
+                    <option value="VIEWER">{t('roleViewer')}</option>
+                    <option value="CO_OWNER">{t('roleCoOwner')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Property Access</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('propertyAccess')}</label>
                   <div className="space-y-2 mt-2">
                     {properties.map((property) => (
                       <label key={property} className="flex items-center gap-2">
@@ -531,11 +533,11 @@ export function SettingsPage() {
               </div>
               <div className="flex items-center justify-end gap-3 p-4 border-t">
                 <button onClick={() => setShowInviteModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium">
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button onClick={handleInviteUser} disabled={!inviteForm.email || !inviteForm.firstName || inviteForm.properties.length === 0} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                   <Mail className="h-4 w-4" />
-                  Send Invitation
+                  {t('sendInvitation')}
                 </button>
               </div>
             </div>

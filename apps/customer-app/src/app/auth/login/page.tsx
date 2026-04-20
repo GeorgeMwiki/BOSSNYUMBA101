@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
+import { LocaleSwitcher } from '@/components/LocaleSwitcher';
 
 const loginSchema = z.object({
   phone: z
@@ -49,7 +50,12 @@ export default function LoginPage() {
   });
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <main className="min-h-screen bg-gray-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative">
+      {/* Wave-21: visible locale switcher on the public login page — lets
+          tenants pick Swahili before they receive their OTP. */}
+      <div className="absolute top-4 right-4">
+        <LocaleSwitcher className="inline-flex items-center gap-2 text-xs text-gray-600" />
+      </div>
       <div className="flex-1 flex flex-col justify-center px-6 py-12 max-w-md mx-auto w-full">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>

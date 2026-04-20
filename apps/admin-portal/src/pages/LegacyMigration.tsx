@@ -7,6 +7,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { UploadCloud, Loader2, FileCheck2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 type Format = 'csv' | 'json' | 'xml';
@@ -19,6 +20,7 @@ interface PreviewResult {
 }
 
 export default function LegacyMigration(): JSX.Element {
+  const t = useTranslations('legacyMigration');
   const [format, setFormat] = useState<Format>('csv');
   const [content, setContent] = useState('');
   const [schema, setSchema] = useState<unknown>(null);
@@ -56,12 +58,12 @@ export default function LegacyMigration(): JSX.Element {
     });
     setLoading(false);
     if (res.success && res.data) setPreview(res.data);
-    else setError(res.error ?? 'Preview failed.');
+    else setError(res.error ?? t('errorPreview'));
   }
 
   async function commit(): Promise<void> {
     if (!content) return;
-    if (!window.confirm('Commit legacy data to the database?')) return;
+    if (!window.confirm(t('confirmCommit'))) return;
     setLoading(true);
     setError(null);
     const res = await api.post<PreviewResult>('/lpms/import', {
@@ -72,9 +74,9 @@ export default function LegacyMigration(): JSX.Element {
     setLoading(false);
     if (res.success && res.data) {
       setPreview(res.data);
-      alert('Committed.');
+      alert(t('committedAlert'));
     } else {
-      setError(res.error ?? 'Commit failed.');
+      setError(res.error ?? t('errorCommit'));
     }
   }
 
@@ -84,10 +86,10 @@ export default function LegacyMigration(): JSX.Element {
         <UploadCloud className="h-6 w-6 text-indigo-600" />
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Legacy LPMS migration
+            {t('title')}
           </h2>
           <p className="text-sm text-gray-500">
-            Upload legacy exports, preview, then commit.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -100,7 +102,7 @@ export default function LegacyMigration(): JSX.Element {
 
       <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
         <label className="block text-sm">
-          <span className="text-gray-700">File</span>
+          <span className="text-gray-700">{t('fileLabel')}</span>
           <input
             type="file"
             accept=".csv,.json,.xml"
@@ -115,7 +117,7 @@ export default function LegacyMigration(): JSX.Element {
 
         <div className="flex items-center gap-3">
           <label className="text-sm">
-            Format:
+            {t('formatLabel')}:
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value as Format)}
@@ -127,7 +129,7 @@ export default function LegacyMigration(): JSX.Element {
             </select>
           </label>
           <span className="text-xs text-gray-500">
-            {content ? `${content.length.toLocaleString()} chars loaded` : 'no file'}
+            {content ? t('charsLoaded', { count: content.length.toLocaleString() }) : t('noFile')}
           </span>
         </div>
 
@@ -141,7 +143,7 @@ export default function LegacyMigration(): JSX.Element {
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
             ) : null}
-            Preview
+            {t('previewCta')}
           </button>
           <button
             type="button"
@@ -149,7 +151,7 @@ export default function LegacyMigration(): JSX.Element {
             disabled={!content || loading || !preview}
             className="rounded border border-indigo-600 text-indigo-600 px-4 py-2 text-sm disabled:opacity-50"
           >
-            Commit
+            {t('commitCta')}
           </button>
         </div>
       </section>
@@ -157,7 +159,7 @@ export default function LegacyMigration(): JSX.Element {
       {preview && (
         <section className="bg-white border border-emerald-200 rounded-xl p-5 space-y-2">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <FileCheck2 className="h-4 w-4 text-emerald-600" /> Preview
+            <FileCheck2 className="h-4 w-4 text-emerald-600" /> {t('previewHeader')}
           </h3>
           <ul className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             {Object.entries(preview.counts).map(([k, v]) => (
@@ -172,7 +174,7 @@ export default function LegacyMigration(): JSX.Element {
           {preview.issues && preview.issues.length > 0 && (
             <details className="text-xs">
               <summary className="cursor-pointer text-amber-700">
-                {preview.issues.length} issues
+                {t('issuesCount', { count: preview.issues.length })}
               </summary>
               <ul className="list-disc ml-5 mt-2">
                 {preview.issues.map((msg, idx) => (
@@ -187,7 +189,7 @@ export default function LegacyMigration(): JSX.Element {
       {schema !== null && (
         <details className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm">
           <summary className="cursor-pointer font-medium text-gray-700">
-            Target schema
+            {t('targetSchema')}
           </summary>
           <pre className="mt-3 text-xs overflow-x-auto">
             {JSON.stringify(schema, null, 2)}

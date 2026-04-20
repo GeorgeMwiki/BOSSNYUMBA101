@@ -6,6 +6,7 @@ import { createZodResolver } from '@bossnyumba/design-system';
 import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
+import { LocaleSwitcher } from '../components/LocaleSwitcher';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Please enter a valid email address'),
@@ -42,7 +43,13 @@ export function LoginPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+      {/* Wave-21: visible locale switcher on the public login page — previously
+          only rendered inside the authenticated Layout, so users couldn't
+          pick Swahili before logging in. */}
+      <div className="absolute top-4 right-4">
+        <LocaleSwitcher className="inline-flex items-center gap-2 text-xs text-slate-300" />
+      </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <div className="w-16 h-16 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30">

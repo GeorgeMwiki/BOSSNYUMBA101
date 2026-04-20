@@ -8,6 +8,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Flag, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface FeatureFlag {
@@ -20,6 +21,7 @@ interface FeatureFlag {
 }
 
 export default function FeatureFlagsPage(): JSX.Element {
+  const t = useTranslations('featureFlags');
   const [flags, setFlags] = useState<readonly FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +34,10 @@ export default function FeatureFlagsPage(): JSX.Element {
     if (res.success && res.data) {
       setFlags(res.data);
     } else {
-      setError(res.error ?? 'Unable to load feature flags.');
+      setError(res.error ?? t('errorLoad'));
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -53,7 +55,7 @@ export default function FeatureFlagsPage(): JSX.Element {
         prev.map((f) => (f.key === flag.key ? { ...f, enabled: next.enabled } : f)),
       );
     } else {
-      setError(res.error ?? 'Unable to update flag.');
+      setError(res.error ?? t('errorUpdate'));
     }
   }
 
@@ -62,9 +64,9 @@ export default function FeatureFlagsPage(): JSX.Element {
       <header className="flex items-center gap-3">
         <Flag className="h-6 w-6 text-indigo-600" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Feature flags</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Toggle optional features for this tenant.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -77,13 +79,13 @@ export default function FeatureFlagsPage(): JSX.Element {
 
       {loading && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
         </div>
       )}
 
       {!loading && flags.length === 0 && !error && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 text-sm text-gray-500">
-          No feature flags registered for this tenant.
+          {t('emptyNone')}
         </div>
       )}
 
@@ -122,7 +124,7 @@ export default function FeatureFlagsPage(): JSX.Element {
                   onClick={() => void toggle(flag)}
                   disabled={saving === flag.key}
                   aria-pressed={flag.enabled}
-                  aria-label={`Toggle ${flag.key}`}
+                  aria-label={t('toggleAria', { key: flag.key })}
                   data-testid={`flag-${flag.key}`}
                   className={`w-12 h-6 rounded-full transition flex items-center p-1 ${
                     flag.enabled ? 'bg-emerald-500' : 'bg-gray-300'

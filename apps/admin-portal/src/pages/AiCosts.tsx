@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Coins, Loader2, DollarSign, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface ModelBreakdownRow {
@@ -55,6 +56,7 @@ function dollars(micro: number): string {
 }
 
 export default function AiCosts(): JSX.Element {
+  const t = useTranslations('aiCosts');
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [entries, setEntries] = useState<readonly Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,11 +77,11 @@ export default function AiCosts(): JSX.Element {
         setHardStop(s.data.budget.hardStop);
       }
     } else {
-      setError(s.error ?? 'Unable to load summary.');
+      setError(s.error ?? t('errorLoad'));
     }
     if (e.success && e.data) setEntries(e.data);
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -88,7 +90,7 @@ export default function AiCosts(): JSX.Element {
   async function saveBudget(): Promise<void> {
     const capUsd = Number(draftCap);
     if (!Number.isFinite(capUsd) || capUsd < 0) {
-      setError('Cap must be a non-negative number.');
+      setError(t('capNonNegative'));
       return;
     }
     const res = await api.put('/ai-costs/budget', {
@@ -98,14 +100,14 @@ export default function AiCosts(): JSX.Element {
     if (res.success) {
       void load();
     } else {
-      setError(res.error ?? 'Failed to save budget.');
+      setError(res.error ?? t('errorSave'));
     }
   }
 
   if (loading) {
     return (
       <div className="p-6 text-sm text-gray-500 flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading AI spend…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
       </div>
     );
   }
@@ -115,9 +117,9 @@ export default function AiCosts(): JSX.Element {
       <header className="flex items-center gap-3">
         <Coins className="h-6 w-6 text-amber-500" />
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">AI spend</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('title')}</h2>
           <p className="text-sm text-gray-500">
-            Current-month usage, model mix, and monthly cap.
+            {t('subtitle')}
           </p>
         </div>
       </header>
@@ -132,22 +134,21 @@ export default function AiCosts(): JSX.Element {
         <>
           {summary.overBudget && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> Over budget — new AI calls
-              are being blocked by hard-stop.
+              <AlertTriangle className="h-4 w-4" /> {t('overBudgetWarning')}
             </div>
           )}
 
           <section className="grid gap-4 md:grid-cols-3">
             <StatCard
-              label="This month"
+              label={t('thisMonth')}
               value={dollars(summary.summary.totalCostUsdMicro)}
             />
             <StatCard
-              label="Calls"
+              label={t('callsLabel')}
               value={summary.summary.totalCalls.toLocaleString()}
             />
             <StatCard
-              label="Cap"
+              label={t('capLabel')}
               value={
                 summary.budget
                   ? dollars(summary.budget.monthlyCapUsdMicro)
@@ -157,15 +158,15 @@ export default function AiCosts(): JSX.Element {
           </section>
 
           <section className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">Per-model breakdown</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">{t('perModelHeader')}</h3>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-500">
-                  <th className="py-2">Model</th>
-                  <th>Calls</th>
-                  <th>Prompt tokens</th>
-                  <th>Completion tokens</th>
-                  <th className="text-right">Cost</th>
+                  <th className="py-2">{t('colModel')}</th>
+                  <th>{t('colCalls')}</th>
+                  <th>{t('colPromptTokens')}</th>
+                  <th>{t('colCompletionTokens')}</th>
+                  <th className="text-right">{t('colCost')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,7 +182,7 @@ export default function AiCosts(): JSX.Element {
                 {summary.summary.perModel.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-3 text-center text-gray-500">
-                      No calls yet this period.
+                      {t('emptyModels')}
                     </td>
                   </tr>
                 )}
@@ -192,10 +193,10 @@ export default function AiCosts(): JSX.Element {
           <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 max-w-xl">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-amber-500" />
-              <h3 className="font-semibold text-gray-900">Monthly cap</h3>
+              <h3 className="font-semibold text-gray-900">{t('monthlyCap')}</h3>
             </div>
             <label className="block text-sm">
-              <span className="text-gray-700">Cap (USD)</span>
+              <span className="text-gray-700">{t('capUsdLabel')}</span>
               <input
                 type="number"
                 min="0"
@@ -212,19 +213,19 @@ export default function AiCosts(): JSX.Element {
                 checked={hardStop}
                 onChange={(e) => setHardStop(e.target.checked)}
               />
-              Hard-stop when cap reached
+              {t('hardStopLabel')}
             </label>
             <button
               type="button"
               onClick={() => void saveBudget()}
               className="rounded bg-amber-500 text-white px-4 py-2 text-sm"
             >
-              Save
+              {t('save')}
             </button>
           </section>
 
           <section className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">Recent calls</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">{t('recentCalls')}</h3>
             <ul className="space-y-2 text-sm">
               {entries.slice(0, 20).map((e) => (
                 <li
@@ -243,7 +244,7 @@ export default function AiCosts(): JSX.Element {
                 </li>
               ))}
               {entries.length === 0 && (
-                <li className="text-gray-500">No entries yet.</li>
+                <li className="text-gray-500">{t('emptyEntries')}</li>
               )}
             </ul>
           </section>
