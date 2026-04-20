@@ -14,11 +14,6 @@
  * upstream middleware pins tenantId to the JWT.
  */
 
-// @ts-nocheck — `@bossnyumba/database` exports `DatabaseClient` as a
-// namespace rather than a type alias; the composition root tolerates
-// this via `@ts-nocheck` in service-registry.ts. We mirror that here
-// because the repo receives the same opaque drizzle client and only
-// calls `.execute(sql\`...\`)`.
 import { sql } from 'drizzle-orm';
 import type {
   AutonomyPolicy,

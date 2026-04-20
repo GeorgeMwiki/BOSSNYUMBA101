@@ -1,4 +1,3 @@
-// @ts-nocheck — ai-copilot subpath exports vs DatabaseClient type drift, same as service-registry.
 /**
  * Postgres-backed CreditRatingRepository.
  *
@@ -12,7 +11,6 @@
  */
 
 import { sql } from 'drizzle-orm';
-import type { DatabaseClient } from '@bossnyumba/database';
 import {
   creditRatingSnapshots,
   creditRatingPromises,
@@ -29,18 +27,33 @@ import type {
   PromiseOutcomeRecord,
 } from '@bossnyumba/ai-copilot';
 
-type DbClient = DatabaseClient;
+/**
+ * Opaque Drizzle client type. Declared as `unknown` so this file stays
+ * decoupled from the `DatabaseClient` alias in `@bossnyumba/database`,
+ * which widens through `export *` chains and trips
+ * `TS2709 Cannot use namespace 'DatabaseClient' as a type` when pulled
+ * in via the package barrel. All db access goes through the local
+ * `execute()` helper which narrows to the `.execute(sql\`\`)` shape at
+ * a single structural cast.
+ */
+type DbClient = unknown;
 
-function execute<T = any>(db: DbClient, stmt: any): Promise<T[]> {
+type SqlTag = ReturnType<typeof sql>;
+
+function execute<T = Record<string, unknown>>(
+  db: DbClient,
+  stmt: SqlTag,
+): Promise<T[]> {
   // drizzle `.execute` returns either an array (postgres.js) or
   // `{ rows: [...] }` (node-postgres). Normalise.
-  return (db as any).execute(stmt).then((res: any) => {
+  const runner = db as { execute(q: SqlTag): Promise<unknown> };
+  return runner.execute(stmt).then((res: unknown) => {
     if (Array.isArray(res)) return res as T[];
-    return (res?.rows ?? []) as T[];
+    return ((res as { rows?: T[] })?.rows ?? []) as T[];
   });
 }
 
-function nowIsoSafe(v: any): string | null {
+function nowIsoSafe(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (v instanceof Date) return v.toISOString();
   return String(v);
@@ -67,6 +80,11 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
     //   late 60  : paid 31-60 days past due_date
     //   late 90+ : paid 61+ days past due_date
     //   default  : status='overdue' OR 'cancelled' with amount_due > 0
+    //
+    // Schema note: the drizzle `invoices` schema calls the emit column
+    // `issue_date` — earlier drafts used `issued_at`. Querying a non-
+    // existent column raises SQLSTATE 42703 and the endpoint 500s, so
+    // the SQL below references `issue_date` literally.
     const paymentHistoryRows = await execute(
       this.db,
       sql`
@@ -87,8 +105,8 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
           COUNT(*) FILTER (WHERE i.status = 'paid' AND lp.paid_at IS NOT NULL AND lp.paid_at >  i.due_date + INTERVAL '60 days')::int AS late_90,
           COUNT(*) FILTER (WHERE i.status IN ('overdue','cancelled'))::int AS defaulted,
           COUNT(*)::int AS total_invoices,
-          MAX(i.issued_at) AS newest_invoice_at,
-          MIN(i.issued_at) AS oldest_invoice_at
+          MAX(i.issue_date) AS newest_invoice_at,
+          MIN(i.issue_date) AS oldest_invoice_at
         FROM invoices i
         LEFT JOIN latest_payment lp ON lp.invoice_id = i.id
         WHERE i.tenant_id = ${tenantId}
@@ -146,24 +164,45 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
       // and let the scorer degrade to insufficient_data.
     }
 
-    // Rent-to-income — from tenant_financial_statements if present.
+    // Rent-to-income — income comes from tenant_financial_statements
+    // (canonical column: `monthly_gross_income`; minor units). Rent is
+    // NOT stored on that table, so we pull it from the customer's most
+    // recent lease (`leases.rent_amount`, minor units).
+    //
+    // Schema drift note: earlier drafts queried `monthly_rent_minor_units`
+    // and `monthly_income_minor_units` on this table and ordered by
+    // `reported_at` — none of those columns exist. The SQL below uses
+    // the real schema columns (`monthly_gross_income`, `updated_at`).
     let rentToIncomeRatio: number | null = null;
     try {
       const fsRows = await execute(
         this.db,
         sql`
-          SELECT monthly_rent_minor_units, monthly_income_minor_units
+          SELECT monthly_gross_income, monthly_net_income
           FROM tenant_financial_statements
           WHERE tenant_id = ${tenantId} AND customer_id = ${customerId}
-          ORDER BY reported_at DESC
+          ORDER BY updated_at DESC
           LIMIT 1
         `,
       );
       const fs = fsRows[0];
-      if (fs) {
-        const rent = Number(fs.monthly_rent_minor_units ?? 0);
-        const income = Number(fs.monthly_income_minor_units ?? 0);
-        if (income > 0) {
+      const income = Number(
+        fs?.monthly_gross_income ?? fs?.monthly_net_income ?? 0,
+      );
+      if (fs && income > 0) {
+        const rentRows = await execute(
+          this.db,
+          sql`
+            SELECT rent_amount
+            FROM leases
+            WHERE tenant_id = ${tenantId}
+              AND customer_id = ${customerId}
+            ORDER BY start_date DESC
+            LIMIT 1
+          `,
+        );
+        const rent = Number(rentRows[0]?.rent_amount ?? 0);
+        if (rent > 0) {
           rentToIncomeRatio = rent / income;
         }
       }
@@ -172,6 +211,12 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
     }
 
     // Dispute / damage / sublease-violation counts from `cases` table.
+    //
+    // Schema note: the `cases` table stores classification in a `case_type`
+    // column (enum `case_type`), NOT `category`. Valid enum values are
+    // listed in cases.schema.ts. We map the credit-rating taxonomy to the
+    // real enum: any billing/deposit/maintenance/noise dispute counts as a
+    // "dispute", damage_claim → damage, lease_violation → sublease.
     let disputeCount = 0;
     let damageDeductionCount = 0;
     let subleaseViolationCount = 0;
@@ -180,9 +225,11 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
         this.db,
         sql`
           SELECT
-            COUNT(*) FILTER (WHERE category = 'dispute')::int AS disputes,
-            COUNT(*) FILTER (WHERE category = 'damage_deduction')::int AS damages,
-            COUNT(*) FILTER (WHERE category = 'sublease_violation')::int AS subleases
+            COUNT(*) FILTER (
+              WHERE case_type IN ('billing_dispute','deposit_dispute','maintenance_dispute','noise_complaint')
+            )::int AS disputes,
+            COUNT(*) FILTER (WHERE case_type = 'damage_claim')::int AS damages,
+            COUNT(*) FILTER (WHERE case_type = 'lease_violation')::int AS subleases
           FROM cases
           WHERE tenant_id = ${tenantId} AND customer_id = ${customerId}
         `,

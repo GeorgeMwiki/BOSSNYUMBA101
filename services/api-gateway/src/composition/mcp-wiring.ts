@@ -1,4 +1,3 @@
-// @ts-nocheck — composition root straddles ai-copilot subpath types + cross-package narrow generics.
 /**
  * MCP wiring — composes the `@bossnyumba/mcp-server` server instance
  * with handlers/resolvers backed by the already-built domain services in
@@ -208,18 +207,21 @@ function buildHandlers(registry: ServiceRegistry): HandlerMap {
     },
 
     list_maintenance_cases: async (input, context: McpAuthContext) => {
-      // The cases router is the main entrypoint; we reuse the taxonomy
-      // service as a read-only source when no list-cases service is in
-      // the registry. Returning empty list + stable shape when missing.
+      // Reads maintenance-related cases from the canonical `cases`
+      // table (no `maintenance_cases` table exists; drafts that used
+      // that name raised undefined_table errors at runtime). We filter
+      // to the case_type values that represent maintenance work, and
+      // select columns that actually live on `cases.schema.ts`.
       const db = registry.db;
       if (!db) return notImpl('database not configured');
       try {
         const { sql } = await import('drizzle-orm');
         const limit = Math.min(200, Math.max(1, Number(input.limit ?? 25) || 25));
         const rows = await (db as any).execute(
-          sql`SELECT id, status, severity, assigned_to, problem_code, description, created_at
-              FROM maintenance_cases
+          sql`SELECT id, status, severity, assigned_to, case_type, title, description, created_at
+              FROM cases
               WHERE tenant_id = ${context.tenantId}
+                AND case_type IN ('maintenance_dispute','damage_claim')
               ORDER BY created_at DESC
               LIMIT ${limit}`,
         );
@@ -404,7 +406,10 @@ function buildResolvers(registry: ServiceRegistry): ResourceResolvers {
     async maintenanceTaxonomy(context) {
       if (!registry.maintenanceTaxonomy) return empty();
       try {
-        const problems = await registry.maintenanceTaxonomy.listProblemsForTenant(
+        // Service exposes `listProblems(tenantId, filters?)`; the
+        // repo-only `listProblemsForTenant` was the old name and the
+        // composition root should never call the repo directly.
+        const problems = await registry.maintenanceTaxonomy.listProblems(
           context.tenantId,
         );
         return { problems };

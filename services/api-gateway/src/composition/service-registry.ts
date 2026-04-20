@@ -1,4 +1,3 @@
-// @ts-nocheck — ai-copilot subpath exports (agent-certification, voice, classroom) + DatabaseClient namespace vs type conflict. Composition root owned by parallel agent wave; tracked.
 /**
  * Composition root — wires Postgres repos + event bus + domain services
  * into a single typed `ServiceRegistry` that downstream routers pluck
@@ -29,7 +28,16 @@
  * for direct value access. Subpaths give us clean class imports.
  */
 
-import type { DatabaseClient } from '@bossnyumba/database';
+import { createDatabaseClient } from '@bossnyumba/database';
+/**
+ * The `DatabaseClient` type alias from `@bossnyumba/database` resolves
+ * as a namespace when pulled through the package barrel (TS2709) due
+ * to `export *` chains widening the symbol space after the Wave 7
+ * Drizzle 0.36 upgrade. We derive the type directly from the factory
+ * function instead so composition-root callers never have to reach
+ * for the alias.
+ */
+type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 import { sql } from 'drizzle-orm';
 import {
   ListingService,
