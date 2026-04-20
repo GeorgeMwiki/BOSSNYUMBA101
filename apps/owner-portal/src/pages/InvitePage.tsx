@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Home, CheckCircle, AlertCircle, Users } from 'lucide-react';
 import { Skeleton, Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 interface InviteDetails {
@@ -15,6 +16,7 @@ interface InviteDetails {
 }
 
 export function InvitePage() {
+  const t = useTranslations('invitePage');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const [step, setStep] = useState<'loading' | 'details' | 'success' | 'error' | 'expired'>('loading');
@@ -290,7 +292,7 @@ export function InvitePage() {
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Min. 8 characters"
+                placeholder={t('min8Characters')}
                 required
               />
             </div>

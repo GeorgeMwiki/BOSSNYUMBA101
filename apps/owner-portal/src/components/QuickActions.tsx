@@ -8,6 +8,7 @@ import {
   Download,
   CheckSquare,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface QuickAction {
   id: string;
@@ -74,9 +75,10 @@ interface QuickActionsProps {
 }
 
 export function QuickActions({ className }: QuickActionsProps) {
+  const t = useTranslations('quickActions');
   return (
     <div className={className}>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('title')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {quickActions.map((action) => (
           <Link

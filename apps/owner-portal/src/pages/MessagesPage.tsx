@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState, Spinner } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatDateTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -161,6 +162,7 @@ function AttachmentPreview({
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function MessagesPage() {
+  const t = useTranslations('messagesPageFull');
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -402,14 +404,14 @@ export function MessagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-500">Communicate with your property managers</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-500">{t('subtitle')}</p>
       </div>
       {error && (
         <Alert variant="danger">
           <AlertDescription>
             {error}
-            <Button size="sm" onClick={loadConversations} className="ml-2">Retry</Button>
+            <Button size="sm" onClick={loadConversations} className="ml-2">{t('retry')}</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -426,7 +428,7 @@ export function MessagesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search conversations..."
+                placeholder={t('searchConversations')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -519,7 +521,7 @@ export function MessagesPage() {
                     </p>
                     <p className="text-xs text-gray-500">
                       {activeConversation.isOnline ? (
-                        <span className="text-green-600">Online</span>
+                        <span className="text-green-600">{t('online')}</span>
                       ) : (
                         activeConversation.participantRole
                       )}
@@ -656,7 +658,7 @@ export function MessagesPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex-shrink-0"
-                    title="Attach file"
+                    title={t('attachFile')}
                   >
                     <Paperclip className="h-5 w-5" />
                   </button>
@@ -665,7 +667,7 @@ export function MessagesPage() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Type a message..."
+                      placeholder={t('typeMessage')}
                       rows={1}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none max-h-32 overflow-y-auto"
                       style={{
@@ -702,8 +704,8 @@ export function MessagesPage() {
             <div className="flex items-center justify-center h-full">
               <EmptyState
                 icon={<MessageSquare className="h-8 w-8" />}
-                title="Select a conversation"
-                description="Choose from your existing conversations to start messaging."
+                title={t('selectConversation')}
+                description={t('selectConversationDesc')}
               />
             </div>
           )}

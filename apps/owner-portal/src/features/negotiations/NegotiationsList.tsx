@@ -11,6 +11,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
 
 export interface Negotiation {
@@ -28,6 +29,7 @@ type NegotiationAction = 'accept' | 'override' | 'reject';
 type PendingAction = { readonly id: string; readonly action: NegotiationAction };
 
 export const NegotiationsList: React.FC = () => {
+  const t = useTranslations('negotiationsList');
   const [items, setItems] = useState<ReadonlyArray<Negotiation>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +77,13 @@ export const NegotiationsList: React.FC = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Live Negotiations</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
       {error && (
         <Alert variant="danger">
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -100,8 +102,8 @@ export const NegotiationsList: React.FC = () => {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="No active negotiations"
-          description="Prospects currently in negotiation for your units will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="grid gap-3">
@@ -116,13 +118,13 @@ export const NegotiationsList: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">Prospect: <span className="font-medium">{n.customerName}</span></p>
+                  <p className="text-sm">{t('prospect')}: <span className="font-medium">{n.customerName}</span></p>
                   <p className="text-sm">
-                    Proposed: <strong>{n.proposedRent.toLocaleString()}</strong> vs asking{' '}
+                    {t('proposed')}: <strong>{n.proposedRent.toLocaleString()}</strong> {t('vsAsking')}{' '}
                     {n.askingRent.toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Last message: {new Date(n.lastMessageAt).toLocaleString()}
+                    {t('lastMessage')}: {new Date(n.lastMessageAt).toLocaleString()}
                   </p>
                   <div className="mt-3 flex gap-2">
                     <Button
@@ -130,9 +132,9 @@ export const NegotiationsList: React.FC = () => {
                       loading={isPending && pending?.action === 'accept'}
                       disabled={isPending}
                       onClick={() => act(n.id, 'accept')}
-                      aria-label={`Accept negotiation on ${n.unitLabel}`}
+                      aria-label={t('acceptAriaLabel', { unit: n.unitLabel })}
                     >
-                      Accept
+                      {t('accept')}
                     </Button>
                     <Button
                       size="sm"
@@ -140,9 +142,9 @@ export const NegotiationsList: React.FC = () => {
                       loading={isPending && pending?.action === 'override'}
                       disabled={isPending}
                       onClick={() => act(n.id, 'override')}
-                      aria-label={`Override asking rent for ${n.unitLabel}`}
+                      aria-label={t('overrideAriaLabel', { unit: n.unitLabel })}
                     >
-                      Override
+                      {t('override')}
                     </Button>
                     <Button
                       size="sm"
@@ -150,9 +152,9 @@ export const NegotiationsList: React.FC = () => {
                       loading={isPending && pending?.action === 'reject'}
                       disabled={isPending}
                       onClick={() => act(n.id, 'reject')}
-                      aria-label={`Reject negotiation on ${n.unitLabel}`}
+                      aria-label={t('rejectAriaLabel', { unit: n.unitLabel })}
                     >
-                      Reject
+                      {t('reject')}
                     </Button>
                   </div>
                 </CardContent>

@@ -86,7 +86,7 @@ export function Layout({ children }: LayoutProps) {
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Close navigation menu"
+              aria-label={tApp('closeNav')}
               className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <X className="h-6 w-6 text-gray-500" aria-hidden="true" />
@@ -122,7 +122,7 @@ export function Layout({ children }: LayoutProps) {
             <Home className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">{tApp('title')}</h1>
-              <p className="text-xs text-gray-500">Owner Portal</p>
+              <p className="text-xs text-gray-500">{tApp('subtitle')}</p>
             </div>
           </div>
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
@@ -170,7 +170,7 @@ export function Layout({ children }: LayoutProps) {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Open navigation menu"
+            aria-label={tApp('openNav')}
             className="lg:hidden -m-2.5 p-2.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
           >
             <Menu className="h-6 w-6" aria-hidden="true" />
@@ -182,7 +182,7 @@ export function Layout({ children }: LayoutProps) {
 
           <button
             type="button"
-            aria-label="Notifications (3 unread)"
+            aria-label={tApp('notifications')}
             className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <Bell className="h-5 w-5" aria-hidden="true" />

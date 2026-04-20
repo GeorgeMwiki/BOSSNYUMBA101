@@ -21,6 +21,7 @@ import {
   type QuizLockdownData,
   type ReviewModeData,
 } from '@bossnyumba/chat-ui';
+import { useTranslations } from 'next-intl';
 
 interface ChatMessage {
   readonly id: string;
@@ -31,6 +32,7 @@ interface ChatMessage {
 }
 
 export default function OwnerAdvisor() {
+  const t = useTranslations('ownerAdvisor');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
@@ -95,7 +97,7 @@ export default function OwnerAdvisor() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 360px', gap: 16, padding: 16 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Owner Advisor</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{t('title')}</h1>
 
         {modeState.mode === 'teaching' && modeState.teachingData && (
           <TeachingModeLayout data={modeState.teachingData} language="en" />
@@ -120,7 +122,7 @@ export default function OwnerAdvisor() {
               )}
             </li>
           ))}
-          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>Typing…</li>}
+          {state.isStreaming && <li style={{ color: '#64748b', fontSize: 12 }}>{t('typing')}</li>}
           {state.toolCalls.length > 0 && (
             <li style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {state.toolCalls.map((t, i) => (
@@ -149,18 +151,18 @@ export default function OwnerAdvisor() {
                   onClick={approveAction}
                   style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6 }}
                 >
-                  Approve
+                  {t('approve')}
                 </button>
                 <button
                   onClick={rejectAction}
                   style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6 }}
                 >
-                  Reject
+                  {t('reject')}
                 </button>
               </div>
             </li>
           )}
-          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>Error: {state.error}</li>}
+          {state.error && <li style={{ color: '#991b1b', fontSize: 12 }}>{t('errorPrefix')}: {state.error}</li>}
         </ul>
 
         {modeState.mode === 'quiz' && modeState.quizData && (
@@ -183,7 +185,7 @@ export default function OwnerAdvisor() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about my portfolio, arrears, property comparisons …"
+            placeholder={t('askPlaceholder')}
             style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }}
           />
           {state.isStreaming ? (

@@ -11,10 +11,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatPercentage } from '../../../lib/api';
 import { usePortfolioGrowth } from '../../../lib/hooks';
 
 export default function PortfolioGrowthPage() {
+  const t = useTranslations('portfolioGrowthPage');
   const { data = [], isLoading, error, refetch } = usePortfolioGrowth();
 
   const chartData = data.length
@@ -48,7 +50,7 @@ export default function PortfolioGrowthPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load portfolio growth'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -64,8 +66,8 @@ export default function PortfolioGrowthPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Portfolio Growth</h1>
-          <p className="text-gray-500">Track your portfolio performance over time</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -75,39 +77,39 @@ export default function PortfolioGrowthPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Revenue Growth</span>
+            <span className="text-sm font-medium text-gray-500">{t('revenueGrowth')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">+12.5%</p>
-          <p className="text-sm text-gray-500">vs last 6 months</p>
+          <p className="text-sm text-gray-500">{t('vsLast6Months')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Target className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Portfolio Value</span>
+            <span className="text-sm font-medium text-gray-500">{t('portfolioValue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(chartData[chartData.length - 1]?.value || 138000000)}
           </p>
-          <p className="text-sm text-gray-500">current estimate</p>
+          <p className="text-sm text-gray-500">{t('currentEstimate')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupancy Trend</span>
+            <span className="text-sm font-medium text-gray-500">{t('occupancyTrend')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(chartData[chartData.length - 1]?.occupancy || 93)}
           </p>
-          <p className="text-sm text-gray-500">current rate</p>
+          <p className="text-sm text-gray-500">{t('currentRate')}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueTrend')}</h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
@@ -136,7 +138,7 @@ export default function PortfolioGrowthPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Portfolio Value Trend</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('portfolioValueTrend')}</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>

@@ -10,10 +10,12 @@ import {
   Shield,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../../lib/api';
 import { usePropertyBudget } from '../../../lib/hooks';
 
 export default function PropertyBudgetPage() {
+  const t = useTranslations('propertyBudgetPage');
   const { propertyId } = useParams<{ propertyId: string }>();
   const { data: budget = null, isLoading, error, refetch } = usePropertyBudget(propertyId || '');
 
@@ -36,7 +38,7 @@ export default function PropertyBudgetPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load property budget'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -46,8 +48,8 @@ export default function PropertyBudgetPage() {
   if (!budget) {
     return (
       <EmptyState
-        title="No budget set for this property"
-        description="Create a budget for this property to track spend by category."
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
       />
     );
   }
@@ -79,13 +81,13 @@ export default function PropertyBudgetPage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">{displayBudget.propertyName}</h1>
-          <p className="text-gray-500">Property budget details</p>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <Link
           to="/budgets/forecasts"
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
-          View Forecasts
+          {t('viewForecasts')}
         </Link>
       </div>
 
@@ -95,7 +97,7 @@ export default function PropertyBudgetPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Building2 className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total Budget</span>
+            <span className="text-sm font-medium text-gray-500">{t('totalBudget')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalBudget)}
@@ -106,19 +108,19 @@ export default function PropertyBudgetPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Spent</span>
+            <span className="text-sm font-medium text-gray-500">{t('spent')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalSpent)}
           </p>
-          <p className="text-sm text-gray-500">{utilizationPercent.toFixed(1)}% utilized</p>
+          <p className="text-sm text-gray-500">{utilizationPercent.toFixed(1)}% {t('utilized')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Remaining</span>
+            <span className="text-sm font-medium text-gray-500">{t('remaining')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalBudget - displayBudget.totalSpent)}
@@ -128,16 +130,16 @@ export default function PropertyBudgetPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Budget by Category</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('budgetByCategory')}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Budgeted</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Spent</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Variance</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('thCategory')}</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('thBudgeted')}</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('thSpent')}</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('thVariance')}</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">%</th>
               </tr>
             </thead>

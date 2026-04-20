@@ -17,6 +17,7 @@
 import React, { useMemo, useState } from 'react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { AlertCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useProperties, usePortfolioPerformance } from '../lib/hooks';
 import { formatCurrency, formatPercentage } from '../lib/api';
 
@@ -24,6 +25,7 @@ const MIN_SELECTION = 2;
 const MAX_SELECTION = 5;
 
 export function ComparePropertiesTable(): JSX.Element {
+  const t = useTranslations('comparePropertiesTable');
   const properties = useProperties();
   const performance = usePortfolioPerformance();
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -66,10 +68,10 @@ export function ComparePropertiesTable(): JSX.Element {
     <section className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">
-          Compare properties
+          {t('title')}
         </h2>
         <span className="text-xs text-gray-500">
-          Pick {MIN_SELECTION}&ndash;{MAX_SELECTION}
+          {t('pick')} {MIN_SELECTION}&ndash;{MAX_SELECTION}
         </span>
       </div>
 
@@ -100,7 +102,7 @@ export function ComparePropertiesTable(): JSX.Element {
 
       {selected.length < MIN_SELECTION ? (
         <p className="text-sm text-gray-500">
-          Pick at least {MIN_SELECTION} properties to start comparing.
+          {t('pickAtLeast', { count: MIN_SELECTION })}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -108,7 +110,7 @@ export function ComparePropertiesTable(): JSX.Element {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-2 font-medium text-gray-500">
-                  Metric
+                  {t('metric')}
                 </th>
                 {rows.map((r) => (
                   <th
@@ -122,7 +124,7 @@ export function ComparePropertiesTable(): JSX.Element {
             </thead>
             <tbody>
               <tr className="border-b border-gray-100">
-                <td className="py-2 text-gray-600">Revenue</td>
+                <td className="py-2 text-gray-600">{t('revenue')}</td>
                 {rows.map((r) => (
                   <td key={r.id} className="py-2 text-right text-gray-900">
                     {formatCurrency(r.revenue)}
@@ -138,7 +140,7 @@ export function ComparePropertiesTable(): JSX.Element {
                 ))}
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="py-2 text-gray-600">Cap rate</td>
+                <td className="py-2 text-gray-600">{t('capRate')}</td>
                 {rows.map((r) => (
                   <td key={r.id} className="py-2 text-right text-gray-900">
                     {r.capRate != null ? formatPercentage(r.capRate) : '—'}
@@ -146,7 +148,7 @@ export function ComparePropertiesTable(): JSX.Element {
                 ))}
               </tr>
               <tr>
-                <td className="py-2 text-gray-600">Occupancy</td>
+                <td className="py-2 text-gray-600">{t('occupancy')}</td>
                 {rows.map((r) => (
                   <td key={r.id} className="py-2 text-right text-gray-900">
                     {formatPercentage(r.occupancy)}
@@ -165,7 +167,7 @@ export function ComparePropertiesTable(): JSX.Element {
             variant="outline"
             onClick={() => setSelected([])}
           >
-            Clear selection
+            {t('clearSelection')}
           </Button>
         </div>
       )}

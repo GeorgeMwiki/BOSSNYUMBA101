@@ -13,10 +13,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../../lib/api';
 import { useBudgetForecasts } from '../../../lib/hooks';
 
 export default function BudgetForecastsPage() {
+  const t = useTranslations('budgetForecastsPage');
   const { data = [], isLoading, error, refetch } = useBudgetForecasts();
 
   const forecastData = data.length
@@ -55,7 +57,7 @@ export default function BudgetForecastsPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load forecasts'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -68,8 +70,8 @@ export default function BudgetForecastsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financial Forecasts</h1>
-          <p className="text-gray-500">Projected revenue, expenses, and NOI</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -79,41 +81,41 @@ export default function BudgetForecastsPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Projected Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('projectedRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(totalProjectedRevenue)}
           </p>
-          <p className="text-sm text-gray-500">next 8 months</p>
+          <p className="text-sm text-gray-500">{t('next8Months')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <TrendingDown className="h-5 w-5 text-yellow-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Projected Expenses</span>
+            <span className="text-sm font-medium text-gray-500">{t('projectedExpenses')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(totalProjectedExpenses)}
           </p>
-          <p className="text-sm text-gray-500">next 8 months</p>
+          <p className="text-sm text-gray-500">{t('next8Months')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Target className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Projected NOI</span>
+            <span className="text-sm font-medium text-gray-500">{t('projectedNoi')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(totalProjectedNoi)}
           </p>
-          <p className="text-sm text-gray-500">next 8 months</p>
+          <p className="text-sm text-gray-500">{t('next8Months')}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue vs Expenses Forecast</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueVsExpensesForecast')}</h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={forecastData}>
@@ -150,7 +152,7 @@ export default function BudgetForecastsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Net Operating Income Forecast</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('netOperatingIncomeForecast')}</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={forecastData}>

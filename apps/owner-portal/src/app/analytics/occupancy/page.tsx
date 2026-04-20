@@ -14,12 +14,14 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatPercentage } from '../../../lib/api';
 import { useOccupancyAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
 export default function OccupancyPage() {
+  const t = useTranslations('occupancyAnalyticsPage');
   const { data: trendData = [], isLoading, error, refetch } = useOccupancyAnalytics();
 
   const displayData = trendData.length
@@ -59,7 +61,7 @@ export default function OccupancyPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load occupancy analytics'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -72,8 +74,8 @@ export default function OccupancyPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Occupancy Trends</h1>
-          <p className="text-gray-500">Track occupancy rates across your portfolio</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -83,7 +85,7 @@ export default function OccupancyPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Home className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Current Rate</span>
+            <span className="text-sm font-medium text-gray-500">{t('currentRate')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(displayData[displayData.length - 1]?.rate || 91)}
@@ -94,7 +96,7 @@ export default function OccupancyPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <Users className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Vacant Units</span>
+            <span className="text-sm font-medium text-gray-500">{t('vacantUnits')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">12</p>
         </div>
@@ -103,7 +105,7 @@ export default function OccupancyPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <Home className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupied Units</span>
+            <span className="text-sm font-medium text-gray-500">{t('occupiedUnits')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">128</p>
         </div>
@@ -111,7 +113,7 @@ export default function OccupancyPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Trend</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('occupancyTrend')}</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={displayData}>
@@ -140,7 +142,7 @@ export default function OccupancyPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">By Property</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('byProperty')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

@@ -9,6 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../lib/api';
 
 export interface MaintenanceCostData {
@@ -35,6 +36,7 @@ const CATEGORY_COLORS = {
 };
 
 export function MaintenanceCostTrends({ data, className }: MaintenanceCostTrendsProps) {
+  const t = useTranslations('maintenanceCostTrends');
   const totalCost = data.reduce((sum, item) => sum + item.total, 0);
   const avgMonthlyCost = totalCost / data.length;
 
@@ -42,8 +44,8 @@ export function MaintenanceCostTrends({ data, className }: MaintenanceCostTrends
     <div className={className}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Maintenance Cost Trends</h3>
-          <p className="text-sm text-gray-500">Cost breakdown by category over time</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-gray-900">{formatCurrency(avgMonthlyCost)}</p>

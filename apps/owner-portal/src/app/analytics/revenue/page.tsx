@@ -14,12 +14,14 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../../lib/api';
 import { useRevenueAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
 
 export default function RevenuePage() {
+  const t = useTranslations('revenueAnalyticsPage');
   const { data = [], isLoading, error, refetch } = useRevenueAnalytics();
 
   const chartData = data.length
@@ -60,7 +62,7 @@ export default function RevenuePage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load revenue analytics'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -73,8 +75,8 @@ export default function RevenuePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Revenue Analysis</h1>
-          <p className="text-gray-500">Breakdown of revenue sources and trends</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -84,42 +86,42 @@ export default function RevenuePage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('totalRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(chartData.reduce((a, d) => a + d.rent + d.other, 0) / chartData.length)}
           </p>
-          <p className="text-sm text-gray-500">avg monthly</p>
+          <p className="text-sm text-gray-500">{t('avgMonthly')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Rent Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('rentRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(chartData[chartData.length - 1]?.rent || 9400000)}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Other Income</span>
+            <span className="text-sm font-medium text-gray-500">{t('otherIncome')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(chartData[chartData.length - 1]?.other || 500000)}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Month</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueByMonth')}</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -142,7 +144,7 @@ export default function RevenuePage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Source</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueBySource')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

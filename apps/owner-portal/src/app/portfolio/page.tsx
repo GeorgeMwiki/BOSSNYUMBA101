@@ -10,10 +10,12 @@ import {
   Target,
 } from 'lucide-react';
 import { Skeleton, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatPercentage } from '../../lib/api';
 import { usePortfolioSummary, useProperties } from '../../lib/hooks';
 
 export default function PortfolioPage() {
+  const t = useTranslations('portfolioPage');
   const { data: portfolio = null, isLoading: loadingSummary } = usePortfolioSummary();
   const { data: properties = [], isLoading: loadingProperties } = useProperties();
   const loading = loadingSummary || loadingProperties;
@@ -48,8 +50,8 @@ export default function PortfolioPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Portfolio Overview</h1>
-          <p className="text-gray-500">View and manage your property investments</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <Link
@@ -57,14 +59,14 @@ export default function PortfolioPage() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
             <BarChart3 className="h-4 w-4" />
-            Performance
+            {t('performance')}
           </Link>
           <Link
             to="/portfolio/growth"
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
           >
             <Target className="h-4 w-4" />
-            Growth
+            {t('growth')}
           </Link>
         </div>
       </div>
@@ -75,10 +77,10 @@ export default function PortfolioPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Building2 className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Properties</span>
+            <span className="text-sm font-medium text-gray-500">{t('properties')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">{summary.totalProperties}</p>
-          <p className="text-sm text-gray-500">{summary.totalUnits} total units</p>
+          <p className="text-sm text-gray-500">{summary.totalUnits} {t('totalUnits')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -86,7 +88,7 @@ export default function PortfolioPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Monthly Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('monthlyRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(summary.monthlyRevenue)}
@@ -98,7 +100,7 @@ export default function PortfolioPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupancy</span>
+            <span className="text-sm font-medium text-gray-500">{t('occupancy')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(summary.occupancyRate)}
@@ -110,7 +112,7 @@ export default function PortfolioPage() {
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Target className="h-5 w-5 text-yellow-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">YoY Growth</span>
+            <span className="text-sm font-medium text-gray-500">{t('yoyGrowth')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(summary.yoyGrowth)}
@@ -120,8 +122,8 @@ export default function PortfolioPage() {
 
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Properties</h3>
-          <p className="text-sm text-gray-500">Your portfolio properties</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('properties')}</h3>
+          <p className="text-sm text-gray-500">{t('yourPortfolioProperties')}</p>
         </div>
         <div className="divide-y divide-gray-200">
           {properties.map((property) => (
@@ -147,7 +149,7 @@ export default function PortfolioPage() {
                   <p className="text-sm font-medium text-gray-900">
                     {formatCurrency(property.monthlyRevenue || 0)}
                   </p>
-                  <p className="text-xs text-gray-500">monthly</p>
+                  <p className="text-xs text-gray-500">{t('monthly')}</p>
                 </div>
                 <span className="text-sm font-medium text-blue-600">
                   {formatPercentage(((property.occupiedUnits || 0) / (property.totalUnits || 1)) * 100)}
@@ -160,8 +162,8 @@ export default function PortfolioPage() {
         {properties.length === 0 && (
           <EmptyState
             icon={<Building2 className="h-8 w-8" />}
-            title="No properties in portfolio"
-            description="Add your first property to get started."
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
           />
         )}
       </div>

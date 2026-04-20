@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 
 export interface TenantRisk {
   readonly tenantId: string;
@@ -21,35 +22,38 @@ const tierColor: Record<TenantRisk['tier'], string> = {
   critical: 'bg-red-100 text-red-800',
 };
 
-export const TenantRiskCard: React.FC<Props> = ({ risk }) => (
-  <Card>
-    <CardHeader>
-      <div className="flex items-center justify-between">
-        <CardTitle>{risk.tenantName}</CardTitle>
-        <span className={`px-2 py-1 rounded text-xs font-medium ${tierColor[risk.tier]}`}>
-          {risk.tier.toUpperCase()} · {risk.score}
-        </span>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div>
-        <h4 className="text-sm font-medium mb-1">Top drivers</h4>
-        <ul className="text-sm space-y-1">
-          {risk.drivers.slice(0, 5).map((d) => (
-            <li key={d.code} className="flex justify-between">
-              <span>{d.label}</span>
-              <Badge>{d.weight.toFixed(2)}</Badge>
-            </li>
-          ))}
-        </ul>
-      </div>
+export const TenantRiskCard: React.FC<Props> = ({ risk }) => {
+  const t = useTranslations('tenantRiskCard');
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>{risk.tenantName}</CardTitle>
+          <span className={`px-2 py-1 rounded text-xs font-medium ${tierColor[risk.tier]}`}>
+            {risk.tier.toUpperCase()} · {risk.score}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div>
+          <h4 className="text-sm font-medium mb-1">{t('topDrivers')}</h4>
+          <ul className="text-sm space-y-1">
+            {risk.drivers.slice(0, 5).map((d) => (
+              <li key={d.code} className="flex justify-between">
+                <span>{d.label}</span>
+                <Badge>{d.weight.toFixed(2)}</Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      <div className="mt-3">
-        <h4 className="text-sm font-medium mb-1">AI narrative</h4>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{risk.narrative}</p>
-      </div>
-    </CardContent>
-  </Card>
-);
+        <div className="mt-3">
+          <h4 className="text-sm font-medium mb-1">{t('aiNarrative')}</h4>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{risk.narrative}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default TenantRiskCard;

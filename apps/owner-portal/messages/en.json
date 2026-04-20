@@ -1,7 +1,11 @@
 {
   "app": {
     "title": "BOSSNYUMBA Owner",
-    "tagline": "Property owner portfolio portal"
+    "tagline": "Property owner portfolio portal",
+    "subtitle": "Owner Portal",
+    "closeNav": "Close navigation menu",
+    "openNav": "Open navigation menu",
+    "notifications": "Notifications (3 unread)"
   },
   "chat": {
     "typingIndicator": "Advisor is typing…",
@@ -909,5 +913,294 @@
     "openAuthApp": "Open your authenticator app and enter the 6-digit code shown for BOSSNYUMBA.",
     "completeSetup": "Complete Setup",
     "backToQr": "\u2190 Back to QR code"
+  },
+  "analyticsPage": {
+    "retry": "Retry",
+    "title": "Analytics Dashboard",
+    "subtitle": "Property analytics and insights",
+    "occupancy": "Occupancy",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "occupancyRate": "Occupancy Rate",
+    "viewTrends": "View trends",
+    "monthlyRevenue": "Monthly Revenue",
+    "viewAnalysis": "View analysis",
+    "monthlyExpenses": "Monthly Expenses",
+    "viewBreakdown": "View breakdown",
+    "netOperatingIncome": "Net Operating Income",
+    "revenueTrend": "Revenue Trend",
+    "revenueVsExpenses": "Revenue vs Expenses"
+  },
+  "expensesAnalyticsPage": {
+    "retry": "Retry",
+    "title": "Expense Breakdown",
+    "subtitle": "Track and analyze property expenses",
+    "maintenance": "Maintenance",
+    "utilities": "Utilities",
+    "admin": "Admin",
+    "insurance": "Insurance",
+    "thisMonth": "this month",
+    "expensesByMonth": "Expenses by Month",
+    "byCategory": "By Category"
+  },
+  "occupancyAnalyticsPage": {
+    "retry": "Retry",
+    "title": "Occupancy Trends",
+    "subtitle": "Track occupancy rates across your portfolio",
+    "currentRate": "Current Rate",
+    "vacantUnits": "Vacant Units",
+    "occupiedUnits": "Occupied Units",
+    "occupancyTrend": "Occupancy Trend",
+    "byProperty": "By Property"
+  },
+  "revenueAnalyticsPage": {
+    "retry": "Retry",
+    "title": "Revenue Analysis",
+    "subtitle": "Breakdown of revenue sources and trends",
+    "totalRevenue": "Total Revenue",
+    "avgMonthly": "avg monthly",
+    "rentRevenue": "Rent Revenue",
+    "thisMonth": "this month",
+    "otherIncome": "Other Income",
+    "revenueByMonth": "Revenue by Month",
+    "revenueBySource": "Revenue by Source"
+  },
+  "budgetsPage": {
+    "retry": "Retry",
+    "title": "Budget Overview",
+    "subtitle": "Annual budget planning and tracking",
+    "forecasts": "Forecasts",
+    "totalBudget": "Total Budget",
+    "annual": "annual",
+    "spent": "Spent",
+    "utilized": "utilized",
+    "remaining": "Remaining",
+    "onTrack": "On Track",
+    "yes": "Yes",
+    "withinBudget": "within budget",
+    "budgetByCategory": "Budget by Category",
+    "propertyBudgets": "Property Budgets"
+  },
+  "propertyBudgetPage": {
+    "retry": "Retry",
+    "emptyTitle": "No budget set for this property",
+    "emptyDescription": "Create a budget for this property to track spend by category.",
+    "subtitle": "Property budget details",
+    "viewForecasts": "View Forecasts",
+    "totalBudget": "Total Budget",
+    "spent": "Spent",
+    "utilized": "utilized",
+    "remaining": "Remaining",
+    "budgetByCategory": "Budget by Category",
+    "thCategory": "Category",
+    "thBudgeted": "Budgeted",
+    "thSpent": "Spent",
+    "thVariance": "Variance"
+  },
+  "budgetForecastsPage": {
+    "retry": "Retry",
+    "title": "Financial Forecasts",
+    "subtitle": "Projected revenue, expenses, and NOI",
+    "projectedRevenue": "Projected Revenue",
+    "projectedExpenses": "Projected Expenses",
+    "projectedNoi": "Projected NOI",
+    "next8Months": "next 8 months",
+    "revenueVsExpensesForecast": "Revenue vs Expenses Forecast",
+    "netOperatingIncomeForecast": "Net Operating Income Forecast"
+  },
+  "portfolioPage": {
+    "title": "Portfolio Overview",
+    "subtitle": "View and manage your property investments",
+    "performance": "Performance",
+    "growth": "Growth",
+    "properties": "Properties",
+    "totalUnits": "total units",
+    "monthlyRevenue": "Monthly Revenue",
+    "occupancy": "Occupancy",
+    "yoyGrowth": "YoY Growth",
+    "yourPortfolioProperties": "Your portfolio properties",
+    "monthly": "monthly",
+    "emptyTitle": "No properties in portfolio",
+    "emptyDescription": "Add your first property to get started."
+  },
+  "portfolioGrowthPage": {
+    "retry": "Retry",
+    "title": "Portfolio Growth",
+    "subtitle": "Track your portfolio performance over time",
+    "revenueGrowth": "Revenue Growth",
+    "vsLast6Months": "vs last 6 months",
+    "portfolioValue": "Portfolio Value",
+    "currentEstimate": "current estimate",
+    "occupancyTrend": "Occupancy Trend",
+    "currentRate": "current rate",
+    "revenueTrend": "Revenue Trend",
+    "portfolioValueTrend": "Portfolio Value Trend"
+  },
+  "portfolioPerformancePage": {
+    "retry": "Retry",
+    "title": "Property Performance",
+    "subtitle": "Compare performance across your properties",
+    "revenueComparison": "Revenue Comparison",
+    "monthlyRevenue": "Monthly Revenue",
+    "occupancy": "Occupancy",
+    "capRate": "Cap Rate"
+  },
+  "propertyDetailPage": {
+    "notFoundTitle": "Property not found",
+    "notFoundDescription": "This property may have been removed or you may not have access.",
+    "totalUnits": "Total Units",
+    "occupied": "Occupied",
+    "available": "Available",
+    "occupancyRate": "Occupancy Rate",
+    "units": "Units",
+    "unit": "Unit",
+    "propertyInfo": "Property Info",
+    "type": "Type",
+    "status": "Status",
+    "address": "Address",
+    "amenities": "Amenities"
+  },
+  "vendorContractsPage": {
+    "retry": "Retry",
+    "title": "Vendor Contracts",
+    "subtitle": "Manage your vendor service agreements",
+    "contractsExpiringSoon": "contract(s) expiring soon",
+    "reviewAndRenew": "Review and renew before expiry",
+    "emptyTitle": "No vendor contracts yet",
+    "emptyDescription": "Add a service agreement with a vendor to track renewal dates and contract values.",
+    "thVendor": "Vendor",
+    "thProperty": "Property",
+    "thType": "Type",
+    "thPeriod": "Period",
+    "thValue": "Value",
+    "thStatus": "Status",
+    "view": "View"
+  },
+  "portfolioGradePage": {
+    "title": "Your portfolio",
+    "subtitle": "A simple letter grade for your portfolio, computed from live data.",
+    "portfolioGrade": "Portfolio grade",
+    "mrMwikilaSays": "Mr. Mwikila says",
+    "top3Strongest": "Top 3 strongest",
+    "top3NeedingAttention": "Top 3 needing attention",
+    "noDataYet": "No data yet."
+  },
+  "damageDeductionApproval": {
+    "title": "Damage Deduction Approvals",
+    "retry": "Retry",
+    "emptyTitle": "Nothing pending your approval",
+    "emptyDescription": "Proposed damage deductions from your estate managers will appear here.",
+    "item": "Item",
+    "amount": "Amount",
+    "totalProposed": "Total proposed",
+    "depositOnHand": "Deposit on hand",
+    "evidence": "Evidence",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveAriaLabel": "Approve damage deduction for {unit}",
+    "rejectAriaLabel": "Reject damage deduction for {unit}"
+  },
+  "messagesPageFull": {
+    "title": "Messages",
+    "subtitle": "Communicate with your property managers",
+    "retry": "Retry",
+    "online": "Online",
+    "searchConversations": "Search conversations...",
+    "attachFile": "Attach file",
+    "typeMessage": "Type a message...",
+    "selectConversation": "Select a conversation",
+    "selectConversationDesc": "Choose from your existing conversations to start messaging."
+  },
+  "tenantCommunicationsPage": {
+    "retry": "Retry",
+    "title": "Tenant Communications",
+    "subtitle": "Messages and correspondence with tenants",
+    "searchConversations": "Search conversations...",
+    "emptySearchTitle": "No conversations match your search",
+    "emptyTitle": "No conversations yet",
+    "emptySearchDescription": "Try a different name or property.",
+    "emptyDescription": "Messages between you and your tenants will appear here.",
+    "unit": "Unit",
+    "sendMessage": "Send a message",
+    "sendMessageHint": "Select a tenant above to view the conversation and send messages"
+  },
+  "ownerAdvisor": {
+    "title": "Owner Advisor",
+    "approve": "Approve",
+    "reject": "Reject",
+    "askPlaceholder": "Ask about my portfolio, arrears, property comparisons …",
+    "typing": "Typing…",
+    "errorPrefix": "Error"
+  },
+  "surveyApprovalsQueue": {
+    "title": "Conditional Survey Approvals",
+    "retry": "Retry",
+    "emptyTitle": "Queue clear",
+    "emptyDescription": "No conditional surveys are awaiting your approval.",
+    "trigger": "Trigger",
+    "estimatedCost": "Estimated cost",
+    "submittedBy": "Submitted by",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveAriaLabel": "Approve survey for {unit}",
+    "rejectAriaLabel": "Reject survey for {unit}"
+  },
+  "comparePropertiesTable": {
+    "title": "Compare properties",
+    "pick": "Pick",
+    "pickAtLeast": "Pick at least {count} properties to start comparing.",
+    "metric": "Metric",
+    "revenue": "Revenue",
+    "capRate": "Cap rate",
+    "occupancy": "Occupancy",
+    "clearSelection": "Clear selection"
+  },
+  "negotiationsList": {
+    "title": "Live Negotiations",
+    "retry": "Retry",
+    "emptyTitle": "No active negotiations",
+    "emptyDescription": "Prospects currently in negotiation for your units will appear here.",
+    "prospect": "Prospect",
+    "proposed": "Proposed",
+    "vsAsking": "vs asking",
+    "lastMessage": "Last message",
+    "accept": "Accept",
+    "override": "Override",
+    "reject": "Reject",
+    "acceptAriaLabel": "Accept negotiation on {unit}",
+    "overrideAriaLabel": "Override asking rent for {unit}",
+    "rejectAriaLabel": "Reject negotiation on {unit}"
+  },
+  "noiChart": {
+    "title": "Net Operating Income",
+    "subtitle": "Revenue, expenses, and NOI trend"
+  },
+  "maintenanceCostTrends": {
+    "title": "Maintenance Cost Trends",
+    "subtitle": "Cost breakdown by category over time"
+  },
+  "arrearsAgingChart": {
+    "title": "Arrears Aging",
+    "subtitle": "Outstanding balances by age bucket"
+  },
+  "tenantRiskCard": {
+    "topDrivers": "Top drivers",
+    "aiNarrative": "AI narrative"
+  },
+  "quickActions": {
+    "title": "Quick Actions"
+  },
+  "portfolioAtAGlance": {
+    "title": "Portfolio at a glance",
+    "last30Days": "Last 30 days",
+    "totalUnits": "Total units",
+    "occupancyRate": "Occupancy rate",
+    "arrearsRatio": "Arrears ratio",
+    "collectionsThisMonth": "Collections this month",
+    "upcomingRenewals": "Upcoming renewals",
+    "activeMaintenance": "Active maintenance"
+  },
+  "invitePage": {
+    "min8Characters": "Min. 8 characters"
   }
 }

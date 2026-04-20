@@ -18,10 +18,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../lib/api';
 import { useBudgetSummary, useProperties } from '../../lib/hooks';
 
 export default function BudgetsPage() {
+  const t = useTranslations('budgetsPage');
   const budgetQuery = useBudgetSummary();
   const propertiesQuery = useProperties();
 
@@ -72,7 +74,7 @@ export default function BudgetsPage() {
             }}
             className="ml-2"
           >
-            Retry
+            {t('retry')}
           </Button>
         </AlertDescription>
       </Alert>
@@ -83,8 +85,8 @@ export default function BudgetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Budget Overview</h1>
-          <p className="text-gray-500">Annual budget planning and tracking</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <Link
@@ -92,7 +94,7 @@ export default function BudgetsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
             <TrendingUp className="h-4 w-4" />
-            Forecasts
+            {t('forecasts')}
           </Link>
         </div>
       </div>
@@ -103,12 +105,12 @@ export default function BudgetsPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Target className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Total Budget</span>
+            <span className="text-sm font-medium text-gray-500">{t('totalBudget')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalBudget)}
           </p>
-          <p className="text-sm text-gray-500">annual</p>
+          <p className="text-sm text-gray-500">{t('annual')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -116,13 +118,13 @@ export default function BudgetsPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Spent</span>
+            <span className="text-sm font-medium text-gray-500">{t('spent')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalSpent)}
           </p>
           <p className="text-sm text-gray-500">
-            {utilizationPercent.toFixed(1)}% utilized
+            {utilizationPercent.toFixed(1)}% {t('utilized')}
           </p>
         </div>
 
@@ -131,7 +133,7 @@ export default function BudgetsPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Remaining</span>
+            <span className="text-sm font-medium text-gray-500">{t('remaining')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(displayBudget.totalBudget - displayBudget.totalSpent)}
@@ -143,16 +145,16 @@ export default function BudgetsPage() {
             <div className="p-2 bg-yellow-100 rounded-lg">
               <PieChart className="h-5 w-5 text-yellow-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">On Track</span>
+            <span className="text-sm font-medium text-gray-500">{t('onTrack')}</span>
           </div>
-          <p className="mt-3 text-2xl font-semibold text-green-600">Yes</p>
-          <p className="text-sm text-gray-500">within budget</p>
+          <p className="mt-3 text-2xl font-semibold text-green-600">{t('yes')}</p>
+          <p className="text-sm text-gray-500">{t('withinBudget')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget by Category</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('budgetByCategory')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={displayBudget.byCategory}>
@@ -175,7 +177,7 @@ export default function BudgetsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Budgets</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('propertyBudgets')}</h3>
           <div className="space-y-3">
             {displayProperties.map((p) => (
               <Link

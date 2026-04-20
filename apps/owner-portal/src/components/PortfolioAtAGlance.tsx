@@ -23,6 +23,7 @@ import {
   CalendarClock,
   Wrench,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   useOwnerDashboard,
   usePortfolioPerformance,
@@ -37,6 +38,7 @@ interface Kpi {
 }
 
 export function PortfolioAtAGlance(): JSX.Element {
+  const t = useTranslations('portfolioAtAGlance');
   const dashboard = useOwnerDashboard({ propertyId: 'all', dateRange: '30d' });
   const performance = usePortfolioPerformance();
 
@@ -87,37 +89,37 @@ export function PortfolioAtAGlance(): JSX.Element {
 
   const kpis: readonly Kpi[] = [
     {
-      label: 'Total units',
+      label: t('totalUnits'),
       value: String(totalUnits),
       icon: Building2,
       accent: 'text-blue-600',
     },
     {
-      label: 'Occupancy rate',
+      label: t('occupancyRate'),
       value: formatPercentage(occupancyRate),
       icon: HomeIcon,
       accent: 'text-emerald-600',
     },
     {
-      label: 'Arrears ratio',
+      label: t('arrearsRatio'),
       value: formatPercentage(arrearsRatio),
       icon: AlertCircle,
       accent: 'text-amber-600',
     },
     {
-      label: 'Collections this month',
+      label: t('collectionsThisMonth'),
       value: formatCurrency(thisMonthCollections),
       icon: DollarSign,
       accent: 'text-emerald-700',
     },
     {
-      label: 'Upcoming renewals',
+      label: t('upcomingRenewals'),
       value: String(upcomingRenewals),
       icon: CalendarClock,
       accent: 'text-violet-600',
     },
     {
-      label: 'Active maintenance',
+      label: t('activeMaintenance'),
       value: String(activeMaintenance),
       icon: Wrench,
       accent: 'text-orange-600',
@@ -134,9 +136,9 @@ export function PortfolioAtAGlance(): JSX.Element {
           id="portfolio-glance-heading"
           className="text-lg font-semibold text-gray-900"
         >
-          Portfolio at a glance
+          {t('title')}
         </h2>
-        <span className="text-xs text-gray-500">Last 30 days</span>
+        <span className="text-xs text-gray-500">{t('last30Days')}</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {kpis.map((kpi) => {

@@ -19,10 +19,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatPercentage } from '../../lib/api';
 import { useAnalyticsSummary } from '../../lib/hooks';
 
 export default function AnalyticsPage() {
+  const t = useTranslations('analyticsPage');
   const { data: stats, isLoading, error, refetch } = useAnalyticsSummary();
 
   const revenueData = [
@@ -54,7 +56,7 @@ export default function AnalyticsPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load analytics'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -64,8 +66,8 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-500">Property analytics and insights</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <Link
@@ -73,21 +75,21 @@ export default function AnalyticsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
           >
             <Home className="h-4 w-4" />
-            Occupancy
+            {t('occupancy')}
           </Link>
           <Link
             to="/analytics/revenue"
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
           >
             <DollarSign className="h-4 w-4" />
-            Revenue
+            {t('revenue')}
           </Link>
           <Link
             to="/analytics/expenses"
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
           >
             <TrendingUp className="h-4 w-4" />
-            Expenses
+            {t('expenses')}
           </Link>
         </div>
       </div>
@@ -98,13 +100,13 @@ export default function AnalyticsPage() {
             <div className="p-2 bg-blue-100 rounded-lg">
               <Home className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Occupancy Rate</span>
+            <span className="text-sm font-medium text-gray-500">{t('occupancyRate')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatPercentage(stats?.occupancy || 91)}
           </p>
           <Link to="/analytics/occupancy" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
-            View trends <ArrowRight className="h-4 w-4" />
+            {t('viewTrends')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -113,13 +115,13 @@ export default function AnalyticsPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Monthly Revenue</span>
+            <span className="text-sm font-medium text-gray-500">{t('monthlyRevenue')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(stats?.revenue || 9400000)}
           </p>
           <Link to="/analytics/revenue" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
-            View analysis <ArrowRight className="h-4 w-4" />
+            {t('viewAnalysis')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -128,13 +130,13 @@ export default function AnalyticsPage() {
             <div className="p-2 bg-yellow-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-yellow-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Monthly Expenses</span>
+            <span className="text-sm font-medium text-gray-500">{t('monthlyExpenses')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(stats?.expenses || 2100000)}
           </p>
           <Link to="/analytics/expenses" className="text-sm text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1">
-            View breakdown <ArrowRight className="h-4 w-4" />
+            {t('viewBreakdown')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -143,7 +145,7 @@ export default function AnalyticsPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <BarChart3 className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Net Operating Income</span>
+            <span className="text-sm font-medium text-gray-500">{t('netOperatingIncome')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(stats?.noi || 7300000)}
@@ -153,7 +155,7 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueTrend')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData}>
@@ -181,7 +183,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue vs Expenses</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueVsExpenses')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueData.map((d) => ({ ...d, expenses: 2100000 }))}>

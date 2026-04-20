@@ -11,6 +11,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
 
 export interface DamageDeduction {
@@ -29,6 +30,7 @@ type DeductionDecision = 'approve' | 'reject';
 type PendingDeduction = { readonly id: string; readonly decision: DeductionDecision };
 
 export const DamageDeductionApproval: React.FC = () => {
+  const t = useTranslations('damageDeductionApproval');
   const [items, setItems] = useState<ReadonlyArray<DamageDeduction>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,13 +79,13 @@ export const DamageDeductionApproval: React.FC = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Damage Deduction Approvals</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
       {error && (
         <Alert variant="danger">
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -102,8 +104,8 @@ export const DamageDeductionApproval: React.FC = () => {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="Nothing pending your approval"
-          description="Proposed damage deductions from your estate managers will appear here."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="grid gap-3">
@@ -121,8 +123,8 @@ export const DamageDeductionApproval: React.FC = () => {
                   <table className="w-full text-sm mb-3">
                     <thead className="text-left text-muted-foreground">
                       <tr>
-                        <th scope="col">Item</th>
-                        <th scope="col" className="text-right">Amount</th>
+                        <th scope="col">{t('item')}</th>
+                        <th scope="col" className="text-right">{t('amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -133,11 +135,11 @@ export const DamageDeductionApproval: React.FC = () => {
                         </tr>
                       ))}
                       <tr className="border-t font-medium">
-                        <td>Total proposed</td>
+                        <td>{t('totalProposed')}</td>
                         <td className="text-right">{d.totalAmount.toLocaleString()}</td>
                       </tr>
                       <tr>
-                        <td>Deposit on hand</td>
+                        <td>{t('depositOnHand')}</td>
                         <td className="text-right">{d.depositOnHand.toLocaleString()}</td>
                       </tr>
                     </tbody>
@@ -145,7 +147,7 @@ export const DamageDeductionApproval: React.FC = () => {
 
                   {d.evidenceUrls.length > 0 && (
                     <div className="mb-3">
-                      <h4 className="text-sm font-medium">Evidence</h4>
+                      <h4 className="text-sm font-medium">{t('evidence')}</h4>
                       <ul className="text-xs text-blue-600 list-disc pl-5">
                         {d.evidenceUrls.map((u) => (
                           <li key={u}>
@@ -162,9 +164,9 @@ export const DamageDeductionApproval: React.FC = () => {
                       loading={isPending && pending?.decision === 'approve'}
                       disabled={isPending}
                       onClick={() => decide(d.id, 'approve')}
-                      aria-label={`Approve damage deduction for ${d.unitLabel}`}
+                      aria-label={t('approveAriaLabel', { unit: d.unitLabel })}
                     >
-                      Approve
+                      {t('approve')}
                     </Button>
                     <Button
                       size="sm"
@@ -172,9 +174,9 @@ export const DamageDeductionApproval: React.FC = () => {
                       loading={isPending && pending?.decision === 'reject'}
                       disabled={isPending}
                       onClick={() => decide(d.id, 'reject')}
-                      aria-label={`Reject damage deduction for ${d.unitLabel}`}
+                      aria-label={t('rejectAriaLabel', { unit: d.unitLabel })}
                     >
-                      Reject
+                      {t('reject')}
                     </Button>
                   </div>
                 </CardContent>

@@ -14,12 +14,14 @@ import {
   Cell,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../../lib/api';
 import { useExpensesAnalytics } from '../../../lib/hooks';
 
 const COLORS = ['#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#10B981'];
 
 export default function ExpensesPage() {
+  const t = useTranslations('expensesAnalyticsPage');
   const { data = [], isLoading, error, refetch } = useExpensesAnalytics();
 
   const chartData = data.length
@@ -62,7 +64,7 @@ export default function ExpensesPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load expenses analytics'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -75,8 +77,8 @@ export default function ExpensesPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expense Breakdown</h1>
-          <p className="text-gray-500">Track and analyze property expenses</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -86,43 +88,43 @@ export default function ExpensesPage() {
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Wrench className="h-5 w-5 text-yellow-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Maintenance</span>
+            <span className="text-sm font-medium text-gray-500">{t('maintenance')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(510000)}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Zap className="h-5 w-5 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Utilities</span>
+            <span className="text-sm font-medium text-gray-500">{t('utilities')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(340000)}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <FileText className="h-5 w-5 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Admin</span>
+            <span className="text-sm font-medium text-gray-500">{t('admin')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(205000)}
           </p>
-          <p className="text-sm text-gray-500">this month</p>
+          <p className="text-sm text-gray-500">{t('thisMonth')}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <Shield className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">Insurance</span>
+            <span className="text-sm font-medium text-gray-500">{t('insurance')}</span>
           </div>
           <p className="mt-3 text-2xl font-semibold text-gray-900">
             {formatCurrency(120000)}
@@ -133,7 +135,7 @@ export default function ExpensesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Expenses by Month</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('expensesByMonth')}</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -157,7 +159,7 @@ export default function ExpensesPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">By Category</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('byCategory')}</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

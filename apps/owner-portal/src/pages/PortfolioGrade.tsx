@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
 
 type Grade =
@@ -60,6 +61,7 @@ function prettyGrade(grade: Grade): string {
 }
 
 export default function PortfolioGradePage(): JSX.Element {
+  const t = useTranslations('portfolioGradePage');
   const [data, setData] = useState<PortfolioGrade | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,15 +101,15 @@ export default function PortfolioGradePage(): JSX.Element {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-gray-900">Your portfolio</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
         <p className="text-sm text-gray-500">
-          A simple letter grade for your portfolio, computed from live data.
+          {t('subtitle')}
         </p>
       </header>
 
       <section className={`rounded-xl p-8 ${gradeColor(data.grade)}`}>
         <p className="uppercase text-xs tracking-wide opacity-75">
-          Portfolio grade
+          {t('portfolioGrade')}
         </p>
         <p className="text-6xl font-bold mt-1">{prettyGrade(data.grade)}</p>
         <p className="text-base mt-2">
@@ -123,7 +125,7 @@ export default function PortfolioGradePage(): JSX.Element {
       <section className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
         <header className="flex items-center gap-2 text-indigo-700">
           <Sparkles className="h-5 w-5" />
-          <h2 className="font-semibold">Mr. Mwikila says</h2>
+          <h2 className="font-semibold">{t('mrMwikilaSays')}</h2>
         </header>
         <p className="mt-2 text-sm text-indigo-900 whitespace-pre-line">
           {narrative}
@@ -132,7 +134,7 @@ export default function PortfolioGradePage(): JSX.Element {
 
       <section className="grid md:grid-cols-2 gap-4">
         <div className="rounded border border-emerald-200 bg-white p-4">
-          <h3 className="font-semibold text-emerald-800">Top 3 strongest</h3>
+          <h3 className="font-semibold text-emerald-800">{t('top3Strongest')}</h3>
           <ul className="mt-2 space-y-2">
             {data.topStrengths.map((p) => (
               <li
@@ -148,13 +150,13 @@ export default function PortfolioGradePage(): JSX.Element {
               </li>
             ))}
             {data.topStrengths.length === 0 && (
-              <li className="text-sm text-gray-500">No data yet.</li>
+              <li className="text-sm text-gray-500">{t('noDataYet')}</li>
             )}
           </ul>
         </div>
 
         <div className="rounded border border-rose-200 bg-white p-4">
-          <h3 className="font-semibold text-rose-800">Top 3 needing attention</h3>
+          <h3 className="font-semibold text-rose-800">{t('top3NeedingAttention')}</h3>
           <ul className="mt-2 space-y-2">
             {data.topWeaknesses.map((p) => (
               <li
@@ -170,7 +172,7 @@ export default function PortfolioGradePage(): JSX.Element {
               </li>
             ))}
             {data.topWeaknesses.length === 0 && (
-              <li className="text-sm text-gray-500">No data yet.</li>
+              <li className="text-sm text-gray-500">{t('noDataYet')}</li>
             )}
           </ul>
         </div>

@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../lib/api';
 
 export interface NOIData {
@@ -25,6 +26,7 @@ interface NOIChartProps {
 }
 
 export function NOIChart({ data, className }: NOIChartProps) {
+  const t = useTranslations('noiChart');
   const latestNOI = data[data.length - 1]?.noi || 0;
   const previousNOI = data[data.length - 2]?.noi || 0;
   const noiChange = previousNOI > 0 ? ((latestNOI - previousNOI) / previousNOI) * 100 : 0;
@@ -33,8 +35,8 @@ export function NOIChart({ data, className }: NOIChartProps) {
     <div className={className}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Net Operating Income</h3>
-          <p className="text-sm text-gray-500">Revenue, expenses, and NOI trend</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-gray-900">{formatCurrency(latestNOI)}</p>

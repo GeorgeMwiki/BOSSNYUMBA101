@@ -1,7 +1,11 @@
 {
   "app": {
     "title": "BOSSNYUMBA Mmiliki",
-    "tagline": "Lango la mmiliki wa nyumba na mali"
+    "tagline": "Lango la mmiliki wa nyumba na mali",
+    "subtitle": "Lango la Mmiliki",
+    "closeNav": "Funga menyu ya urambazaji",
+    "openNav": "Fungua menyu ya urambazaji",
+    "notifications": "Arifa (3 mpya)"
   },
   "chat": {
     "typingIndicator": "Mshauri anaandika…",
@@ -909,5 +913,294 @@
     "openAuthApp": "Fungua programu yako ya kithibitishi na uingize msimbo wa tarakimu 6 unaoonyeshwa kwa BOSSNYUMBA.",
     "completeSetup": "Maliza Usanidi",
     "backToQr": "\u2190 Rudi kwenye msimbo wa QR"
+  },
+  "analyticsPage": {
+    "retry": "Jaribu tena",
+    "title": "Dashibodi ya Uchambuzi",
+    "subtitle": "Uchambuzi wa mali na maarifa",
+    "occupancy": "Ujaaji",
+    "revenue": "Mapato",
+    "expenses": "Gharama",
+    "occupancyRate": "Kiwango cha Ujaaji",
+    "viewTrends": "Tazama mwelekeo",
+    "monthlyRevenue": "Mapato ya Mwezi",
+    "viewAnalysis": "Tazama uchambuzi",
+    "monthlyExpenses": "Gharama za Mwezi",
+    "viewBreakdown": "Tazama mchanganuo",
+    "netOperatingIncome": "Mapato Halisi ya Uendeshaji",
+    "revenueTrend": "Mwelekeo wa Mapato",
+    "revenueVsExpenses": "Mapato dhidi ya Gharama"
+  },
+  "expensesAnalyticsPage": {
+    "retry": "Jaribu tena",
+    "title": "Mchanganuo wa Gharama",
+    "subtitle": "Fuatilia na uchambue gharama za mali",
+    "maintenance": "Matengenezo",
+    "utilities": "Huduma za msingi",
+    "admin": "Utawala",
+    "insurance": "Bima",
+    "thisMonth": "mwezi huu",
+    "expensesByMonth": "Gharama kwa Mwezi",
+    "byCategory": "Kwa Kategoria"
+  },
+  "occupancyAnalyticsPage": {
+    "retry": "Jaribu tena",
+    "title": "Mielekeo ya Ujaaji",
+    "subtitle": "Fuatilia viwango vya ujaaji kwenye mkusanyiko wako wa mali",
+    "currentRate": "Kiwango cha Sasa",
+    "vacantUnits": "Vyumba Vilivyo Wazi",
+    "occupiedUnits": "Vyumba Vilivyojaa",
+    "occupancyTrend": "Mwelekeo wa Ujaaji",
+    "byProperty": "Kwa Mali"
+  },
+  "revenueAnalyticsPage": {
+    "retry": "Jaribu tena",
+    "title": "Uchambuzi wa Mapato",
+    "subtitle": "Mchanganuo wa vyanzo vya mapato na mielekeo",
+    "totalRevenue": "Jumla ya Mapato",
+    "avgMonthly": "wastani wa mwezi",
+    "rentRevenue": "Mapato ya Kodi",
+    "thisMonth": "mwezi huu",
+    "otherIncome": "Mapato Mengine",
+    "revenueByMonth": "Mapato kwa Mwezi",
+    "revenueBySource": "Mapato kwa Chanzo"
+  },
+  "budgetsPage": {
+    "retry": "Jaribu tena",
+    "title": "Muhtasari wa Bajeti",
+    "subtitle": "Mipango na ufuatiliaji wa bajeti ya mwaka",
+    "forecasts": "Utabiri",
+    "totalBudget": "Jumla ya Bajeti",
+    "annual": "kila mwaka",
+    "spent": "Imetumika",
+    "utilized": "imetumika",
+    "remaining": "Iliyobaki",
+    "onTrack": "Iko Njiani",
+    "yes": "Ndiyo",
+    "withinBudget": "ndani ya bajeti",
+    "budgetByCategory": "Bajeti kwa Kategoria",
+    "propertyBudgets": "Bajeti za Mali"
+  },
+  "propertyBudgetPage": {
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna bajeti iliyowekwa kwa mali hii",
+    "emptyDescription": "Unda bajeti kwa mali hii ili kufuatilia matumizi kwa kategoria.",
+    "subtitle": "Maelezo ya bajeti ya mali",
+    "viewForecasts": "Tazama Utabiri",
+    "totalBudget": "Jumla ya Bajeti",
+    "spent": "Imetumika",
+    "utilized": "imetumika",
+    "remaining": "Iliyobaki",
+    "budgetByCategory": "Bajeti kwa Kategoria",
+    "thCategory": "Kategoria",
+    "thBudgeted": "Iliyotengwa",
+    "thSpent": "Imetumika",
+    "thVariance": "Tofauti"
+  },
+  "budgetForecastsPage": {
+    "retry": "Jaribu tena",
+    "title": "Utabiri wa Kifedha",
+    "subtitle": "Mapato, gharama, na NOI zinazotarajiwa",
+    "projectedRevenue": "Mapato Yanayotarajiwa",
+    "projectedExpenses": "Gharama Zinazotarajiwa",
+    "projectedNoi": "NOI Inayotarajiwa",
+    "next8Months": "miezi 8 ijayo",
+    "revenueVsExpensesForecast": "Utabiri wa Mapato dhidi ya Gharama",
+    "netOperatingIncomeForecast": "Utabiri wa Mapato Halisi ya Uendeshaji"
+  },
+  "portfolioPage": {
+    "title": "Muhtasari wa Mkusanyiko wa Mali",
+    "subtitle": "Tazama na udhibiti uwekezaji wako wa mali",
+    "performance": "Utendaji",
+    "growth": "Ukuaji",
+    "properties": "Mali",
+    "totalUnits": "jumla ya vyumba",
+    "monthlyRevenue": "Mapato ya Mwezi",
+    "occupancy": "Ujaaji",
+    "yoyGrowth": "Ukuaji wa Mwaka",
+    "yourPortfolioProperties": "Mali zako za mkusanyiko",
+    "monthly": "kila mwezi",
+    "emptyTitle": "Hakuna mali kwenye mkusanyiko",
+    "emptyDescription": "Ongeza mali yako ya kwanza ili kuanza."
+  },
+  "portfolioGrowthPage": {
+    "retry": "Jaribu tena",
+    "title": "Ukuaji wa Mkusanyiko",
+    "subtitle": "Fuatilia utendaji wa mkusanyiko wako kwa muda",
+    "revenueGrowth": "Ukuaji wa Mapato",
+    "vsLast6Months": "ikilinganishwa na miezi 6 iliyopita",
+    "portfolioValue": "Thamani ya Mkusanyiko",
+    "currentEstimate": "kadirio la sasa",
+    "occupancyTrend": "Mwelekeo wa Ujaaji",
+    "currentRate": "kiwango cha sasa",
+    "revenueTrend": "Mwelekeo wa Mapato",
+    "portfolioValueTrend": "Mwelekeo wa Thamani ya Mkusanyiko"
+  },
+  "portfolioPerformancePage": {
+    "retry": "Jaribu tena",
+    "title": "Utendaji wa Mali",
+    "subtitle": "Linganisha utendaji wa mali zako",
+    "revenueComparison": "Ulinganifu wa Mapato",
+    "monthlyRevenue": "Mapato ya Mwezi",
+    "occupancy": "Ujaaji",
+    "capRate": "Kiwango cha Mavuno"
+  },
+  "propertyDetailPage": {
+    "notFoundTitle": "Mali haijapatikana",
+    "notFoundDescription": "Mali hii huenda iliondolewa au huna ufikiaji.",
+    "totalUnits": "Jumla ya Vyumba",
+    "occupied": "Vilivyojaa",
+    "available": "Vinavyopatikana",
+    "occupancyRate": "Kiwango cha Ujaaji",
+    "units": "Vyumba",
+    "unit": "Chumba",
+    "propertyInfo": "Maelezo ya Mali",
+    "type": "Aina",
+    "status": "Hali",
+    "address": "Anwani",
+    "amenities": "Huduma"
+  },
+  "vendorContractsPage": {
+    "retry": "Jaribu tena",
+    "title": "Mikataba ya Wauzaji",
+    "subtitle": "Simamia mikataba yako ya huduma ya wauzaji",
+    "contractsExpiringSoon": "mkataba/mikataba inayomalizika hivi karibuni",
+    "reviewAndRenew": "Kagua na ufanye upya kabla ya kumalizika",
+    "emptyTitle": "Bado hakuna mikataba ya wauzaji",
+    "emptyDescription": "Ongeza mkataba wa huduma na muuzaji ili kufuatilia tarehe za upya na thamani za mkataba.",
+    "thVendor": "Muuzaji",
+    "thProperty": "Mali",
+    "thType": "Aina",
+    "thPeriod": "Kipindi",
+    "thValue": "Thamani",
+    "thStatus": "Hali",
+    "view": "Tazama"
+  },
+  "portfolioGradePage": {
+    "title": "Mkusanyiko wako",
+    "subtitle": "Daraja rahisi la herufi kwa mkusanyiko wako, linalohesabiwa kutoka data halisi.",
+    "portfolioGrade": "Daraja la mkusanyiko",
+    "mrMwikilaSays": "Bw. Mwikila anasema",
+    "top3Strongest": "3 Imara zaidi",
+    "top3NeedingAttention": "3 Zinazohitaji kutiliwa maanani",
+    "noDataYet": "Bado hakuna data."
+  },
+  "damageDeductionApproval": {
+    "title": "Idhini za Punguzo la Uharibifu",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna kinachosubiri idhini yako",
+    "emptyDescription": "Punguzo za uharibifu zilizopendekezwa kutoka kwa wasimamizi wako wa mali zitaonekana hapa.",
+    "item": "Kipengee",
+    "amount": "Kiasi",
+    "totalProposed": "Jumla iliyopendekezwa",
+    "depositOnHand": "Amana iliyopo",
+    "evidence": "Ushahidi",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "approveAriaLabel": "Idhinisha punguzo la uharibifu kwa {unit}",
+    "rejectAriaLabel": "Kataa punguzo la uharibifu kwa {unit}"
+  },
+  "messagesPageFull": {
+    "title": "Ujumbe",
+    "subtitle": "Wasiliana na wasimamizi wako wa mali",
+    "retry": "Jaribu tena",
+    "online": "Mtandaoni",
+    "searchConversations": "Tafuta mazungumzo...",
+    "attachFile": "Ambatisha faili",
+    "typeMessage": "Andika ujumbe...",
+    "selectConversation": "Chagua mazungumzo",
+    "selectConversationDesc": "Chagua kutoka kwa mazungumzo yako yaliyopo ili kuanza kutuma ujumbe."
+  },
+  "tenantCommunicationsPage": {
+    "retry": "Jaribu tena",
+    "title": "Mawasiliano ya Wapangaji",
+    "subtitle": "Ujumbe na mawasiliano na wapangaji",
+    "searchConversations": "Tafuta mazungumzo...",
+    "emptySearchTitle": "Hakuna mazungumzo yanayolingana na utafutaji wako",
+    "emptyTitle": "Bado hakuna mazungumzo",
+    "emptySearchDescription": "Jaribu jina tofauti au mali.",
+    "emptyDescription": "Ujumbe kati yako na wapangaji wako utaonekana hapa.",
+    "unit": "Chumba",
+    "sendMessage": "Tuma ujumbe",
+    "sendMessageHint": "Chagua mpangaji hapo juu ili kutazama mazungumzo na kutuma ujumbe"
+  },
+  "ownerAdvisor": {
+    "title": "Mshauri wa Mmiliki",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "askPlaceholder": "Uliza kuhusu mkusanyiko wangu, madeni, ulinganifu wa mali …",
+    "typing": "Inaandika…",
+    "errorPrefix": "Hitilafu"
+  },
+  "surveyApprovalsQueue": {
+    "title": "Idhini za Ukaguzi wa Masharti",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Foleni iko wazi",
+    "emptyDescription": "Hakuna ukaguzi wa masharti unaosubiri idhini yako.",
+    "trigger": "Kichocheo",
+    "estimatedCost": "Gharama inayokadiriwa",
+    "submittedBy": "Iliwasilishwa na",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "approveAriaLabel": "Idhinisha ukaguzi wa {unit}",
+    "rejectAriaLabel": "Kataa ukaguzi wa {unit}"
+  },
+  "comparePropertiesTable": {
+    "title": "Linganisha mali",
+    "pick": "Chagua",
+    "pickAtLeast": "Chagua angalau mali {count} ili kuanza kulinganisha.",
+    "metric": "Kipimo",
+    "revenue": "Mapato",
+    "capRate": "Kiwango cha Mavuno",
+    "occupancy": "Ujaaji",
+    "clearSelection": "Futa uchaguzi"
+  },
+  "negotiationsList": {
+    "title": "Mazungumzo ya Kikodi ya Moja kwa Moja",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna mazungumzo yanayoendelea",
+    "emptyDescription": "Wateja wanaoendelea na mazungumzo ya vyumba vyako wataonekana hapa.",
+    "prospect": "Mteja mtarajiwa",
+    "proposed": "Iliyopendekezwa",
+    "vsAsking": "dhidi ya bei iliyoombwa",
+    "lastMessage": "Ujumbe wa mwisho",
+    "accept": "Kubali",
+    "override": "Badilisha",
+    "reject": "Kataa",
+    "acceptAriaLabel": "Kubali mazungumzo ya kodi ya {unit}",
+    "overrideAriaLabel": "Badilisha kodi iliyoombwa ya {unit}",
+    "rejectAriaLabel": "Kataa mazungumzo ya kodi ya {unit}"
+  },
+  "noiChart": {
+    "title": "Mapato Halisi ya Uendeshaji",
+    "subtitle": "Mwelekeo wa mapato, gharama, na NOI"
+  },
+  "maintenanceCostTrends": {
+    "title": "Mielekeo ya Gharama za Matengenezo",
+    "subtitle": "Mchanganuo wa gharama kwa kategoria kwa muda"
+  },
+  "arrearsAgingChart": {
+    "title": "Umri wa Madeni",
+    "subtitle": "Salio zinazodaiwa kwa ndoo ya umri"
+  },
+  "tenantRiskCard": {
+    "topDrivers": "Vichochezi vikuu",
+    "aiNarrative": "Maelezo ya AI"
+  },
+  "quickActions": {
+    "title": "Vitendo vya Haraka"
+  },
+  "portfolioAtAGlance": {
+    "title": "Mkusanyiko kwa muhtasari",
+    "last30Days": "Siku 30 zilizopita",
+    "totalUnits": "Jumla ya vyumba",
+    "occupancyRate": "Kiwango cha ujaaji",
+    "arrearsRatio": "Uwiano wa madeni",
+    "collectionsThisMonth": "Mikusanyo ya mwezi huu",
+    "upcomingRenewals": "Upya zinazokuja",
+    "activeMaintenance": "Matengenezo yanayoendelea"
+  },
+  "invitePage": {
+    "min8Characters": "Chini ya herufi 8"
   }
 }

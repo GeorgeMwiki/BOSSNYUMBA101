@@ -12,10 +12,12 @@ import {
   Legend,
 } from 'recharts';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatCurrency, formatPercentage } from '../../../lib/api';
 import { usePortfolioPerformance } from '../../../lib/hooks';
 
 export default function PortfolioPerformancePage() {
+  const t = useTranslations('portfolioPerformancePage');
   const { data = [], isLoading, error, refetch } = usePortfolioPerformance();
 
   const chartData = data.length
@@ -45,7 +47,7 @@ export default function PortfolioPerformancePage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load portfolio performance'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -61,13 +63,13 @@ export default function PortfolioPerformancePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Property Performance</h1>
-          <p className="text-gray-500">Compare performance across your properties</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Comparison</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenueComparison')}</h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ left: 80 }}>
@@ -106,13 +108,13 @@ export default function PortfolioPerformancePage() {
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Monthly Revenue</span>
+                  <span className="text-sm text-gray-500">{t('monthlyRevenue')}</span>
                   <span className="font-medium text-gray-900">
                     {formatCurrency(property.revenue || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Occupancy</span>
+                  <span className="text-sm text-gray-500">{t('occupancy')}</span>
                   <span className="font-medium text-gray-900">
                     {formatPercentage(property.occupancy || 0)}
                   </span>
@@ -124,7 +126,7 @@ export default function PortfolioPerformancePage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-sm text-gray-500">Cap Rate</span>
+                  <span className="text-sm text-gray-500">{t('capRate')}</span>
                   <span className="flex items-center gap-1 text-green-600 font-medium">
                     {(property as { capRate?: number }).capRate ? (
                       <>

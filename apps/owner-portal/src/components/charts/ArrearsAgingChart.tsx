@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '../../lib/api';
 
 export interface ArrearsAgingData {
@@ -31,6 +32,7 @@ const BUCKET_COLORS: Record<string, string> = {
 };
 
 export function ArrearsAgingChart({ data, className }: ArrearsAgingChartProps) {
+  const t = useTranslations('arrearsAgingChart');
   const totalArrears = data.reduce((sum, item) => sum + item.amount, 0);
   const totalAccounts = data.reduce((sum, item) => sum + item.count, 0);
 
@@ -38,8 +40,8 @@ export function ArrearsAgingChart({ data, className }: ArrearsAgingChartProps) {
     <div className={className}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Arrears Aging</h3>
-          <p className="text-sm text-gray-500">Outstanding balances by age bucket</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500">{t('subtitle')}</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalArrears)}</p>

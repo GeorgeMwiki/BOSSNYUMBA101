@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Skeleton, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api, formatCurrency, formatPercentage } from '../lib/api';
 
 interface Property {
@@ -50,6 +51,7 @@ interface Unit {
 }
 
 export function PropertyDetailPage() {
+  const t = useTranslations('propertyDetailPage');
   const { id } = useParams<{ id: string }>();
   const [property, setProperty] = useState<Property | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -91,8 +93,8 @@ export function PropertyDetailPage() {
     return (
       <EmptyState
         icon={<Building2 className="h-8 w-8" />}
-        title="Property not found"
-        description="This property may have been removed or you may not have access."
+        title={t('notFoundTitle')}
+        description={t('notFoundDescription')}
       />
     );
   }
@@ -127,7 +129,7 @@ export function PropertyDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-gray-500">
             <Home className="h-4 w-4" />
-            <span className="text-sm font-medium">Total Units</span>
+            <span className="text-sm font-medium">{t('totalUnits')}</span>
           </div>
           <p className="mt-2 text-2xl font-semibold text-gray-900">
             {stats.totalUnits}
@@ -137,7 +139,7 @@ export function PropertyDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Occupied</span>
+            <span className="text-sm font-medium">{t('occupied')}</span>
           </div>
           <p className="mt-2 text-2xl font-semibold text-gray-900">
             {stats.occupiedUnits}
@@ -147,7 +149,7 @@ export function PropertyDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-yellow-600">
             <Clock className="h-4 w-4" />
-            <span className="text-sm font-medium">Available</span>
+            <span className="text-sm font-medium">{t('available')}</span>
           </div>
           <p className="mt-2 text-2xl font-semibold text-gray-900">
             {stats.availableUnits}
@@ -157,7 +159,7 @@ export function PropertyDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-blue-600">
             <Users className="h-4 w-4" />
-            <span className="text-sm font-medium">Occupancy Rate</span>
+            <span className="text-sm font-medium">{t('occupancyRate')}</span>
           </div>
           <p className="mt-2 text-2xl font-semibold text-gray-900">
             {formatPercentage(stats.occupancyRate)}
@@ -171,7 +173,7 @@ export function PropertyDetailPage() {
           {/* Units list */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Units</h3>
+              <h3 className="font-semibold text-gray-900">{t('units')}</h3>
             </div>
             <div className="divide-y divide-gray-200">
               {units.map((unit) => (
@@ -185,7 +187,7 @@ export function PropertyDetailPage() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
-                        Unit {unit.unitNumber}
+                        {t('unit')} {unit.unitNumber}
                       </p>
                       <p className="text-sm text-gray-500">
                         {unit.bedrooms}BR / {unit.bathrooms}BA
@@ -226,16 +228,16 @@ export function PropertyDetailPage() {
         <div className="space-y-6">
           {/* Property info */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Property Info</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('propertyInfo')}</h3>
             <dl className="space-y-3">
               <div>
-                <dt className="text-sm text-gray-500">Type</dt>
+                <dt className="text-sm text-gray-500">{t('type')}</dt>
                 <dd className="text-sm font-medium text-gray-900">
                   {property.type}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-gray-500">Status</dt>
+                <dt className="text-sm text-gray-500">{t('status')}</dt>
                 <dd>
                   <span
                     className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
@@ -249,7 +251,7 @@ export function PropertyDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-gray-500">Address</dt>
+                <dt className="text-sm text-gray-500">{t('address')}</dt>
                 <dd className="text-sm font-medium text-gray-900">
                   {property.address.line1}
                   <br />
@@ -265,7 +267,7 @@ export function PropertyDetailPage() {
           {/* Amenities */}
           {property.amenities.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="font-semibold text-gray-900 mb-4">Amenities</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('amenities')}</h3>
               <div className="flex flex-wrap gap-2">
                 {property.amenities.map((amenity) => (
                   <span

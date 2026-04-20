@@ -11,6 +11,7 @@ import {
   Skeleton,
   EmptyState,
 } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
 
 export interface ConditionalSurvey {
@@ -27,6 +28,7 @@ type SurveyDecision = 'approve' | 'reject';
 type PendingDecision = { readonly id: string; readonly decision: SurveyDecision };
 
 export const SurveyApprovalsQueue: React.FC = () => {
+  const t = useTranslations('surveyApprovalsQueue');
   const [items, setItems] = useState<ReadonlyArray<ConditionalSurvey>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -75,13 +77,13 @@ export const SurveyApprovalsQueue: React.FC = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Conditional Survey Approvals</h1>
+      <h1 className="text-2xl font-semibold">{t('title')}</h1>
       {loadError && (
         <Alert variant="danger">
           <AlertDescription>
             {loadError}
             <Button variant="link" size="sm" onClick={() => void load()} className="ml-2">
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -100,8 +102,8 @@ export const SurveyApprovalsQueue: React.FC = () => {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="Queue clear"
-          description="No conditional surveys are awaiting your approval."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="grid gap-3">
@@ -116,10 +118,10 @@ export const SurveyApprovalsQueue: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">Trigger: {s.triggeredBy}</p>
-                  <p className="text-sm">Estimated cost: {s.estimatedCost.toLocaleString()}</p>
+                  <p className="text-sm">{t('trigger')}: {s.triggeredBy}</p>
+                  <p className="text-sm">{t('estimatedCost')}: {s.estimatedCost.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">
-                    Submitted by {s.submittedBy} · {new Date(s.submittedAt).toLocaleString()}
+                    {t('submittedBy')} {s.submittedBy} · {new Date(s.submittedAt).toLocaleString()}
                   </p>
                   <div className="mt-3 flex gap-2">
                     <Button
@@ -127,9 +129,9 @@ export const SurveyApprovalsQueue: React.FC = () => {
                       loading={isPending && pending?.decision === 'approve'}
                       disabled={isPending}
                       onClick={() => decide(s.id, 'approve')}
-                      aria-label={`Approve survey for ${s.unitLabel}`}
+                      aria-label={t('approveAriaLabel', { unit: s.unitLabel })}
                     >
-                      Approve
+                      {t('approve')}
                     </Button>
                     <Button
                       size="sm"
@@ -137,9 +139,9 @@ export const SurveyApprovalsQueue: React.FC = () => {
                       loading={isPending && pending?.decision === 'reject'}
                       disabled={isPending}
                       onClick={() => decide(s.id, 'reject')}
-                      aria-label={`Reject survey for ${s.unitLabel}`}
+                      aria-label={t('rejectAriaLabel', { unit: s.unitLabel })}
                     >
-                      Reject
+                      {t('reject')}
                     </Button>
                   </div>
                 </CardContent>

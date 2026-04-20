@@ -9,10 +9,12 @@ import {
   Search,
 } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { formatDateTime } from '../../../lib/api';
 import { useTenantCommunications } from '../../../lib/hooks';
 
 export default function TenantCommunicationsPage() {
+  const t = useTranslations('tenantCommunicationsPage');
   const { data: conversations = [], isLoading, error, refetch } = useTenantCommunications();
   const [search, setSearch] = useState('');
 
@@ -39,7 +41,7 @@ export default function TenantCommunicationsPage() {
       <Alert variant="danger">
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load tenant communications'}
-          <Button size="sm" onClick={() => refetch?.()} className="ml-2">Retry</Button>
+          <Button size="sm" onClick={() => refetch?.()} className="ml-2">{t('retry')}</Button>
         </AlertDescription>
       </Alert>
     );
@@ -52,8 +54,8 @@ export default function TenantCommunicationsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">Tenant Communications</h1>
-          <p className="text-gray-500">Messages and correspondence with tenants</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -61,7 +63,7 @@ export default function TenantCommunicationsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search conversations..."
+          placeholder={t('searchConversations')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -70,11 +72,11 @@ export default function TenantCommunicationsPage() {
 
       {displayConversations.length === 0 ? (
         <EmptyState
-          title={search ? 'No conversations match your search' : 'No conversations yet'}
+          title={search ? t('emptySearchTitle') : t('emptyTitle')}
           description={
             search
-              ? 'Try a different name or property.'
-              : 'Messages between you and your tenants will appear here.'
+              ? t('emptySearchDescription')
+              : t('emptyDescription')
           }
         />
       ) : (
@@ -101,7 +103,7 @@ export default function TenantCommunicationsPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Building2 className="h-4 w-4 flex-shrink-0" />
-                    {conv.propertyName} • Unit {conv.unitNumber}
+                    {conv.propertyName} • {t('unit')} {conv.unitNumber}
                   </div>
                   <p className="text-sm text-gray-600 truncate mt-1">{conv.lastMessage}</p>
                 </div>
@@ -122,9 +124,9 @@ export default function TenantCommunicationsPage() {
         <div className="flex items-center gap-3">
           <Send className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="font-medium text-blue-800">Send a message</p>
+            <p className="font-medium text-blue-800">{t('sendMessage')}</p>
             <p className="text-sm text-blue-700">
-              Select a tenant above to view the conversation and send messages
+              {t('sendMessageHint')}
             </p>
           </div>
         </div>
