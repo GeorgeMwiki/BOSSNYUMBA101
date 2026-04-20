@@ -7,6 +7,13 @@
     "openNav": "Fungua menyu ya urambazaji",
     "notifications": "Arifa (3 mpya)"
   },
+  "a11y": {
+    "skipToMain": "Ruka hadi maudhui makuu",
+    "closeModal": "Funga kidirisha",
+    "evidencePhoto": "Picha ya ushahidi wa ombi la kazi",
+    "messageAttachment": "Kiambatisho cha ujumbe",
+    "signaturePreview": "Hakiki ya sahihi"
+  },
   "chat": {
     "typingIndicator": "Mshauri anaandika…",
     "proposedActionApprove": "Kubali",
@@ -385,6 +392,8 @@
     "title": "Fedha",
     "subtitle": "Fuatilia ankara, malipo, na mapato",
     "retry": "Jaribu tena",
+    "dataUnavailable": "Data halisi ya fedha za mmiliki haipatikani.",
+    "exportUnavailable": "Kuhamisha data ya fedha hakupatikani.",
     "export": "Hamisha",
     "exportAsPdf": "Hamisha kama PDF",
     "exportAsExcel": "Hamisha kama Excel",

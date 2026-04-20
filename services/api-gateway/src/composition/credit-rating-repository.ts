@@ -40,6 +40,19 @@ type DbClient = unknown;
 
 type SqlTag = ReturnType<typeof sql>;
 
+/**
+ * Minimal structural shape of the Drizzle insert builder used by this
+ * repo. We only call `.values(...)` on the result — no chaining to
+ * `.returning()` / `.onConflict…`, so a one-method surface is enough.
+ */
+type DrizzleInsertRunner = {
+  insert(table: unknown): { values(row: Record<string, unknown>): Promise<unknown> };
+};
+
+function asInsertRunner(db: DbClient): DrizzleInsertRunner {
+  return db as DrizzleInsertRunner;
+}
+
 function execute<T = Record<string, unknown>>(
   db: DbClient,
   stmt: SqlTag,
@@ -272,11 +285,11 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
       this.db,
       sql`SELECT id FROM customers WHERE tenant_id = ${tenantId}`,
     );
-    return rows.map((r: any) => String(r.id));
+    return rows.map((r) => String(r.id));
   }
 
   async saveSnapshot(rating: CreditRating): Promise<void> {
-    await (this.db as any).insert(creditRatingSnapshots).values({
+    await asInsertRunner(this.db).insert(creditRatingSnapshots).values({
       id: `crs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       tenantId: rating.tenantId,
       customerId: rating.customerId,
@@ -310,27 +323,30 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
         ORDER BY computed_at DESC
       `,
     );
-    return rows.map((r: any) => {
+    return rows.map((r) => {
       const dims = (r.dimensions as Record<string, { score?: number }>) ?? {};
       const summary: Record<string, number> = {};
       for (const key of Object.keys(dims)) {
         summary[key] = Number(dims[key]?.score ?? 0);
       }
+      // letter_grade / band come back as strings from the DB; cast to the
+      // repository's declared unions. Validation happens at the service
+      // layer which checks membership before use.
       return {
         computedAt: nowIsoSafe(r.computed_at) ?? new Date().toISOString(),
         numericScore:
           r.numeric_score === null || r.numeric_score === undefined
             ? null
             : Number(r.numeric_score),
-        letterGrade: (r.letter_grade as any) ?? null,
-        band: (r.band as any) ?? 'insufficient_data',
-        dimensionsSummary: summary as any,
+        letterGrade: (r.letter_grade ?? null) as CreditRatingHistoryEntry['letterGrade'],
+        band: (r.band ?? 'insufficient_data') as CreditRatingHistoryEntry['band'],
+        dimensionsSummary: summary as CreditRatingHistoryEntry['dimensionsSummary'],
       };
     });
   }
 
   async savePromiseOutcome(record: PromiseOutcomeRecord): Promise<void> {
-    await (this.db as any).insert(creditRatingPromises).values({
+    await asInsertRunner(this.db).insert(creditRatingPromises).values({
       id: record.id,
       tenantId: record.tenantId,
       customerId: record.customerId,
@@ -398,7 +414,7 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
   }
 
   async saveSharingOptIn(optIn: CreditSharingOptIn): Promise<void> {
-    await (this.db as any).insert(creditRatingSharingOptIns).values({
+    await asInsertRunner(this.db).insert(creditRatingSharingOptIns).values({
       id: optIn.id,
       tenantId: optIn.tenantId,
       customerId: optIn.customerId,
@@ -442,12 +458,12 @@ export class PostgresCreditRatingRepository implements CreditRatingRepository {
         ORDER BY granted_at DESC
       `,
     );
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       id: String(r.id),
       tenantId,
       customerId,
       shareWithOrg: String(r.share_with_org),
-      purpose: String(r.purpose ?? 'tenancy_application'),
+      purpose: String(r.purpose ?? 'tenancy_application') as CreditSharingOptIn['purpose'],
       grantedAt: nowIsoSafe(r.granted_at) ?? new Date().toISOString(),
       expiresAt: nowIsoSafe(r.expires_at) ?? new Date().toISOString(),
       revokedAt: r.revoked_at ? nowIsoSafe(r.revoked_at) : null,

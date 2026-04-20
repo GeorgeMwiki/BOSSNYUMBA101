@@ -71,6 +71,7 @@ const REQUIRED_DOCUMENTS: Omit<DocumentUpload, 'file' | 'preview' | 'status'>[] 
 
 export default function OnboardingDocumentsPage() {
   const t = useTranslations('onboardingDocuments');
+  const tA11y = useTranslations('a11y');
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<DocumentUpload[]>(
@@ -436,7 +437,7 @@ export default function OnboardingDocumentsPage() {
               <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
                 <img
                   src={documents.find((d) => d.id === analyzingDocId)?.preview || ''}
-                  alt="Document preview"
+                  alt={tA11y('documentPreview')}
                   className="w-full h-full object-contain"
                 />
               </div>

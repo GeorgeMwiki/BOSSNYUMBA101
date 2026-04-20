@@ -314,6 +314,24 @@
     "continue": "Endelea",
     "confirm": "Thibitisha"
   },
+  "a11y": {
+    "skipToMain": "Ruka hadi maudhui makuu",
+    "closeModal": "Funga kidirisha",
+    "removePhoto": "Ondoa picha",
+    "authorAvatar": "Picha ya wasifu ya {name}",
+    "feedImage": "Picha ya chapisho",
+    "vendorImage": "Picha ya muuzaji",
+    "uploadPreview": "Hakiki ya upakiaji",
+    "idFront": "Picha ya mbele ya kitambulisho",
+    "idBack": "Picha ya nyuma ya kitambulisho",
+    "selfie": "Picha ya selfie",
+    "signaturePreview": "Hakiki ya sahihi",
+    "documentPreview": "Hakiki ya hati",
+    "like": "Penda",
+    "comment": "Toa maoni",
+    "share": "Shiriki",
+    "bookmark": "Hifadhi alama"
+  },
   "feedbackHistory": {
     "title": "Historia ya Maoni",
     "submitNew": "Wasilisha maoni mapya",
@@ -505,6 +523,12 @@
     "requestDetail": "Maelezo ya Ombi",
     "maintenanceRequest": "Ombi la Matengenezo",
     "downloadDocument": "Pakua hati"
+  },
+  "messagesList": {
+    "loading": "Inapakia ujumbe…",
+    "errorLoad": "Imeshindwa kupakia ujumbe.",
+    "empty": "Bado hakuna ujumbe.",
+    "retry": "Jaribu tena"
   },
   "feedbackPage": {
     "title": "Wasilisha Maoni",
@@ -859,7 +883,14 @@
     "renewal": "Upyaji",
     "renewalDesc": "Kagua chaguzi za kuongeza",
     "moveOut": "Hama",
-    "moveOutDesc": "Toa notisi"
+    "moveOutDesc": "Toa notisi",
+    "errorLoad": "Haikuweza kupakia mkataba wako.",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna mkataba amilifu",
+    "emptyDesc": "Mkataba wako utakaposainiwa utaonekana hapa pamoja na kodi, tarehe, na vitendo.",
+    "currentLease": "Mkataba wa sasa",
+    "activeLease": "Mkataba Amilifu",
+    "unitPrefix": "Chumba"
   },
   "maintenanceNew": {
     "title": "Ripoti Tatizo",

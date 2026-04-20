@@ -45,6 +45,26 @@ export class LeaseRepository {
     return result[0] ?? null;
   }
 
+  /**
+   * Wave 25 Agent V: batch fetch many leases by id (IN-query) to
+   * replace N+1 `Promise.all(ids.map(findById))` loops in enrichment
+   * code paths.
+   */
+  async findByIds(ids: LeaseId[], tenantId: TenantId): Promise<LeaseRow[]> {
+    if (ids.length === 0) return [];
+    const unique = Array.from(new Set(ids));
+    return this.db
+      .select()
+      .from(leases)
+      .where(
+        and(
+          inArray(leases.id, unique),
+          eq(leases.tenantId, tenantId),
+          isNull(leases.deletedAt)
+        )
+      );
+  }
+
   async findByNumber(
     leaseNumber: string,
     tenantId: TenantId

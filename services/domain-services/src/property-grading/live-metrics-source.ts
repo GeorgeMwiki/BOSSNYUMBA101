@@ -33,6 +33,11 @@ import type {
   PropertyMetricsSource,
 } from './ports.js';
 
+// any — DrizzleORM query builder shape widens through generics and
+// per-query column aliases; narrowing to unknown would force casts at
+// every .select()/.from()/.where() chain without adding safety. Inner
+// callbacks below are narrowed to structural row shapes.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
 
 export interface LiveMetricsSourceConfig {
@@ -101,8 +106,8 @@ export class LiveMetricsSource implements PropertyMetricsSource {
     }
 
     // Occupancy — ratio of units with an active lease.
-    const occupied = unitRows.filter(
-      (u: any) => (u.status ?? u.status_text) === 'occupied',
+    const occupied = (unitRows as Array<{ status?: string; status_text?: string }>).filter(
+      (u) => (u.status ?? u.status_text) === 'occupied',
     ).length;
     const occupancyRate = occupied / unitCount;
 
@@ -144,7 +149,7 @@ export class LiveMetricsSource implements PropertyMetricsSource {
       .select({ id: properties.id })
       .from(properties)
       .where(eq(properties.tenantId, tenantId));
-    return rows.map((r: any) => r.id);
+    return (rows as Array<{ id: string }>).map((r) => r.id);
   }
 
   async fetchPortfolioWeightHints(
@@ -184,7 +189,12 @@ export class LiveMetricsSource implements PropertyMetricsSource {
         WHERE tenant_id = ${tenantId}
         ORDER BY property_id, valued_at DESC
       `);
-      const list = Array.isArray(rows) ? rows : (rows as any)?.rows ?? [];
+      const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] })?.rows ?? []) as Array<{
+        property_id?: string;
+        propertyId?: string;
+        amount_minor_units?: number | string | null;
+        amountMinorUnits?: number | string | null;
+      }>;
       for (const r of list) {
         const pid = r.property_id ?? r.propertyId;
         const amt = r.amount_minor_units ?? r.amountMinorUnits;
@@ -262,8 +272,9 @@ export class LiveMetricsSource implements PropertyMetricsSource {
   }
 }
 
-function extractAgeYears(row: any): number | null {
-  const built = row?.builtYear ?? row?.built_year ?? row?.yearBuilt;
+function extractAgeYears(row: unknown): number | null {
+  const r = row as { builtYear?: unknown; built_year?: unknown; yearBuilt?: unknown } | undefined;
+  const built = r?.builtYear ?? r?.built_year ?? r?.yearBuilt;
   if (!built) return null;
   const now = new Date().getFullYear();
   return Math.max(0, now - Number(built));

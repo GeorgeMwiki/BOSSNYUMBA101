@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Wrench } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { workOrdersService } from '@bossnyumba/api-client';
+import { Alert, AlertDescription, Button, EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function WorkOrdersList() {
@@ -26,7 +27,28 @@ export default function WorkOrdersList() {
       />
       <div className="space-y-3 px-4 py-4 max-w-4xl mx-auto">
         {workOrdersQuery.isLoading && <div className="card p-4 text-sm text-gray-500">{t('workOrdersLoading')}</div>}
-        {workOrdersQuery.error && <div className="card p-4 text-sm text-danger-600">{(workOrdersQuery.error as Error).message}</div>}
+        {workOrdersQuery.error && (
+          <Alert variant="danger">
+            <AlertDescription>
+              {(workOrdersQuery.error as Error).message || t('workOrdersFailed')}
+              <Button size="sm" onClick={() => workOrdersQuery.refetch()} className="ml-2">
+                {t('retry')}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {!workOrdersQuery.isLoading && !workOrdersQuery.error && workOrders.length === 0 && (
+          <EmptyState
+            icon={<Wrench className="h-8 w-8" />}
+            title={t('workOrdersEmptyTitle')}
+            description={t('workOrdersEmptyDesc')}
+            action={
+              <Link href="/work-orders/new" className="btn-primary inline-block">
+                {t('workOrdersEmptyCta')}
+              </Link>
+            }
+          />
+        )}
         {workOrders.map((workOrder: any) => (
           <Link key={workOrder.id} href={`/work-orders/${workOrder.id}`} className="card block p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">

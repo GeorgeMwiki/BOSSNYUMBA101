@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
+import type { AuthContext } from './hono-auth';
 import {
   mapPropertyRow,
   mapUnitRow,
@@ -54,7 +55,7 @@ const PropertyCreateSchema = z.object({
 });
 const PropertyUpdateSchema = PropertyCreateSchema.partial();
 
-function hasPropertyAccess(auth: any, propertyId: string) {
+function hasPropertyAccess(auth: Pick<AuthContext, 'propertyAccess'>, propertyId: string) {
   return auth.propertyAccess?.includes('*') || auth.propertyAccess?.includes(propertyId);
 }
 
@@ -113,7 +114,7 @@ app.get('/:id/units', async (c) => {
   // when the repo gains a filters param.
   const result = await repos.units.findByProperty(id, auth.tenantId, { limit: 500, offset: 0 });
   let items = result.items.map(mapUnitRow);
-  if (status) items = items.filter((item: any) => item.status === status);
+  if (status) items = items.filter((item) => item.status === status);
   const pageSlice = items.slice(p.offset, p.offset + p.limit);
   return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
 });

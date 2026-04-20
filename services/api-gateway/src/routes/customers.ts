@@ -46,11 +46,25 @@ function customerCode(email: string) {
   return `CUST-${email.split('@')[0].replace(/[^A-Z0-9]+/gi, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
 }
 
-async function enrichCustomer(repos: any, tenantId: string, row: any) {
+type CustomerRowLike = { id: string };
+type LeaseLike = {
+  id: string;
+  status: string;
+  startDate?: unknown;
+  endDate?: unknown;
+  rentAmount?: unknown;
+  unitId?: string | null;
+};
+type EnrichCustomerRepos = {
+  leases: { findByCustomer(customerId: string, tenantId: string, p: { limit: number; offset: number }): Promise<{ items: LeaseLike[] }> };
+  units: { findById(id: string, tenantId: string): Promise<Parameters<typeof mapUnitRow>[0] | null> };
+};
+
+async function enrichCustomer(repos: EnrichCustomerRepos, tenantId: string, row: CustomerRowLike & Parameters<typeof mapCustomerRow>[0]) {
   const base = mapCustomerRow(row);
   const leases = await repos.leases.findByCustomer(row.id, tenantId, { limit: 20, offset: 0 });
-  const activeLease = leases.items.find((lease: any) => String(lease.status) === 'active');
-  let currentUnit = null;
+  const activeLease = leases.items.find((lease) => String(lease.status) === 'active');
+  let currentUnit: ReturnType<typeof mapUnitRow> | null = null;
   if (activeLease?.unitId) {
     const unit = await repos.units.findById(activeLease.unitId, tenantId);
     if (unit) currentUnit = mapUnitRow(unit);
@@ -130,7 +144,9 @@ app.get('/', staffOnly, async (c) => {
     { search, status: status?.toLowerCase() }
   );
   const enriched = await Promise.all(
-    result.items.map((row: any) => enrichCustomer(repos, auth.tenantId, row))
+    (result.items as Array<CustomerRowLike & Parameters<typeof mapCustomerRow>[0]>).map(
+      (row) => enrichCustomer(repos, auth.tenantId, row)
+    )
   );
   return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });

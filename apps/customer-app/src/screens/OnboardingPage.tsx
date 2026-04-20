@@ -57,6 +57,7 @@ const STEPS: StepInfo[] = [
 
 export default function OnboardingPage() {
   const t = useTranslations('onboarding');
+  const tA11y = useTranslations('a11y');
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
@@ -296,7 +297,7 @@ export default function OnboardingPage() {
                 <div className="relative">
                   <img
                     src={idFrontImage}
-                    alt="ID Front"
+                    alt={tA11y('idFront')}
                     className="w-full h-40 object-cover rounded-lg"
                   />
                   <button
@@ -335,7 +336,7 @@ export default function OnboardingPage() {
                 <div className="relative">
                   <img
                     src={idBackImage}
-                    alt="ID Back"
+                    alt={tA11y('idBack')}
                     className="w-full h-40 object-cover rounded-lg"
                   />
                   <button
@@ -374,7 +375,7 @@ export default function OnboardingPage() {
                 <div className="relative">
                   <img
                     src={selfieImage}
-                    alt="Selfie"
+                    alt={tA11y('selfie')}
                     className="w-full h-40 object-cover rounded-lg"
                   />
                   <button

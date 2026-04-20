@@ -3,6 +3,10 @@
     "title": "BOSSNYUMBA Admin",
     "tagline": "Kiweko cha utendaji wa jukwaa"
   },
+  "a11y": {
+    "skipToMain": "Ruka hadi maudhui makuu",
+    "closeModal": "Funga kidirisha"
+  },
   "chat": {
     "typingIndicator": "Msaidizi anaandika…",
     "proposedActionApprove": "Kubali",
@@ -169,13 +173,18 @@
     "askMwikila": "Muulize Bw. Mwikila chochote",
     "whatIfScenario": "Tengeneza hali ya iwapo",
     "approveAllRoutine": "Idhinisha ya kawaida yote",
-    "listenBriefing": "Sikiliza muhtasari wa sauti"
+    "listenBriefing": "Sikiliza muhtasari wa sauti",
+    "loading": "Inapakia dashibodi yako…",
+    "errorLoad": "Data ya dashibodi haipatikani.",
+    "retry": "Jaribu tena"
   },
   "exceptions": {
     "title": "Sanduku la masuala",
     "subtitle": "Kila kitu Bw. Mwikila anachotaka uamuzi wa kibinadamu.",
     "loading": "Inapakia masuala…",
     "empty": "Kila kitu ni sawa — Bw. Mwikila hana la kupandisha.",
+    "errorLoad": "Haikuweza kupakia masuala.",
+    "retry": "Jaribu tena",
     "priority": {
       "P1": "P1 — amua leo",
       "P2": "P2 — wiki hii",

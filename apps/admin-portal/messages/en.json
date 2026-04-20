@@ -3,6 +3,10 @@
     "title": "BOSSNYUMBA Admin",
     "tagline": "Platform operations console"
   },
+  "a11y": {
+    "skipToMain": "Skip to main content",
+    "closeModal": "Close dialog"
+  },
   "chat": {
     "typingIndicator": "Assistant is typing…",
     "proposedActionApprove": "Approve",
@@ -169,13 +173,18 @@
     "askMwikila": "Ask Mr. Mwikila anything",
     "whatIfScenario": "Generate what-if scenario",
     "approveAllRoutine": "Approve all routine",
-    "listenBriefing": "Listen to voice briefing"
+    "listenBriefing": "Listen to voice briefing",
+    "loading": "Loading your dashboard…",
+    "errorLoad": "Dashboard data is unavailable.",
+    "retry": "Retry"
   },
   "exceptions": {
     "title": "Exception inbox",
     "subtitle": "Every item Mr. Mwikila wants a human decision on.",
     "loading": "Loading exceptions…",
     "empty": "All clear — Mr. Mwikila has nothing to escalate.",
+    "errorLoad": "Could not load exceptions.",
+    "retry": "Retry",
     "priority": {
       "P1": "P1 — decide today",
       "P2": "P2 — this week",

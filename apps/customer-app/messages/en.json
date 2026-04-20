@@ -314,6 +314,24 @@
     "continue": "Continue",
     "confirm": "Confirm"
   },
+  "a11y": {
+    "skipToMain": "Skip to main content",
+    "closeModal": "Close dialog",
+    "removePhoto": "Remove photo",
+    "authorAvatar": "{name} profile photo",
+    "feedImage": "Feed post image",
+    "vendorImage": "Vendor image",
+    "uploadPreview": "Upload preview",
+    "idFront": "ID front photo",
+    "idBack": "ID back photo",
+    "selfie": "Selfie photo",
+    "signaturePreview": "Signature preview",
+    "documentPreview": "Document preview",
+    "like": "Like",
+    "comment": "Comment",
+    "share": "Share",
+    "bookmark": "Bookmark"
+  },
   "feedbackHistory": {
     "title": "Feedback History",
     "submitNew": "Submit new feedback",
@@ -505,6 +523,12 @@
     "requestDetail": "Request Detail",
     "maintenanceRequest": "Maintenance Request",
     "downloadDocument": "Download document"
+  },
+  "messagesList": {
+    "loading": "Loading messages…",
+    "errorLoad": "Failed to load messages.",
+    "empty": "No messages yet.",
+    "retry": "Retry"
   },
   "feedbackPage": {
     "title": "Submit Feedback",
@@ -859,7 +883,14 @@
     "renewal": "Renewal",
     "renewalDesc": "Review extension options",
     "moveOut": "Move Out",
-    "moveOutDesc": "Give notice"
+    "moveOutDesc": "Give notice",
+    "errorLoad": "Couldn't load your lease.",
+    "retry": "Retry",
+    "emptyTitle": "No active lease",
+    "emptyDesc": "Once your lease is signed it will appear here with rent, dates, and actions.",
+    "currentLease": "Current lease",
+    "activeLease": "Active Lease",
+    "unitPrefix": "Unit"
   },
   "maintenanceNew": {
     "title": "Report Issue",

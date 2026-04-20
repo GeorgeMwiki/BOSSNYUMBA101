@@ -46,8 +46,9 @@ function notImplemented(c: any) {
   );
 }
 
-function mapError(e: any) {
-  const code = e?.code ?? 'INTERNAL_ERROR';
+function mapError(e: unknown) {
+  const err = e as { code?: string; message?: string } | undefined;
+  const code = err?.code ?? 'INTERNAL_ERROR';
   const status =
     code === 'NOT_FOUND'
       ? 404
@@ -61,7 +62,7 @@ function mapError(e: any) {
   return {
     body: {
       success: false,
-      error: { code, message: e?.message ?? 'unknown' },
+      error: { code, message: err?.message ?? 'unknown' },
     },
     status,
   };
@@ -83,7 +84,7 @@ app.post(
     try {
       const req = await s.requestDeletion(auth.tenantId, body, auth.userId);
       return c.json({ success: true, data: req }, 201);
-    } catch (e: any) {
+    } catch (e: unknown) {
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }
@@ -97,7 +98,7 @@ app.get('/delete-request/:id', async (c: any) => {
   try {
     const req = await s.getStatus(auth.tenantId, c.req.param('id'));
     return c.json({ success: true, data: req });
-  } catch (e: any) {
+  } catch (e: unknown) {
     const { body: errBody, status } = mapError(e);
     return c.json(errBody, status);
   }
@@ -110,7 +111,7 @@ app.get('/delete-requests', async (c: any) => {
   try {
     const list = await s.listRequests(auth.tenantId);
     return c.json({ success: true, data: list });
-  } catch (e: any) {
+  } catch (e: unknown) {
     const { body: errBody, status } = mapError(e);
     return c.json(errBody, status);
   }
@@ -157,7 +158,7 @@ app.post(
           affectedTableCount: result.statements.length,
         },
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }

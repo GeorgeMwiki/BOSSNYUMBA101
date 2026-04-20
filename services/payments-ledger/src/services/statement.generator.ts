@@ -676,31 +676,38 @@ export class StatementGenerator {
       byProperty.set(propertyId, existing);
     }
 
-    const results: PropertyTransactionSummary[] = [];
-
-    for (const [propertyId, data] of byProperty) {
-      let propertyName = 'General';
-      if (propertyId !== 'GENERAL') {
+    // Wave 25 Agent V: previously each property lookup ran sequentially
+    // inside the loop, costing N round-trips serialized by latency. We
+    // now resolve all property names in parallel before building the
+    // results. (A true batched loader would require extending
+    // `StatementGeneratorDeps.getPropertyDetails` to accept an id array
+    // — flagged in Docs/WAVE25_FINDINGS as a follow-up; this change
+    // preserves the existing deps contract.)
+    const entries = Array.from(byProperty.entries());
+    const propertyNames = await Promise.all(
+      entries.map(async ([propertyId]) => {
+        if (propertyId === 'GENERAL') return 'General';
         const details = await this.deps.getPropertyDetails(
           propertyId as PropertyId,
           statement.tenantId
         );
-        propertyName = details?.name || `Property ${propertyId}`;
-      }
+        return details?.name || `Property ${propertyId}`;
+      })
+    );
 
+    const results: PropertyTransactionSummary[] = entries.map(([propertyId, data], index) => {
       const netIncome = data.rentCollected - data.platformFees - data.maintenanceCosts - data.otherExpenses;
-
-      results.push({
+      return {
         propertyId: propertyId as PropertyId,
-        propertyName,
+        propertyName: propertyNames[index]!,
         rentCollected: { amountMinorUnits: data.rentCollected, currency: statement.currency },
         platformFees: { amountMinorUnits: data.platformFees, currency: statement.currency },
         maintenanceCosts: { amountMinorUnits: data.maintenanceCosts, currency: statement.currency },
         otherExpenses: { amountMinorUnits: data.otherExpenses, currency: statement.currency },
         netIncome: { amountMinorUnits: netIncome, currency: statement.currency },
         transactions: data.transactions,
-      });
-    }
+      };
+    });
 
     return results.sort((a, b) => b.netIncome.amountMinorUnits - a.netIncome.amountMinorUnits);
   }

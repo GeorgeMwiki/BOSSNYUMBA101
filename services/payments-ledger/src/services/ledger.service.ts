@@ -12,6 +12,7 @@ import {
   Account,
   AccountAggregate,
   CreateJournalEntryRequest,
+  JournalEntryLine,
   validateJournalBalance,
   createJournalId,
   CurrencyCode
@@ -445,7 +446,13 @@ export class LedgerService {
         // Reversal of original
         {
           accountId: originalEntry.accountId,
-          type: 'CORRECTION' as any,
+          // CORRECTION isn't in @bossnyumba/domain-models' narrower
+          // LedgerEntryType union (only the canonical trial-balance
+          // categories are there). The local LedgerEntryType (./types.ts)
+          // extends it with CORRECTION for void/correction semantics —
+          // cast through the narrower union to bridge until the domain
+          // type is widened upstream.
+          type: 'CORRECTION' as unknown as JournalEntryLine['type'],
           direction: reversalDirection,
           amount: originalEntry.amount,
           description: `Reversal: ${correctionReason}`,
@@ -505,7 +512,13 @@ export class LedgerService {
       lines: [
         {
           accountId: entry.accountId,
-          type: 'CORRECTION' as any,
+          // CORRECTION isn't in @bossnyumba/domain-models' narrower
+          // LedgerEntryType union (only the canonical trial-balance
+          // categories are there). The local LedgerEntryType (./types.ts)
+          // extends it with CORRECTION for void/correction semantics —
+          // cast through the narrower union to bridge until the domain
+          // type is widened upstream.
+          type: 'CORRECTION' as unknown as JournalEntryLine['type'],
           direction: reversalDirection,
           amount: entry.amount,
           description: `Void: ${voidReason}`,

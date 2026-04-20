@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { api } from '../lib/api';
 
 type Priority = 'P1' | 'P2' | 'P3';
@@ -28,12 +29,15 @@ export default function ExceptionsPage(): JSX.Element {
   const t = useTranslations('exceptions');
   const [items, setItems] = useState<readonly Exception[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
+    setError(null);
     const res = await api.get<readonly Exception[]>('/exceptions');
     if (res.success && res.data) setItems(res.data);
+    else setError(res.error ?? t('errorLoad'));
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void reload();
@@ -72,7 +76,18 @@ export default function ExceptionsPage(): JSX.Element {
         </div>
       )}
 
-      {!loading && items.length === 0 && (
+      {!loading && error && (
+        <Alert variant="danger">
+          <AlertDescription>
+            {error}
+            <Button size="sm" onClick={() => void reload()} className="ml-2">
+              {t('retry')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!loading && !error && items.length === 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 text-sm text-gray-500 flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           {t('empty')}

@@ -13,6 +13,7 @@ interface CoOwnerInviteModalProps {
 
 export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInviteModalProps) {
   const t = useTranslations('coOwnerInvite');
+  const tA11y = useTranslations('a11y');
   const { properties } = useAuth();
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [formData, setFormData] = useState({
@@ -88,19 +89,19 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="co-owner-invite-title">
+      <div className="fixed inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg"><UserPlus className="h-5 w-5 text-blue-600" /></div>
+            <div className="p-2 bg-blue-100 rounded-lg"><UserPlus className="h-5 w-5 text-blue-600" aria-hidden="true" /></div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">{t('title')}</h2>
+              <h2 id="co-owner-invite-title" className="text-lg font-semibold text-gray-900">{t('title')}</h2>
               <p className="text-sm text-gray-500">{t('subtitle')}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-            <X className="h-5 w-5" />
+          <button type="button" onClick={handleClose} aria-label={tA11y('closeModal')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         {step === 'form' ? (

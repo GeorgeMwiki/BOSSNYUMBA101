@@ -148,15 +148,16 @@ export function WorkOrderDetailModal({
     ...(showApproval ? [{ id: 'costs' as const, label: t('tabCostAnalysis') }] : []),
   ];
 
+  const tA11y = useTranslations('a11y');
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="wo-modal-title">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 id="wo-modal-title" className="text-lg font-semibold text-gray-900">
                 {workOrder.number || `WO-${workOrder.id}`}
               </h2>
               <span
@@ -177,10 +178,12 @@ export function WorkOrderDetailModal({
             <p className="text-sm text-gray-500 mt-1">{workOrder.title}</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={tA11y('closeModal')}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 

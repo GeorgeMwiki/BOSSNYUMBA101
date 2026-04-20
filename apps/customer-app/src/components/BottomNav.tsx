@@ -164,10 +164,12 @@ export function BottomNavWithAction({
 
         {/* Center Action Button */}
         <button
+          type="button"
           onClick={onActionClick}
+          aria-label={actionLabel}
           className="absolute left-1/2 -translate-x-1/2 -top-6 w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary-700 active:scale-95 transition-all"
         >
-          <ActionIcon className="w-6 h-6" />
+          <ActionIcon className="w-6 h-6" aria-hidden="true" />
         </button>
         <div className="w-16" /> {/* Spacer for center button */}
 

@@ -7,6 +7,13 @@
     "openNav": "Open navigation menu",
     "notifications": "Notifications (3 unread)"
   },
+  "a11y": {
+    "skipToMain": "Skip to main content",
+    "closeModal": "Close dialog",
+    "evidencePhoto": "Work order evidence photo",
+    "messageAttachment": "Message attachment",
+    "signaturePreview": "Signature preview"
+  },
   "chat": {
     "typingIndicator": "Advisor is typing…",
     "proposedActionApprove": "Approve",
@@ -385,6 +392,8 @@
     "title": "Financial",
     "subtitle": "Track invoices, payments, and revenue",
     "retry": "Retry",
+    "dataUnavailable": "Live owner financial data is unavailable.",
+    "exportUnavailable": "Financial export is unavailable.",
     "export": "Export",
     "exportAsPdf": "Export as PDF",
     "exportAsExcel": "Export as Excel",

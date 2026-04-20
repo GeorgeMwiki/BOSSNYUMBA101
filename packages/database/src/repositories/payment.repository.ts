@@ -155,7 +155,16 @@ export class InvoiceRepository {
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
-  async findOverdue(tenantId: TenantId) {
+  /**
+   * Wave 25 Agent V: added a hard safety LIMIT. The previous
+   * implementation had no cap — a large tenant with thousands of
+   * overdue invoices would OOM the gateway when `/invoices/overdue`
+   * tried to materialize the whole set. `maxRows` defaults to 1000
+   * (matches other 1000-cap dashboards) and callers page in-memory.
+   * Callers that need cursor semantics should use `findByStatus`
+   * plus `findMany` with pagination instead.
+   */
+  async findOverdue(tenantId: TenantId, maxRows = 1000) {
     return this.db
       .select()
       .from(invoices)
@@ -167,7 +176,8 @@ export class InvoiceRepository {
           notInArray(invoices.status, [...NON_OVERDUE_INVOICE_STATUSES])
         )
       )
-      .orderBy(desc(invoices.dueDate));
+      .orderBy(desc(invoices.dueDate))
+      .limit(maxRows);
   }
 
   async create(data: typeof invoices.$inferInsert) {
@@ -283,14 +293,20 @@ export class PaymentRepository {
     return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
-  async findByProvider(provider: string, tenantId: TenantId) {
+  /**
+   * Wave 25 Agent V: added hard safety LIMIT (default 1000). Previously
+   * unbounded — a large tenant would load thousands of payments into
+   * memory.
+   */
+  async findByProvider(provider: string, tenantId: TenantId, maxRows = 1000) {
     return this.db
       .select()
       .from(payments)
       .where(
         and(eq(payments.provider, provider), eq(payments.tenantId, tenantId))
       )
-      .orderBy(desc(payments.createdAt));
+      .orderBy(desc(payments.createdAt))
+      .limit(maxRows);
   }
 
   async create(data: typeof payments.$inferInsert) {

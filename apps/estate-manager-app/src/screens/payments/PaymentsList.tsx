@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, DollarSign } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { paymentsService } from '@bossnyumba/api-client';
-import { Empty } from '@bossnyumba/design-system';
+import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const TENANT_CURRENCY =
@@ -60,9 +60,14 @@ export function PaymentsList() {
         )}
 
         {paymentsQuery.error && (
-          <div className="card p-4 text-sm text-danger-600">
-            {(paymentsQuery.error as Error).message || t('paymentsFailed')}
-          </div>
+          <Alert variant="danger">
+            <AlertDescription>
+              {(paymentsQuery.error as Error).message || t('paymentsFailed')}
+              <Button size="sm" onClick={() => paymentsQuery.refetch()} className="ml-2">
+                {t('retry')}
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {!paymentsQuery.isLoading && !paymentsQuery.error && payments.length === 0 && (

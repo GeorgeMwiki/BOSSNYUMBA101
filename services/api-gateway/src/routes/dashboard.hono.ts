@@ -115,17 +115,20 @@ async function getScopedOwnerData(auth, repos) {
     propertyIds.has(workOrder.propertyId)
   );
 
+  // Wave 25 Agent V: replaced per-id `findById` fan-out with batched
+  // `findByIds` (single IN-query each). Previously fetched N customers
+  // and V vendors as 1+N+V round-trips; now 1+2.
+  const customerIdList = Array.from(scopedCustomerIds);
+  const vendorIdList = Array.from(
+    new Set(scopedWorkOrders.map((workOrder) => workOrder.vendorId).filter(Boolean))
+  );
   const [customers, vendors] = await Promise.all([
-    Promise.all(
-      Array.from(scopedCustomerIds).map((customerId) =>
-        repos.customers.findById(customerId, auth.tenantId)
-      )
-    ),
-    Promise.all(
-      Array.from(
-        new Set(scopedWorkOrders.map((workOrder) => workOrder.vendorId).filter(Boolean))
-      ).map((vendorId) => repos.vendors.findById(vendorId, auth.tenantId))
-    ),
+    customerIdList.length === 0
+      ? []
+      : repos.customers.findByIds(customerIdList, auth.tenantId),
+    vendorIdList.length === 0
+      ? []
+      : repos.vendors.findByIds(vendorIdList, auth.tenantId),
   ]);
 
   return {

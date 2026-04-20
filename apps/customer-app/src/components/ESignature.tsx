@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { PenLine, RotateCcw, Check, X } from 'lucide-react';
 
 interface ESignatureProps {
@@ -44,6 +45,7 @@ export function ESignature({
   existingSignature = null,
   disabled = false,
 }: ESignatureProps) {
+  const tA11y = useTranslations('a11y');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -168,7 +170,7 @@ export function ESignature({
         <div className="border-2 border-success-200 rounded-lg overflow-hidden bg-success-50 p-2 relative">
           <img
             src={savedSignature}
-            alt="Signature"
+            alt={tA11y('signaturePreview')}
             className="w-full h-auto"
           />
           <div className="absolute top-2 right-2 flex items-center gap-1">

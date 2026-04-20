@@ -116,7 +116,7 @@ export function FinancialPage() {
   // If every one of the three queries failed, surface a single error.
   const allFailed =
     statsQuery.isError && invoicesQuery.isError && paymentsQuery.isError;
-  const error = allFailed ? 'Live owner financial data is unavailable.' : null;
+  const error = allFailed ? t('dataUnavailable') : null;
 
   const loadData = (_silent = false) => {
     statsQuery.refetch();
@@ -141,10 +141,10 @@ export function FinancialPage() {
       if (response.success && response.data?.downloadUrl) {
         window.open(response.data.downloadUrl, '_blank');
       } else {
-        toast.error(response.error?.message ?? 'Financial export is unavailable.');
+        toast.error(response.error?.message ?? t('exportUnavailable'));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Financial export is unavailable.');
+      toast.error(err instanceof Error ? err.message : t('exportUnavailable'));
     }
     setExporting(false);
   };

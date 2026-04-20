@@ -121,6 +121,7 @@ export function Layout() {
   const tLayout = useTranslations('layout');
   const tNav = useTranslations('nav');
   const tNavGroup = useTranslations('layout.nav');
+  const tA11y = useTranslations('a11y');
   const NAV_GROUPS = buildNavGroups(tNav, tNavGroup);
   const FLAT_NAV = NAV_GROUPS.flatMap((g) => g.items);
 
@@ -143,6 +144,9 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <a href="#main-content" className="skip-link">
+        {tA11y('skipToMain')}
+      </a>
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-6 border-b border-slate-700">
@@ -255,7 +259,7 @@ export function Layout() {
         </header>
 
         {/* Page content */}
-        <main className="p-6">
+        <main id="main-content" className="p-6" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

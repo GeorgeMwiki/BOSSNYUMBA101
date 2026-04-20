@@ -4,7 +4,24 @@ import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
 
-function mapTenant(row: any) {
+type TenantRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status?: string;
+  primaryEmail?: string;
+  primaryPhone?: string | null;
+  settings?: Record<string, unknown> | null;
+  subscriptionTier?: string;
+  maxUnits?: number;
+  maxUsers?: number;
+  createdAt?: unknown;
+  createdBy?: string;
+  updatedAt?: unknown;
+  updatedBy?: string;
+};
+
+function mapTenant(row: TenantRow) {
   return {
     id: row.id,
     name: row.name,

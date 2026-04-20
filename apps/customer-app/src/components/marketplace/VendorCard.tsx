@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface VendorCardProps {
   id: string;
@@ -12,11 +13,12 @@ interface VendorCardProps {
 }
 
 export function VendorCard({ name, category, image, rating, price }: VendorCardProps) {
+  const tA11y = useTranslations('a11y');
   return (
     <Link href={`/marketplace/${name.toLowerCase().replace(/\s/g, '-')}`} className="vendor-card">
       <div className="aspect-[3/4] bg-surface-elevated relative overflow-hidden">
         {image ? (
-          <img src={image} alt="" className="w-full h-full object-cover" />
+          <img src={image} alt={name ? `${name} — ${tA11y('vendorImage')}` : tA11y('vendorImage')} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-3xl font-bold text-spotify-green opacity-50">

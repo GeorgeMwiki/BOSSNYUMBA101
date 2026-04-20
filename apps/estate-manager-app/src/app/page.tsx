@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Empty, Skeleton } from '@bossnyumba/design-system';
+import { Empty, Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   propertiesService,
@@ -51,31 +51,35 @@ function formatDate(dateStr: string) {
 export default function DashboardPage() {
   const tNav = useTranslations('nav');
   const t = useTranslations('dashboard');
-  const { data: propertiesData, isLoading: loadingProperties } = useQuery({
+  const propertiesQuery = useQuery({
     queryKey: ['properties', { page: 1, pageSize: 100 }],
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
     retry: false,
   });
+  const { data: propertiesData, isLoading: loadingProperties } = propertiesQuery;
 
-  const { data: unitsData, isLoading: loadingUnits } = useQuery({
+  const unitsQuery = useQuery({
     queryKey: ['units', { page: 1, pageSize: 500 }],
     queryFn: () => unitsService.list({ page: 1, pageSize: 500 }),
     retry: false,
   });
+  const { data: unitsData, isLoading: loadingUnits } = unitsQuery;
 
-  const { data: workOrdersData, isLoading: loadingWorkOrders } = useQuery({
+  const workOrdersQuery = useQuery({
     queryKey: ['workOrders', 'list'],
     queryFn: () => workOrdersService.list(undefined, 1, 100),
     retry: false,
   });
+  const { data: workOrdersData, isLoading: loadingWorkOrders } = workOrdersQuery;
 
-  const { data: leasesData, isLoading: loadingLeases } = useQuery({
+  const leasesQuery = useQuery({
     queryKey: ['leases', 'expiring'],
     queryFn: () => leasesService.getExpiring(60, 1, 5),
     retry: false,
   });
+  const { data: leasesData, isLoading: loadingLeases } = leasesQuery;
 
-  const { data: paymentsData, isLoading: loadingPayments } = useQuery({
+  const paymentsQueryInstance = useQuery({
     queryKey: ['payments', 'recent'],
     queryFn: () =>
       paymentsService.list(
@@ -87,6 +91,7 @@ export default function DashboardPage() {
       ),
     retry: false,
   });
+  const { data: paymentsData, isLoading: loadingPayments } = paymentsQueryInstance;
 
   const properties = propertiesData?.data ?? [];
   const units = unitsData?.data ?? [];
@@ -114,6 +119,22 @@ export default function DashboardPage() {
   const isLoading =
     loadingProperties || loadingUnits || loadingWorkOrders || loadingLeases || loadingPayments;
 
+  // If every core query failed the dashboard has zero signal — surface a retry banner.
+  const allFailed =
+    propertiesQuery.isError &&
+    unitsQuery.isError &&
+    workOrdersQuery.isError &&
+    leasesQuery.isError &&
+    paymentsQueryInstance.isError;
+
+  const refetchAll = () => {
+    propertiesQuery.refetch();
+    unitsQuery.refetch();
+    workOrdersQuery.refetch();
+    leasesQuery.refetch();
+    paymentsQueryInstance.refetch();
+  };
+
   return (
     <>
       <PageHeader
@@ -123,7 +144,16 @@ export default function DashboardPage() {
       />
 
       <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
-        {isLoading ? (
+        {!isLoading && allFailed ? (
+          <Alert variant="danger">
+            <AlertDescription>
+              {t('errorLoad')}
+              <Button size="sm" onClick={refetchAll} className="ml-2">
+                {t('retry')}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : isLoading ? (
           <div className="space-y-6" aria-busy="true" aria-live="polite">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Skeleton className="h-20" />

@@ -111,6 +111,7 @@ const DOCUMENTS: Document[] = [
 
 export default function OnboardingESignPage() {
   const t = useTranslations('onboardingESign');
+  const tA11y = useTranslations('a11y');
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>(DOCUMENTS);
   const [expandedDocId, setExpandedDocId] = useState<string | null>('lease');
@@ -259,7 +260,7 @@ export default function OnboardingESignPage() {
                       <div className="border rounded-lg p-2 bg-success-50 border-success-200">
                         <img
                           src={doc.signatureData}
-                          alt="Signature"
+                          alt={tA11y('signaturePreview')}
                           className="h-12 mx-auto"
                         />
                         <p className="text-xs text-success-600 text-center mt-1">

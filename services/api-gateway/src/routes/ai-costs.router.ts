@@ -40,14 +40,15 @@ function notImplemented(c: any) {
   );
 }
 
-function mapError(e: any) {
-  const code = e?.code ?? 'INTERNAL_ERROR';
+function mapError(e: unknown) {
+  const err = e as { code?: string; message?: string } | undefined;
+  const code = err?.code ?? 'INTERNAL_ERROR';
   const status =
     code === 'VALIDATION' ? 400 : code === 'NOT_FOUND' ? 404 : 500;
   return {
     body: {
       success: false,
-      error: { code, message: e?.message ?? 'unknown' },
+      error: { code, message: err?.message ?? 'unknown' },
     },
     status,
   };
@@ -70,7 +71,7 @@ app.get('/summary', async (c: any) => {
       success: true,
       data: { summary, budget, overBudget },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     const { body, status } = mapError(e);
     return c.json(body, status);
   }
@@ -85,7 +86,7 @@ app.get('/entries', async (c: any) => {
   try {
     const entries = await l.listRecentEntries(auth.tenantId, limit);
     return c.json({ success: true, data: entries });
-  } catch (e: any) {
+  } catch (e: unknown) {
     const { body, status } = mapError(e);
     return c.json(body, status);
   }
@@ -98,7 +99,7 @@ app.get('/budget', async (c: any) => {
   try {
     const budget = await l.getBudget(auth.tenantId);
     return c.json({ success: true, data: budget });
-  } catch (e: any) {
+  } catch (e: unknown) {
     const { body, status } = mapError(e);
     return c.json(body, status);
   }
@@ -123,7 +124,7 @@ app.put(
         updatedBy: auth.userId,
       });
       return c.json({ success: true, data: saved });
-    } catch (e: any) {
+    } catch (e: unknown) {
       const { body: errBody, status } = mapError(e);
       return c.json(errBody, status);
     }

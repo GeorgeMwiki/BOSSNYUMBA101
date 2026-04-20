@@ -13,6 +13,7 @@ import {
   majorToMinor,
 } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+import type { AuthContext } from './hono-auth';
 
 // Wave 19 Agent H+I: unit mutations are staff-only. Reads are still
 // gated by `hasPropertyAccess` (JWT ACL).
@@ -41,9 +42,16 @@ const UnitCreateSchema = z.object({
 const UnitUpdateSchema = UnitCreateSchema.partial();
 const UnitStatusSchema = z.object({ status: z.string().min(1) });
 
-function hasPropertyAccess(auth: any, propertyId: string) {
+function hasPropertyAccess(auth: Pick<AuthContext, 'propertyAccess'>, propertyId: string) {
   return auth.propertyAccess?.includes('*') || auth.propertyAccess?.includes(propertyId);
 }
+
+/**
+ * Minimal DB-row shape we touch before `mapUnitRow` normalizes it. The
+ * repos port exposes rows as `unknown`, so we narrow structurally to the
+ * fields we actually read here (propertyId for ACL filtering).
+ */
+type UnitRowLike = { propertyId: string };
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -62,13 +70,13 @@ app.get('/', async (c) => {
     ? await repos.units.findByProperty(propertyId, auth.tenantId, { limit: 500, offset: 0 })
     : await repos.units.findMany(auth.tenantId, { limit: 500, offset: 0 });
 
-  let items = result.items
-    .filter((row: any) => hasPropertyAccess(auth, row.propertyId))
+  let items = (result.items as UnitRowLike[])
+    .filter((row) => hasPropertyAccess(auth, row.propertyId))
     .map(mapUnitRow);
 
-  if (status) items = items.filter((item: any) => item.status === status);
+  if (status) items = items.filter((item) => item.status === status);
   if (search) {
-    items = items.filter((item: any) =>
+    items = items.filter((item) =>
       [item.unitNumber, item.name, item.type].some((v) => String(v || '').toLowerCase().includes(search))
     );
   }

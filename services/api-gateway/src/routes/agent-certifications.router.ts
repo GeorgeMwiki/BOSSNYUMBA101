@@ -60,11 +60,12 @@ app.get(
     try {
       const items = await s.listForTenant(auth.tenantId);
       return c.json({ success: true, data: items });
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string } | undefined;
       return c.json(
         {
           success: false,
-          error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' },
+          error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' },
         },
         400,
       );
@@ -82,11 +83,12 @@ app.get(
     try {
       const items = await s.listRevocations(auth.tenantId);
       return c.json({ success: true, data: items });
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string } | undefined;
       return c.json(
         {
           success: false,
-          error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' },
+          error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' },
         },
         400,
       );
@@ -113,11 +115,12 @@ app.post(
         metadata: body.metadata,
       });
       return c.json({ success: true, data: cert }, 201);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string } | undefined;
       return c.json(
         {
           success: false,
-          error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' },
+          error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' },
         },
         400,
       );
@@ -138,11 +141,12 @@ app.delete(
     try {
       await s.revoke(certId, auth.tenantId, auth.userId, body.reason);
       return c.json({ success: true });
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string } | undefined;
       return c.json(
         {
           success: false,
-          error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' },
+          error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' },
         },
         400,
       );

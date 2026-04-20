@@ -22,6 +22,7 @@ export function PhotoCapture({
   maxPhotos = 5,
 }: PhotoCaptureProps) {
   const t = useTranslations('photoCapture');
+  const tA11y = useTranslations('a11y');
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -73,15 +74,16 @@ export function PhotoCapture({
           >
             <img
               src={photo.url}
-              alt="Upload"
+              alt={tA11y('uploadPreview')}
               className="w-full h-full object-cover"
             />
             <button
               type="button"
               onClick={() => handleRemove(photo.id)}
+              aria-label={tA11y('removePhoto')}
               className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}

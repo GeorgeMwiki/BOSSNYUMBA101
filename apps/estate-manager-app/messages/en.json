@@ -3,6 +3,13 @@
     "title": "BOSSNYUMBA Manager",
     "tagline": "Estate manager field operations"
   },
+  "a11y": {
+    "skipToMain": "Skip to main content",
+    "closeModal": "Close dialog",
+    "removePhoto": "Remove photo",
+    "attachmentPreview": "Attachment preview",
+    "signaturePreview": "Signature preview"
+  },
   "chat": {
     "typingIndicator": "Coworker is typing…",
     "proposedActionApprove": "Approve",
@@ -103,7 +110,9 @@
     "viewAllLeases": "View all leases",
     "tenantFallback": "Tenant",
     "expiresPrefix": "Expires",
-    "expiring": "Expiring"
+    "expiring": "Expiring",
+    "errorLoad": "Some dashboard data failed to load.",
+    "retry": "Retry"
   },
   "liveData": {
     "unavailableSuffix": "unavailable",
@@ -128,6 +137,10 @@
     "workOrdersItems": "{count} items",
     "workOrdersAdd": "Add",
     "workOrdersLoading": "Loading work orders...",
+    "workOrdersFailed": "Failed to load work orders.",
+    "workOrdersEmptyTitle": "No work orders yet",
+    "workOrdersEmptyDesc": "Maintenance tickets you create will show up here.",
+    "workOrdersEmptyCta": "Create work order",
     "paymentsTitle": "Payments",
     "paymentsLoading": "Loading payments…",
     "paymentsItems": "{count} items",
@@ -194,7 +207,8 @@
     "emptyTitle": "No units yet",
     "emptyDesc": "Add units to the portfolio to start managing occupancy and leases.",
     "addUnit": "Add unit",
-    "bedsLabel": "{count} bed"
+    "bedsLabel": "{count} bed",
+    "retry": "Retry"
   },
   "chatUi": {
     "trainingTitle": "Coworker training",
@@ -1099,7 +1113,8 @@
     "failedToLoad": "Failed to load inspections.",
     "emptyTitle": "No inspections yet",
     "emptyDesc": "Scheduled move-in, move-out, and condition inspections will show up here.",
-    "typeFallback": "Inspection"
+    "typeFallback": "Inspection",
+    "retry": "Retry"
   },
   "announcementsList": {
     "title": "Announcements",

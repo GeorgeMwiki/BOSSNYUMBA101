@@ -8,7 +8,7 @@
  * health, and pending strategic decisions.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import {
@@ -20,6 +20,7 @@ import {
   Mic,
   MessageSquare,
 } from 'lucide-react';
+import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { api } from '../lib/api';
 
 interface HeadStats {
@@ -37,25 +38,64 @@ export default function HeadOfEstates(): JSX.Element {
   const t = useTranslations('head');
   const [stats, setStats] = useState<HeadStats | null>(null);
   const [exceptions, setExceptions] = useState<readonly ExceptionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.get<HeadStats>('/audit/autonomous-actions/stats'),
-      api.get<readonly ExceptionSummary[]>('/exceptions'),
-    ]).then(([s, e]) => {
-      if (!active) return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [s, e] = await Promise.all([
+        api.get<HeadStats>('/audit/autonomous-actions/stats'),
+        api.get<readonly ExceptionSummary[]>('/exceptions'),
+      ]);
       if (s.success && s.data) setStats(s.data);
       if (e.success && e.data) setExceptions(e.data);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+      // If both failed, surface the error banner.
+      if (!s.success && !e.success) {
+        setError(s.error ?? e.error ?? t('errorLoad'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorLoad'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const p1 = exceptions.filter((x) => x.priority === 'P1').length;
   const p2 = exceptions.filter((x) => x.priority === 'P2').length;
   const p3 = exceptions.filter((x) => x.priority === 'P3').length;
+
+  if (loading) {
+    return (
+      <div aria-busy="true" aria-live="polite" className="space-y-6">
+        <Skeleton className="h-28 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        <AlertDescription>
+          {error}
+          <Button size="sm" onClick={() => void load()} className="ml-2">
+            {t('retry')}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-6">

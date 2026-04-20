@@ -64,12 +64,37 @@ function leaseNumber() {
   return `LSE-${Date.now().toString().slice(-6)}`;
 }
 
-async function enrichLease(repos: any, tenantId: string, row: any) {
+type LeaseUnitLookup = { id: string; unitCode?: string };
+type LeaseCustomerLookup = { id: string; firstName: string; lastName: string };
+type LeasePropertyLookup = { id: string; name: string };
+
+type EnrichLeaseRepos = {
+  units: {
+    findById(id: string, tenantId: string): Promise<LeaseUnitLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<LeaseUnitLookup[]>;
+  };
+  customers: {
+    findById(id: string, tenantId: string): Promise<LeaseCustomerLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<LeaseCustomerLookup[]>;
+  };
+  properties: {
+    findById(id: string, tenantId: string): Promise<LeasePropertyLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<LeasePropertyLookup[]>;
+  };
+};
+
+type LeaseRowLike = {
+  unitId?: string | null;
+  customerId?: string | null;
+  propertyId?: string | null;
+};
+
+async function enrichLease(repos: EnrichLeaseRepos, tenantId: string, row: LeaseRowLike & Parameters<typeof mapLeaseRow>[0]) {
   const lease = mapLeaseRow(row);
   const [unit, customer, property] = await Promise.all([
-    repos.units.findById(row.unitId, tenantId),
-    repos.customers.findById(row.customerId, tenantId),
-    repos.properties.findById(row.propertyId, tenantId),
+    row.unitId ? repos.units.findById(row.unitId, tenantId) : null,
+    row.customerId ? repos.customers.findById(row.customerId, tenantId) : null,
+    row.propertyId ? repos.properties.findById(row.propertyId, tenantId) : null,
   ]);
 
   return {
@@ -80,6 +105,45 @@ async function enrichLease(repos: any, tenantId: string, row: any) {
   };
 }
 
+/**
+ * Wave 25 Agent V: batch-enrich a list of lease rows.
+ *
+ * Previously the list endpoints fanned out `Promise.all(rows.map(enrichLease))`
+ * which issued 3 queries per row (unit, customer, property). For a page of
+ * 100 leases that was 300 round-trips. Now we issue 3 batched `IN (...)`
+ * queries total, independent of page size. Result objects are immutable —
+ * new objects are constructed via spread.
+ */
+async function enrichLeases(repos: EnrichLeaseRepos, tenantId: string, rows: Array<LeaseRowLike & Parameters<typeof mapLeaseRow>[0]>) {
+  if (rows.length === 0) return [];
+  const unitIds = rows.map((r) => r.unitId).filter((id): id is string => Boolean(id));
+  const customerIds = rows.map((r) => r.customerId).filter((id): id is string => Boolean(id));
+  const propertyIds = rows.map((r) => r.propertyId).filter((id): id is string => Boolean(id));
+
+  const [units, customers, properties] = await Promise.all([
+    repos.units.findByIds(unitIds, tenantId),
+    repos.customers.findByIds(customerIds, tenantId),
+    repos.properties.findByIds(propertyIds, tenantId),
+  ]);
+
+  const unitMap = new Map<string, LeaseUnitLookup>(units.map((u) => [u.id, u]));
+  const customerMap = new Map<string, LeaseCustomerLookup>(customers.map((c) => [c.id, c]));
+  const propertyMap = new Map<string, LeasePropertyLookup>(properties.map((p) => [p.id, p]));
+
+  return rows.map((row) => {
+    const lease = mapLeaseRow(row);
+    const unit = row.unitId ? unitMap.get(row.unitId) : undefined;
+    const customer = row.customerId ? customerMap.get(row.customerId) : undefined;
+    const property = row.propertyId ? propertyMap.get(row.propertyId) : undefined;
+    return {
+      ...lease,
+      unit: unit ? { id: unit.id, unitNumber: unit.unitCode } : undefined,
+      customer: customer ? { id: customer.id, name: `${customer.firstName} ${customer.lastName}` } : undefined,
+      property: property ? { id: property.id, name: property.name } : undefined,
+    };
+  });
+}
+
 const app = new Hono();
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
@@ -88,7 +152,7 @@ app.get('/current', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
-  const lease = result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+  const lease = result.items.find((item: { status: unknown }) => String(item.status) === 'active') || result.items[0];
   if (!lease) {
     return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Current lease not found' } }, 404);
   }
@@ -104,7 +168,7 @@ app.get('/current/renewal-offer', async (c) => {
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
   const lease =
-    result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+    result.items.find((item: { status: unknown }) => String(item.status) === 'active') || result.items[0];
   if (!lease) {
     return c.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'No active lease' } },
@@ -141,7 +205,7 @@ app.post('/current/renew', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
-  const lease = result.items.find((item: any) => String(item.status) === 'active');
+  const lease = result.items.find((item: { status: unknown }) => String(item.status) === 'active');
   if (!lease) {
     return c.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'No active lease to renew' } },
@@ -177,7 +241,7 @@ app.get('/current/move-out', async (c) => {
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
   const lease =
-    result.items.find((item: any) => String(item.status) === 'active') || result.items[0];
+    result.items.find((item: { status: unknown }) => String(item.status) === 'active') || result.items[0];
   if (!lease) {
     return c.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'No active lease' } },
@@ -202,7 +266,7 @@ app.post('/current/move-out', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const result = await repos.leases.findByCustomer(auth.userId, auth.tenantId, { limit: 20, offset: 0 });
-  const lease = result.items.find((item: any) => String(item.status) === 'active');
+  const lease = result.items.find((item: { status: unknown }) => String(item.status) === 'active');
   if (!lease) {
     return c.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'No active lease to move out from' } },
@@ -263,8 +327,10 @@ app.get('/expiring', async (c) => {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
   const result = await repos.leases.findMany(auth.tenantId, { limit: 500, offset: 0 }, { status: 'active' });
-  const expiring = result.items.filter((row: any) => new Date(row.endDate) <= cutoff);
-  const enriched = await Promise.all(expiring.map((row: any) => enrichLease(repos, auth.tenantId, row)));
+  const expiring = (result.items as Array<{ endDate: string | Date }>).filter(
+    (row) => new Date(row.endDate) <= cutoff
+  );
+  const enriched = await enrichLeases(repos, auth.tenantId, expiring);
   const pageSlice = enriched.slice(p.offset, p.offset + p.limit);
   return c.json({ success: true, ...buildListResponse(pageSlice, enriched.length, p) });
 });
@@ -279,7 +345,7 @@ app.get('/', async (c) => {
     customerId: c.req.query('customerId'),
   };
   const result = await repos.leases.findMany(auth.tenantId, { limit: p.limit, offset: p.offset }, filters);
-  const enriched = await Promise.all(result.items.map((row: any) => enrichLease(repos, auth.tenantId, row)));
+  const enriched = await enrichLeases(repos, auth.tenantId, result.items);
   return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });
 

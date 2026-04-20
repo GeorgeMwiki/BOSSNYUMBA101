@@ -50,8 +50,9 @@ function notImplemented(c: any) {
   );
 }
 
-function mapErr(c: any, err: any, fallback = 400) {
-  const code = err?.code ?? 'INTERNAL_ERROR';
+function mapErr(c: any, err: unknown, fallback = 400) {
+  const e = err as { code?: string; message?: string } | undefined;
+  const code = e?.code ?? 'INTERNAL_ERROR';
   const status =
     code === 'NOT_FOUND'
       ? 404
@@ -63,7 +64,7 @@ function mapErr(c: any, err: any, fallback = 400) {
             ? 500
             : fallback;
   return c.json(
-    { success: false, error: { code, message: err?.message ?? 'unknown' } },
+    { success: false, error: { code, message: e?.message ?? 'unknown' } },
     status
   );
 }
@@ -82,7 +83,7 @@ app.post('/sessions', zValidator('json', CreateSessionSchema), async (c: any) =>
       targetConceptIds: body.targetConceptIds ?? [],
     });
     return c.json({ success: true, data: session }, 201);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });
@@ -100,7 +101,7 @@ app.get('/sessions/:id', async (c: any) => {
       );
     }
     return c.json({ success: true, data: session });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });
@@ -120,7 +121,7 @@ app.post(
         ...body,
       });
       return c.json({ success: true, data: result });
-    } catch (e: any) {
+    } catch (e: unknown) {
       return mapErr(c, e, 500);
     }
   }
@@ -133,7 +134,7 @@ app.get('/mastery/:userId', async (c: any) => {
   try {
     const data = await s.getMastery(auth.tenantId, c.req.param('userId'));
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });

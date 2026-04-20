@@ -40,6 +40,26 @@ export class CustomerRepository {
     return result[0] ?? null;
   }
 
+  /**
+   * Wave 25 Agent V: batch fetch many customers by id.
+   * Replaces `Promise.all(ids.map(id => findById(id)))` N+1 loops
+   * with a single `IN (...)` query.
+   */
+  async findByIds(ids: CustomerId[], tenantId: TenantId): Promise<CustomerRow[]> {
+    if (ids.length === 0) return [];
+    const unique = Array.from(new Set(ids));
+    return this.db
+      .select()
+      .from(customers)
+      .where(
+        and(
+          inArray(customers.id, unique),
+          eq(customers.tenantId, tenantId),
+          isNull(customers.deletedAt)
+        )
+      );
+  }
+
   async findByCode(
     customerCode: string,
     tenantId: TenantId

@@ -29,6 +29,7 @@ type SignOffStep = 'photos' | 'notes' | 'tenant_signature' | 'technician_signatu
 
 export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps) {
   const t = useTranslations('dualSignOff');
+  const tA11y = useTranslations('a11y');
   const [step, setStep] = useState<SignOffStep>('photos');
   const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
@@ -139,16 +140,16 @@ export function DualSignOff({ workOrder, onComplete, onClose }: DualSignOffProps
   const currentStepIndex = steps.findIndex((s) => s.id === step);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="dual-signoff-title">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold">{t('title')}</h3>
+            <h3 id="dual-signoff-title" className="text-lg font-semibold">{t('title')}</h3>
             <p className="text-sm text-gray-500">{workOrder.title}</p>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400">×</button>
+          <button type="button" onClick={onClose} aria-label={tA11y('closeModal')} className="p-2 text-gray-400">×</button>
         </div>
 
         {/* Progress Steps */}

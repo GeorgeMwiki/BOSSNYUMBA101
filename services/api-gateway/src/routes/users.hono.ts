@@ -6,7 +6,15 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { roles, userRoles } from '@bossnyumba/database';
 
-async function getRoleMap(db: any, tenantId: string, userIds: string[]) {
+type RoleInfo = { role: string; permissions: string[] };
+
+// any — Drizzle select builder chain type widens through generics in a
+// way that adds no safety when only structurally accessed. Rows are
+// narrowed below via the `.select({…})` projection which TS infers.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DrizzleDb = any;
+
+async function getRoleMap(db: DrizzleDb, tenantId: string, userIds: string[]): Promise<Map<string, RoleInfo>> {
   if (!userIds.length) return new Map();
   const assignments = await db
     .select({
@@ -18,19 +26,33 @@ async function getRoleMap(db: any, tenantId: string, userIds: string[]) {
     .innerJoin(roles, eq(roles.id, userRoles.roleId))
     .where(and(eq(userRoles.tenantId, tenantId), inArray(userRoles.userId, userIds), isNull(roles.deletedAt)));
 
-  const roleMap = new Map<string, any>();
-  for (const row of assignments) {
+  const roleMap = new Map<string, RoleInfo>();
+  for (const row of assignments as Array<{ userId: string; roleName: string; permissions: unknown }>) {
     if (!roleMap.has(row.userId)) {
       roleMap.set(row.userId, {
         role: row.roleName,
-        permissions: Array.isArray(row.permissions) ? row.permissions : [],
+        permissions: Array.isArray(row.permissions) ? (row.permissions as string[]) : [],
       });
     }
   }
   return roleMap;
 }
 
-function mapUser(row: any, roleData?: any) {
+type UserRow = {
+  id: string;
+  tenantId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  status?: string;
+  createdAt?: unknown;
+  createdBy?: string;
+  updatedAt?: unknown;
+  updatedBy?: string;
+};
+
+function mapUser(row: UserRow, roleData?: RoleInfo) {
   return {
     id: row.id,
     tenantId: row.tenantId,

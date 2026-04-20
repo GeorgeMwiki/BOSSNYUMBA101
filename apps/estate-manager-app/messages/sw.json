@@ -3,6 +3,13 @@
     "title": "BOSSNYUMBA Meneja",
     "tagline": "Kazi ya meneja wa mali uwanjani"
   },
+  "a11y": {
+    "skipToMain": "Ruka hadi maudhui makuu",
+    "closeModal": "Funga kidirisha",
+    "removePhoto": "Ondoa picha",
+    "attachmentPreview": "Hakiki ya kiambatisho",
+    "signaturePreview": "Hakiki ya sahihi"
+  },
   "chat": {
     "typingIndicator": "Mfanyakazi mwenza anaandika…",
     "proposedActionApprove": "Kubali",
@@ -103,7 +110,9 @@
     "viewAllLeases": "Tazama mikataba yote",
     "tenantFallback": "Mpangaji",
     "expiresPrefix": "Inaisha",
-    "expiring": "Inakaribia Kuisha"
+    "expiring": "Inakaribia Kuisha",
+    "errorLoad": "Baadhi ya data ya dashibodi haikuweza kupakiwa.",
+    "retry": "Jaribu tena"
   },
   "liveData": {
     "unavailableSuffix": "haipatikani",
@@ -128,6 +137,10 @@
     "workOrdersItems": "Vitu {count}",
     "workOrdersAdd": "Ongeza",
     "workOrdersLoading": "Inapakia kazi za matengenezo...",
+    "workOrdersFailed": "Imeshindwa kupakia kazi za matengenezo.",
+    "workOrdersEmptyTitle": "Hakuna kazi bado",
+    "workOrdersEmptyDesc": "Tiketi za matengenezo utakazounda zitaonekana hapa.",
+    "workOrdersEmptyCta": "Unda kazi",
     "paymentsTitle": "Malipo",
     "paymentsLoading": "Inapakia malipo…",
     "paymentsItems": "Vitu {count}",
@@ -194,7 +207,8 @@
     "emptyTitle": "Hakuna vyumba bado",
     "emptyDesc": "Ongeza vyumba kwenye mali ili kuanza kusimamia ukaliaji na mikataba.",
     "addUnit": "Ongeza chumba",
-    "bedsLabel": "Vitanda {count}"
+    "bedsLabel": "Vitanda {count}",
+    "retry": "Jaribu tena"
   },
   "chatUi": {
     "trainingTitle": "Mafunzo ya mfanyakazi mwenza",
@@ -1099,7 +1113,8 @@
     "failedToLoad": "Imeshindwa kupakia ukaguzi.",
     "emptyTitle": "Bado hakuna ukaguzi",
     "emptyDesc": "Ukaguzi wa kuingia, kuondoka, na hali uliopangwa utaonekana hapa.",
-    "typeFallback": "Ukaguzi"
+    "typeFallback": "Ukaguzi",
+    "retry": "Jaribu tena"
   },
   "announcementsList": {
     "title": "Matangazo",

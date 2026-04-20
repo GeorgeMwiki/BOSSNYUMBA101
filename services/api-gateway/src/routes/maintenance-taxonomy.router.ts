@@ -79,10 +79,11 @@ app.post('/categories', zValidator('json', CreateCategorySchema), async (c: any)
   try {
     const created = await s.createCategory(auth.tenantId, body, auth.userId);
     return c.json({ success: true, data: created }, 201);
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
-      e?.code === 'DUPLICATE' ? 409 : 400
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
+      err?.code === 'DUPLICATE' ? 409 : 400
     );
   }
 });
@@ -116,10 +117,11 @@ app.post('/problems', zValidator('json', CreateProblemSchema), async (c: any) =>
   try {
     const created = await s.createProblem(auth.tenantId, body, auth.userId);
     return c.json({ success: true, data: created }, 201);
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
-      e?.code === 'DUPLICATE' ? 409 : 400
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
+      err?.code === 'DUPLICATE' ? 409 : 400
     );
   }
 });

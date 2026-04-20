@@ -38,8 +38,9 @@ function notImplemented(c: any) {
   );
 }
 
-function mapErr(c: any, err: any, fallback = 400) {
-  const code = err?.code ?? 'INTERNAL_ERROR';
+function mapErr(c: any, err: unknown, fallback = 400) {
+  const e = err as { code?: string; message?: string } | undefined;
+  const code = e?.code ?? 'INTERNAL_ERROR';
   const status =
     code === 'NOT_FOUND'
       ? 404
@@ -53,7 +54,7 @@ function mapErr(c: any, err: any, fallback = 400) {
               ? 500
               : fallback;
   return c.json(
-    { success: false, error: { code, message: err?.message ?? 'unknown' } },
+    { success: false, error: { code, message: e?.message ?? 'unknown' } },
     status
   );
 }
@@ -69,7 +70,7 @@ app.post('/generate', async (c: any) => {
   try {
     const path = await ep.generate(auth.tenantId, auth.userId, body);
     return c.json({ success: true, data: path }, 200);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -82,7 +83,7 @@ app.post('/paths', async (c: any) => {
   try {
     const path = await ep.persistPath(auth.tenantId, auth.userId, body);
     return c.json({ success: true, data: path }, 201);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -94,7 +95,7 @@ app.get('/paths', async (c: any) => {
   try {
     const data = await ep.listPaths(auth.tenantId);
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });
@@ -108,7 +109,7 @@ app.patch('/paths/:id', async (c: any) => {
   try {
     const path = await ep.editPath(auth.tenantId, id, body);
     return c.json({ success: true, data: path });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -122,7 +123,7 @@ app.post('/paths/:id/assign', async (c: any) => {
   try {
     const data = await ep.assign(auth.tenantId, id, auth.userId, body);
     return c.json({ success: true, data }, 201);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -139,7 +140,7 @@ app.get('/assignments', async (c: any) => {
       assigneeUserId,
     });
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });
@@ -152,7 +153,7 @@ app.get('/assignments/:id', async (c: any) => {
   try {
     const data = await ep.getAssignment(auth.tenantId, id);
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -169,7 +170,7 @@ app.get('/mastery/:userId', async (c: any) => {
       auth.tenantId
     );
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -186,7 +187,7 @@ app.post('/assignments/:id/mark-complete', async (c: any) => {
       auth.userId
     );
     return c.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 400);
   }
 });
@@ -198,7 +199,7 @@ app.get('/next-step', async (c: any) => {
   try {
     const data = await ep.getNextStep(auth.tenantId, auth.userId);
     return c.json({ success: true, data: data ?? null });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return mapErr(c, e, 500);
   }
 });

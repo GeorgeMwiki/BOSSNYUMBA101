@@ -44,7 +44,33 @@ function invoiceNumber() {
   return `INV-${Date.now().toString().slice(-6)}`;
 }
 
-async function enrichInvoice(repos: any, tenantId: string, row: any) {
+/**
+ * Structural shape of the repos bundle we depend on for enrichment. The
+ * wider `repos` in Hono context is typed `unknown`, so we narrow locally
+ * to the methods we actually call.
+ */
+type CustomerLookup = { id: string; firstName: string; lastName: string };
+type LeaseLookup = { id: string };
+type UnitLookup = { id: string; unitCode?: string };
+
+type EnrichInvoiceRepos = {
+  customers: {
+    findById(id: string, tenantId: string): Promise<CustomerLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<CustomerLookup[]>;
+  };
+  leases: {
+    findById(id: string, tenantId: string): Promise<LeaseLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<LeaseLookup[]>;
+  };
+  units: {
+    findById(id: string, tenantId: string): Promise<UnitLookup | null>;
+    findByIds(ids: string[], tenantId: string): Promise<UnitLookup[]>;
+  };
+};
+
+type InvoiceRowLike = { customerId: string; leaseId?: string | null; unitId?: string | null };
+
+async function enrichInvoice(repos: EnrichInvoiceRepos, tenantId: string, row: InvoiceRowLike) {
   const invoice = mapInvoiceRow(row);
   const [customer, lease, unit] = await Promise.all([
     repos.customers.findById(row.customerId, tenantId),
@@ -57,6 +83,43 @@ async function enrichInvoice(repos: any, tenantId: string, row: any) {
     unit: unit ? { id: unit.id, unitNumber: unit.unitCode } : undefined,
     leaseId: lease?.id ?? invoice.leaseId,
   };
+}
+
+/**
+ * Wave 25 Agent V: batch-enrich a list of invoice rows.
+ *
+ * Previously `Promise.all(rows.map(enrichInvoice))` issued up to 3 queries
+ * per row. Now we issue 3 batched `IN (...)` queries total, independent of
+ * page size. Returns new objects — no mutation of the input rows.
+ */
+async function enrichInvoices(repos: EnrichInvoiceRepos, tenantId: string, rows: InvoiceRowLike[]) {
+  if (rows.length === 0) return [];
+  const customerIds = rows.map((r) => r.customerId).filter((id): id is string => Boolean(id));
+  const leaseIds = rows.map((r) => r.leaseId).filter((id): id is string => Boolean(id));
+  const unitIds = rows.map((r) => r.unitId).filter((id): id is string => Boolean(id));
+
+  const [customers, leases, units] = await Promise.all([
+    repos.customers.findByIds(customerIds, tenantId),
+    leaseIds.length ? repos.leases.findByIds(leaseIds, tenantId) : [],
+    unitIds.length ? repos.units.findByIds(unitIds, tenantId) : [],
+  ]);
+
+  const customerMap = new Map<string, CustomerLookup>(customers.map((c) => [c.id, c]));
+  const leaseMap = new Map<string, LeaseLookup>((leases ?? []).map((l) => [l.id, l]));
+  const unitMap = new Map<string, UnitLookup>((units ?? []).map((u) => [u.id, u]));
+
+  return rows.map((row) => {
+    const invoice = mapInvoiceRow(row);
+    const customer = row.customerId ? customerMap.get(row.customerId) : undefined;
+    const lease = row.leaseId ? leaseMap.get(row.leaseId) : undefined;
+    const unit = row.unitId ? unitMap.get(row.unitId) : undefined;
+    return {
+      ...invoice,
+      customer: customer ? { id: customer.id, name: `${customer.firstName} ${customer.lastName}` } : undefined,
+      unit: unit ? { id: unit.id, unitNumber: unit.unitCode } : undefined,
+      leaseId: lease?.id ?? invoice.leaseId,
+    };
+  });
 }
 
 const app = new Hono();
@@ -77,7 +140,7 @@ app.get('/', async (c) => {
   else if (status) result = await repos.invoices.findByStatus(status, auth.tenantId, p.limit, p.offset);
   else result = await repos.invoices.findMany(auth.tenantId, p.limit, p.offset);
 
-  const items = await Promise.all(result.items.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
+  const items = await enrichInvoices(repos, auth.tenantId, result.items);
   return c.json({ success: true, ...buildListResponse(items, result.total ?? items.length, p) });
 });
 
@@ -87,7 +150,7 @@ app.get('/overdue', async (c) => {
   const p = parseListPagination(c);
   // findOverdue returns the full set; slice to the requested page.
   const rows = await repos.invoices.findOverdue(auth.tenantId);
-  const items = await Promise.all(rows.map((row: any) => enrichInvoice(repos, auth.tenantId, row)));
+  const items = await enrichInvoices(repos, auth.tenantId, rows);
   const pageSlice = items.slice(p.offset, p.offset + p.limit);
   return c.json({ success: true, ...buildListResponse(pageSlice, items.length, p) });
 });

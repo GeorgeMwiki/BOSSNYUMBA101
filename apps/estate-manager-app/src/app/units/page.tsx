@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Home } from 'lucide-react';
 import { unitsService } from '@bossnyumba/api-client';
-import { Empty } from '@bossnyumba/design-system';
+import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -39,9 +39,14 @@ export default function UnitsPage() {
         )}
 
         {unitsQuery.error && (
-          <div className="card p-4 text-sm text-danger-600">
-            {(unitsQuery.error as Error).message || t('failedToLoad')}
-          </div>
+          <Alert variant="danger">
+            <AlertDescription>
+              {(unitsQuery.error as Error).message || t('failedToLoad')}
+              <Button size="sm" onClick={() => unitsQuery.refetch()} className="ml-2">
+                {t('retry')}
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {!unitsQuery.isLoading && !unitsQuery.error && units.length === 0 && (

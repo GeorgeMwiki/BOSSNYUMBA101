@@ -44,13 +44,14 @@ app.get('/', async (c: any) => {
   try {
     const items = await s.list(auth.tenantId);
     return c.json({ success: true, data: items });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
     return c.json(
       {
         success: false,
         error: {
-          code: e?.code ?? 'INTERNAL_ERROR',
-          message: e?.message ?? 'unknown',
+          code: err?.code ?? 'INTERNAL_ERROR',
+          message: err?.message ?? 'unknown',
         },
       },
       400,
@@ -79,19 +80,20 @@ app.put(
         body.enabled,
       );
       return c.json({ success: true, data: override }, 200);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string } | undefined;
       const status =
-        e?.code === 'UNKNOWN_FLAG'
+        err?.code === 'UNKNOWN_FLAG'
           ? 404
-          : e?.code === 'VALIDATION'
+          : err?.code === 'VALIDATION'
             ? 400
             : 500;
       return c.json(
         {
           success: false,
           error: {
-            code: e?.code ?? 'INTERNAL_ERROR',
-            message: e?.message ?? 'unknown',
+            code: err?.code ?? 'INTERNAL_ERROR',
+            message: err?.message ?? 'unknown',
           },
         },
         status,

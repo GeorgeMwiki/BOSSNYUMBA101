@@ -3,7 +3,7 @@
  * PropertyRepository and UnitRepository - PostgreSQL implementations.
  */
 
-import { eq, and, desc, isNull, sql, ilike, or } from 'drizzle-orm';
+import { eq, and, desc, isNull, sql, ilike, or, inArray } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
 import { properties, units } from '../schemas/index.js';
 import type {
@@ -35,6 +35,25 @@ export class PropertyRepository {
       )
       .limit(1);
     return result[0] ?? null;
+  }
+
+  /**
+   * Wave 25 Agent V: batch fetch many properties by id to replace
+   * per-row `findById` fan-out in enrichment loops.
+   */
+  async findByIds(ids: PropertyId[], tenantId: TenantId): Promise<PropertyRow[]> {
+    if (ids.length === 0) return [];
+    const unique = Array.from(new Set(ids));
+    return this.db
+      .select()
+      .from(properties)
+      .where(
+        and(
+          inArray(properties.id, unique),
+          eq(properties.tenantId, tenantId),
+          isNull(properties.deletedAt)
+        )
+      );
   }
 
   async findByCode(
@@ -255,6 +274,25 @@ export class UnitRepository {
       )
       .limit(1);
     return result[0] ?? null;
+  }
+
+  /**
+   * Wave 25 Agent V: batch fetch many units by id (IN-query) — replaces
+   * per-row `findById` lookups in lease/invoice enrichment hot paths.
+   */
+  async findByIds(ids: UnitId[], tenantId: TenantId): Promise<UnitRow[]> {
+    if (ids.length === 0) return [];
+    const unique = Array.from(new Set(ids));
+    return this.db
+      .select()
+      .from(units)
+      .where(
+        and(
+          inArray(units.id, unique),
+          eq(units.tenantId, tenantId),
+          isNull(units.deletedAt)
+        )
+      );
   }
 
   async findByProperty(

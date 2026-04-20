@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, X, Upload } from 'lucide-react';
 
 export interface AttachmentPreview {
@@ -26,6 +27,7 @@ export function AttachmentUpload({
   accept = 'image/*',
   label = 'Add photos',
 }: AttachmentUploadProps) {
+  const tA11y = useTranslations('a11y');
   const [attachments, setAttachments] = useState<AttachmentPreview[]>(value);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -107,9 +109,10 @@ export function AttachmentUpload({
             <button
               type="button"
               onClick={() => handleRemove(att.id)}
+              aria-label={tA11y('removePhoto')}
               className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}

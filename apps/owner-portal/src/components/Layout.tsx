@@ -55,6 +55,7 @@ export function Layout({ children }: LayoutProps) {
   const tApp = useTranslations('app');
   const tActions = useTranslations('actions');
   const tNav = useTranslations('nav');
+  const tA11y = useTranslations('a11y');
 
   const handleLogout = () => {
     logout();
@@ -63,6 +64,9 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <a href="#main-content" className="skip-link">
+        {tA11y('skipToMain')}
+      </a>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -209,7 +213,7 @@ export function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

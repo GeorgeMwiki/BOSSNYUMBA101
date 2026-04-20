@@ -591,12 +591,20 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
   const costLedgerRepo = new DrizzleCostLedgerRepository(db);
   const aiCostLedger = createCostLedger({ repo: costLedgerRepo });
 
-  // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes
-  // from env; if not set we fall back to the JWT secret or a dev default.
-  const certSigningSecret =
+  // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes from
+  // env; falls back to JWT_SECRET for operator convenience. In production,
+  // refuse to boot if neither is set (no silent dev-default signing).
+  const certSigningSecretFromEnv =
     process.env.AGENT_CERT_SIGNING_SECRET?.trim() ||
     process.env.JWT_SECRET?.trim() ||
-    'dev-only-agent-cert-signing-secret-32chars';
+    '';
+  if (process.env.NODE_ENV === 'production' && certSigningSecretFromEnv.length < 32) {
+    throw new Error(
+      'AGENT_CERT_SIGNING_SECRET (or JWT_SECRET) must be set and >= 32 chars in production',
+    );
+  }
+  const certSigningSecret =
+    certSigningSecretFromEnv || 'dev-only-agent-cert-signing-secret-32chars';
   const certSqlRunner: CertSqlRunner = {
     async query<Row = Record<string, unknown>>(
       queryText: string,

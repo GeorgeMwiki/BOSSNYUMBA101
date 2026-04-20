@@ -36,13 +36,17 @@ function apiBase(): string {
 
 export default function MessagesPage() {
   const t = useTranslations('pageHeaders');
+  const tList = useTranslations('messagesList');
   const [threads, setThreads] = useState<readonly Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let active = true;
     async function load(): Promise<void> {
+      setLoading(true);
+      setError(null);
       try {
         const token =
           typeof window !== 'undefined'
@@ -58,13 +62,13 @@ export default function MessagesPage() {
         };
         if (!active) return;
         if (!res.ok || !body.success) {
-          setError(body.error?.message ?? 'Failed to load messages');
+          setError(body.error?.message ?? tList('errorLoad'));
         } else {
           setThreads(body.data ?? []);
         }
       } catch (err) {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'Failed to load messages');
+        setError(err instanceof Error ? err.message : tList('errorLoad'));
       } finally {
         if (active) setLoading(false);
       }
@@ -73,7 +77,7 @@ export default function MessagesPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadToken, tList]);
 
   return (
     <>
@@ -81,18 +85,25 @@ export default function MessagesPage() {
       <div className="px-4 py-4 pb-24 space-y-3">
         {loading && (
           <p className="text-sm text-gray-400 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> {tList('loading')}
           </p>
         )}
         {error && (
-          <div className="rounded-lg bg-red-900/30 border border-red-500/40 text-red-200 p-3 text-sm">
-            {error}
+          <div className="rounded-lg bg-red-900/30 border border-red-500/40 text-red-200 p-3 text-sm flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => setReloadToken((v) => v + 1)}
+              className="rounded border border-red-400/60 px-3 py-1 text-xs hover:bg-red-500/20"
+            >
+              {tList('retry')}
+            </button>
           </div>
         )}
         {!loading && !error && threads.length === 0 && (
           <div className="rounded-lg bg-gray-800 border border-gray-700 p-5 text-sm text-gray-400 flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            No messages yet.
+            {tList('empty')}
           </div>
         )}
         {threads.map((t) => (

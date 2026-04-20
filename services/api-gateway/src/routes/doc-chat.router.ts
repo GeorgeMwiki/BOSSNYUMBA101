@@ -117,26 +117,33 @@ async function fallbackRetrieve(
   const qTokens = new Set(tokenize(question));
   if (!qTokens.size || !rows.length) return [];
 
-  const scored = rows
-    .map((r: any) => {
+  type DocChunkRow = {
+    documentId: string;
+    chunkIndex: number;
+    chunkText?: string;
+    text?: string;
+    chunkMeta?: unknown;
+  };
+  const scored = (rows as DocChunkRow[])
+    .map((r) => {
       const text = r.chunkText ?? r.text ?? '';
       const tokens = tokenize(text);
       let overlap = 0;
       for (const t of tokens) if (qTokens.has(t)) overlap += 1;
       const score = tokens.length ? overlap / Math.sqrt(tokens.length) : 0;
       const page =
-        (r.chunkMeta && typeof r.chunkMeta === 'object' && 'page' in r.chunkMeta
-          ? (r.chunkMeta as any).page
-          : undefined) as number | undefined;
+        r.chunkMeta && typeof r.chunkMeta === 'object' && 'page' in r.chunkMeta
+          ? (r.chunkMeta as { page?: unknown }).page
+          : undefined;
       return {
         documentId: r.documentId,
         chunkIndex: r.chunkIndex,
         text,
         score,
-        page,
+        page: typeof page === 'number' ? page : undefined,
       };
     })
-    .filter((r: any) => r.score > 0)
+    .filter((r) => r.score > 0)
     .sort((a: any, b: any) => b.score - a.score)
     .slice(0, topK);
 

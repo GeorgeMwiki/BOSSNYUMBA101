@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBoundary, Toaster } from '@bossnyumba/design-system';
+import { useTranslations } from 'next-intl';
 import { QueryProvider } from './QueryProvider';
 import { ApiProvider } from './ApiProvider';
 import { AuthProvider } from './AuthProvider';
@@ -24,15 +25,19 @@ export interface AppShellProps {
  * surface the en/sw toggle before / during / after auth.
  */
 export function AppShell({ children }: AppShellProps): JSX.Element {
+  const tA11y = useTranslations('a11y');
   return (
     <ErrorBoundary>
       <QueryProvider>
         <ApiProvider>
           <AuthProvider>
+            <a href="#main-content" className="skip-link">
+              {tA11y('skipToMain')}
+            </a>
             <div className="fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-2 z-40">
               <LocaleSwitcher className="inline-flex items-center gap-2 text-xs text-gray-600 bg-white/90 backdrop-blur rounded shadow-sm px-1" />
             </div>
-            {children}
+            <main id="main-content" tabIndex={-1}>{children}</main>
             <Toaster />
           </AuthProvider>
         </ApiProvider>

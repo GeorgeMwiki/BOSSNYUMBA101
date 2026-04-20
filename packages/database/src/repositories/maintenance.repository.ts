@@ -12,6 +12,7 @@ import {
   isNull,
   or,
   count,
+  inArray,
 } from 'drizzle-orm';
 import type { DatabaseClient } from '../client.js';
 import { workOrders, vendors } from '../schemas/index.js';
@@ -361,6 +362,25 @@ export class VendorRepository {
         )
       );
     return rows[0] ?? null;
+  }
+
+  /**
+   * Wave 25 Agent V: batch fetch many vendors by id (IN-query) — replaces
+   * per-row `findById` fan-out in owner-portal BFF.
+   */
+  async findByIds(ids: string[], tenantId: TenantId) {
+    if (ids.length === 0) return [];
+    const unique = Array.from(new Set(ids));
+    return this.db
+      .select()
+      .from(vendors)
+      .where(
+        and(
+          inArray(vendors.id, unique),
+          eq(vendors.tenantId, tenantId),
+          isNull(vendors.deletedAt)
+        )
+      );
   }
 
   async findByCode(vendorCode: string, tenantId: TenantId) {

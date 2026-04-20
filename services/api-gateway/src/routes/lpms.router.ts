@@ -93,15 +93,16 @@ app.post('/import', zValidator('json', ImportSchema), async (c: any) => {
     };
 
     return c.json({ success: true, data: preview }, 200);
-  } catch (e: any) {
+  } catch (e: unknown) {
     const code =
       e instanceof LpmsParseError ? 'LPMS_PARSE_ERROR' : 'INTERNAL_ERROR';
+    const message = e instanceof Error ? e.message : 'unknown';
     return c.json(
       {
         success: false,
         error: {
           code,
-          message: e?.message ?? 'unknown',
+          message: message ?? 'unknown',
           format: body.format,
         },
       },

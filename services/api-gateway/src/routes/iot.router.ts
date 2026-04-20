@@ -94,10 +94,11 @@ app.post('/sensors', zValidator('json', RegisterSensorSchema), async (c: any) =>
   try {
     const sensor = await s.registerSensor(auth.tenantId, body, auth.userId);
     return c.json({ success: true, data: sensor }, 201);
-  } catch (e: any) {
-    const status = e?.code === 'DUPLICATE' ? 409 : e?.code === 'VALIDATION' ? 400 : 500;
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
+    const status = err?.code === 'DUPLICATE' ? 409 : err?.code === 'VALIDATION' ? 400 : 500;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
       status
     );
   }
@@ -107,8 +108,10 @@ app.get('/sensors', async (c: any) => {
   const auth = c.get('auth');
   const s = svc(c);
   if (!s) return notImplemented(c);
+  // kind is a free-form query string; service validates the value
+  // against its own enum before querying.
   const filters = {
-    kind: (c.req.query('kind') as any) || undefined,
+    kind: (c.req.query('kind') ?? undefined) as z.infer<typeof SensorKindSchema> | undefined,
     unitId: c.req.query('unitId') || undefined,
     propertyId: c.req.query('propertyId') || undefined,
     active:
@@ -157,10 +160,11 @@ app.post('/sensors/:id/observations', zValidator('json', ObservationSchema), asy
       auth.userId
     );
     return c.json({ success: true, data: result }, 202);
-  } catch (e: any) {
-    const status = e?.code === 'NOT_FOUND' ? 404 : 400;
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
+    const status = err?.code === 'NOT_FOUND' ? 404 : 400;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
       status
     );
   }
@@ -182,7 +186,12 @@ app.get('/anomalies', async (c: any) => {
   if (!s) return notImplemented(c);
   const filters = {
     sensorId: c.req.query('sensorId') || undefined,
-    severity: (c.req.query('severity') as any) || undefined,
+    // severity is a free-form query string; service validates the value.
+    severity: (c.req.query('severity') ?? undefined) as
+      | 'info'
+      | 'warning'
+      | 'critical'
+      | undefined,
     unresolvedOnly: c.req.query('unresolved') === 'true' ? true : undefined,
   };
   const items = await s.listAnomalies(auth.tenantId, filters);
@@ -197,10 +206,11 @@ app.post('/anomalies/:id/acknowledge', zValidator('json', AckSchema), async (c: 
   try {
     const out = await s.acknowledgeAnomaly(auth.tenantId, c.req.param('id'), auth.userId, body.notes);
     return c.json({ success: true, data: out });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
-      e?.code === 'NOT_FOUND' ? 404 : 400
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
+      err?.code === 'NOT_FOUND' ? 404 : 400
     );
   }
 });
@@ -213,10 +223,11 @@ app.post('/anomalies/:id/resolve', zValidator('json', ResolveSchema), async (c: 
   try {
     const out = await s.resolveAnomaly(auth.tenantId, c.req.param('id'), auth.userId, body.notes);
     return c.json({ success: true, data: out });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string } | undefined;
     return c.json(
-      { success: false, error: { code: e?.code ?? 'INTERNAL_ERROR', message: e?.message ?? 'unknown' } },
-      e?.code === 'NOT_FOUND' ? 404 : 400
+      { success: false, error: { code: err?.code ?? 'INTERNAL_ERROR', message: err?.message ?? 'unknown' } },
+      err?.code === 'NOT_FOUND' ? 404 : 400
     );
   }
 });

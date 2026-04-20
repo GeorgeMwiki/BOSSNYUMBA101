@@ -62,9 +62,11 @@ async function getOwnerScope(auth, repos) {
   );
   const workOrders = workOrdersResult.items.filter((workOrder) => propertyIds.has(workOrder.propertyId));
   const vendorIds = Array.from(new Set(workOrders.map((workOrder) => workOrder.vendorId).filter(Boolean)));
-  const vendors = (
-    await Promise.all(vendorIds.map((vendorId) => repos.vendors.findById(vendorId, auth.tenantId)))
-  ).filter(Boolean);
+  // Wave 25 Agent V: batch fetch vendors with a single `IN (...)` query
+  // instead of per-id `findById` fan-out.
+  const vendors = vendorIds.length === 0
+    ? []
+    : await repos.vendors.findByIds(vendorIds, auth.tenantId);
 
   return { properties, units, leases, customers, invoices, payments, workOrders, vendors };
 }
