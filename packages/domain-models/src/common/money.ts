@@ -81,17 +81,47 @@ export function money(amount: number, currency: CurrencyCode = 'USD'): Money {
 }
 
 /**
- * Create Money from a decimal amount (e.g., 10.50 becomes 1050 cents)
+ * Number of decimal places for each supported currency. TZS / UGX / RWF
+ * are 0-decimal — their minor-unit IS the main unit. Hardcoding `/100`
+ * underquoted those currencies by 100× and produced invoice/statement
+ * lines that looked absurdly small. Wave-19 fix.
+ *
+ * Kept explicit + exhaustive rather than reaching for `Intl` metadata so
+ * it's trivially auditable and never silently changes.
  */
-export function moneyFromDecimal(decimal: number, currency: CurrencyCode = 'USD'): Money {
-  return money(Math.round(decimal * 100), currency);
+export const CURRENCY_DECIMALS: Record<CurrencyCode, number> = {
+  KES: 2,
+  TZS: 0,
+  UGX: 0,
+  RWF: 0,
+  USD: 2,
+  EUR: 2,
+  GBP: 2,
+};
+
+function decimalsFor(currency: CurrencyCode): number {
+  return CURRENCY_DECIMALS[currency] ?? 2;
+}
+
+function minorUnitDivisor(currency: CurrencyCode): number {
+  const d = decimalsFor(currency);
+  return d === 0 ? 1 : Math.pow(10, d);
 }
 
 /**
- * Convert Money to decimal display format
+ * Create Money from a decimal amount. The multiplier depends on the
+ * currency's fractional precision — 2 decimals for KES/USD/EUR/GBP,
+ * 0 decimals for TZS/UGX/RWF (where the minor unit is the main unit).
+ */
+export function moneyFromDecimal(decimal: number, currency: CurrencyCode = 'USD'): Money {
+  return money(Math.round(decimal * minorUnitDivisor(currency)), currency);
+}
+
+/**
+ * Convert Money to decimal display format, currency-aware.
  */
 export function toDecimal(m: Money): number {
-  return m.amount / 100;
+  return m.amount / minorUnitDivisor(m.currency);
 }
 
 /**
@@ -103,10 +133,13 @@ export function toDecimal(m: Money): number {
  * tenant context should always pass the real locale.
  */
 export function formatMoney(m: Money, locale: string = 'en'): string {
+  const decimals = decimalsFor(m.currency);
   const decimal = toDecimal(m);
   const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: m.currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
   return formatter.format(decimal);
 }

@@ -19,6 +19,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
+import { safeInternalError } from '../../utils/safe-error';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -87,14 +88,13 @@ app.get('/me/dashboard', async (c) => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Query failed';
-    return c.json(
-      {
-        success: false,
-        error: { code: 'DASHBOARD_UNAVAILABLE', message },
-      },
-      503,
-    );
+    // Wave 19 Agent H+I: the customer-app dashboard previously leaked
+    // raw exception messages to customer devices.
+    return safeInternalError(c, error, {
+      code: 'DASHBOARD_UNAVAILABLE',
+      status: 503,
+      fallback: 'Customer dashboard query failed',
+    });
   }
 });
 

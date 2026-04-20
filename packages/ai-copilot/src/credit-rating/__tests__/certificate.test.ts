@@ -69,7 +69,16 @@ describe('credit-certificate', () => {
       signingSecret: SECRET,
       verificationBaseUrl: BASE,
     });
-    const tampered = { ...cert, signature: cert.signature.replace(/.$/, '0') };
+    // Flip the last hex nibble deterministically so tampering always
+    // produces a different signature (using a fixed replacement char
+    // like '0' is flaky — fails ~1/16 when the signature already ends
+    // in '0').
+    const lastChar = cert.signature.slice(-1);
+    const flipped = lastChar === 'f' ? '0' : 'f';
+    const tampered = {
+      ...cert,
+      signature: cert.signature.slice(0, -1) + flipped,
+    };
     const v = verifyCertificate({
       certificate: tampered,
       signingSecret: SECRET,

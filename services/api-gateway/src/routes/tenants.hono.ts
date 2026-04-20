@@ -1,7 +1,8 @@
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 
 function mapTenant(row: any) {
   return {
@@ -98,25 +99,35 @@ app.get('/current/subscription', async (c) => {
   });
 });
 
-app.get('/', async (c) => {
-  const auth = c.get('auth');
-  const repos = c.get('repos');
-  const page = Number(c.req.query('page') || '1');
-  const pageSize = Number(c.req.query('pageSize') || '20');
-  const result = await repos.tenants.findMany({ limit: pageSize, offset: (page - 1) * pageSize });
-  const items = auth.role === 'SUPER_ADMIN' ? result.items.map(mapTenant) : [];
-  return c.json({
-    success: true,
-    data: items,
-    pagination: {
-      page,
-      pageSize,
-      totalItems: auth.role === 'SUPER_ADMIN' ? result.total : 0,
-      totalPages: auth.role === 'SUPER_ADMIN' ? Math.ceil(result.total / pageSize) : 0,
-      hasNextPage: auth.role === 'SUPER_ADMIN' ? result.hasMore : false,
-      hasPreviousPage: page > 1,
-    },
-  });
-});
+// Wave 19 Agent H+I: cross-tenant listing is platform-admin only.
+// Previously the handler ran the expensive cross-tenant scan for every
+// caller and silently returned [] to non-super-admins — that's both a
+// DoS vector (any authenticated user could hammer `findMany`) and an
+// information leak (pagination totals hint at tenant count).
+app.get(
+  '/',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPPORT),
+  async (c) => {
+    const repos = c.get('repos');
+    const page = Number(c.req.query('page') || '1');
+    const pageSize = Number(c.req.query('pageSize') || '20');
+    const result = await repos.tenants.findMany({
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+    return c.json({
+      success: true,
+      data: result.items.map(mapTenant),
+      pagination: {
+        page,
+        pageSize,
+        totalItems: result.total,
+        totalPages: Math.ceil(result.total / pageSize),
+        hasNextPage: result.hasMore,
+        hasPreviousPage: page > 1,
+      },
+    });
+  },
+);
 
 export const tenantsRouter = app;

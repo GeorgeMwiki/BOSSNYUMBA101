@@ -911,6 +911,72 @@ if (require.main === module) {
         logger,
         arrearsService: serviceRegistry.arrears?.service ?? null,
       });
+
+      // Wave 19 — bridge the domain bus onto the observability bus.
+      // Domain services publish through `InMemoryEventBus` (the
+      // composition-root bus wired into every service constructor).
+      // The api-gateway subscribers registered above attach to the
+      // observability `EventBus`. Without this bridge the two buses
+      // are disjoint and every domain event is silently dropped.
+      //
+      // The forwarder flattens the domain `EventEnvelope` into the
+      // observability `DomainEvent<T>` shape — subscribers already
+      // fall back to `event.eventType ?? event.type`, so both fields
+      // are populated.
+      const domainBus = serviceRegistry.eventBus as unknown as {
+        addForwarder?: (fwd: (env: unknown) => Promise<void> | void) => () => void;
+      } | undefined;
+      const obsPublish = (runner as unknown as {
+        publish?: (event: unknown) => Promise<void> | void;
+      }).publish;
+      if (
+        domainBus &&
+        typeof domainBus.addForwarder === 'function' &&
+        typeof obsPublish === 'function'
+      ) {
+        domainBus.addForwarder(async (envelope) => {
+          const env = envelope as {
+            event?: {
+              eventType?: string;
+              eventId?: string;
+              tenantId?: string;
+              timestamp?: string | Date;
+              correlationId?: string;
+              metadata?: Record<string, unknown>;
+              payload?: Record<string, unknown>;
+            };
+            aggregateId?: string;
+            aggregateType?: string;
+          };
+          const domainEvent = env.event ?? {};
+          const eventType = domainEvent.eventType ?? 'UnknownEvent';
+          // Build an observability-shaped DomainEvent. `type` is what
+          // the observability pattern-matcher and api-gateway
+          // subscribers key off of.
+          await obsPublish.call(runner, {
+            id: domainEvent.eventId ?? `evt_${Date.now()}`,
+            type: eventType,
+            eventType, // keep both for subscriber fallback
+            aggregateType: env.aggregateType ?? 'Unknown',
+            aggregateId: env.aggregateId ?? 'unknown',
+            timestamp: domainEvent.timestamp ?? new Date(),
+            timestampMs: Date.now(),
+            version: 1,
+            payload: domainEvent.payload ?? {},
+            metadata: {
+              sourceService: 'domain-services',
+              tenantId: domainEvent.tenantId,
+              correlationId: domainEvent.correlationId,
+              ...(domainEvent.metadata ?? {}),
+            },
+          });
+        });
+        logger.info('event-bus bridge: domain bus → observability bus wired');
+      } else {
+        logger.warn(
+          'event-bus bridge: forwarder unavailable; domain events may not reach api-gateway subscribers',
+        );
+      }
     } else {
       logger.warn('event subscribers: bus.subscribe not available; subscribers not registered');
     }

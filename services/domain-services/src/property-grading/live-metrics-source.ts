@@ -107,7 +107,11 @@ export class LiveMetricsSource implements PropertyMetricsSource {
     const occupancyRate = occupied / unitCount;
 
     // Maintenance metrics — averaged across open+closed cases for the window.
+    // aggregateMaintenance returns TOTAL cost; divide by unit count here
+    // to produce the per-unit figure the scoring model expects.
     const maintenance = await this.aggregateMaintenance(tenantId, propertyId);
+    const maintenanceCostPerUnit =
+      unitCount > 0 ? maintenance.costPerUnit / unitCount : maintenance.costPerUnit;
     // Compliance breaches — count of unresolved items.
     const complianceBreachCount = await this.countComplianceBreaches(
       tenantId,
@@ -126,7 +130,7 @@ export class LiveMetricsSource implements PropertyMetricsSource {
       expenseRatio: NEUTRAL_INPUTS.expenseRatio,
       arrearsRatio: NEUTRAL_INPUTS.arrearsRatio,
       avgMaintenanceResolutionHours: maintenance.avgResolutionHours,
-      maintenanceCostPerUnit: maintenance.costPerUnit,
+      maintenanceCostPerUnit,
       complianceBreachCount,
       tenantSatisfactionProxy: NEUTRAL_INPUTS.tenantSatisfactionProxy,
       vacancyDurationDays: NEUTRAL_INPUTS.vacancyDurationDays,

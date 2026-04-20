@@ -318,7 +318,11 @@ export function createId(): string {
 // Zod Schemas for ledger, statements, payments
 // ============================================================================
 
-export const CurrencyCodeSchema = z.enum(['KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX']);
+// RWF (Rwandan Franc) is the third East-African Community 0-decimal
+// currency alongside TZS + UGX. The Money zod schema already accepted
+// 'RWF'; adding it here closes the type drift so Rwandan tenants can
+// be onboarded without a downstream type break. Wave-19 fix.
+export const CurrencyCodeSchema = z.enum(['KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX', 'RWF']);
 export type CurrencyCode = z.infer<typeof CurrencyCodeSchema>;
 
 export const StatementPeriodTypeSchema = z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'CUSTOM']);

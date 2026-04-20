@@ -723,11 +723,15 @@ export class InvoiceGenerator {
   }
 
   private generatePaymentQrData(invoice: Invoice): string {
-    // Generate a QR code data string for payment
-    // This would typically be a payment link or bank details
+    // Emit the amount in MINOR UNITS — never divide by a hard-coded 100.
+    // Different ISO-4217 currencies have different exponents (UGX/TZS=0,
+    // KES/USD/EUR/GBP=2, TND/JOD/KWD=3). The QR scanner on the payer side
+    // is responsible for rendering the amount in major units using the
+    // currency's published exponent. Dividing here would silently
+    // produce wrong totals for zero-decimal currencies like UGX.
     return JSON.stringify({
       invoiceNumber: invoice.invoiceNumber,
-      amount: invoice.amountDue.amountMinorUnits / 100,
+      amountMinorUnits: invoice.amountDue.amountMinorUnits,
       currency: invoice.currency,
       reference: invoice.reference || invoice.invoiceNumber,
     });

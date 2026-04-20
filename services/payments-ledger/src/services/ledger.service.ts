@@ -354,10 +354,11 @@ export class LedgerService {
       throw new Error(`Account ${accountId} not found`);
     }
 
-    // Calculate opening balance (balance as of day before period start)
-    const openingBalanceDate = new Date(fromDate);
-    openingBalanceDate.setDate(openingBalanceDate.getDate() - 1);
-    openingBalanceDate.setHours(23, 59, 59, 999);
+    // Calculate opening balance (balance as of instant before period start).
+    // Use UTC arithmetic — getDate/setHours depend on the server's local
+    // timezone and silently shift the boundary when not at UTC. The
+    // "1 ms before fromDate" instant is timezone-invariant.
+    const openingBalanceDate = new Date(fromDate.getTime() - 1);
 
     const openingBalanceResult = await this.ledgerRepository.calculateAccountBalance(
       accountId,

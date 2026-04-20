@@ -273,21 +273,30 @@ export class ReportService {
     let periodStart: Date;
     let periodEnd: Date = now;
 
+    // Use UTC for period boundaries — local-time constructors shift the
+    // boundary for non-UTC servers and silently misclassify transactions
+    // sitting within a few hours of midnight.
     switch (input.period) {
       case 'daily':
-        periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        periodStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+        );
         break;
       case 'weekly':
         periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
       case 'monthly':
-        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        );
         break;
       case 'quarterly':
-        periodStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        periodStart = new Date(
+          Date.UTC(now.getUTCFullYear(), Math.floor(now.getUTCMonth() / 3) * 3, 1),
+        );
         break;
       case 'yearly':
-        periodStart = new Date(now.getFullYear(), 0, 1);
+        periodStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
         break;
       case 'custom':
         if (!input.periodStart || !input.periodEnd) {
@@ -297,7 +306,9 @@ export class ReportService {
         periodEnd = new Date(input.periodEnd);
         break;
       default:
-        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        );
     }
 
     if (periodStart > periodEnd) {

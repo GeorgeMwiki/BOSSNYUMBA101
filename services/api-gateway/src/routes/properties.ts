@@ -2,8 +2,9 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 import {
   mapPropertyRow,
   mapUnitRow,
@@ -12,6 +13,15 @@ import {
   paginateArray,
 } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+
+// Wave 19 Agent H+I: property create/update/delete are staff-only.
+// Read endpoints already filter via `hasPropertyAccess` (JWT ACL).
+const staffOnly = requireRole(
+  UserRole.TENANT_ADMIN,
+  UserRole.PROPERTY_MANAGER,
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+);
 
 // Country accepts either ISO-3166 alpha-2 codes ("KE", "TZ") OR the
 // full country name — the mobile UI submits either, depending on which
@@ -124,7 +134,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapPropertyRow(row) });
 });
 
-app.post('/', zValidator('json', PropertyCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', PropertyCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -163,7 +173,7 @@ app.post('/', zValidator('json', PropertyCreateSchema), async (c) => {
   return c.json({ success: true, data: mapPropertyRow(row) }, 201);
 });
 
-app.put('/:id', zValidator('json', PropertyUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', PropertyUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -206,7 +216,7 @@ app.put('/:id', zValidator('json', PropertyUpdateSchema), async (c) => {
   return c.json({ success: true, data: mapPropertyRow(row) });
 });
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');

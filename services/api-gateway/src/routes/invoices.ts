@@ -2,10 +2,22 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 import { majorToMinor, mapInvoiceRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+
+// Wave 19 Agent H+I: invoice mutations (create/update/send/cancel) are
+// staff-only. Customers read their own invoices via the customer-app
+// BFF dashboard.
+const staffOnly = requireRole(
+  UserRole.TENANT_ADMIN,
+  UserRole.PROPERTY_MANAGER,
+  UserRole.ACCOUNTANT,
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+);
 
 const isoDate = z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), 'invalid date');
 const LineItemSchema = z.object({
@@ -88,7 +100,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
 });
 
-app.post('/', zValidator('json', InvoiceCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', InvoiceCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -124,7 +136,7 @@ app.post('/', zValidator('json', InvoiceCreateSchema), async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) }, 201);
 });
 
-app.put('/:id', zValidator('json', InvoiceUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', InvoiceUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -152,7 +164,7 @@ app.put('/:id', zValidator('json', InvoiceUpdateSchema), async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/send', async (c) => {
+app.post('/:id/send', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.invoices.update(c.req.param('id'), auth.tenantId, { status: 'sent', sentAt: new Date(), updatedBy: auth.userId });
@@ -175,7 +187,7 @@ app.get('/:id/pdf', async (c) => {
   });
 });
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.invoices.update(c.req.param('id'), auth.tenantId, {

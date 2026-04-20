@@ -16,6 +16,7 @@
 import { Hono } from 'hono';
 import { sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
+import { routeCatch } from '../utils/safe-error';
 
 // Drizzle schema for `conversations` drifts from the physical table
 // (schema has `customer_id`, `title`, `metadata`, `last_message_at`; DB
@@ -78,11 +79,14 @@ app.get('/conversations', async (c) => {
     );
     return c.json({ success: true, data: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
-      503,
-    );
+    // Wave 19 Agent H+I: scrub raw driver strings in prod. The raw
+    // err.message previously reached clients, exposing constraint
+    // names and schema detail.
+    return routeCatch(c, err, {
+      code: 'MESSAGING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Messaging query failed',
+    });
   }
 });
 
@@ -112,11 +116,14 @@ app.get('/conversations/:id', async (c) => {
     }
     return c.json({ success: true, data: row });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
-      503,
-    );
+    // Wave 19 Agent H+I: scrub raw driver strings in prod. The raw
+    // err.message previously reached clients, exposing constraint
+    // names and schema detail.
+    return routeCatch(c, err, {
+      code: 'MESSAGING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Messaging query failed',
+    });
   }
 });
 
@@ -151,11 +158,14 @@ app.get('/conversations/:id/messages', async (c) => {
     );
     return c.json({ success: true, data: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Query failed';
-    return c.json(
-      { success: false, error: { code: 'MESSAGING_QUERY_FAILED', message } },
-      503,
-    );
+    // Wave 19 Agent H+I: scrub raw driver strings in prod. The raw
+    // err.message previously reached clients, exposing constraint
+    // names and schema detail.
+    return routeCatch(c, err, {
+      code: 'MESSAGING_QUERY_FAILED',
+      status: 503,
+      fallback: 'Messaging query failed',
+    });
   }
 });
 

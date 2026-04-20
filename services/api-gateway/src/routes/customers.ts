@@ -2,10 +2,23 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 import { mapCustomerRow, mapUnitRow, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+
+// Wave 19 Agent H+I: customer CRUD on arbitrary customers is a landlord
+// operation. Self-service endpoints (`/me`, `/me/PUT`) use JWT `userId`
+// and remain open for residents to edit their own profile.
+const staffOnly = requireRole(
+  UserRole.TENANT_ADMIN,
+  UserRole.PROPERTY_MANAGER,
+  UserRole.ACCOUNTANT,
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.SUPPORT,
+);
 
 const phoneSchema = z.string().min(6).max(24).regex(/^[+0-9 \-()]+$/, 'invalid phone');
 const CustomerCreateSchema = z.object({
@@ -104,7 +117,7 @@ app.put('/me', zValidator('json', CustomerUpdateSchema), async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.get('/', async (c) => {
+app.get('/', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const p = parseListPagination(c);
@@ -122,7 +135,7 @@ app.get('/', async (c) => {
   return c.json({ success: true, ...buildListResponse(enriched, result.total ?? enriched.length, p) });
 });
 
-app.get('/:id', async (c) => {
+app.get('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.customers.findById(c.req.param('id'), auth.tenantId);
@@ -130,7 +143,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.post('/', zValidator('json', CustomerCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', CustomerCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -153,7 +166,7 @@ app.post('/', zValidator('json', CustomerCreateSchema), async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) }, 201);
 });
 
-app.put('/:id', zValidator('json', CustomerUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', CustomerUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -178,7 +191,7 @@ app.put('/:id', zValidator('json', CustomerUpdateSchema), async (c) => {
   return c.json({ success: true, data: await enrichCustomer(repos, auth.tenantId, row) });
 });
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');

@@ -26,6 +26,7 @@ import {
   renderCertificateDocument,
   type CreditRatingService,
 } from '@bossnyumba/ai-copilot';
+import { scrubMessage } from '../utils/safe-error';
 
 const RecordPromiseSchema = z.object({
   kind: z.enum(['extension', 'installment', 'lease_amendment']),
@@ -76,12 +77,19 @@ function resolveCustomerIdForSelf(c: any): string | null {
 }
 
 function mapError(c: any, err: unknown) {
-  const msg = err instanceof Error ? err.message : 'Unknown error';
   const code =
     err && typeof err === 'object' && 'code' in err
       ? String((err as { code: unknown }).code)
       : 'CREDIT_RATING_FAILED';
   const status = code === 'CUSTOMER_NOT_FOUND' ? 404 : 400;
+  // Wave 19 Agent H+I: known domain errors carry a stable `code` and
+  // their `message` is safe to expose. Unknown errors fall through to
+  // the scrubber so raw driver strings cannot leak.
+  const isDomainError =
+    code !== 'CREDIT_RATING_FAILED' && err instanceof Error && !!err.message;
+  const msg = isDomainError
+    ? (err as Error).message
+    : scrubMessage(err, 'Credit rating operation failed');
   return c.json({ success: false, error: { code, message: msg } }, status);
 }
 

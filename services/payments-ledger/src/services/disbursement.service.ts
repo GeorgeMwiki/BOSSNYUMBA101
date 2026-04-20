@@ -530,10 +530,16 @@ export class DisbursementService {
       currency
     );
 
-    // Default period to current month if not specified
+    // Default period to current month if not specified. Use UTC — local
+    // date construction shifts the period boundary for non-UTC servers
+    // and silently pulls/pushes entries across the month line.
     const now = new Date();
-    const fromDate = periodStart || new Date(now.getFullYear(), now.getMonth(), 1);
-    const toDate = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const fromDate =
+      periodStart ||
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const toDate =
+      periodEnd ||
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 
     // Get ledger entries for the period to calculate breakdown
     const statement = await this.ledgerService.getStatement(

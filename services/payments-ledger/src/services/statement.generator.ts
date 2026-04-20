@@ -240,10 +240,12 @@ export class StatementGenerator {
     const statementId = `stmt_${uuidv4()}` as StatementId;
     const now = new Date();
 
-    // Get opening balance (balance at end of day before period start)
-    const openingBalanceDate = new Date(params.periodStart);
-    openingBalanceDate.setDate(openingBalanceDate.getDate() - 1);
-    openingBalanceDate.setHours(23, 59, 59, 999);
+    // Get opening balance (balance at the instant before period start).
+    // Use UTC arithmetic — local getDate/setHours depend on the server's
+    // TZ and silently shift the boundary when the server is not at UTC,
+    // which caused boundary-day transactions to be double-counted or
+    // dropped on reports.
+    const openingBalanceDate = new Date(params.periodStart.getTime() - 1);
 
     const openingBalanceResult = await this.deps.getAccountBalance(
       params.accountId,
@@ -456,11 +458,11 @@ export class StatementGenerator {
         <div class="summary-value">${formattedAmounts.openingBalance}</div>
       </div>
       <div class="summary-box">
-        <div class="summary-label">Total Credits</div>
+        <div class="summary-label">Total Debits</div>
         <div class="summary-value debit">+${formattedAmounts.totalDebits}</div>
       </div>
       <div class="summary-box">
-        <div class="summary-label">Total Debits</div>
+        <div class="summary-label">Total Credits</div>
         <div class="summary-value credit">-${formattedAmounts.totalCredits}</div>
       </div>
       <div class="summary-box highlight">
@@ -564,33 +566,39 @@ export class StatementGenerator {
   }
 
   /**
-   * Get period dates for monthly statement
+   * Get period dates for monthly statement.
+   *
+   * Uses UTC — `new Date(y, m, d)` implicitly uses the server's LOCAL
+   * timezone which shifts period boundaries for anyone not running at
+   * UTC. A tenant requesting "April 2026" on a UTC+3 server previously
+   * produced a window starting at 2026-03-31T21:00:00Z, silently
+   * pulling 3 hours of prior-month entries into the current report.
    */
   getMonthlyPeriod(year: number, month: number): { periodStart: Date; periodEnd: Date } {
     return {
-      periodStart: new Date(year, month - 1, 1, 0, 0, 0, 0),
-      periodEnd: new Date(year, month, 0, 23, 59, 59, 999),
+      periodStart: new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0)),
+      periodEnd: new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)),
     };
   }
 
   /**
-   * Get period dates for quarterly statement
+   * Get period dates for quarterly statement (UTC-based — see getMonthlyPeriod).
    */
   getQuarterlyPeriod(year: number, quarter: number): { periodStart: Date; periodEnd: Date } {
     const startMonth = (quarter - 1) * 3;
     return {
-      periodStart: new Date(year, startMonth, 1, 0, 0, 0, 0),
-      periodEnd: new Date(year, startMonth + 3, 0, 23, 59, 59, 999),
+      periodStart: new Date(Date.UTC(year, startMonth, 1, 0, 0, 0, 0)),
+      periodEnd: new Date(Date.UTC(year, startMonth + 3, 0, 23, 59, 59, 999)),
     };
   }
 
   /**
-   * Get period dates for annual statement
+   * Get period dates for annual statement (UTC-based — see getMonthlyPeriod).
    */
   getAnnualPeriod(year: number): { periodStart: Date; periodEnd: Date } {
     return {
-      periodStart: new Date(year, 0, 1, 0, 0, 0, 0),
-      periodEnd: new Date(year, 11, 31, 23, 59, 59, 999),
+      periodStart: new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0)),
+      periodEnd: new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)),
     };
   }
 

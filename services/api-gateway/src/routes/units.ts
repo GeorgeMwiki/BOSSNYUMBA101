@@ -2,8 +2,9 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 import {
   mapUnitRow,
   normalizeUnitStatusToDb,
@@ -12,6 +13,15 @@ import {
   majorToMinor,
 } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+
+// Wave 19 Agent H+I: unit mutations are staff-only. Reads are still
+// gated by `hasPropertyAccess` (JWT ACL).
+const staffOnly = requireRole(
+  UserRole.TENANT_ADMIN,
+  UserRole.PROPERTY_MANAGER,
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+);
 
 const UnitCreateSchema = z.object({
   propertyId: z.string().min(1),
@@ -78,7 +88,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.post('/', zValidator('json', UnitCreateSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', UnitCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -112,7 +122,7 @@ app.post('/', zValidator('json', UnitCreateSchema), async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) }, 201);
 });
 
-app.put('/:id', zValidator('json', UnitUpdateSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', UnitUpdateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -145,7 +155,7 @@ app.put('/:id', zValidator('json', UnitUpdateSchema), async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.put('/:id/status', zValidator('json', UnitStatusSchema), async (c) => {
+app.put('/:id/status', staffOnly, zValidator('json', UnitStatusSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -156,7 +166,7 @@ app.put('/:id/status', zValidator('json', UnitStatusSchema), async (c) => {
   return c.json({ success: true, data: mapUnitRow(row) });
 });
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');

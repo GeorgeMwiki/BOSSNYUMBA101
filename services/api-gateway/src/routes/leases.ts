@@ -2,10 +2,22 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/hono-auth';
+import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
+import { UserRole } from '../types/user-role';
 import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
+
+// Wave 19 Agent H+I: lease mutations are staff-only. RESIDENT / OWNER
+// users read via `/leases/current*` (self) but cannot create, update,
+// terminate, renew, or delete leases.
+const staffOnly = requireRole(
+  UserRole.TENANT_ADMIN,
+  UserRole.PROPERTY_MANAGER,
+  UserRole.ACCOUNTANT,
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+);
 
 const isoDate = z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), 'invalid date');
 const CreateLeaseSchema = z.object({
@@ -279,7 +291,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/', zValidator('json', CreateLeaseSchema), async (c) => {
+app.post('/', staffOnly, zValidator('json', CreateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -315,7 +327,7 @@ app.post('/', zValidator('json', CreateLeaseSchema), async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) }, 201);
 });
 
-app.put('/:id', zValidator('json', UpdateLeaseSchema), async (c) => {
+app.put('/:id', staffOnly, zValidator('json', UpdateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -341,14 +353,14 @@ app.put('/:id', zValidator('json', UpdateLeaseSchema), async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/activate', async (c) => {
+app.post('/:id/activate', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const row = await repos.leases.update(c.req.param('id'), auth.tenantId, { status: 'active', activatedAt: new Date(), activatedBy: auth.userId }, auth.userId);
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/terminate', zValidator('json', TerminateLeaseSchema), async (c) => {
+app.post('/:id/terminate', staffOnly, zValidator('json', TerminateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -367,7 +379,7 @@ app.post('/:id/terminate', zValidator('json', TerminateLeaseSchema), async (c) =
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/:id/renew', zValidator('json', RenewLeaseSchema), async (c) => {
+app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');
@@ -400,7 +412,7 @@ app.post('/:id/renew', zValidator('json', RenewLeaseSchema), async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', staffOnly, async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.leases.delete(c.req.param('id'), auth.tenantId, auth.userId);

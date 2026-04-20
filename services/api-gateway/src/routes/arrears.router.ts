@@ -16,6 +16,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
+import { scrubMessage } from '../utils/safe-error';
 import {
   createArrearsService,
   createArrearsProjectionService,
@@ -287,7 +288,11 @@ function mapError(c: unknown, err: unknown) {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: err instanceof Error ? err.message : 'unknown',
+        // Wave 19 Agent H+I: scrub driver/constraint detail in prod;
+        // keep in dev for test assertions. The structured logger in
+        // index.ts still captures the full error+stack with the
+        // requestId.
+        message: scrubMessage(err, 'Arrears operation failed'),
       },
     },
     500

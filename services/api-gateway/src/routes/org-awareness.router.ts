@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
+import { safeInternalError } from '../utils/safe-error';
 
 type AnyCtx = any;
 
@@ -47,14 +48,11 @@ function badRequest(c: AnyCtx, message: string) {
 }
 
 function internalError(c: AnyCtx, err: unknown) {
-  const message = err instanceof Error ? err.message : String(err);
-  return c.json(
-    {
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message },
-    },
-    500,
-  );
+  // Wave 19 Agent H+I: scrub raw messages in prod; dev keeps detail.
+  return safeInternalError(c, err, {
+    code: 'INTERNAL_ERROR',
+    fallback: 'Internal server error',
+  });
 }
 
 const SNAPSHOT_METRICS = [

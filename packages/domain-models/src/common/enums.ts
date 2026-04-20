@@ -879,13 +879,17 @@ export const AuditEventTypeSchema = z.enum([
 // Currency
 // ============================================================================
 
+// RWF (Rwandan Franc) — third EAC 0-decimal currency alongside TZS + UGX.
+// Kept in sync with `common/types.ts` CurrencyCodeSchema and money.ts
+// CURRENCY_DECIMALS table. Wave-19 fix.
 export const CurrencyCode = {
   KES: 'KES',
   TZS: 'TZS',
   UGX: 'UGX',
+  RWF: 'RWF',
   USD: 'USD',
   EUR: 'EUR',
   GBP: 'GBP',
 } as const;
 export type CurrencyCode = (typeof CurrencyCode)[keyof typeof CurrencyCode];
-export const CurrencyCodeSchema = z.enum(['KES', 'TZS', 'UGX', 'USD', 'EUR', 'GBP']);
+export const CurrencyCodeSchema = z.enum(['KES', 'TZS', 'UGX', 'RWF', 'USD', 'EUR', 'GBP']);
