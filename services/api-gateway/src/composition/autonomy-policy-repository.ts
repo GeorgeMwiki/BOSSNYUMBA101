@@ -111,6 +111,13 @@ function policyToJson(policy: AutonomyPolicy): Record<string, unknown> {
     maintenance: policy.maintenance,
     compliance: policy.compliance,
     communications: policy.communications,
+    // Wave 27 Part B.9 — six additional domains serialised alongside.
+    marketing: policy.marketing,
+    hr: policy.hr,
+    procurement: policy.procurement,
+    insurance: policy.insurance,
+    legal_proceedings: policy.legal_proceedings,
+    tenant_welfare: policy.tenant_welfare,
     escalation: policy.escalation,
     version: policy.version,
     updatedAt: policy.updatedAt,
@@ -137,6 +144,24 @@ function rowToPolicy(row: AutonomyPolicyRow): AutonomyPolicy {
     communications: {
       ...defaults.communications,
       ...(json.communications ?? {}),
+    },
+    // Wave 27 Part B.9 — merge defaults forward so rows written before
+    // the expansion gain the new blocks transparently (no migration
+    // needed — policy_json is jsonb).
+    marketing: { ...defaults.marketing, ...(json.marketing ?? {}) },
+    hr: { ...defaults.hr, ...(json.hr ?? {}) },
+    procurement: { ...defaults.procurement, ...(json.procurement ?? {}) },
+    insurance: { ...defaults.insurance, ...(json.insurance ?? {}) },
+    legal_proceedings: {
+      ...defaults.legal_proceedings,
+      ...(json.legal_proceedings ?? {}),
+      // Safety-critical invariant (same pattern as compliance.autoSendLegalNotices):
+      // tribunal filings NEVER auto-submit regardless of stale row state.
+      autoFileToTribunal: false,
+    },
+    tenant_welfare: {
+      ...defaults.tenant_welfare,
+      ...(json.tenant_welfare ?? {}),
     },
     escalation: {
       primaryUserId:

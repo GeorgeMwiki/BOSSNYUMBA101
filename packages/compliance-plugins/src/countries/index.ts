@@ -38,6 +38,15 @@ import { japanProfile } from './jp/index.js';
 import { franceProfile } from './fr/index.js';
 import { uaeProfile } from './ae/index.js';
 import { mexicoProfile } from './mx/index.js';
+// Wave 27 Agent B — Tanzania first-class full-fidelity profile.
+import { tanzaniaProfile } from './tz/index.js';
+// Wave 27 Agent A — 200+ ISO-3166 scaffolds for global coverage.
+import {
+  SCAFFOLD_PROFILES,
+  SCAFFOLD_METADATA,
+  SCAFFOLD_COUNTRY_CODES,
+  type ScaffoldMetadata,
+} from './_generated/index.js';
 
 import type { ExtendedCountryProfile } from './types.js';
 
@@ -56,10 +65,19 @@ export {
   franceProfile,
   uaeProfile,
   mexicoProfile,
+  tanzaniaProfile,
+  SCAFFOLD_PROFILES,
+  SCAFFOLD_METADATA,
+  SCAFFOLD_COUNTRY_CODES,
 };
+export type { ScaffoldMetadata };
 
-/** All profiles shipped by this wave, indexed by ISO-3166 alpha-2. */
-export const EXTENDED_PROFILES: Readonly<Record<string, ExtendedCountryProfile>> =
+/**
+ * Full-fidelity profiles — hand-authored with real tax rates, tribunal
+ * references, and national-ID validators. These take precedence over
+ * any scaffold entry with the same ISO code.
+ */
+const FULL_FIDELITY_PROFILES: Readonly<Record<string, ExtendedCountryProfile>> =
   Object.freeze({
     DE: germanyProfile,
     KR: koreaProfile,
@@ -73,6 +91,25 @@ export const EXTENDED_PROFILES: Readonly<Record<string, ExtendedCountryProfile>>
     FR: franceProfile,
     AE: uaeProfile,
     MX: mexicoProfile,
+    // Wave 27 Agent B — Tanzania first-class (TZ full-fidelity).
+    TZ: tanzaniaProfile,
+  });
+
+/**
+ * All profiles shipped by this wave, indexed by ISO-3166 alpha-2.
+ *
+ * Layering (later entries override earlier ones):
+ *   1. Scaffolds — 200+ ISO codes with conservative defaults
+ *   2. Full-fidelity profiles — hand-authored real-data jurisdictions
+ *
+ * So `EXTENDED_PROFILES.TZ` is the full Tanzania profile even though
+ * `SCAFFOLD_PROFILES` may have a stub entry — the full-fidelity layer
+ * always wins.
+ */
+export const EXTENDED_PROFILES: Readonly<Record<string, ExtendedCountryProfile>> =
+  Object.freeze({
+    ...SCAFFOLD_PROFILES,
+    ...FULL_FIDELITY_PROFILES,
   });
 
 /**

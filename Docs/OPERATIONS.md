@@ -91,6 +91,37 @@ is the cause, follow this procedure:
 3. Apply with `scripts/migrate-prod.sh`.
 4. **Never** drop rows from `_migrations` — the audit trail is sacrosanct.
 
+### 2.2.1 Kubernetes migration Job (Helm pre-upgrade hook)
+
+In Kubernetes deploys the Helm chart ships a `Job` that runs migrations as a
+`pre-install,pre-upgrade` hook (`k8s/templates/migration-job.yaml`,
+weight `-5`, `hook-delete-policy: before-hook-creation,hook-succeeded`).
+The Job reuses the api-gateway image (workspace + `tsx` are already present)
+and invokes:
+
+```
+node_modules/.bin/tsx packages/database/src/run-migrations.ts
+```
+
+`DATABASE_URL` is pulled from the `bossnyumba-secrets` Secret
+(key configurable via `migrationJob.databaseUrlSecretKey`, defaults to
+`DATABASE_URL`). If the Job fails, the Helm upgrade is aborted and the
+gateway rollout never starts — fix forward, don't retry blindly.
+
+Relevant values (`k8s/values.yaml → migrationJob.*`):
+
+| Key | Default | Purpose |
+|---|---|---|
+| `enabled` | `true` | Disable for clusters that run migrations out-of-band |
+| `image` | `""` | Override to use a dedicated migrator image (empty falls back to gateway) |
+| `databaseUrlSecretKey` | `DATABASE_URL` | Key inside `bossnyumba-secrets` |
+| `backoffLimit` | `3` | Job retries before failure |
+| `activeDeadlineSeconds` | `600` | Hard timeout (10 min) |
+
+Debug a failed Job: `kubectl -n <ns> logs job/<release>-bossnyumba-migrate`.
+For non-Helm deploys (Kustomize overlays), continue to run
+`scripts/migrate-prod.sh` manually from a bastion.
+
 ### 2.3 Full snapshot restore (LAST RESORT)
 
 ```bash

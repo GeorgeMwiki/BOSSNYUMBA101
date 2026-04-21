@@ -318,12 +318,30 @@ export function createId(): string {
 // Zod Schemas for ledger, statements, payments
 // ============================================================================
 
-// RWF (Rwandan Franc) is the third East-African Community 0-decimal
-// currency alongside TZS + UGX. The Money zod schema already accepted
-// 'RWF'; adding it here closes the type drift so Rwandan tenants can
-// be onboarded without a downstream type break. Wave-19 fix.
-export const CurrencyCodeSchema = z.enum(['KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX', 'RWF']);
-export type CurrencyCode = z.infer<typeof CurrencyCodeSchema>;
+// Wave-27 Agent E — BOSSNYUMBA now ships for the whole world, not just
+// East Africa + 4 reserve currencies. The canonical ISO-4217 decimal
+// table lives in `./currencies.ts` (140+ codes incl. JPY/KRW/BHD/CLF).
+// We keep a small curated "well-known" list for autocompletion so tools
+// like intellisense still suggest the common 15, but the exported
+// `CurrencyCode` type is `string` so consumers can pass any valid
+// ISO-4217 code (validation happens in the zod schema via regex).
+const WELL_KNOWN_CURRENCIES = [
+  'KES', 'USD', 'EUR', 'GBP', 'TZS', 'UGX', 'RWF',
+  'JPY', 'KRW', 'CNY', 'INR', 'AED', 'ZAR', 'NGN', 'BRL',
+] as const;
+/** Currency code — any ISO-4217 3-letter string. Validated via regex. */
+export const CurrencyCodeSchema = z
+  .string()
+  .regex(/^[A-Z]{3}$/, 'currency must be ISO-4217 (3 upper-case letters)');
+/**
+ * `CurrencyCode` is typed as `string` so all 140+ ISO-4217 codes are
+ * assignable (JPY, KRW, BHD, CLF, etc.). For tools that want a typed
+ * "well-known" set, use {@link WellKnownCurrency} which narrows to the
+ * 15 most common codes.
+ */
+export type CurrencyCode = string;
+export type WellKnownCurrency = (typeof WELL_KNOWN_CURRENCIES)[number];
+export { WELL_KNOWN_CURRENCIES };
 
 export const StatementPeriodTypeSchema = z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'CUSTOM']);
 export type StatementPeriodType = z.infer<typeof StatementPeriodTypeSchema>;

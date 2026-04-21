@@ -25,10 +25,18 @@ import {
 } from '../../countries/index.js';
 
 describe('country profile coverage', () => {
-  it('exposes 12 new jurisdictions', () => {
-    expect(Object.keys(EXTENDED_PROFILES).sort()).toEqual(
-      ['AE', 'AU', 'BR', 'CA', 'DE', 'FR', 'GB', 'IN', 'JP', 'KR', 'MX', 'SG'].sort()
-    );
+  it('exposes the 13 full-fidelity jurisdictions (12 PhJ-JURIS-BREADTH + TZ Wave 27)', () => {
+    // Wave 27 Agent A/B: EXTENDED_PROFILES now layers 200+ ISO-3166 scaffolds
+    // UNDER the full-fidelity profiles so every jurisdiction resolves to
+    // *something*, and the hand-authored profiles still win for their ISO.
+    // This test asserts the full-fidelity keys are present, not the whole
+    // EXTENDED_PROFILES key count (which is >200 with scaffolds layered in).
+    const fullFidelity = ['AE', 'AU', 'BR', 'CA', 'DE', 'FR', 'GB', 'IN', 'JP', 'KR', 'MX', 'SG', 'TZ'];
+    for (const iso of fullFidelity) {
+      expect(EXTENDED_PROFILES[iso]).toBeDefined();
+    }
+    // Sanity check: scaffolds layered in expand the key count well past 13.
+    expect(Object.keys(EXTENDED_PROFILES).length).toBeGreaterThan(50);
   });
 
   it.each([

@@ -96,6 +96,28 @@ apps:
       limits:   { cpu: 500m, memory: 256Mi }
 
 # ----------------------------------------------------------------------------
+# Database migration Job (pre-install / pre-upgrade Helm hook)
+# ----------------------------------------------------------------------------
+# Runs `packages/database/src/run-migrations.ts` before the gateway rolls
+# over. Reuses the api-gateway image by default — the image keeps the full
+# workspace (packages/ + node_modules with tsx) per docker/Dockerfile.api.
+# Override `image` if you build a dedicated migrator image.
+migrationJob:
+  enabled: true
+  image: ""                      # falls back to gateway image when empty
+  databaseUrlSecretKey: DATABASE_URL
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 3600
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ----------------------------------------------------------------------------
 # Postgres (in-cluster; swap for managed RDS in real prod via values override)
 # ----------------------------------------------------------------------------
 postgres:

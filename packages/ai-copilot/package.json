@@ -61,6 +61,22 @@
     "./ai-native": {
       "types": "./src/ai-native/index.ts",
       "default": "./dist/ai-native/index.js"
+    },
+    "./approval-grants": {
+      "types": "./src/approval-grants/index.ts",
+      "default": "./dist/approval-grants/index.js"
+    },
+    "./audit-trail": {
+      "types": "./src/audit-trail/index.ts",
+      "default": "./dist/audit-trail/index.js"
+    },
+    "./risk-recompute": {
+      "types": "./src/risk-recompute/index.ts",
+      "default": "./dist/risk-recompute/index.js"
+    },
+    "./branding": {
+      "types": "./src/branding/index.ts",
+      "default": "./dist/branding/index.js"
     }
   },
   "scripts": {

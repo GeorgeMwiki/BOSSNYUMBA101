@@ -481,3 +481,64 @@ export * from './credit-rating/index.js';
 // ============================================
 export * as AiNative from './ai-native/index.js';
 
+// ============================================
+// Risk-Recompute dispatcher — Wave 27 Agent F (Part B.6). Event-driven
+// risk-score recomputation. Subscribes to the platform event bus and
+// fans-out payment/lease/case/inspection/message events to the
+// per-kind compute functions (credit-rating, property-grade,
+// vendor-scorecard, churn-probability, tenant-sentiment). Namespaced
+// so the router factory + types stay addressable without colliding
+// with the existing per-service exports; the dispatcher factory and
+// default classifier are also re-exported directly so the api-gateway
+// composition root can wire them without a nested import path.
+// ============================================
+export * as RiskRecompute from './risk-recompute/index.js';
+export {
+  createRiskRecomputeDispatcher,
+  defaultRiskEventClassifier,
+  DEFAULT_SUBSCRIBED_EVENT_TYPES,
+  DEFAULT_DEDUPE_WINDOW_MS,
+  RISK_KINDS,
+} from './risk-recompute/index.js';
+export type {
+  RiskRecomputeDispatcher,
+  RiskRecomputeDispatcherDeps,
+  SubscribableEventBus as RiskSubscribableEventBus,
+  RiskComputeFn,
+  RiskComputeJob,
+  RiskComputeRegistry,
+  RiskDispatchResult,
+  RiskDispatcherTelemetry,
+  RiskEventClassifier,
+  RiskKind,
+  RiskTriggerMatch,
+} from './risk-recompute/index.js';
+
+// ============================================
+// Tenant Branding — Wave 27 Agent E. Per-tenant AI persona identity
+// (display name, honorific, greeting, pronoun). Replaces hardcoded
+// 'Mr. Mwikila' literals with a country-neutral default + tenant
+// overrides. Pure resolvers + a stateful service wrapping an in-memory
+// (or Postgres-backed) repository.
+// ============================================
+export {
+  aiPersonaDisplayName,
+  aiPersonaFullName,
+  aiGreeting,
+  aiPronoun,
+  renderBrandedTemplate,
+  DEFAULT_AI_PERSONA_DISPLAY_NAME,
+  DEFAULT_AI_GREETING,
+  DEFAULT_AI_PRONOUN,
+  MR_MWIKILA_ALIAS,
+  type BrandingCapableTenant,
+  type TenantBrandingOverrides,
+} from './branding/tenant-branding.service.js';
+
+export {
+  TenantBrandingService,
+  InMemoryTenantBrandingRepository,
+  type TenantBrandingRepository,
+  type TenantBrandingConfig,
+} from './branding/tenant-branding.store.js';
+

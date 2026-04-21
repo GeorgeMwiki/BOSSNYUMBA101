@@ -43,8 +43,14 @@ export {
   singaporeProfile,
   uaeProfile,
   ukProfile,
+  // Wave 27 Agent B — Tanzania first-class.
+  tanzaniaProfile,
+  // Wave 27 Agent A — 200+ ISO-3166 scaffolds for global coverage.
+  SCAFFOLD_PROFILES,
+  SCAFFOLD_METADATA,
+  SCAFFOLD_COUNTRY_CODES,
 } from './countries/index.js';
-export type { ExtendedCountryProfile } from './countries/index.js';
+export type { ExtendedCountryProfile, ScaffoldMetadata } from './countries/index.js';
 export {
   kenyaPlugin,
   nigeriaPlugin,

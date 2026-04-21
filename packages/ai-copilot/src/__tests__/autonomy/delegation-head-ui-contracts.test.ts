@@ -16,7 +16,7 @@ import {
  * and the head cards always map to something renderable.
  */
 describe('delegation matrix UI contract', () => {
-  it('has 5 domains × 6 action types = 30 cells', () => {
+  it('has 11 domains × 6 action types = 66 cells (Wave 27 Part B.9 expansion)', () => {
     expect(AUTONOMY_DOMAINS).toHaveLength(DELEGATION_MATRIX_DIMENSIONS.domains);
     expect(AUTONOMY_ACTION_TYPES).toHaveLength(
       DELEGATION_MATRIX_DIMENSIONS.actionTypes,
@@ -35,7 +35,7 @@ describe('delegation matrix UI contract', () => {
         seen.add(key);
       }
     }
-    expect(seen.size).toBe(30);
+    expect(seen.size).toBe(DELEGATION_MATRIX_DIMENSIONS.totalCells);
   });
 
   it('onboarding step count matches UI progress indicator', () => {

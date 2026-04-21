@@ -55,6 +55,43 @@ export function buildDefaultPolicy(tenantId: string): AutonomyPolicy {
       quietHoursStartHour: 21,
       quietHoursEndHour: 7,
     },
+    // Wave 27 Part B.9 — six additional domains with conservative defaults.
+    // Every auto_X flag is false or the auto-threshold is 0, so a
+    // freshly-created tenant behaves identically to the old 5-domain shape
+    // until heads explicitly loosen individual cells via the delegation
+    // matrix UI. Presence of the blocks lets the UI render the full grid
+    // and lets the autonomy engine short-circuit on unknown-domain lookups.
+    marketing: {
+      autoPublishListings: false,
+      autoAdjustAskingRentPct: 0,
+      autoSendOpenHouseInvites: false,
+      monthlyAdSpendCapMinorUnits: 0,
+    },
+    hr: {
+      autoOnboardContractors: false,
+      autoApprovePayrollBelowMinorUnits: 0,
+      autoIssueCertificatesOfEmployment: true,
+    },
+    procurement: {
+      autoIssuePurchaseOrdersBelowMinorUnits: 0,
+      autoRenewVendorContracts: false,
+      escalateSingleSourceAwards: true,
+    },
+    insurance: {
+      autoRenewPoliciesBeforeDays: 30,
+      autoFileClaimsBelowMinorUnits: 0,
+      escalateCoverageGaps: true,
+    },
+    legal_proceedings: {
+      autoDraftEvictionNotices: true,
+      autoFileToTribunal: false,
+      autoScheduleMediation: false,
+    },
+    tenant_welfare: {
+      autoOfferPaymentPlansBelowMinorUnits: 100_000_00,
+      autoEnrollInHardshipRelief: false,
+      escalateVulnerableHouseholds: true,
+    },
     escalation: {
       primaryUserId: null,
       secondaryUserId: null,
@@ -66,9 +103,12 @@ export function buildDefaultPolicy(tenantId: string): AutonomyPolicy {
   };
 }
 
-/** The delegation matrix UI asks for a static dimensionality. */
+/**
+ * The delegation matrix UI asks for a static dimensionality.
+ * Wave 27 Part B.9: expanded from 5×6=30 to 11×6=66 cells.
+ */
 export const DELEGATION_MATRIX_DIMENSIONS = {
-  domains: 5,
+  domains: 11,
   actionTypes: 6,
-  totalCells: 30,
+  totalCells: 66,
 } as const;

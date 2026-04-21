@@ -200,6 +200,11 @@ import {
   InMemoryAutonomyPolicyRepository,
 } from '@bossnyumba/ai-copilot/autonomy';
 import { PostgresAutonomyPolicyRepository } from './autonomy-policy-repository.js';
+// Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity).
+import {
+  TenantBrandingService,
+  InMemoryTenantBrandingRepository,
+} from '@bossnyumba/ai-copilot';
 
 // Wave 26 — Agent Z2: four Postgres repos that Wave-25 Agent T flagged as
 // "tests passing but no router / composition wiring". Importing through
@@ -347,6 +352,14 @@ export interface ServiceRegistry {
    *  (so the endpoint stays 200 OK in local dev). */
   readonly autonomy: {
     readonly policyService: AutonomyPolicyService;
+  };
+
+  /** Tenant branding (Wave 27 Agent E) — per-tenant AI persona identity.
+   *  Replaces hardcoded 'Mr. Mwikila' literals with configurable overrides
+   *  (display name, honorific, greeting, pronoun). In-memory repository in
+   *  both live + degraded modes until a Postgres migration lands. */
+  readonly branding: {
+    readonly service: TenantBrandingService;
   };
 
   /** Property grading — A–F report card scoring + portfolio rollup.
@@ -518,6 +531,11 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       policyService: new AutonomyPolicyService({
         repository: new InMemoryAutonomyPolicyRepository(),
       }),
+    },
+    branding: {
+      // Wave 27 Agent E — tenant branding. In-memory repo is fine in
+      // degraded mode; overrides don't persist across restarts.
+      service: new TenantBrandingService(new InMemoryTenantBrandingRepository()),
     },
     propertyGrading: null,
     creditRating: null,
@@ -1004,6 +1022,13 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       policyService: new AutonomyPolicyService({
         repository: new PostgresAutonomyPolicyRepository(db),
       }),
+    },
+    branding: {
+      // Wave 27 Agent E — tenant branding. In-memory repo for now;
+      // Postgres-backed impl can replace this by matching the narrow
+      // `TenantBrandingRepository` interface. Overrides are non-critical
+      // (defaults resolve cleanly) so data loss on restart is acceptable.
+      service: new TenantBrandingService(new InMemoryTenantBrandingRepository()),
     },
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service

@@ -11,9 +11,20 @@ import { sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import {
   createHeartbeatEngine,
+  buildHeartbeatDutyRegistry,
+  HEARTBEAT_DUTY_IDS,
   type HeartbeatEngine,
   type JuniorSession,
 } from '@bossnyumba/ai-copilot/heartbeat';
+import {
+  createRiskRecomputeDispatcher,
+  type RiskRecomputeDispatcher,
+  type RiskComputeJob,
+  type RiskComputeRegistry,
+  type RiskDispatcherTelemetry,
+  type RiskKind,
+  type RiskSubscribableEventBus,
+} from '@bossnyumba/ai-copilot';
 import {
   BackgroundTaskScheduler,
   buildTaskCatalogue,
@@ -39,11 +50,153 @@ export type {
 export { createIntelligenceHistorySupervisor } from './intelligence-history-wiring.js';
 
 // ---------------------------------------------------------------------------
+// Risk-recompute job tracker (in-memory)
+//
+// The dispatcher itself is fire-and-forget: it returns a count of jobs
+// dispatched but does not hold durable state. The api-gateway exposes a
+// manual `POST /risk-recompute/trigger` endpoint + a `GET /status/:jobId`
+// polling endpoint, so we need a cheap in-process store for job records.
+// Bounded to 512 jobs (LRU-ish by insertion order) so the process memory
+// footprint stays flat under sustained load. A real deployment would
+// swap this for Redis / a Postgres table; for Wave 27 the in-memory
+// tracker is enough because operators consult status via the immediate
+// response + the heartbeat telemetry log.
+// ---------------------------------------------------------------------------
+
+export type RiskRecomputeJobStatus =
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'failed';
+
+export interface RiskRecomputeJobRecord {
+  readonly jobId: string;
+  readonly tenantId: string;
+  readonly createdAt: string;
+  readonly startedAt: string | null;
+  readonly completedAt: string | null;
+  readonly status: RiskRecomputeJobStatus;
+  /** Which kinds were kicked. Empty array means "all registered kinds". */
+  readonly kinds: readonly RiskKind[];
+  readonly jobsDispatched: number;
+  readonly failures: readonly {
+    readonly kind: RiskKind;
+    readonly entityId: string;
+    readonly reason: string;
+  }[];
+  readonly estimatedDurationMs: number;
+  readonly errorMessage?: string;
+}
+
+export interface RiskRecomputeJobTracker {
+  create(input: {
+    readonly tenantId: string;
+    readonly kinds?: readonly RiskKind[];
+    readonly estimatedDurationMs: number;
+  }): RiskRecomputeJobRecord;
+  markRunning(jobId: string): void;
+  markSucceeded(
+    jobId: string,
+    dispatched: number,
+    failures: readonly {
+      readonly kind: RiskKind;
+      readonly entityId: string;
+      readonly reason: string;
+    }[],
+  ): void;
+  markFailed(jobId: string, error: unknown): void;
+  get(jobId: string): RiskRecomputeJobRecord | null;
+  list(tenantId: string, limit?: number): readonly RiskRecomputeJobRecord[];
+}
+
+const MAX_TRACKED_JOBS = 512;
+
+export function createRiskRecomputeJobTracker(): RiskRecomputeJobTracker {
+  const jobs = new Map<string, RiskRecomputeJobRecord>();
+
+  function evictIfNeeded(): void {
+    while (jobs.size > MAX_TRACKED_JOBS) {
+      const oldest = jobs.keys().next().value as string | undefined;
+      if (!oldest) break;
+      jobs.delete(oldest);
+    }
+  }
+
+  function replace(
+    jobId: string,
+    patch: Partial<RiskRecomputeJobRecord>,
+  ): void {
+    const existing = jobs.get(jobId);
+    if (!existing) return;
+    jobs.set(jobId, { ...existing, ...patch });
+  }
+
+  return {
+    create(input) {
+      const jobId = `risk_${Date.now().toString(36)}_${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      const record: RiskRecomputeJobRecord = {
+        jobId,
+        tenantId: input.tenantId,
+        createdAt: new Date().toISOString(),
+        startedAt: null,
+        completedAt: null,
+        status: 'queued',
+        kinds: input.kinds ?? [],
+        jobsDispatched: 0,
+        failures: [],
+        estimatedDurationMs: input.estimatedDurationMs,
+      };
+      jobs.set(jobId, record);
+      evictIfNeeded();
+      return record;
+    },
+    markRunning(jobId) {
+      replace(jobId, { status: 'running', startedAt: new Date().toISOString() });
+    },
+    markSucceeded(jobId, dispatched, failures) {
+      replace(jobId, {
+        status: 'succeeded',
+        completedAt: new Date().toISOString(),
+        jobsDispatched: dispatched,
+        failures,
+      });
+    },
+    markFailed(jobId, error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      replace(jobId, {
+        status: 'failed',
+        completedAt: new Date().toISOString(),
+        errorMessage,
+      });
+    },
+    get(jobId) {
+      return jobs.get(jobId) ?? null;
+    },
+    list(tenantId, limit = 50) {
+      const out: RiskRecomputeJobRecord[] = [];
+      for (const rec of jobs.values()) {
+        if (rec.tenantId !== tenantId) continue;
+        out.push(rec);
+      }
+      // Newest first, bounded.
+      return out
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .slice(0, Math.max(1, Math.min(200, limit)));
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Heartbeat engine
 // ---------------------------------------------------------------------------
 
 export interface HeartbeatSupervisor {
   readonly engine: HeartbeatEngine;
+  readonly riskDispatcher: RiskRecomputeDispatcher;
+  readonly riskJobs: RiskRecomputeJobTracker;
   start(): void;
   stop(): void;
 }
@@ -53,6 +206,119 @@ export function createHeartbeatSupervisor(
   logger: Logger,
   tickMs = 30_000,
 ): HeartbeatSupervisor {
+  // Wave 27 Agent F — risk-recompute dispatcher. The registry is the
+  // `kind → compute fn` map; each compute fn proxies to the matching
+  // domain service (credit-rating / property-grading / etc). Missing
+  // services simply stay unregistered — the dispatcher skips silently
+  // for any event classified to a kind that has no compute fn.
+  //
+  // `RiskComputeRegistry` is declared with `readonly` keys, so we assemble
+  // the object literal in a mutable shape first and cast on the way in.
+  const riskJobs = createRiskRecomputeJobTracker();
+  const mutableRegistry: {
+    -readonly [K in keyof RiskComputeRegistry]: RiskComputeRegistry[K];
+  } = {};
+  if (registry.creditRating) {
+    const svc = registry.creditRating;
+    mutableRegistry.credit_rating = async (job: RiskComputeJob) => {
+      await svc.computeRating(job.tenantId, job.entityId);
+    };
+  }
+  if (registry.propertyGrading) {
+    const svc = registry.propertyGrading as unknown as {
+      gradeProperty?: (tenantId: string, propertyId: string) => Promise<unknown>;
+    };
+    if (typeof svc.gradeProperty === 'function') {
+      mutableRegistry.property_grade = async (job: RiskComputeJob) => {
+        await svc.gradeProperty!(job.tenantId, job.entityId);
+      };
+    }
+  }
+  const computeRegistry: RiskComputeRegistry = mutableRegistry;
+
+  const riskDispatcher: RiskRecomputeDispatcher = createRiskRecomputeDispatcher({
+    registry: computeRegistry,
+    telemetry: (t: RiskDispatcherTelemetry) => {
+      if (t.outcome === 'error') {
+        logger.warn(
+          {
+            kind: t.kind,
+            entityId: t.entityId,
+            triggerEventType: t.triggerEventType,
+            triggerEventId: t.triggerEventId,
+            durationMs: t.durationMs,
+            errorMessage: t.errorMessage,
+          },
+          'risk-recompute dispatch failed',
+        );
+      } else {
+        logger.debug(
+          {
+            kind: t.kind,
+            entityId: t.entityId,
+            triggerEventType: t.triggerEventType,
+            durationMs: t.durationMs,
+          },
+          'risk-recompute dispatch ok',
+        );
+      }
+    },
+  });
+
+  // Subscribe the dispatcher to the domain event bus. The domain bus
+  // satisfies the `RiskSubscribableEventBus` contract structurally —
+  // its `subscribe(type, handler)` handler receives an envelope with
+  // an `.event` property that carries `eventType` / `eventId` /
+  // `tenantId` / `timestamp`. We subscribe only if the bus is present
+  // and exposes `.subscribe` (true for the in-memory bus used in prod +
+  // tests; defensive guard keeps the supervisor bootable if the bus
+  // shape drifts).
+  let unsubscribeRisk: (() => void) | null = null;
+  const domainBus = registry.eventBus as unknown as
+    | RiskSubscribableEventBus
+    | undefined;
+  if (domainBus && typeof domainBus.subscribe === 'function') {
+    try {
+      unsubscribeRisk = riskDispatcher.subscribeTo(domainBus);
+      logger.info(
+        { kinds: riskDispatcher.registeredKinds },
+        'risk-recompute: subscribed to domain event bus',
+      );
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'risk-recompute: subscribe failed',
+      );
+    }
+  } else {
+    logger.info(
+      'risk-recompute: domain event bus unavailable; dispatcher idle (manual trigger only)',
+    );
+  }
+
+  // Heartbeat duty registry — Wave 27 Part B.8. We register the
+  // credit-rating-recompute watchdog as a fallback slow duty so the
+  // engine still catches any customer whose rating was missed by the
+  // event-driven path (e.g. a redelivery dropped by the dedupe window).
+  // The worker is a no-op when the service is absent.
+  const duties = buildHeartbeatDutyRegistry({
+    workers: {
+      creditRatingRecomputeWatchdog: async (ctx) => {
+        if (!registry.creditRating) return;
+        // Fallback is intentionally light — log the tick so operators
+        // can verify the duty is alive. The heavy sweep belongs in a
+        // scheduled Postgres worker, not every heartbeat tick.
+        logger.debug(
+          {
+            dutyId: HEARTBEAT_DUTY_IDS.creditRatingRecomputeWatchdog,
+            activeTenants: ctx.activeTenantIds.length,
+          },
+          'heartbeat duty: credit-rating recompute watchdog tick',
+        );
+      },
+    },
+  });
+
   const engine = createHeartbeatEngine(
     {
       now: () => Date.now(),
@@ -65,6 +331,7 @@ export function createHeartbeatSupervisor(
           /* non-fatal */
         }
       },
+      duties,
       telemetry: (result) => {
         logger.info(
           {
@@ -73,6 +340,8 @@ export function createHeartbeatSupervisor(
             memorySweeps: result.memorySweeps,
             llmHealthy: result.llmHealthy,
             juniorsPutToSleep: result.juniorsPutToSleep.length,
+            dutiesExecuted: result.dutiesExecuted,
+            dutiesFailed: result.dutiesFailed,
           },
           'heartbeat tick',
         );
@@ -98,6 +367,8 @@ export function createHeartbeatSupervisor(
 
   return {
     engine,
+    riskDispatcher,
+    riskJobs,
     start() {
       if (handle) return;
       // First tick immediately so operators can see the engine is alive.
@@ -111,6 +382,18 @@ export function createHeartbeatSupervisor(
         clearInterval(handle);
         handle = null;
         logger.info('heartbeat engine stopped');
+      }
+      if (unsubscribeRisk) {
+        try {
+          unsubscribeRisk();
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            'risk-recompute: unsubscribe failed',
+          );
+        }
+        unsubscribeRisk = null;
+        logger.info('risk-recompute dispatcher unsubscribed');
       }
     },
   };

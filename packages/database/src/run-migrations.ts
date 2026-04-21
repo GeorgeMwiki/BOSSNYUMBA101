@@ -1,6 +1,10 @@
 /**
  * BOSSNYUMBA Migration Runner
  * Runs SQL migrations in order from src/migrations/
+ *
+ * Exposed as `runMigrations()` so it can be invoked from a boot-time hook
+ * (e.g. container entrypoint, api-gateway prestart) without forking a
+ * child process. Also self-executes when run directly as a CLI via tsx.
  */
 
 import { readdir, readFile } from 'fs/promises';
@@ -9,13 +13,6 @@ import { fileURLToPath } from 'url';
 import postgres from 'postgres';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  (process.env.NODE_ENV === 'production'
-    ? (() => {
-        throw new Error('DATABASE_URL is required in production. Set it in .env');
-      })()
-    : 'postgresql://localhost:5432/bossnyumba');
 const MIGRATIONS_DIR = resolve(join(__dirname, 'migrations'));
 
 /** Strict allowlist: files must be `<digits-or-letters>.sql` with no path chars. */
@@ -38,8 +35,38 @@ function resolveMigrationPath(name: string): string {
   return abs;
 }
 
-async function runMigrations() {
-  const sql = postgres(DATABASE_URL);
+export interface RunMigrationsOptions {
+  databaseUrl?: string;
+  logger?: Pick<Console, 'warn' | 'error'>;
+}
+
+export interface RunMigrationsResult {
+  applied: number;
+  skipped: number;
+}
+
+/**
+ * Resolve the DATABASE_URL, falling back to `process.env.DATABASE_URL`.
+ * Throws if neither is set — callers (CLI entry, boot-time hook, tests) are
+ * responsible for providing the URL explicitly.
+ */
+function resolveDatabaseUrl(opts?: RunMigrationsOptions): string {
+  const url = opts?.databaseUrl ?? process.env.DATABASE_URL;
+  if (!url || url.length === 0) {
+    throw new Error('DATABASE_URL not set');
+  }
+  return url;
+}
+
+export async function runMigrations(
+  opts?: RunMigrationsOptions,
+): Promise<RunMigrationsResult> {
+  const databaseUrl = resolveDatabaseUrl(opts);
+  const logger = opts?.logger ?? console;
+  const sql = postgres(databaseUrl);
+
+  let applied = 0;
+  let skipped = 0;
 
   try {
     await sql.unsafe('CREATE SCHEMA IF NOT EXISTS drizzle');
@@ -58,15 +85,16 @@ async function runMigrations() {
 
     for (const file of migrations) {
       const name = file.replace('.sql', '');
-      const applied = await sql`
+      const alreadyApplied = await sql`
         SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = ${name}
       `;
-      if (applied.length > 0) {
-        console.warn('Skipping ' + file + ' (already applied)');
+      if (alreadyApplied.length > 0) {
+        logger.warn('Skipping ' + file + ' (already applied)');
+        skipped += 1;
         continue;
       }
 
-      console.warn('Running ' + file + '...');
+      logger.warn('Running ' + file + '...');
       const safePath = resolveMigrationPath(file);
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- path validated by resolveMigrationPath()
       const content = await readFile(safePath, 'utf-8');
@@ -75,17 +103,34 @@ async function runMigrations() {
         INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
         VALUES (${name}, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
       `;
-      console.warn('Applied ' + file);
+      logger.warn('Applied ' + file);
+      applied += 1;
     }
 
-    console.warn('All migrations completed');
+    logger.warn('All migrations completed');
+    return { applied, skipped };
   } catch (err) {
-    console.error('Migration failed:', err);
+    logger.error('Migration failed:', err);
     throw err;
   } finally {
     await sql.end();
-    process.exit(0);
   }
 }
 
-runMigrations();
+const isCliEntry =
+  typeof process !== 'undefined' &&
+  Array.isArray(process.argv) &&
+  typeof process.argv[1] === 'string' &&
+  import.meta.url === `file://${process.argv[1]}`;
+
+if (isCliEntry) {
+  runMigrations()
+    .then((r) => {
+      console.warn(`[migrations] applied=${r.applied} skipped=${r.skipped}`);
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('[migrations] failed', err);
+      process.exit(1);
+    });
+}

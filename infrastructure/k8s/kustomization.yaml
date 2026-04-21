@@ -10,6 +10,8 @@ resources:
   - base
   - api-gateway
   - apps
-  - services
   - databases
   - monitoring
+# NOTE: `services/` was removed — it contained deployment manifests for pure
+# library packages (notifications, payments, reports) that have no
+# Dockerfile and no HTTP entrypoint. See services/DRIFT_CLEANUP.md.

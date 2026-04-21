@@ -108,9 +108,9 @@ describe('onboarding flow', () => {
     expect(partial.finance?.autoApproveRefundsMinorUnits).toBe(5_000_000);
   });
 
-  it('delegation matrix dims are 5x6 = 30 cells', () => {
-    expect(DELEGATION_MATRIX_DIMENSIONS.totalCells).toBe(30);
-    expect(DELEGATION_MATRIX_DIMENSIONS.domains).toBe(5);
+  it('delegation matrix dims are 11x6 = 66 cells (Wave 27 Part B.9 expansion)', () => {
+    expect(DELEGATION_MATRIX_DIMENSIONS.totalCells).toBe(66);
+    expect(DELEGATION_MATRIX_DIMENSIONS.domains).toBe(11);
     expect(DELEGATION_MATRIX_DIMENSIONS.actionTypes).toBe(6);
   });
 });

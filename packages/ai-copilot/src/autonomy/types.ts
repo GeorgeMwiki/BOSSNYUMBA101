@@ -18,7 +18,14 @@ export type AutonomyDomain =
   | 'leasing'
   | 'maintenance'
   | 'compliance'
-  | 'communications';
+  | 'communications'
+  // Wave 27 Part B.9 additions — full estate-business domain coverage.
+  | 'marketing'
+  | 'hr'
+  | 'procurement'
+  | 'insurance'
+  | 'legal_proceedings'
+  | 'tenant_welfare';
 
 export const AUTONOMY_DOMAINS: readonly AutonomyDomain[] = [
   'finance',
@@ -26,6 +33,12 @@ export const AUTONOMY_DOMAINS: readonly AutonomyDomain[] = [
   'maintenance',
   'compliance',
   'communications',
+  'marketing',
+  'hr',
+  'procurement',
+  'insurance',
+  'legal_proceedings',
+  'tenant_welfare',
 ] as const;
 
 export type AutonomyActionType =
@@ -100,6 +113,51 @@ export interface CommunicationsPolicy {
   readonly quietHoursEndHour: number;
 }
 
+/** Wave 27 Part B.9 — Marketing: listings, promotions, open-house blasts. */
+export interface MarketingPolicy {
+  readonly autoPublishListings: boolean;
+  readonly autoAdjustAskingRentPct: number;
+  readonly autoSendOpenHouseInvites: boolean;
+  readonly monthlyAdSpendCapMinorUnits: number;
+}
+
+/** Wave 27 Part B.9 — HR: contractor onboarding, payroll approvals. */
+export interface HRPolicy {
+  readonly autoOnboardContractors: boolean;
+  readonly autoApprovePayrollBelowMinorUnits: number;
+  readonly autoIssueCertificatesOfEmployment: boolean;
+}
+
+/** Wave 27 Part B.9 — Procurement: supply contracts, PO approvals. */
+export interface ProcurementPolicy {
+  readonly autoIssuePurchaseOrdersBelowMinorUnits: number;
+  readonly autoRenewVendorContracts: boolean;
+  readonly escalateSingleSourceAwards: boolean;
+}
+
+/** Wave 27 Part B.9 — Insurance: policy renewals, claim intake. */
+export interface InsurancePolicy {
+  readonly autoRenewPoliciesBeforeDays: number;
+  readonly autoFileClaimsBelowMinorUnits: number;
+  readonly escalateCoverageGaps: boolean;
+}
+
+/** Wave 27 Part B.9 — Legal proceedings (eviction, arbitration).
+ *  AI drafts but humans file — safety-critical default. */
+export interface LegalProceedingsPolicy {
+  readonly autoDraftEvictionNotices: boolean;
+  /** Legal filings NEVER auto-submit. */
+  readonly autoFileToTribunal: false;
+  readonly autoScheduleMediation: boolean;
+}
+
+/** Wave 27 Part B.9 — Tenant welfare: hardship cases, resident programs. */
+export interface TenantWelfarePolicy {
+  readonly autoOfferPaymentPlansBelowMinorUnits: number;
+  readonly autoEnrollInHardshipRelief: boolean;
+  readonly escalateVulnerableHouseholds: boolean;
+}
+
 export interface EscalationContacts {
   readonly primaryUserId: string | null;
   readonly secondaryUserId: string | null;
@@ -115,6 +173,13 @@ export interface AutonomyPolicy {
   readonly maintenance: MaintenancePolicy;
   readonly compliance: CompliancePolicy;
   readonly communications: CommunicationsPolicy;
+  // Wave 27 Part B.9 — every domain a real estate business actually runs.
+  readonly marketing: MarketingPolicy;
+  readonly hr: HRPolicy;
+  readonly procurement: ProcurementPolicy;
+  readonly insurance: InsurancePolicy;
+  readonly legal_proceedings: LegalProceedingsPolicy;
+  readonly tenant_welfare: TenantWelfarePolicy;
   readonly escalation: EscalationContacts;
   readonly version: number;
   readonly updatedAt: string;
@@ -153,6 +218,13 @@ export interface UpdatePolicyInput {
   readonly maintenance?: Partial<MaintenancePolicy>;
   readonly compliance?: Partial<CompliancePolicy>;
   readonly communications?: Partial<CommunicationsPolicy>;
+  // Wave 27 Part B.9 additions.
+  readonly marketing?: Partial<MarketingPolicy>;
+  readonly hr?: Partial<HRPolicy>;
+  readonly procurement?: Partial<ProcurementPolicy>;
+  readonly insurance?: Partial<InsurancePolicy>;
+  readonly legal_proceedings?: Partial<LegalProceedingsPolicy>;
+  readonly tenant_welfare?: Partial<TenantWelfarePolicy>;
   readonly escalation?: Partial<EscalationContacts>;
   readonly updatedBy?: string;
 }

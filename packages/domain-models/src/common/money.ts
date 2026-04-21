@@ -5,10 +5,18 @@
 
 import { z } from 'zod';
 import type { CurrencyCode } from './types';
+import { ISO_4217_DECIMALS, ISO_4217_REGEX, decimalsForCurrency } from './currencies';
 
+// Wave 27 / Blueprint §A.1 / A3-A4: MoneySchema currency used to be a
+// 7-code enum (KES/TZS/UGX/RWF/USD/EUR/GBP) which blocked JPY, KRW,
+// BRL, INR, AED — every currency outside East Africa + US. The
+// canonical ISO-4217 table lives in `./currencies.ts`; we validate
+// shape here and delegate precision lookups to `decimalsForCurrency`.
 export const MoneySchema = z.object({
   amount: z.number().int(),
-  currency: z.enum(['KES', 'TZS', 'UGX', 'RWF', 'USD', 'EUR', 'GBP']),
+  currency: z
+    .string()
+    .regex(ISO_4217_REGEX, 'currency must be ISO-4217 (3 upper-case letters)'),
 });
 
 /** Re-export for consumers that import from money */
@@ -81,26 +89,19 @@ export function money(amount: number, currency: CurrencyCode = 'USD'): Money {
 }
 
 /**
- * Number of decimal places for each supported currency. TZS / UGX / RWF
- * are 0-decimal — their minor-unit IS the main unit. Hardcoding `/100`
- * underquoted those currencies by 100× and produced invoice/statement
- * lines that looked absurdly small. Wave-19 fix.
+ * Legacy export. The canonical ISO-4217 decimal table now lives in
+ * `./currencies.ts` (`ISO_4217_DECIMALS`, 140+ codes). This alias is
+ * kept so existing callers that `import { CURRENCY_DECIMALS }` do not
+ * break — new code should import from `./currencies.ts` directly.
  *
- * Kept explicit + exhaustive rather than reaching for `Intl` metadata so
- * it's trivially auditable and never silently changes.
+ * TZS / UGX / RWF / JPY / KRW / VND / XAF / XOF / XPF are all 0-decimal;
+ * BHD / KWD / JOD / OMR / TND / IQD / LYD are 3-decimal; CLF is 4-decimal.
+ * See blueprint §A.1 / A3-A4.
  */
-export const CURRENCY_DECIMALS: Record<CurrencyCode, number> = {
-  KES: 2,
-  TZS: 0,
-  UGX: 0,
-  RWF: 0,
-  USD: 2,
-  EUR: 2,
-  GBP: 2,
-};
+export const CURRENCY_DECIMALS: Record<string, number> = ISO_4217_DECIMALS;
 
-function decimalsFor(currency: CurrencyCode): number {
-  return CURRENCY_DECIMALS[currency] ?? 2;
+function decimalsFor(currency: string): number {
+  return decimalsForCurrency(currency);
 }
 
 function minorUnitDivisor(currency: CurrencyCode): number {

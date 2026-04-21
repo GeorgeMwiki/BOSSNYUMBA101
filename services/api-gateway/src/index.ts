@@ -126,7 +126,14 @@ import approvalsRouter from './routes/approvals.router';
 import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.router';
+// Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
+import tenantBrandingRouter from './routes/tenant-branding.router';
+// Wave 27 Agent C — Audit Trail v2 (cryptographically-verifiable append-only log)
+import auditTrailRouter from './routes/audit-trail.router';
+// Wave 27 Agent F — Risk-recompute dispatcher manual-trigger surface.
+import { createRiskRecomputeRouter } from './routes/risk-recompute.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
+import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import {
   startOutboxWorker,
   stopOutboxWorker,
@@ -255,7 +262,54 @@ app.use((req, res, next) => {
   return express.json({ limit: '2mb' })(req, res, next);
 });
 app.use(pinoHttp({ logger }));
-app.use(rateLimitMiddleware());
+// Rate limit — when REDIS_URL is set we use the Redis-backed limiter so
+// the cap is enforced cluster-wide (HPA scales the gateway 3-20 replicas;
+// the in-memory limiter would otherwise allow `max * replicas` requests).
+// If REDIS_URL is unset (local dev / tests) we fall back to the original
+// in-memory middleware so those paths continue to work. The Redis-backed
+// middleware also degrades to in-memory on its own if the pipeline throws,
+// so a Redis outage never hard-fails a request.
+app.use(
+  (() => {
+    if (!process.env.REDIS_URL) {
+      logger.info('rate-limit: REDIS_URL unset — using in-memory limiter (dev mode)');
+      return rateLimitMiddleware();
+    }
+    try {
+      // Lazy-require ioredis — the ESM / CJS export shape varies across
+      // bundlers; mirror the pattern already used by the deep-health probe
+      // so both code paths pick up the same constructor.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const ioredisMod = require('ioredis');
+      const RedisCtor =
+        ioredisMod?.default ?? ioredisMod?.Redis ?? ioredisMod;
+      const client = new RedisCtor(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 2,
+        enableOfflineQueue: false,
+        lazyConnect: false,
+      });
+      client.on?.('error', (err: Error) => {
+        logger.warn(
+          { err: err.message },
+          'rate-limit: redis client error (middleware will fall back to in-memory)',
+        );
+      });
+      logger.info('rate-limit: using Redis-backed distributed limiter');
+      return createRateLimitMiddleware({
+        redis: client,
+        logger: {
+          warn: (meta, msg) => logger.warn(meta as object, msg),
+        },
+      });
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'rate-limit: failed to initialize Redis limiter — using in-memory',
+      );
+      return rateLimitMiddleware();
+    }
+  })()
+);
 
 // Health check — both /health (legacy) and /healthz (k8s-style) are served.
 // Returns `{ status, version, service, timestamp, upstreams }` per the
@@ -321,6 +375,17 @@ try {
   );
   serviceRegistry = buildServices({ db: null });
 }
+
+// Wave 12 — heartbeat engine + Wave 27 Agent F risk-recompute dispatcher.
+// Constructed here (ahead of the api routes) because the risk-recompute
+// router needs accessors to the dispatcher + in-memory job tracker the
+// supervisor owns. The supervisor is inert until `.start()` is called
+// further down the boot sequence, so constructing it early is safe.
+const heartbeatSupervisor = createHeartbeatSupervisor(
+  serviceRegistry,
+  logger,
+  30_000,
+);
 
 // Wave 26 Agent Z4 — boot-time observability for the three AI-brain
 // utilities. Each line tells operators at a glance whether the feature
@@ -604,6 +669,20 @@ api.route('/approvals', approvalsRouter);
 api.route('/vacancy-pipeline', vacancyPipelineRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
+// Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity)
+api.route('/tenant-branding', tenantBrandingRouter);
+// Wave 27 Agent C — Audit Trail v2 (record / verify / bundle / entries)
+api.route('/audit-trail', auditTrailRouter);
+// Wave 27 Agent F — Risk-recompute manual trigger. Accessors close over
+// the heartbeat supervisor (constructed earlier) so the router returns
+// 503 cleanly when the dispatcher is not wired.
+api.route(
+  '/risk-recompute',
+  createRiskRecomputeRouter({
+    getDispatcher: () => heartbeatSupervisor.riskDispatcher,
+    getJobs: () => heartbeatSupervisor.riskJobs,
+  }),
+);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue
@@ -782,8 +861,10 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Wave 12 — heartbeat engine + background scheduler supervisors.
-const heartbeatSupervisor = createHeartbeatSupervisor(serviceRegistry, logger, 30_000);
+// Wave 12 — background scheduler supervisor. Heartbeat supervisor is
+// constructed earlier (see the block right after the service-registry
+// bootstrap) because the risk-recompute router mounted below needs the
+// dispatcher it owns.
 const backgroundSupervisor = createBackgroundSupervisor(serviceRegistry, logger);
 
 // Wave 26 — intelligence-history worker (Z4). Runs `createIntelligenceHistoryWorker`

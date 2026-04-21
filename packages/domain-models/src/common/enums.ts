@@ -879,9 +879,12 @@ export const AuditEventTypeSchema = z.enum([
 // Currency
 // ============================================================================
 
-// RWF (Rwandan Franc) — third EAC 0-decimal currency alongside TZS + UGX.
-// Kept in sync with `common/types.ts` CurrencyCodeSchema and money.ts
-// CURRENCY_DECIMALS table. Wave-19 fix.
+// Wave-27 — BOSSNYUMBA ships globally (Kenya/Tanzania as first-class just
+// as US/Germany/Korea). The canonical ISO-4217 decimal table lives in
+// `./currencies.ts` (140+ codes). We keep a well-known object here for
+// autocomplete + back-compat (the 7 original EAC+reserve codes), but
+// `CurrencyCode` itself is a broad `string` type so any valid ISO-4217
+// code validates. Use `CurrencyCodeSchema` (regex-based) for runtime checks.
 export const CurrencyCode = {
   KES: 'KES',
   TZS: 'TZS',
@@ -890,6 +893,19 @@ export const CurrencyCode = {
   USD: 'USD',
   EUR: 'EUR',
   GBP: 'GBP',
+  JPY: 'JPY',
+  KRW: 'KRW',
+  CNY: 'CNY',
+  INR: 'INR',
+  AED: 'AED',
+  ZAR: 'ZAR',
+  NGN: 'NGN',
+  BRL: 'BRL',
 } as const;
-export type CurrencyCode = (typeof CurrencyCode)[keyof typeof CurrencyCode];
-export const CurrencyCodeSchema = z.enum(['KES', 'TZS', 'UGX', 'RWF', 'USD', 'EUR', 'GBP']);
+/** Broad ISO-4217 currency code type. Accepts any 3-letter upper-case string. */
+export type CurrencyCode = string;
+/** Compile-time narrowed type of the well-known set (autocomplete only). */
+export type WellKnownCurrency = (typeof CurrencyCode)[keyof typeof CurrencyCode];
+export const CurrencyCodeSchema = z
+  .string()
+  .regex(/^[A-Z]{3}$/, 'currency must be ISO-4217 (3 upper-case letters)');
