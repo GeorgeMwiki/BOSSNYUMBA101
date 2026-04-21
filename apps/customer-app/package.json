@@ -17,7 +17,6 @@
   "dependencies": {
     "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/api-client": "workspace:*",
-    "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/chat-ui": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",

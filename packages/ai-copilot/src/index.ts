@@ -472,3 +472,12 @@ export * as OrgSkills from './skills/org/index.js';
 // ============================================
 export * from './credit-rating/index.js';
 
+// ============================================
+// AI-Native suite — Agent PhG. Eight capabilities that leverage LLMs to do
+// work humans cannot do at scale (sentiment-monitor, market-surveillance,
+// multimodal-inspection, polyglot-support, predictive-interventions,
+// policy-simulator, natural-language-query, pattern-mining). Namespaced to
+// avoid colliding with existing per-service exports.
+// ============================================
+export * as AiNative from './ai-native/index.js';
+

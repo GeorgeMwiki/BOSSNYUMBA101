@@ -89,7 +89,15 @@ export type TaskName =
   // Wave-17 — weekly bulk property-grade recompute
   | 'recompute_property_grades'
   // Wave-17 — weekly tenant credit-rating recompute (Sunday 03:00 UTC)
-  | 'recompute_tenant_credit_ratings';
+  | 'recompute_tenant_credit_ratings'
+  // Wave-26 Agent Z4 — daily per-customer intelligence snapshot (payment
+  // risk, churn risk, sentiment, complaints/maintenance signals) persisted
+  // into `intelligence_history` for trend lines + retroactive audits.
+  | 'recompute_intelligence_history'
+  // Wave-28 Phase A Agent PhA2 — monthly bookkeeping close orchestrator.
+  // Runs 02:00 UTC on the 1st, iterates per tenant, and walks the 8-step
+  // close graph (reconcile → statements → KRA MRI → disbursements → email).
+  | 'monthly_close';
 
 export interface ScheduledTaskDefinition {
   readonly name: TaskName;

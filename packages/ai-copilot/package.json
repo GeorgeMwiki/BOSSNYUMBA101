@@ -49,6 +49,18 @@
     "./autonomy": {
       "types": "./src/autonomy/index.ts",
       "default": "./dist/autonomy/index.js"
+    },
+    "./task-agents": {
+      "types": "./src/task-agents/index.ts",
+      "default": "./dist/task-agents/index.js"
+    },
+    "./orchestrators": {
+      "types": "./src/orchestrators/index.ts",
+      "default": "./dist/orchestrators/index.js"
+    },
+    "./ai-native": {
+      "types": "./src/ai-native/index.ts",
+      "default": "./dist/ai-native/index.js"
     }
   },
   "scripts": {

@@ -50,11 +50,16 @@ export type {
   SubPersonaSignal,
   SubPersonaDetectionResult,
   SubPersonaToneOverrides,
+  SubPersonaMetadata,
 } from './sub-persona-types.js';
 export {
   SUB_PERSONA_REGISTRY,
+  SUB_PERSONA_METADATA_REGISTRY,
   getSubPersona,
+  getSubPersonaMetadata,
   getSubPersonasForRoute,
+  estimateSubPersonaTokensForRoute,
+  getSubPersonaVersions,
 } from './sub-persona-types.js';
 
 export type {

@@ -104,18 +104,35 @@ import voiceRouter from './routes/voice.router';
 import exceptionsRouter from './routes/exceptions.router';
 import autonomousActionsAuditRouter from './routes/autonomous-actions-audit.router';
 import autonomyRouter from './routes/autonomy.router';
+// Wave 28 Phase A Agent PhA2 — monthly-close orchestrator.
+import monthlyCloseRouter from './routes/monthly-close.router';
 // Organizational Awareness — "talk to your organization" endpoints
 import orgAwarenessRouter from './routes/org-awareness.router';
 // Tenant Credit Rating — FICO-scale credit + portable certificate
 import creditRatingRouter from './routes/credit-rating.router';
 // Property Grading — Mr. Mwikila's A–F report card system (migration 0088)
 import propertyGradingRouter from './routes/property-grading.router';
+// AI-Native suite — Agent PhG: 8 capabilities that leverage LLMs at scale.
+import aiNativeRouter from './routes/ai-native.router';
+// Wave 26 — Agent Z2: expose four repos that had tests but no HTTP surface.
+import subleaseRouter from './routes/sublease.router';
+import damageDeductionsRouter from './routes/damage-deductions.router';
+import conditionalSurveysRouter from './routes/conditional-surveys.router';
+import farRouter from './routes/far.router';
+// Wave 26 Z3 — Move-out checklist + Approval workflow (migration 0097)
+import moveOutRouter from './routes/move-out.router';
+import approvalsRouter from './routes/approvals.router';
+// Wave 27 PhA1 — Vacancy-to-Lease orchestrator (migration 0098)
+import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
+// Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
+import taskAgentsRouter from './routes/task-agents.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import {
   startOutboxWorker,
   stopOutboxWorker,
   type OutboxRunnerLike,
 } from './workers/outbox-worker';
+import { createCaseSLASupervisor } from './workers/cases-sla-supervisor';
 import {
   registerDomainEventSubscribers,
   type SubscribableBus,
@@ -135,6 +152,7 @@ import {
   createBackgroundSupervisor,
   createPostgresWebhookDeliveryRepository,
   createAmbientBehaviorObserver,
+  createIntelligenceHistorySupervisor,
 } from './composition/background-wiring';
 import { setBrainExtraSkills } from './composition/brain-extensions';
 import { buildQueryOrganizationTool } from '@bossnyumba/ai-copilot';
@@ -303,6 +321,25 @@ try {
   );
   serviceRegistry = buildServices({ db: null });
 }
+
+// Wave 26 Agent Z4 — boot-time observability for the three AI-brain
+// utilities. Each line tells operators at a glance whether the feature
+// is active without hunting through a tenant-request log.
+logger.info(
+  {
+    llmRouter: serviceRegistry.llmRouter ? 'live' : 'null',
+    budgetGuardedAnthropic: serviceRegistry.buildBudgetGuardedAnthropicClient
+      ? 'live'
+      : 'null',
+    aiCostLedger: serviceRegistry.aiCostLedger ? 'live' : 'null',
+    providers: {
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+    },
+  },
+  'ai-brain-utilities wired',
+);
 
 // Wire the org-awareness query-organization skill into the Brain registry.
 // The brain factory (ai-chat.router / brain.hono) reads these extra skills
@@ -544,12 +581,29 @@ api.route('/voice', voiceRouter);
 api.route('/exceptions', exceptionsRouter);
 api.route('/audit', autonomousActionsAuditRouter);
 api.route('/autonomy', autonomyRouter);
+// Wave 28 Phase A Agent PhA2 — monthly bookkeeping close.
+api.route('/monthly-close', monthlyCloseRouter);
 // Organizational Awareness — "talk to your organization" endpoints
 api.route('/org', orgAwarenessRouter);
 // Tenant Credit Rating — FICO-scale credit + portable certificate
 api.route('/credit-rating', creditRatingRouter);
 // Property Grading — Mr. Mwikila's A–F report card system
 api.route('/property-grading', propertyGradingRouter);
+// AI-Native suite — Agent PhG: sentiment, market surveillance, multimodal,
+// polyglot support, predictive interventions, policy simulator, NL query.
+api.route('/ai-native', aiNativeRouter);
+// Wave 26 — Agent Z2: four repos Agent T flagged with zero router wiring.
+api.route('/subleases', subleaseRouter);
+api.route('/damage-deductions', damageDeductionsRouter);
+api.route('/conditional-surveys', conditionalSurveysRouter);
+api.route('/far', farRouter);
+// Wave 26 Z3 — Move-out checklist + Approval workflow.
+api.route('/move-out', moveOutRouter);
+api.route('/approvals', approvalsRouter);
+// Wave 27 PhA1 — Vacancy-to-Lease orchestrator (state machine + pipeline runs)
+api.route('/vacancy-pipeline', vacancyPipelineRouter);
+// Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
+api.route('/task-agents', taskAgentsRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue
@@ -658,6 +712,10 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/ai-costs', app: aiCostsRouter, defaultTag: 'ai-costs' },
     { prefix: '/exceptions', app: exceptionsRouter, defaultTag: 'autonomy' },
     { prefix: '/audit', app: autonomousActionsAuditRouter, defaultTag: 'autonomy' },
+    { prefix: '/subleases', app: subleaseRouter, defaultTag: 'subleases' },
+    { prefix: '/damage-deductions', app: damageDeductionsRouter, defaultTag: 'damage-deductions' },
+    { prefix: '/conditional-surveys', app: conditionalSurveysRouter, defaultTag: 'conditional-surveys' },
+    { prefix: '/far', app: farRouter, defaultTag: 'far' },
   ],
 });
 api.route('/', openApiRouter);
@@ -728,6 +786,25 @@ app.use((_req, res) => {
 const heartbeatSupervisor = createHeartbeatSupervisor(serviceRegistry, logger, 30_000);
 const backgroundSupervisor = createBackgroundSupervisor(serviceRegistry, logger);
 
+// Wave 26 — intelligence-history worker (Z4). Runs `createIntelligenceHistoryWorker`
+// on a daily cadence so `intelligence_history` snapshots are produced out-of-band
+// from the scheduler's tenant loop. The scheduler also registers a
+// `recompute_intelligence_history` task per-tenant; this standalone supervisor
+// guarantees a run even when the scheduler is disabled.
+const intelligenceHistorySupervisor = createIntelligenceHistorySupervisor(
+  serviceRegistry.db,
+  {
+    info: (meta, msg) => logger.info(meta, msg),
+    warn: (meta, msg) => logger.warn(meta, msg),
+  },
+);
+// Wave 26 — Cases SLA worker supervisor. Wraps the per-tenant
+// CaseSLAWorker (domain-services/cases/sla-worker.ts) in a multi-tenant
+// supervisor that ticks active tenants every 5 minutes, auto-escalating
+// overdue cases and emitting CaseSLABreached events once the ceiling is
+// hit. No-op in degraded mode.
+const casesSlaSupervisor = createCaseSLASupervisor(serviceRegistry, logger);
+
 // Graceful shutdown — documented and tested step-by-step:
 //  1. Flip a "shutting down" flag so the /health probe returns 503.
 //  2. Tell the HTTP server to stop accepting NEW connections.
@@ -768,6 +845,18 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.info('shutdown: background supervisor stopped');
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: background stop failed');
+  }
+  try {
+    intelligenceHistorySupervisor.stop();
+    logger.info('shutdown: intelligence-history supervisor stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: intelligence-history stop failed');
+  }
+  try {
+    casesSlaSupervisor.stop();
+    logger.info('shutdown: cases SLA supervisor stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: cases SLA stop failed');
   }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
@@ -834,6 +923,10 @@ if (require.main === module) {
   // mode skips the supervisors gracefully.
   heartbeatSupervisor.start();
   backgroundSupervisor.start();
+  intelligenceHistorySupervisor.start();
+  // Wave 26 — start the Cases SLA supervisor alongside the other
+  // background workers. Skipped in tests + when disabled by env.
+  casesSlaSupervisor.start();
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

@@ -192,6 +192,61 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: rowToCase(rows[0]) });
 });
 
+/**
+ * GET /:id/full — return the full Case aggregate (timeline + notices +
+ * evidence + resolution) via the Wave 26-wired `PostgresCaseRepository`.
+ * The legacy GET /:id keeps returning the flat SQL-shaped row so the
+ * existing dashboard surface is unchanged. Routes that didn't exist
+ * yet can opt into the richer shape by hitting /full.
+ *
+ * Falls back to the raw SQL read when the composition root is in
+ * degraded mode (DATABASE_URL unset) so the endpoint still returns
+ * 2xx rather than 503 during local dev.
+ */
+app.get('/:id/full', async (c) => {
+  const auth = c.get('auth');
+  const db = c.get('db');
+  const repo = c.get('caseRepo') as
+    | { findById: (id: string, tenantId: string) => Promise<unknown | null> }
+    | undefined;
+  const id = c.req.param('id');
+
+  if (repo) {
+    try {
+      const entity = await repo.findById(id, auth.tenantId);
+      if (!entity) {
+        return c.json(
+          { success: false, error: { code: 'NOT_FOUND', message: 'Case not found' } },
+          404,
+        );
+      }
+      return c.json({ success: true, data: entity });
+    } catch (err) {
+      // Repo failures fall through to the raw-SQL path below rather
+      // than surfacing a 500 — the legacy shape is still useful even
+      // when the aggregate payload is malformed.
+    }
+  }
+
+  if (!db) {
+    return c.json(
+      { success: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Database client is not initialized' } },
+      503,
+    );
+  }
+  const fetched = await db.execute(sql`
+    SELECT * FROM cases WHERE id = ${id} AND tenant_id = ${auth.tenantId} LIMIT 1
+  `);
+  const rows = (fetched as unknown as Record<string, unknown>[]) || [];
+  if (rows.length === 0) {
+    return c.json(
+      { success: false, error: { code: 'NOT_FOUND', message: 'Case not found' } },
+      404,
+    );
+  }
+  return c.json({ success: true, data: rowToCase(rows[0]) });
+});
+
 app.post('/:id/resolve', zValidator('json', CaseResolveSchema), async (c) => {
   const auth = c.get('auth');
   const db = c.get('db');

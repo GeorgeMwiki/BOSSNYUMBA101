@@ -9,7 +9,6 @@ const nextConfig = {
   transpilePackages: [
     '@bossnyumba/design-system',
     '@bossnyumba/domain-models',
-    '@bossnyumba/authz-policy',
     '@bossnyumba/ai-copilot',
     '@bossnyumba/api-client',
     '@bossnyumba/database',
@@ -39,7 +38,6 @@ const nextConfig = {
       '@bossnyumba/api-client',
       '@bossnyumba/chat-ui',
       '@bossnyumba/ai-copilot',
-      '@bossnyumba/authz-policy',
       '@bossnyumba/observability',
       '@bossnyumba/spotlight',
       '@bossnyumba/domain-models',

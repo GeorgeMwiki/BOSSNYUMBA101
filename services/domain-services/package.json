@@ -29,7 +29,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/authz-policy": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@react-pdf/renderer": "^3.4.5",

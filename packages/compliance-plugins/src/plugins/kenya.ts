@@ -8,6 +8,194 @@
 
 import { buildPhoneNormalizer } from '../core/phone.js';
 import type { CountryPlugin } from '../core/types.js';
+import {
+  flatRateWithholding,
+  type TaxRegimePort,
+} from '../ports/tax-regime.port.js';
+import {
+  buildGenericCsvPayload,
+  type TaxFilingPort,
+} from '../ports/tax-filing.port.js';
+import type { PaymentRailPort } from '../ports/payment-rail.port.js';
+import {
+  buildStubBureauResult,
+  type TenantScreeningPort,
+} from '../ports/tenant-screening.port.js';
+import type { LeaseLawPort } from '../ports/lease-law.port.js';
+
+// --- Kenya port implementations ---------------------------------------------
+
+/** KRA Monthly Rental Income (MRI) — 7.5% flat on gross residential rent. */
+const kenyaTaxRegime: TaxRegimePort = {
+  calculateWithholding(grossRentMinorUnits, _currency, _period) {
+    return flatRateWithholding(
+      grossRentMinorUnits,
+      7.5,
+      'KRA-MRI',
+      'KRA Monthly Rental Income — 7.5% flat on gross residential rent (Kenya Finance Act 2024).'
+    );
+  },
+};
+
+const kenyaTaxFiling: TaxFilingPort = {
+  prepareFiling(run, _tenantProfile, _period) {
+    return {
+      filingFormat: 'csv',
+      payload: buildGenericCsvPayload(run),
+      targetRegulator: 'KRA',
+      submitEndpointHint: 'https://itax.kra.go.ke',
+      instructions:
+        'Upload the CSV under the KRA iTax Monthly Rental Income return. ' +
+        'File by the 20th of the month following the period.',
+    };
+  },
+};
+
+const kenyaPaymentRails: PaymentRailPort = {
+  listRails() {
+    return Object.freeze([
+      {
+        id: 'mpesa_ke',
+        label: 'M-Pesa (Safaricom)',
+        kind: 'mobile-money' as const,
+        currency: 'KES',
+        minAmountMinorUnits: 100,
+        settlementLagHours: 2,
+        integrationAdapterHint: 'MPESA',
+        supportsCollection: true,
+        supportsDisbursement: true,
+      },
+      {
+        id: 'airtelmoney_ke',
+        label: 'Airtel Money (KE)',
+        kind: 'mobile-money' as const,
+        currency: 'KES',
+        minAmountMinorUnits: 100,
+        settlementLagHours: 4,
+        integrationAdapterHint: 'AIRTELMONEY',
+        supportsCollection: true,
+        supportsDisbursement: true,
+      },
+      {
+        id: 'pesalink',
+        label: 'Pesalink (inter-bank instant)',
+        kind: 'bank-transfer' as const,
+        currency: 'KES',
+        minAmountMinorUnits: 10000,
+        settlementLagHours: 2,
+        integrationAdapterHint: 'PESALINK',
+        supportsCollection: true,
+        supportsDisbursement: true,
+      },
+      {
+        id: 'card_ke',
+        label: 'Card payment (Visa/Mastercard via Stripe)',
+        kind: 'card' as const,
+        currency: 'KES',
+        minAmountMinorUnits: 100,
+        settlementLagHours: 48,
+        integrationAdapterHint: 'STRIPE',
+        supportsCollection: true,
+        supportsDisbursement: false,
+      },
+    ]);
+  },
+};
+
+const kenyaTenantScreening: TenantScreeningPort = {
+  async lookupBureau(identityDocument, _country, consentToken) {
+    // Real CRB wire call deferred — env-gated (CRB_KE_KEY). We stub safely.
+    if (!consentToken) {
+      return buildStubBureauResult('CRB_KE', ['CONSENT_TOKEN_INVALID']);
+    }
+    if (process.env.CRB_KE_KEY) {
+      // TODO(ph-Z-global): wire real CRB KE adapter — see services/identity
+      return buildStubBureauResult('CRB_KE', ['BUREAU_NOT_CONFIGURED']);
+    }
+    // Touch the argument so linters do not flag it unused.
+    void identityDocument;
+    return buildStubBureauResult('CRB_KE');
+  },
+};
+
+const kenyaLeaseLaw: LeaseLawPort = {
+  requiredClauses(_leaseKind) {
+    return Object.freeze([
+      {
+        id: 'parties',
+        label: 'Names and addresses of landlord and tenant',
+        mandatory: true,
+        citation: 'Distress for Rent Act (Cap 293) §3.',
+      },
+      {
+        id: 'premises',
+        label: 'Description of the leased premises',
+        mandatory: true,
+        citation: 'Distress for Rent Act (Cap 293) §3.',
+      },
+      {
+        id: 'rent-amount',
+        label: 'Rent amount and payment frequency in KES',
+        mandatory: true,
+        citation: 'Rent Restriction Act (Cap 296) §5.',
+      },
+      {
+        id: 'deposit',
+        label: 'Security deposit not exceeding 3 months rent',
+        mandatory: true,
+        citation: 'Rent Restriction Act (Cap 296) §6.',
+      },
+      {
+        id: 'kra-pin',
+        label: "Landlord's KRA PIN disclosure",
+        mandatory: true,
+        citation: 'Kenya Finance Act 2024 — MRI compliance.',
+      },
+    ]);
+  },
+  noticeWindowDays(reason) {
+    switch (reason) {
+      case 'non-payment':
+        return 14; // Distress for Rent Act notice window.
+      case 'end-of-term':
+      case 'renewal-non-continuation':
+        return 60;
+      case 'landlord-repossession':
+        return 90;
+      case 'breach-of-covenant':
+        return 30;
+      case 'illegal-use':
+      case 'nuisance':
+        return 7;
+      default:
+        return null;
+    }
+  },
+  depositCapMultiple(regime) {
+    if (regime === 'commercial') {
+      return {
+        maxMonthsOfRent: 6,
+        citation: 'Market norm — no statutory cap for commercial lets.',
+      };
+    }
+    return {
+      maxMonthsOfRent: 3,
+      citation: 'Rent Restriction Act (Cap 296) §6.',
+    };
+  },
+  rentIncreaseCap(regime) {
+    if (regime === 'residential-rent-controlled') {
+      return {
+        pctPerAnnum: 0,
+        citation: 'Rent Restriction Act (Cap 296) — controlled tenancies.',
+      };
+    }
+    return {
+      citation:
+        'No statutory cap for free-market residential — arbitrated by Rent Tribunal on dispute.',
+    };
+  },
+};
 
 export const kenyaPlugin: CountryPlugin = {
   countryCode: 'KE',
@@ -81,4 +269,9 @@ export const kenyaPlugin: CountryPlugin = {
       locale: 'en-KE',
     },
   ],
+  taxRegime: kenyaTaxRegime,
+  taxFiling: kenyaTaxFiling,
+  paymentRails: kenyaPaymentRails,
+  tenantScreening: kenyaTenantScreening,
+  leaseLaw: kenyaLeaseLaw,
 };

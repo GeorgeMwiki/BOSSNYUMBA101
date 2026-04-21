@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
+import { requireCapability } from '../middleware/capability-gate';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
 import type { AuthContext } from './hono-auth';
@@ -135,7 +136,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: mapPropertyRow(row) });
 });
 
-app.post('/', staffOnly, zValidator('json', PropertyCreateSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'property'), zValidator('json', PropertyCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -217,7 +218,7 @@ app.put('/:id', staffOnly, zValidator('json', PropertyUpdateSchema), async (c) =
   return c.json({ success: true, data: mapPropertyRow(row) });
 });
 
-app.delete('/:id', staffOnly, async (c) => {
+app.delete('/:id', staffOnly, requireCapability('delete', 'property'), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const id = c.req.param('id');

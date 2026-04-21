@@ -484,3 +484,38 @@ export class MemoryApprovalRuleStore implements ApprovalRuleStore {
 export type { ApprovalPolicyOverrideRepository } from './approval-policy-repository.interface.js';
 export { PostgresApprovalPolicyRepository } from './postgres-approval-policy-repository.js';
 export type { PostgresApprovalPolicyRepositoryClient } from './postgres-approval-policy-repository.js';
+
+// ============================================================================
+// Wave 26 — richer ApprovalService + repo interfaces (aliased to avoid
+// collision with the legacy in-file ApprovalService above). The legacy
+// class is retained for backward-compatible tests; the Workflow alias is
+// what the api-gateway composition root + routers wire into production.
+// ============================================================================
+export {
+  ApprovalService as ApprovalWorkflowService,
+  ApprovalServiceError as ApprovalWorkflowError,
+  type ApprovalServiceErrorCode as ApprovalWorkflowErrorCode,
+  type ApprovalServiceErrorResult as ApprovalWorkflowErrorResult,
+  type ApproverResolver,
+  type ProximityRouter,
+} from './approval-service.js';
+export type {
+  ApprovalRequestRepository,
+  ApprovalPolicyRepository,
+} from './approval-repository.interface.js';
+export type {
+  ApprovalRequest as ApprovalWorkflowRequest,
+  ApprovalRequestId as ApprovalWorkflowRequestId,
+  ApprovalType as ApprovalWorkflowType,
+  ApprovalStatus as ApprovalWorkflowStatus,
+  ApprovalPolicy,
+  ApprovalRequestDetails,
+  ApprovalHistoryFilters,
+  MaintenanceCostDetails,
+  LeaseExceptionDetails,
+  RefundDetails,
+  DiscountDetails,
+  PaymentFlexibilityDetails,
+} from './types.js';
+export { asApprovalRequestId, APPROVAL_TYPES, APPROVAL_STATUSES } from './types.js';
+export { getDefaultPolicyForType } from './default-policies.js';

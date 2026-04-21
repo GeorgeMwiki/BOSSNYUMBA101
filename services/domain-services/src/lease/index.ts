@@ -1276,3 +1276,19 @@ export {
   type LeaseRenewalStatus,
 } from './renewal-service.js';
 export { PostgresRenewalRepository } from './postgres-renewal-repository.js';
+
+// Move-Out checklist (step-based end-of-tenancy workflow).
+// Complements the richer inspection-backed MoveOut in ../inspections/move-out;
+// this one tracks the 4 higher-level lease close-out steps.
+export {
+  MoveOutChecklistService,
+  MoveOutError,
+  createMoveOutChecklist,
+  type MoveOutChecklist,
+  type MoveOutStepState,
+  type MoveOutStepStatus,
+  type MoveOutRepository,
+  type MoveOutErrorCode,
+  type MoveOutErrorResult,
+  type UtilityReading,
+} from './move-out-checklist.js';

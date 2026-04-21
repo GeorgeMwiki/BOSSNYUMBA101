@@ -4,12 +4,18 @@
  * Kenya Revenue Authority — rental income tax schedule for the annual (or
  * monthly for Monthly Rental Income Tax, MRI) return.
  *
- *  - MRI tax rate: 7.5% on gross rent (residential; < KES 15M/year)
- *  - VAT: 16% on applicable commercial rentals
+ *  - MRI tax rate: sourced from @bossnyumba/compliance-plugins Kenya
+ *    TaxRegimePort (canonical 7.5% per Finance Act 2024). Never hardcode
+ *    tax rates — the plugin is the single source of truth so a future
+ *    rate change is one edit away in the plugin, not a sprawl of constants.
+ *  - VAT: 16% on applicable commercial rentals (Kenya-specific, stays inline
+ *    until a VatPort is introduced).
  *
  * Output: CSV matching the iTax template columns commonly expected for
  * rental income.
  */
+
+import { resolvePlugin } from '@bossnyumba/compliance-plugins';
 
 export interface KeKraRentEntry {
   readonly leaseId: string;
@@ -45,7 +51,21 @@ export interface KeKraExportRow {
   readonly paymentDate: string;
 }
 
-const MRI_RATE = 0.075;
+// MRI rate is NOT hardcoded — it is derived from the Kenya plugin's
+// TaxRegimePort every time we format a row. If the Finance Act changes the
+// rate, the plugin's flat-rate call is the single place to update it.
+const KE_PLUGIN = resolvePlugin('KE');
+const MRI_RATE = (() => {
+  // Calculate for a known gross and reverse-derive the rate. This keeps the
+  // plugin as source-of-truth while preserving the legacy `MRI_RATE` export.
+  const probeGrossMinor = 1_000_000; // 10,000 KES in minor units
+  const result = KE_PLUGIN.taxRegime.calculateWithholding(
+    probeGrossMinor,
+    'KES',
+    { kind: 'month', year: new Date().getUTCFullYear(), month: 1 }
+  );
+  return result.withholdingMinorUnits / probeGrossMinor;
+})();
 const VAT_RATE = 0.16;
 
 function toMajor(minor: number): number {

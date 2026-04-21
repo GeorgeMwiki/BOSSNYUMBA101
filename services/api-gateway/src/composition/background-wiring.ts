@@ -28,6 +28,15 @@ import type {
   WebhookAttemptRecord,
   WebhookDeadLetterRecord,
 } from '../workers/webhook-retry-worker.js';
+import {
+  createIntelligenceHistorySupervisor,
+  type IntelligenceHistorySupervisor,
+} from './intelligence-history-wiring.js';
+
+export type {
+  IntelligenceHistorySupervisor,
+} from './intelligence-history-wiring.js';
+export { createIntelligenceHistorySupervisor } from './intelligence-history-wiring.js';
 
 // ---------------------------------------------------------------------------
 // Heartbeat engine
@@ -342,6 +351,46 @@ function buildExtensionTasks(
     },
   });
 
+  // recompute_intelligence_history — daily per-customer snapshot worker
+  // (Wave-26 Agent Z4). Uses Postgres-backed adapters to read tenants +
+  // customers and write deterministic signal snapshots into
+  // `intelligence_history`. Skips silently when DATABASE_URL is unset.
+  if (registry.db) {
+    const worker = createIntelligenceHistorySupervisor(registry.db, {
+      info: (meta, msg) => logger.info(meta, msg),
+      warn: (meta, msg) => logger.warn(meta, msg),
+    }).worker;
+    if (worker) {
+      tasks.push({
+        name: 'recompute_intelligence_history',
+        cron: '0 2 * * *', // Daily 02:00 UTC
+        description:
+          'Daily per-customer intelligence snapshot — payment risk, churn, sentiment, maintenance counts. Idempotent on (tenant, customer, date).',
+        featureFlagKey: 'ai.bg.recompute_intelligence_history',
+        run: async (ctx) => {
+          const start = Date.now();
+          let snapshotsWritten = 0;
+          try {
+            const res = await worker.runDaily();
+            snapshotsWritten = res.snapshotsWritten;
+          } catch (err) {
+            logger.warn(
+              { err: err instanceof Error ? err.message : String(err) },
+              'bg-task recompute_intelligence_history failed',
+            );
+          }
+          return {
+            task: 'recompute_intelligence_history',
+            tenantId: ctx.tenantId,
+            insightsEmitted: snapshotsWritten,
+            durationMs: Date.now() - start,
+            ranAt: ctx.now.toISOString(),
+          };
+        },
+      });
+    }
+  }
+
   // recompute_property_grades — weekly (Mon 06:00 UTC) bulk-grade of every
   // property for every tenant so the admin/owner dashboards always surface
   // fresh report cards. Skips silently when the service is in degraded
@@ -378,6 +427,63 @@ function buildExtensionTasks(
       },
     });
   }
+
+  // monthly_close — Wave 28 Phase A Agent PhA2. Fires at 02:00 UTC on the
+  // 1st of every month, per tenant. Walks the 8-step end-of-month close
+  // orchestrator (reconcile → statements → KRA MRI → disbursements →
+  // email → emit event). Autonomy-policy gates the disbursement batch.
+  //
+  // The orchestrator is looked up off the registry optionally — if the
+  // composition root hasn't wired it yet the task reports zero work
+  // done and operators see "0 runs" in the scheduler telemetry, which
+  // is the pilot-acceptable degraded behaviour.
+  tasks.push({
+    name: 'monthly_close',
+    cron: '0 2 1 * *',
+    description:
+      'Monthly bookkeeping close — reconciles payments, generates owner statements, computes KRA MRI, proposes disbursements (autonomy-gated), emails owners.',
+    featureFlagKey: 'ai.bg.monthly_close',
+    run: async (ctx) => {
+      const start = Date.now();
+      let executed = 0;
+      try {
+        const orch = (registry as {
+          monthlyClose?: {
+            orchestrator?: {
+              triggerRun(input: {
+                tenantId: string;
+                trigger: 'cron' | 'manual' | 'resume';
+                triggeredBy: string;
+              }): Promise<{ run: { steps: readonly unknown[] } }>;
+            };
+          };
+        }).monthlyClose?.orchestrator;
+        if (orch) {
+          const res = await orch.triggerRun({
+            tenantId: ctx.tenantId,
+            trigger: 'cron',
+            triggeredBy: 'system',
+          });
+          executed = res.run.steps.length;
+        }
+      } catch (err) {
+        logger.warn(
+          {
+            tenantId: ctx.tenantId,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'bg-task monthly_close failed',
+        );
+      }
+      return {
+        task: 'monthly_close',
+        tenantId: ctx.tenantId,
+        insightsEmitted: executed,
+        durationMs: Date.now() - start,
+        ranAt: ctx.now.toISOString(),
+      };
+    },
+  });
 
   return tasks;
 }

@@ -49,6 +49,24 @@ export interface SubPersonaToneOverrides {
   readonly formality: 'casual' | 'professional' | 'academic';
 }
 
+/**
+ * Metadata surfaced next to the prompt layer. Versioning lets us A/B
+ * two prompt revisions safely, and the token estimate feeds the
+ * AI-cost ledger's per-tenant budget accounting so a sub-persona
+ * activation doesn't surprise the owner with a 3,000-token bill.
+ *
+ * Wave 26 wired this — previously the `*_METADATA` consts were
+ * exported per-file but never read anywhere, so version bumps were
+ * invisible to ops. The SUB_PERSONA_METADATA_REGISTRY below now
+ * surfaces them in one typed map.
+ */
+export interface SubPersonaMetadata {
+  readonly id: SubPersonaId;
+  readonly version: string;
+  readonly promptTokenEstimate: number;
+  readonly activationRoutes: ReadonlyArray<string>;
+}
+
 export interface SubPersonaConfig {
   readonly id: SubPersonaId;
   readonly displayLabel: string;
@@ -97,14 +115,38 @@ export interface SubPersonaDetectionResult {
 // Registry
 // ============================================================================
 
-import { FINANCE_PROMPT_LAYER } from './sub-personas/finance-persona.js';
-import { LEASING_PROMPT_LAYER } from './sub-personas/leasing-persona.js';
-import { MAINTENANCE_PROMPT_LAYER } from './sub-personas/maintenance-persona.js';
-import { COMPLIANCE_PROMPT_LAYER } from './sub-personas/compliance-persona.js';
-import { COMMUNICATIONS_PROMPT_LAYER } from './sub-personas/communications-persona.js';
-import { PROFESSOR_PROMPT_LAYER } from './sub-personas/professor-persona.js';
-import { ADVISOR_PROMPT_LAYER } from './sub-personas/advisor-persona.js';
-import { CONSULTANT_PROMPT_LAYER } from './sub-personas/consultant-persona.js';
+import {
+  FINANCE_PROMPT_LAYER,
+  FINANCE_METADATA,
+} from './sub-personas/finance-persona.js';
+import {
+  LEASING_PROMPT_LAYER,
+  LEASING_METADATA,
+} from './sub-personas/leasing-persona.js';
+import {
+  MAINTENANCE_PROMPT_LAYER,
+  MAINTENANCE_METADATA,
+} from './sub-personas/maintenance-persona.js';
+import {
+  COMPLIANCE_PROMPT_LAYER,
+  COMPLIANCE_METADATA,
+} from './sub-personas/compliance-persona.js';
+import {
+  COMMUNICATIONS_PROMPT_LAYER,
+  COMMUNICATIONS_METADATA,
+} from './sub-personas/communications-persona.js';
+import {
+  PROFESSOR_PROMPT_LAYER,
+  PROFESSOR_METADATA,
+} from './sub-personas/professor-persona.js';
+import {
+  ADVISOR_PROMPT_LAYER,
+  ADVISOR_METADATA,
+} from './sub-personas/advisor-persona.js';
+import {
+  CONSULTANT_PROMPT_LAYER,
+  CONSULTANT_METADATA,
+} from './sub-personas/consultant-persona.js';
 
 export const SUB_PERSONA_REGISTRY: Readonly<Record<SubPersonaId, SubPersonaConfig>> = {
   finance: {
@@ -462,4 +504,57 @@ export function getSubPersonasForRoute(route: string): ReadonlyArray<SubPersonaC
       return lower === p;
     }),
   );
+}
+
+// ============================================================================
+// Metadata Registry (Wave 26 wiring)
+// ============================================================================
+// Every per-file `*_METADATA` const is exported but was never read anywhere
+// — Wave 25 Agent T flagged this as dead-code-ish (planned logic without
+// a consumer). Wave 26 wires them here so version bumps + token estimates
+// + activation-route audits are observable to ops.
+//
+// Typed via `satisfies` so the registry stays a literal that TypeScript
+// can narrow, while still structurally matching `SubPersonaMetadata`.
+
+export const SUB_PERSONA_METADATA_REGISTRY = {
+  finance: FINANCE_METADATA,
+  leasing: LEASING_METADATA,
+  maintenance: MAINTENANCE_METADATA,
+  compliance: COMPLIANCE_METADATA,
+  communications: COMMUNICATIONS_METADATA,
+  professor: PROFESSOR_METADATA,
+  advisor: ADVISOR_METADATA,
+  consultant: CONSULTANT_METADATA,
+} as const satisfies Readonly<Record<SubPersonaId, SubPersonaMetadata>>;
+
+export function getSubPersonaMetadata(id: SubPersonaId): SubPersonaMetadata {
+  return SUB_PERSONA_METADATA_REGISTRY[id];
+}
+
+/**
+ * Sum the prompt-token estimates of every sub-persona a route activates.
+ * Feeds the ai-cost-ledger's per-tenant budget accounting so the brain
+ * can pre-check whether activating a heavy sub-persona (e.g. professor
+ * at 2,700 tokens) would blow a tenant's monthly cap.
+ */
+export function estimateSubPersonaTokensForRoute(route: string): number {
+  const configs = getSubPersonasForRoute(route);
+  return configs.reduce(
+    (sum, cfg) => sum + SUB_PERSONA_METADATA_REGISTRY[cfg.id].promptTokenEstimate,
+    0,
+  );
+}
+
+/**
+ * Version snapshot for operator audit — which prompt version of each
+ * sub-persona is live in production. Exposed via /api/v1/brain/prompt-versions
+ * (see ai-chat.router) in Wave 26.
+ */
+export function getSubPersonaVersions(): Readonly<Record<SubPersonaId, string>> {
+  const out = {} as Record<SubPersonaId, string>;
+  for (const id of Object.keys(SUB_PERSONA_METADATA_REGISTRY) as SubPersonaId[]) {
+    out[id] = SUB_PERSONA_METADATA_REGISTRY[id].version;
+  }
+  return out;
 }

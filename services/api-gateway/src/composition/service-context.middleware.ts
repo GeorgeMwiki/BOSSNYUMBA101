@@ -96,6 +96,19 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
       if (registry.arrears?.entryLoader) {
         c.set('arrearsEntryLoader', registry.arrears.entryLoader);
       }
+
+      // Wave 26 — Cases router reads `caseService` / `caseRepo` off
+      // the context when it wants the domain aggregate (timeline +
+      // notices + evidence + resolution rolled together) instead of
+      // the raw SQL row shape the legacy handlers return. Both keys
+      // stay absent in degraded mode so the legacy raw-SQL path
+      // continues to serve a 2xx response.
+      if (registry.cases?.service) {
+        c.set('caseService', registry.cases.service);
+      }
+      if (registry.cases?.repo) {
+        c.set('caseRepo', registry.cases.repo);
+      }
       // Wave 9 — feature flags, GDPR, AI cost ledger pulled via
       // `services.featureFlags`, `services.gdpr`, `services.aiCostLedger`
       // — the routers read those keys off `c.get('services')` already.
@@ -138,6 +151,34 @@ export function createServiceContextMiddleware(registry: ServiceRegistry) {
     // consumers / tests that inject a mock service directly.
     if (registry.creditRating) {
       c.set('creditRatingService', registry.creditRating);
+    }
+
+    // Wave 26 — Agent Z2: expose the four newly-wired domain services
+    // as flat keys so the new routers can pull them via `c.get(...)`.
+    // When the registry is in degraded mode the keys stay undefined and
+    // every router returns 503 with a clear reason.
+    if (registry.sublease?.service) {
+      c.set('subleaseService', registry.sublease.service);
+    }
+    if (registry.damageDeductions?.service) {
+      c.set('damageDeductionService', registry.damageDeductions.service);
+    }
+    if (registry.conditionalSurveys?.service) {
+      c.set('conditionalSurveyService', registry.conditionalSurveys.service);
+    }
+    if (registry.far?.service) {
+      c.set('farService', registry.far.service);
+    }
+
+    // Wave 26 Z3 — Move-out checklist + Approvals workflow. Routers read
+    // via `services.moveOut.service` and `services.approvals.service`;
+    // flat keys below match the established shim pattern so tests can
+    // inject mocks by calling c.set(...) directly.
+    if (registry.moveOut?.service) {
+      c.set('moveOutChecklistService', registry.moveOut.service);
+    }
+    if (registry.approvals?.service) {
+      c.set('approvalWorkflowService', registry.approvals.service);
     }
 
     await next();

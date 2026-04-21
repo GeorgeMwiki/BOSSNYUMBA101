@@ -169,11 +169,19 @@ export async function pipeStreamTurnToSSE(
       });
     }
   } catch (err) {
+    // Wave-26 Agent Z4 — surface `AiBudgetExceededError` from `withBudgetGuard`
+    // (and from `MultiLLMRouter.complete` via `ledger.assertWithinBudget`) as a
+    // structured SSE error so the chat UI can render a friendly
+    // "monthly AI budget reached" banner. Everything else maps to INTERNAL.
+    const isBudgetExceeded =
+      err instanceof Error &&
+      ((err as { code?: string }).code === 'AI_BUDGET_EXCEEDED' ||
+        err.name === 'AiBudgetExceededError');
     await stream.writeSSE({
       event: 'error',
       data: JSON.stringify({
         type: 'error',
-        code: 'INTERNAL',
+        code: isBudgetExceeded ? 'BUDGET_EXCEEDED' : 'INTERNAL',
         message: err instanceof Error ? err.message : String(err),
         retryable: false,
       }),
@@ -215,6 +223,34 @@ router.post('/chat', async (c) => {
   const rateKey = `${ctx.tenant.tenantId}:${ctx.actor.id}`;
   if (!checkRate(rateKey)) {
     return c.json({ error: 'rate_limited', code: 'RATE_LIMIT' }, 429);
+  }
+
+  // Wave-26 Agent Z4 — per-tenant monthly AI budget enforcement. We invoke
+  // `CostLedger.assertWithinBudget` (the same primitive that `withBudgetGuard`
+  // and `MultiLLMRouter.complete` call) BEFORE the SSE stream opens so an
+  // over-budget tenant gets a clean 429 with `code: BUDGET_EXCEEDED` instead
+  // of a half-open stream that errors mid-flight. When the ledger is absent
+  // (degraded mode) we skip silently so the rest of the chat surface stays up.
+  const services = c.get('services');
+  const ledger = services?.aiCostLedger;
+  if (ledger) {
+    try {
+      await ledger.assertWithinBudget(ctx.tenant.tenantId);
+    } catch (err) {
+      const e = err as { code?: string; name?: string; message?: string };
+      if (e?.code === 'AI_BUDGET_EXCEEDED' || e?.name === 'AiBudgetExceededError') {
+        return c.json(
+          {
+            error: e.message ?? 'monthly AI budget exceeded',
+            code: 'BUDGET_EXCEEDED',
+          },
+          429,
+        );
+      }
+      // Ledger-lookup failures must not block the chat — log once and proceed.
+      // eslint-disable-next-line no-console
+      console.warn('ai-chat.router: budget pre-flight check failed (non-fatal)', e?.message ?? e);
+    }
   }
 
   let brain;

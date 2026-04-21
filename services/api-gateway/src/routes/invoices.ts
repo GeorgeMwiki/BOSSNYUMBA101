@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
+import { requireCapability } from '../middleware/capability-gate';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
 import { majorToMinor, mapInvoiceRow, paginateArray } from './db-mappers';
@@ -163,7 +164,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichInvoice(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, zValidator('json', InvoiceCreateSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'invoice'), zValidator('json', InvoiceCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');

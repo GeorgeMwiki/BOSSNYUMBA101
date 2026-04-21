@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
+import { requireCapability } from '../middleware/capability-gate';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
 import { mapLeaseRow, majorToMinor, paginateArray } from './db-mappers';
@@ -357,7 +358,7 @@ app.get('/:id', async (c) => {
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.post('/', staffOnly, zValidator('json', CreateLeaseSchema), async (c) => {
+app.post('/', staffOnly, requireCapability('create', 'lease'), zValidator('json', CreateLeaseSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
@@ -478,7 +479,7 @@ app.post('/:id/renew', staffOnly, zValidator('json', RenewLeaseSchema), async (c
   return c.json({ success: true, data: await enrichLease(repos, auth.tenantId, row) });
 });
 
-app.delete('/:id', staffOnly, async (c) => {
+app.delete('/:id', staffOnly, requireCapability('delete', 'lease'), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   await repos.leases.delete(c.req.param('id'), auth.tenantId, auth.userId);

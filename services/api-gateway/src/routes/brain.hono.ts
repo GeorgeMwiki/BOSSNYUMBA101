@@ -238,6 +238,31 @@ brainRouter.post('/turn', async (c) => {
     return c.json({ error: 'rate_limited', code: 'RATE_LIMIT' }, 429);
   }
 
+  // Wave-26 Agent Z4 — enforce per-tenant monthly AI budget BEFORE the Brain
+  // orchestrator fires any LLM call. This is the same primitive `withBudgetGuard`
+  // and the multi-LLM router use, surfaced here so the brain's non-streaming
+  // /turn endpoint behaves identically to the SSE chat router.
+  const services = c.get('services');
+  const ledger = services?.aiCostLedger;
+  if (ledger) {
+    try {
+      await ledger.assertWithinBudget(ctx.tenant.tenantId);
+    } catch (err) {
+      const e = err as { code?: string; name?: string; message?: string };
+      if (e?.code === 'AI_BUDGET_EXCEEDED' || e?.name === 'AiBudgetExceededError') {
+        return c.json(
+          {
+            error: e.message ?? 'monthly AI budget exceeded',
+            code: 'BUDGET_EXCEEDED',
+          },
+          429,
+        );
+      }
+      // eslint-disable-next-line no-console
+      console.warn('brain.hono: budget pre-flight check failed (non-fatal)', e?.message ?? e);
+    }
+  }
+
   const brain = registry().for(ctx.tenant.tenantId);
 
   try {

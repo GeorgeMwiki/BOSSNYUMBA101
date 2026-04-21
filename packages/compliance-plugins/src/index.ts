@@ -20,8 +20,31 @@ import { southAfricaPlugin } from './plugins/south-africa.js';
 import { tanzaniaPlugin } from './plugins/tanzania.js';
 import { ugandaPlugin } from './plugins/uganda.js';
 import { unitedStatesPlugin, withStateOverride } from './plugins/united-states.js';
+import { registerAllCountryPlugins as _registerAllCountryPlugins } from './countries/index.js';
 
 export * from './core/index.js';
+export * from './ports/index.js';
+export * from './validators/index.js';
+export {
+  EXTENDED_PROFILES,
+  GLOBAL_DEFAULT_PROFILE,
+  australiaProfile,
+  brazilProfile,
+  canadaProfile,
+  franceProfile,
+  germanyProfile,
+  getTenantCountryDefault,
+  indiaProfile,
+  japanProfile,
+  koreaProfile,
+  mexicoProfile,
+  registerAllCountryPlugins,
+  resolveExtendedProfile,
+  singaporeProfile,
+  uaeProfile,
+  ukProfile,
+} from './countries/index.js';
+export type { ExtendedCountryProfile } from './countries/index.js';
 export {
   kenyaPlugin,
   nigeriaPlugin,
@@ -31,6 +54,15 @@ export {
   unitedStatesPlugin,
   withStateOverride,
 };
+export {
+  DEFAULT_PLUGIN,
+  getPortCoverageMatrix,
+  resolvePlugin,
+} from './registry.js';
+export type {
+  PortCoverageRow,
+  ResolvedCountryPlugin,
+} from './registry.js';
 
 /**
  * Default country fallback. The presence of a default is intentional — it
@@ -54,6 +86,9 @@ for (const plugin of [
 ]) {
   countryPluginRegistry.register(plugin);
 }
+
+// Register the 12 new jurisdictions from the PhJ-JURIS-BREADTH wave.
+_registerAllCountryPlugins(countryPluginRegistry);
 
 /** Track whether we've already logged the default-fallback warning. */
 let defaultFallbackWarned = false;

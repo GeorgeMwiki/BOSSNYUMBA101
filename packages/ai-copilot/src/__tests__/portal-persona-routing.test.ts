@@ -298,3 +298,51 @@ describe('sub-persona prompt composition', () => {
     expect(cfg.preferredTools.length).toBeGreaterThan(0);
   });
 });
+
+// ============================================================================
+// Wave-26 metadata registry tests
+// ============================================================================
+// Pins the wiring of the 8 *_METADATA consts that were flagged as orphan
+// exports in Wave-25. Any future sub-persona added to SubPersonaId MUST
+// also land a metadata row — these tests enforce that.
+
+describe('Wave-26 sub-persona metadata registry', () => {
+  it('exposes metadata for every SubPersonaId', async () => {
+    const mod = await import('../personas/sub-persona-types.js');
+    const ids = Object.keys(mod.SUB_PERSONA_REGISTRY);
+    const metaIds = Object.keys(mod.SUB_PERSONA_METADATA_REGISTRY);
+    expect(metaIds.sort()).toEqual(ids.sort());
+  });
+
+  it('every metadata row has a non-empty version + positive token estimate', async () => {
+    const { SUB_PERSONA_METADATA_REGISTRY } = await import(
+      '../personas/sub-persona-types.js'
+    );
+    for (const [id, meta] of Object.entries(SUB_PERSONA_METADATA_REGISTRY)) {
+      expect(meta.id, `${id} metadata id`).toBe(id);
+      expect(meta.version, `${id} version`).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(meta.promptTokenEstimate, `${id} tokens`).toBeGreaterThan(0);
+      expect(meta.activationRoutes.length, `${id} routes`).toBeGreaterThan(0);
+    }
+  });
+
+  it('estimateSubPersonaTokensForRoute sums active sub-personae', async () => {
+    const { estimateSubPersonaTokensForRoute } = await import(
+      '../personas/sub-persona-types.js'
+    );
+    // /finance/* activates the finance sub-persona (600 tokens), nothing else.
+    expect(estimateSubPersonaTokensForRoute('/finance/arrears')).toBe(600);
+    // /unknown should match zero sub-personae.
+    expect(estimateSubPersonaTokensForRoute('/unknown-path')).toBe(0);
+  });
+
+  it('getSubPersonaVersions returns a complete id->version map', async () => {
+    const { getSubPersonaVersions, SUB_PERSONA_METADATA_REGISTRY } =
+      await import('../personas/sub-persona-types.js');
+    const versions = getSubPersonaVersions();
+    expect(Object.keys(versions).length).toBe(
+      Object.keys(SUB_PERSONA_METADATA_REGISTRY).length,
+    );
+    expect(versions.professor).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});

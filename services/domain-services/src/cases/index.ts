@@ -6,6 +6,31 @@ import { randomHex } from '../common/id-generator.js';
  * legal notices, evidence tracking, and resolution workflows.
  */
 
+// Re-export infrastructure adapters so composition roots can pull both
+// the domain service + live-Postgres repo + SLA worker from the same
+// subpath import (`@bossnyumba/domain-services/cases`). These were
+// previously unreferenced by any consumer, leaving the production code
+// paths unwired even though the classes existed.
+export { PostgresCaseRepository } from './postgres-case-repository.js';
+export type { PostgresCaseRepositoryClient } from './postgres-case-repository.js';
+export {
+  CaseSLAWorker,
+  MAX_ESCALATION_LEVEL,
+  SLA_SYSTEM_ACTOR,
+} from './sla-worker.js';
+export type {
+  CaseSLAWorkerOptions,
+  TickResult as CaseSLATickResult,
+} from './sla-worker.js';
+
+// Wave 26 — Agent Z2: expose the Sublease + Damage-Deduction sub-modules
+// as namespaces so the composition root can reach their Postgres repos +
+// services via `@bossnyumba/domain-services/cases` → `Sublease.*` /
+// `DamageDeduction.*`. Namespacing avoids collisions with the core Cases
+// domain exports defined below.
+export * as Sublease from './sublease/index.js';
+export * as DamageDeduction from './damage-deduction/index.js';
+
 import type { TenantId, UserId, PaginationParams, PaginatedResult, Result, ISOTimestamp } from '@bossnyumba/domain-models';
 import { ok, err } from '@bossnyumba/domain-models';
 import type { EventBus } from '../common/events.js';

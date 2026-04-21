@@ -70,7 +70,16 @@ import {
 import {
   RenewalService,
   PostgresRenewalRepository,
+  MoveOutChecklistService,
 } from '@bossnyumba/domain-services/lease';
+// Wave 26 Z3 — rich ApprovalWorkflowService + Postgres adapters for
+// move-out checklists and approval requests. Pairs with migration 0097.
+import { ApprovalWorkflowService } from '@bossnyumba/domain-services/approvals';
+import { PostgresMoveOutRepository } from './move-out-repository.js';
+import {
+  PostgresApprovalRequestRepository,
+  PostgresApprovalPolicyRepositoryAdapter,
+} from './approval-request-repository.js';
 import {
   FinancialProfileService,
   PostgresFinancialStatementRepository,
@@ -88,6 +97,10 @@ import {
   MigrationService,
   PostgresMigrationRepository,
 } from '@bossnyumba/domain-services/migration';
+import {
+  CaseService,
+  PostgresCaseRepository,
+} from '@bossnyumba/domain-services/cases';
 import { InMemoryEventBus, type EventBus } from '@bossnyumba/domain-services';
 
 // Wave 8 — Warehouse inventory (S7), Maintenance taxonomy (S7), IoT (S3).
@@ -139,6 +152,16 @@ import {
   createCostLedger,
   type CostLedger,
 } from '@bossnyumba/ai-copilot';
+// Wave-26 Agent Z4 — previously-unwired AI brain utilities now wired through
+// the composition root so routers + background workers can consume them.
+import {
+  buildMultiLLMRouterFromEnv,
+  withBudgetGuard,
+  createAnthropicClient,
+  ModelTier,
+  type MultiLLMRouter,
+  type BudgetGuardedAnthropicClient,
+} from '@bossnyumba/ai-copilot/providers';
 import { DrizzleCostLedgerRepository } from './cost-ledger-repository.js';
 
 // Wave 12 — AI copilot subsystems wired into composition root.
@@ -177,6 +200,40 @@ import {
   InMemoryAutonomyPolicyRepository,
 } from '@bossnyumba/ai-copilot/autonomy';
 import { PostgresAutonomyPolicyRepository } from './autonomy-policy-repository.js';
+
+// Wave 26 — Agent Z2: four Postgres repos that Wave-25 Agent T flagged as
+// "tests passing but no router / composition wiring". Importing through
+// the namespace barrels added to cases/inspections so the classes reach
+// the composition root without churning every callsite.
+import {
+  Sublease as SubleaseNs,
+  DamageDeduction as DamageDeductionNs,
+} from '@bossnyumba/domain-services/cases';
+import {
+  ConditionalSurvey as ConditionalSurveyNs,
+  Far as FarNs,
+} from '@bossnyumba/domain-services/inspections';
+type PostgresSubleaseRepository = InstanceType<
+  typeof SubleaseNs.PostgresSubleaseRepository
+>;
+type PostgresTenantGroupRepository = InstanceType<
+  typeof SubleaseNs.PostgresTenantGroupRepository
+>;
+type SubleaseService = InstanceType<typeof SubleaseNs.SubleaseService>;
+type PostgresDamageDeductionRepository = InstanceType<
+  typeof DamageDeductionNs.PostgresDamageDeductionRepository
+>;
+type DamageDeductionService = InstanceType<
+  typeof DamageDeductionNs.DamageDeductionService
+>;
+type PostgresConditionalSurveyRepository = InstanceType<
+  typeof ConditionalSurveyNs.PostgresConditionalSurveyRepository
+>;
+type ConditionalSurveyService = InstanceType<
+  typeof ConditionalSurveyNs.ConditionalSurveyService
+>;
+type PostgresFarRepository = InstanceType<typeof FarNs.PostgresFarRepository>;
+type FarService = InstanceType<typeof FarNs.FarService>;
 
 type OrgAwarenessRegistry = {
   readonly miner: InstanceType<typeof OrgAwareness.ProcessMiner>;
@@ -233,12 +290,44 @@ export interface ServiceRegistry {
   readonly gdpr: GdprService | null;
   readonly aiCostLedger: CostLedger | null;
 
+  /**
+   * Wave 26 Agent Z4 — multi-LLM router built from env keys. Null when no
+   * Anthropic key is configured (the gateway still boots, the brain routes
+   * return 503 `BRAIN_NOT_CONFIGURED` as before). When present, the router
+   * already enforces per-tenant budget via `CostLedger.assertWithinBudget`
+   * up-front and records usage after every provider call.
+   */
+  readonly llmRouter: MultiLLMRouter | null;
+
+  /**
+   * Wave 26 Agent Z4 — Anthropic client wrapped with `withBudgetGuard` so
+   * every `messages.create` call checks the per-tenant monthly cap and
+   * records usage into the `CostLedger`. Exposed as a pure factory because
+   * the tenant context is only known at request time — callers invoke
+   * `buildBudgetGuardedAnthropicClient(tenantId, operation?)` to get a
+   * client with the right context closed over.
+   */
+  readonly buildBudgetGuardedAnthropicClient:
+    | ((tenantId: string, operation?: string) => BudgetGuardedAnthropicClient)
+    | null;
+
   /** Arrears ledger (NEW 4). Service + loader for the projection endpoint. */
   readonly arrears: {
     readonly service: ArrearsService | null;
     readonly repo: PostgresArrearsRepository | null;
     readonly ledgerPort: PostgresLedgerPort | null;
     readonly entryLoader: ArrearsEntryLoader | null;
+  };
+
+  /** Cases — dispute / legal / maintenance case lifecycle. Wave 26 wiring
+   *  of the previously-dark PostgresCaseRepository + CaseService +
+   *  CaseSLAWorker triad. `service` is the domain service (used by
+   *  routers + SLA worker); `repo` is the Postgres adapter (exposed for
+   *  routers that need raw reads without the service overhead). Both
+   *  null in degraded mode. */
+  readonly cases: {
+    readonly service: CaseService | null;
+    readonly repo: PostgresCaseRepository | null;
   };
 
   /** Wave 12 — AI copilot subsystems wired into the composition root. */
@@ -267,6 +356,48 @@ export interface ServiceRegistry {
   /** Tenant credit rating — FICO-scale 300-850 rating with CRB bands
    *  and portable certificate. Postgres-backed in live mode. */
   readonly creditRating: CreditRatingService | null;
+
+  /** Move-out checklist (Wave 26 Z3). Tracks the 4-step end-of-tenancy
+   *  workflow (final inspection, utility readings, deposit reconciliation,
+   *  residency-proof letter). Postgres-backed when DATABASE_URL is set. */
+  readonly moveOut: {
+    readonly service: MoveOutChecklistService | null;
+  };
+
+  /** Approval workflow (Wave 26 Z3). Handles pending-approval requests for
+   *  maintenance_cost, refund, discount, lease_exception, payment_flexibility.
+   *  Integrates with the autonomy-policy thresholds (Wave 18). */
+  readonly approvals: {
+    readonly service: ApprovalWorkflowService | null;
+  };
+
+  /** Wave 26 — Sublease + tenant-group persistence. Postgres-backed when
+   *  DATABASE_URL is set; null in degraded mode. The router degrades to
+   *  503 cleanly when the slot is null. */
+  readonly sublease: {
+    readonly service: SubleaseService | null;
+    readonly repo: PostgresSubleaseRepository | null;
+    readonly tenantGroupRepo: PostgresTenantGroupRepository | null;
+  };
+
+  /** Wave 26 — Damage-deduction negotiation claims (move-out). */
+  readonly damageDeductions: {
+    readonly service: DamageDeductionService | null;
+    readonly repo: PostgresDamageDeductionRepository | null;
+  };
+
+  /** Wave 26 — Conditional surveys (findings + action plans). */
+  readonly conditionalSurveys: {
+    readonly service: ConditionalSurveyService | null;
+    readonly repo: PostgresConditionalSurveyRepository | null;
+  };
+
+  /** Wave 26 — Fitness-for-Assessment Review (FAR): asset components,
+   *  monitoring assignments, and condition-check events. */
+  readonly far: {
+    readonly service: FarService | null;
+    readonly repo: PostgresFarRepository | null;
+  };
 
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
@@ -362,11 +493,17 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     featureFlags: null,
     gdpr: null,
     aiCostLedger: null,
+    llmRouter: null,
+    buildBudgetGuardedAnthropicClient: null,
     arrears: {
       service: null,
       repo: null,
       ledgerPort: null,
       entryLoader: null,
+    },
+    cases: {
+      service: null,
+      repo: null,
     },
     mcp: null,
     agentCertification: null,
@@ -384,6 +521,16 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     },
     propertyGrading: null,
     creditRating: null,
+    // Wave 26 — Agent Z2 slots default to null in degraded mode. Each
+    // router checks the slot and returns 503 with a clear reason when
+    // DATABASE_URL is unset.
+    sublease: { service: null, repo: null, tenantGroupRepo: null },
+    damageDeductions: { service: null, repo: null },
+    conditionalSurveys: { service: null, repo: null },
+    far: { service: null, repo: null },
+    // Wave 26 Z3 — move-out + approvals wiring.
+    moveOut: { service: null },
+    approvals: { service: null },
     eventBus,
     db: null,
     isLive: false,
@@ -574,6 +721,24 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
   });
   const arrearsEntryLoader = createPostgresArrearsEntryLoader(db);
 
+  // Wave 26 — Cases domain service + Postgres repo. The repo implements
+  // `Partial<CaseRepository>` with the surface the SLA worker + service
+  // need (createCase/findById/update/findOverdue/appendTimelineEvent)
+  // backed by the real `cases` table. The service publishes the
+  // CaseCreated/Escalated/Resolved event stream through the shared
+  // composition-root bus so downstream subscribers (notifications,
+  // autonomy audit) see them without any extra wiring.
+  //
+  // The Postgres adapter advertises `Partial<CaseRepository>` but
+  // implements every method actually invoked by the service + worker
+  // (verified in postgres-case-repository.test.ts). We cast to the
+  // full interface at the composition-root boundary only.
+  const caseRepo = new PostgresCaseRepository(db as unknown as never);
+  const caseService = new CaseService(
+    caseRepo as unknown as Parameters<typeof CaseService['prototype']['attachRepository']>[0],
+    eventBus,
+  );
+
   // Wave 9 — Feature flags (per-tenant gating of platform capabilities).
   const featureFlagsRepo = new DrizzleFeatureFlagsRepository(db);
   const featureFlagsService = createFeatureFlagsService({
@@ -590,6 +755,47 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
   // Wave 9 — AI cost ledger + per-tenant monthly budget.
   const costLedgerRepo = new DrizzleCostLedgerRepository(db);
   const aiCostLedger = createCostLedger({ repo: costLedgerRepo });
+
+  // Wave 26 Agent Z4 — multi-LLM router (Anthropic primary, OpenAI/DeepSeek
+  // fallback when their keys are set). The router itself pulls from the
+  // cost ledger for budget enforcement and usage recording. We build it
+  // lazily so the gateway still boots when no Anthropic key is present
+  // (the brain routes already return 503 BRAIN_NOT_CONFIGURED in that case).
+  const llmRouter: MultiLLMRouter | null = process.env.ANTHROPIC_API_KEY
+    ? (() => {
+        try {
+          return buildMultiLLMRouterFromEnv(aiCostLedger);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            'service-registry: buildMultiLLMRouterFromEnv failed — falling back to null',
+            err instanceof Error ? err.message : err,
+          );
+          return null;
+        }
+      })()
+    : null;
+
+  // Wave 26 Agent Z4 — pre-built Anthropic client wrapped with withBudgetGuard.
+  // Returned as a factory because the tenant context (used by the guard to
+  // call `ledger.assertWithinBudget(tenantId)` before every HTTP call) is
+  // only known at request time. Callers pass in the tenantId + optional
+  // operation tag; the returned client is structurally identical to an
+  // unguarded `AnthropicClient` so downstream services can't tell the
+  // difference.
+  const buildBudgetGuardedAnthropicClient = process.env.ANTHROPIC_API_KEY
+    ? (tenantId: string, operation?: string): BudgetGuardedAnthropicClient => {
+        const inner = createAnthropicClient({
+          apiKey: process.env.ANTHROPIC_API_KEY as string,
+          defaultModel: ModelTier.SONNET,
+        });
+        return withBudgetGuard(inner, {
+          ledger: aiCostLedger,
+          context: () => ({ tenantId, operation }),
+          provider: 'anthropic',
+        });
+      }
+    : null;
 
   // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes from
   // env; falls back to JWT_SECRET for operator convenience. In production,
@@ -681,6 +887,47 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     repo: trainingRepo,
   });
 
+  // Wave 26 — Agent Z2: build the four newly-wired repos + services.
+  // Every repo takes the shared drizzle client; services wrap the repos
+  // and accept the shared event bus so emitted events flow through the
+  // existing outbox/observability bridge.
+  const subleaseRepo = new SubleaseNs.PostgresSubleaseRepository(
+    db as unknown as SubleaseNs.PostgresSubleaseRepositoryClient,
+  );
+  const tenantGroupRepo = new SubleaseNs.PostgresTenantGroupRepository(
+    db as unknown as SubleaseNs.PostgresTenantGroupRepositoryClient,
+  );
+  const subleaseService = new SubleaseNs.SubleaseService(
+    subleaseRepo,
+    tenantGroupRepo,
+  );
+
+  const damageDeductionRepo =
+    new DamageDeductionNs.PostgresDamageDeductionRepository(
+      db as unknown as DamageDeductionNs.PostgresDamageDeductionRepositoryClient,
+    );
+  // No evidence-bundle / AI-mediator gateway at this level — the service
+  // falls back to a deterministic midpoint if ai-copilot isn't wired,
+  // which matches the behaviour documented in the service itself.
+  const damageDeductionService = new DamageDeductionNs.DamageDeductionService(
+    damageDeductionRepo,
+  );
+
+  const conditionalSurveyRepo =
+    new ConditionalSurveyNs.PostgresConditionalSurveyRepository(
+      db as unknown as ConditionalSurveyNs.PostgresConditionalSurveyRepositoryClient,
+    );
+  const conditionalSurveyService =
+    new ConditionalSurveyNs.ConditionalSurveyService(
+      conditionalSurveyRepo,
+      eventBus,
+    );
+
+  const farRepo = new FarNs.PostgresFarRepository(
+    db as unknown as FarNs.PostgresFarRepositoryClient,
+  );
+  const farService = new FarNs.FarService(farRepo, eventBus);
+
   // Wave 12 — Voice router. If neither ELEVENLABS_API_KEY nor OPENAI_API_KEY
   // is set, `voice` stays null and the HTTP router returns a clean 503
   // with a MISSING_KEY reason.
@@ -729,11 +976,17 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     featureFlags: featureFlagsService,
     gdpr: gdprService,
     aiCostLedger,
+    llmRouter,
+    buildBudgetGuardedAnthropicClient,
     arrears: {
       service: arrearsService,
       repo: arrearsRepo,
       ledgerPort: arrearsLedgerPort,
       entryLoader: arrearsEntryLoader,
+    },
+    cases: {
+      service: caseService,
+      repo: caseRepo,
     },
     // `mcp` is filled in by `buildServices` after the registry is
     // constructed, because the MCP server takes the populated registry
@@ -769,6 +1022,43 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     creditRating: createCreditRatingService({
       repo: new PostgresCreditRatingRepository(db),
     }),
+    // Wave 26 — Agent Z2: four previously-unwired repos now live.
+    sublease: {
+      service: subleaseService,
+      repo: subleaseRepo,
+      tenantGroupRepo,
+    },
+    damageDeductions: {
+      service: damageDeductionService,
+      repo: damageDeductionRepo,
+    },
+    conditionalSurveys: {
+      service: conditionalSurveyService,
+      repo: conditionalSurveyRepo,
+    },
+    far: {
+      service: farService,
+      repo: farRepo,
+    },
+    // Wave 26 Z3 — Move-out checklist (step-based close-out workflow).
+    // Postgres-backed via migration 0097. Null in degraded mode.
+    moveOut: {
+      service: new MoveOutChecklistService(new PostgresMoveOutRepository(db)),
+    },
+    // Wave 26 Z3 — Approval workflow. Request repo -> approval_requests (0097);
+    // policy repo wraps approval_policies (0018) so per-tenant overrides kick
+    // in transparently. Approver resolver left undefined for now — pending
+    // user-directory port; service falls back gracefully.
+    approvals: {
+      service: new ApprovalWorkflowService(
+        // Repo-interface pagination shape drifted (limit/offset vs
+        // page/pageSize) across the domain-models upgrade. The service
+        // itself is @ts-nocheck for the same reason; cast here to match.
+        new PostgresApprovalRequestRepository(db) as unknown as never,
+        new PostgresApprovalPolicyRepositoryAdapter(db) as unknown as never,
+        eventBus,
+      ),
+    },
     eventBus,
     db,
     isLive: true,

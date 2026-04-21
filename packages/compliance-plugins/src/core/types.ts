@@ -100,6 +100,14 @@ export interface DocumentTemplate {
   readonly locale: string;
 }
 
+// Forward-declared port types (full definitions in ../ports/). These are
+// imported as types only to avoid a circular-barrel at runtime.
+import type { TaxRegimePort } from '../ports/tax-regime.port.js';
+import type { TaxFilingPort } from '../ports/tax-filing.port.js';
+import type { PaymentRailPort } from '../ports/payment-rail.port.js';
+import type { TenantScreeningPort } from '../ports/tenant-screening.port.js';
+import type { LeaseLawPort } from '../ports/lease-law.port.js';
+
 export interface CountryPlugin {
   /** ISO-3166-1 alpha-2 — upper-case, exactly 2 letters. */
   readonly countryCode: CountryCode;
@@ -121,4 +129,19 @@ export interface CountryPlugin {
   readonly compliance: CompliancePolicy;
   /** Document templates available for this country. */
   readonly documentTemplates: readonly DocumentTemplate[];
+  // -------------------------------------------------------------------------
+  // Pluggable ports — every country plugin SHOULD implement all five. The
+  // `resolvePlugin()` registry layers DEFAULT_* implementations for any
+  // plugin that does not, so callers can rely on non-null access.
+  // -------------------------------------------------------------------------
+  /** Rental-income withholding. */
+  readonly taxRegime?: TaxRegimePort;
+  /** Regulator-ready filing payload producer. */
+  readonly taxFiling?: TaxFilingPort;
+  /** Preferred payment instruments. */
+  readonly paymentRails?: PaymentRailPort;
+  /** External credit-bureau adapter (env-gated, consent-required). */
+  readonly tenantScreening?: TenantScreeningPort;
+  /** Jurisdiction-specific lease law. */
+  readonly leaseLaw?: LeaseLawPort;
 }
