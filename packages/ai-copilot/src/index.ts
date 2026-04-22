@@ -482,6 +482,14 @@ export * from './credit-rating/index.js';
 export * as AiNative from './ai-native/index.js';
 
 // ============================================
+// Learning-Loop — Wave 28. Closed self-improvement substrate:
+//   outcome → memory → pattern → policy proposal → dry-run → human → rollout
+// Namespaced so the learning-loop surface stays distinct from the
+// existing LearningEngine / LearningJourneys exports.
+// ============================================
+export * as LearningLoop from './learning-loop/index.js';
+
+// ============================================
 // Risk-Recompute dispatcher — Wave 27 Agent F (Part B.6). Event-driven
 // risk-score recomputation. Subscribes to the platform event bus and
 // fans-out payment/lease/case/inspection/message events to the
@@ -541,4 +549,73 @@ export {
   type TenantBrandingRepository,
   type TenantBrandingConfig,
 } from './branding/tenant-branding.store.js';
+
+// ============================================
+// Wave 28 — Head Briefing. Cohesive first-login morning screen that
+// assembles autonomy activity, pending approvals, escalations, KPI
+// deltas, recommendations, and anomalies into a single BriefingDocument
+// plus markdown + voice-narration renderers. Namespaced so the
+// BriefingDocument / RecommendationsSource symbols don't collide with
+// the existing BriefingGenerator / StrategicAdvisor exports from the
+// autonomy barrel.
+// ============================================
+export * as HeadBriefing from './head-briefing/index.js';
+
+// ============================================
+// Wave 28 — Junior-AI factory + new-head onboarding tour.
+// Namespaced so these new public surfaces do not collide with the
+// existing onboarding / autonomy symbol sets. Team leads provision
+// scoped juniors via JuniorAIFactory; fresh heads get a guided tour
+// via NewHeadTour (complementary to, not a replacement for, the
+// 7-step autonomy policy wizard).
+// ============================================
+export * as JuniorAIFactory from './junior-ai-factory/index.js';
+export * as NewHeadTour from './onboarding/new-head/index.js';
+
+// ============================================
+// Wave 28 — Linguistic/Cognitive DNA ports.
+//
+// EstateGlossary — curated multilingual estate-term corpus with
+// jurisdiction tagging + statute citations; grounds legal-drafter,
+// compliance, and tenant-chat output.
+//
+// DpMemory — cross-tenant pattern library with differential-privacy
+// aggregation, consent manager, and budget ledger.
+//
+// ExtendedThinking — stake-aware router toggling extended inner-loop
+// reasoning for high-stakes decisions (terminations, evictions,
+// tribunal filings) vs low-stakes (reminders).
+//
+// MultiScriptHarness — regression gate across Arabic, CJK, Devanagari,
+// Swahili, and Latin EMEA/LATAM locales with rubric-based scoring.
+//
+// ShadowMode — dry-run simulator that records what autonomy *would*
+// have done at elevated levels before trust is granted.
+//
+// LearningReflection — per-action self-reflection written back into
+// semantic memory (I did X, outcome was Y, next time I'd Z).
+//
+// ProactiveLoop — closes the draft-propose-approve-execute loop for
+// predictive-intervention signals across domains.
+//
+// VoicePersonaDNA — pinned tone/pace/register/taboo rules per persona,
+// with a consistency validator + drift detector.
+//
+// HeadBriefing — cohesive first-login morning screen composer
+// (already namespaced above; kept adjacent for the linguistic DNA
+// surface map).
+//
+// ArrearsLadder / MoveOut / TenderToContract — explicit state-machine
+// orchestrators for previously-implicit multi-step workflows.
+// ============================================
+export * as EstateGlossary from './estate-glossary/index.js';
+export * as DpMemory from './dp-memory/index.js';
+export * as ExtendedThinking from './extended-thinking/index.js';
+export * as MultiScriptHarness from './multi-script-harness/index.js';
+export * as ShadowMode from './shadow-mode/index.js';
+export * as VoicePersonaDNA from './voice-persona-dna/index.js';
+export * as ProactiveLoop from './proactive-loop/index.js';
+export * as ArrearsLadderOrchestrator from './orchestrators/arrears-ladder/index.js';
+export * as MoveOutOrchestrator from './orchestrators/move-out/index.js';
+export * as TenderToContractOrchestrator from './orchestrators/tender-to-contract/index.js';
 

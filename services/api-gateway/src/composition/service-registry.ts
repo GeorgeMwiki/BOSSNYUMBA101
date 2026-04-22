@@ -198,6 +198,7 @@ import { OrgAwareness } from '@bossnyumba/ai-copilot';
 import {
   AutonomyPolicyService,
   InMemoryAutonomyPolicyRepository,
+  buildDefaultPolicy,
 } from '@bossnyumba/ai-copilot/autonomy';
 import { PostgresAutonomyPolicyRepository } from './autonomy-policy-repository.js';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity).
@@ -205,6 +206,23 @@ import {
   TenantBrandingService,
   InMemoryTenantBrandingRepository,
 } from '@bossnyumba/ai-copilot';
+// Wave 28 — Head Briefing composer + source-port types. Assembles the
+// cohesive morning screen from overnight autonomy, pending approvals,
+// escalations, KPI deltas, recommendations, and anomalies. Ports are
+// wired to in-memory stubs in degraded mode so the /head/briefing
+// endpoint always returns a shaped document.
+import { HeadBriefing } from '@bossnyumba/ai-copilot';
+import {
+  ExceptionInbox,
+  InMemoryExceptionRepository,
+} from '@bossnyumba/ai-copilot/autonomy';
+// Wave 28 — Junior-AI factory (team-lead self-service provisioning).
+// Repo is in-memory in both degraded and live modes until the Postgres
+// adapter lands; provisioning state is non-critical and recoverable.
+import {
+  JuniorAIFactoryService,
+  InMemoryJuniorAIRepository,
+} from '@bossnyumba/ai-copilot/junior-ai-factory';
 
 // Wave 26 — Agent Z2: four Postgres repos that Wave-25 Agent T flagged as
 // "tests passing but no router / composition wiring". Importing through
@@ -362,6 +380,24 @@ export interface ServiceRegistry {
     readonly service: TenantBrandingService;
   };
 
+  /** Head briefing (Wave 28) — cohesive morning screen composer. Pulls
+   *  from overnight-autonomy / pending-approvals / escalations / KPI /
+   *  recommendations / anomalies sources and returns a single
+   *  BriefingDocument. In-memory stubs in both live + degraded modes
+   *  until real data-warehouse + ambient-brain adapters land. */
+  readonly headBriefing: {
+    readonly composer: HeadBriefing.BriefingComposer;
+  };
+
+  /** Junior-AI factory (Wave 28) — self-service provisioning for team
+   *  leads. Each junior inherits a strict subset of the tenant
+   *  AutonomyPolicy and is lifecycle-bounded. In-memory repo in both
+   *  modes (provisioning state is non-critical; Postgres adapter is
+   *  a follow-up). */
+  readonly juniorAI: {
+    readonly factoryService: JuniorAIFactoryService;
+  };
+
   /** Property grading — A–F report card scoring + portfolio rollup.
    *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
   readonly propertyGrading: PropertyGradingService | null;
@@ -487,6 +523,92 @@ function buildOrgAwareness(eventBus: EventBus): OrgAwarenessRegistry {
   };
 }
 
+/**
+ * Build a head-briefing composer backed by in-memory stub sources.
+ *
+ * Wave 28 ships the composer + its source-port contract only. The real
+ * adapters (AutonomousActionAudit, ApprovalGrantService.listActive,
+ * ExceptionInbox.listOpen, KPI warehouse, StrategicAdvisor, anomaly
+ * pattern-miner) can be swapped in iteratively by overriding individual
+ * dependencies on the returned composer deps shape. Until then every
+ * request returns a shaped-but-empty BriefingDocument, which is the
+ * pilot-acceptable behaviour for a brand-new endpoint.
+ */
+function buildHeadBriefingComposer(
+  exceptionInbox: ExceptionInbox | null,
+): HeadBriefing.BriefingComposer {
+  const overnightSource: HeadBriefing.OvernightSource = {
+    async summarize() {
+      return {
+        totalAutonomousActions: 0,
+        byDomain: {},
+        notableActions: [],
+      };
+    },
+  };
+  const pendingApprovalsSource: HeadBriefing.PendingApprovalsSource = {
+    async list() {
+      return { count: 0, items: [] };
+    },
+  };
+  const escalationsSource: HeadBriefing.EscalationsSource = {
+    async list(tenantId) {
+      if (!exceptionInbox) {
+        return {
+          count: 0,
+          byPriority: { P1: 0, P2: 0, P3: 0 },
+          items: [],
+        };
+      }
+      const open = await exceptionInbox.listOpen(tenantId, { limit: 10 });
+      const byPriority = { P1: 0, P2: 0, P3: 0 };
+      for (const e of open) {
+        byPriority[e.priority] = (byPriority[e.priority] ?? 0) + 1;
+      }
+      return {
+        count: open.length,
+        byPriority,
+        items: open.map((e) => ({
+          exceptionId: e.id,
+          priority: e.priority,
+          summary: e.title,
+          domain: e.domain,
+        })),
+      };
+    },
+  };
+  const kpiSource: HeadBriefing.KpiSource = {
+    async fetch() {
+      return {
+        occupancyPct: { value: 0, delta7d: 0 },
+        collectionsRate: { value: 0, delta7d: 0 },
+        arrearsDays: { value: 0, delta7d: 0 },
+        maintenanceSLA: { value: 0, delta7d: 0 },
+        tenantSatisfaction: { value: 0, delta30d: 0 },
+        noi: { value: 0, delta30d: 0 },
+      };
+    },
+  };
+  const recommendationsSource: HeadBriefing.RecommendationsSource = {
+    async list() {
+      return [];
+    },
+  };
+  const anomaliesSource: HeadBriefing.AnomaliesSource = {
+    async list() {
+      return [];
+    },
+  };
+  return HeadBriefing.createBriefingComposer({
+    overnightSource,
+    pendingApprovalsSource,
+    escalationsSource,
+    kpiSource,
+    recommendationsSource,
+    anomaliesSource,
+  });
+}
+
 function degradedRegistry(eventBus: EventBus): ServiceRegistry {
   return {
     marketplace: { listing: null, enquiry: null, tender: null },
@@ -536,6 +658,25 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       // Wave 27 Agent E — tenant branding. In-memory repo is fine in
       // degraded mode; overrides don't persist across restarts.
       service: new TenantBrandingService(new InMemoryTenantBrandingRepository()),
+    },
+    headBriefing: {
+      // Wave 28 — head briefing composer with in-memory source stubs.
+      // Degraded mode uses a fresh ExceptionInbox backed by an empty
+      // in-memory repo so the escalations section returns zero instead
+      // of throwing.
+      composer: buildHeadBriefingComposer(
+        new ExceptionInbox({ repository: new InMemoryExceptionRepository() }),
+      ),
+    },
+    juniorAI: {
+      // Wave 28 — team-lead self-service junior-AI factory. In-memory
+      // repo + a degraded autonomy-policy loader that returns a
+      // permissive default (level 0, empty domain policies) so the
+      // policy-subset check still runs and routes always shape.
+      factoryService: new JuniorAIFactoryService({
+        repository: new InMemoryJuniorAIRepository(),
+        autonomyPolicyLoader: async (tenantId: string) => buildDefaultPolicy(tenantId),
+      }),
     },
     propertyGrading: null,
     creditRating: null,
@@ -1030,6 +1171,34 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       // (defaults resolve cleanly) so data loss on restart is acceptable.
       service: new TenantBrandingService(new InMemoryTenantBrandingRepository()),
     },
+    headBriefing: {
+      // Wave 28 — head briefing composer. Live mode still uses in-memory
+      // sources for now; the composer's port-based design lets us swap
+      // individual sources (AutonomousActionAudit, ApprovalGrantService,
+      // StrategicAdvisor, KPI warehouse, ambient-brain anomaly miner)
+      // in iteratively without touching the router or the endpoint
+      // contract. ExceptionInbox is shared with the Wave-13 autonomy
+      // escalation-inbox pattern — an empty in-memory repo here keeps
+      // the section shaped even before the Postgres adapter lands.
+      composer: buildHeadBriefingComposer(
+        new ExceptionInbox({ repository: new InMemoryExceptionRepository() }),
+      ),
+    },
+    juniorAI: (() => {
+      // Wave 28 — junior-AI factory. In-memory repo; the autonomy-policy
+      // loader delegates to the live PolicyService so provisioned
+      // juniors inherit each tenant's actual policy, not a default.
+      const livePolicyService = new AutonomyPolicyService({
+        repository: new PostgresAutonomyPolicyRepository(db),
+      });
+      return {
+        factoryService: new JuniorAIFactoryService({
+          repository: new InMemoryJuniorAIRepository(),
+          autonomyPolicyLoader: (tenantId: string) =>
+            livePolicyService.getPolicy(tenantId),
+        }),
+      };
+    })(),
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service
     // class lives in ai-copilot (pure business logic). We compose here.

@@ -72,6 +72,16 @@ export {
   next,
   startOnboarding,
 } from './onboarding-flow.js';
+export { withAutonomyGuard } from './guard.js';
+export type {
+  AutonomyGuardContext,
+  AutonomyGuardFn,
+  AutonomyActionThunk,
+  GuardResult,
+  WithAutonomyGuardDeps,
+  OnApprovalRequiredFn,
+  OnApprovalRequiredInput,
+} from './guard.js';
 export type {
   OnboardingAdvance,
   OnboardingAnswer,

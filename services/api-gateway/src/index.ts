@@ -132,6 +132,10 @@ import tenantBrandingRouter from './routes/tenant-branding.router';
 import auditTrailRouter from './routes/audit-trail.router';
 // Wave 27 Agent F — Risk-recompute dispatcher manual-trigger surface.
 import { createRiskRecomputeRouter } from './routes/risk-recompute.router';
+// Wave 28 — Head briefing cohesive morning screen (JSON / markdown / voice).
+import headBriefingRouter from './routes/head-briefing.router';
+// Wave 28 — Junior-AI factory (team-lead self-service provisioning).
+import juniorAIRouter from './routes/junior-ai.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import {
@@ -673,6 +677,10 @@ api.route('/task-agents', taskAgentsRouter);
 api.route('/tenant-branding', tenantBrandingRouter);
 // Wave 27 Agent C — Audit Trail v2 (record / verify / bundle / entries)
 api.route('/audit-trail', auditTrailRouter);
+// Wave 28 — Head briefing (cohesive morning screen)
+api.route('/head/briefing', headBriefingRouter);
+// Wave 28 — Junior-AI factory (team-lead self-service provisioning)
+api.route('/junior-ai', juniorAIRouter);
 // Wave 27 Agent F — Risk-recompute manual trigger. Accessors close over
 // the heartbeat supervisor (constructed earlier) so the router returns
 // 503 cleanly when the dispatcher is not wired.

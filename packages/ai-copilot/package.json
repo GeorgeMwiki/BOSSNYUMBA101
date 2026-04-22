@@ -70,13 +70,29 @@
       "types": "./src/audit-trail/index.ts",
       "default": "./dist/audit-trail/index.js"
     },
+    "./head-briefing": {
+      "types": "./src/head-briefing/index.ts",
+      "default": "./dist/head-briefing/index.js"
+    },
     "./risk-recompute": {
       "types": "./src/risk-recompute/index.ts",
       "default": "./dist/risk-recompute/index.js"
     },
+    "./learning-loop": {
+      "types": "./src/learning-loop/index.ts",
+      "default": "./dist/learning-loop/index.js"
+    },
     "./branding": {
       "types": "./src/branding/index.ts",
       "default": "./dist/branding/index.js"
+    },
+    "./junior-ai-factory": {
+      "types": "./src/junior-ai-factory/index.ts",
+      "default": "./dist/junior-ai-factory/index.js"
+    },
+    "./onboarding/new-head": {
+      "types": "./src/onboarding/new-head/index.ts",
+      "default": "./dist/onboarding/new-head/index.js"
     }
   },
   "scripts": {
