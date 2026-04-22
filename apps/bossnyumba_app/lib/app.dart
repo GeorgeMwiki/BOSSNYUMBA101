@@ -11,7 +11,7 @@ class BossNyumbaApp extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final router = createGoRouter(auth);
     return MaterialApp.router(
-      title: 'BOSSNYUMBA',
+      title: 'BossNyumba',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

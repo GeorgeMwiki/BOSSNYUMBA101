@@ -7,7 +7,7 @@ import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
-  title: 'How it works — BOSSNYUMBA',
+  title: 'How it works — BossNyumba',
   description:
     'One brain across every role. Talk anywhere, and Mr. Mwikila teaches, acts, and learns.',
 };

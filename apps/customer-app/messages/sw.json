@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA",
+    "title": "BossNyumba",
     "tagline": "Msaidizi wako wa usimamizi wa nyumba na mali"
   },
   "chat": {
@@ -94,17 +94,17 @@
     "openDemo": "Fungua onyesho la dakika 5",
     "seeInAction": "Mwone Bw. Mwikila akifanya kazi",
     "launchChat": "Fungua gumzo",
-    "ownersTitle": "BOSSNYUMBA kwa wamiliki wa mali",
+    "ownersTitle": "BossNyumba kwa wamiliki wa mali",
     "ownersSubtitle": "Otomatisha kazi za kawaida, uhifadhi uamuzi. Ukumbusho wa kodi, upatanishi, ripoti kamili.",
-    "tenantsTitle": "BOSSNYUMBA kwa wapangaji",
+    "tenantsTitle": "BossNyumba kwa wapangaji",
     "tenantsSubtitle": "Stakabadhi, tiketi za matengenezo, na notisi sehemu moja. Kwa Kiingereza au Kiswahili.",
-    "managersTitle": "BOSSNYUMBA kwa mameneja wa mali",
+    "managersTitle": "BossNyumba kwa mameneja wa mali",
     "managersSubtitle": "Simamia mashamba 200 peke yako. Ripoti za wamiliki, uwakilishi wa wachuuzi, na msaidizi anayeandika kabla hujauliza.",
-    "stationMastersTitle": "BOSSNYUMBA kwa walinzi wa geti",
+    "stationMastersTitle": "BossNyumba kwa walinzi wa geti",
     "stationMastersSubtitle": "Ripoti za matukio kwa sauti ya Kiswahili. Inafanya kazi hata bila mtandao.",
     "pricingTitle": "Bei iliyotengenezwa kwa mali za Afrika Mashariki",
     "pricingSubtitle": "Viwango vinne. Zungumza na Bw. Mwikila kwa bei maalum.",
-    "howItWorksTitle": "Jinsi BOSSNYUMBA inavyofanya kazi",
+    "howItWorksTitle": "Jinsi BossNyumba inavyofanya kazi",
     "howItWorksSubtitle": "Akili moja kwa kila jukumu. Zungumza mahali popote, naye anajifunza.",
     "compareTitle": "Tunalinganaje",
     "compareSubtitle": "Ulinganishi wa uwazi na AppFolio, Yardi, na majedwali.",
@@ -128,7 +128,7 @@
     "tierUnlimited": "Bila kikomo"
   },
   "authLogin": {
-    "title": "BOSSNYUMBA",
+    "title": "BossNyumba",
     "subtitle": "Ingia ili kusimamia upangaji wako",
     "phoneLabel": "Nambari ya Simu",
     "phonePlaceholder": "+XXX XXX XXX XXX",
@@ -172,7 +172,7 @@
     "sessionFooter": "Data haihifadhiwi hadi ujiunge na orodha ya kusubiri au ufungue akaunti.",
     "demosTitle": "Tazama Bw. Mwikila akifanya kazi",
     "demosSubtitle": "Demo tatu zilizokamilika. Hakuna usajili, hakuna barua pepe — uthibitisho tu kwamba ubongo ni halisi.",
-    "blackboardConceptTitle": "BOSSNYUMBA kwa muhtasari",
+    "blackboardConceptTitle": "BossNyumba kwa muhtasari",
     "blackboardEmpty": "Muulize Bw. Mwikila akueleze kuhusu uwezo wa kulipa kodi, ripoti ya mmiliki, au matengenezo — taswira itaonekana hapa.",
     "ctaOwnerAdvisor": "Fungua Mshauri wa Mmiliki",
     "ctaTenantAssistant": "Fungua Msaidizi wa Mpangaji",
@@ -432,7 +432,7 @@
   },
   "howItWorks": {
     "heroTitle": "Akili moja, katika kila jukumu, katika kila lugha.",
-    "heroSubtitle": "BOSSNYUMBA siyo gumzo tu lililoongezwa kwenye programu. Bidhaa ni AI — na Bw. Mwikila ni akili ile ile iwe wewe ni mmiliki Jumatatu, mpangaji Jumatano, au mlinzi saa 2 usiku.",
+    "heroSubtitle": "BossNyumba siyo gumzo tu lililoongezwa kwenye programu. Bidhaa ni AI — na Bw. Mwikila ni akili ile ile iwe wewe ni mmiliki Jumatatu, mpangaji Jumatano, au mlinzi saa 2 usiku.",
     "askHim": "Muulize chochote",
     "step1Title": "Zungumza na Bw. Mwikila popote",
     "step2Title": "Anafundisha, kisha anafanya",
@@ -440,22 +440,22 @@
   },
   "forOwners": {
     "heroTitle": "Endesha mali yako kama mara kumi ya ukubwa wake.",
-    "heroSubtitle": "Iwe una vitengo 8 au 80, BOSSNYUMBA inashughulikia kazi ya usimamizi ya Jumapili ili Jumatatu yako iweze kuhusu maamuzi makubwa. Bw. Mwikila anafanya vikumbusho, upatanisho, na ripoti — unabaki na uamuzi.",
+    "heroSubtitle": "Iwe una vitengo 8 au 80, BossNyumba inashughulikia kazi ya usimamizi ya Jumapili ili Jumatatu yako iweze kuhusu maamuzi makubwa. Bw. Mwikila anafanya vikumbusho, upatanisho, na ripoti — unabaki na uamuzi.",
     "heroCta": "Zungumza na Bw. Mwikila kuhusu mali yako"
   },
   "forManagers": {
     "heroTitle": "Endesha vitengo 200 kama mshirika mkuu angeviendesha.",
-    "heroSubtitle": "BOSSNYUMBA imejengwa kwa mameneja walio katikati: wanaowajibika kwa wamiliki, kwa wapangaji, kwa wauzaji, na bado wanafanya rent roll. Bw. Mwikila anachukua wingi ili uwe bora kwa simu muhimu.",
+    "heroSubtitle": "BossNyumba imejengwa kwa mameneja walio katikati: wanaowajibika kwa wamiliki, kwa wapangaji, kwa wauzaji, na bado wanafanya rent roll. Bw. Mwikila anachukua wingi ili uwe bora kwa simu muhimu.",
     "heroCta": "Nionyeshe dashibodi ya meneja"
   },
   "forTenants": {
     "heroTitle": "Nyumba yako, kwa masharti yako.",
-    "heroSubtitle": "Kila shilingi ya kodi unayolipa inaonekana kwenye dashibodi yako. Kila ombi la matengenezo lina ratiba. Kila notisi inakuja kwa Kiingereza au Kiswahili — chaguo lako. BOSSNYUMBA inakupa ukweli sawa anaona mwenye nyumba.",
+    "heroSubtitle": "Kila shilingi ya kodi unayolipa inaonekana kwenye dashibodi yako. Kila ombi la matengenezo lina ratiba. Kila notisi inakuja kwa Kiingereza au Kiswahili — chaguo lako. BossNyumba inakupa ukweli sawa anaona mwenye nyumba.",
     "heroCta": "Ona dashibodi ya mpangaji inavyoonekana"
   },
   "forStationMasters": {
     "heroTitle": "Mlinzi ambaye hatimaye anasikika.",
-    "heroSubtitle": "Ikiwa unaendesha mali — kumbukumbu za lango, usomaji wa mita, ripoti za yaliyotokea usiku — BOSSNYUMBA ni zana ya kwanza iliyojengwa kwa kazi yako. Zungumza na simu kwa Kiswahili. Inafanya mengine.",
+    "heroSubtitle": "Ikiwa unaendesha mali — kumbukumbu za lango, usomaji wa mita, ripoti za yaliyotokea usiku — BossNyumba ni zana ya kwanza iliyojengwa kwa kazi yako. Zungumza na simu kwa Kiswahili. Inafanya mengine.",
     "heroCta": "Ona mfano wa mlinzi"
   },
   "pricingPage": {
@@ -466,7 +466,7 @@
   },
   "comparePage": {
     "heroTitle": "Ulinganisho wa ukweli.",
-    "heroSubtitle": "Ambapo BOSSNYUMBA inashinda, ambapo haifai, na lini unapaswa kuchagua mwingine. Hakuna uuzaji wa uongo — kama AppFolio itakufaa zaidi, tutakuambia.",
+    "heroSubtitle": "Ambapo BossNyumba inashinda, ambapo haifai, na lini unapaswa kuchagua mwingine. Hakuna uuzaji wa uongo — kama AppFolio itakufaa zaidi, tutakuambia.",
     "heroCta": "Muulize Bw. Mwikila ni ipi inayokufaa",
     "criterion": "Kigezo",
     "appfolioHeader": "AppFolio",
@@ -475,7 +475,7 @@
     "pickAppfolio": "Chagua AppFolio kama...",
     "pickYardi": "Chagua Yardi kama...",
     "pickSpreadsheet": "Chagua laha ya hesabu kama...",
-    "pickBossnyumba": "Chagua BOSSNYUMBA kama..."
+    "pickBossnyumba": "Chagua BossNyumba kama..."
   },
   "blogIndex": {
     "title": "Maarifa ya usimamizi wa mali",
@@ -639,7 +639,7 @@
     "later": "Baadaye"
   },
   "installPrompt": {
-    "title": "Sakinisha BOSSNYUMBA",
+    "title": "Sakinisha BossNyumba",
     "body": "Ongeza kwenye skrini yako ya nyumbani kwa ufikiaji wa haraka na matumizi ya nje ya mtandao.",
     "install": "Sakinisha",
     "notNow": "Si sasa",
@@ -673,7 +673,7 @@
     "submitCounterAria": "Wasilisha pendekezo la kukataa"
   },
   "onboardingDashboard": {
-    "welcomeHeading": "Karibu BOSSNYUMBA",
+    "welcomeHeading": "Karibu BossNyumba",
     "welcomeGreeting": "Hebu tukuandae katika nyumba yako mpya, {name}!",
     "youFallback": "wewe",
     "yourProgress": "Maendeleo Yako",

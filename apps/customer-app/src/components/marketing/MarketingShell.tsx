@@ -33,7 +33,7 @@ export function MarketingShell({ title, subtitle, heroCtaLabel, children }: Prop
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link href="/" className="text-lg font-bold tracking-tight">
-            BOSSNYUMBA
+            BossNyumba
           </Link>
           <nav className="hidden gap-4 md:flex">
             {NAV_LINKS.map((l) => (
@@ -76,7 +76,7 @@ export function MarketingShell({ title, subtitle, heroCtaLabel, children }: Prop
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-slate-600">
-          BOSSNYUMBA — built for East African estate owners, tenants, managers, and station masters.
+          BossNyumba — built for East African estate owners, tenants, managers, and station masters.
           Ask Mr. Mwikila anything. Data stays on your side.
         </div>
       </footer>

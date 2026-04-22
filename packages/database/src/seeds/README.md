@@ -35,7 +35,7 @@ rolls back cleanly — you can rerun after fixing the cause.
 ### `demo` — Demo Estate Corporation
 
 Generic fixture modeling a large multi-district public-sector estate client.
-Intentionally anonymous so BOSSNYUMBA customers of any size/region see a
+Intentionally anonymous so BossNyumba customers of any size/region see a
 recognizable shape when exploring the product.
 
 | Area              | Count / detail                                                              |

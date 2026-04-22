@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to BOSSNYUMBA are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to BossNyumba are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 

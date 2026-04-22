@@ -156,7 +156,7 @@ export function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between">
         <div className="flex items-center gap-3">
           <Home className="h-10 w-10 text-white" />
-          <span className="text-2xl font-bold text-white">BOSSNYUMBA</span>
+          <span className="text-2xl font-bold text-white">BossNyumba</span>
         </div>
         <div>
           <h1 className="text-4xl font-bold text-white mb-4">{t('brandTagline')}</h1>
@@ -172,7 +172,7 @@ export function LoginPage() {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <Home className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">BOSSNYUMBA</span>
+            <span className="text-xl font-bold text-gray-900">BossNyumba</span>
           </div>
 
           {step === 'credentials' && (

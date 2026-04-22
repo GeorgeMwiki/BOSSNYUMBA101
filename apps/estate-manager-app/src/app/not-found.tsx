@@ -1,23 +1,50 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { Logomark } from '@bossnyumba/design-system';
 
+/**
+ * Estate Manager — 404 route (App Router).
+ *
+ * Dark-first operator surface, warm amber signal, display serif for the
+ * vault-number. Copy plays on the vault/door metaphor in the Logomark.
+ */
 export default function NotFound() {
-  const t = useTranslations('notFoundPage');
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white p-8">
-      <div className="mx-auto max-w-md text-center">
-        <p className="mb-2 text-6xl font-bold text-sky-500">404</p>
-        <h2 className="mb-2 text-xl font-semibold text-gray-900">{t('heading')}</h2>
-        <p className="mb-8 text-sm text-gray-500">
-          {t('desc')}
-        </p>
-        <Link
-          href="/"
-          className="rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
-        >
-          {t('goHome')}
-        </Link>
+    <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16 text-foreground">
+      <div className="absolute left-6 top-6">
+        <Logomark size={32} aria-label="BossNyumba" />
       </div>
-    </div>
+
+      <div className="mx-auto w-full max-w-xl text-center">
+        <p
+          className="font-display text-[9rem] font-medium leading-none tracking-tight text-signal-500/80 sm:text-[11rem]"
+          aria-hidden="true"
+        >
+          404
+        </p>
+
+        <h1 className="mt-6 font-display text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+          This door doesn&rsquo;t open.
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-base text-muted-foreground">
+          The route you followed isn&rsquo;t here. Try the home page, or ask
+          Mwikila what you were looking for.
+        </p>
+
+        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-md bg-signal-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-signal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Back to home
+          </Link>
+          <Link
+            href="/brain"
+            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Ask Mwikila
+          </Link>
+        </div>
+      </div>
+    </main>
   );
 }

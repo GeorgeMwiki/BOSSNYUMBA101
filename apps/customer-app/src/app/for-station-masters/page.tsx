@@ -8,7 +8,7 @@ import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
 export const metadata = {
-  title: 'For Station Masters — BOSSNYUMBA',
+  title: 'For Station Masters — BossNyumba',
   description:
     'Voice-first incident logging in Swahili. Offline when connectivity dies. Your work, finally visible to the manager.',
 };

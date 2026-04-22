@@ -2,10 +2,8 @@ import Link from 'next/link';
 import { Logomark } from '@bossnyumba/design-system';
 
 /**
- * Customer app — 404 route (App Router).
- *
- * Dark-first, warm amber signal, display serif for the vault-number.
- * Copy plays on the vault/door metaphor in the Logomark.
+ * Owner portal — 404 route (App Router). Owner surface is light-first,
+ * so tokens resolve to paper/ink; amber stays the single signal color.
  */
 export default function NotFound() {
   return (
@@ -16,7 +14,7 @@ export default function NotFound() {
 
       <div className="mx-auto w-full max-w-xl text-center">
         <p
-          className="font-display text-[9rem] font-medium leading-none tracking-tight text-signal-500/80 sm:text-[11rem]"
+          className="font-display text-[9rem] font-medium leading-none tracking-tight text-signal-500/90 sm:text-[11rem]"
           aria-hidden="true"
         >
           404
@@ -33,13 +31,13 @@ export default function NotFound() {
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-md bg-signal-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-signal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex items-center justify-center rounded-md bg-signal-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-signal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Back to home
           </Link>
           <Link
-            href="/assistant"
-            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href="/vendors"
+            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Ask Mwikila
           </Link>

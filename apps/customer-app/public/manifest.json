@@ -1,6 +1,6 @@
 {
-  "name": "BOSSNYUMBA - Tenant App",
-  "short_name": "BOSSNYUMBA",
+  "name": "BossNyumba - Tenant App",
+  "short_name": "BossNyumba",
   "description": "Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.",
   "start_url": "/",
   "scope": "/",

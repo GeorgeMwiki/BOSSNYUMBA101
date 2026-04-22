@@ -41,7 +41,7 @@ const CTA_ROLE_KEY = 'bossnyumba_public_role_hint';
 type RoleHint = 'owner' | 'tenant' | 'manager';
 
 const INITIAL_GREETING =
-  'Hi, I am Mr. Mwikila. Are you an owner, a tenant, or a property manager? That tells me which BOSSNYUMBA capability to show you first.';
+  'Hi, I am Mr. Mwikila. Are you an owner, a tenant, or a property manager? That tells me which BossNyumba capability to show you first.';
 
 export default function HomePage() {
   const t = useTranslations('homeLanding');
@@ -209,7 +209,7 @@ export default function HomePage() {
       <section className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           <header className="mb-8 text-center lg:text-left">
-            <h1 className="text-4xl font-bold text-slate-900">BOSSNYUMBA</h1>
+            <h1 className="text-4xl font-bold text-slate-900">BossNyumba</h1>
             <p className="mt-2 text-lg text-slate-600">
               {t('tagline')}
             </p>

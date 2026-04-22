@@ -1,6 +1,6 @@
 # @bossnyumba/ai-copilot
 
-AI persona runtime for BOSSNYUMBA. Owns prompt templates, provider adapters (Anthropic by default), deterministic-before-LLM gates, and the `BrainRegistry` that domain services pull personas from.
+AI persona runtime for BossNyumba. Owns prompt templates, provider adapters (Anthropic by default), deterministic-before-LLM gates, and the `BrainRegistry` that domain services pull personas from.
 
 ## Usage
 

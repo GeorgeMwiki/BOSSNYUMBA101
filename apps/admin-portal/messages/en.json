@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA Admin",
+    "title": "BossNyumba Admin",
     "tagline": "Platform operations console"
   },
   "a11y": {
@@ -16,7 +16,7 @@
     "toolComplete": "{name} complete",
     "toolFailed": "{name} failed",
     "welcomeHeroTitle": "Manager Chat",
-    "welcomeHeroSubtitle": "Operations briefing powered by the BOSSNYUMBA Brain.",
+    "welcomeHeroSubtitle": "Operations briefing powered by the BossNyumba Brain.",
     "ctaOwner": "Owner Advisor",
     "ctaTenant": "Tenant Assistant",
     "ctaManager": "Manager Chat",
@@ -222,7 +222,7 @@
   },
   "login": {
     "title": "Internal Admin Portal",
-    "subtitle": "BOSSNYUMBA System Administration",
+    "subtitle": "BossNyumba System Administration",
     "emailLabel": "Email address",
     "emailPlaceholder": "admin@company.com",
     "passwordLabel": "Password",
@@ -594,7 +594,7 @@
     "submitting": "Submitting…"
   },
   "adminHome": {
-    "title": "BOSSNYUMBA Admin Portal",
+    "title": "BossNyumba Admin Portal",
     "internal": "Internal",
     "totalTenants": "Total Tenants",
     "activeOrganizations": "Active organizations",

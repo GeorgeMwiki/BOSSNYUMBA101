@@ -8,7 +8,7 @@ import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
 export const metadata = {
-  title: 'For Tenants — BOSSNYUMBA',
+  title: 'For Tenants — BossNyumba',
   description:
     'Receipts, maintenance tickets, and notices in one place. Bilingual English + Swahili. Your landlord and you see the same truth.',
 };
@@ -47,7 +47,7 @@ export default async function ForTenantsPage() {
           {
             stat: 'Your 5P score follows you',
             title: 'Build a tenant reputation you own',
-            body: 'On-time payments, clean maintenance history, and tidy conduct feed your tenant 5P score — portable to any BOSSNYUMBA landlord you rent from next.',
+            body: 'On-time payments, clean maintenance history, and tidy conduct feed your tenant 5P score — portable to any BossNyumba landlord you rent from next.',
           },
           {
             stat: 'Notices you can read, not legalese',
@@ -62,7 +62,7 @@ export default async function ForTenantsPage() {
           Honest answer for late-paying tenants
         </h2>
         <p className="mb-4 text-emerald-900/80">
-          BOSSNYUMBA does not punish late rent — it makes it visible. You get friendly reminders
+          BossNyumba does not punish late rent — it makes it visible. You get friendly reminders
           with an M-Pesa link so you can pay at 11pm if that is when you have cash. If you are
           chronically short, the payment-plan flow works without an argument. Fair to both sides.
         </p>

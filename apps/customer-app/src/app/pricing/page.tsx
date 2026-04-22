@@ -9,7 +9,7 @@ import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
-  title: 'Pricing — BOSSNYUMBA',
+  title: 'Pricing — BossNyumba',
   description:
     'Transparent pricing for East African estate portfolios. Starter at $19/month, Growth at $79, Estate at $249. Enterprise is custom — talk to Mr. Mwikila.',
 };
@@ -136,8 +136,8 @@ export default async function PricingPage() {
       <section className="rounded-xl border border-slate-200 bg-white p-8">
         <h2 className="mb-3 text-xl font-semibold">{t('numbersCompare')}</h2>
         <p className="mb-4 text-sm text-slate-700">
-          A junior estate officer in Nairobi costs $300-$500/month fully loaded. BOSSNYUMBA does
-          not replace the officer — it multiplies them. An officer with BOSSNYUMBA handles 60-80
+          A junior estate officer in Nairobi costs $300-$500/month fully loaded. BossNyumba does
+          not replace the officer — it multiplies them. An officer with BossNyumba handles 60-80
           units; without it, 20-30 is the ceiling. Pricing is designed so the platform pays back
           inside month 2 for almost every portfolio we have modelled.
         </p>

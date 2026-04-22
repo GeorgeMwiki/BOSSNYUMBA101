@@ -15,7 +15,7 @@ class CustomerHomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('BOSSNYUMBA'),
+        title: const Text('BossNyumba'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),

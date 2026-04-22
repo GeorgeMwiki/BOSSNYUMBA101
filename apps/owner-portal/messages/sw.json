@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA Mmiliki",
+    "title": "BossNyumba Mmiliki",
     "tagline": "Lango la mmiliki wa nyumba na mali",
     "subtitle": "Lango la Mmiliki",
     "closeNav": "Funga menyu ya urambazaji",
@@ -23,7 +23,7 @@
     "toolComplete": "{name} imekamilika",
     "toolFailed": "{name} imeshindwa",
     "welcomeHeroTitle": "Mshauri wa Mmiliki",
-    "welcomeHeroSubtitle": "Mawazo ya portfolio yako kutoka kwa Ubongo wa BOSSNYUMBA.",
+    "welcomeHeroSubtitle": "Mawazo ya portfolio yako kutoka kwa Ubongo wa BossNyumba.",
     "ctaOwner": "Muhtasari wa portfolio",
     "ctaTenant": "Hatari za mpangaji",
     "ctaManager": "Ripoti ya meneja",
@@ -480,7 +480,7 @@
     "insufficientData": "Hakuna data ya kutosha bado."
   },
   "ownerHome": {
-    "welcome": "Karibu kwenye Dashibodi ya Mmiliki BOSSNYUMBA",
+    "welcome": "Karibu kwenye Dashibodi ya Mmiliki BossNyumba",
     "portfolioOverview": "Muhtasari wa Mali",
     "portfolioDesc": "Tazama uwekezaji wako wa mali",
     "properties": "Mali",
@@ -919,7 +919,7 @@
     "verifySetupTitle": "Thibitisha Usanidi Wako",
     "verifySetupSubtitle": "Ingiza msimbo kutoka kwenye programu yako ya kithibitishi",
     "authCode": "Msimbo wa Uthibitisho",
-    "openAuthApp": "Fungua programu yako ya kithibitishi na uingize msimbo wa tarakimu 6 unaoonyeshwa kwa BOSSNYUMBA.",
+    "openAuthApp": "Fungua programu yako ya kithibitishi na uingize msimbo wa tarakimu 6 unaoonyeshwa kwa BossNyumba.",
     "completeSetup": "Maliza Usanidi",
     "backToQr": "\u2190 Rudi kwenye msimbo wa QR"
   },

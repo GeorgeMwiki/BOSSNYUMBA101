@@ -1,6 +1,6 @@
 # @bossnyumba/database
 
-Drizzle ORM schemas, migrations, and Postgres repositories for BOSSNYUMBA. All repos accept `orgId` and enforce tenant isolation at the query boundary.
+Drizzle ORM schemas, migrations, and Postgres repositories for BossNyumba. All repos accept `orgId` and enforce tenant isolation at the query boundary.
 
 ## Usage
 

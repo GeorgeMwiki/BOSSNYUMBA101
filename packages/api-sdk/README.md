@@ -1,6 +1,6 @@
 # @bossnyumba/api-sdk
 
-Typed HTTP SDK for the BOSSNYUMBA Gateway API. Types are auto-generated from
+Typed HTTP SDK for the BossNyumba Gateway API. Types are auto-generated from
 `Docs/api/openapi.generated.json` via `openapi-typescript`. The hand-written
 client wrapper layers in auth, timeouts, URL building, and structured errors.
 

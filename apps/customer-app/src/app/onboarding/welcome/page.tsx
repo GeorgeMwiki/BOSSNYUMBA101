@@ -107,7 +107,7 @@ export default function OnboardingWelcomePage() {
           </h1>
           <p className="text-primary-100 text-sm leading-relaxed">
             Welcome to your new home. Let&apos;s set up your account
-            in just a few steps so you can get the most out of BOSSNYUMBA.
+            in just a few steps so you can get the most out of BossNyumba.
           </p>
         </div>
         {/* Decorative */}

@@ -1,6 +1,6 @@
 # @bossnyumba/compliance-plugins
 
-Country compliance plugin registry for BOSSNYUMBA's global property-management platform. Every country BOSSNYUMBA supports plugs in here — currency, phone format, KYC providers, payment gateways, and regulatory rules are all data, not code branches.
+Country compliance plugin registry for BossNyumba's global property-management platform. Every country BossNyumba supports plugs in here — currency, phone format, KYC providers, payment gateways, and regulatory rules are all data, not code branches.
 
 ## Why a plugin architecture?
 

@@ -7,9 +7,9 @@ import { getTranslations } from 'next-intl/server';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 
 export const metadata = {
-  title: 'Compare — BOSSNYUMBA vs AppFolio vs Yardi vs spreadsheets',
+  title: 'Compare — BossNyumba vs AppFolio vs Yardi vs spreadsheets',
   description:
-    'An honest side-by-side. Where BOSSNYUMBA wins, where it does not, and when you should pick the competitor.',
+    'An honest side-by-side. Where BossNyumba wins, where it does not, and when you should pick the competitor.',
 };
 
 interface Row {
@@ -92,7 +92,7 @@ export default async function ComparePage() {
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left font-semibold text-slate-800">{t('criterion')}</th>
-              <th className="px-4 py-3 text-left font-semibold text-emerald-700">BOSSNYUMBA</th>
+              <th className="px-4 py-3 text-left font-semibold text-emerald-700">BossNyumba</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('appfolioHeader')}</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('yardiHeader')}</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">{t('spreadsheet')}</th>

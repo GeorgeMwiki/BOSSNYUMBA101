@@ -11,7 +11,7 @@ import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
 export const metadata = {
-  title: 'For Owners — BOSSNYUMBA',
+  title: 'For Owners — BossNyumba',
   description:
     'Automate the grind, keep the judgement. Rent reminders, M-Pesa reconciliation, and owner-grade reports in one place.',
 };
@@ -55,7 +55,7 @@ export default async function ForOwnersPage() {
           {
             stat: '3x officer productivity',
             title: 'Your estate officer covers more ground',
-            body: 'A human officer with BOSSNYUMBA handles 60-80 units; without it, 20-30 is the ceiling. You do not replace the human — you let them do the human part.',
+            body: 'A human officer with BossNyumba handles 60-80 units; without it, 20-30 is the ceiling. You do not replace the human — you let them do the human part.',
           },
         ]}
       />

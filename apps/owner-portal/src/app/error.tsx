@@ -6,10 +6,10 @@ import { AlertTriangle } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
 
 /**
- * Customer app — App Router error boundary.
+ * Owner portal — App Router error boundary.
  *
- * Client component (required by Next.js). Stack traces never render in
- * production — only the digest is user-facing in that mode.
+ * Light-first surface; amber signal-500 is the single accent. Stack
+ * traces never render in production.
  */
 export default function AppError({
   error,
@@ -20,7 +20,7 @@ export default function AppError({
 }) {
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.error('[customer-app] route error:', error);
+    console.error('[owner-portal] route error:', error);
   }, [error]);
 
   const isDev = process.env.NODE_ENV !== 'production';
@@ -32,7 +32,7 @@ export default function AppError({
       </div>
 
       <div className="mx-auto w-full max-w-xl rounded-2xl border border-border bg-surface p-8 text-center shadow-lg">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-signal-500/15 text-signal-500">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-signal-500/15 text-signal-700">
           <AlertTriangle className="h-7 w-7" aria-hidden="true" />
         </div>
 
@@ -55,13 +55,13 @@ export default function AppError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center justify-center rounded-md bg-signal-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-signal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex items-center justify-center rounded-md bg-signal-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-signal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Try again
           </button>
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Home
           </Link>

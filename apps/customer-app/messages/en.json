@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA",
+    "title": "BossNyumba",
     "tagline": "Your property management companion"
   },
   "chat": {
@@ -94,17 +94,17 @@
     "openDemo": "Open a 5-minute demo",
     "seeInAction": "See Mr. Mwikila in action",
     "launchChat": "Launch the chat",
-    "ownersTitle": "BOSSNYUMBA for property owners",
+    "ownersTitle": "BossNyumba for property owners",
     "ownersSubtitle": "Automate the grind, keep the judgement. Rent reminders, reconciliation, owner-grade reports.",
-    "tenantsTitle": "BOSSNYUMBA for tenants",
+    "tenantsTitle": "BossNyumba for tenants",
     "tenantsSubtitle": "Your rent receipts, maintenance tickets, and notices in one place. In English or Swahili.",
-    "managersTitle": "BOSSNYUMBA for estate managers",
+    "managersTitle": "BossNyumba for estate managers",
     "managersSubtitle": "Run 200 units single-handed. Owner reports, vendor dispatch, and a copilot who drafts before you ask.",
-    "stationMastersTitle": "BOSSNYUMBA for station masters",
+    "stationMastersTitle": "BossNyumba for station masters",
     "stationMastersSubtitle": "Voice-first incident logging in Swahili. Offline when connectivity dies.",
     "pricingTitle": "Pricing built for East African portfolios",
     "pricingSubtitle": "Four tiers. Talk to Mr. Mwikila for a custom quote.",
-    "howItWorksTitle": "How BOSSNYUMBA works",
+    "howItWorksTitle": "How BossNyumba works",
     "howItWorksSubtitle": "One brain across every role. Talk anywhere, and he learns as he goes.",
     "compareTitle": "How we compare",
     "compareSubtitle": "Honest side-by-side with AppFolio, Yardi, and spreadsheets.",
@@ -128,7 +128,7 @@
     "tierUnlimited": "Unlimited units"
   },
   "authLogin": {
-    "title": "BOSSNYUMBA",
+    "title": "BossNyumba",
     "subtitle": "Sign in to manage your tenancy",
     "phoneLabel": "Phone Number",
     "phonePlaceholder": "+XXX XXX XXX XXX",
@@ -172,7 +172,7 @@
     "sessionFooter": "Data is not stored until you join the waitlist or create an account.",
     "demosTitle": "See Mr. Mwikila work",
     "demosSubtitle": "Three self-contained demos. No signup, no email capture — just proof that the brain is real.",
-    "blackboardConceptTitle": "BOSSNYUMBA at a glance",
+    "blackboardConceptTitle": "BossNyumba at a glance",
     "blackboardEmpty": "Ask Mr. Mwikila to walk you through rent affordability, an owner report, or a maintenance triage — the visualisation appears here.",
     "ctaOwnerAdvisor": "Open Owner Advisor",
     "ctaTenantAssistant": "Open Tenant Assistant",
@@ -432,7 +432,7 @@
   },
   "howItWorks": {
     "heroTitle": "One brain, across every role, in every language.",
-    "heroSubtitle": "BOSSNYUMBA is not a chat bolted onto software. The product is the AI — and Mr. Mwikila is the same brain whether you are an owner on Monday, a tenant on Wednesday, or a station master at 2am.",
+    "heroSubtitle": "BossNyumba is not a chat bolted onto software. The product is the AI — and Mr. Mwikila is the same brain whether you are an owner on Monday, a tenant on Wednesday, or a station master at 2am.",
     "askHim": "Ask him anything",
     "step1Title": "Talk to Mr. Mwikila anywhere",
     "step2Title": "He teaches, then he acts",
@@ -440,22 +440,22 @@
   },
   "forOwners": {
     "heroTitle": "Run your portfolio like it is ten times its size.",
-    "heroSubtitle": "Whether you own 8 units or 80, BOSSNYUMBA absorbs the admin you do on Sundays so your Mondays are about the big decisions. Mr. Mwikila does the reminders, the reconciliation, and the reporting — you keep the judgement.",
+    "heroSubtitle": "Whether you own 8 units or 80, BossNyumba absorbs the admin you do on Sundays so your Mondays are about the big decisions. Mr. Mwikila does the reminders, the reconciliation, and the reporting — you keep the judgement.",
     "heroCta": "Talk to Mr. Mwikila about your portfolio"
   },
   "forManagers": {
     "heroTitle": "Run 200 units the way a senior partner would run them.",
-    "heroSubtitle": "BOSSNYUMBA is built for managers who are in the middle: accountable to owners, responsible for tenants, responsible for vendors, and somehow also doing the rent roll. Mr. Mwikila absorbs the volume so you can be excellent on the calls that matter.",
+    "heroSubtitle": "BossNyumba is built for managers who are in the middle: accountable to owners, responsible for tenants, responsible for vendors, and somehow also doing the rent roll. Mr. Mwikila absorbs the volume so you can be excellent on the calls that matter.",
     "heroCta": "Show me a manager dashboard"
   },
   "forTenants": {
     "heroTitle": "Your home, on your terms.",
-    "heroSubtitle": "Every shilling of rent you pay shows up in your own dashboard. Every maintenance request has a timeline. Every notice comes in English or Swahili — your choice. BOSSNYUMBA gives you the same truth your landlord sees.",
+    "heroSubtitle": "Every shilling of rent you pay shows up in your own dashboard. Every maintenance request has a timeline. Every notice comes in English or Swahili — your choice. BossNyumba gives you the same truth your landlord sees.",
     "heroCta": "See what a tenant dashboard looks like"
   },
   "forStationMasters": {
     "heroTitle": "The watchman who finally gets heard.",
-    "heroSubtitle": "If you keep the estate running — gate logs, meter readings, reports on what happened overnight — BOSSNYUMBA is the first tool built for your role. Talk to your phone in Swahili. It handles the rest.",
+    "heroSubtitle": "If you keep the estate running — gate logs, meter readings, reports on what happened overnight — BossNyumba is the first tool built for your role. Talk to your phone in Swahili. It handles the rest.",
     "heroCta": "See a station-master walkthrough"
   },
   "pricingPage": {
@@ -466,7 +466,7 @@
   },
   "comparePage": {
     "heroTitle": "An honest comparison.",
-    "heroSubtitle": "Where BOSSNYUMBA wins, where it does not, and when you should pick someone else. No marketing spin — if AppFolio fits you better, we will tell you.",
+    "heroSubtitle": "Where BossNyumba wins, where it does not, and when you should pick someone else. No marketing spin — if AppFolio fits you better, we will tell you.",
     "heroCta": "Ask Mr. Mwikila which is right for you",
     "criterion": "Criterion",
     "appfolioHeader": "AppFolio",
@@ -475,7 +475,7 @@
     "pickAppfolio": "Pick AppFolio if...",
     "pickYardi": "Pick Yardi if...",
     "pickSpreadsheet": "Pick a spreadsheet if...",
-    "pickBossnyumba": "Pick BOSSNYUMBA if..."
+    "pickBossnyumba": "Pick BossNyumba if..."
   },
   "blogIndex": {
     "title": "Estate-management insights",
@@ -639,7 +639,7 @@
     "later": "Later"
   },
   "installPrompt": {
-    "title": "Install BOSSNYUMBA",
+    "title": "Install BossNyumba",
     "body": "Add to your home screen for quick access and offline use.",
     "install": "Install",
     "notNow": "Not now",
@@ -673,7 +673,7 @@
     "submitCounterAria": "Submit counter proposal"
   },
   "onboardingDashboard": {
-    "welcomeHeading": "Welcome to BOSSNYUMBA",
+    "welcomeHeading": "Welcome to BossNyumba",
     "welcomeGreeting": "Let's get you set up in your new home, {name}!",
     "youFallback": "there",
     "yourProgress": "Your Progress",

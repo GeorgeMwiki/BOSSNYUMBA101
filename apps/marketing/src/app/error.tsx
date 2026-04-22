@@ -6,12 +6,13 @@ import { AlertTriangle } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
 
 /**
- * Customer app — App Router error boundary.
+ * Marketing — global error boundary.
  *
- * Client component (required by Next.js). Stack traces never render in
- * production — only the digest is user-facing in that mode.
+ * Next.js App Router requires `error.tsx` to be a client component. Shows
+ * an on-brand error card with a Try-again action (wired to `reset()`) and
+ * a Home escape hatch. Stack traces are dev-only.
  */
-export default function AppError({
+export default function GlobalError({
   error,
   reset,
 }: {
@@ -19,8 +20,9 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Surface to browser/Sentry console. Not user-visible.
     // eslint-disable-next-line no-console
-    console.error('[customer-app] route error:', error);
+    console.error('[marketing] route error:', error);
   }, [error]);
 
   const isDev = process.env.NODE_ENV !== 'production';

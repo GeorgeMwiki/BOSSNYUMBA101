@@ -101,7 +101,7 @@ self.addEventListener('sync', (event) => {
 // Push notifications
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
-  const title = data.title ?? 'BOSSNYUMBA';
+  const title = data.title ?? 'BossNyumba';
   const options = {
     body: data.body ?? '',
     icon: data.icon ?? '/icons/icon-192.png',

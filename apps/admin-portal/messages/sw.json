@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA Admin",
+    "title": "BossNyumba Admin",
     "tagline": "Kiweko cha utendaji wa jukwaa"
   },
   "a11y": {
@@ -16,7 +16,7 @@
     "toolComplete": "{name} imekamilika",
     "toolFailed": "{name} imeshindwa",
     "welcomeHeroTitle": "Gumzo la Msimamizi",
-    "welcomeHeroSubtitle": "Muhtasari wa utendaji kutoka kwa Ubongo wa BOSSNYUMBA.",
+    "welcomeHeroSubtitle": "Muhtasari wa utendaji kutoka kwa Ubongo wa BossNyumba.",
     "ctaOwner": "Mshauri wa Mmiliki",
     "ctaTenant": "Msaidizi wa Mpangaji",
     "ctaManager": "Gumzo la Msimamizi",
@@ -222,7 +222,7 @@
   },
   "login": {
     "title": "Lango la Utawala wa Ndani",
-    "subtitle": "Usimamizi wa Mfumo wa BOSSNYUMBA",
+    "subtitle": "Usimamizi wa Mfumo wa BossNyumba",
     "emailLabel": "Anwani ya barua pepe",
     "emailPlaceholder": "admin@company.com",
     "passwordLabel": "Nenosiri",
@@ -594,7 +594,7 @@
     "submitting": "Inawasilisha…"
   },
   "adminHome": {
-    "title": "Dashibodi ya Msimamizi wa BOSSNYUMBA",
+    "title": "Dashibodi ya Msimamizi wa BossNyumba",
     "internal": "Ndani",
     "totalTenants": "Jumla ya Wapangaji",
     "activeOrganizations": "Mashirika yanayotumika",

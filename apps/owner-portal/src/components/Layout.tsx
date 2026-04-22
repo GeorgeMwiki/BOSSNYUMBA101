@@ -85,7 +85,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between px-4 py-4 border-b">
             <div className="flex items-center gap-2">
               <Home className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">BOSSNYUMBA</span>
+              <span className="text-xl font-bold text-gray-900">BossNyumba</span>
             </div>
             <button
               type="button"

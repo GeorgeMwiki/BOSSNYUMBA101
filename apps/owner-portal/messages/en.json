@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "BOSSNYUMBA Owner",
+    "title": "BossNyumba Owner",
     "tagline": "Property owner portfolio portal",
     "subtitle": "Owner Portal",
     "closeNav": "Close navigation menu",
@@ -23,7 +23,7 @@
     "toolComplete": "{name} complete",
     "toolFailed": "{name} failed",
     "welcomeHeroTitle": "Owner Advisor",
-    "welcomeHeroSubtitle": "Portfolio-level reasoning from the BOSSNYUMBA Brain.",
+    "welcomeHeroSubtitle": "Portfolio-level reasoning from the BossNyumba Brain.",
     "ctaOwner": "Portfolio overview",
     "ctaTenant": "Tenant risk",
     "ctaManager": "Manager report",
@@ -480,7 +480,7 @@
     "insufficientData": "Not enough data to grade yet."
   },
   "ownerHome": {
-    "welcome": "Welcome to BOSSNYUMBA Owner Portal",
+    "welcome": "Welcome to BossNyumba Owner Portal",
     "portfolioOverview": "Portfolio Overview",
     "portfolioDesc": "View your property investments",
     "properties": "Properties",
@@ -919,7 +919,7 @@
     "verifySetupTitle": "Verify Your Setup",
     "verifySetupSubtitle": "Enter the code from your authenticator app",
     "authCode": "Authentication Code",
-    "openAuthApp": "Open your authenticator app and enter the 6-digit code shown for BOSSNYUMBA.",
+    "openAuthApp": "Open your authenticator app and enter the 6-digit code shown for BossNyumba.",
     "completeSetup": "Complete Setup",
     "backToQr": "\u2190 Back to QR code"
   },

@@ -8,7 +8,7 @@ import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 
 export const metadata = {
-  title: 'For Managers — BOSSNYUMBA',
+  title: 'For Managers — BossNyumba',
   description:
     'Manage 200 units single-handed. Owner reports, vendor dispatch, and a copilot who drafts before you ask.',
 };
@@ -52,7 +52,7 @@ export default async function ForManagersPage() {
           {
             stat: '+3 owners without new hires',
             title: 'Scale your book without scaling your headcount',
-            body: 'A manager on BOSSNYUMBA handles 3x the unit count without breaking. New owner onboarding takes 2 hours, not 2 weeks.',
+            body: 'A manager on BossNyumba handles 3x the unit count without breaking. New owner onboarding takes 2 hours, not 2 weeks.',
           },
         ]}
       />

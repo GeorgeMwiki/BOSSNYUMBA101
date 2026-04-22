@@ -6,7 +6,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
 
 /**
- * Customer app — App Router error boundary.
+ * Admin portal — App Router error boundary.
  *
  * Client component (required by Next.js). Stack traces never render in
  * production — only the digest is user-facing in that mode.
@@ -20,7 +20,7 @@ export default function AppError({
 }) {
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.error('[customer-app] route error:', error);
+    console.error('[admin-portal] route error:', error);
   }, [error]);
 
   const isDev = process.env.NODE_ENV !== 'production';

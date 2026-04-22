@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Logomark } from '@bossnyumba/design-system';
 
 /**
- * Customer app — 404 route (App Router).
+ * Admin portal — 404 route (App Router).
  *
  * Dark-first, warm amber signal, display serif for the vault-number.
  * Copy plays on the vault/door metaphor in the Logomark.
@@ -38,7 +38,7 @@ export default function NotFound() {
             Back to home
           </Link>
           <Link
-            href="/assistant"
+            href="/communications"
             className="inline-flex items-center justify-center rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-signal-500/60 hover:text-signal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Ask Mwikila
