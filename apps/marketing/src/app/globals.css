@@ -1,0 +1,40 @@
+@import '../../../../packages/design-system/src/styles/globals.css';
+
+/* ============================================================
+   Marketing-site-local overrides and effects
+   ============================================================ */
+
+/* Load Google fonts once at the app root — Fraunces (display) +
+   Geist (UI) + JetBrains Mono (numerics). Fraunces is a humanist
+   serif with optical sizing; perfect for editorial hero type. */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Force dark mode on the marketing site — it's Netflix-after-hours,
+   not a SaaS dashboard. (A light theme toggle is available for docs
+   and pricing pages via the top-level theme switcher.) */
+html { color-scheme: dark; }
+
+/* Marquee scroll for the "trusted by" logo strip */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Subtle aurora spotlight behind hero headline — EXTREMELY subtle,
+   amber-only, never the rainbow gradient cliche. */
+.hero-aurora {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 70vh;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 10%, hsl(var(--signal-500) / 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 30% 40%, hsl(var(--signal-700) / 0.08) 0%, transparent 60%);
+  filter: blur(40px);
+}

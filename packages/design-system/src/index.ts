@@ -1,8 +1,12 @@
 /**
  * @bossnyumba/design-system
  *
- * Shared UI component library for the BOSSNYUMBA platform.
- * React + TypeScript + Tailwind CSS
+ * Boss Nyumba — shared UI component library.
+ * React + TypeScript + Tailwind + Radix.
+ *
+ * Wave 29: rebranded from BOSSNYUMBA to Boss Nyumba with
+ * "Midnight Ledger + Cinematic Display" direction — near-black
+ * foundation, warm amber signal, editorial display type.
  */
 
 // ============================================================================
@@ -10,6 +14,11 @@
 // ============================================================================
 export * from './lib/utils';
 export { cn } from './lib/utils';
+
+// ============================================================================
+// Brand — logomark, wordmark, brand constants
+// ============================================================================
+export * from './brand/index';
 
 // ============================================================================
 // Core Components
