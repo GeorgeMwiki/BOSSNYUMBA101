@@ -12,29 +12,45 @@ export function HowItWorks() {
       n: '01',
       label: 'Connect',
       title: 'Plug into what you already have.',
-      body: 'One-click imports for leases, tenants, and payment history. Native connectors for M-PESA, Stripe, Flutterwave, and 14 property-management systems.',
-      bullets: ['CSV + API + native PMS', 'Zero-lift migration', 'Reversible at any time'],
+      body: 'Event-sourced ingest projects your Postgres records into a per-tenant knowledge graph (Neo4j-backed). Native connectors for M-PESA, Stripe, Flutterwave, plus CSV + API + PMS adapters.',
+      bullets: [
+        'CSV · API · native PMS connectors',
+        'Knowledge graph auto-built as data lands',
+        'Reversible at any time',
+      ],
     },
     {
       n: '02',
       label: 'Observe',
       title: 'Watch Mwikila work silently, first.',
-      body: 'Shadow mode runs for 14 days. You see exactly what the brain would do, without it doing anything. No surprises, no lost trust.',
-      bullets: ['Full policy simulator', '14-day dry-run by default', 'Side-by-side with your real ops'],
+      body: 'Shadow mode runs for 14 days. Every decision the brain would have made is recorded, cited, and replayable against what actually happened. No action crosses the wall; no trust is spent.',
+      bullets: [
+        'Policy simulator with side-by-side replay',
+        '14-day dry-run by default, extendable',
+        'Every would-have-done recorded on the chain',
+      ],
     },
     {
       n: '03',
       label: 'Delegate',
       title: 'Turn on what you trust, one domain at a time.',
-      body: 'Finance, maintenance, compliance, leasing — ten domains. Grant autonomy level 1 this week, level 3 next month. You set the pace.',
-      bullets: ['Per-domain autonomy dial', 'Revocable in one click', '7 red-line actions always guarded'],
+      body: 'Ten domains — finance, leasing, maintenance, compliance, communications, marketing, HR, procurement, insurance, legal, tenant welfare. Five autonomy levels per domain. Seven red-line actions (evictions · tribunal filings · legal notices · terminations) never auto-execute.',
+      bullets: [
+        'Per-domain 0 – 4 autonomy dial',
+        'Revocable in one click; effective instantly',
+        '7 red-line actions guarded at every level',
+      ],
     },
     {
       n: '04',
       label: 'Operate',
       title: 'Spend mornings on decisions that matter.',
-      body: 'The briefing at 7am tells you what Mwikila did, what it flagged, and where the portfolio stands. You approve the handful of exceptions.',
-      bullets: ['Cohesive head briefing UI', 'Extended-thinking on hard calls', 'Append-only audit trail'],
+      body: 'The Head Briefing at 7am assembles overnight autonomous actions, pending decisions with Mwikila\'s recommendation + confidence, KPI deltas, tenant sentiment, and anomalies — in a single first-login screen. You approve the handful of exceptions.',
+      bullets: [
+        'Talk to your company — first-person agent with tool use',
+        'Forecasts with 90% conformal prediction intervals',
+        'Cryptographic audit chain on every turn',
+      ],
     },
   ];
 

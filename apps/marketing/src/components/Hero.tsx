@@ -78,12 +78,32 @@ export function Hero() {
         </h1>
 
         {/* Subhead */}
-        <p className="mx-auto mt-8 max-w-[60ch] text-center text-lg leading-relaxed text-neutral-500 sm:text-xl">
-          BossNyumba is the autonomous operating system for property portfolios.
-          A brain that boots, listens, acts, remembers, and asks permission
-          correctly. Ten domains, one calm operator. Across 232 jurisdictions,
-          in 11 languages.
+        <p className="mx-auto mt-8 max-w-[62ch] text-center text-lg leading-relaxed text-neutral-500 sm:text-xl">
+          BossNyumba is an autonomous AI brain for property portfolios.
+          It runs finance, maintenance, compliance, leasing, legal, and seven
+          more domains on your authority — with a five-level autonomy dial,
+          seven red-line guardrails, a cryptographic audit chain, and a
+          first-person agent you can talk to about your own company.
         </p>
+
+        {/* Capability micro-strip */}
+        <ul className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[0.72rem] font-mono uppercase tracking-widest text-neutral-500">
+          {[
+            'Head Briefing',
+            'Talk to your company',
+            'Forecasts · conformal',
+            'Knowledge graph',
+            'Audit chain',
+            'Shadow mode',
+          ].map((label, i, arr) => (
+            <li key={label} className="flex items-center gap-5">
+              <span>{label}</span>
+              {i < arr.length - 1 && (
+                <span aria-hidden="true" className="hidden h-[3px] w-[3px] rounded-full bg-signal-500/70 sm:inline-block" />
+              )}
+            </li>
+          ))}
+        </ul>
 
         {/* CTAs */}
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">

@@ -26,62 +26,74 @@ type Capability = {
 const CAPABILITIES: readonly Capability[] = [
   {
     title: 'Market surveillance',
-    blurb: 'Monitors rent comps, regulatory changes, and neighbourhood signals. Drafts proposals when the market drifts.',
+    blurb:
+      'Tracks rent comps, statute changes, and neighbourhood signals. Drafts a grounded proposal the moment your position drifts — routed through the proactive-loop with a confidence interval, not a vibe.',
     icon: LineChart,
   },
   {
     title: 'Sentiment monitor',
-    blurb: 'Reads every tenant message across WhatsApp, SMS, email, and in-app. Flags hardship, frustration, churn risk.',
+    blurb:
+      'Scores every tenant message across WhatsApp, SMS, email, and in-app against the pinned voice profile. Flags hardship, frustration, and churn risk before they become an incident.',
     icon: HeartPulse,
   },
   {
     title: 'Multimodal inspection',
-    blurb: 'Photos, floorplans, inspection reports, receipts. Extracts line-items, flags anomalies, dates everything.',
+    blurb:
+      'Photos, floorplans, inspection reports, invoices, title deeds. Extracts line-items, flags anomalies, dates everything, and links findings to the unit node in your graph.',
     icon: Microscope,
   },
   {
-    title: 'Polyglot support',
-    blurb: 'Replies to tenants in their language: English, Swahili, Arabic, French, German, Korean, Japanese, Portuguese, Spanish, Chinese, Hindi.',
+    title: '11-language support',
+    blurb:
+      'English, Swahili, Arabic, French, German, Korean, Japanese, Portuguese, Spanish, Mandarin, Hindi. A multi-script regression gate (13 baseline fixtures) blocks quality drops before they reach a tenant.',
     icon: Globe2,
   },
   {
-    title: 'Predictive interventions',
-    blurb: 'Spots default risk before the miss. Offers payment plans before arrears become legal problems.',
+    title: 'Forecasts with intervals',
+    blurb:
+      'Temporal Graph Networks per portfolio + conformal prediction intervals. Every forecast ships with a 90% coverage band (not a point guess) and a driver narrative that names the three biggest contributors.',
     icon: Brain,
   },
   {
-    title: 'Policy simulator',
-    blurb: 'Try a policy change in shadow mode. See what Mwikila would have done differently last month before granting the new rule.',
+    title: 'Policy simulator · shadow mode',
+    blurb:
+      'Run a policy change in dry-run for 14 days. See what Mwikila would have done differently — side by side with your real ops — before you grant the new rule real authority.',
     icon: Gavel,
   },
   {
-    title: 'Natural-language query',
-    blurb: '"Who is 30+ days late and has no payment plan?" Answered in seconds, with a verifiable audit trail.',
+    title: 'Ask your company',
+    blurb:
+      '"Who is 30+ days late with no payment plan?" A first-person agent answers from your own knowledge graph with tool calls, cited nodes, and an expandable reasoning trace. Every turn on the audit chain.',
     icon: FileSearch,
   },
   {
     title: 'Pattern mining',
-    blurb: 'Finds the three maintenance problems most likely to repeat this quarter. Learns from your history, not a generic model.',
+    blurb:
+      'Finds the three maintenance modes most likely to recur this quarter across your portfolio. Learns from your history, not a generic model. Surfaces in the briefing as a proactive proposal.',
     icon: Sparkles,
   },
   {
     title: 'Voice persona DNA',
-    blurb: 'Your brand voice, pinned. Head-of-estates, owner-liaison, tenant-facing, vendor-coordination — six locked personae, zero drift.',
+    blurb:
+      'Six pinned personae: head-of-estates, owner-liaison, tenant, vendor, regulator, applicant. Tone, pace, register, taboos, code-switching rules — all frozen at module load and drift-detected.',
     icon: Mic,
   },
   {
     title: 'Estate glossary',
-    blurb: '2,000+ curated terms across 9 categories, 11 languages, with statute citations. Grounds every legal draft.',
+    blurb:
+      '600+ curated terms across tenancy · finance · compliance · maintenance · legal · HR · insurance · marketing · procurement. Statute citations (Cap 301, BGB §535-578, 借地借家法, etc.) ground every legal draft.',
     icon: BookOpenText,
   },
   {
     title: 'Extended thinking',
-    blurb: 'High-stakes decisions trigger deliberate reasoning with a logged thinking trace for compliance review.',
+    blurb:
+      'Evictions · terminations · tribunal filings · rent-waiver decisions engage deliberate reasoning with a logged thinking trace. 7 red-line actions never auto-execute, period — at any autonomy level.',
     icon: Scale,
   },
   {
-    title: 'Differentially-private memory',
-    blurb: 'Patterns learned across the whole network inform your defaults, with mathematically-proven privacy between tenants.',
+    title: 'Differentially-private network',
+    blurb:
+      'Patterns learned across every tenant inform your defaults, with mathematically-proven privacy (Laplace · Gaussian · Dwork advanced composition). Reserve-before-read; k-anonymity gate; audited every debit.',
     icon: ShieldAlert,
   },
 ];
