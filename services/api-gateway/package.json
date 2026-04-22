@@ -30,6 +30,7 @@
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/domain-services": "workspace:*",
+    "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
     "@bossnyumba/lpms-connector": "workspace:*",
     "@bossnyumba/marketing-brain": "workspace:*",

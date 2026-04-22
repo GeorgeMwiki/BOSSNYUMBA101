@@ -20,6 +20,7 @@ import {
   Clock,
   FileSearch,
   Gauge,
+  Network,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
@@ -159,6 +160,32 @@ export default function ManagerHomePage() {
               <ActionTileCard key={tile.label} tile={tile} />
             ))}
           </div>
+        </section>
+
+        {/* Relationship explorer discovery tile */}
+        <section className="mt-10">
+          <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+            Explore
+          </h2>
+          <Link
+            href="/graph"
+            className="group mt-4 flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-all duration-fast ease-out hover:border-border-strong hover:bg-surface-raised sm:p-5"
+            aria-label="Open relationship explorer"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-signal-500/10 ring-1 ring-signal-500/20">
+              <Network className="h-5 w-5 text-signal-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display text-lg font-medium leading-tight tracking-tight">
+                Relationship explorer
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-neutral-500 sm:text-sm">
+                Visual, searchable graph of units, tenants, vendors, incidents
+                and their 1–2 hop neighbourhoods.
+              </p>
+            </div>
+            <ArrowUpRight className="h-4 w-4 shrink-0 text-neutral-500 transition-colors group-hover:text-foreground" />
+          </Link>
         </section>
 
         {/* Two-column split: recent actions + autonomy */}

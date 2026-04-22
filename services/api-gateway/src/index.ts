@@ -136,6 +136,12 @@ import { createRiskRecomputeRouter } from './routes/risk-recompute.router';
 import headBriefingRouter from './routes/head-briefing.router';
 // Wave 28 — Junior-AI factory (team-lead self-service provisioning).
 import juniorAIRouter from './routes/junior-ai.router';
+// Canonical Property Graph (CPG) — tenant-scoped Neo4j query + relationship explorer.
+import graphRouter from './routes/graph.router';
+// Wave 29 — Forecasting (TGN + conformal) surface. Returns 503
+// FORECAST_SERVICE_UNAVAILABLE when the TGN inference + repo env
+// vars are unset (no mock forecasts, ever).
+import forecastRouter from './routes/forecast.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import {
@@ -681,6 +687,12 @@ api.route('/audit-trail', auditTrailRouter);
 api.route('/head/briefing', headBriefingRouter);
 // Wave 28 — Junior-AI factory (team-lead self-service provisioning)
 api.route('/junior-ai', juniorAIRouter);
+// Canonical Property Graph — relationship-explorer + named-query surface
+api.route('/graph', graphRouter);
+// Wave 29 — Forecasting surface (TGN + conformal). Returns 503
+// FORECAST_SERVICE_UNAVAILABLE until the inference + repo adapters are
+// wired (no mock forecasts, ever).
+api.route('/forecast', forecastRouter);
 // Wave 27 Agent F — Risk-recompute manual trigger. Accessors close over
 // the heartbeat supervisor (constructed earlier) so the router returns
 // 503 cleanly when the dispatcher is not wired.

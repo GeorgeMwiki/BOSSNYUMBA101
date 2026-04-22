@@ -615,6 +615,15 @@ export * as MultiScriptHarness from './multi-script-harness/index.js';
 export * as ShadowMode from './shadow-mode/index.js';
 export * as VoicePersonaDNA from './voice-persona-dna/index.js';
 export * as ProactiveLoop from './proactive-loop/index.js';
+
+// ============================================
+// Wave 29 — Graph-Signals. Maps `@bossnyumba/forecasting` Forecasts onto
+// the proactive-loop Signal contract so per-node TGN forecasts flow
+// through the same draft → approve → execute pipeline as every other
+// proactive source. Namespaced to keep the narrow mapping surface
+// isolated from the main barrel.
+// ============================================
+export * as GraphSignals from './graph-signals/index.js';
 export * as ArrearsLadderOrchestrator from './orchestrators/arrears-ladder/index.js';
 export * as MoveOutOrchestrator from './orchestrators/move-out/index.js';
 export * as TenderToContractOrchestrator from './orchestrators/tender-to-contract/index.js';

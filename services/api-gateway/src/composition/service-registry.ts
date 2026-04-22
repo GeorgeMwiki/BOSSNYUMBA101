@@ -119,6 +119,15 @@ import {
   type IotService,
 } from '@bossnyumba/domain-services/iot';
 import { createPropertyGradingAdapters } from '@bossnyumba/domain-services/property-grading';
+// Wave 29 — forecasting package (TGN + conformal). The concrete
+// inference / repository adapters live in external services; the slot
+// below stays null until their env vars are set, and the router
+// returns 503 FORECAST_SERVICE_UNAVAILABLE in that case.
+import type {
+  Forecaster,
+  FeatureExtractor,
+  ForecastRepository,
+} from '@bossnyumba/forecasting';
 import { PropertyGrading } from '@bossnyumba/ai-copilot';
 type PropertyGradingService = import('@bossnyumba/ai-copilot').PropertyGrading.PropertyGradingService;
 import {
@@ -223,6 +232,14 @@ import {
   JuniorAIFactoryService,
   InMemoryJuniorAIRepository,
 } from '@bossnyumba/ai-copilot/junior-ai-factory';
+// Canonical Property Graph (CPG) — Neo4j query service. Constructed
+// lazily so the gateway still boots when NEO4J_URI is unset; the graph
+// router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
+import {
+  createNeo4jClient,
+  createGraphQueryService,
+  type GraphQueryService,
+} from '@bossnyumba/graph-sync';
 
 // Wave 26 — Agent Z2: four Postgres repos that Wave-25 Agent T flagged as
 // "tests passing but no router / composition wiring". Importing through
@@ -398,9 +415,33 @@ export interface ServiceRegistry {
     readonly factoryService: JuniorAIFactoryService;
   };
 
+  /** Canonical Property Graph (CPG) — Neo4j-backed relationship graph.
+   *  Null in both degraded + live modes when NEO4J_URI is unset so the
+   *  gateway boots without a Neo4j upstream; the `graph.router` degrades
+   *  to 503 GRAPH_SERVICE_UNAVAILABLE in that case. When env vars are
+   *  present we construct a pooled `Neo4jClient` and wrap it in a
+   *  `GraphQueryService` that every route (named queries, 1-ring
+   *  neighbourhood, k-hop expansion, graph health) shares. */
+  readonly graph: {
+    readonly queryService: GraphQueryService | null;
+  };
+
   /** Property grading — A–F report card scoring + portfolio rollup.
    *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
   readonly propertyGrading: PropertyGradingService | null;
+
+  /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
+   *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
+   *  `FORECASTING_REPO_URL` are set. When null, the forecast router
+   *  returns 503 `FORECAST_SERVICE_UNAVAILABLE`. No mock data is ever
+   *  returned. The inference + repository adapters are PORTS — the
+   *  concrete runtime (Python TGN sidecar + Postgres or Memgraph repo)
+   *  is plugged in by the deploy, not this file. */
+  readonly forecasting: {
+    readonly forecaster: Forecaster | null;
+    readonly featureExtractor: FeatureExtractor | null;
+    readonly repository: ForecastRepository | null;
+  };
 
   /** Tenant credit rating — FICO-scale 300-850 rating with CRB bands
    *  and portable certificate. Postgres-backed in live mode. */
@@ -609,6 +650,32 @@ function buildHeadBriefingComposer(
   });
 }
 
+/**
+ * Build the Canonical Property Graph (CPG) query service.
+ *
+ * Returns null when NEO4J_URI is unset so the gateway boots without a
+ * Neo4j upstream; the graph router surfaces 503 GRAPH_SERVICE_UNAVAILABLE
+ * in that case. When present, we construct a pooled `Neo4jClient` via
+ * `createNeo4jClient` (which reads NEO4J_USER / NEO4J_PASSWORD /
+ * NEO4J_DATABASE internally) and wrap it in a `GraphQueryService`. The
+ * client is eagerly instantiated but `verifyConnectivity` is NOT called
+ * — boot stays fast; the health endpoint probes liveness on demand.
+ */
+function buildGraphQueryService(): GraphQueryService | null {
+  if (!process.env.NEO4J_URI?.trim()) return null;
+  try {
+    const client = createNeo4jClient();
+    return createGraphQueryService(client);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      'service-registry: graph query service init failed — returning null',
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
 function degradedRegistry(eventBus: EventBus): ServiceRegistry {
   return {
     marketplace: { listing: null, enquiry: null, tender: null },
@@ -678,8 +745,16 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
         autonomyPolicyLoader: async (tenantId: string) => buildDefaultPolicy(tenantId),
       }),
     },
+    graph: { queryService: buildGraphQueryService() },
     propertyGrading: null,
     creditRating: null,
+    // Wave 29 — forecasting stays null in degraded mode; the router
+    // returns 503 FORECAST_SERVICE_UNAVAILABLE. No mock data ever.
+    forecasting: {
+      forecaster: null,
+      featureExtractor: null,
+      repository: null,
+    },
     // Wave 26 — Agent Z2 slots default to null in degraded mode. Each
     // router checks the slot and returns 503 with a clear reason when
     // DATABASE_URL is unset.
@@ -1199,6 +1274,10 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         }),
       };
     })(),
+    // Canonical Property Graph — Neo4j-backed. Builder returns null when
+    // NEO4J_URI is unset; the graph router degrades to 503 so live-mode
+    // gateways without a Neo4j upstream still boot cleanly.
+    graph: { queryService: buildGraphQueryService() },
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service
     // class lives in ai-copilot (pure business logic). We compose here.
@@ -1216,6 +1295,29 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     creditRating: createCreditRatingService({
       repo: new PostgresCreditRatingRepository(db),
     }),
+    // Wave 29 — forecasting (TGN + conformal). Only populated when
+    // BOTH env vars are present. Otherwise the router returns 503
+    // FORECAST_SERVICE_UNAVAILABLE. No mock / fallback forecaster
+    // lives here — the package explicitly ships contracts, not
+    // models.
+    forecasting: (() => {
+      const tgnUrl = process.env.TGN_INFERENCE_URL?.trim();
+      const repoUrl = process.env.FORECASTING_REPO_URL?.trim();
+      if (!tgnUrl || !repoUrl) {
+        return { forecaster: null, featureExtractor: null, repository: null };
+      }
+      // The concrete TGN inference adapter, feature-extractor sources,
+      // and repository adapter live in a follow-up deploy PR. We leave
+      // the slot null even when env vars are set until those adapters
+      // land, so the route still returns a clean 503 rather than a
+      // partially-constructed forecaster. Flipping these to real
+      // instances is an additive change only.
+      return {
+        forecaster: null,
+        featureExtractor: null,
+        repository: null,
+      };
+    })(),
     // Wave 26 — Agent Z2: four previously-unwired repos now live.
     sublease: {
       service: subleaseService,

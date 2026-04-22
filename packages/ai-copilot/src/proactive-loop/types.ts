@@ -33,7 +33,9 @@ export type SignalSourceId =
   | 'market-surveillance'
   | 'sentiment-monitor'
   | 'predictive-interventions'
-  | 'pattern-mining';
+  | 'pattern-mining'
+  // Wave 29 — forecasting package emits graph-signal inputs directly.
+  | 'forecasting';
 
 export interface Signal {
   readonly signalId: string;

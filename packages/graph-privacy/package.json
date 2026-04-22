@@ -1,0 +1,36 @@
+{
+  "name": "@bossnyumba/graph-privacy",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Differential-privacy aggregation of cross-tenant graph statistics. Industry-wide insights without revealing any single tenant's data.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2",
+    "@types/node": "^20.11.5"
+  },
+  "peerDependencies": {
+    "@bossnyumba/graph-sync": "workspace:*",
+    "@bossnyumba/ai-copilot": "workspace:*"
+  }
+}
