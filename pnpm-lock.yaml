@@ -598,6 +598,31 @@ importers:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@20.19.33)(jsdom@24.1.3)
 
+  packages/central-intelligence:
+    dependencies:
+      '@bossnyumba/forecasting':
+        specifier: workspace:*
+        version: link:../forecasting
+      '@bossnyumba/graph-privacy':
+        specifier: workspace:*
+        version: link:../graph-privacy
+      '@bossnyumba/graph-sync':
+        specifier: workspace:*
+        version: link:../graph-sync
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.5
+        version: 20.19.33
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.2.2
+        version: 1.6.1(@types/node@20.19.33)(jsdom@24.1.3)
+
   packages/chat-ui:
     dependencies:
       react:
@@ -1126,6 +1151,9 @@ importers:
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy
+      '@bossnyumba/central-intelligence':
+        specifier: workspace:*
+        version: link:../../packages/central-intelligence
       '@bossnyumba/compliance-plugins':
         specifier: workspace:*
         version: link:../../packages/compliance-plugins

@@ -232,6 +232,18 @@ import {
   JuniorAIFactoryService,
   InMemoryJuniorAIRepository,
 } from '@bossnyumba/ai-copilot/junior-ai-factory';
+// Central Intelligence — embodied first-person agent (per-tenant +
+// platform scopes). The concrete LLM adapter lives in a separate
+// service; the agent slot stays null until `CI_LLM_URL` is set so the
+// router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE. Memory is always
+// wired to the in-memory default so threads work in-session; a
+// pgvector-backed adapter will replace it for production.
+// TODO(wave-30): swap in pgvector-backed ConversationMemory for prod.
+import {
+  createInMemoryConversationMemory,
+  type CentralIntelligenceAgent,
+  type ConversationMemory,
+} from '@bossnyumba/central-intelligence';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
 // router returns 503 GRAPH_SERVICE_UNAVAILABLE when this slot is null.
@@ -429,6 +441,19 @@ export interface ServiceRegistry {
   /** Property grading — A–F report card scoring + portfolio rollup.
    *  Postgres-backed in live mode, null when DATABASE_URL is unset. */
   readonly propertyGrading: PropertyGradingService | null;
+
+  /** Central Intelligence — embodied first-person agent surface.
+   *  The concrete LLM adapter lives in a separate service; `agent` only
+   *  becomes non-null when `CI_LLM_URL` is present AND the adapter has
+   *  been wired (follow-up PR). `memory` is always wired to the
+   *  in-memory default so threads survive in-session — a pgvector-
+   *  backed adapter will replace it for production persistence.
+   *  TODO(wave-30): swap `memory` to pgvector-backed adapter.
+   */
+  readonly centralIntelligence: {
+    readonly agent: CentralIntelligenceAgent | null;
+    readonly memory: ConversationMemory | null;
+  };
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
    *  Every member is `null` until BOTH `TGN_INFERENCE_URL` and
@@ -746,6 +771,14 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
       }),
     },
     graph: { queryService: buildGraphQueryService() },
+    // Central Intelligence — no concrete LLM adapter ships here (it
+    // lives in a separate service). In degraded mode we still wire the
+    // in-memory memory so thread listing works locally.
+    // TODO(wave-30): replace with pgvector-backed ConversationMemory.
+    centralIntelligence: {
+      agent: null,
+      memory: createInMemoryConversationMemory(),
+    },
     propertyGrading: null,
     creditRating: null,
     // Wave 29 — forecasting stays null in degraded mode; the router
@@ -1278,6 +1311,23 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // NEO4J_URI is unset; the graph router degrades to 503 so live-mode
     // gateways without a Neo4j upstream still boot cleanly.
     graph: { queryService: buildGraphQueryService() },
+    // Central Intelligence — the concrete LLM adapter lives in a
+    // separate service. `agent` is only populated when `CI_LLM_URL`
+    // env var is set AND the adapter is wired (follow-up PR); until
+    // then the router returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE.
+    // Memory uses the in-memory default so in-session threads work.
+    // TODO(wave-30): pgvector-backed ConversationMemory for prod.
+    centralIntelligence: (() => {
+      const memory = createInMemoryConversationMemory();
+      const llmUrl = process.env.CI_LLM_URL?.trim();
+      if (!llmUrl) {
+        return { agent: null, memory };
+      }
+      // Adapter not shipped in-tree — the gateway consumes it over
+      // HTTP from a dedicated service. Slot stays null until the
+      // adapter lands; router keeps returning 503 cleanly.
+      return { agent: null, memory };
+    })(),
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service
     // class lives in ai-copilot (pure business logic). We compose here.

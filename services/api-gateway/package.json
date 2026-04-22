@@ -26,6 +26,7 @@
     "@bossnyumba/agent-platform": "workspace:*",
     "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/central-intelligence": "workspace:*",
     "@bossnyumba/compliance-plugins": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",

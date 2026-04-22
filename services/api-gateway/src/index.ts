@@ -142,6 +142,10 @@ import graphRouter from './routes/graph.router';
 // FORECAST_SERVICE_UNAVAILABLE when the TGN inference + repo env
 // vars are unset (no mock forecasts, ever).
 import forecastRouter from './routes/forecast.router';
+// Central Intelligence — streaming first-person agent (SSE). Returns
+// 503 INTELLIGENCE_SERVICE_UNAVAILABLE when CI_LLM_URL / adapter is
+// not wired (no mock agents, ever).
+import intelligenceRouter from './routes/intelligence.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import {
@@ -693,6 +697,11 @@ api.route('/graph', graphRouter);
 // FORECAST_SERVICE_UNAVAILABLE until the inference + repo adapters are
 // wired (no mock forecasts, ever).
 api.route('/forecast', forecastRouter);
+// Central Intelligence — streaming SSE first-person agent. Auth-gated.
+// Every endpoint derives ScopeContext from the session, never from the
+// body. Returns 503 INTELLIGENCE_SERVICE_UNAVAILABLE when the LLM
+// adapter is not wired (no mock agents).
+api.route('/intelligence', intelligenceRouter);
 // Wave 27 Agent F — Risk-recompute manual trigger. Accessors close over
 // the heartbeat supervisor (constructed earlier) so the router returns
 // 503 cleanly when the dispatcher is not wired.
