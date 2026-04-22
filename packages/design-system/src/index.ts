@@ -256,3 +256,10 @@ export * from './components/form/ZodForm';
 export * from './components/data/DataTable';
 export * from './components/data/StatCard';
 export * from './components/data/EmptyState';
+export {
+  ScrubbableChart,
+  type ScrubbableChartProps,
+  type ScrubbableSeries,
+  type ScrubbableHeaderArgs,
+  type ScrubbableChartColor,
+} from './components/data/ScrubbableChart';

@@ -34,7 +34,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import { Logomark } from '@bossnyumba/design-system';
+import { Logomark, ScrubbableChart } from '@bossnyumba/design-system';
 
 type DecisionState = 'idle' | 'approved' | 'declined';
 
@@ -191,23 +191,8 @@ export default function BriefingPage() {
 
           {/* ──────────────────────  RIGHT RAIL  ───────────────────── */}
           <aside className="space-y-6">
-            {/* Tenant sentiment strip */}
-            <section className="rounded-lg border border-border bg-surface p-4">
-              <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-                Tenant sentiment · 7-day trend
-              </h2>
-              <div className="mt-4 flex items-baseline justify-between">
-                <span className="font-display text-3xl font-medium tabular-nums">0.81</span>
-                <span className="rounded-full bg-success-subtle px-2 py-0.5 font-mono text-[0.65rem] text-success">
-                  +0.03
-                </span>
-              </div>
-              <Sparkline values={[0.74, 0.76, 0.75, 0.79, 0.78, 0.80, 0.81]} />
-              <p className="mt-3 text-xs leading-relaxed text-neutral-500">
-                Slight upward drift. Driven by same-day maintenance resolution
-                and the new renewal-incentive cohort.
-              </p>
-            </section>
+            {/* Tenant sentiment strip — scrubbable chart */}
+            <SentimentCard />
 
             {/* Upcoming week */}
             <section className="rounded-lg border border-border bg-surface p-4">
@@ -472,28 +457,65 @@ function DecisionCard({
   );
 }
 
-function Sparkline({ values }: { readonly values: readonly number[] }) {
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min || 1;
-  const points = values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * 100;
-      const y = 100 - ((v - min) / range) * 100;
-      return `${x},${y}`;
-    })
-    .join(' ');
+/**
+ * SentimentCard — tenant-sentiment 7-day chart with scrubbing.
+ *
+ * Uses the shared ScrubbableChart so press-and-drag across the chart
+ * shows a dashed guideline + dot on each series, the header value
+ * swaps to the scrubbed reading, haptics fire on every data-point
+ * crossed, and the page does not vertical-scroll during the gesture.
+ * On release the endpoint dot + label return and the header resets
+ * to the latest reading.
+ */
+function SentimentCard() {
+  const SENTIMENT = [0.74, 0.76, 0.75, 0.79, 0.78, 0.80, 0.81] as const;
+  const LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+  const latest = SENTIMENT[SENTIMENT.length - 1] ?? 0;
+  const previous = SENTIMENT[SENTIMENT.length - 2] ?? latest;
+  const delta = latest - previous;
+
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-3 h-12 w-full text-signal-500">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
+    <section className="rounded-lg border border-border bg-surface p-4">
+      <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+        Tenant sentiment · 7-day trend
+      </h2>
+      <ScrubbableChart
+        className="mt-4"
+        series={[{ name: 'Sentiment', values: [...SENTIMENT], color: 'signal' }]}
+        labels={[...LABELS]}
+        formatValue={(v) => v.toFixed(2)}
+        height={100}
+        ariaLabel="Tenant sentiment, 7-day rolling mean. Drag horizontally to scrub."
+        header={({ activeIndex, activeLabel, activeValues }) => {
+          const isScrub = activeIndex !== null;
+          const value = isScrub ? activeValues[0] ?? latest : latest;
+          const deltaChip = isScrub ? null : (
+            <span className="rounded-full bg-success-subtle px-2 py-0.5 font-mono text-[0.65rem] text-success">
+              {delta >= 0 ? '+' : ''}
+              {delta.toFixed(2)}
+            </span>
+          );
+          return (
+            <div className="flex items-baseline justify-between">
+              <div>
+                <span className="font-display text-3xl font-medium tabular-nums">
+                  {value.toFixed(2)}
+                </span>
+                {isScrub && activeLabel && (
+                  <span className="ml-2 font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+                    {activeLabel}
+                  </span>
+                )}
+              </div>
+              {deltaChip}
+            </div>
+          );
+        }}
       />
-    </svg>
+      <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+        Slight upward drift. Driven by same-day maintenance resolution
+        and the new renewal-incentive cohort.
+      </p>
+    </section>
   );
 }
