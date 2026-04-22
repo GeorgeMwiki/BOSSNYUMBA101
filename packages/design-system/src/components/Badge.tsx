@@ -16,15 +16,15 @@ const badgeVariants = cva(
         secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
         destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         outline: 'text-foreground border-border',
-        success: 'border-transparent bg-green-500 text-white hover:bg-green-600',
-        warning: 'border-transparent bg-yellow-500 text-white hover:bg-yellow-600',
-        error: 'border-transparent bg-red-500 text-white hover:bg-red-600',
-        info: 'border-transparent bg-blue-500 text-white hover:bg-blue-600',
+        success: 'border-transparent bg-success text-success-foreground hover:bg-success/90',
+        warning: 'border-transparent bg-warning text-warning-foreground hover:bg-warning/90',
+        error: 'border-transparent bg-danger text-danger-foreground hover:bg-danger/90',
+        info: 'border-transparent bg-info text-info-foreground hover:bg-info/90',
         // Soft variants (lighter backgrounds)
-        'success-soft': 'border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-        'warning-soft': 'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        'error-soft': 'border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-        'info-soft': 'border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+        'success-soft': 'border-transparent bg-success-subtle text-success',
+        'warning-soft': 'border-transparent bg-warning-subtle text-warning',
+        'error-soft': 'border-transparent bg-danger-subtle text-danger',
+        'info-soft': 'border-transparent bg-info-subtle text-info',
       },
       size: {
         sm: 'px-2 py-0.5 text-[10px]',
@@ -60,10 +60,10 @@ export interface BadgeProps
 
 const dotColorClasses = {
   default: 'bg-current',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
-  error: 'bg-red-500',
-  info: 'bg-blue-500',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  error: 'bg-danger',
+  info: 'bg-info',
 };
 
 function Badge({
@@ -95,7 +95,7 @@ function Badge({
             e.stopPropagation();
             onRemove?.();
           }}
-          className="ml-1 -mr-0.5 rounded-full p-0.5 hover:bg-black/10 focus:outline-none focus:ring-1 focus:ring-current"
+          className="ml-1 -mr-0.5 rounded-full p-0.5 hover:bg-foreground/10 focus:outline-none focus:ring-1 focus:ring-current"
           aria-label="Remove"
         >
           <X className="h-3 w-3" />

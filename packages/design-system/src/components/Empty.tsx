@@ -39,12 +39,12 @@ export const Empty: React.FC<EmptyProps> = ({
         className
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-        {icon || <DefaultIcon className="h-8 w-8 text-gray-400" />}
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+        {icon || <DefaultIcon className="h-8 w-8 text-muted-foreground" />}
       </div>
-      <h3 className="mt-4 text-sm font-semibold text-gray-900">{title}</h3>
+      <h3 className="mt-4 text-sm font-semibold text-foreground">{title}</h3>
       {description && (
-        <p className="mt-1 text-sm text-gray-500 max-w-sm">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground max-w-sm">{description}</p>
       )}
       {action && (
         <div className="mt-6">

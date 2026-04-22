@@ -24,22 +24,22 @@ export const Stat: React.FC<StatProps> = ({
   className,
 }) => {
   const getTrendIcon = () => {
-    if (trend === 'up') return <TrendingUp className="h-4 w-4 text-green-500" />;
-    if (trend === 'down') return <TrendingDown className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-gray-400" />;
+    if (trend === 'up') return <TrendingUp className="h-4 w-4 text-success" />;
+    if (trend === 'down') return <TrendingDown className="h-4 w-4 text-danger" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getTrendColor = () => {
-    if (trend === 'up') return 'text-green-600';
-    if (trend === 'down') return 'text-red-600';
-    return 'text-gray-600';
+    if (trend === 'up') return 'text-success';
+    if (trend === 'down') return 'text-danger';
+    return 'text-muted-foreground';
   };
 
   if (loading) {
     return (
       <div className={cn('animate-pulse', className)}>
-        <div className="h-4 w-24 bg-gray-200 rounded mb-2" />
-        <div className="h-8 w-32 bg-gray-200 rounded" />
+        <div className="h-4 w-24 bg-muted rounded mb-2" />
+        <div className="h-8 w-32 bg-muted rounded" />
       </div>
     );
   }
@@ -47,11 +47,11 @@ export const Stat: React.FC<StatProps> = ({
   return (
     <div className={className}>
       <div className="flex items-center gap-2">
-        {icon && <span className="text-gray-400">{icon}</span>}
-        <span className="text-sm font-medium text-gray-500">{label}</span>
+        {icon && <span className="text-muted-foreground">{icon}</span>}
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-gray-900">{value}</span>
+        <span className="text-2xl font-semibold text-foreground">{value}</span>
         {change !== undefined && (
           <span className={cn('flex items-center gap-1 text-sm font-medium', getTrendColor())}>
             {getTrendIcon()}
@@ -60,7 +60,7 @@ export const Stat: React.FC<StatProps> = ({
         )}
       </div>
       {changeLabel && (
-        <p className="mt-1 text-xs text-gray-500">{changeLabel}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{changeLabel}</p>
       )}
     </div>
   );
@@ -80,8 +80,8 @@ export const StatCard: React.FC<StatCardProps> = ({
       className={cn(
         'rounded-xl p-6',
         variant === 'elevated'
-          ? 'bg-white shadow-lg'
-          : 'bg-white border border-gray-200',
+          ? 'bg-card shadow-lg'
+          : 'bg-card border border-border',
         className
       )}
     >

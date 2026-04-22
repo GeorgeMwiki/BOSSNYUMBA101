@@ -13,11 +13,11 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: 'bg-muted border-border text-foreground',
-        info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-200',
-        success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-200',
-        warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-950/30 dark:border-yellow-800 dark:text-yellow-200',
-        error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200',
-        danger: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200',
+        info: 'bg-info-subtle border-info/30 text-info',
+        success: 'bg-success-subtle border-success/30 text-success',
+        warning: 'bg-warning-subtle border-warning/30 text-warning',
+        error: 'bg-danger-subtle border-danger/30 text-danger',
+        danger: 'bg-danger-subtle border-danger/30 text-danger',
       },
       size: {
         sm: 'p-3 text-sm',
@@ -47,11 +47,11 @@ const iconMap = {
 
 const iconColorMap = {
   default: 'text-muted-foreground',
-  info: 'text-blue-600 dark:text-blue-400',
-  success: 'text-green-600 dark:text-green-400',
-  warning: 'text-yellow-600 dark:text-yellow-400',
-  danger: 'text-red-600 dark:text-red-400',
-  error: 'text-red-600 dark:text-red-400',
+  info: 'text-info',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
+  error: 'text-danger',
 };
 
 /* ============================================================================
@@ -137,7 +137,7 @@ export const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
                 type="button"
                 onClick={handleDismiss}
                 aria-label="Dismiss alert"
-                className="inline-flex rounded-md p-1.5 hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+                className="inline-flex rounded-md p-1.5 hover:bg-foreground/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -221,7 +221,7 @@ export const InlineAlert = React.forwardRef<HTMLDivElement, InlineAlertProps>(
               onDismiss?.();
             }}
             aria-label="Dismiss"
-            className="ml-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/5"
+            className="ml-1 rounded p-0.5 hover:bg-foreground/5"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -287,7 +287,7 @@ export const BannerAlert = React.forwardRef<HTMLDivElement, BannerAlertProps>(
                   onDismiss?.();
                 }}
                 aria-label="Dismiss"
-                className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/5"
+                className="rounded p-1 hover:bg-foreground/5"
               >
                 <X className="h-4 w-4" />
               </button>

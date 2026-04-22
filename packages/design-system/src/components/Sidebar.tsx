@@ -187,9 +187,9 @@ interface SidebarNavItemProps {
 const badgeVariantClasses = {
   default: 'bg-muted text-muted-foreground',
   primary: 'bg-primary/10 text-primary',
-  success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  success: 'bg-success-subtle text-success',
+  warning: 'bg-warning-subtle text-warning',
+  error: 'bg-danger-subtle text-danger',
 };
 
 const SidebarNavItem: React.FC<SidebarNavItemProps> = ({

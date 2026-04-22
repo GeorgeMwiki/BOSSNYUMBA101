@@ -135,7 +135,7 @@ export interface VendorApiAdapter {
 export class VendorAdapterError extends Error {
   readonly adapterId: VendorAdapterId;
   readonly retryable: boolean;
-  readonly cause: unknown;
+  override readonly cause: unknown;
 
   constructor(
     message: string,

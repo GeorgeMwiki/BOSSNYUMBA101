@@ -17,8 +17,8 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
   ({ className, title, value, description, icon, trend, ...props }, ref) => {
     const trendColor = trend
       ? trend.value >= 0
-        ? 'text-green-600'
-        : 'text-red-600'
+        ? 'text-success'
+        : 'text-danger'
       : '';
 
     return (

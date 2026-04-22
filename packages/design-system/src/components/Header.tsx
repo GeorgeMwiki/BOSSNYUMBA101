@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 sm:px-6',
+        'sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-surface px-4 sm:px-6',
         className
       )}
     >
@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
       {onMenuClick && (
         <button
           onClick={onMenuClick}
-          className="lg:hidden -m-2.5 p-2.5 text-gray-700"
+          className="lg:hidden -m-2.5 p-2.5 text-foreground hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         >
           {showMobileMenu ? (
             <X className="h-6 w-6" />
@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3">
         {logo}
         {title && (
-          <h1 className="text-lg font-semibold text-gray-900 hidden sm:block">
+          <h1 className="text-lg font-semibold text-foreground hidden sm:block">
             {title}
           </h1>
         )}
@@ -82,13 +82,13 @@ export const Header: React.FC<HeaderProps> = ({
           className="hidden md:flex flex-1 max-w-md mx-4"
         >
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full h-9 rounded-lg border border-gray-300 bg-gray-50 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full h-9 rounded-lg border border-input bg-surface-sunken pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:bg-background focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
         </form>
@@ -103,11 +103,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onNotificationsClick && (
           <button
             onClick={onNotificationsClick}
-            className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Bell className="h-5 w-5" />
             {notifications !== undefined && notifications > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-xs font-medium text-danger-foreground">
                 {notifications > 99 ? '99+' : notifications}
               </span>
             )}
@@ -120,17 +120,17 @@ export const Header: React.FC<HeaderProps> = ({
             align="right"
             items={userMenuItems}
             trigger={
-              <button className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-gray-100">
+              <button className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 <Avatar
                   src={user.avatarUrl}
                   name={user.name}
                   size="sm"
                 />
                 <div className="hidden lg:block text-left">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-foreground">
                     {user.name}
                   </p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </button>
             }
@@ -164,17 +164,17 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {breadcrumbs.map((crumb, index) => (
               <li key={index} className="flex items-center">
                 {index > 0 && (
-                  <span className="mx-2 text-gray-400">/</span>
+                  <span className="mx-2 text-muted-foreground">/</span>
                 )}
                 {crumb.href ? (
                   <a
                     href={crumb.href}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
                   >
                     {crumb.label}
                   </a>
                 ) : (
-                  <span className="text-sm text-gray-500">{crumb.label}</span>
+                  <span className="text-sm text-muted-foreground">{crumb.label}</span>
                 )}
               </li>
             ))}
@@ -183,9 +183,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       )}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
           {description && (
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           )}
         </div>
         {actions && <div className="flex items-center gap-3">{actions}</div>}

@@ -1,394 +1,289 @@
-'use client';
+/**
+ * Estate manager root — the Head of Estates' post-login home.
+ *
+ * Dark-first, warm-amber-signal, Fraunces-display. Lean. The flagship
+ * operator surface lives at /briefing; this page is the doorway to it
+ * plus a compact snapshot of what Mwikila did overnight and what needs
+ * the head's eyes.
+ *
+ * Data note: every count / feed entry below is static demo data for
+ * now. Wire to TanStack Query (head-briefing.router, autonomy-guard)
+ * in a follow-up — this file deliberately does zero fetching so the
+ * landing experience renders instantly on first paint.
+ */
 
 import Link from 'next/link';
 import {
-  Building2,
-  Home,
-  Percent,
-  ClipboardList,
-  Loader2,
-  CheckCircle,
-  DollarSign,
-  Calendar,
-  UserPlus,
-  CreditCard,
-  Wrench,
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+  FileSearch,
+  Gauge,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
-import { Empty, Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
-import { PageHeader } from '@/components/layout/PageHeader';
-import {
-  propertiesService,
-  unitsService,
-  leasesService,
-  workOrdersService,
-  paymentsService,
-} from '@bossnyumba/api-client';
+import { Logomark } from '@bossnyumba/design-system';
 
-// Tenant region is read from env at build time (set by deploy pipeline
-// per-tenant) so the dashboard does not hardcode Kenya/en-KE.
-const TENANT_CURRENCY =
-  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
-const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
+/* ──────────────────────────────  Demo data  ────────────────────────────── */
+// TODO(data): Replace with TanStack Query against head-briefing router.
+const OPERATOR_NAME = 'George';
+const OVERNIGHT_ACTIONS = 148;
 
-function formatCurrency(amount: number, currency: string = TENANT_CURRENCY) {
-  return new Intl.NumberFormat(TENANT_LOCALE, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(amount);
+interface ActionTile {
+  readonly label: string;
+  readonly count: number;
+  readonly href: string;
+  readonly tone: 'signal' | 'warning' | 'neutral' | 'success';
+  readonly Icon: typeof AlertTriangle;
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString(TENANT_LOCALE, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+const ACTION_TILES: readonly ActionTile[] = [
+  {
+    label: 'Pending decisions',
+    count: 3,
+    href: '/briefing#pending',
+    tone: 'signal',
+    Icon: Sparkles,
+  },
+  {
+    label: 'Escalations',
+    count: 1,
+    href: '/briefing#escalations',
+    tone: 'warning',
+    Icon: AlertTriangle,
+  },
+  {
+    label: 'Auto-renewals',
+    count: 6,
+    href: '/leases?filter=auto-renewal',
+    tone: 'success',
+    Icon: RefreshCw,
+  },
+  {
+    label: 'Flagged for review',
+    count: 2,
+    href: '/briefing#flagged',
+    tone: 'neutral',
+    Icon: FileSearch,
+  },
+];
+
+interface AutonomousAction {
+  readonly domain: string;
+  readonly time: string;
+  readonly body: string;
 }
 
-export default function DashboardPage() {
-  const tNav = useTranslations('nav');
-  const t = useTranslations('dashboard');
-  const propertiesQuery = useQuery({
-    queryKey: ['properties', { page: 1, pageSize: 100 }],
-    queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
-    retry: false,
-  });
-  const { data: propertiesData, isLoading: loadingProperties } = propertiesQuery;
+const RECENT_ACTIONS: readonly AutonomousAction[] = [
+  {
+    domain: 'Finance',
+    time: '06:42',
+    body: 'Mwikila reconciled 38 auto-debits and queued 2 retries for today.',
+  },
+  {
+    domain: 'Maintenance',
+    time: '05:18',
+    body: 'Mwikila dispatched 12 work orders to 4 trusted vendors overnight.',
+  },
+  {
+    domain: 'Leasing',
+    time: '04:18',
+    body: 'Mwikila approved 6 same-terms renewals within your policy envelope.',
+  },
+  {
+    domain: 'Communications',
+    time: '03:45',
+    body: 'Mwikila replied to 23 tenant WhatsApp threads and logged 4 for your read-through.',
+  },
+];
 
-  const unitsQuery = useQuery({
-    queryKey: ['units', { page: 1, pageSize: 500 }],
-    queryFn: () => unitsService.list({ page: 1, pageSize: 500 }),
-    retry: false,
-  });
-  const { data: unitsData, isLoading: loadingUnits } = unitsQuery;
+/* ──────────────────────────────  Page  ────────────────────────────── */
 
-  const workOrdersQuery = useQuery({
-    queryKey: ['workOrders', 'list'],
-    queryFn: () => workOrdersService.list(undefined, 1, 100),
-    retry: false,
-  });
-  const { data: workOrdersData, isLoading: loadingWorkOrders } = workOrdersQuery;
+export default function ManagerHomePage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 sm:py-12">
+        {/* Good-morning greeting */}
+        <header className="max-w-2xl">
+          <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
+            Monday · 22 April
+          </p>
+          <h1 className="mt-2 font-display text-4xl font-medium leading-tight tracking-tight sm:text-5xl">
+            Good morning, {OPERATOR_NAME}.
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-neutral-500 sm:text-lg">
+            Mwikila handled{' '}
+            <span className="tabular-nums text-foreground">
+              {OVERNIGHT_ACTIONS}
+            </span>{' '}
+            actions overnight.{' '}
+            <span className="text-foreground">3 decisions need you.</span>
+          </p>
+        </header>
 
-  const leasesQuery = useQuery({
-    queryKey: ['leases', 'expiring'],
-    queryFn: () => leasesService.getExpiring(60, 1, 5),
-    retry: false,
-  });
-  const { data: leasesData, isLoading: loadingLeases } = leasesQuery;
+        {/* Morning briefing hero */}
+        <Link
+          href="/briefing"
+          className="group mt-8 flex flex-col items-start gap-5 rounded-2xl border border-signal-500/30 bg-signal-500/[0.04] p-6 transition-all duration-base ease-out hover:border-signal-500/60 hover:bg-signal-500/[0.07] sm:flex-row sm:items-center sm:gap-6 sm:p-8"
+          aria-label="Open morning briefing"
+        >
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-signal-500/10 ring-1 ring-signal-500/20 sm:h-16 sm:w-16">
+            <Logomark size={36} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
+              7am briefing · ready
+            </p>
+            <h2 className="mt-1.5 font-display text-2xl font-medium leading-tight tracking-tight sm:text-3xl">
+              Open your morning briefing
+            </h2>
+            <p className="mt-2 max-w-prose text-sm leading-relaxed text-neutral-500 sm:text-base">
+              Overnight actions, the three decisions waiting on you, portfolio
+              health, and tenant sentiment — in a 60-second read.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 self-start rounded-md bg-signal-500 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fast ease-out group-hover:translate-x-0.5 sm:self-center">
+            Continue
+            <ArrowUpRight className="h-4 w-4" />
+          </div>
+        </Link>
 
-  const paymentsQueryInstance = useQuery({
-    queryKey: ['payments', 'recent'],
-    queryFn: () =>
-      paymentsService.list(
-        {
-          dateFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        } as never,
-        1,
-        5
-      ),
-    retry: false,
-  });
-  const { data: paymentsData, isLoading: loadingPayments } = paymentsQueryInstance;
+        {/* Action tiles */}
+        <section className="mt-10">
+          <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+            Needs your attention
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {ACTION_TILES.map((tile) => (
+              <ActionTileCard key={tile.label} tile={tile} />
+            ))}
+          </div>
+        </section>
 
-  const properties = propertiesData?.data ?? [];
-  const units = unitsData?.data ?? [];
-  const workOrders = Array.isArray(workOrdersData?.data) ? workOrdersData.data : [];
-  const expiringLeases = Array.isArray(leasesData?.data) ? leasesData.data : [];
-  const recentPayments = Array.isArray(paymentsData?.data) ? paymentsData.data : [];
+        {/* Two-column split: recent actions + autonomy */}
+        <section className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] lg:gap-8">
+          {/* Recent autonomous actions */}
+          <div>
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+                Latest autonomous actions
+              </h2>
+              <Link
+                href="/briefing#overnight"
+                className="flex items-center gap-1 text-xs font-medium text-neutral-500 transition-colors duration-fast hover:text-foreground"
+              >
+                All 148
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <ol className="mt-4 space-y-1.5">
+              {RECENT_ACTIONS.map((action, i) => (
+                <ActionRow key={i} action={action} />
+              ))}
+            </ol>
+          </div>
 
-  const totalProperties = properties.length;
-  const totalUnits = units.length;
-  const occupiedUnits = units.filter((u: { status?: string }) => u.status === 'OCCUPIED').length;
-  const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+          {/* Autonomy level */}
+          <aside>
+            <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+              Autonomy
+            </h2>
+            <div className="mt-4 rounded-xl border border-border bg-surface-raised p-5">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-signal-500" />
+                <span className="inline-flex items-center rounded-full bg-signal-500/10 px-2 py-0.5 font-mono text-[0.65rem] font-semibold uppercase tracking-widest text-signal-500 tabular-nums">
+                  Level L3
+                </span>
+              </div>
+              <p className="mt-3 font-display text-2xl font-medium leading-tight tracking-tight">
+                Act on most
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                Mwikila runs the portfolio. You see exceptions only.{' '}
+                <span className="tabular-nums text-foreground">7</span> red-line
+                actions still require your approval.
+              </p>
+              <Link
+                href="/autonomy"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-signal-500 transition-colors duration-fast hover:text-signal-400"
+              >
+                Tune policy
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </aside>
+        </section>
 
-  const openWorkOrders = workOrders.filter(
-    (wo: { status?: string }) => !['COMPLETED', 'CANCELLED'].includes(wo.status ?? '')
-  ).length;
-  const inProgressWorkOrders = workOrders.filter(
-    (wo: { status?: string }) => wo.status === 'IN_PROGRESS'
-  ).length;
-  const today = new Date().toISOString().split('T')[0];
-  const completedToday = workOrders.filter(
-    (wo: { status?: string; completedAt?: string }) =>
-      wo.status === 'COMPLETED' && wo.completedAt && String(wo.completedAt).startsWith(today)
-  ).length;
+        {/* Footer strip */}
+        <footer className="mt-16 flex items-center justify-between border-t border-border pt-6">
+          <div className="flex items-center gap-2.5">
+            <Logomark size={20} />
+            <span className="font-mono text-[0.72rem] text-neutral-500">
+              Today · Nairobi · <span className="tabular-nums">07:04</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-[0.68rem] text-neutral-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            <span>All systems operational</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
 
-  const isLoading =
-    loadingProperties || loadingUnits || loadingWorkOrders || loadingLeases || loadingPayments;
+/* ────────────────────────  Presentation kit  ──────────────────────── */
 
-  // If every core query failed the dashboard has zero signal — surface a retry banner.
-  const allFailed =
-    propertiesQuery.isError &&
-    unitsQuery.isError &&
-    workOrdersQuery.isError &&
-    leasesQuery.isError &&
-    paymentsQueryInstance.isError;
-
-  const refetchAll = () => {
-    propertiesQuery.refetch();
-    unitsQuery.refetch();
-    workOrdersQuery.refetch();
-    leasesQuery.refetch();
-    paymentsQueryInstance.refetch();
+function ActionTileCard({ tile }: { readonly tile: ActionTile }) {
+  const toneClasses: Record<ActionTile['tone'], string> = {
+    signal: 'text-signal-500',
+    warning: 'text-warning',
+    success: 'text-success',
+    neutral: 'text-neutral-500',
   };
 
   return (
-    <>
-      <PageHeader
-        title={tNav('dashboard')}
-        subtitle={t('subtitle')}
-        showProfile
-      />
-
-      <div className="px-4 py-4 space-y-6 max-w-4xl mx-auto">
-        {!isLoading && allFailed ? (
-          <Alert variant="danger">
-            <AlertDescription>
-              {t('errorLoad')}
-              <Button size="sm" onClick={refetchAll} className="ml-2">
-                {t('retry')}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        ) : isLoading ? (
-          <div className="space-y-6" aria-busy="true" aria-live="polite">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-            </div>
-            <Skeleton className="h-40" />
-            <Skeleton className="h-40" />
-          </div>
-        ) : (
-          <>
-            {/* Property Overview Cards */}
-            <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('propertyOverview')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Link href="/properties" className="card p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary-50 rounded-lg">
-                      <Building2 className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{totalProperties}</div>
-                      <div className="text-xs text-gray-500">{t('properties')}</div>
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/units" className="card p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary-50 rounded-lg">
-                      <Home className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{totalUnits}</div>
-                      <div className="text-xs text-gray-500">{t('totalUnits')}</div>
-                    </div>
-                  </div>
-                </Link>
-                <div className="card p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-success-50 rounded-lg">
-                      <Percent className="w-5 h-5 text-success-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{occupancyRate}%</div>
-                      <div className="text-xs text-gray-500">{t('occupancyRate')}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Work Order Summary */}
-            <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('workOrders')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Link href="/work-orders?filter=open" className="card p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-warning-50 rounded-lg">
-                      <ClipboardList className="w-5 h-5 text-warning-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{openWorkOrders}</div>
-                      <div className="text-xs text-gray-500">{t('open')}</div>
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/work-orders?status=IN_PROGRESS" className="card p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary-50 rounded-lg">
-                      <Loader2 className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{inProgressWorkOrders}</div>
-                      <div className="text-xs text-gray-500">{t('inProgress')}</div>
-                    </div>
-                  </div>
-                </Link>
-                <div className="card p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-success-50 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-success-600" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{completedToday}</div>
-                      <div className="text-xs text-gray-500">{t('completedToday')}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Quick Actions */}
-            <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">{t('quickActions')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Link
-                  href="/work-orders/new"
-                  className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow border-primary-200 bg-primary-50/50"
-                >
-                  <Wrench className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">{t('createWorkOrder')}</span>
-                </Link>
-                <Link
-                  href="/customers/new"
-                  className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
-                >
-                  <UserPlus className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">{t('addCustomer')}</span>
-                </Link>
-                <Link
-                  href="/payments/receive"
-                  className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
-                >
-                  <CreditCard className="w-6 h-6 text-primary-600" />
-                  <span className="font-medium">{t('receivePayment')}</span>
-                </Link>
-              </div>
-            </section>
-
-            {/* Recent Payments */}
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4" />
-                  {t('recentPayments')}
-                </h2>
-                <Link href="/payments" className="text-sm text-primary-600">
-                  {t('viewAll')}
-                </Link>
-              </div>
-              <div className="card divide-y divide-gray-100">
-                {recentPayments.length === 0 ? (
-                  <Empty
-                    variant="default"
-                    icon={<DollarSign className="h-8 w-8 text-gray-400" />}
-                    title={t('noRecentPayments')}
-                    description={t('noRecentPaymentsDesc')}
-                    action={{
-                      label: t('receivePaymentCta'),
-                      onClick: () => { window.location.href = '/payments/receive'; },
-                    }}
-                  />
-                ) : (
-                  recentPayments.map(
-                    (
-                      payment: {
-                        id: string;
-                        amount?: number;
-                        currency?: string;
-                        createdAt?: string;
-                        amountInCents?: number;
-                      }
-                    ) => {
-                      const amount =
-                        payment.amount ?? (payment.amountInCents ? payment.amountInCents / 100 : 0);
-                      return (
-                        <div
-                          key={payment.id}
-                          className="p-3 flex justify-between items-center"
-                        >
-                          <div>
-                            <div className="font-medium text-sm">
-                              {formatCurrency(amount, payment.currency)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {payment.createdAt ? formatDate(payment.createdAt) : ''}
-                            </div>
-                          </div>
-                          <span className="badge-success">{t('completed')}</span>
-                        </div>
-                      );
-                    }
-                  )
-                )}
-              </div>
-            </section>
-
-            {/* Upcoming Lease Expirations */}
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {t('upcomingLeaseExpirations')}
-                </h2>
-                <Link href="/leases?expiring=true" className="text-sm text-primary-600">
-                  {t('viewAll')}
-                </Link>
-              </div>
-              <div className="card divide-y divide-gray-100">
-                {expiringLeases.length === 0 ? (
-                  <Empty
-                    variant="default"
-                    icon={<Calendar className="h-8 w-8 text-gray-400" />}
-                    title={t('noUpcomingExpirations')}
-                    description={t('noUpcomingExpirationsDesc')}
-                    action={{
-                      label: t('viewAllLeases'),
-                      onClick: () => { window.location.href = '/leases'; },
-                    }}
-                  />
-                ) : (
-                  expiringLeases.map(
-                    (lease: {
-                      id: string;
-                      endDate: string;
-                      unit?: { unitNumber?: string };
-                      customer?: { name?: string };
-                      property?: { name?: string };
-                    }) => (
-                      <Link key={lease.id} href={`/leases/${lease.id}`}>
-                        <div className="p-3 flex justify-between items-center hover:bg-gray-50">
-                          <div>
-                            <div className="font-medium text-sm">
-                              {lease.unit?.unitNumber} - {lease.customer?.name || t('tenantFallback')}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {lease.property?.name} • {t('expiresPrefix')} {formatDate(lease.endDate)}
-                            </div>
-                          </div>
-                          <span className="badge-warning">{t('expiring')}</span>
-                        </div>
-                      </Link>
-                    )
-                  )
-                )}
-              </div>
-            </section>
-          </>
-        )}
+    <Link
+      href={tile.href}
+      className="group flex flex-col justify-between gap-6 rounded-xl border border-border bg-surface p-4 transition-all duration-fast ease-out hover:border-border-strong hover:bg-surface-raised sm:p-5"
+    >
+      <div className="flex items-center justify-between">
+        <tile.Icon className={`h-4 w-4 ${toneClasses[tile.tone]}`} />
+        <ArrowUpRight className="h-3.5 w-3.5 text-neutral-500 opacity-0 transition-opacity duration-fast group-hover:opacity-100" />
       </div>
-    </>
+      <div>
+        <p className="font-display text-3xl font-medium leading-none tracking-tight tabular-nums sm:text-4xl">
+          {tile.count}
+        </p>
+        <p className="mt-2 text-xs leading-snug text-neutral-500 sm:text-sm">
+          {tile.label}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function ActionRow({ action }: { readonly action: AutonomousAction }) {
+  return (
+    <li className="flex items-start gap-4 rounded-lg border border-transparent p-3 transition-colors duration-fast hover:border-border hover:bg-surface-raised">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-signal-500/10">
+        <CheckCircle2 className="h-3.5 w-3.5 text-signal-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+            {action.domain}
+          </span>
+          <span className="font-mono text-[0.68rem] text-neutral-500">
+            <Clock className="mr-1 inline h-2.5 w-2.5" />
+            <span className="tabular-nums">{action.time}</span>
+          </span>
+        </div>
+        <p className="mt-0.5 text-sm leading-relaxed text-foreground">
+          {action.body}
+        </p>
+      </div>
+    </li>
   );
 }

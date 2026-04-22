@@ -16,12 +16,20 @@ export function makeFakeFetch(scripts: {
   calls: { url: string; init: Parameters<FetchLike>[1] }[];
 } {
   const calls: { url: string; init: Parameters<FetchLike>[1] }[] = [];
-  const fakeFetch: FetchLike = vi.fn(async (url, init) => {
+  const fakeFetch = vi.fn(async (url: string, init: Parameters<FetchLike>[1]) => {
     calls.push({ url, init });
-    // Match either by exact URL or by substring key.
-    const matchKey = Object.keys(scripts).find(
-      (k) => url === k || url.includes(k),
-    );
+    // Match either by exact URL or by substring key. When multiple
+    // substrings match the URL, prefer the one whose start position
+    // is latest — a URL like `.../workorders/sc_99/checkin` should
+    // match `/checkin` (the intended suffix) over the generic prefix
+    // `/v3/workorders`.
+    const keys = Object.keys(scripts);
+    const exact = keys.find((k) => url === k);
+    const matchKey =
+      exact ??
+      keys
+        .filter((k) => url.includes(k))
+        .sort((a, b) => url.lastIndexOf(b) - url.lastIndexOf(a))[0];
     const script = matchKey ? scripts[matchKey] : undefined;
     if (!script) {
       return {
@@ -49,10 +57,10 @@ export function makeFakeFetch(scripts: {
         return script.body ?? {};
       },
     };
-  }) as FetchLike & { calls: typeof calls };
+  });
   // Attach the call log so tests can inspect it.
   (fakeFetch as unknown as { calls: typeof calls }).calls = calls;
-  return fakeFetch as FetchLike & { calls: typeof calls };
+  return fakeFetch as unknown as FetchLike & { calls: typeof calls };
 }
 
 export function fixedClock(iso: string): () => Date {

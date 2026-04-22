@@ -29,23 +29,23 @@ export const Progress: React.FC<ProgressProps> = ({
   };
 
   const variantClasses = {
-    default: 'bg-blue-600',
-    success: 'bg-green-600',
-    warning: 'bg-yellow-500',
-    danger: 'bg-red-600',
+    default: 'bg-signal-500',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
   };
 
   return (
     <div className={cn('w-full', className)} {...props}>
       {showLabel && labelPosition === 'outside' && (
         <div className="flex justify-between mb-1">
-          <span className="text-sm font-medium text-gray-700">Progress</span>
-          <span className="text-sm font-medium text-gray-700">{Math.round(percentage)}%</span>
+          <span className="text-sm font-medium text-foreground">Progress</span>
+          <span className="text-sm font-medium text-foreground">{Math.round(percentage)}%</span>
         </div>
       )}
       <div
         className={cn(
-          'w-full bg-gray-200 rounded-full overflow-hidden',
+          'w-full bg-muted rounded-full overflow-hidden',
           sizeClasses[size]
         )}
       >
@@ -57,7 +57,7 @@ export const Progress: React.FC<ProgressProps> = ({
           style={{ width: `${percentage}%` }}
         >
           {showLabel && labelPosition === 'inside' && size === 'lg' && (
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-primary-foreground">
               {Math.round(percentage)}%
             </span>
           )}
@@ -90,10 +90,10 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   const offset = circumference - (percentage / 100) * circumference;
 
   const variantColors = {
-    default: 'text-blue-600',
-    success: 'text-green-600',
-    warning: 'text-yellow-500',
-    danger: 'text-red-600',
+    default: 'text-signal-500',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-danger',
   };
 
   return (
@@ -106,7 +106,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-gray-200"
+          className="text-muted"
         />
         <circle
           cx={size / 2}
@@ -122,7 +122,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         />
       </svg>
       {showLabel && (
-        <span className="absolute text-sm font-medium text-gray-700">
+        <span className="absolute text-sm font-medium text-foreground">
           {Math.round(percentage)}%
         </span>
       )}

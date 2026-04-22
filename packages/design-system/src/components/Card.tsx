@@ -238,7 +238,7 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
               <span
                 className={cn(
                   'font-medium',
-                  trend.value >= 0 ? 'text-green-600' : 'text-red-600'
+                  trend.value >= 0 ? 'text-success' : 'text-danger'
                 )}
               >
                 {trend.value >= 0 ? '+' : ''}
