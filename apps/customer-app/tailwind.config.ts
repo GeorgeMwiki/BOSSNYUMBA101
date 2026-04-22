@@ -2,8 +2,18 @@ import type { Config } from 'tailwindcss';
 import baseConfig from '@bossnyumba/design-system/tailwind.config';
 
 const baseExtend = (baseConfig.theme as any)?.extend ?? {};
-const baseColors = baseExtend.colors ?? {};
 
+/**
+ * Customer-app — inherits the BossNyumba base Tailwind config and adds
+ * two consumer-app-specific affordances:
+ *
+ *   - additional radii (story/chat/insta/spotify) used by the feed +
+ *     stories surfaces
+ *   - custom shadows for the content-card elevation scale
+ *
+ * All color tokens flow from the design-system CSS variables; no
+ * hard-coded palette overrides here.
+ */
 const config: Config = {
   ...baseConfig,
   content: [
@@ -23,49 +33,8 @@ const config: Config = {
       },
       boxShadow: {
         ...(baseExtend.boxShadow ?? {}),
-        spotify: '0 4px 12px rgba(0, 0, 0, 0.4)',
-        'spotify-lg': '0 8px 24px rgba(0, 0, 0, 0.6)',
-      },
-      colors: {
-        ...baseColors,
-        border: 'hsl(var(--border, 0 0% 20%))',
-        surface: {
-          DEFAULT: 'hsl(var(--surface, 0 0% 7%))',
-          card: 'hsl(var(--surface-card, 0 0% 16%))',
-          elevated: 'hsl(var(--surface-elevated, 0 0% 9%))',
-          hover: 'hsl(var(--surface-hover, 0 0% 20%))',
-        },
-        'surface-card': 'hsl(var(--surface-card, 0 0% 16%))',
-        'surface-hover': 'hsl(var(--surface-hover, 0 0% 20%))',
-        'spotify-green': '#1DB954',
-        'spotify-green-hover': '#1ED760',
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-        },
-        warning: {
-          50: '#fffbeb',
-          500: '#f59e0b',
-          600: '#d97706',
-        },
-        danger: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
-        },
+        elevated: '0 4px 12px hsl(30 20% 10% / 0.35)',
+        'elevated-lg': '0 8px 24px hsl(30 20% 10% / 0.55)',
       },
     },
   },

@@ -1,120 +1,89 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/**
+ * Customer app — globals.css (Wave 29 rebrand)
+ *
+ * The consumer surface for tenants, owners-as-tenants, and the public.
+ * Inherits all BossNyumba design tokens from @bossnyumba/design-system.
+ * Keeps a handful of consumer-specific utilities (stories, chat
+ * bubbles, bottom-nav) but all colors flow from the token system, so
+ * the whole app re-themes when a token changes.
+ */
+
+@import '../../../../packages/design-system/src/styles/globals.css';
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --surface: 0 0% 7%;
-    --surface-elevated: 0 0% 9%;
-    --surface-card: 0 0% 16%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --border: 0 0% 90%;
-    --radius: 0.5rem;
-  }
-
-  .dark,
-  html.dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --surface: 0 0% 7%;
-    --surface-elevated: 0 0% 9%;
-    --surface-card: 0 0% 14%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
-    --border: 0 0% 18%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  html {
-    @apply antialiased;
-  }
   body {
-    @apply bg-[#121212] text-white;
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Spotify-style cards */
 @layer components {
-  .card-spotify {
-    @apply rounded-spotify bg-surface-card p-4 transition-colors hover:bg-surface-hover;
-  }
-  .card-album {
-    @apply rounded-spotify overflow-hidden bg-surface-card shadow-spotify transition-all hover:shadow-spotify-lg hover:scale-[1.02];
-  }
-  /* Instagram-style feed card */
-  .card-feed {
-    @apply rounded-insta overflow-hidden bg-surface-card border border-white/5;
-  }
-  /* WhatsApp-style chat bubble */
+  /* Chat bubbles — tenant-facing WhatsApp-style threads */
   .chat-bubble-sent {
-    @apply ml-auto max-w-[85%] rounded-chat rounded-br-md bg-spotify-green px-4 py-2.5 text-white;
+    @apply ml-auto max-w-[85%] rounded-chat rounded-br-md bg-signal-500 px-4 py-2.5 text-primary-foreground;
   }
   .chat-bubble-received {
-    @apply mr-auto max-w-[85%] rounded-chat rounded-bl-md bg-surface-card px-4 py-2.5 text-white;
+    @apply mr-auto max-w-[85%] rounded-chat rounded-bl-md bg-surface-raised px-4 py-2.5 text-foreground;
   }
-  /* Stories ring (Instagram/TikTok) */
+
+  /* Stories ring — amber-to-signal gradient, kept inside brand family */
   .story-ring {
-    @apply rounded-story bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5;
+    @apply rounded-story p-0.5;
+    background: linear-gradient(to top right,
+      hsl(var(--signal-400)),
+      hsl(var(--signal-500)),
+      hsl(var(--signal-700)));
   }
   .story-ring-inner {
-    @apply rounded-story bg-surface p-0.5 flex items-center justify-center;
+    @apply rounded-story bg-background p-0.5 flex items-center justify-center;
   }
-  /* Bottom nav - Spotify dark */
+
+  /* Bottom navigation */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#121212];
+    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface;
     padding-bottom: env(safe-area-inset-bottom);
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-3 px-4 text-gray-400 transition-colors min-w-0 min-h-[56px];
+    @apply flex flex-col items-center justify-center py-3 px-4 text-neutral-500 transition-colors duration-fast min-w-0 min-h-[56px];
   }
   .bottom-nav-item.active {
-    @apply text-spotify-green font-medium;
+    @apply text-signal-500 font-medium;
   }
-  /* Buttons */
+
+  /* Buttons — min-height 44 for touch targets */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-spotify px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-spotify-green focus:ring-offset-2 focus:ring-offset-[#121212] disabled:opacity-50 min-h-[44px];
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-semibold transition-all duration-fast focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 min-h-[44px];
   }
   .btn-primary {
-    @apply btn bg-spotify-green text-black hover:bg-spotify-green-hover active:scale-[0.98];
+    @apply btn bg-signal-500 text-primary-foreground hover:bg-signal-400 active:scale-[0.98];
   }
   .btn-secondary {
-    @apply btn bg-surface-card text-white hover:bg-surface-hover border border-white/10;
+    @apply btn bg-surface-raised text-foreground hover:bg-surface border border-border;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-gray-400 hover:text-white hover:bg-white/5;
+    @apply btn bg-transparent text-neutral-500 hover:text-foreground hover:bg-accent;
   }
+
   /* Inputs */
   .input {
-    @apply w-full rounded-spotify border border-white/10 bg-surface-card px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-spotify-green focus:border-transparent min-h-[48px];
+    @apply w-full rounded-md border border-border bg-surface px-4 py-3 text-foreground placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent min-h-[48px];
   }
-  /* Profile grid (Instagram) */
+
+  /* Grids + cards */
   .profile-grid {
     @apply grid grid-cols-3 gap-0.5;
   }
   .profile-grid-item {
-    @apply aspect-square bg-surface-card relative overflow-hidden;
+    @apply aspect-square bg-surface-raised relative overflow-hidden;
   }
-  /* Marketplace vendor card (TikTok Shop style) */
   .vendor-card {
-    @apply rounded-insta overflow-hidden bg-surface-card flex-shrink-0 w-[140px] transition-transform active:scale-95;
+    @apply rounded-insta overflow-hidden bg-surface border border-border flex-shrink-0 w-[140px] transition-transform duration-fast active:scale-95;
   }
 }
 
 @keyframes scale-in {
   from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  to   { transform: scale(1);   opacity: 1; }
 }
 
 .scrollbar-hide {
@@ -125,21 +94,14 @@
   display: none;
 }
 
-/* a11y: visible focus indicator for keyboard-only navigation */
-:focus-visible {
-  outline: 2px solid #1db954;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* a11y: skip-link becomes visible on focus */
+/* Skip-link pinned to the BossNyumba amber signal */
 .skip-link {
   position: absolute;
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: #1db954;
-  color: #000000;
+  background: hsl(var(--signal-500));
+  color: hsl(var(--primary-foreground));
   padding: 0.5rem 1rem;
   border-radius: 0 0 0.5rem 0;
   font-weight: 600;

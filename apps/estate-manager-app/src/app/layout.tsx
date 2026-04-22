@@ -14,21 +14,23 @@ import { DeferredMounts } from '@/components/DeferredMounts';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BOSSNYUMBA Manager',
-  description: 'Estate manager field operations app',
+  title: 'BossNyumba — Manager',
+  description: 'The head of estates. Morning briefings, autonomy controls, and estate operations — amplified.',
+  applicationName: 'BossNyumba Manager',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'BN Manager',
+    title: 'BossNyumba',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0ea5e9',
+  themeColor: '#17100A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  colorScheme: 'dark',
 };
 
 export default async function RootLayout({
@@ -39,8 +41,8 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   return (
-    <html lang={locale}>
-      <body className={`${inter.className} pb-20`}>
+    <html lang={locale} className="dark">
+      <body className={`${inter.className} pb-20 bg-background text-foreground antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AppShell>
             <DeferredMounts bottomNavigation={<BottomNavigation />}>

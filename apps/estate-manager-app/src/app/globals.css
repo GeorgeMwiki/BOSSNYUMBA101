@@ -1,141 +1,103 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/**
+ * Estate Manager — globals.css (Wave 29 rebrand)
+ *
+ * The app inherits tokens from @bossnyumba/design-system via the
+ * relative @import below, so palette / radii / shadows / motion /
+ * typography all flow from a single source. App-local utilities
+ * and Tailwind @layer additions follow.
+ */
+
+@import '../../../../packages/design-system/src/styles/globals.css';
+
+/* Load BossNyumba fonts at the app root */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
   body {
-    @apply bg-background text-foreground;
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
 @layer components {
+  /* Legacy utility classes kept for call-sites that still reference
+     them. Rewritten onto the BossNyumba token palette so colours shift
+     with light/dark mode automatically. */
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-fast focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
+    @apply btn bg-signal-500 text-primary-foreground hover:bg-signal-400 focus:ring-signal-500;
   }
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500;
+    @apply btn border border-border bg-surface text-foreground hover:bg-surface-raised focus:ring-ring;
   }
   .btn-success {
-    @apply btn bg-success-500 text-white hover:bg-success-600 focus:ring-success-500;
+    @apply btn bg-success text-success-foreground hover:opacity-90 focus:ring-success;
   }
   .btn-danger {
-    @apply btn bg-danger-500 text-white hover:bg-danger-600 focus:ring-danger-500;
+    @apply btn bg-danger text-danger-foreground hover:opacity-90 focus:ring-danger;
   }
+
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
-  .badge-primary { @apply badge bg-primary-100 text-primary-600; }
-  .badge-info { @apply badge bg-primary-100 text-primary-600; }
-  .badge-success { @apply badge bg-success-50 text-success-600; }
-  .badge-warning { @apply badge bg-warning-50 text-warning-600; }
-  .badge-danger { @apply badge bg-danger-50 text-danger-600; }
-  .badge-gray { @apply badge bg-gray-100 text-gray-600; }
+  .badge-primary  { @apply badge bg-signal-500/15 text-signal-500; }
+  .badge-info     { @apply badge bg-info-subtle text-info; }
+  .badge-success  { @apply badge bg-success-subtle text-success; }
+  .badge-warning  { @apply badge bg-warning-subtle text-warning; }
+  .badge-danger   { @apply badge bg-danger-subtle text-danger; }
+  .badge-gray     { @apply badge bg-neutral-100 text-neutral-600; }
+
   .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply rounded-lg border border-border bg-surface shadow-sm;
   }
+
   .input {
-    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
   }
+
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-foreground mb-1;
   }
+
   .kanban-column {
-    @apply flex-shrink-0 w-72 rounded-xl bg-gray-50 border border-gray-200 p-3;
+    @apply flex-shrink-0 w-72 rounded-lg bg-surface-sunken border border-border p-3;
   }
+
   .kanban-card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow;
+    @apply rounded-md border border-border bg-surface shadow-xs p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow duration-fast;
   }
+
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40;
+    @apply fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-40;
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-4 text-gray-500 transition-colors min-w-0;
+    @apply flex flex-col items-center justify-center py-2 px-4 text-neutral-500 transition-colors duration-fast min-w-0;
   }
   .bottom-nav-item.active {
-    @apply text-primary-500;
+    @apply text-signal-500;
   }
-  .sla-breached { @apply text-danger-600 font-medium; }
-  .sla-warning { @apply text-warning-600; }
-  .sla-ok { @apply text-success-600; }
+
+  .sla-breached { @apply text-danger font-medium; }
+  .sla-warning  { @apply text-warning; }
+  .sla-ok       { @apply text-success; }
 }
 
 @layer utilities {
-  /* Bottom-safe padding for mobile devices with home indicators. */
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* a11y: visible focus indicator for keyboard-only navigation */
-:focus-visible {
-  outline: 2px solid #0ea5e9;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* a11y: skip-link becomes visible on focus */
+/* Skip-link — pinned to the BossNyumba amber signal */
 .skip-link {
   position: absolute;
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: #0ea5e9;
-  color: #ffffff;
+  background: hsl(var(--signal-500));
+  color: hsl(var(--primary-foreground));
   padding: 0.5rem 1rem;
   border-radius: 0 0 0.5rem 0;
   font-weight: 600;

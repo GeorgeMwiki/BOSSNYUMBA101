@@ -1,12 +1,17 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'BOSSNYUMBA Owner Portal',
-  description: 'Property owner portal for managing your investments',
+  title: 'BossNyumba — Owner',
+  description: 'Your properties, your earnings, your calm. Owned by BossNyumba.',
+  applicationName: 'BossNyumba Owner',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#FBF7EE',
+  width: 'device-width',
+  initialScale: 1,
+  colorScheme: 'light dark',
 };
 
 export default function RootLayout({
@@ -16,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="bg-background text-foreground antialiased">{children}</body>
     </html>
   );
 }

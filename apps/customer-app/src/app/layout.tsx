@@ -11,8 +11,9 @@ import { MwikilaWidgetMount } from '@/components/MwikilaWidgetMount';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BOSSNYUMBA',
-  description: 'Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.',
+  title: 'BossNyumba',
+  description: 'Pay rent, submit maintenance requests, and stay in sync with your home — all on BossNyumba.',
+  applicationName: 'BossNyumba',
   manifest: '/manifest.json',
   metadataBase: (() => {
     // NEXT_PUBLIC_APP_URL is baked into the bundle at build time. When
@@ -34,8 +35,9 @@ export const metadata: Metadata = {
     return new URL('http://localhost:3002');
   })(),
   openGraph: {
-    title: 'BOSSNYUMBA - Tenant App',
-    description: 'Your property management companion. Pay rent, submit maintenance requests, and manage your tenancy.',
+    title: 'BossNyumba — Tenant app',
+    description: 'Pay rent, submit maintenance requests, and stay in sync with your home.',
+    siteName: 'BossNyumba',
   },
   icons: {
     icon: [
@@ -47,12 +49,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'BOSSNYUMBA',
+    title: 'BossNyumba',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#121212',
+  themeColor: '#17100A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
