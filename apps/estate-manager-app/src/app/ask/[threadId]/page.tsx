@@ -14,8 +14,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Brain, Maximize2, Sparkles } from 'lucide-react';
+import { ArrowRight, Brain, Maximize2, ShieldCheck, Sparkles } from 'lucide-react';
 import { AgentTurn } from '../_components/AgentTurn';
+import { AuditTrailPanel } from '../_components/AuditTrailPanel';
 import { DegradedCard } from '../_components/DegradedCard';
 import { ThreadSidebar } from '../_components/ThreadSidebar';
 import {
@@ -52,6 +53,7 @@ export default function ThreadPage() {
   const [extendedThinking, setExtendedThinking] = useState(false);
   const [isStreaming, setStreaming] = useState(false);
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+  const [rightPane, setRightPane] = useState<'artifacts' | 'audit'>('artifacts');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seededRef = useRef(false);
@@ -212,13 +214,31 @@ export default function ThreadPage() {
               {threadTitle || 'Loading…'}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push('/ask')}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-neutral-500 transition-colors duration-fast hover:bg-surface-raised hover:text-foreground"
-          >
-            New conversation
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setRightPane((p) => (p === 'audit' ? 'artifacts' : 'audit'))
+              }
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-fast',
+                rightPane === 'audit'
+                  ? 'border-signal-500/60 bg-signal-500/10 text-signal-500'
+                  : 'border-border text-neutral-500 hover:bg-surface-raised hover:text-foreground',
+              ].join(' ')}
+              aria-pressed={rightPane === 'audit'}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Audit trail
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/ask')}
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-neutral-500 transition-colors duration-fast hover:bg-surface-raised hover:text-foreground"
+            >
+              New conversation
+            </button>
+          </div>
         </header>
 
         {degraded ? (
@@ -314,13 +334,30 @@ export default function ThreadPage() {
         </footer>
       </main>
 
-      <ArtifactPane
-        artifact={selectedArtifact}
-        onClose={() => setSelectedArtifact(null)}
-        citations={aggregatedCitations}
-      />
+      {rightPane === 'audit' ? (
+        <aside className="hidden w-[360px] shrink-0 border-l border-border bg-surface lg:block">
+          <AuditTrailPanel
+            threadId={threadId}
+            scope="tenant"
+            fetchUrl={buildAuditUrl(threadId)}
+            title={threadTitle || undefined}
+          />
+        </aside>
+      ) : (
+        <ArtifactPane
+          artifact={selectedArtifact}
+          onClose={() => setSelectedArtifact(null)}
+          citations={aggregatedCitations}
+        />
+      )}
     </div>
   );
+}
+
+function buildAuditUrl(threadId: string): string {
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  const path = `/api/v1/intelligence/thread/${encodeURIComponent(threadId)}/audit?scope=tenant&limit=500`;
+  return base ? `${base}${path}` : path;
 }
 
 // ─────────────────────────────────────────────────────────────────────

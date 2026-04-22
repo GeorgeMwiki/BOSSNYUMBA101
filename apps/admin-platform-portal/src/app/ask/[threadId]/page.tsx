@@ -5,6 +5,7 @@
 import { ThreadList } from '@/components/ask/ThreadList';
 import { AskChat } from '@/components/ask/AskChat';
 import { PrivacyBudgetCard } from '@/components/ask/PrivacyBudgetCard';
+import { AuditTrailPanel } from '@/components/ask/AuditTrailPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +40,25 @@ export default async function IndustryThreadPage({ params }: ThreadPageProps) {
         </div>
       </main>
 
-      <aside className="hidden w-[320px] shrink-0 flex-col gap-4 border-l border-border bg-surface px-5 py-5 lg:flex">
-        <PrivacyBudgetCard />
+      <aside className="hidden w-[360px] shrink-0 flex-col gap-4 border-l border-border bg-surface lg:flex">
+        <div className="px-5 pt-5">
+          <PrivacyBudgetCard />
+        </div>
+        <div className="min-h-0 flex-1">
+          <AuditTrailPanel
+            threadId={threadId}
+            scope="platform"
+            fetchUrl={buildAuditUrl(threadId)}
+            title={`Thread ${threadId.slice(0, 12)}`}
+          />
+        </div>
       </aside>
     </div>
   );
+}
+
+function buildAuditUrl(threadId: string): string {
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  const path = `/api/v1/intelligence/thread/${encodeURIComponent(threadId)}/audit?scope=platform&limit=500`;
+  return base ? `${base}${path}` : path;
 }

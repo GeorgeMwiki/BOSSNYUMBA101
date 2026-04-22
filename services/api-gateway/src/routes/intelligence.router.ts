@@ -45,6 +45,7 @@ import { z } from 'zod';
 import type {
   AgentEvent,
   CentralIntelligenceAgent,
+  ConversationAuditReader,
   ConversationMemory,
   ScopeContext,
 } from '@bossnyumba/central-intelligence';
@@ -94,6 +95,7 @@ app.use('*', authMiddleware);
 interface IntelligenceSlot {
   readonly agent: CentralIntelligenceAgent | null;
   readonly memory: ConversationMemory | null;
+  readonly auditReader: ConversationAuditReader | null;
 }
 
 function getIntelligence(c: any): IntelligenceSlot {
@@ -102,6 +104,7 @@ function getIntelligence(c: any): IntelligenceSlot {
     services.centralIntelligence ?? {
       agent: null,
       memory: null,
+      auditReader: null,
     }
   );
 }
@@ -412,5 +415,74 @@ app.get('/thread/:threadId', async (c: any) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// GET /thread/:threadId/audit
+// ---------------------------------------------------------------------------
+//
+// Returns the cryptographically-chained audit records for a single
+// thread. Exposes the full per-turn trail:
+//   user_message → plan → thoughts → tool_calls → tool_results →
+//   citations → artifacts → done
+//
+// Scope-gated exactly like the other endpoints: tenant callers see
+// their own tenant's chain; platform callers see the platform chain.
+// Cross-scope probes return an empty array (the reader filters by
+// scope-derived tenant id), never revealing existence signals.
+//
+// 503 INTELLIGENCE_AUDIT_UNAVAILABLE when the reader is null (should
+// never happen in either degraded or live mode, but the check keeps
+// future slot removals from silently breaking the surface).
+
+const AuditQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(1000).default(500),
+    scope: ScopeEnum.optional(),
+  })
+  .strict();
+
+app.get(
+  '/thread/:threadId/audit',
+  zValidator('query', AuditQuerySchema),
+  async (c: any) => {
+    const auth = c.get('auth');
+    const threadId = c.req.param('threadId');
+    const { auditReader } = getIntelligence(c);
+    if (!auditReader) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INTELLIGENCE_AUDIT_UNAVAILABLE',
+            message: 'Audit reader not wired on this gateway',
+          },
+        },
+        503,
+      );
+    }
+
+    const query = c.req.valid('query');
+    const scoped = buildScopeContext(auth, query.scope);
+    if ('error' in scoped) {
+      if (scoped.error === 'PLATFORM_SCOPE_FORBIDDEN') return forbiddenPlatform(c);
+      return tenantMissing(c);
+    }
+
+    try {
+      const records = await auditReader.listForThread({
+        threadId,
+        ctx: scoped,
+        limit: query.limit,
+      });
+      return c.json({ success: true, data: { records, threadId, total: records.length } });
+    } catch (err) {
+      return routeCatch(c, err, {
+        code: 'INTELLIGENCE_AUDIT_FETCH_FAILED',
+        status: 500,
+        fallback: 'Failed to fetch intelligence audit trail',
+      });
+    }
+  },
+);
 
 export default app;

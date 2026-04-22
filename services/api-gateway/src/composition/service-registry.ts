@@ -241,8 +241,12 @@ import {
 // TODO(wave-30): swap in pgvector-backed ConversationMemory for prod.
 import {
   createInMemoryConversationMemory,
+  createInMemoryAuditSinkAndReader,
+  createConversationAuditRecorder,
   type CentralIntelligenceAgent,
   type ConversationMemory,
+  type ConversationAuditReader,
+  type ConversationAuditRecorder,
 } from '@bossnyumba/central-intelligence';
 // Canonical Property Graph (CPG) — Neo4j query service. Constructed
 // lazily so the gateway still boots when NEO4J_URI is unset; the graph
@@ -453,6 +457,13 @@ export interface ServiceRegistry {
   readonly centralIntelligence: {
     readonly agent: CentralIntelligenceAgent | null;
     readonly memory: ConversationMemory | null;
+    /** Audit reader — read-side of the cryptographic conversation
+     *  chain. Always wired (in-memory pair in degraded mode, Postgres-
+     *  backed in live mode); every agent event records to the sink
+     *  and surfaces via the reader for the audit-panel UI. */
+    readonly auditReader: ConversationAuditReader | null;
+    /** Recorder injected into the agent loop. */
+    readonly auditRecorder: ConversationAuditRecorder | null;
   };
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
@@ -775,10 +786,18 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // lives in a separate service). In degraded mode we still wire the
     // in-memory memory so thread listing works locally.
     // TODO(wave-30): replace with pgvector-backed ConversationMemory.
-    centralIntelligence: {
-      agent: null,
-      memory: createInMemoryConversationMemory(),
-    },
+    centralIntelligence: (() => {
+      const { sink, reader } = createInMemoryAuditSinkAndReader();
+      return {
+        agent: null,
+        memory: createInMemoryConversationMemory(),
+        auditReader: reader,
+        auditRecorder: createConversationAuditRecorder({
+          sink,
+          modelVersion: 'degraded',
+        }),
+      };
+    })(),
     propertyGrading: null,
     creditRating: null,
     // Wave 29 — forecasting stays null in degraded mode; the router
@@ -1319,14 +1338,19 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // TODO(wave-30): pgvector-backed ConversationMemory for prod.
     centralIntelligence: (() => {
       const memory = createInMemoryConversationMemory();
+      const { sink, reader } = createInMemoryAuditSinkAndReader();
+      const auditRecorder = createConversationAuditRecorder({
+        sink,
+        modelVersion: 'live-pending-llm',
+      });
       const llmUrl = process.env.CI_LLM_URL?.trim();
       if (!llmUrl) {
-        return { agent: null, memory };
+        return { agent: null, memory, auditReader: reader, auditRecorder };
       }
       // Adapter not shipped in-tree — the gateway consumes it over
       // HTTP from a dedicated service. Slot stays null until the
       // adapter lands; router keeps returning 503 cleanly.
-      return { agent: null, memory };
+      return { agent: null, memory, auditReader: reader, auditRecorder };
     })(),
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service

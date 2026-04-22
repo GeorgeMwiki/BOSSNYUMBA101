@@ -40,3 +40,21 @@ export {
   DEFAULT_PLATFORM_BINDING,
   type VoicePersonaSource,
 } from './voice/resolver.js';
+export {
+  createConversationAuditRecorder,
+  summariseToolCall,
+  PLATFORM_AUDIT_TENANT_ID,
+  type AuditSink,
+  type AuditSinkInput,
+  type ConversationAuditEvent,
+  type ConversationAuditRecorder,
+  type ConversationAuditRecorderDeps,
+  type UserMessageEvent,
+  type ToolCallAuditSummary,
+  type AuditKnownTool,
+} from './audit/conversation-audit.js';
+export {
+  createInMemoryAuditSinkAndReader,
+  type ConversationAuditReader,
+  type ConversationAuditRecord,
+} from './audit/conversation-audit-reader.js';

@@ -45,12 +45,18 @@ import type {
   Turn,
   VoiceBinding,
 } from '../types.js';
+import type { ConversationAuditRecorder } from '../audit/conversation-audit.js';
 
 export interface AgentLoopDeps {
   readonly llm: LlmAdapter;
   readonly tools: ToolRegistry;
   readonly memory: ConversationMemory;
   readonly voice: VoiceResolver;
+  /** Cryptographic-chain recorder. When omitted the agent runs without
+   *  audit (only appropriate in unit tests). In production the gateway
+   *  wires a ConversationAuditRecorder backed by the audit-trail v2
+   *  Postgres repository + HMAC signing. */
+  readonly audit?: ConversationAuditRecorder;
   readonly clock?: () => Date;
   readonly signalProvider?: () => AbortSignal | undefined;
   /** Hard upper bound on tool iterations per turn. Default 8. */
@@ -73,14 +79,45 @@ export function createCentralIntelligenceAgent(
       const queue = createAsyncQueue<AgentEvent>();
       const signal = deps.signalProvider?.();
       const startedAt = now().getTime();
+      // `liveTurnId` is the stable id for this turn's audit entries;
+      // the `done` event carries the memory-assigned turnId which
+      // MAY differ. We use liveTurnId so every entry for the same
+      // turn shares a resourceUri suffix, even before the memory row
+      // exists.
+      const liveTurnId = `live_${startedAt}_${Math.random().toString(36).slice(2, 8)}`;
 
       const emit = (event: AgentEvent): void => {
         stream.push(event);
         queue.push(event);
+        // Fire-and-forward audit — never blocks the stream.
+        if (deps.audit) {
+          void deps.audit.record({
+            threadId: req.threadId,
+            turnId: liveTurnId,
+            actorUserId: req.ctx.actorUserId,
+            ctx: req.ctx,
+            event,
+          });
+        }
       };
 
       (async () => {
         try {
+          // Record the user message itself as the first turn-level audit
+          // entry — the head of estates has asked something on-record.
+          if (deps.audit) {
+            void deps.audit.record({
+              threadId: req.threadId,
+              turnId: liveTurnId,
+              actorUserId: req.ctx.actorUserId,
+              ctx: req.ctx,
+              event: {
+                kind: 'user_message',
+                content: req.userMessage,
+                at: now().toISOString(),
+              },
+            });
+          }
           const voice = await deps.voice.resolve(req.ctx);
           const system = renderSystemPrompt({ voice, ctx: req.ctx });
 
