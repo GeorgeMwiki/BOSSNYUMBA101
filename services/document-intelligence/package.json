@@ -22,12 +22,12 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@aws-sdk/client-textract": "^3.989.0",
+    "@aws-sdk/client-textract": "^3.1034.0",
     "@bossnyumba/domain-models": "workspace:*",
-    "@google-cloud/vision": "^4.3.3",
-    "uuid": "^9.0.0",
+    "@google-cloud/vision": "^5.3.5",
+    "uuid": "^14.0.0",
     "winston": "^3.11.0",
-    "zod": "^3.22.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
