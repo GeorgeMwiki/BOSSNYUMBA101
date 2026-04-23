@@ -10,15 +10,18 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./engine": {
       "types": "./dist/engine/index.d.ts",
-      "import": "./dist/engine/index.js"
+      "import": "./dist/engine/index.js",
+      "default": "./dist/engine/index.js"
     },
     "./middleware": {
       "types": "./dist/middleware/index.d.ts",
-      "import": "./dist/middleware/index.js"
+      "import": "./dist/middleware/index.js",
+      "default": "./dist/middleware/index.js"
     }
   },
   "scripts": {

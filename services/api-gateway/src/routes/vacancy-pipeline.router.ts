@@ -28,22 +28,27 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch, safeInternalError } from '../utils/safe-error';
-import {
-  VacancyToLeaseOrchestrator,
-  InMemoryVacancyPipelineRunRepository,
-  VacancyPipelineError,
-  type OrchestratorCreditRatingPort,
-  type OrchestratorEnquiryPort,
-  type OrchestratorEventPort,
-  type OrchestratorInspectionPort,
-  type OrchestratorListingPort,
-  type OrchestratorNegotiationPort,
-  type OrchestratorPolicyPort,
-  type OrchestratorRenewalPort,
-  type OrchestratorWaitlistPort,
-  type VacancyPipelineRunRepository,
-  type VacancyPipelineEventType,
-} from '@bossnyumba/ai-copilot/orchestrators';
+// The orchestrators barrel namespaces each subtree, so we import the
+// whole `VacancyToLease` namespace and dereference it at each use-site.
+// This stays consistent with `monthly-close.router.ts`, which uses the
+// same `import { MonthlyClose } from '...'` shape.
+import { VacancyToLease } from '@bossnyumba/ai-copilot/orchestrators';
+
+const VacancyToLeaseOrchestrator = VacancyToLease.VacancyToLeaseOrchestrator;
+const InMemoryVacancyPipelineRunRepository =
+  VacancyToLease.InMemoryVacancyPipelineRunRepository;
+const VacancyPipelineError = VacancyToLease.VacancyPipelineError;
+type OrchestratorCreditRatingPort = VacancyToLease.OrchestratorCreditRatingPort;
+type OrchestratorEnquiryPort = VacancyToLease.OrchestratorEnquiryPort;
+type OrchestratorEventPort = VacancyToLease.OrchestratorEventPort;
+type OrchestratorInspectionPort = VacancyToLease.OrchestratorInspectionPort;
+type OrchestratorListingPort = VacancyToLease.OrchestratorListingPort;
+type OrchestratorNegotiationPort = VacancyToLease.OrchestratorNegotiationPort;
+type OrchestratorPolicyPort = VacancyToLease.OrchestratorPolicyPort;
+type OrchestratorRenewalPort = VacancyToLease.OrchestratorRenewalPort;
+type OrchestratorWaitlistPort = VacancyToLease.OrchestratorWaitlistPort;
+type VacancyPipelineRunRepository = VacancyToLease.VacancyPipelineRunRepository;
+type VacancyPipelineEventType = VacancyToLease.VacancyPipelineEventType;
 
 const app = new Hono();
 app.use('*', authMiddleware);
