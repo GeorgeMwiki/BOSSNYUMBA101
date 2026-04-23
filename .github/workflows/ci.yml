@@ -104,7 +104,7 @@ jobs:
         run: pnpm -r --filter="./${{ matrix.workspace }}/*" test
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.workspace }}
           path: ${{ matrix.workspace }}/*/coverage
@@ -165,7 +165,7 @@ jobs:
         run: pnpm build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: |
@@ -221,7 +221,7 @@ jobs:
           CUSTOMER_APP_URL: http://localhost:3002
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report
