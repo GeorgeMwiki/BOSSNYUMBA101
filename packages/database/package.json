@@ -45,11 +45,11 @@
     "bcrypt": "^5.1.1"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.6.0",
     "drizzle-kit": "^0.30.1",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.3",
-    "vitest": "^1.2.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5",
     "tsx": "^4.7.0"
   }
 }
