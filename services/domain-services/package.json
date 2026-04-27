@@ -31,12 +31,12 @@
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
-    "@react-pdf/renderer": "^3.4.5",
-    "docxtemplater": "^3.68.5",
-    "drizzle-orm": "^0.36.4",
+    "@react-pdf/renderer": "^4.5.1",
+    "docxtemplater": "^3.68.6",
+    "drizzle-orm": "^0.45.2",
     "pizzip": "^3.2.0",
-    "postgres": "^3.4.3",
-    "react": "^18.3.1"
+    "postgres": "^3.4.9",
+    "react": "^19.2.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
