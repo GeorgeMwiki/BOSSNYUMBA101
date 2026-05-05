@@ -8,6 +8,7 @@
  * surface + default tier and returns a Hono app that exposes:
  *
  *   POST /think                — single-turn thought
+ *   POST /stream               — SSE-streamed turn (turn_start / delta / confidence / done)
  *   POST /briefing             — daily briefing
  *   POST /actions              — propose a sovereign-tier write action
  *   POST /actions/:id/sign     — first or second eye signature
@@ -20,6 +21,7 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -124,6 +126,39 @@ function scopeFromContext(c: any, surface: JarvisSurface): ScopeContext {
   };
 }
 
+/**
+ * Chunk a string into ~`pieces` near-equal segments for SSE delta
+ * streaming. Tries to break on whitespace so partial words don't flash
+ * to the user; falls back to a hard slice for very short / single-word
+ * input. Always returns at least one chunk (even for empty strings, an
+ * empty chunk is omitted).
+ */
+function chunkText(text: string, pieces: number): ReadonlyArray<string> {
+  if (text.length === 0) return [];
+  const target = Math.max(1, Math.min(pieces, text.length));
+  if (text.length <= target) return [text];
+
+  const ideal = Math.ceil(text.length / target);
+  const out: string[] = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    let end = Math.min(cursor + ideal, text.length);
+    // Snap to nearest whitespace inside [end - 20, end] so we don't
+    // split mid-word. If no whitespace is found in the window, take
+    // the hard cut.
+    if (end < text.length) {
+      const window = text.slice(Math.max(cursor, end - 20), end);
+      const lastSpace = window.lastIndexOf(' ');
+      if (lastSpace >= 0) {
+        end = Math.max(cursor, end - 20) + lastSpace + 1;
+      }
+    }
+    out.push(text.slice(cursor, end));
+    cursor = end;
+  }
+  return out;
+}
+
 function surfacePersonaId(surface: JarvisSurface): string {
   // Surface → default persona's id, used as the ScopeContext personaId
   // hint. Real persona selection is done server-side via selectPersona().
@@ -183,6 +218,112 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
         firstPersonNoun: personalised.firstPersonNoun,
       },
       decision,
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────
+  // POST /stream — SSE variant of /think.
+  //
+  // The kernel's `think()` is single-shot, but for live UX we want the
+  // reply to render progressively. Since we already have the full text
+  // by the time think() returns, we chunk the text into 5–10 deltas
+  // and emit them with small pauses to keep the wire feeling natural.
+  //
+  // Event framing:
+  //   event: turn_start  → { persona }
+  //   event: delta       → { delta: '<chunk>' }     (5–10 events)
+  //   event: confidence  → ConfidenceVector         (answers / softened)
+  //   event: done        → { thoughtId, kind }
+  //
+  // Refusal path: turn_start, ONE delta carrying the refusal reason,
+  // then done.
+  // ───────────────────────────────────────────────────────────────────
+  app.post('/stream', zValidator('json', ThinkSchema), async (c) => {
+    const body = c.req.valid('json');
+    const profile = actorProfileFromContext(c, config.greetingStyle);
+    const scope = scopeFromContext(c, config.surface);
+    const sov = await getSovereignBrain({ tenantId: scope.kind === 'tenant' ? scope.tenantId : null });
+
+    const req: ThoughtRequest = {
+      threadId: body.threadId,
+      userMessage: body.userMessage,
+      scope,
+      tier: body.tier,
+      stakes: body.stakes,
+      surface: config.surface,
+      requireJudge: body.requireJudge,
+    };
+
+    const basePersona = selectPersona(req);
+    const personalised = personalisePersona(basePersona, profile);
+
+    return streamSSE(c, async (stream) => {
+      // Phase 1 — turn_start.
+      await stream.writeSSE({
+        event: 'turn_start',
+        data: JSON.stringify({
+          persona: {
+            id: personalised.id,
+            displayName: personalised.displayName,
+            firstPersonNoun: personalised.firstPersonNoun,
+          },
+        }),
+      });
+
+      // Phase 2 — run the kernel. Failures here become a single error
+      // event followed by a `done` so the client always closes cleanly.
+      let decision;
+      try {
+        decision = await sov.kernel.think(req);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'think failed';
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ message }),
+        });
+        await stream.writeSSE({
+          event: 'done',
+          data: JSON.stringify({ thoughtId: '', kind: 'refusal' }),
+        });
+        return;
+      }
+
+      // Phase 3 — emit deltas. Refusal → single delta carrying the
+      // reason. Answer / softened → chunk the text into 5–10 pieces.
+      if (decision.kind === 'refusal') {
+        await stream.writeSSE({
+          event: 'delta',
+          data: JSON.stringify({ delta: decision.reason }),
+        });
+      } else {
+        const text = decision.text ?? '';
+        const chunks = chunkText(text, 7);
+        for (const chunk of chunks) {
+          await stream.writeSSE({
+            event: 'delta',
+            data: JSON.stringify({ delta: chunk }),
+          });
+          // Tiny pacing pause — keeps the UI delta-rendering smooth
+          // without bloating end-to-end latency. Skipped on the last
+          // chunk so the `done` event isn't artificially delayed.
+          await stream.sleep(15);
+        }
+
+        // Phase 4 — confidence (only present on answer / softened).
+        await stream.writeSSE({
+          event: 'confidence',
+          data: JSON.stringify(decision.confidence),
+        });
+      }
+
+      // Phase 5 — done.
+      await stream.writeSSE({
+        event: 'done',
+        data: JSON.stringify({
+          thoughtId: decision.provenance.thoughtId,
+          kind: decision.kind,
+        }),
+      });
     });
   });
 

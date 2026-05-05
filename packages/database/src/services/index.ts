@@ -47,3 +47,17 @@ export {
   type GroundingFactsProviderShape,
   type KernelGroundingDeps,
 } from './kernel-grounding.service.js';
+
+// Kernel cohort — Drizzle-backed TenantAggregateSource for the
+// graph-privacy DP aggregator. Composed at the api-gateway sovereign
+// composition root; reads cross-tenant arrears / collections /
+// renewals / maintenance-TTC. Returns per-tenant per-statistic
+// contributions; missing data ⇒ empty array (the aggregator handles
+// that path safely). Port shape duck-typed locally so this package
+// does not compile-time-depend on @bossnyumba/graph-privacy.
+export {
+  createPgTenantAggregateSource,
+  type TenantAggregateSourceShape,
+  type ContributionsArgs,
+  type PlatformSliceShape,
+} from './kernel-cohort.service.js';

@@ -12,6 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@bossnyumba/api-sdk": "*",
     "@bossnyumba/chat-ui": "*",
     "@bossnyumba/design-system": "*",
     "@bossnyumba/domain-models": "*",

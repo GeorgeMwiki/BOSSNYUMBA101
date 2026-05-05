@@ -165,3 +165,20 @@ export {
   type SovereignBrain,
   type SubstrateSinks,
 } from './compose.js';
+export {
+  applyVoiceProfile,
+  personaWithVoice,
+  setVoiceProfileResolver,
+  SURFACE_DEFAULT_VOICE,
+  type VoicedPersona,
+  type VoiceProfile,
+  type VoiceProfileId,
+  type VoiceProfileResolver,
+  type PersonaVoiceSection,
+  type VoicePace,
+  type VoiceTone,
+  type VoiceVocabularyRegister,
+  type VoiceSentencePauseLength,
+  type VoiceCodeSwitchingRules,
+  type VoiceBindingHint,
+} from './voice-bridge.js';

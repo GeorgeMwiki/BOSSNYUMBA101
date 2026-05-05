@@ -19,6 +19,7 @@ import { AuditLogPage } from './pages/AuditLogPage';
 import { SystemHealthPage } from './pages/SystemHealthPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import ManagerChat from './pages/ManagerChat';
+import Jarvis from './pages/Jarvis';
 import PlatformOverviewPage from './app/platform/overview/page';
 import PlatformSubscriptionsPage from './app/platform/subscriptions/page';
 import PlatformBillingPage from './app/platform/billing/page';
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="support/escalation" element={<Escalation />} />
         <Route path="ai" element={<AICockpit />} />
         <Route path="manager-chat" element={<ManagerChat />} />
+        <Route path="jarvis" element={<Jarvis />} />
         <Route path="desktop-review" element={<DesktopReview />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="delegation" element={<DelegationMatrix />} />

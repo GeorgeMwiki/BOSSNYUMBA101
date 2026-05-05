@@ -22,15 +22,22 @@
 
 import {
   composeSovereign,
+  createDpCohortSource,
   type SovereignBrain,
   type Sensor,
   type SubstrateSinks,
 } from '@bossnyumba/central-intelligence';
 import {
+  createDpAggregator,
+  createInMemoryBudgetLedger,
+  createCryptoNoiseSource,
+} from '@bossnyumba/graph-privacy';
+import {
   createKernelSubstrateService,
   createKernelMemoryService,
   createKernelGroundingProvider,
   createPgApprovalStore,
+  createPgTenantAggregateSource,
 } from '@bossnyumba/database';
 import { getDb } from './db-client';
 
@@ -137,6 +144,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   let groundingFacts:
     | { fetch: (a: { userMessage: string; tier: string; limit: number }) => Promise<ReadonlyArray<unknown>> }
     | undefined;
+  let cohortSource: ReturnType<typeof createDpCohortSource> | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -152,6 +160,22 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     // Platform-tier (no tenantId) gets nothing from this source —
     // industry-tier grounding rides on the DP cohort source instead.
     groundingFacts = createKernelGroundingProvider(db, { tenantId: scope.tenantId });
+
+    // DP cohort source — only when a privacy-budget envelope is
+    // configured. Activation is gated by PRIVACY_BUDGET_EPSILON; an
+    // unset/zero/non-numeric value disables the channel and the
+    // kernel falls back to skipping cohort signals.
+    const dpAggregator = maybeBuildDpAggregator(db);
+    if (dpAggregator) {
+      cohortSource = createDpCohortSource({
+        // The kernel's `DpAggregator` is a narrow duck of the
+        // production aggregator (which keeps strict types like
+        // `DpAggregateOutcome`); the bridge below preserves the
+        // runtime contract. Cast at the boundary.
+        aggregator: dpAggregator as Parameters<typeof createDpCohortSource>[0]['aggregator'],
+        authContext: { actorUserId: 'unknown', actorRoles: [] },
+      });
+    }
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
@@ -165,7 +189,51 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (priorTurnsLoader) mutable.priorTurnsLoader = priorTurnsLoader;
   if (recentTurnCounter) mutable.recentTurnCounter = recentTurnCounter;
   if (groundingFacts) mutable.groundingFacts = groundingFacts;
+  if (cohortSource) mutable.cohortSource = cohortSource;
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);
+}
+
+// ---------------------------------------------------------------------------
+// DP aggregator builder — gated on PRIVACY_BUDGET_EPSILON. The kernel's
+// `createDpCohortSource` ducks the aggregator's auth shape down to
+// `{ actorUserId, actorRoles }`; the production aggregator expects
+// `{ kind: 'platform', actorUserId, roles }`. We bridge the two with a
+// thin wrapper so the kernel can keep its contract narrow while the
+// aggregator stays strict.
+// ---------------------------------------------------------------------------
+
+interface KernelAuthContext {
+  readonly actorUserId: string;
+  readonly actorRoles: ReadonlyArray<string>;
+}
+
+function maybeBuildDpAggregator(
+  db: NonNullable<ReturnType<typeof getDb>>,
+): { aggregate: (q: unknown, ctx: KernelAuthContext) => Promise<unknown> } | undefined {
+  const raw = process.env.PRIVACY_BUDGET_EPSILON?.trim();
+  if (!raw) return undefined;
+  const totalEpsilon = Number(raw);
+  if (!Number.isFinite(totalEpsilon) || totalEpsilon <= 0) return undefined;
+
+  const tenantSource = createPgTenantAggregateSource(db);
+  const ledger = createInMemoryBudgetLedger({
+    totalEpsilon,
+    totalDelta: 1e-6,
+  });
+  const noise = createCryptoNoiseSource();
+  const aggregator = createDpAggregator({ tenantSource, ledger, noise });
+
+  // Bridge: kernel feeds `{ actorUserId, actorRoles }`; the strict
+  // aggregator wants `{ kind: 'platform', actorUserId, roles }`.
+  return {
+    aggregate(q, ctx) {
+      return aggregator.aggregate(q as Parameters<typeof aggregator.aggregate>[0], {
+        kind: 'platform',
+        actorUserId: ctx.actorUserId,
+        roles: ctx.actorRoles,
+      });
+    },
+  };
 }
