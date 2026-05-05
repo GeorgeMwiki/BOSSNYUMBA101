@@ -30,8 +30,14 @@
     "@types/node": "^20.11.5"
   },
   "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.30.0",
     "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
   }
 }

@@ -58,3 +58,11 @@ export {
   type ConversationAuditReader,
   type ConversationAuditRecord,
 } from './audit/conversation-audit-reader.js';
+
+// Kernel — disciplined cognitive layer above the streaming agent loop.
+// See kernel/index.ts for the full surface; mirrors LITFIN's brain-
+// kernel patterns scoped to property management. Flat-exported so
+// consumers can `import { composeSovereign, createAnthropicSensor,
+// SOVEREIGN_ADMIN_PERSONA } from '@bossnyumba/central-intelligence'`
+// without a namespace hop.
+export * from './kernel/index.js';

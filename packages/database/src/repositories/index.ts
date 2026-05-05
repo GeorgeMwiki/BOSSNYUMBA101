@@ -53,3 +53,26 @@ export {
   PerformanceRepository,
   type EmployeeRankingRow,
 } from './hr.repository.js';
+
+// Vacancy-to-lease pipeline (migration 0098). Postgres adapter for the
+// VacancyPipelineRunRepository port consumed by the orchestrator
+// service in @bossnyumba/ai-copilot.
+export {
+  createPgVacancyPipelineRunRepository,
+  type VacancyPipelineRun as PgVacancyPipelineRun,
+  type VacancyPipelineRunRepository as PgVacancyPipelineRunRepository,
+  type VacancyPipelineEvent as PgVacancyPipelineEvent,
+  type VacancyPipelineState as PgVacancyPipelineState,
+} from './vacancy-pipeline.repository.js';
+
+// Sovereign four-eye approvals (migration 0115). Postgres adapter for
+// the kernel's ApprovalStore port.
+export {
+  createPgApprovalStore,
+  type ApprovalRecord as PgApprovalRecord,
+  type ApprovalSignature as PgApprovalSignature,
+  type ApprovalStatus as PgApprovalStatus,
+  type ApprovalStore as PgApprovalStore,
+  type PgApprovalStoreScope,
+  type ProposedAction as PgProposedAction,
+} from './sovereign-approvals.repository.js';

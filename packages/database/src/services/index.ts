@@ -15,3 +15,14 @@ export {
   type DepartmentDraft,
   type TeamDraft,
 } from './migration-writer.service.js';
+
+// Brain kernel substrate — Drizzle-backed sinks for the central
+// intelligence kernel's CoT reservoir, persona drift, and provenance.
+export {
+  createKernelSubstrateService,
+  type KernelSubstrateService,
+  type KernelSinkScope,
+  type CotSampleShape,
+  type PersonaDriftShape,
+  type ProvenanceShape,
+} from './kernel-substrate.service.js';

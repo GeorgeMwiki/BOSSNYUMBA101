@@ -124,6 +124,7 @@ import moveOutRouter from './routes/move-out.router';
 import approvalsRouter from './routes/approvals.router';
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (migration 0098)
 import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
+import adminJarvisRouter from './routes/admin-jarvis.router';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.router';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
@@ -681,6 +682,9 @@ api.route('/move-out', moveOutRouter);
 api.route('/approvals', approvalsRouter);
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (state machine + pipeline runs)
 api.route('/vacancy-pipeline', vacancyPipelineRouter);
+// Personal Jarvis-style sovereign AI ("Nyumba Mind") for internal admins.
+// Backed by central-intelligence brain kernel.
+api.route('/admin/jarvis', adminJarvisRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity)

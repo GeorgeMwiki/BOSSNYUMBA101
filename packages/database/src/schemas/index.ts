@@ -192,3 +192,17 @@ export * from './property-valuations.schema.js';
 // /api/v1/complaints with real persistence so the routers stop serving
 // fixture data behind the liveDataRequired gate.
 export * from './feedback-complaints.schema.js';
+
+// Brain kernel substrate (migration 0114) — sampled CoT reservoir,
+// persona-drift events, and per-think() provenance records. Mirrors
+// LITFIN's kernel persistence patterns.
+export * from './kernel-substrate.schema.js';
+
+// Vacancy pipeline runs (migration 0098) — Drizzle mirror added at
+// migration 0114 cycle so the production repo can drop the in-memory
+// adapter wired during wave 27.
+export * from './vacancy-pipeline.schema.js';
+
+// Sovereign approvals (migration 0115) — four-eye gate persistence
+// for write actions proposed by Nyumba Mind.
+export * from './sovereign-approvals.schema.js';
