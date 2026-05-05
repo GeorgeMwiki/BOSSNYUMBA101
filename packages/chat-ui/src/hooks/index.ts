@@ -6,3 +6,4 @@
  * Blackboard tree when they only need the SSE plumbing.
  */
 export * from './useChatStream.js';
+export * from './useJarvis.js';

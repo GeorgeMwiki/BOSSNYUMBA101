@@ -13,6 +13,8 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@bossnyumba/api-sdk": "workspace:*",
+    "@bossnyumba/chat-ui": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",

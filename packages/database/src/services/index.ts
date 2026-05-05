@@ -36,3 +36,14 @@ export {
   type KernelMemoryDeps,
   type KernelPriorTurn,
 } from './kernel-prior-turns.service.js';
+
+// Kernel grounding — Drizzle-backed GroundingFactsProvider that reads
+// occupancy, active leases, open work-orders, and lease-expiry counts.
+// Triggered by user-message keywords; produces tenant-scoped facts the
+// kernel mixes into the system prompt as grounding evidence.
+export {
+  createKernelGroundingProvider,
+  type GroundingFactShape,
+  type GroundingFactsProviderShape,
+  type KernelGroundingDeps,
+} from './kernel-grounding.service.js';

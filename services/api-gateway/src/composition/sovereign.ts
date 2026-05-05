@@ -29,6 +29,7 @@ import {
 import {
   createKernelSubstrateService,
   createKernelMemoryService,
+  createKernelGroundingProvider,
   createPgApprovalStore,
 } from '@bossnyumba/database';
 import { getDb } from './db-client';
@@ -133,6 +134,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   let approvalStore: ReturnType<typeof createPgApprovalStore> | undefined;
   let priorTurnsLoader: ((threadId: string) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>) | undefined;
   let recentTurnCounter: ((threadId: string) => Promise<number>) | undefined;
+  let groundingFacts:
+    | { fetch: (a: { userMessage: string; tier: string; limit: number }) => Promise<ReadonlyArray<unknown>> }
+    | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -144,6 +148,10 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     const memory = createKernelMemoryService(db, { tenantId: scope.tenantId });
     priorTurnsLoader = (threadId) => memory.loadPriorTurns(threadId);
     recentTurnCounter = (threadId) => memory.countRecentUserTurns(threadId);
+    // Tenant-scoped grounding facts (occupancy, work-orders, leases).
+    // Platform-tier (no tenantId) gets nothing from this source —
+    // industry-tier grounding rides on the DP cohort source instead.
+    groundingFacts = createKernelGroundingProvider(db, { tenantId: scope.tenantId });
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
@@ -156,6 +164,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (approvalStore) mutable.approvalStore = approvalStore;
   if (priorTurnsLoader) mutable.priorTurnsLoader = priorTurnsLoader;
   if (recentTurnCounter) mutable.recentTurnCounter = recentTurnCounter;
+  if (groundingFacts) mutable.groundingFacts = groundingFacts;
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);
