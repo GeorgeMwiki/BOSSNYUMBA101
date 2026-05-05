@@ -44,11 +44,13 @@ import {
 } from './sensors/anthropic-sensor.js';
 import type {
   CotReservoirSink,
+  GroundingFactsProvider,
   PersonaDriftSink,
   ProvenanceSink,
   Sensor,
 } from './kernel-types.js';
 import type { CohortSource } from './cohort-signal.js';
+import { createAnthropicJudge } from './sensors/anthropic-judge.js';
 
 export interface SubstrateSinks {
   readonly cot: CotReservoirSink;
@@ -61,13 +63,24 @@ export interface ComposeSovereignConfig {
   readonly extraSensors?: ReadonlyArray<Sensor>;
   readonly substrateSinks?: SubstrateSinks;
   readonly cohortSource?: CohortSource;
+  readonly groundingFacts?: GroundingFactsProvider;
   readonly approvalStore?: ApprovalStore;
   readonly nudgeDedupe?: NudgeDedupeStore;
   readonly priorTurnsLoader?: (
     threadId: string,
   ) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>;
   readonly recentTurnCounter?: (threadId: string) => Promise<number>;
+  /**
+   * Custom judge override. When omitted and `anthropicClient` is
+   * provided, compose wires a Haiku-backed judge automatically.
+   */
   readonly judge?: (text: string) => Promise<{ score: number }>;
+  /**
+   * Set false to disable the auto-Haiku judge even when the
+   * Anthropic client is present (e.g. cost-sensitive surfaces).
+   * Default: true.
+   */
+  readonly autoHaikuJudge?: boolean;
   readonly clock?: () => Date;
   readonly rng?: () => number;
 }
@@ -109,6 +122,12 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.rng) reservoirDeps.rng = config.rng;
   const reservoir = createCotReservoir(reservoirDeps);
 
+  // Auto-Haiku judge when Anthropic client present and no override.
+  let resolvedJudge = config.judge;
+  if (!resolvedJudge && config.anthropicClient && config.autoHaikuJudge !== false) {
+    resolvedJudge = createAnthropicJudge(config.anthropicClient);
+  }
+
   const kernelDeps: Parameters<typeof createBrainKernel>[0] = {
     sensors,
     router,
@@ -119,9 +138,10 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
     clock,
   };
   if (config.cohortSource)      (kernelDeps as any).cohort = config.cohortSource;
+  if (config.groundingFacts)    (kernelDeps as any).groundingFacts = config.groundingFacts;
   if (config.priorTurnsLoader)  (kernelDeps as any).priorTurnsLoader = config.priorTurnsLoader;
   if (config.recentTurnCounter) (kernelDeps as any).recentTurnCounter = config.recentTurnCounter;
-  if (config.judge)             (kernelDeps as any).judge = config.judge;
+  if (resolvedJudge)            (kernelDeps as any).judge = resolvedJudge;
   if (config.rng)               (kernelDeps as any).rng = config.rng;
   const kernel = createBrainKernel(kernelDeps);
 

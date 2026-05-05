@@ -210,3 +210,31 @@ export interface PersonaDriftSink {
 export interface ProvenanceSink {
   record(record: ProvenanceRecord): Promise<void>;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Grounding facts — domain-specific data points the kernel pre-fetches
+// and mixes into the system prompt so the sensor answers from real
+// state, not from training memory. Distinct from cohort signals: these
+// are tenant-internal (occupancy, arrears, work-orders), not DP-
+// aggregate cross-tenant statistics.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface GroundingFact {
+  /** Stable id; used as a citation token in the rendered prompt. */
+  readonly id: string;
+  readonly label: string;
+  readonly value: string | number;
+  /** Optional unit for numeric values. */
+  readonly unit?: 'pct' | 'count' | 'currency-tzs' | 'currency-kes' | 'days';
+  /** Source identifier — table name, service name, etc. */
+  readonly source: string;
+  readonly asOf: string;
+}
+
+export interface GroundingFactsProvider {
+  fetch(args: {
+    readonly userMessage: string;
+    readonly tier: AwarenessTier;
+    readonly limit: number;
+  }): Promise<ReadonlyArray<GroundingFact>>;
+}

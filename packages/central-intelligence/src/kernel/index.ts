@@ -148,6 +148,18 @@ export {
   type AnthropicMessageResponse,
 } from './sensors/anthropic-sensor.js';
 export {
+  createAnthropicJudge,
+  type AnthropicJudgeConfig,
+} from './sensors/anthropic-judge.js';
+export {
+  createDpCohortSource,
+  type DpAggregator,
+  type DpAggregateQuery,
+  type DpAggregateOutcome,
+  type DpPlatformAuthContext,
+  type DpCohortSourceDeps,
+} from './sources/dp-cohort-source.js';
+export {
   composeSovereign,
   type ComposeSovereignConfig,
   type SovereignBrain,

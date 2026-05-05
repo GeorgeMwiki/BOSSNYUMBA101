@@ -28,6 +28,7 @@ import {
 } from '@bossnyumba/central-intelligence';
 import {
   createKernelSubstrateService,
+  createKernelMemoryService,
   createPgApprovalStore,
 } from '@bossnyumba/database';
 import { getDb } from './db-client';
@@ -130,6 +131,8 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   // composeSovereign default (in-memory) is used.
   let substrateSinks: SubstrateSinks | undefined;
   let approvalStore: ReturnType<typeof createPgApprovalStore> | undefined;
+  let priorTurnsLoader: ((threadId: string) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>) | undefined;
+  let recentTurnCounter: ((threadId: string) => Promise<number>) | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -138,6 +141,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       provenance: svc.provenance,
     };
     approvalStore = createPgApprovalStore(db, { tenantId: scope.tenantId });
+    const memory = createKernelMemoryService(db, { tenantId: scope.tenantId });
+    priorTurnsLoader = (threadId) => memory.loadPriorTurns(threadId);
+    recentTurnCounter = (threadId) => memory.countRecentUserTurns(threadId);
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
@@ -148,6 +154,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   else mutable.extraSensors = [createStubSensor()];
   if (substrateSinks) mutable.substrateSinks = substrateSinks;
   if (approvalStore) mutable.approvalStore = approvalStore;
+  if (priorTurnsLoader) mutable.priorTurnsLoader = priorTurnsLoader;
+  if (recentTurnCounter) mutable.recentTurnCounter = recentTurnCounter;
+  // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);
 }

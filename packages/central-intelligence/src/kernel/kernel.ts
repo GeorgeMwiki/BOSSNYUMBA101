@@ -29,6 +29,8 @@ import type {
   ConfidenceVector,
   GateOutcome,
   GateVerdict,
+  GroundingFact,
+  GroundingFactsProvider,
   PersonaDriftSink,
   ProvenanceRecord,
   ProvenanceSink,
@@ -59,6 +61,7 @@ export interface BrainKernelDeps {
   readonly cotReservoir?: CotReservoir;
   readonly driftSink?: PersonaDriftSink;
   readonly provenanceSink?: ProvenanceSink;
+  readonly groundingFacts?: GroundingFactsProvider;
   readonly priorTurnsLoader?: (threadId: string) => Promise<
     ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>
   >;
@@ -133,6 +136,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
         : { findings: [], promptFragment: '', fingerprints: [] as ReadonlyArray<string> };
 
+      // 5b) grounding facts (tenant-internal data points)
+      const groundingFacts: ReadonlyArray<GroundingFact> = deps.groundingFacts
+        ? await deps.groundingFacts
+            .fetch({ userMessage: req.userMessage, tier: req.tier, limit: 6 })
+            .catch(() => [])
+        : [];
+
       // 6) identity + theory-of-mind + cognitive-load
       const persona = selectPersona(req);
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
@@ -149,6 +159,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         '',
         `Behavioural directive: ${renderMindStateDirective(mindState)}`,
         `Verbosity directive: ${renderLoadDirective(loadOut)}`,
+        '',
+        renderGroundingFragment(groundingFacts),
         '',
         cohortMix.promptFragment,
       ]
@@ -401,4 +413,28 @@ function collectToolNumbers(_r: SensorCallResult): ReadonlyArray<number> {
   // numbers from typed tool outputs. The non-streaming kernel path does
   // not know tool result schemas, so we report no constraint here.
   return [];
+}
+
+function renderGroundingFragment(facts: ReadonlyArray<GroundingFact>): string {
+  if (facts.length === 0) return '';
+  const lines = facts.map((f) => {
+    const value = formatGroundingValue(f);
+    return `  - [${f.id}] ${f.label}: ${value} (source: ${f.source}, as-of ${f.asOf})`;
+  });
+  return [
+    'Grounding facts (tenant-internal; cite by id when you use these):',
+    ...lines,
+  ].join('\n');
+}
+
+function formatGroundingValue(f: GroundingFact): string {
+  if (typeof f.value === 'string') return f.value;
+  switch (f.unit) {
+    case 'pct':           return `${(f.value * 100).toFixed(1)}%`;
+    case 'count':         return f.value.toFixed(0);
+    case 'currency-tzs':  return `TZS ${f.value.toLocaleString('en-US')}`;
+    case 'currency-kes':  return `KES ${f.value.toLocaleString('en-US')}`;
+    case 'days':          return `${f.value.toFixed(1)} days`;
+    default:              return String(f.value);
+  }
 }

@@ -20,3 +20,25 @@ export {
 } from './client.js';
 
 export type { paths, components, operations, webhooks } from './types.js';
+
+// Per-user Jarvis client — typed POST helpers for the central-
+// intelligence sovereign-AI surfaces (one per user type).
+export {
+  createJarvisClient,
+  type JarvisSurface,
+  type JarvisSurfaceClient,
+  type JarvisTier,
+  type JarvisStakes,
+  type JarvisSeverity,
+  type JarvisApprovalStatus,
+  type JarvisThinkRequest,
+  type JarvisThinkResponse,
+  type JarvisDecision,
+  type JarvisBriefing,
+  type JarvisBriefingDataPoint,
+  type JarvisBriefingRequest,
+  type JarvisProposeActionRequest,
+  type JarvisApprovalRecord,
+  type JarvisApprovalSignature,
+  type JarvisSignRequest,
+} from './jarvis-client.js';
