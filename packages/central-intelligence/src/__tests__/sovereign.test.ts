@@ -62,17 +62,58 @@ describe('personalisePersona', () => {
   });
 });
 
-describe('admin-portal surface routes to SOVEREIGN_ADMIN_PERSONA', () => {
-  it('maps the admin-portal surface to the personal Jarvis persona', () => {
+describe('surface → persona routing', () => {
+  it('maps platform-hq to SOVEREIGN_ADMIN_PERSONA (Nyumba Mind for HQ)', () => {
     const persona = selectPersona({
       threadId: 't',
       userMessage: 'q',
       scope: SCOPE,
       tier: 'industry',
       stakes: 'low',
-      surface: 'admin-portal',
+      surface: 'platform-hq',
     });
     expect(persona.id).toBe('sovereign-admin');
+  });
+
+  it('maps admin-portal to ORG_ADMIN_PERSONA (agency brain)', () => {
+    const persona = selectPersona({
+      threadId: 't',
+      userMessage: 'q',
+      scope: { ...SCOPE, kind: 'tenant', tenantId: 't_acme' } as any,
+      tier: 'org',
+      stakes: 'low',
+      surface: 'admin-portal',
+    });
+    expect(persona.id).toBe('org-admin');
+    expect(persona.firstPersonNoun).toBe('we');
+  });
+
+  it('maps tenant-app to TENANT_RESIDENT_PERSONA', () => {
+    const persona = selectPersona({
+      threadId: 't',
+      userMessage: 'q',
+      scope: { ...SCOPE, kind: 'tenant', tenantId: 't_acme' } as any,
+      tier: 'lease',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+    expect(persona.id).toBe('tenant-resident');
+  });
+
+  it('personalises every persona with the operator\'s name', () => {
+    const surfaces = ['tenant-app', 'owner-portal', 'estate-manager-app', 'admin-portal', 'platform-hq'] as const;
+    for (const s of surfaces) {
+      const base = selectPersona({
+        threadId: 't', userMessage: 'q',
+        scope: s === 'platform-hq' ? SCOPE : ({ ...SCOPE, kind: 'tenant', tenantId: 't_acme' } as any),
+        tier: s === 'platform-hq' ? 'industry' : 'org',
+        stakes: 'low',
+        surface: s,
+      });
+      const personalised = personalisePersona(base, PROFILE);
+      expect(personalised.openingStatement).toContain('Jane');
+      expect(personalised.id.endsWith(`::${PROFILE.userId}`)).toBe(true);
+    }
   });
 });
 

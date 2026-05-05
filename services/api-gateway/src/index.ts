@@ -125,6 +125,12 @@ import approvalsRouter from './routes/approvals.router';
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (migration 0098)
 import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
 import adminJarvisRouter from './routes/admin-jarvis.router';
+import {
+  tenantJarvisRouter,
+  ownerJarvisRouter,
+  managerJarvisRouter,
+  platformHqJarvisRouter,
+} from './routes/jarvis-router-factory';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.router';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
@@ -682,9 +688,16 @@ api.route('/move-out', moveOutRouter);
 api.route('/approvals', approvalsRouter);
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (state machine + pipeline runs)
 api.route('/vacancy-pipeline', vacancyPipelineRouter);
-// Personal Jarvis-style sovereign AI ("Nyumba Mind") for internal admins.
-// Backed by central-intelligence brain kernel.
-api.route('/admin/jarvis', adminJarvisRouter);
+// Personal Jarvis-style AI for every BossNyumba user — each surface
+// hits the same central-intelligence brain kernel but selects a
+// surface-specific persona and personalises the opening with the
+// operator's name. See packages/central-intelligence/src/kernel/
+// identity.ts for the persona catalogue.
+api.route('/customer/jarvis', tenantJarvisRouter);
+api.route('/owner/jarvis', ownerJarvisRouter);
+api.route('/manager/jarvis', managerJarvisRouter);
+api.route('/admin/jarvis', adminJarvisRouter);          // agency admin (Nyumba Mind — Agency Brain)
+api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba Mind sovereign)
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity)

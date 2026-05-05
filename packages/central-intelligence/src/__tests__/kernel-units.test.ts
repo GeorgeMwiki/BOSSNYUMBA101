@@ -25,6 +25,8 @@ import {
   OWNER_ADVISOR_PERSONA,
   ESTATE_MANAGER_PERSONA,
   PLATFORM_SOVEREIGN_PERSONA,
+  SOVEREIGN_ADMIN_PERSONA,
+  ORG_ADMIN_PERSONA,
   CLASSROOM_TUTOR_PERSONA,
   gradeProperty,
   buildCohortMixin,
@@ -241,14 +243,20 @@ describe('cache key determinism', () => {
 });
 
 describe('persona selection', () => {
-  it('routes platform-hq to sovereign', () => {
-    expect(selectPersona(req({ surface: 'platform-hq' }))).toBe(PLATFORM_SOVEREIGN_PERSONA);
+  it('routes platform-hq to SOVEREIGN_ADMIN (Nyumba Mind for HQ)', () => {
+    expect(selectPersona(req({ surface: 'platform-hq' }))).toBe(SOVEREIGN_ADMIN_PERSONA);
+  });
+  it('routes admin-portal to ORG_ADMIN (agency brain)', () => {
+    expect(selectPersona(req({ surface: 'admin-portal' }))).toBe(ORG_ADMIN_PERSONA);
   });
   it('routes tenant-app to resident', () => {
     expect(selectPersona(req({ surface: 'tenant-app' }))).toBe(TENANT_RESIDENT_PERSONA);
   });
   it('routes classroom to tutor', () => {
     expect(selectPersona(req({ surface: 'classroom' }))).toBe(CLASSROOM_TUTOR_PERSONA);
+  });
+  it('PLATFORM_SOVEREIGN_PERSONA still exists as an internal-tool identity', () => {
+    expect(PLATFORM_SOVEREIGN_PERSONA.id).toBe('platform-sovereign');
   });
 });
 
