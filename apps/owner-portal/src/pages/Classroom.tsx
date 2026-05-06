@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { GraduationCap, Loader2, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Session {
   readonly id: string;
@@ -29,12 +30,13 @@ interface MasteryEntry {
 
 export default function ClassroomPage(): JSX.Element {
   const t = useTranslations('classroom');
+  const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [sessions, setSessions] = useState<readonly Session[]>([]);
   const [mastery, setMastery] = useState<readonly MasteryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', language: 'en' as 'en' | 'sw' });
-  const [userId, setUserId] = useState<string>('');
 
   const loadMastery = useCallback(async (id: string) => {
     if (!id) return;
@@ -45,17 +47,8 @@ export default function ClassroomPage(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const raw = localStorage.getItem('admin_user');
-    if (raw) {
-      try {
-        const u = JSON.parse(raw) as { id?: string };
-        if (u?.id) {
-          setUserId(u.id);
-          void loadMastery(u.id);
-        }
-      } catch {
-        /* ignore */
-      }
+    if (userId) {
+      void loadMastery(userId);
     }
     const stored = localStorage.getItem('classroom_sessions');
     if (stored) {
@@ -66,7 +59,7 @@ export default function ClassroomPage(): JSX.Element {
       }
     }
     setLoading(false);
-  }, [loadMastery]);
+  }, [loadMastery, userId]);
 
   async function createSession(): Promise<void> {
     const res = await api.post<Session>('/classroom/sessions', {
@@ -160,7 +153,11 @@ export default function ClassroomPage(): JSX.Element {
         <h3 className="font-semibold text-gray-900 mb-3">
           {t('masteryHeader')} {userId ? t('masteryUserSuffix', { userId }) : ''}
         </h3>
-        {mastery.length === 0 ? (
+        {!userId ? (
+          <p className="text-sm text-gray-500">
+            Sign in to track mastery.
+          </p>
+        ) : mastery.length === 0 ? (
           <p className="text-sm text-gray-500">
             {t('emptyMastery')}
           </p>

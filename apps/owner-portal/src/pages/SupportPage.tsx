@@ -46,9 +46,12 @@ interface SupportCase {
   }>;
 }
 
-// Live wiring pending — admin support ticket endpoints not yet mounted.
-// Production rendering falls back to an empty list rather than demo tickets.
+// Live wiring pending — admin support ticket endpoints are not yet mounted
+// in the api-gateway (no /support route exists). Until they are, render a
+// clear empty state so the operator knows the surface is intentionally
+// disconnected — never pretend the system has zero cases.
 const cases: SupportCase[] = [];
+const SUPPORT_NOT_CONNECTED = true;
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   open: { bg: 'bg-amber-100', text: 'text-amber-700' },
@@ -98,6 +101,13 @@ export function SupportPage() {
           </Link>
         </div>
       </div>
+
+      {SUPPORT_NOT_CONNECTED && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Support tickets aren't connected yet — contact your account manager
+          if you need to open or follow up on a case.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -164,6 +174,13 @@ export function SupportPage() {
             </select>
           </div>
           <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
+            {filteredCases.length === 0 && (
+              <div className="p-6 text-center text-sm text-gray-500">
+                {SUPPORT_NOT_CONNECTED
+                  ? "No tickets to show — support isn't connected yet."
+                  : 'No tickets match your filters.'}
+              </div>
+            )}
             {filteredCases.map((c) => (
               <button
                 key={c.id}

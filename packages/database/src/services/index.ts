@@ -62,3 +62,15 @@ export {
   type ContributionsArgs,
   type PlatformSliceShape,
 } from './kernel-cohort.service.js';
+
+// Platform privacy-budget ledger — Drizzle-backed PlatformBudgetLedger
+// (port duck-typed locally; see platform-budget-ledger.service.ts).
+// Composed at the api-gateway sovereign composition root in place of
+// the in-memory ledger so cohort DP-aggregator budget consumption
+// survives api-gateway restarts. Backed by migration 0116.
+export {
+  createPgPlatformBudgetLedger,
+  PrivacyBudgetExhaustedError,
+  type PlatformBudgetLedgerShape,
+  type PgBudgetLedgerDeps,
+} from './platform-budget-ledger.service.js';

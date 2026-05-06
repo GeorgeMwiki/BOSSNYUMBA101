@@ -10,8 +10,7 @@
  * formatted by the shared lib.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Building2, Search, ChevronRight } from 'lucide-react';
 import {
   EmptyState,
@@ -41,6 +40,14 @@ const statusColors: Record<string, string> = {
   canceled: 'bg-rose-500/15 text-rose-300',
 };
 
+/**
+ * Owner-portal base URL. Tenant-detail pages (/tenants/:id) live in the
+ * owner-portal app, not in HQ; admin-platform-portal links there
+ * externally so HQ staff can deep-link into a tenant's own surface.
+ */
+const OWNER_PORTAL_BASE =
+  process.env.NEXT_PUBLIC_OWNER_PORTAL_URL ?? 'http://localhost:3001';
+
 export function SubscriptionsClient() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -49,6 +56,11 @@ export function SubscriptionsClient() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const ownerPortalBase = useMemo(
+    () => OWNER_PORTAL_BASE.replace(/\/$/, ''),
+    [],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -211,14 +223,19 @@ export function SubscriptionsClient() {
                   {formatDate(sub.currentPeriodEnd)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {/* TODO(routing): /tenants/:id is owner-portal scope. */}
-                  <Link
-                    href={`/platform/subscriptions/${sub.tenantId}`}
+                  {/*
+                   * Tenant-detail (/tenants/:id) lives in owner-portal,
+                   * not HQ. Link out via NEXT_PUBLIC_OWNER_PORTAL_URL.
+                   */}
+                  <a
+                    href={`${ownerPortalBase}/tenants/${sub.tenantId}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
                     className="inline-flex items-center gap-1 text-sm text-signal-500 hover:text-signal-400"
                   >
                     Manage
                     <ChevronRight className="h-4 w-4" />
-                  </Link>
+                  </a>
                 </td>
               </tr>
             ))}

@@ -8,6 +8,7 @@
  * Mount point: /admin/manager-chat
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
 import {
   AdaptiveRenderer,
@@ -39,8 +40,14 @@ interface ChatMessage {
 
 export default function ManagerChat() {
   const t = useTranslations('managerChat');
+  const [searchParams] = useSearchParams();
+  // DesktopReview deep-links here with ?context=<kind>:<id>&intent=<action>.
+  // We surface `context` as a chip above the input and prefill the input
+  // with `intent` so the operator can fire-and-tweak without retyping.
+  const contextParam = searchParams.get('context');
+  const intentParam = searchParams.get('intent');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(intentParam ?? '');
   const [modeState, setModeState] = useState<ChatModeState>(INITIAL_CHAT_MODE_STATE);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
 
@@ -203,6 +210,23 @@ export default function ManagerChat() {
           />
         )}
 
+        {contextParam && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '6px 10px',
+              borderRadius: 8,
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              fontSize: 12,
+              color: '#0f172a',
+              display: 'inline-block',
+            }}
+          >
+            Context: {contextParam}
+            {intentParam ? ` · Intent: ${intentParam}` : ''}
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();

@@ -167,13 +167,14 @@ export function SystemHealthClient() {
         status: prev.snapshot ? 'ok' : 'loading',
       }));
       try {
-        // TODO(auth-migration): forward platform session cookie. The
-        // metrics endpoint accepts the same bearer flow as other
-        // gateway routes; sessionStorage is the legacy carrier.
+        // Auth: the httpOnly platform-session cookie rides via
+        // `credentials: 'include'`. If a bearer is also stashed in
+        // sessionStorage (login flow may put one there for callers
+        // that can't use cookies) forward it on the Authorization
+        // header — matches the lib/api.ts pattern.
         const token =
           typeof window !== 'undefined'
-            ? window.sessionStorage.getItem('platform_token') ??
-              window.localStorage.getItem('token')
+            ? window.sessionStorage.getItem('platform_token')
             : null;
         const res = await fetch(endpoint, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},

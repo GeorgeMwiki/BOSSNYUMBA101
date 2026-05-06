@@ -206,3 +206,8 @@ export * from './vacancy-pipeline.schema.js';
 // Sovereign approvals (migration 0115) — four-eye gate persistence
 // for write actions proposed by Nyumba Mind.
 export * from './sovereign-approvals.schema.js';
+
+// Platform privacy-budget ledger (migration 0116) — Postgres-backed
+// PlatformBudgetLedger so cohort DP-aggregator budget consumption
+// survives api-gateway restarts.
+export * from './platform-privacy-budget.schema.js';

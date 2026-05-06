@@ -101,6 +101,22 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * HomeRedirect — owner-portal landing route.
+ *
+ * Most users land on /dashboard. Operators with the HEAD_OF_ESTATES role
+ * land on /head-of-estates instead, which is the surface they actually
+ * use day-to-day.
+ */
+function HomeRedirect() {
+  const { role, permissions } = useAuth();
+  const isHeadOfEstates =
+    role === 'HEAD_OF_ESTATES' ||
+    permissions.includes('HEAD_OF_ESTATES');
+  const target = isHeadOfEstates ? '/head-of-estates' : '/dashboard';
+  return <Navigate to={target} replace />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -113,7 +129,7 @@ function App() {
             <PrivateRoute>
               <Layout>
                 <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/" element={<HomeRedirect />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/properties" element={<PropertiesPage />} />
                   <Route path="/properties/:id" element={<PropertyDetailPage />} />

@@ -34,7 +34,6 @@ import {
 } from '@bossnyumba/central-intelligence';
 import {
   createDpAggregator,
-  createInMemoryBudgetLedger,
   createCryptoNoiseSource,
 } from '@bossnyumba/graph-privacy';
 import {
@@ -43,6 +42,7 @@ import {
   createKernelGroundingProvider,
   createPgApprovalStore,
   createPgTenantAggregateSource,
+  createPgPlatformBudgetLedger,
 } from '@bossnyumba/database';
 
 // Visibility role — mirrored locally so this composition root doesn't
@@ -250,10 +250,17 @@ function maybeBuildDpAggregator(
   if (!Number.isFinite(totalEpsilon) || totalEpsilon <= 0) return undefined;
 
   const tenantSource = createPgTenantAggregateSource(db);
-  const ledger = createInMemoryBudgetLedger({
+  // Postgres-backed ledger so cohort DP-aggregator budget consumption
+  // survives api-gateway restarts (migration 0116). The in-memory
+  // ledger remains the fallback when `db` is null — see the wider
+  // build() guard on `if (db) { ... }`. The PgBudgetLedgerShape is
+  // duck-compatible with the graph-privacy `PlatformBudgetLedger`
+  // port; cast at the boundary so this composition root doesn't pull
+  // in a transitive type-only re-export from @bossnyumba/database.
+  const ledger = createPgPlatformBudgetLedger(db, {
     totalEpsilon,
     totalDelta: 1e-6,
-  });
+  }) as unknown as Parameters<typeof createDpAggregator>[0]['ledger'];
   const noise = createCryptoNoiseSource();
   const aggregator = createDpAggregator({ tenantSource, ledger, noise });
 

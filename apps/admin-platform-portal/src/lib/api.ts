@@ -2,10 +2,12 @@
  * Client-side API helper used by HQ pages migrated from the deprecated
  * admin-portal app.
  *
- * The admin-platform-portal serves staff-only routes; the bearer token
- * is read from sessionStorage if present (the login flow stores it
- * there). Requests target the api-gateway directly via
- * NEXT_PUBLIC_API_URL.
+ * The admin-platform-portal is staff-only. Authentication is the
+ * httpOnly platform-session cookie set by the identity service —
+ * `credentials: 'include'` ensures it rides every request. A bearer
+ * token in `sessionStorage.platform_token`, if present, is forwarded
+ * as `Authorization: Bearer …` for callers that can't use cookies.
+ * Requests target the api-gateway directly via NEXT_PUBLIC_API_URL.
  */
 
 interface ApiResponse<T> {
@@ -38,14 +40,15 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  // TODO(auth-migration): the platform session is held in an httpOnly
-  // cookie set by the identity service; sessionStorage is only used by
-  // legacy admin-portal calls. Send credentials so the cookie reaches
-  // the gateway.
+  // The platform session is held in an httpOnly cookie set by the
+  // identity service (see middleware.ts + lib/session.ts). We send
+  // `credentials: 'include'` below so that cookie reaches the gateway.
+  // `sessionStorage.platform_token` is a complementary bearer the login
+  // flow may stash for non-cookie callers (e.g. EventSource); when
+  // present we forward it as `Authorization: Bearer …`.
   const token =
     typeof window !== 'undefined'
-      ? window.sessionStorage.getItem('platform_token') ??
-        window.localStorage.getItem('admin_token')
+      ? window.sessionStorage.getItem('platform_token')
       : null;
 
   const headers: HeadersInit = {

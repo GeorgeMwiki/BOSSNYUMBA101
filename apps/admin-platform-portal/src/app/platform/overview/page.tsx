@@ -1,15 +1,14 @@
 import Link from 'next/link';
 import {
   Building2,
-  Users,
   CreditCard,
-  TrendingUp,
   Activity,
   ArrowUpRight,
   CheckCircle,
 } from 'lucide-react';
 import { PageShell } from '@/components/migrated/PageShell';
 import { LiveDataRequiredPanel } from '@/components/migrated/LiveDataRequiredPanel';
+import { KpiTiles } from './KpiTiles';
 
 /**
  * Platform Overview — migrated from
@@ -18,9 +17,13 @@ import { LiveDataRequiredPanel } from '@/components/migrated/LiveDataRequiredPan
  * The legacy version rendered hardcoded mock revenue/tenant-growth
  * series via recharts. admin-platform-portal does not ship recharts as
  * a dependency, and HQ surfaces are required to render only from live
- * aggregates. Until /api/platform/overview/{revenue, tenants} are
- * wired, the trend section degrades honestly. The KPI cards still
- * render the static shape so navigation remains functional.
+ * aggregates.
+ *
+ * KPI tiles fetch `/api/platform/overview` (a Next.js BFF route the
+ * platform-overview aggregator will own once it ships). When the
+ * endpoint 404s the tiles render em-dashes; the trend section stays as
+ * `LiveDataRequiredPanel` until `/api/platform/overview/{revenue,
+ * tenants}` are wired and recharts is added back.
  */
 
 const QUICK_LINKS = [
@@ -41,21 +44,7 @@ export default function PlatformOverviewPage() {
       subtitle="Sector-wide KPIs across every BossNyumba tenant. Live numbers only — no mock data."
     >
       <div className="space-y-6">
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            icon={Building2}
-            label="Active tenants"
-            badge={
-              <span className="flex items-center gap-1 text-sm text-emerald-400">
-                <TrendingUp className="h-4 w-4" />
-                Live
-              </span>
-            }
-          />
-          <KpiCard icon={Users} label="Platform users" />
-          <KpiCard icon={CreditCard} label="Monthly revenue" />
-          <KpiCard icon={Activity} label="Units managed" />
-        </section>
+        <KpiTiles />
 
         <LiveDataRequiredPanel
           feature="Revenue & tenant trend charts"
@@ -82,29 +71,5 @@ export default function PlatformOverviewPage() {
         </div>
       </div>
     </PageShell>
-  );
-}
-
-interface KpiCardProps {
-  readonly icon: typeof Building2;
-  readonly label: string;
-  readonly badge?: React.ReactNode;
-}
-
-function KpiCard({ icon: Icon, label, badge }: KpiCardProps) {
-  return (
-    <div className="platform-card">
-      <div className="flex items-center justify-between">
-        <div className="rounded-lg bg-signal-500/10 p-2">
-          <Icon className="h-5 w-5 text-signal-500" />
-        </div>
-        {badge}
-      </div>
-      <div className="mt-4">
-        <p className="text-2xl font-display text-neutral-500">—</p>
-        <p className="text-sm text-neutral-400">{label}</p>
-      </div>
-      <p className="mt-2 text-xs text-neutral-500">Awaiting live aggregate</p>
-    </div>
   );
 }
