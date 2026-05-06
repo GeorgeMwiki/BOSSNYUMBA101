@@ -1,31 +1,28 @@
 # BossNyumba — Nyumba Mind Architecture
 
-A reference for how the Nyumba Mind ("Jarvis") personal-AI surface is wired across the platform. One kernel, six personas, five portals, per-user instances.
+A reference for how the Nyumba Mind ("Jarvis") personal-AI surface is wired across the platform. One kernel, several personas, **four portals**, per-user instances.
 
 ---
 
-## 1. The five user-facing portals
+## 1. The four user-facing portals
 
-BossNyumba ships five distinct frontends, each compiled into its own app and served on its own port. They differ by audience, persona, and visibility scope — but they all consume the same Nyumba Mind kernel through a single `createJarvisRouter()` factory in the gateway.
+BossNyumba ships **exactly four** user-facing frontends. They differ by audience, persona, and visibility scope — but they all consume the same Nyumba Mind kernel through a single `createJarvisRouter()` factory in the gateway.
 
 | App directory | Stack | Dev port | Audience | Tier this app feels like |
 |---|---|---|---|---|
-| `apps/admin-platform-portal/` | Next.js | 3020 | **BossNyumba HQ employees** (us) | Sovereign — industry-wide |
-| `apps/admin-portal/` | Vite (React SPA) | 3000 | **Agency administrators** (our customers) | Org — agency-wide |
-| `apps/owner-portal/` | Vite (React SPA) | 3001 | Property owners | Portfolio — properties they own |
-| `apps/estate-manager-app/` | Next.js | 3003 | Estate managers / operations | Property — properties they run |
-| `apps/customer-app/` | Next.js | 3002 | Tenant residents | Lease — their own lease |
+| `apps/admin-platform-portal/` | Next.js | 3020 | **BossNyumba HQ employees** (us, internal) | Sovereign — industry-wide |
+| `apps/owner-portal/` | Vite (React SPA) | 3001 | **Owners** — and owners *are* the admins; they can invite admin sub-users inside their portal | Portfolio / org — properties they own + their tenants' activity + their own actions |
+| `apps/estate-manager-app/` | Next.js | 3003 | Estate managers (mobile) — their Jarvis reports up to the owner's | Property — properties they run |
+| `apps/customer-app/` | Next.js | 3002 | Tenant residents (mobile) | Lease — their own lease |
 
-> **DO NOT CONFUSE — `admin-portal` vs `admin-platform-portal`**
+> **DO NOT CONFUSE — owner-portal (customer admin) vs admin-platform-portal (us)**
 >
-> These two apps are **not** the same thing and must **never** be conflated in code, docs, configuration, or conversation:
+> - `apps/admin-platform-portal/` (Next.js, port **3020**) is **BossNyumba HQ INTERNAL**. This is *us*. Persona `SOVEREIGN_ADMIN_PERSONA` ("Nyumba Mind"). Mounts at `/api/v1/platform/jarvis`.
+> - `apps/owner-portal/` (Vite, port **3001**) is **the customer admin portal**. Owners and the admins they appoint run their estate-management business there. Persona `OWNER_ADVISOR_PERSONA`. Mounts at `/api/v1/owner/jarvis`.
 >
-> - `apps/admin-platform-portal/` (Next.js, port **3020**) is **BossNyumba HQ INTERNAL**. This is *us*. The audience is BossNyumba staff. Persona is `SOVEREIGN_ADMIN_PERSONA` ("Nyumba Mind"). Default tier is `industry`. It mounts at `/api/v1/platform/jarvis`.
-> - `apps/admin-portal/` (Vite, port **3000**) is the **agency admin portal — our customers' app**. The audience is the agency CEO/admin running their estate-management business on top of BossNyumba. Persona is `ORG_ADMIN_PERSONA` ("Nyumba Mind — Agency Brain"). Default tier is `org`. It mounts at `/api/v1/admin/jarvis`.
->
-> Both personas brand as "Nyumba Mind", but the seat, audience, scope, and persona are different. When in doubt, look at the path prefix: `/admin/` is the agency, `/platform/` is HQ.
+> The owner's portal **is** the admin portal — there is no separate "agency admin" application. Owners administer their own work inside their portal.
 
-The `owner-portal` is a property-owner seat. Owners can themselves invite their own admins inside the portal — that does not make those admins agency admins or HQ staff; they remain inside the owner's portfolio scope.
+> **Deprecated:** `apps/admin-portal/` (Vite, port 3000) predates this clean four-portal split. It accumulated some HQ-flavoured pages and some agency-admin pages. It is being consolidated into `admin-platform-portal` (HQ pages) and `owner-portal` (admin pages). See `apps/admin-portal/DEPRECATED.md`. The `/api/v1/admin/jarvis` route remains in the gateway for backwards-compatibility but should be considered deprecated alongside the app — new consumers hit `/api/v1/owner/jarvis` or `/api/v1/platform/jarvis`.
 
 ---
 
@@ -57,12 +54,12 @@ The factory is in `services/api-gateway/src/routes/jarvis-router-factory.ts`. Th
 
 ### Surface matrix
 
-The five productional surfaces — what each one defaults to:
+The four productional surfaces — plus the deprecated agency-admin route — and what each one defaults to:
 
 | Portal | Path prefix | `surface` | Persona | Default tier | Visibility (in plain English) |
 |---|---|---|---|---|---|
 | `admin-platform-portal` | `/api/v1/platform/jarvis` | `platform-hq` | `SOVEREIGN_ADMIN_PERSONA` (Nyumba Mind HQ) | `industry` | Whole platform via DP-aggregate cohort signals |
-| `admin-portal` (agency) | `/api/v1/admin/jarvis` | `admin-portal` | `ORG_ADMIN_PERSONA` (Agency Brain) | `org` | Their full org |
+| `admin-portal` (deprecated — agency admins should use owner-portal instead) | `/api/v1/admin/jarvis` | `admin-portal` | `ORG_ADMIN_PERSONA` (Agency Brain) | `org` | Their full org |
 | `owner-portal` | `/api/v1/owner/jarvis` | `owner-portal` | `OWNER_ADVISOR_PERSONA` | `portfolio` | Their properties + their tenants' activity + their own actions |
 | `estate-manager-app` | `/api/v1/manager/jarvis` | `estate-manager-app` | `ESTATE_MANAGER_PERSONA` | `property` | Their assigned properties |
 | `customer-app` | `/api/v1/customer/jarvis` | `tenant-app` | `TENANT_RESIDENT_PERSONA` | `lease` | Their own lease |
@@ -290,7 +287,7 @@ If either migration is missing, the gateway will boot — the composition layer 
 
 ## 10. Frontend integration — one hook, one factory
 
-All five portals consume Nyumba Mind through the same primitive: the `useJarvis` hook from `@bossnyumba/chat-ui`, fed a surface-bound client built from `createJarvisClient(client, surface)` in `@bossnyumba/api-sdk`.
+All four user-facing portals (HQ + owner + estate-manager + customer) consume Nyumba Mind through the same primitive: the `useJarvis` hook from `@bossnyumba/chat-ui`, fed a surface-bound client built from `createJarvisClient(client, surface)` in `@bossnyumba/api-sdk`. (The deprecated `apps/admin-portal/` also has a `/jarvis` page that uses the same primitive, but that app is being consolidated; new agency-admin work goes through `owner-portal`.)
 
 | Page | Path | Surface arg |
 |---|---|---|
@@ -465,4 +462,4 @@ apps/
 - **Why does my industry-tier think() return no cohort grounding?** `PRIVACY_BUDGET_EPSILON` is unset, zero, or non-numeric.
 - **Can a tenant resident escalate themselves to an industry-tier query?** No. The factory tightens the per-request `tier` enum to consumer tiers, and even if the body bypassed Zod, `isTierCompatibleWithScope` would refuse it.
 - **Can two users in the same tenant share a cached thought?** No. `thoughtCacheKey` mixes in `actorUserId`.
-- **Does `admin-portal` mean BossNyumba HQ?** No — `admin-portal` is the agency admin (our customers). HQ is `admin-platform-portal`. See the DO NOT CONFUSE callout in Section 1.
+- **Does `admin-portal` mean BossNyumba HQ?** No — and `admin-portal` is **deprecated**. HQ is `admin-platform-portal`. Customer-side admin work belongs in `owner-portal` (owners are the admins; they invite their own admin sub-users there). See the DO NOT CONFUSE callout in Section 1 and `apps/admin-portal/DEPRECATED.md`.
