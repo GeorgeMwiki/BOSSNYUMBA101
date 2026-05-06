@@ -1,6 +1,13 @@
-# DEPRECATED — Folding into owner-portal + admin-platform-portal
+# DEPRECATED — Migration complete
 
-**Status:** This app is being consolidated. Do not add new pages here.
+**Status:** All pages have been migrated. This app is now a "moved" landing only.
+
+- HQ-flavoured pages → `apps/admin-platform-portal/` (BossNyumba HQ)
+- Agency-admin pages → `apps/owner-portal/` (the consolidated owner + agency-admin portal)
+
+The shell that remains here is a single landing page (`src/App.tsx`) that links visitors to the two destinations. Bundle is ~144 KB JS — minimal scaffolding. The package.json keeps only `react` + `react-dom`; everything else (design-system, chat-ui, api-sdk, react-router-dom, recharts, lucide, next-intl, zod, react-query, react-hook-form, observability, spotlight, domain-models) was removed.
+
+Do not add new pages here. New work targets `admin-platform-portal` (HQ work) or `owner-portal` (customer-side admin work).
 
 ## The 4-portal model (target state)
 

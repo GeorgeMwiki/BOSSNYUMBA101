@@ -1,12 +1,16 @@
+/**
+ * apps/admin-portal — minimal Tailwind config.
+ *
+ * The portal is deprecated; only the "moved" landing renders. We don't
+ * need the design-system tailwind extensions here — stock Tailwind is
+ * enough to style the landing page.
+ */
 import type { Config } from 'tailwindcss';
-import baseConfig from '@bossnyumba/design-system/tailwind.config';
 
 const config: Config = {
-  ...baseConfig,
-  content: [
-    './src/**/*.{ts,tsx}',
-    '../../packages/design-system/src/**/*.{ts,tsx}',
-  ],
+  content: ['./src/**/*.{ts,tsx}'],
+  theme: { extend: {} },
+  plugins: [],
 };
 
 export default config;

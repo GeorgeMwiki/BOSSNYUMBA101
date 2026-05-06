@@ -12,21 +12,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bossnyumba/api-sdk": "*",
-    "@bossnyumba/chat-ui": "*",
-    "@bossnyumba/design-system": "*",
-    "@bossnyumba/domain-models": "*",
-    "@bossnyumba/observability": "workspace:^",
-    "@bossnyumba/spotlight": "*",
-    "@tanstack/react-query": "^5.24.0",
-    "lucide-react": "^0.312.0",
-    "next-intl": "^3.26.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-hook-form": "^7.72.1",
-    "react-router-dom": "^6.21.3",
-    "recharts": "^2.10.4",
-    "zod": "^4.3.6"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",

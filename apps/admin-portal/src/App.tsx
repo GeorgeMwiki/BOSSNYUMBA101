@@ -1,198 +1,69 @@
+/**
+ * apps/admin-portal — DEPRECATED.
+ *
+ * This Vite app is being retired. All HQ-flavoured pages have moved
+ * to `apps/admin-platform-portal/` (BossNyumba HQ); all agency-admin
+ * pages have moved to `apps/owner-portal/` (the consolidated owner +
+ * agency-admin portal — owners ARE the admins). See
+ * `apps/admin-portal/DEPRECATED.md` and
+ * `.planning/jarvis-architecture.md` Section 1.
+ *
+ * This shell is reduced to a single landing component that explains
+ * where to go. The build still succeeds so existing infrastructure
+ * pointing at port 3000 doesn't fail; visitors are redirected.
+ */
+
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Skeleton } from '@bossnyumba/design-system';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SpotlightMount } from './components/SpotlightMount';
-import { MwikilaWidgetMount } from './components/MwikilaWidgetMount';
-import { Layout } from './components/Layout';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { TenantsPage } from './pages/TenantsPage';
-import { TenantDetailPage } from './pages/TenantDetailPage';
-import { UsersPage } from './pages/UsersPage';
-import { RolesPage } from './pages/RolesPage';
-import { OperationsPage } from './pages/OperationsPage';
-import { SupportPage } from './pages/SupportPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { ConfigurationPage } from './pages/ConfigurationPage';
-import { AuditLogPage } from './pages/AuditLogPage';
-import { SystemHealthPage } from './pages/SystemHealthPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import ManagerChat from './pages/ManagerChat';
-import Jarvis from './pages/Jarvis';
-import PlatformOverviewPage from './app/platform/overview/page';
-import PlatformSubscriptionsPage from './app/platform/subscriptions/page';
-import PlatformBillingPage from './app/platform/billing/page';
-import FeatureFlagsPage from './app/platform/feature-flags/page';
-import CommunicationsPage from './app/communications/page';
-import CommunicationsTemplatesPage from './app/communications/templates/page';
-import CommunicationsCampaignsPage from './app/communications/campaigns/page';
-import CommunicationsBroadcastsPage from './app/communications/broadcasts/page';
-import CompliancePage from './app/compliance/page';
-import ComplianceDocumentsPage from './app/compliance/documents/page';
-import ComplianceDataRequestsPage from './app/compliance/data-requests/page';
-import AnalyticsPage from './app/analytics/page';
-import AnalyticsUsagePage from './app/analytics/usage/page';
-import AnalyticsGrowthPage from './app/analytics/growth/page';
-import AnalyticsExportsPage from './app/analytics/exports/page';
-import IntegrationsPage from './app/integrations/page';
-import IntegrationsWebhooksPage from './app/integrations/webhooks/page';
-import IntegrationsApiKeysPage from './app/integrations/api-keys/page';
 
-// New feature pages
-import OnboardingWizard from './pages/tenants/OnboardingWizard';
-import PermissionMatrix from './pages/roles/PermissionMatrix';
-import ApprovalMatrix from './pages/roles/ApprovalMatrix';
-import ControlTower from './pages/operations/ControlTower';
-import CustomerTimeline from './pages/support/CustomerTimeline';
-import Escalation from './pages/support/Escalation';
-import AICockpit from './pages/ai/AICockpit';
-import DesktopReview from './pages/DesktopReview';
-import TrainingPage from './pages/Training';
-// Wave 13 — Autonomous Department Mode
-import DelegationMatrix from './pages/DelegationMatrix';
-import HeadOfEstates from './pages/HeadOfEstates';
-import ExceptionsPage from './pages/Exceptions';
-// Wave 15 — UI gap closure
-import ComplianceSettings from './pages/ComplianceSettings';
-import FeatureFlagsAdmin from './pages/FeatureFlags';
-import DataPrivacy from './pages/DataPrivacy';
-import AiCosts from './pages/AiCosts';
-import WarehousePage from './pages/Warehouse';
-import MaintenanceTaxonomy from './pages/MaintenanceTaxonomy';
-import IotSensors from './pages/IotSensors';
-import ClassroomPage from './pages/Classroom';
-import WorkflowsPage from './pages/Workflows';
-import ApiIntegrations from './pages/ApiIntegrations';
-import WebhookDLQ from './pages/WebhookDLQ';
-import OrgInsights from './pages/OrgInsights';
-import LegacyMigration from './pages/LegacyMigration';
-import TenantCredit from './pages/TenantCredit';
-import PropertyGradesPage from './pages/PropertyGrades';
+const PLATFORM_PORTAL_URL =
+  (import.meta as any).env?.VITE_PLATFORM_PORTAL_URL ?? 'http://localhost:3020';
+const OWNER_PORTAL_URL =
+  (import.meta as any).env?.VITE_OWNER_PORTAL_URL ?? 'http://localhost:3001';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div aria-busy="true" aria-live="polite" className="min-h-screen flex items-center justify-center bg-gray-50 p-8">
-        <div className="w-full max-w-md space-y-4">
-          <Skeleton className="h-8 w-1/2" />
-          <Skeleton className="h-32 w-full" />
+export default function App(): JSX.Element {
+  return (
+    <main className="min-h-screen bg-gray-50 px-6 py-12">
+      <div className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+        <h1 className="text-2xl font-semibold text-gray-900">
+          This app has moved
+        </h1>
+        <p className="mt-3 text-sm text-gray-600">
+          BossNyumba consolidated to a 4-portal model. The admin portal you were
+          looking at has been split into two destinations:
+        </p>
+        <div className="mt-6 space-y-4">
+          <a
+            href={OWNER_PORTAL_URL}
+            className="block rounded border border-orange-200 bg-orange-50 px-4 py-3 hover:bg-orange-100"
+          >
+            <div className="font-medium text-orange-900">Owner portal →</div>
+            <p className="mt-1 text-sm text-orange-800">
+              Agency administration (tenants, billing, users, roles, audit log,
+              compliance, integrations, communications, analytics, classroom,
+              support, head-of-estates dashboard). Owners are the admins; this
+              is where you administer your business and invite admin sub-users.
+            </p>
+          </a>
+          <a
+            href={PLATFORM_PORTAL_URL}
+            className="block rounded border border-blue-200 bg-blue-50 px-4 py-3 hover:bg-blue-100"
+          >
+            <div className="font-medium text-blue-900">
+              BossNyumba HQ portal →
+            </div>
+            <p className="mt-1 text-sm text-blue-800">
+              Platform-internal tools (AI costs, system health, feature flags,
+              data privacy, warehouse, webhook DLQ, control tower, legacy
+              migration, platform overview / billing / subscriptions /
+              feature-flags). For BossNyumba staff only.
+            </p>
+          </a>
         </div>
+        <p className="mt-6 text-xs text-gray-500">
+          Reference: <code>apps/admin-portal/DEPRECATED.md</code> —
+          page-by-page migration manifest.
+        </p>
       </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function AppRoutes() {
-  const { isAuthenticated } = useAuth();
-
-  return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<DashboardPage />} />
-        <Route path="tenants" element={<TenantsPage />} />
-        <Route path="tenants/onboard" element={<OnboardingWizard />} />
-        <Route path="tenants/:id" element={<TenantDetailPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="roles" element={<RolesPage />} />
-        <Route path="roles/permissions" element={<PermissionMatrix />} />
-        <Route path="roles/approvals" element={<ApprovalMatrix />} />
-        <Route path="operations" element={<OperationsPage />} />
-        <Route path="operations/control-tower" element={<ControlTower />} />
-        <Route path="support" element={<SupportPage />} />
-        <Route path="support/timeline" element={<CustomerTimeline />} />
-        <Route path="support/escalation" element={<Escalation />} />
-        <Route path="ai" element={<AICockpit />} />
-        <Route path="manager-chat" element={<ManagerChat />} />
-        <Route path="jarvis" element={<Jarvis />} />
-        <Route path="desktop-review" element={<DesktopReview />} />
-        <Route path="training" element={<TrainingPage />} />
-        <Route path="delegation" element={<DelegationMatrix />} />
-        <Route path="head" element={<HeadOfEstates />} />
-        <Route path="exceptions" element={<ExceptionsPage />} />
-        <Route path="org-insights" element={<OrgInsights />} />
-        <Route path="compliance-settings" element={<ComplianceSettings />} />
-        <Route path="feature-flags" element={<FeatureFlagsAdmin />} />
-        <Route path="data-privacy" element={<DataPrivacy />} />
-        <Route path="ai-costs" element={<AiCosts />} />
-        <Route path="warehouse" element={<WarehousePage />} />
-        <Route path="maintenance-taxonomy" element={<MaintenanceTaxonomy />} />
-        <Route path="iot" element={<IotSensors />} />
-        <Route path="classroom" element={<ClassroomPage />} />
-        <Route path="workflows" element={<WorkflowsPage />} />
-        <Route path="api-integrations" element={<ApiIntegrations />} />
-        <Route path="webhook-dlq" element={<WebhookDLQ />} />
-        <Route path="legacy-migration" element={<LegacyMigration />} />
-        <Route path="tenant-credit" element={<TenantCredit />} />
-        <Route path="property-grades" element={<PropertyGradesPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="configuration" element={<ConfigurationPage />} />
-        <Route path="audit" element={<AuditLogPage />} />
-        <Route path="system" element={<SystemHealthPage />} />
-        <Route path="platform">
-          <Route index element={<PlatformOverviewPage />} />
-          <Route path="overview" element={<PlatformOverviewPage />} />
-          <Route path="subscriptions" element={<PlatformSubscriptionsPage />} />
-          <Route path="billing" element={<PlatformBillingPage />} />
-          <Route path="feature-flags" element={<FeatureFlagsPage />} />
-        </Route>
-        <Route path="communications">
-          <Route index element={<CommunicationsPage />} />
-          <Route path="templates" element={<CommunicationsTemplatesPage />} />
-          <Route path="campaigns" element={<CommunicationsCampaignsPage />} />
-          <Route path="broadcasts" element={<CommunicationsBroadcastsPage />} />
-        </Route>
-        <Route path="compliance">
-          <Route index element={<CompliancePage />} />
-          <Route path="documents" element={<ComplianceDocumentsPage />} />
-          <Route path="data-requests" element={<ComplianceDataRequestsPage />} />
-        </Route>
-        <Route path="analytics">
-          <Route index element={<AnalyticsPage />} />
-          <Route path="usage" element={<AnalyticsUsagePage />} />
-          <Route path="growth" element={<AnalyticsGrowthPage />} />
-          <Route path="exports" element={<AnalyticsExportsPage />} />
-        </Route>
-        <Route path="integrations">
-          <Route index element={<IntegrationsPage />} />
-          <Route path="webhooks" element={<IntegrationsWebhooksPage />} />
-          <Route path="api-keys" element={<IntegrationsApiKeysPage />} />
-        </Route>
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  );
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <MwikilaWidgetMount>
-        <AppRoutes />
-        <SpotlightMount />
-      </MwikilaWidgetMount>
-    </AuthProvider>
+    </main>
   );
 }
