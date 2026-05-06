@@ -131,6 +131,8 @@ import {
   managerJarvisRouter,
   platformHqJarvisRouter,
 } from './routes/jarvis-router-factory';
+// Platform overview KPI aggregator — HQ-tier counts for /platform/overview.
+import platformOverviewRouter from './routes/platform-overview.router';
 // Phase B Wave 30 — Task-Agents registry + executor (narrow-scope agents)
 import taskAgentsRouter from './routes/task-agents.router';
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity overrides)
@@ -698,6 +700,9 @@ api.route('/owner/jarvis', ownerJarvisRouter);
 api.route('/manager/jarvis', managerJarvisRouter);
 api.route('/admin/jarvis', adminJarvisRouter);          // agency admin (Nyumba Mind — Agency Brain)
 api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba Mind sovereign)
+// Platform overview KPI aggregator — read-only, platform-tier auth, used
+// by admin-platform-portal /platform/overview KPI tiles.
+api.route('/platform/overview', platformOverviewRouter);
 // Phase B Wave 30 — Task-Agents (narrow-scope single-job agents + manual runs)
 api.route('/task-agents', taskAgentsRouter);
 // Wave 27 Agent E — Tenant Branding (per-tenant AI persona identity)
