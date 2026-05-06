@@ -32,6 +32,34 @@ export type AwarenessTier =
 // ThoughtRequest — the single input to think().
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Multimodal attachment carried alongside a textual user message.
+ *
+ * For now only `kind: 'image'` is supported — base64-encoded image bytes
+ * forwarded to a vision-capable Sensor (e.g. Claude Opus / Sonnet / Haiku
+ * with vision). The Anthropic sensor adapter rebuilds the user-message
+ * `content` block as a multipart array per Anthropic's multimodal spec
+ * when one or more attachments are present.
+ *
+ * IMPORTANT — inviolable / PII handling:
+ *   The inviolable refusal gate currently inspects ONLY `userMessage` text.
+ *   Image-side checks (e.g. an ID document image carrying PII) are flagged
+ *   for follow-up; until that gate is added, callers SHOULD pre-redact /
+ *   side-channel-classify image attachments before passing them in.
+ */
+export interface ThoughtAttachment {
+  readonly kind: 'image';
+  readonly mediaType:
+    | 'image/png'
+    | 'image/jpeg'
+    | 'image/gif'
+    | 'image/webp';
+  /** Base64-encoded image bytes (NO data-URL prefix). */
+  readonly data: string;
+  /** Optional human-readable caption / filename for audit + UI display. */
+  readonly caption?: string;
+}
+
 export interface ThoughtRequest {
   readonly threadId: string;
   readonly userMessage: string;
@@ -50,6 +78,20 @@ export interface ThoughtRequest {
     | 'classroom';
   /** When true, request a self-review judge pass before returning. */
   readonly requireJudge?: boolean;
+  /**
+   * Optional multimodal attachments (lease scans, property photos,
+   * damage assessment images). When present, the kernel adds `'vision'`
+   * to the sensor capability requirement for this turn.
+   */
+  readonly attachments?: ReadonlyArray<ThoughtAttachment>;
+  /**
+   * Optional sha256-hash of the requester's IP + a server salt. Carried
+   * through ONLY for the unauthenticated marketing surface so the
+   * public-inviolable gate + the public rate-limit middleware can
+   * correlate refusals to a hashed origin without storing the raw IP.
+   * Authenticated surfaces leave this `undefined`.
+   */
+  readonly ipHash?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -150,6 +192,13 @@ export interface SensorCallArgs {
   readonly priorTurns: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>;
   readonly extendedThinking: boolean;
   readonly stakes: ThoughtRequest['stakes'];
+  /**
+   * Optional multimodal attachments. When non-empty, the sensor adapter
+   * rebuilds the user message into a multipart content array with the
+   * images first and the text last. Sensor must declare `'vision'` in
+   * its capabilities for the router to pick it.
+   */
+  readonly attachments?: ReadonlyArray<ThoughtAttachment>;
 }
 
 export interface SensorCallResult {
@@ -167,7 +216,61 @@ export interface Sensor {
   readonly priority: number;          // lower wins
   readonly capabilities: ReadonlyArray<'vision' | 'thinking' | 'fast' | 'batch'>;
   call(args: SensorCallArgs): Promise<SensorCallResult>;
+  /**
+   * Optional token-level streaming entry point. When implemented, the
+   * kernel's `thinkStream(req)` forwards delta events to the consumer
+   * in real time. Sensors that cannot stream omit this and the kernel
+   * falls back to a single-shot `call()` followed by post-hoc chunking.
+   */
+  callStream?(args: SensorCallArgs): AsyncIterable<SensorStreamEvent>;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Streaming events — emitted by `Sensor.callStream` and aggregated by
+// `BrainKernel.thinkStream`. The shape is provider-agnostic; provider
+// adapters map upstream SSE events into this union.
+// ─────────────────────────────────────────────────────────────────────
+
+export type SensorStreamEvent =
+  | { readonly kind: 'turn_start'; readonly modelId: string; readonly sensorId: string }
+  | { readonly kind: 'text_delta'; readonly text: string }
+  | { readonly kind: 'thought_delta'; readonly text: string }
+  | {
+      readonly kind: 'tool_call';
+      readonly toolName: string;
+      readonly input: unknown;
+      readonly callId: string;
+    }
+  | {
+      readonly kind: 'stop';
+      readonly stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'error';
+      readonly latencyMs: number;
+    };
+
+// ─────────────────────────────────────────────────────────────────────
+// KernelStreamEvent — the union emitted by `BrainKernel.thinkStream`.
+// Pre-sensor refusals collapse to `turn_start` + `done`. A successful
+// turn emits at least: turn_start, ≥1 text_delta, confidence, done.
+// ─────────────────────────────────────────────────────────────────────
+
+export type KernelStreamEvent =
+  | {
+      readonly kind: 'turn_start';
+      readonly persona: {
+        readonly id: string;
+        readonly displayName: string;
+        readonly firstPersonNoun: string;
+      };
+    }
+  | { readonly kind: 'text_delta'; readonly text: string }
+  | { readonly kind: 'thought_delta'; readonly text: string }
+  | {
+      readonly kind: 'gate_verdict';
+      readonly gate: 'inviolable' | 'drift' | 'policy' | 'cognitive-load';
+      readonly verdict: GateVerdict;
+    }
+  | { readonly kind: 'confidence'; readonly vector: ConfidenceVector }
+  | { readonly kind: 'done'; readonly decision: BrainDecision };
 
 // ─────────────────────────────────────────────────────────────────────
 // CoT reservoir — sampled chain-of-thought for audit replay.

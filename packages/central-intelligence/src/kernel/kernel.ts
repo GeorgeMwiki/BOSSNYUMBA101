@@ -31,18 +31,22 @@ import type {
   GateVerdict,
   GroundingFact,
   GroundingFactsProvider,
+  KernelStreamEvent,
   PersonaDriftSink,
   ProvenanceRecord,
   ProvenanceSink,
   Sensor,
+  SensorCallArgs,
   SensorCallResult,
   ThoughtRequest,
 } from './kernel-types.js';
+import type { PersonaIdentity } from './identity.js';
 import type { Citation, Artifact } from '../types.js';
 import { selectPersona, renderIdentityPreamble } from './identity.js';
 import { applyBrandingOverride, type PersonaBrandingResolver } from './branding.js';
 import { isTierCompatibleWithScope, locusPhrase } from './awareness-scopes.js';
 import { checkInviolable } from './inviolable.js';
+import { checkPublicInviolable } from './public-inviolable.js';
 import { runPolicyGate } from './policy-gate.js';
 import { checkSelfAwareness } from './self-awareness.js';
 import { inferMindState, renderMindStateDirective } from './theory-of-mind.js';
@@ -82,6 +86,21 @@ export interface BrainKernelDeps {
 
 export interface BrainKernel {
   think(req: ThoughtRequest): Promise<BrainDecision>;
+  /**
+   * Token-level streaming counterpart to `think()`. Runs the full
+   * disciplined pipeline:
+   *   - pre-sensor steps run synchronously before any token is yielded
+   *   - sensor token deltas are forwarded to the consumer in real time
+   *   - post-sensor steps (normalize, judge, drift, policy, confidence,
+   *     provenance, cache.set, CoT capture) run after the sensor stops
+   *   - the consumer always sees a final `done` event with a fully-
+   *     formed `BrainDecision`
+   *
+   * Pre-sensor refusals (inviolable / tier) collapse to `turn_start +
+   * done(refusal)` with no deltas. Post-sensor refusals (drift / policy
+   * block) emit deltas, then a `gate_verdict` event, then `done(refusal)`.
+   */
+  thinkStream(req: ThoughtRequest): AsyncIterable<KernelStreamEvent>;
 }
 
 export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
@@ -116,6 +135,35 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
         }
         return decision;
+      }
+
+      // 2b) public-tier inviolable (marketing surface only).
+      // The unauthenticated marketing surface gets a stricter input
+      // filter: prompt-injection markers, oversized messages, cross-
+      // tenant probes, phishing-content asks, authority impersonation,
+      // and system-prompt extraction attempts all hard-refuse here
+      // BEFORE any sensor budget is spent.
+      if (req.surface === 'marketing') {
+        const publicVerdict = checkPublicInviolable({
+          userMessage: req.userMessage,
+          ipHash: req.ipHash ?? '',
+        });
+        if (publicVerdict.status === 'block') {
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason:
+              publicVerdict.reason ??
+              `public marketing inviolable category: ${publicVerdict.category ?? 'unknown'}`,
+            gate: 'inviolable',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
+          }
+          return decision;
+        }
       }
 
       // 3) tier compatibility
@@ -189,8 +237,16 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         .filter(Boolean)
         .join('\n');
 
-      // 7) sensor call (failover)
+      // 7) sensor call (failover). When attachments are present we add
+      // 'vision' to the required-capabilities array so only vision-capable
+      // sensors are eligible. The attachments themselves are forwarded
+      // verbatim and the adapter rebuilds the user message into a
+      // multipart content array.
       const wantsThinking = req.stakes === 'high' || req.stakes === 'critical';
+      const hasAttachments = (req.attachments?.length ?? 0) > 0;
+      const required: Array<'vision' | 'thinking' | 'fast' | 'batch'> = [];
+      if (wantsThinking) required.push('thinking');
+      if (hasAttachments) required.push('vision');
       const sensorResult = await router.call(
         {
           system,
@@ -198,8 +254,9 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           priorTurns,
           extendedThinking: wantsThinking,
           stakes: req.stakes,
+          ...(req.attachments ? { attachments: req.attachments } : {}),
         },
-        wantsThinking ? ['thinking'] : [],
+        required,
       );
 
       // 8) normalize
@@ -317,7 +374,380 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       void rng;
       return decision;
     },
+
+    /**
+     * Token-level streaming counterpart to `think`. Mirrors the same
+     * 13-step pipeline:
+     *   - pre-sensor steps run synchronously (no deltas yet)
+     *   - on pre-sensor refusal, yields turn_start + done(refusal)
+     *   - on cache hit, yields turn_start, the cached text in one
+     *     text_delta, confidence (when present), then done
+     *   - on a stream-capable sensor, forwards text_delta /
+     *     thought_delta events live; accumulates internally for the
+     *     post-sensor pipeline
+     *   - on a non-stream-capable sensor, calls `router.call(...)` and
+     *     emits the final text as one text_delta (legacy fallback)
+     *   - on stop, runs normalize → judge → drift → policy → confidence
+     *     → provenance → cache.set, emitting gate_verdict events for
+     *     drift/policy soften+block and a confidence event before done
+     */
+    async *thinkStream(req: ThoughtRequest): AsyncIterable<KernelStreamEvent> {
+      const startedAt = clock().getTime();
+      const thoughtId = randomUUID();
+      const cacheKey = thoughtCacheKey(req);
+
+      // Pre-sensor persona — needed for the turn_start event below.
+      const baseSurfacePersona = selectPersona(req);
+      const branding = deps.brandingResolver
+        ? await deps.brandingResolver
+            .resolve({
+              tenantId: req.scope.kind === 'tenant' ? req.scope.tenantId : null,
+              surface: req.surface,
+            })
+            .catch(() => null)
+        : null;
+      const persona = applyBrandingOverride(baseSurfacePersona, branding);
+
+      yield personaStartEvent(persona);
+
+      // 1) brain-side cache. On hit, replay as a single delta + done.
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        if (cached.kind !== 'refusal') {
+          if (cached.text) {
+            yield { kind: 'text_delta', text: cached.text };
+          }
+          yield { kind: 'confidence', vector: cached.confidence };
+        }
+        yield { kind: 'done', decision: cached };
+        return;
+      }
+
+      // 2) inviolable
+      const inviolable = checkInviolable(req);
+      if (inviolable.status === 'block') {
+        const decision = makeRefusal({
+          thoughtId,
+          req,
+          reason: inviolable.reason ?? 'inviolable rule blocked the request',
+          gate: 'inviolable',
+          startedAt,
+          clockNow: clock(),
+        });
+        if (deps.provenanceSink) {
+          void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
+        }
+        yield {
+          kind: 'gate_verdict',
+          gate: 'inviolable',
+          verdict: { status: 'block', reason: inviolable.reason ?? 'blocked' },
+        };
+        yield { kind: 'done', decision };
+        return;
+      }
+
+      // 3) tier compatibility
+      const tierCheck = isTierCompatibleWithScope(req.tier, req.scope);
+      if (!tierCheck.ok) {
+        const decision = makeRefusal({
+          thoughtId,
+          req,
+          reason: tierCheck.reason,
+          gate: 'inviolable',
+          startedAt,
+          clockNow: clock(),
+        });
+        if (deps.provenanceSink) {
+          void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
+        }
+        yield {
+          kind: 'gate_verdict',
+          gate: 'inviolable',
+          verdict: { status: 'block', reason: tierCheck.reason },
+        };
+        yield { kind: 'done', decision };
+        return;
+      }
+
+      // 4) memory recall
+      const priorTurns = deps.priorTurnsLoader
+        ? await deps.priorTurnsLoader(req.threadId)
+        : [];
+
+      // 5) cohort signal
+      const cohortMix = deps.cohort
+        ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
+        : { findings: [], promptFragment: '', fingerprints: [] as ReadonlyArray<string> };
+
+      // 5b) grounding facts
+      const groundingFacts: ReadonlyArray<GroundingFact> = deps.groundingFacts
+        ? await deps.groundingFacts
+            .fetch({ userMessage: req.userMessage, tier: req.tier, limit: 6 })
+            .catch(() => [])
+        : [];
+
+      // 6) identity + ToM + cognitive-load
+      const identity = renderIdentityPreamble({ persona, scope: req.scope });
+      const mindState = inferMindState(req.userMessage);
+      const recentTurns = deps.recentTurnCounter ? await deps.recentTurnCounter(req.threadId) : 0;
+      const loadOut = assessCognitiveLoad({
+        userMessage: req.userMessage,
+        recentTurnCount: recentTurns,
+      });
+      const system = [
+        identity,
+        '',
+        `Locus: ${locusPhrase(req.tier, req.scope)}.`,
+        '',
+        `Behavioural directive: ${renderMindStateDirective(mindState)}`,
+        `Verbosity directive: ${renderLoadDirective(loadOut)}`,
+        '',
+        renderGroundingFragment(groundingFacts),
+        '',
+        cohortMix.promptFragment,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      // 7) sensor selection. Prefer `callStream` when an eligible sensor
+      // exposes it; otherwise fall back to `router.call(...)` and emit
+      // the result as a single delta (legacy fallback for sensors that
+      // pre-date the streaming protocol).
+      const wantsThinking = req.stakes === 'high' || req.stakes === 'critical';
+      const hasAttachments = (req.attachments?.length ?? 0) > 0;
+      const required: Array<'vision' | 'thinking' | 'fast' | 'batch'> = [];
+      if (wantsThinking) required.push('thinking');
+      if (hasAttachments) required.push('vision');
+
+      const sensorArgs: SensorCallArgs = {
+        system,
+        userMessage: req.userMessage,
+        priorTurns,
+        extendedThinking: wantsThinking,
+        stakes: req.stakes,
+        ...(req.attachments ? { attachments: req.attachments } : {}),
+      };
+
+      const streamingSensor = pickStreamingSensor(deps.sensors, required);
+
+      let accumulatedText = '';
+      let accumulatedThought: string | null = null;
+      let toolCalls: Array<{ toolName: string; input: unknown; callId: string }> = [];
+      let sensorId = '__unknown__';
+      let modelId = '__unknown__';
+      let sensorLatencyMs = 0;
+
+      if (streamingSensor && streamingSensor.callStream) {
+        sensorId = streamingSensor.id;
+        modelId = streamingSensor.modelId;
+        const sensorStart = clock().getTime();
+        try {
+          for await (const ev of streamingSensor.callStream(sensorArgs)) {
+            if (ev.kind === 'turn_start') {
+              modelId = ev.modelId;
+              sensorId = ev.sensorId;
+              continue;
+            }
+            if (ev.kind === 'text_delta') {
+              accumulatedText += ev.text;
+              yield { kind: 'text_delta', text: ev.text };
+              continue;
+            }
+            if (ev.kind === 'thought_delta') {
+              accumulatedThought = (accumulatedThought ?? '') + ev.text;
+              yield { kind: 'thought_delta', text: ev.text };
+              continue;
+            }
+            if (ev.kind === 'tool_call') {
+              toolCalls.push({
+                toolName: ev.toolName,
+                input: ev.input,
+                callId: ev.callId,
+              });
+              continue;
+            }
+            if (ev.kind === 'stop') {
+              sensorLatencyMs = ev.latencyMs;
+              break;
+            }
+          }
+        } catch {
+          sensorLatencyMs = clock().getTime() - sensorStart;
+        }
+      } else {
+        const single = await router.call(sensorArgs, required);
+        sensorId = single.sensorId;
+        modelId = single.modelId;
+        accumulatedText = single.text;
+        accumulatedThought = single.thought;
+        toolCalls = [...single.toolCalls];
+        sensorLatencyMs = single.latencyMs;
+        if (accumulatedText) {
+          yield { kind: 'text_delta', text: accumulatedText };
+        }
+      }
+
+      // 8) normalize
+      const normalised = normalize(accumulatedText);
+
+      // 9) judge
+      const judgeRequested = req.requireJudge === true || req.stakes === 'critical';
+      const judgeOut = judgeRequested && deps.judge
+        ? await deps.judge(normalised.text)
+        : null;
+
+      const citations: ReadonlyArray<Citation> = extractCitationsFromUiBlock(normalised.uiBlock);
+      const artifacts: ReadonlyArray<Artifact> = extractArtifactsFromUiBlock(normalised.uiBlock);
+
+      // 10) self-awareness drift
+      const capturedAt = clock().toISOString();
+      const sa = checkSelfAwareness({
+        persona,
+        outputText: normalised.text,
+        toolCallCount: toolCalls.length,
+        hasCitations: citations.length > 0,
+        thoughtId,
+        capturedAt,
+      });
+      if (sa.events.length > 0 && deps.driftSink) {
+        for (const ev of sa.events) await deps.driftSink.record(ev);
+      }
+      if (sa.verdict.status === 'soften' || sa.verdict.status === 'block') {
+        yield { kind: 'gate_verdict', gate: 'drift', verdict: sa.verdict };
+      }
+      if (sa.verdict.status === 'block') {
+        const decision = makeRefusal({
+          thoughtId,
+          req,
+          reason: 'reason' in sa.verdict ? sa.verdict.reason : 'drift blocked',
+          gate: 'drift',
+          startedAt,
+          clockNow: clock(),
+        });
+        if (deps.provenanceSink) {
+          void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
+        }
+        yield { kind: 'done', decision };
+        return;
+      }
+
+      // 11) policy gate
+      const policy = runPolicyGate({
+        text: normalised.text,
+        hasCitations: citations.length > 0,
+      });
+      if (policy.verdict.status === 'soften' || policy.verdict.status === 'block') {
+        yield { kind: 'gate_verdict', gate: 'policy', verdict: policy.verdict };
+      }
+
+      // 12) confidence
+      const sensorResultLike: SensorCallResult = {
+        text: accumulatedText,
+        thought: accumulatedThought,
+        toolCalls,
+        latencyMs: sensorLatencyMs,
+        modelId,
+        sensorId,
+      };
+      const confidence = scoreConfidence({
+        outputText: policy.redactedText,
+        citationCount: citations.length,
+        toolResultNumbers: collectToolNumbers(sensorResultLike),
+        judgeScore: judgeOut?.score ?? null,
+        rerolledOutputText: null,
+      });
+
+      // 13) provenance + cache + CoT capture
+      const provenance: ProvenanceRecord = {
+        thoughtId,
+        threadId: req.threadId,
+        scopeKind: req.scope.kind,
+        tier: req.tier,
+        stakes: req.stakes,
+        inputHash: sha(req.userMessage),
+        outputHash: sha(policy.redactedText),
+        toolCallSummaries: toolCalls.map((tc) => ({
+          toolName: tc.toolName,
+          latencyMs: 0,
+          ok: true,
+        })),
+        sensorId,
+        modelId,
+        cacheHit: false,
+        judgeScore: judgeOut?.score ?? null,
+        cohortFingerprints: cohortMix.fingerprints,
+        producedAt: capturedAt,
+        latencyMs: clock().getTime() - startedAt,
+      };
+
+      if (reservoir) {
+        await reservoir.maybeCapture({
+          thoughtId,
+          threadId: req.threadId,
+          stakes: req.stakes,
+          thoughtText: accumulatedThought,
+          capturedAt,
+        });
+      }
+
+      const gates: GateOutcome = {
+        inviolable: { status: 'pass' },
+        policy: policy.verdict,
+        drift: sa.verdict,
+        cognitiveLoad: loadOut.verdict,
+      };
+
+      const decision: BrainDecision = pickDecisionShape({
+        gates,
+        text: policy.redactedText,
+        citations,
+        artifacts,
+        confidence,
+        provenance,
+      });
+
+      cache.set(cacheKey, decision);
+      if (deps.provenanceSink) {
+        void deps.provenanceSink.record(provenance).catch(() => undefined);
+      }
+
+      if (decision.kind !== 'refusal') {
+        yield { kind: 'confidence', vector: decision.confidence };
+      }
+      yield { kind: 'done', decision };
+    },
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Streaming helpers
+// ─────────────────────────────────────────────────────────────────────
+
+function personaStartEvent(persona: PersonaIdentity): KernelStreamEvent {
+  return {
+    kind: 'turn_start',
+    persona: {
+      id: persona.id,
+      displayName: persona.displayName,
+      firstPersonNoun: persona.firstPersonNoun,
+    },
+  };
+}
+
+function pickStreamingSensor(
+  sensors: ReadonlyArray<Sensor>,
+  required: ReadonlyArray<'vision' | 'thinking' | 'fast' | 'batch'>,
+): Sensor | null {
+  // Iterate in priority order (lower wins) and pick the first sensor
+  // that satisfies all required capabilities AND exposes `callStream`.
+  // Mirrors the failover router's eligibility filter; we don't reuse
+  // the router itself because streaming requires holding the iterator
+  // open across the post-sensor pipeline.
+  const eligible = [...sensors]
+    .filter((s) => required.every((cap) => s.capabilities.includes(cap)))
+    .filter((s) => typeof s.callStream === 'function')
+    .sort((a, b) => a.priority - b.priority);
+  return eligible[0] ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────────────

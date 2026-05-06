@@ -228,3 +228,8 @@ export * from './persona-branding.schema.js';
 // so new currencies are addable without code changes (built for the
 // world, starting with TZ). Resolution chain: user → tenant → platform.
 export * from './currency-preferences.schema.js';
+
+// Market data cache (migration 0120) — per-(provider, query) TTL
+// cache for external market-data adapter responses (Zillow, Airbnb,
+// Rentometer, etc.). Not tenant-scoped; platform-tier external data.
+export * from './market-data-cache.schema.js';

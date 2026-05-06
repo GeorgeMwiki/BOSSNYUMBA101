@@ -17,7 +17,18 @@
  *                        (kernel_cot_reservoir, kernel_persona_drift_
  *                        events, kernel_provenance) and a
  *                        Postgres-backed sovereign_approvals store;
- *                        otherwise in-memory sinks.
+ *                        otherwise in-memory sinks. Also enables the
+ *                        market_data_cache TTL store (migration 0120).
+ *   MARKET_DATA_PROVIDER  → 'zillow' | 'airbnb' (etc.) — wires that
+ *                        adapter as the platform's MarketDataPort. When
+ *                        unset no adapter is wired; the kernel runs
+ *                        without external market-data tools.
+ *   ZILLOW_API_KEY     → real upstream credential for the Zillow
+ *                        adapter. Without it the adapter resolves every
+ *                        call to `{ kind: 'unconfigured' }` (it never
+ *                        throws); the kernel tool surfaces a friendly
+ *                        hint to the operator.
+ *   AIRBNB_API_KEY     → ditto for the Airbnb adapter.
  *
  * This module is the single source of truth for how the api-gateway
  * boots the sovereign AI. It returns one cached SovereignBrain per
@@ -28,6 +39,7 @@
 import {
   composeSovereign,
   createDpCohortSource,
+  tools as kernelTools,
   type PersonaBrandingOverride,
   type PersonaBrandingResolver,
   type SovereignBrain,
@@ -42,11 +54,17 @@ import {
   createKernelSubstrateService,
   createKernelMemoryService,
   createKernelGroundingProvider,
+  createMarketDataCacheService,
   createPersonaBrandingService,
   createPgApprovalStore,
   createPgTenantAggregateSource,
   createPgPlatformBudgetLedger,
 } from '@bossnyumba/database';
+import {
+  createAirbnbMarketDataAdapter,
+  createZillowMarketDataAdapter,
+  type MarketDataPort,
+} from '@bossnyumba/market-intelligence';
 
 // Visibility role — mirrored locally so this composition root doesn't
 // need a type-only barrel export from `@bossnyumba/database` (TS
@@ -155,6 +173,7 @@ export async function getSovereignBrain(
 export function resetSovereignBrainCache(): void {
   cache.clear();
   anthropicSingleton = undefined;
+  marketDataKernelToolsSingleton = undefined;
 }
 
 async function build(scope: SovereignScope): Promise<SovereignBrain> {
@@ -306,4 +325,97 @@ function maybeBuildDpAggregator(
       });
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// External market-data adapter wiring (env-gated).
+//
+// `MARKET_DATA_PROVIDER` selects which adapter is wired:
+//   - 'zillow'  → Zillow listings + Bridge-RESO vacancy
+//   - 'airbnb'  → Airbnb market-insights (short-let, coerced monthly)
+//
+// Without `MARKET_DATA_PROVIDER` no adapter is wired and the kernel has
+// no market-data tools (calls to market.* surface as 'unknown tool').
+// Without the corresponding `*_API_KEY` the adapter is wired but every
+// call resolves to `{ kind: 'unconfigured' }` — the kernel tool surfaces
+// a friendly operator hint instead of failing.
+//
+// The kernel itself does NOT execute tools (it's single-shot). The
+// streaming agent-loop is the right place to register these. The
+// composition root for the agent-loop is not yet wired into the api-
+// gateway; until it is, this factory is exposed via
+// `getMarketDataKernelTools()` for the future agent-loop wiring to
+// pick up. See the inline TODO below.
+//
+// TODO(agent-loop): when the api-gateway grows an agent-loop
+// composition root (parallel to this sovereign one), thread the bundle
+// returned by `getMarketDataKernelTools()` into its `createToolRegistry`
+// input. The registry surface is documented in
+// `packages/central-intelligence/src/tools/registry.ts`.
+// ---------------------------------------------------------------------------
+
+let marketDataKernelToolsSingleton:
+  | ReturnType<typeof kernelTools.createMarketDataKernelTools>
+  | null
+  | undefined;
+
+/**
+ * Build the env-gated market-data adapter + kernel-tool bundle.
+ *
+ * Returns the bundle when `MARKET_DATA_PROVIDER` selects a known
+ * adapter; returns `null` when no provider is configured (callers
+ * should treat this as "no market-data tools available" — NOT an
+ * error). Cached so multiple agent-loop builds share one adapter.
+ */
+export function getMarketDataKernelTools():
+  | ReturnType<typeof kernelTools.createMarketDataKernelTools>
+  | null {
+  if (marketDataKernelToolsSingleton !== undefined) {
+    return marketDataKernelToolsSingleton;
+  }
+
+  const provider = (process.env.MARKET_DATA_PROVIDER ?? '').trim().toLowerCase();
+  if (!provider) {
+    marketDataKernelToolsSingleton = null;
+    return null;
+  }
+
+  const port = buildMarketDataPort(provider);
+  if (!port) {
+    console.warn(
+      `sovereign-composition: unknown MARKET_DATA_PROVIDER='${provider}'; ignoring`,
+    );
+    marketDataKernelToolsSingleton = null;
+    return null;
+  }
+
+  marketDataKernelToolsSingleton = kernelTools.createMarketDataKernelTools(port);
+  return marketDataKernelToolsSingleton;
+}
+
+function buildMarketDataPort(provider: string): MarketDataPort | null {
+  // Cache layer is only available when the DB is up. Without it the
+  // adapter still works — it just hits the upstream every call and
+  // serves whatever the upstream returns.
+  const db = getDb();
+  const cache = db ? createMarketDataCacheService(db) : undefined;
+
+  switch (provider) {
+    case 'zillow':
+      return createZillowMarketDataAdapter({
+        ...(process.env.ZILLOW_API_KEY?.trim()
+          ? { apiKey: process.env.ZILLOW_API_KEY.trim() }
+          : {}),
+        ...(cache ? { cache } : {}),
+      });
+    case 'airbnb':
+      return createAirbnbMarketDataAdapter({
+        ...(process.env.AIRBNB_API_KEY?.trim()
+          ? { apiKey: process.env.AIRBNB_API_KEY.trim() }
+          : {}),
+        ...(cache ? { cache } : {}),
+      });
+    default:
+      return null;
+  }
 }

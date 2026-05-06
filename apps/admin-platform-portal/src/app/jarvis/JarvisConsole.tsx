@@ -7,7 +7,7 @@
  * frontend can reuse the same primitive.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
@@ -18,9 +18,17 @@ import {
 
 const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
 
+// UI-side cap. The gateway enforces 10 / 4 MiB per attachment as the
+// hard server-side limit; the console intentionally caps lower so an HQ
+// operator does not staple a presentation deck onto a chat turn.
+const MAX_IMAGES_PER_TURN = 5;
+const ALLOWED_IMAGE_MIME = 'image/png,image/jpeg,image/gif,image/webp';
+
 export function JarvisConsole(): JSX.Element {
   const [draft, setDraft] = useState('');
   const [threadId] = useState(() => `hq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const client = useMemo(
     () =>
@@ -49,6 +57,7 @@ export function JarvisConsole(): JSX.Element {
     error,
     persona,
     think,
+    thinkWithAttachments,
     reset,
     isListening,
     startListening,
@@ -61,12 +70,45 @@ export function JarvisConsole(): JSX.Element {
     ...(audioPort ? { voice: { audio: audioPort, speakReplies: true } } : {}),
   });
 
+  function onPickImages(e: React.ChangeEvent<HTMLInputElement>): void {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setPendingImages((prev) => {
+      // Append, then truncate to the per-turn cap. Existing images are
+      // preserved and de-duped by name+size so the same file picked
+      // twice doesn't double up.
+      const seen = new Set(prev.map((f) => `${f.name}::${f.size}`));
+      const merged: File[] = [...prev];
+      for (const f of files) {
+        const k = `${f.name}::${f.size}`;
+        if (!seen.has(k)) {
+          merged.push(f);
+          seen.add(k);
+        }
+      }
+      return merged.slice(0, MAX_IMAGES_PER_TURN);
+    });
+    // Reset the input so picking the same file again still fires onChange.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeImage(idx: number): void {
+    setPendingImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     const text = draft.trim();
-    if (!text || status === 'thinking') return;
+    if (status === 'thinking') return;
+    if (!text && pendingImages.length === 0) return;
     setDraft('');
-    await think(text);
+    if (pendingImages.length > 0) {
+      const images = pendingImages;
+      setPendingImages([]);
+      await thinkWithAttachments(text, images);
+    } else {
+      await think(text);
+    }
   }
 
   return (
@@ -112,6 +154,27 @@ export function JarvisConsole(): JSX.Element {
         ) : null}
       </div>
 
+      {pendingImages.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {pendingImages.map((f, i) => (
+            <span
+              key={`${f.name}_${f.size}_${i}`}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-sunken px-3 py-1 text-xs text-foreground"
+            >
+              <span className="max-w-[14rem] truncate">{f.name}</span>
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                aria-label={`Remove ${f.name}`}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       <form onSubmit={onSubmit} className="flex gap-2">
         <input
           type="text"
@@ -121,6 +184,29 @@ export function JarvisConsole(): JSX.Element {
           disabled={status === 'thinking'}
           className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ALLOWED_IMAGE_MIME}
+          multiple
+          onChange={onPickImages}
+          className="hidden"
+          aria-label="Attach images"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={status === 'thinking' || pendingImages.length >= MAX_IMAGES_PER_TURN}
+          aria-label="Attach images"
+          title={
+            pendingImages.length >= MAX_IMAGES_PER_TURN
+              ? `Up to ${MAX_IMAGES_PER_TURN} images per turn`
+              : 'Attach images (lease scan, property photo, damage assessment)'
+          }
+          className="rounded border border-border bg-surface px-3 py-2 text-sm text-foreground disabled:opacity-50"
+        >
+          Image
+        </button>
         {audioPort?.sttSupported ? (
           <MicButton
             isListening={isListening}
@@ -131,7 +217,10 @@ export function JarvisConsole(): JSX.Element {
         ) : null}
         <button
           type="submit"
-          disabled={status === 'thinking' || !draft.trim()}
+          disabled={
+            status === 'thinking' ||
+            (!draft.trim() && pendingImages.length === 0)
+          }
           className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           Send

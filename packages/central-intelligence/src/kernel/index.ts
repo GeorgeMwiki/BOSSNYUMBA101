@@ -49,6 +49,13 @@ export {
 } from './awareness-scopes.js';
 export { checkInviolable, type InviolableVerdict } from './inviolable.js';
 export {
+  checkPublicInviolable,
+  PUBLIC_INVIOLABLE_LIMITS,
+  type PublicInviolableInput,
+  type PublicInviolableVerdict,
+  type PublicInviolableCategory,
+} from './public-inviolable.js';
+export {
   runPolicyGate,
   type PolicyGateInput,
   type PolicyGateOutput,
@@ -146,6 +153,8 @@ export {
   type AnthropicMessagesClient,
   type AnthropicMessageBlock,
   type AnthropicMessageResponse,
+  type AnthropicRequestContentBlock,
+  type AnthropicRequestMessage,
 } from './sensors/anthropic-sensor.js';
 export {
   createAnthropicJudge,
@@ -188,3 +197,11 @@ export {
   type PersonaBrandingOverride,
   type PersonaBrandingResolver,
 } from './branding.js';
+
+/**
+ * Graph kernel tools — Neo4j-backed query tools the agent loop can
+ * invoke (portfolio concentration, connected parties, lease network,
+ * vacancy clusters). Surfaced under a `tools` namespace so callers
+ * write `tools.createGraphKernelTools(graphService)`.
+ */
+export * as tools from './tools/index.js';

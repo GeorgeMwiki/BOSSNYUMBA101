@@ -219,6 +219,29 @@ function sovereignScopeFromContext(
   };
 }
 
+// Multimodal attachment caps. The gateway enforces a per-turn count cap
+// and a per-attachment size cap so a misbehaving client cannot send a
+// 100 MB image and stall the kernel for everyone else. Sizes are
+// expressed in base64-decoded BYTES; the zod schema validates against a
+// pre-decoded base64 length budget (see MAX_BASE64_LEN).
+const MAX_ATTACHMENTS_PER_TURN = 10;
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024; // 4 MiB decoded
+// Base64 inflates by 4/3; round up + add a tiny safety margin so we
+// reject only when the decoded payload truly exceeds the cap.
+const MAX_BASE64_LEN = Math.ceil((MAX_ATTACHMENT_BYTES * 4) / 3) + 4;
+
+const AttachmentSchema = z.object({
+  kind: z.literal('image'),
+  mediaType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']),
+  data: z
+    .string()
+    .min(1)
+    .max(MAX_BASE64_LEN, {
+      message: `IMAGE_TOO_LARGE: each image must be <= ${MAX_ATTACHMENT_BYTES} bytes decoded`,
+    }),
+  caption: z.string().max(240).optional(),
+});
+
 export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   const tierEnum = config.consumerSurface
     ? z.enum(CONSUMER_TIERS)
@@ -230,6 +253,12 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     tier: tierEnum.default(config.defaultTier as any),
     stakes: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
     requireJudge: z.boolean().optional(),
+    attachments: z
+      .array(AttachmentSchema)
+      .max(MAX_ATTACHMENTS_PER_TURN, {
+        message: `IMAGE_TOO_LARGE: at most ${MAX_ATTACHMENTS_PER_TURN} attachments per turn`,
+      })
+      .optional(),
   });
 
   const app = new Hono();
@@ -249,6 +278,9 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       stakes: body.stakes,
       surface: config.surface,
       requireJudge: body.requireJudge,
+      ...(body.attachments && body.attachments.length > 0
+        ? { attachments: body.attachments }
+        : {}),
     };
 
     const basePersona = selectPersona(req);
@@ -270,19 +302,22 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   // ───────────────────────────────────────────────────────────────────
   // POST /stream — SSE variant of /think.
   //
-  // The kernel's `think()` is single-shot, but for live UX we want the
-  // reply to render progressively. Since we already have the full text
-  // by the time think() returns, we chunk the text into 5–10 deltas
-  // and emit them with small pauses to keep the wire feeling natural.
+  // Wire-level token streaming. Forwards each event from
+  // `kernel.thinkStream(req)` straight onto the SSE wire:
   //
-  // Event framing:
   //   event: turn_start  → { persona }
-  //   event: delta       → { delta: '<chunk>' }     (5–10 events)
-  //   event: confidence  → ConfidenceVector         (answers / softened)
+  //   event: delta       → { delta: '<token-chunk>' }
+  //   event: thinking    → { delta: '<thought-chunk>' }   (extended thinking)
+  //   event: gate        → { gate, verdict }              (drift / policy / inviolable)
+  //   event: confidence  → ConfidenceVector               (answers / softened)
   //   event: done        → { thoughtId, kind }
   //
-  // Refusal path: turn_start, ONE delta carrying the refusal reason,
-  // then done.
+  // For sensors that don't expose `callStream`, the kernel falls back
+  // internally to a single-shot `call()` and emits ONE text_delta with
+  // the whole text — the wire framing is identical so clients don't
+  // need to care which path the kernel took.
+  //
+  // Pre-sensor refusal path: turn_start, gate event (inviolable), done.
   // ───────────────────────────────────────────────────────────────────
   app.post('/stream', zValidator('json', ThinkSchema), async (c) => {
     const body = c.req.valid('json');
@@ -298,31 +333,74 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       stakes: body.stakes,
       surface: config.surface,
       requireJudge: body.requireJudge,
+      ...(body.attachments && body.attachments.length > 0
+        ? { attachments: body.attachments }
+        : {}),
     };
 
+    // Per-user persona personalisation is applied by the gateway on
+    // the kernel's surface-default persona so the AI greets THIS user
+    // by name on the turn_start event.
     const basePersona = selectPersona(req);
     const personalised = personalisePersona(basePersona, profile);
 
     return streamSSE(c, async (stream) => {
-      // Phase 1 — turn_start.
-      await stream.writeSSE({
-        event: 'turn_start',
-        data: JSON.stringify({
-          persona: {
-            id: personalised.id,
-            displayName: personalised.displayName,
-            firstPersonNoun: personalised.firstPersonNoun,
-          },
-        }),
-      });
-
-      // Phase 2 — run the kernel. Failures here become a single error
-      // event followed by a `done` so the client always closes cleanly.
-      let decision;
       try {
-        decision = await sov.kernel.think(req);
+        for await (const ev of sov.kernel.thinkStream(req)) {
+          if (ev.kind === 'turn_start') {
+            await stream.writeSSE({
+              event: 'turn_start',
+              data: JSON.stringify({
+                persona: {
+                  id: personalised.id,
+                  displayName: personalised.displayName,
+                  firstPersonNoun: personalised.firstPersonNoun,
+                },
+              }),
+            });
+            continue;
+          }
+          if (ev.kind === 'text_delta') {
+            await stream.writeSSE({
+              event: 'delta',
+              data: JSON.stringify({ delta: ev.text }),
+            });
+            continue;
+          }
+          if (ev.kind === 'thought_delta') {
+            await stream.writeSSE({
+              event: 'thinking',
+              data: JSON.stringify({ delta: ev.text }),
+            });
+            continue;
+          }
+          if (ev.kind === 'gate_verdict') {
+            await stream.writeSSE({
+              event: 'gate',
+              data: JSON.stringify({ gate: ev.gate, verdict: ev.verdict }),
+            });
+            continue;
+          }
+          if (ev.kind === 'confidence') {
+            await stream.writeSSE({
+              event: 'confidence',
+              data: JSON.stringify(ev.vector),
+            });
+            continue;
+          }
+          if (ev.kind === 'done') {
+            await stream.writeSSE({
+              event: 'done',
+              data: JSON.stringify({
+                thoughtId: ev.decision.provenance.thoughtId,
+                kind: ev.decision.kind,
+              }),
+            });
+            return;
+          }
+        }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'think failed';
+        const message = err instanceof Error ? err.message : 'thinkStream failed';
         await stream.writeSSE({
           event: 'error',
           data: JSON.stringify({ message }),
@@ -331,45 +409,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
           event: 'done',
           data: JSON.stringify({ thoughtId: '', kind: 'refusal' }),
         });
-        return;
       }
-
-      // Phase 3 — emit deltas. Refusal → single delta carrying the
-      // reason. Answer / softened → chunk the text into 5–10 pieces.
-      if (decision.kind === 'refusal') {
-        await stream.writeSSE({
-          event: 'delta',
-          data: JSON.stringify({ delta: decision.reason }),
-        });
-      } else {
-        const text = decision.text ?? '';
-        const chunks = chunkText(text, 7);
-        for (const chunk of chunks) {
-          await stream.writeSSE({
-            event: 'delta',
-            data: JSON.stringify({ delta: chunk }),
-          });
-          // Tiny pacing pause — keeps the UI delta-rendering smooth
-          // without bloating end-to-end latency. Skipped on the last
-          // chunk so the `done` event isn't artificially delayed.
-          await stream.sleep(15);
-        }
-
-        // Phase 4 — confidence (only present on answer / softened).
-        await stream.writeSSE({
-          event: 'confidence',
-          data: JSON.stringify(decision.confidence),
-        });
-      }
-
-      // Phase 5 — done.
-      await stream.writeSSE({
-        event: 'done',
-        data: JSON.stringify({
-          thoughtId: decision.provenance.thoughtId,
-          kind: decision.kind,
-        }),
-      });
     });
   });
 

@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  JarvisAttachment,
   JarvisDecision,
   JarvisStakes,
   JarvisSurfaceClient,
@@ -76,6 +77,16 @@ export interface UseJarvisReturn {
   readonly error: string | null;
   readonly persona: { id: string; displayName: string; firstPersonNoun: string } | null;
   think(message: string, override?: Partial<JarvisThinkRequest>): Promise<JarvisDecision | null>;
+  /**
+   * Multimodal turn — read each `File` as base64, package the result as
+   * `JarvisAttachment[]`, and submit alongside the text message. Useful
+   * for lease scans, property photos, and damage assessment images.
+   */
+  thinkWithAttachments(
+    message: string,
+    attachments: ReadonlyArray<File>,
+    override?: Partial<JarvisThinkRequest>,
+  ): Promise<JarvisDecision | null>;
   reset(): void;
   /** True while STT is actively recording. False when no `voice` configured. */
   readonly isListening: boolean;
@@ -167,6 +178,93 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
           id: nextId(),
           role: 'assistant',
           text: `I hit an error reaching the brain: ${message}`,
+          at: new Date().toISOString(),
+        };
+        setTurns((prev) => [...prev, errorTurn]);
+        return null;
+      }
+    },
+    [nextId, opts.client, opts.defaultStakes, opts.defaultTier, opts.threadId],
+  );
+
+  // --- Multimodal: read Files → JarvisAttachment[] → submit. ---
+  const thinkWithAttachments = useCallback(
+    async (
+      message: string,
+      attachments: ReadonlyArray<File>,
+      override?: Partial<JarvisThinkRequest>,
+    ): Promise<JarvisDecision | null> => {
+      const trimmed = message.trim();
+      // Allow an empty caption — vision turns may carry the image alone
+      // with no accompanying text. We still synthesize a non-empty
+      // userMessage because the gateway's zod schema requires
+      // userMessage.min(1).
+      const text = trimmed.length > 0 ? trimmed : 'Please review the attached image(s).';
+
+      const at = new Date().toISOString();
+      const captions = attachments.map((f) => f.name).filter(Boolean).join(', ');
+      const userTurn: JarvisTurn = {
+        id: nextId(),
+        role: 'user',
+        text: captions ? `${text}\n\n[Attached: ${captions}]` : text,
+        at,
+      };
+      setTurns((prev) => [...prev, userTurn]);
+      setStatus('thinking');
+      setError(null);
+
+      let packed: ReadonlyArray<JarvisAttachment>;
+      try {
+        packed = await Promise.all(attachments.map(fileToJarvisAttachment));
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err);
+        setStatus('error');
+        setError(m);
+        const errorTurn: JarvisTurn = {
+          id: nextId(),
+          role: 'assistant',
+          text: `I could not read one of the attachments: ${m}`,
+          at: new Date().toISOString(),
+        };
+        setTurns((prev) => [...prev, errorTurn]);
+        return null;
+      }
+
+      const req: JarvisThinkRequest = {
+        threadId: opts.threadId,
+        userMessage: text,
+        stakes: override?.stakes ?? opts.defaultStakes ?? 'medium',
+        ...(override?.tier ? { tier: override.tier } : opts.defaultTier ? { tier: opts.defaultTier } : {}),
+        ...(typeof override?.requireJudge === 'boolean' ? { requireJudge: override.requireJudge } : {}),
+        ...(packed.length > 0 ? { attachments: packed } : {}),
+      };
+
+      try {
+        const response = await opts.client.think(req);
+        setPersona(response.persona);
+        const decision = response.decision;
+        const replyText =
+          decision.kind === 'refusal'
+            ? decision.reason ?? 'I cannot answer that.'
+            : decision.text ?? '';
+        const assistantTurn: JarvisTurn = {
+          id: nextId(),
+          role: 'assistant',
+          text: replyText,
+          decision,
+          at: new Date().toISOString(),
+        };
+        setTurns((prev) => [...prev, assistantTurn]);
+        setStatus('idle');
+        return decision;
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err);
+        setStatus('error');
+        setError(m);
+        const errorTurn: JarvisTurn = {
+          id: nextId(),
+          role: 'assistant',
+          text: `I hit an error reaching the brain: ${m}`,
           at: new Date().toISOString(),
         };
         setTurns((prev) => [...prev, errorTurn]);
@@ -297,6 +395,7 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
       error,
       persona,
       think,
+      thinkWithAttachments,
       reset,
       isListening,
       startListening,
@@ -310,6 +409,7 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
       error,
       persona,
       think,
+      thinkWithAttachments,
       reset,
       isListening,
       startListening,
@@ -318,4 +418,57 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
       cancelSpeaking,
     ],
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────
+
+const ALLOWED_IMAGE_MEDIA: ReadonlyArray<JarvisAttachment['mediaType']> = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+];
+
+function isAllowedMediaType(t: string): t is JarvisAttachment['mediaType'] {
+  return (ALLOWED_IMAGE_MEDIA as ReadonlyArray<string>).includes(t);
+}
+
+/**
+ * Read a browser `File` as base64 (without the `data:` prefix) and pack
+ * it into a `JarvisAttachment`. Rejects unsupported MIME types so the
+ * gateway never sees something the kernel cannot route to vision.
+ */
+async function fileToJarvisAttachment(file: File): Promise<JarvisAttachment> {
+  if (!isAllowedMediaType(file.type)) {
+    throw new Error(
+      `unsupported image media type "${file.type || 'unknown'}" (allowed: ${ALLOWED_IMAGE_MEDIA.join(', ')})`,
+    );
+  }
+  const dataUrl = await readFileAsDataUrl(file);
+  // Strip the `data:<mime>;base64,` prefix — the API expects the raw
+  // base64 payload only.
+  const commaIdx = dataUrl.indexOf(',');
+  const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+  return {
+    kind: 'image',
+    mediaType: file.type,
+    data: base64,
+    ...(file.name ? { caption: file.name } : {}),
+  };
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (): void => {
+      const result = reader.result;
+      if (typeof result === 'string') resolve(result);
+      else reject(new Error('FileReader returned a non-string result'));
+    };
+    reader.onerror = (): void =>
+      reject(reader.error ?? new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
 }

@@ -109,3 +109,14 @@ export {
   type ResolvePreferenceArgs,
   type ResolvedCurrency,
 } from './currency-preferences.service.js';
+
+// Market data cache — Drizzle-backed TTL cache for external market-
+// data adapter responses (Zillow, Airbnb, Rentometer, etc.). Composed
+// at the api-gateway sovereign composition root and handed to the
+// adapter factories so repeated kernel queries within the TTL window
+// don't hammer the upstream provider. Migration 0120.
+export {
+  createMarketDataCacheService,
+  type MarketDataCacheEntry,
+  type MarketDataCacheService,
+} from './market-data-cache.service.js';

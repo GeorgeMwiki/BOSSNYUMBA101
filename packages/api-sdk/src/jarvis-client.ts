@@ -47,12 +47,37 @@ export type JarvisSeverity = 'info' | 'warn' | 'urgent';
 export type JarvisApprovalStatus =
   | 'pending' | 'one-eye' | 'approved' | 'rejected' | 'expired';
 
+/**
+ * Multimodal attachment for {@link JarvisThinkRequest}. Mirrors the
+ * kernel's `ThoughtAttachment` shape — base64-encoded image bytes the
+ * gateway forwards to a vision-capable Sensor (Claude Opus / Sonnet /
+ * Haiku).
+ */
+export interface JarvisAttachment {
+  readonly kind: 'image';
+  readonly mediaType:
+    | 'image/png'
+    | 'image/jpeg'
+    | 'image/gif'
+    | 'image/webp';
+  /** Base64-encoded image bytes (NO data-URL prefix). */
+  readonly data: string;
+  /** Optional filename / caption used for audit + UI display. */
+  readonly caption?: string;
+}
+
 export interface JarvisThinkRequest {
   readonly threadId: string;
   readonly userMessage: string;
   readonly tier?: JarvisTier;
   readonly stakes?: JarvisStakes;
   readonly requireJudge?: boolean;
+  /**
+   * Optional multimodal attachments (lease scans, property photos,
+   * damage assessment images). The gateway enforces a per-turn cap of
+   * 10 attachments and a per-attachment cap of 4 MB base64-decoded.
+   */
+  readonly attachments?: ReadonlyArray<JarvisAttachment>;
 }
 
 export interface JarvisDecision {

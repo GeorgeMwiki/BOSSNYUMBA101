@@ -35,6 +35,7 @@
     "@bossnyumba/graph-privacy": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
     "@bossnyumba/lpms-connector": "workspace:*",
+    "@bossnyumba/market-intelligence": "workspace:*",
     "@bossnyumba/marketing-brain": "workspace:*",
     "@bossnyumba/mcp-server": "workspace:*",
     "@bossnyumba/observability": "workspace:*",

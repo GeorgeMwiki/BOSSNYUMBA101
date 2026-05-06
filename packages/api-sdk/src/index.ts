@@ -31,6 +31,7 @@ export {
   type JarvisStakes,
   type JarvisSeverity,
   type JarvisApprovalStatus,
+  type JarvisAttachment,
   type JarvisThinkRequest,
   type JarvisThinkResponse,
   type JarvisDecision,
