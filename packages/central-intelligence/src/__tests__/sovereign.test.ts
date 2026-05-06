@@ -174,6 +174,47 @@ describe('composeSovereign — full stack', () => {
   });
 });
 
+describe('per-user brain isolation — no cache bleed across users', () => {
+  it('two users in the same tenant get DIFFERENT thoughtIds for the same question', async () => {
+    const sov = composeSovereign({
+      extraSensors: [stubSensor('All quiet on the estate.')],
+    });
+
+    const tenantScopeA: ScopeContext = {
+      kind: 'tenant',
+      tenantId: 't_acme',
+      actorUserId: 'u_alpha',
+      roles: ['estate-manager'],
+      personaId: 'estate-manager',
+    };
+    const tenantScopeB: ScopeContext = {
+      ...tenantScopeA,
+      actorUserId: 'u_beta',
+    };
+
+    const decisionA = await sov.kernel.think({
+      threadId: 'th-shared',
+      userMessage: 'How is collection going?',
+      scope: tenantScopeA,
+      tier: 'org',
+      stakes: 'low',
+      surface: 'estate-manager-app',
+    });
+    const decisionB = await sov.kernel.think({
+      threadId: 'th-shared',
+      userMessage: 'How is collection going?',
+      scope: tenantScopeB,
+      tier: 'org',
+      stakes: 'low',
+      surface: 'estate-manager-app',
+    });
+
+    // If the cache were keyed without actorUserId, B would be a cache hit
+    // of A and the thoughtIds would match. They must not.
+    expect(decisionA.provenance.thoughtId).not.toBe(decisionB.provenance.thoughtId);
+  });
+});
+
 describe('four-eye approval gate', () => {
   it('rejects self-approval, requires 2 distinct approvers', async () => {
     const sov = composeSovereign({ extraSensors: [stubSensor('ok')] });

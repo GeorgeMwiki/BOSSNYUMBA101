@@ -240,6 +240,13 @@ describe('cache key determinism', () => {
       thoughtCacheKey(req({ userMessage: 'b' })),
     );
   });
+  it('differs on actorUserId — personal AI per user, no cross-user bleed', () => {
+    const scopeA: ScopeContext = { ...TENANT_SCOPE, actorUserId: 'user-alpha' };
+    const scopeB: ScopeContext = { ...TENANT_SCOPE, actorUserId: 'user-beta' };
+    expect(thoughtCacheKey(req({ scope: scopeA }))).not.toBe(
+      thoughtCacheKey(req({ scope: scopeB })),
+    );
+  });
 });
 
 describe('persona selection', () => {

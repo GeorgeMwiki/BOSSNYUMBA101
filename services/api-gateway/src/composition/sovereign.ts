@@ -2,6 +2,11 @@
  * Sovereign composition root — wires the central-intelligence brain
  * kernel into a production-ready SovereignBrain singleton.
  *
+ * Architecture overview — see `.planning/jarvis-architecture.md` for
+ * the full Nyumba Mind reference: portal/persona/tier matrix, scope
+ * lattice, grounding pyramid, per-user privacy guarantees, and the
+ * 0114/0115 migration roster.
+ *
  * Env-driven boot:
  *
  *   ANTHROPIC_API_KEY  → real Claude Opus/Sonnet/Haiku sensors via
@@ -39,6 +44,14 @@ import {
   createPgApprovalStore,
   createPgTenantAggregateSource,
 } from '@bossnyumba/database';
+
+// Visibility role — mirrored locally so this composition root doesn't
+// need a type-only barrel export from `@bossnyumba/database` (TS
+// NodeNext + isolatedModules + cross-package source-types resolution
+// can be picky about transitive `type` re-exports). Keep the union in
+// lock-step with `GroundingViewRole` in
+// `packages/database/src/services/kernel-grounding.service.ts`.
+type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
 
 // ---------------------------------------------------------------------------
@@ -99,19 +112,28 @@ function createStubSensor(): Sensor {
 }
 
 // ---------------------------------------------------------------------------
-// Per-tenant cache. The kernel itself is stateless except for the
-// 60s thought cache; we still cache one SovereignBrain per scope so
-// the sensor router and approval store re-use connections.
+// Per-(tenant, user) cache. Each BossNyumba user gets their own
+// personalised Nyumba Mind: the kernel is stateless except for the 60s
+// thought cache, but the grounding provider's role-aware filters are
+// baked in at composition time, so we MUST key the SovereignBrain
+// cache by both tenantId and userId (and role, conservatively) — not
+// just tenantId. Keying only by tenant would let an org-admin and a
+// resident in the same tenant accidentally share each other's brains.
 // ---------------------------------------------------------------------------
 
 const cache = new Map<string, Promise<SovereignBrain>>();
 
 export interface SovereignScope {
   readonly tenantId: string | null;
+  readonly userId: string | null;
+  readonly role?: SovereignRole;
 }
 
 function scopeKey(scope: SovereignScope): string {
-  return scope.tenantId ?? '__platform__';
+  const t = scope.tenantId ?? '__platform__';
+  const u = scope.userId ?? '__nouser__';
+  const r = scope.role ?? '__norole__';
+  return `${t}::${u}::${r}`;
 }
 
 export async function getSovereignBrain(
@@ -156,10 +178,17 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     const memory = createKernelMemoryService(db, { tenantId: scope.tenantId });
     priorTurnsLoader = (threadId) => memory.loadPriorTurns(threadId);
     recentTurnCounter = (threadId) => memory.countRecentUserTurns(threadId);
-    // Tenant-scoped grounding facts (occupancy, work-orders, leases).
+    // Role-scoped grounding facts (occupancy, work-orders, leases).
+    // The provider applies the role's visibility filter (resident →
+    // own lease; manager → assigned properties; owner → owned
+    // properties; org-admin → tenant-wide; sovereign → empty).
     // Platform-tier (no tenantId) gets nothing from this source —
     // industry-tier grounding rides on the DP cohort source instead.
-    groundingFacts = createKernelGroundingProvider(db, { tenantId: scope.tenantId });
+    groundingFacts = createKernelGroundingProvider(db, {
+      tenantId: scope.tenantId,
+      userId: scope.userId,
+      role: scope.role,
+    });
 
     // DP cohort source — only when a privacy-budget envelope is
     // configured. Activation is gated by PRIVACY_BUDGET_EPSILON; an
@@ -173,7 +202,10 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
         // `DpAggregateOutcome`); the bridge below preserves the
         // runtime contract. Cast at the boundary.
         aggregator: dpAggregator as Parameters<typeof createDpCohortSource>[0]['aggregator'],
-        authContext: { actorUserId: 'unknown', actorRoles: [] },
+        authContext: {
+          actorUserId: scope.userId ?? 'unknown',
+          actorRoles: scope.role ? [scope.role] : [],
+        },
       });
     }
   }

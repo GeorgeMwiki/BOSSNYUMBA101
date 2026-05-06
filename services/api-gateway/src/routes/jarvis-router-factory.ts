@@ -20,6 +20,12 @@
  * name + role + affiliation so the AI greets THEM by name.
  */
 
+// Architecture overview — see `.planning/jarvis-architecture.md` for
+// the full Nyumba Mind reference: portal/persona/tier matrix, scope
+// lattice, grounding pyramid, env switches, and migration roster.
+// Critical: `admin-portal` is the AGENCY (our customers); HQ is the
+// `admin-platform-portal`. Do not confuse the two surfaces.
+
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
@@ -33,6 +39,7 @@ import type {
   ScopeContext,
   ThoughtRequest,
 } from '@bossnyumba/central-intelligence';
+import type { GroundingViewRole } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { getSovereignBrain } from '../composition/sovereign';
 
@@ -173,6 +180,45 @@ function surfacePersonaId(surface: JarvisSurface): string {
   }
 }
 
+/**
+ * Surface → grounding visibility role. Drives WHICH slice of tenant
+ * data the user's personal Nyumba Mind sees:
+ *   tenant-app / classroom / marketing → resident-tier (own lease)
+ *   estate-manager-app                 → assigned-properties only
+ *   owner-portal                       → owned-properties only
+ *   admin-portal                       → full tenant view
+ *   platform-hq                        → no grounding (DP cohort path)
+ */
+function roleForSurface(surface: JarvisSurface): GroundingViewRole {
+  switch (surface) {
+    case 'tenant-app':         return 'tenant';
+    case 'classroom':          return 'tenant';
+    case 'marketing':          return 'tenant';
+    case 'estate-manager-app': return 'manager';
+    case 'owner-portal':       return 'owner';
+    case 'admin-portal':       return 'org-admin';
+    case 'platform-hq':        return 'sovereign';
+  }
+}
+
+/**
+ * Pull the SovereignScope (tenantId + userId + role) from a Hono
+ * context. Centralised so every route handler in this factory uses
+ * the same key shape — otherwise the per-user cache would partition
+ * unevenly.
+ */
+function sovereignScopeFromContext(
+  c: any,
+  surface: JarvisSurface,
+): { tenantId: string | null; userId: string | null; role: GroundingViewRole } {
+  const auth = c.get('auth') ?? {};
+  return {
+    tenantId: auth.tenantId ?? null,
+    userId: auth.userId ?? auth.sub ?? null,
+    role: roleForSurface(surface),
+  };
+}
+
 export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   const tierEnum = config.consumerSurface
     ? z.enum(CONSUMER_TIERS)
@@ -193,7 +239,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
-    const sov = await getSovereignBrain({ tenantId: scope.kind === 'tenant' ? scope.tenantId : null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
     const req: ThoughtRequest = {
       threadId: body.threadId,
@@ -242,7 +288,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
-    const sov = await getSovereignBrain({ tenantId: scope.kind === 'tenant' ? scope.tenantId : null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
     const req: ThoughtRequest = {
       threadId: body.threadId,
@@ -331,7 +377,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const body = c.req.valid('json');
     const profile = actorProfileFromContext(c, config.greetingStyle);
     const scope = scopeFromContext(c, config.surface);
-    const sov = await getSovereignBrain({ tenantId: scope.kind === 'tenant' ? scope.tenantId : null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
     const briefing = await sov.briefing.compose({
       day: body.day,
@@ -352,7 +398,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const body = c.req.valid('json');
     const auth = c.get('auth') ?? {};
     const proposerUserId = auth.userId ?? auth.sub ?? 'unknown-user';
-    const sov = await getSovereignBrain({ tenantId: auth.tenantId ?? null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
     const record = await sov.approvals.propose({
       proposerUserId,
@@ -370,7 +416,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const body = c.req.valid('json');
     const auth = c.get('auth') ?? {};
     const approverUserId = auth.userId ?? auth.sub ?? 'unknown-user';
-    const sov = await getSovereignBrain({ tenantId: auth.tenantId ?? null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
     try {
       const record = await sov.approvals.sign({
@@ -392,7 +438,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   app.get('/actions/:id', async (c) => {
     const id = c.req.param('id');
     const auth = c.get('auth') ?? {};
-    const sov = await getSovereignBrain({ tenantId: auth.tenantId ?? null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
     const record = await sov.approvals.get(id);
     if (!record) {
       return c.json(
@@ -405,7 +451,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
 
   app.get('/actions', async (c) => {
     const auth = c.get('auth') ?? {};
-    const sov = await getSovereignBrain({ tenantId: auth.tenantId ?? null });
+    const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
     const status = c.req.query('status') as
       | 'pending' | 'one-eye' | 'approved' | 'rejected' | 'expired' | undefined;
     const records = await sov.approvals.list(status ? { status } : undefined);

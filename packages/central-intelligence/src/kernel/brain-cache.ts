@@ -87,11 +87,21 @@ export function createBrainCache(deps: BrainCacheDeps = {}): BrainCache {
   };
 }
 
+/**
+ * Build a deterministic cache key for a thought request.
+ *
+ * IMPORTANT — `req.scope.actorUserId` is part of the hash payload because
+ * the brain is *personal AI per user*. Two users in the same agency tenant
+ * who happen to ask the exact same question must NOT share a cache entry,
+ * since each thought is grounded against the actor's own permissions, voice,
+ * and provenance. Cache must not bleed between users in the same tenant.
+ */
 export function thoughtCacheKey(req: ThoughtRequest): string {
   const tenantPart = req.scope.kind === 'tenant' ? req.scope.tenantId : '__platform__';
   const payload = [
     req.scope.kind,
     tenantPart,
+    req.scope.actorUserId,
     req.scope.personaId,
     req.tier as AwarenessTier,
     req.surface,

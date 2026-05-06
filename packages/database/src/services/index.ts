@@ -45,6 +45,7 @@ export {
   createKernelGroundingProvider,
   type GroundingFactShape,
   type GroundingFactsProviderShape,
+  type GroundingViewRole,
   type KernelGroundingDeps,
 } from './kernel-grounding.service.js';
 
