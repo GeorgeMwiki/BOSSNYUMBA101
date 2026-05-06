@@ -222,3 +222,9 @@ export * from './currency-rates.schema.js';
 // voiceProfileId). Composite PK on (tenant_id, surface); empty-string
 // surface acts as the surface-agnostic fallback row.
 export * from './persona-branding.schema.js';
+
+// Currency preferences (migration 0119) — per-user / per-tenant /
+// platform-default display-currency choice. ISO-4217 free-form TEXT
+// so new currencies are addable without code changes (built for the
+// world, starting with TZ). Resolution chain: user → tenant → platform.
+export * from './currency-preferences.schema.js';

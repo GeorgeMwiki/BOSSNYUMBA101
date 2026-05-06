@@ -52,9 +52,32 @@ export interface CurrencyRatesService {
   /**
    * Convert a list of per-currency sums to a single USD total.
    * Unknown currency codes contribute 0 with a `console.warn`. Does
-   * not throw on missing rates.
+   * not throw on missing rates. Equivalent to
+   * `normaliseTo('USD', sums)` — kept for back-compat.
    */
   normaliseToUsd(sums: ReadonlyArray<CurrencySum>): Promise<number>;
+
+  /**
+   * Convert a list of per-currency sums to a single total in
+   * `targetCurrency` (any ISO-4217 code present in `currency_rates`).
+   *
+   * Math: each slice is (amount in major units) × rate-to-USD ÷
+   * target-rate-to-USD. So TZS → KES converts via USD as the bridge
+   * unit even when no direct cross-rate exists.
+   *
+   * If `targetCurrency` is unknown (no row in `currency_rates`),
+   * falls back to USD and emits a `console.warn`. If a slice's
+   * currency is unknown the slice contributes 0 (same warn). Never
+   * throws — currency normalisation is a display concern.
+   *
+   * BossNyumba is built for the world (starting with TZ); operators
+   * add new currencies via the `refresh-fx-rates` CLI without code
+   * changes. This method is the universal aggregator.
+   */
+  normaliseTo(
+    targetCurrency: string,
+    sums: ReadonlyArray<CurrencySum>,
+  ): Promise<number>;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -112,10 +135,23 @@ export function createCurrencyRatesService(
     },
 
     async normaliseToUsd(sums) {
+      return this.normaliseTo('USD', sums);
+    },
+
+    async normaliseTo(targetCurrency, sums) {
       if (!Array.isArray(sums) || sums.length === 0) return 0;
 
       const rates = await this.loadAll();
-      let totalUsd = 0;
+      const target = (targetCurrency ?? 'USD').toUpperCase();
+      let targetRate = rates.get(target);
+      if (targetRate === undefined) {
+        console.warn(
+          `currency-rates: unknown target currency "${target}" — falling back to USD`,
+        );
+        targetRate = 1.0; // USD-to-USD
+      }
+
+      let totalInTarget = 0;
 
       for (const slice of sums) {
         if (!slice || typeof slice.currency !== 'string') continue;
@@ -127,7 +163,7 @@ export function createCurrencyRatesService(
         const rate = rates.get(code);
         if (rate === undefined) {
           console.warn(
-            `currency-rates: unknown currency code "${code}" — contributing 0 USD`,
+            `currency-rates: unknown currency code "${code}" — contributing 0 ${target}`,
           );
           continue;
         }
@@ -141,10 +177,12 @@ export function createCurrencyRatesService(
             : DEFAULT_MINOR_PER_MAJOR;
 
         const major = amountMinor / denom;
-        totalUsd += major * rate;
+        // major × rate-to-USD = USD; ÷ target-rate-to-USD = target.
+        // USD is the bridge so any → any works without direct cross-rates.
+        totalInTarget += (major * rate) / targetRate;
       }
 
-      return totalUsd;
+      return totalInTarget;
     },
   };
 }

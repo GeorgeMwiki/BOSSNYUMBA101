@@ -96,3 +96,16 @@ export {
   type PersonaBrandingShape,
   type PersonaBrandingService,
 } from './persona-branding.service.js';
+
+// Currency preferences — per-user / per-tenant / platform-default
+// display-currency choice. Resolution chain: user → tenant → platform.
+// Built for the world, starting with TZ — operators add new currencies
+// via the table without code changes. Migration 0119.
+export {
+  createCurrencyPreferencesService,
+  type CurrencyPreferenceRow,
+  type CurrencyPreferenceScopeKind,
+  type CurrencyPreferencesService,
+  type ResolvePreferenceArgs,
+  type ResolvedCurrency,
+} from './currency-preferences.service.js';

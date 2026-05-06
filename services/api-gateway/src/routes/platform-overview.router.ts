@@ -24,6 +24,7 @@ import {
   units,
   payments,
   createCurrencyRatesService,
+  createCurrencyPreferencesService,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { getDb } from '../composition/db-client';
@@ -79,20 +80,25 @@ async function countUnitsManaged(db: DrizzleDb): Promise<number | null> {
 }
 
 /**
- * Cross-tenant monthly revenue, normalised to USD.
+ * Cross-tenant monthly revenue, normalised to the caller's preferred
+ * currency (resolved by `currency_preferences`: user → tenant →
+ * platform-default seed). Built for the world; starts with TZ.
  *
  * The `payments` table stores `amount` in MINOR units with a per-row
- * `currency` (TZS / KES / USD typically). We GROUP BY currency over
- * the last 30 days where status = 'completed' (the post-success
+ * `currency` (TZS / KES / USD / any ISO-4217). We GROUP BY currency
+ * over the last 30 days where status = 'completed' (post-success
  * terminal state in the payment_status enum), then hand the per-
- * currency slices to the FX normaliser to roll up into a single USD
- * figure.
+ * currency slices to `normaliseTo(targetCurrency, slices)` which
+ * bridges through USD using the in-DB FX rate snapshot.
  *
  * Returns null on hard DB failure so the caller's PARTIAL branch
  * kicks in. Returns a number (≥ 0, rounded to 2 decimal places) on
  * success.
  */
-async function sumMonthlyRevenueUsd(db: DrizzleDb): Promise<number | null> {
+async function sumMonthlyRevenue(
+  db: DrizzleDb,
+  targetCurrency: string,
+): Promise<number | null> {
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const rows = (await db
@@ -132,10 +138,10 @@ async function sumMonthlyRevenueUsd(db: DrizzleDb): Promise<number | null> {
     if (slices.length === 0) return 0;
 
     const ratesService = createCurrencyRatesService(db);
-    const usd = await ratesService.normaliseToUsd(slices);
+    const total = await ratesService.normaliseTo(targetCurrency, slices);
 
-    if (!Number.isFinite(usd) || usd < 0) return 0;
-    return Math.round(usd * 100) / 100;
+    if (!Number.isFinite(total) || total < 0) return 0;
+    return Math.round(total * 100) / 100;
   } catch (error) {
     console.error('platform-overview: monthly-revenue aggregation failed:', error);
     return null;
@@ -180,12 +186,28 @@ platformOverviewRouter.get('/', async (c) => {
     );
   }
 
+  // Resolve the caller's preferred currency BEFORE the revenue
+  // aggregation so we report numbers in the operator's chosen unit.
+  // Resolution chain: user override → tenant default → platform-default
+  // (seeded as USD by migration 0119). Operators rotate the platform
+  // default via the admin UI / refresh-fx-rates CLI.
+  const userId =
+    typeof auth.userId === 'string'
+      ? auth.userId
+      : typeof auth.sub === 'string'
+      ? auth.sub
+      : null;
+  const tenantId = typeof auth.tenantId === 'string' ? auth.tenantId : null;
+  const preferences = createCurrencyPreferencesService(db);
+  const resolved = await preferences.resolve({ userId, tenantId });
+  const targetCurrency = resolved.currency;
+
   const [activeTenants, platformUsers, unitsManaged, monthlyRevenue] =
     await Promise.all([
       countActiveTenants(db),
       countPlatformUsers(db),
       countUnitsManaged(db),
-      sumMonthlyRevenueUsd(db),
+      sumMonthlyRevenue(db, targetCurrency),
     ]);
 
   const anyFailed =
@@ -215,10 +237,11 @@ platformOverviewRouter.get('/', async (c) => {
       platformUsers,
       monthlyRevenue,
       unitsManaged,
-      // monthlyRevenue is FX-normalised to USD via the currency_rates
-      // table (migration 0117). Per-currency payment sums are
-      // converted using the in-DB rate snapshot before reporting.
-      currency: 'USD' as const,
+      // monthlyRevenue is FX-normalised to the caller's preferred
+      // currency (migration 0119) via the currency_rates snapshot
+      // (migration 0117); USD is the bridge unit so any → any works.
+      currency: targetCurrency,
+      currencySource: resolved.source,
     },
   });
 });
