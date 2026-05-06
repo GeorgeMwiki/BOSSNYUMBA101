@@ -28,6 +28,8 @@
 import {
   composeSovereign,
   createDpCohortSource,
+  type PersonaBrandingOverride,
+  type PersonaBrandingResolver,
   type SovereignBrain,
   type Sensor,
   type SubstrateSinks,
@@ -40,6 +42,7 @@ import {
   createKernelSubstrateService,
   createKernelMemoryService,
   createKernelGroundingProvider,
+  createPersonaBrandingService,
   createPgApprovalStore,
   createPgTenantAggregateSource,
   createPgPlatformBudgetLedger,
@@ -167,6 +170,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     | { fetch: (a: { userMessage: string; tier: string; limit: number }) => Promise<ReadonlyArray<unknown>> }
     | undefined;
   let cohortSource: ReturnType<typeof createDpCohortSource> | undefined;
+  let brandingResolver: PersonaBrandingResolver | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -189,6 +193,32 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       userId: scope.userId,
       role: scope.role,
     });
+
+    // Persona branding resolver — Drizzle-backed override lookup
+    // keyed by (tenantId, surface). The persistence service returns
+    // the persisted shape; we adapt it to the kernel port's narrower
+    // PersonaBrandingOverride view (only the fields the kernel cares
+    // about). Lookups for null tenantId (platform-tier) are short-
+    // circuited to null inside the resolver.
+    const brandingService = createPersonaBrandingService(db);
+    brandingResolver = {
+      async resolve({ tenantId, surface }) {
+        if (!tenantId) return null;
+        const row = await brandingService.get(tenantId, surface).catch(() => null);
+        if (!row) return null;
+        const override: PersonaBrandingOverride = {
+          ...(row.displayName ? { displayName: row.displayName } : {}),
+          ...(row.openingPreamble ? { openingPreamble: row.openingPreamble } : {}),
+          ...(row.voiceProfileId ? { voiceProfileId: row.voiceProfileId } : {}),
+        };
+        // If the row exists but every field is null/empty, treat as
+        // no-override so the kernel keeps the surface default verbatim.
+        if (!override.displayName && !override.openingPreamble && !override.voiceProfileId) {
+          return null;
+        }
+        return override;
+      },
+    };
 
     // DP cohort source — only when a privacy-budget envelope is
     // configured. Activation is gated by PRIVACY_BUDGET_EPSILON; an
@@ -222,6 +252,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (recentTurnCounter) mutable.recentTurnCounter = recentTurnCounter;
   if (groundingFacts) mutable.groundingFacts = groundingFacts;
   if (cohortSource) mutable.cohortSource = cohortSource;
+  if (brandingResolver) mutable.brandingResolver = brandingResolver;
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);

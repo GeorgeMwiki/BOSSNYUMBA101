@@ -11,11 +11,9 @@
  * Wiring matrix (current state of the codebase):
  *
  *   listing       — REAL_WIRED  → ListingService.publish
- *   enquiry       — DEFAULT     → No `latestApplicant(listingId)` query
- *                                 surface exists on EnquiryService today;
- *                                 its `startEnquiry` is the inverse
- *                                 direction of what the orchestrator
- *                                 needs. Falls through to the default.
+ *   enquiry       — REAL_WIRED  → EnquiryService.latestApplicant
+ *                                 (returns the most recent
+ *                                 prospect_customer_id for a listing).
  *   creditRating  — REAL_WIRED  → CreditRatingService.computeRating
  *   negotiation   — REAL_WIRED  → NegotiationService.startNegotiation
  *                                 (requires a tenant-level policy + an
@@ -26,36 +24,34 @@
  *                                 + inspectorId resolvers; falls back to
  *                                 the default if the resolver returns
  *                                 null).
- *   renewal       — DEFAULT     → RenewalService manages renewals of
- *                                 EXISTING leases. There is no
- *                                 `seedFirstTerm` flow — initial leases
- *                                 are created by the lease workflow,
- *                                 not the orchestrator. Stays default.
- *   waitlist      — DEFAULT     → Neither WaitlistService nor
- *                                 WaitlistVacancyHandler exposes a
- *                                 `markUnitFilled(tenantId, unitId)`
- *                                 method. We accept an optional callback
- *                                 in deps so the composition root can
- *                                 provide its own; otherwise default.
+ *   renewal       — REAL_WIRED  → LeaseService.seedFirstTerm
+ *                                 (creates the first-term lease from
+ *                                 the unit's market rent + 12-month
+ *                                 default; falls back to default port
+ *                                 if the lookup returns null).
+ *   waitlist      — REAL_WIRED  → WaitlistService.markFilled
+ *                                 (flips every active waitlist row for
+ *                                 the unit to `converted`). Bare
+ *                                 `markFilled` callback is also still
+ *                                 accepted for back-compat.
  *   policy        — REAL_WIRED  → AutonomyPolicyService.isAuthorized
  *                                 (bound to the 'leasing' domain).
  *   events        — REAL_WIRED  → EventBus.publish (wraps payload in
  *                                 the standard EventEnvelope shape).
  *
- * Migration path: when a future service lands (e.g. an EnquiryService
- * `latestApplicant` query, a `WaitlistService.markUnitFilled` method,
- * or a renewal `seedFirstTerm`), add the corresponding deps slot here
- * and a `createReal*Port` factory; the composition root just adds the
- * service to the deps bundle.
+ * Every port now has a real wiring; the conservative defaults remain as
+ * boot-time fallbacks for callers who choose not to wire a slot.
  */
 
 import type {
   OrchestratorCreditRatingPort,
+  OrchestratorEnquiryPort,
   OrchestratorEventPort,
   OrchestratorInspectionPort,
   OrchestratorListingPort,
   OrchestratorNegotiationPort,
   OrchestratorPolicyPort,
+  OrchestratorRenewalPort,
   OrchestratorWaitlistPort,
   VacancyToLeaseOrchestratorDeps,
 } from './orchestrator-service.js';
@@ -171,6 +167,38 @@ export interface RealAutonomyPolicyService {
     readonly requiresApproval: boolean;
     readonly reason: string;
   }>;
+}
+
+/** Subset of `EnquiryService.latestApplicant`. */
+export interface RealEnquiryService {
+  latestApplicant(args: {
+    readonly tenantId: string;
+    readonly listingId: string;
+  }): Promise<{ readonly customerId: string } | null>;
+}
+
+/**
+ * Subset of `LeaseService.seedFirstTerm`.
+ *
+ * The real method lives on `LeaseService` (not `RenewalService`) because
+ * it actually creates an *initial* lease. The orchestrator's port is
+ * still named `renewal` for historical reasons; semantically it is the
+ * "first-term seeder".
+ */
+export interface RealLeaseSeedingService {
+  seedFirstTerm(args: {
+    readonly tenantId: string;
+    readonly unitId: string;
+    readonly customerId: string;
+  }): Promise<{ readonly leaseId: string } | null>;
+}
+
+/** Subset of `WaitlistService.markFilled`. */
+export interface RealWaitlistService {
+  markFilled(args: {
+    readonly tenantId: string;
+    readonly unitId: string;
+  }): Promise<void>;
 }
 
 /** Subset of an `EventBus` that accepts pre-built envelopes. */
@@ -514,15 +542,76 @@ export function createRealEventAdapter(deps: {
 }
 
 /**
- * Wraps an optional `markUnitFilled` callback into a
- * `OrchestratorWaitlistPort`. If no callback is supplied the default
- * (no-op) port is returned so existing behaviour is preserved.
+ * Builds an `OrchestratorEnquiryPort` backed by
+ * `EnquiryService.latestApplicant`. The service returns `null` when the
+ * listing has no enquiries yet — the orchestrator port contract accepts
+ * that as a valid "no applicant available" signal so the state machine
+ * stays in `receiving_inquiries`.
+ */
+export function createRealEnquiryAdapter(deps: {
+  readonly service: RealEnquiryService;
+}): OrchestratorEnquiryPort {
+  return {
+    async latestApplicant(tenantId, listingId) {
+      const result = await deps.service.latestApplicant({ tenantId, listingId });
+      return result ? { customerId: result.customerId } : null;
+    },
+  };
+}
+
+/**
+ * Builds an `OrchestratorRenewalPort` backed by
+ * `LeaseService.seedFirstTerm` (the underlying call lives on the lease
+ * service even though the port is historically named "renewal" — see
+ * the `RealLeaseSeedingService` doc comment).
+ *
+ * Falls back to the default port (returns `{ leaseId: null }`) when the
+ * service returns `null` — typically because the unit is not yet priced
+ * or the unit lookup is not wired. The orchestrator's `move_in_scheduled`
+ * branch is tolerant of a missing leaseId.
+ */
+export function createRealRenewalAdapter(deps: {
+  readonly service: RealLeaseSeedingService;
+  readonly defaults?: DefaultAdaptersDeps;
+}): OrchestratorRenewalPort {
+  const fallback = createDefaultRenewalPort(deps.defaults ?? {});
+  return {
+    async seedFirstTerm(tenantId, unitId, customerId) {
+      const result = await deps.service.seedFirstTerm({
+        tenantId,
+        unitId,
+        customerId,
+      });
+      if (!result) return fallback.seedFirstTerm(tenantId, unitId, customerId);
+      return { leaseId: result.leaseId };
+    },
+  };
+}
+
+/**
+ * Builds an `OrchestratorWaitlistPort` backed by either
+ * `WaitlistService.markFilled` (preferred) or a bare callback. The
+ * `markFilled` callback shape is preserved for backwards compatibility
+ * with composition roots wiring custom logic; when both are supplied,
+ * the real service wins.
+ *
+ * If neither is supplied the default no-op port is returned so existing
+ * behaviour is preserved.
  */
 export function createRealWaitlistAdapter(deps: {
+  readonly service?: RealWaitlistService;
   readonly markFilled?: RealWaitlistMarkFilled;
   readonly defaults?: DefaultAdaptersDeps;
 }): OrchestratorWaitlistPort {
   const fallback = createDefaultWaitlistPort(deps.defaults ?? {});
+  if (deps.service) {
+    const service = deps.service;
+    return {
+      async markUnitFilled(tenantId, unitId) {
+        await service.markFilled({ tenantId, unitId });
+      },
+    };
+  }
   if (!deps.markFilled) return fallback;
   const markFilled = deps.markFilled;
   return {
@@ -543,6 +632,9 @@ export interface RealOrchestratorAdaptersDeps {
     readonly service: RealListingService;
     readonly hints: RealListingHints;
   };
+  readonly enquiry?: {
+    readonly service: RealEnquiryService;
+  };
   readonly creditRating?: {
     readonly service: RealCreditRatingService;
   };
@@ -553,6 +645,9 @@ export interface RealOrchestratorAdaptersDeps {
   readonly inspection?: {
     readonly service: RealInspectionService;
     readonly hints: RealInspectionHints;
+  };
+  readonly renewal?: {
+    readonly service: RealLeaseSeedingService;
   };
   readonly policy?: {
     readonly service: RealAutonomyPolicyService;
@@ -567,6 +662,7 @@ export interface RealOrchestratorAdaptersDeps {
     readonly onError?: (err: unknown) => void;
   };
   readonly waitlist?: {
+    readonly service?: RealWaitlistService;
     readonly markFilled?: RealWaitlistMarkFilled;
   };
   readonly defaults?: DefaultAdaptersDeps;
@@ -604,7 +700,9 @@ export function createRealOrchestratorAdapters(
           defaults: deps.defaults,
         })
       : defaultsBundle.listing,
-    enquiry: defaultsBundle.enquiry, // DEFAULT_ONLY: see file header.
+    enquiry: deps.enquiry
+      ? createRealEnquiryAdapter({ service: deps.enquiry.service })
+      : defaultsBundle.enquiry,
     creditRating: deps.creditRating
       ? createRealCreditRatingAdapter({ service: deps.creditRating.service })
       : defaultsBundle.creditRating,
@@ -622,13 +720,20 @@ export function createRealOrchestratorAdapters(
           defaults: deps.defaults,
         })
       : defaultsBundle.inspection,
-    renewal: defaultsBundle.renewal, // DEFAULT_ONLY: see file header.
-    waitlist: deps.waitlist?.markFilled
-      ? createRealWaitlistAdapter({
-          markFilled: deps.waitlist.markFilled,
+    renewal: deps.renewal
+      ? createRealRenewalAdapter({
+          service: deps.renewal.service,
           defaults: deps.defaults,
         })
-      : defaultsBundle.waitlist,
+      : defaultsBundle.renewal,
+    waitlist:
+      deps.waitlist?.service || deps.waitlist?.markFilled
+        ? createRealWaitlistAdapter({
+            service: deps.waitlist.service,
+            markFilled: deps.waitlist.markFilled,
+            defaults: deps.defaults,
+          })
+        : defaultsBundle.waitlist,
     policy: deps.policy
       ? createRealPolicyAdapter({
           service: deps.policy.service,

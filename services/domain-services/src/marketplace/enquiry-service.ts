@@ -37,21 +37,76 @@ import {
   type Negotiation,
 } from '../negotiation/types.js';
 
+/**
+ * Narrow read-side query surface for enquiries (which are persisted as
+ * negotiations under the hood). The composition root wires a concrete
+ * implementation — typically a thin Drizzle query against the
+ * `negotiations` table ordered by `created_at DESC`. Kept as a duck-typed
+ * dep so this package doesn't need to depend on the negotiation repo
+ * directly.
+ *
+ * Returning `null` is a valid signal that no enquiry exists yet for the
+ * given listing — callers degrade gracefully (the orchestrator stays in
+ * `receiving_inquiries`).
+ */
+export interface EnquiryReadModel {
+  /**
+   * Return the most recently submitted enquiry for a listing — i.e. the
+   * `prospect_customer_id` on the latest `negotiations` row keyed by
+   * `(tenantId, listingId)`. Returns `null` if no enquiries exist yet.
+   */
+  findLatestApplicantForListing(
+    tenantId: TenantId,
+    listingId: MarketplaceListingId,
+  ): Promise<{ readonly customerId: string } | null>;
+}
+
 export interface EnquiryServiceDeps {
   readonly listingRepo: MarketplaceListingRepository;
   readonly negotiationService: NegotiationService;
   readonly eventBus: EventBus;
+  /**
+   * Optional read-side query for enquiries. If not supplied, the
+   * `latestApplicant` API returns `null` (no applicant available). Wire
+   * a real implementation in the composition root when the read path is
+   * needed (e.g. the VacancyToLeaseOrchestrator's enquiry port).
+   */
+  readonly readModel?: EnquiryReadModel;
 }
 
 export class EnquiryService {
   private readonly listingRepo: MarketplaceListingRepository;
   private readonly negotiationService: NegotiationService;
   private readonly eventBus: EventBus;
+  private readonly readModel: EnquiryReadModel | null;
 
   constructor(deps: EnquiryServiceDeps) {
     this.listingRepo = deps.listingRepo;
     this.negotiationService = deps.negotiationService;
     this.eventBus = deps.eventBus;
+    this.readModel = deps.readModel ?? null;
+  }
+
+  /**
+   * Most recent applicant (prospect customer) for a listing within a
+   * tenant. Reads from the negotiations table via the injected
+   * `EnquiryReadModel`. Returns `null` when:
+   *   - no `EnquiryReadModel` is wired (boot-time degraded mode), or
+   *   - the listing has no enquiries yet.
+   *
+   * Used by the VacancyToLeaseOrchestrator's enquiry port when the
+   * pipeline transitions into `receiving_inquiries` and needs to know
+   * who the latest applicant is.
+   */
+  async latestApplicant(args: {
+    readonly tenantId: TenantId;
+    readonly listingId: MarketplaceListingId;
+  }): Promise<{ readonly customerId: string } | null> {
+    if (!this.readModel) return null;
+    return this.readModel.findLatestApplicantForListing(
+      args.tenantId,
+      args.listingId,
+    );
   }
 
   async startEnquiry(

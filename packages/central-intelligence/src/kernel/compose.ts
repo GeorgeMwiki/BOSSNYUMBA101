@@ -23,6 +23,7 @@
 
 import { createBrainKernel, type BrainKernel } from './kernel.js';
 import { createBrainCache } from './brain-cache.js';
+import type { PersonaBrandingResolver } from './branding.js';
 import { createSensorRouter, type SensorRouter } from './sensor-failover.js';
 import {
   createCotReservoir,
@@ -66,6 +67,13 @@ export interface ComposeSovereignConfig {
   readonly groundingFacts?: GroundingFactsProvider;
   readonly approvalStore?: ApprovalStore;
   readonly nudgeDedupe?: NudgeDedupeStore;
+  /**
+   * Optional per-tenant persona-branding resolver. The kernel calls
+   * this before rendering the identity preamble so an agency can
+   * re-skin the AI's displayName / openingPreamble / voice profile id
+   * without touching the surface-default personas.
+   */
+  readonly brandingResolver?: PersonaBrandingResolver;
   readonly priorTurnsLoader?: (
     threadId: string,
   ) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>;
@@ -143,6 +151,7 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.recentTurnCounter) (kernelDeps as any).recentTurnCounter = config.recentTurnCounter;
   if (resolvedJudge)            (kernelDeps as any).judge = resolvedJudge;
   if (config.rng)               (kernelDeps as any).rng = config.rng;
+  if (config.brandingResolver)  (kernelDeps as any).brandingResolver = config.brandingResolver;
   const kernel = createBrainKernel(kernelDeps);
 
   const approvals = createApprovalGate({

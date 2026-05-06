@@ -332,15 +332,48 @@ export interface DepositReturnedEvent {
 // ============================================================================
 
 /**
+ * Narrow read-side query for seeding a first-term lease. The composition
+ * root wires a thin lookup against the units table — typically returning
+ * the unit's `propertyId`, market rent (`Money`), and security deposit
+ * (`Money`). Returning `null` is a valid signal that the unit isn't
+ * priced yet; the orchestrator falls back to its default.
+ *
+ * Kept duck-typed so this package doesn't have to depend on the units
+ * domain.
+ */
+export interface UnitFirstTermFinder {
+  readonly findFirstTermDefaults: (
+    tenantId: TenantId,
+    unitId: UnitId,
+  ) => Promise<{
+    readonly propertyId: PropertyId;
+    readonly rentAmount: Money;
+    readonly securityDeposit?: Money;
+    readonly rentFrequency?: RentFrequency;
+    readonly type?: LeaseType;
+  } | null>;
+}
+
+/**
  * Lease and Customer management service.
  * Handles full lease lifecycle from creation to termination/renewal.
  */
 export class LeaseService {
+  private readonly unitFirstTermFinder: UnitFirstTermFinder | null;
+
   constructor(
     private readonly leaseRepo: LeaseRepository,
     private readonly customerRepo: CustomerRepository,
-    private readonly eventBus: EventBus
-  ) {}
+    private readonly eventBus: EventBus,
+    /**
+     * Optional. Required only when `seedFirstTerm` is invoked (e.g. by
+     * the VacancyToLeaseOrchestrator). Without it, `seedFirstTerm`
+     * returns `null` and the caller falls back to default behaviour.
+     */
+    unitFirstTermFinder?: UnitFirstTermFinder,
+  ) {
+    this.unitFirstTermFinder = unitFirstTermFinder ?? null;
+  }
 
   // ==================== Customer Operations ====================
 
@@ -598,6 +631,86 @@ export class LeaseService {
     await this.eventBus.publish(createEventEnvelope(event, savedLease.id, 'Lease'));
 
     return ok(savedLease);
+  }
+
+  /**
+   * Seed the very first lease term for a unit/customer pair.
+   *
+   * Used by the VacancyToLeaseOrchestrator's renewal port (which is
+   * actually about *initial* lease creation — see
+   * `OrchestratorRenewalPort.seedFirstTerm`). Defaults the term to
+   * 12 months starting today, with the rent + security deposit pulled
+   * from the unit via the optional `UnitFirstTermFinder`.
+   *
+   * Returns `null` (rather than throwing) in degraded paths so the
+   * orchestrator can transparently fall back to its default port:
+   *   - no `UnitFirstTermFinder` was wired at construction time, or
+   *   - the finder returned `null` (unit isn't priced yet).
+   *
+   * Returns the new `leaseId` on success. Errors from the underlying
+   * `createLease` (e.g. UNIT_ALREADY_LEASED, CUSTOMER_NOT_FOUND) also
+   * surface as `null` — the orchestrator's state machine is tolerant
+   * of "no lease seeded yet" but cannot recover from a hard failure
+   * downstream of `move_in_scheduled`.
+   */
+  async seedFirstTerm(args: {
+    readonly tenantId: TenantId;
+    readonly unitId: UnitId;
+    readonly customerId: CustomerId;
+    /** Defaults to today (ISO timestamp). Override for tests. */
+    readonly startDate?: ISOTimestamp;
+    /** Defaults to 12 months after `startDate`. */
+    readonly endDate?: ISOTimestamp;
+    readonly createdBy?: UserId;
+    readonly correlationId?: string;
+  }): Promise<{ readonly leaseId: string } | null> {
+    if (!this.unitFirstTermFinder) return null;
+
+    const defaults = await this.unitFirstTermFinder.findFirstTermDefaults(
+      args.tenantId,
+      args.unitId,
+    );
+    if (!defaults) return null;
+
+    const startDate = (args.startDate ??
+      (new Date().toISOString() as unknown as ISOTimestamp)) as ISOTimestamp;
+    const endDateDefault = (() => {
+      const start = new Date(startDate as unknown as string);
+      const end = new Date(start);
+      end.setFullYear(end.getFullYear() + 1);
+      return end.toISOString();
+    })();
+    const endDate = (args.endDate ??
+      (endDateDefault as unknown as ISOTimestamp)) as ISOTimestamp;
+
+    // Security deposit defaults to one month's rent when the finder
+    // does not supply an explicit value.
+    const securityDeposit = defaults.securityDeposit ?? defaults.rentAmount;
+
+    const correlationId = args.correlationId ?? `seed_first_term_${Date.now()}`;
+    const createdBy = (args.createdBy ?? ('system' as unknown as UserId)) as UserId;
+
+    const result = await this.createLease(
+      args.tenantId,
+      {
+        propertyId: defaults.propertyId,
+        unitId: args.unitId,
+        customerId: args.customerId,
+        type: defaults.type ?? ('residential' as unknown as LeaseType),
+        startDate,
+        endDate,
+        moveInDate: startDate,
+        rentAmount: defaults.rentAmount,
+        rentFrequency:
+          defaults.rentFrequency ?? ('monthly' as unknown as RentFrequency),
+        securityDeposit,
+      },
+      createdBy,
+      correlationId,
+    );
+
+    if (!result.ok) return null;
+    return { leaseId: (result.value as Lease).id as unknown as string };
   }
 
   /**

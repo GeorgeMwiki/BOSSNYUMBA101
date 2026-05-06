@@ -12,12 +12,12 @@ already exists in this monorepo.
 | Port | Status | Backing service / reason |
 |------|--------|---------------------------|
 | `OrchestratorListingPort` | REAL_WIRED | `domain-services/marketplace/ListingService.publish` |
-| `OrchestratorEnquiryPort` | DEFAULT_ONLY | `EnquiryService.startEnquiry` is the inverse direction (caller-driven start). No "latest applicant for a listing" query surface exists yet. |
+| `OrchestratorEnquiryPort` | REAL_WIRED | `domain-services/marketplace/EnquiryService.latestApplicant` (returns the most recent `prospect_customer_id` for a listing; backed by an `EnquiryReadModel` injected at the composition root). |
 | `OrchestratorCreditRatingPort` | REAL_WIRED | `ai-copilot/credit-rating/CreditRatingService.computeRating` |
 | `OrchestratorNegotiationPort` | REAL_WIRED | `domain-services/negotiation/NegotiationService.startNegotiation` (requires a tenant `policyId` + opening offer; supplied by `RealNegotiationHints`). |
 | `OrchestratorInspectionPort` | REAL_WIRED | `domain-services/inspections/InspectionService.scheduleInspection` (requires `propertyId`, `scheduledDate`, `inspectorId`; supplied by `RealInspectionHints`). |
-| `OrchestratorRenewalPort` | DEFAULT_ONLY | `RenewalService` handles renewals of *existing* leases (open window / propose / accept / decline / terminate). There is no `seedFirstTerm` flow today — initial leases are created via the lease workflow, not the orchestrator. |
-| `OrchestratorWaitlistPort` | DEFAULT_ONLY (optional callback) | Neither `WaitlistService` nor `WaitlistVacancyHandler` exposes a `markUnitFilled(tenantId, unitId)` method. The composition root may pass a `markFilled` callback via `RealOrchestratorAdaptersDeps.waitlist.markFilled` for a custom implementation. |
+| `OrchestratorRenewalPort` | REAL_WIRED | `domain-services/lease/LeaseService.seedFirstTerm` (note: the port is named "renewal" historically — semantically it creates the *initial* lease term using a 12-month default + the unit's market rent via the `UnitFirstTermFinder` injected on `LeaseService`). |
+| `OrchestratorWaitlistPort` | REAL_WIRED | `domain-services/waitlist/WaitlistService.markFilled` (flips every active waitlist entry for the unit to `converted`). A bare `markFilled` callback on `RealOrchestratorAdaptersDeps.waitlist.markFilled` is also accepted for back-compat. |
 | `OrchestratorPolicyPort` | REAL_WIRED | `ai-copilot/autonomy/AutonomyPolicyService.isAuthorized` (bound to the `'leasing'` domain). |
 | `OrchestratorEventPort` | REAL_WIRED | Any `EventBus.publish` accepting the standard `EventEnvelope` shape. |
 
@@ -41,6 +41,7 @@ const adapters = VacancyToLease.createRealOrchestratorAdapters({
       resolvePropertyId: (t, u) => unitsRepo.propertyOf(t, u),
     },
   },
+  enquiry: { service: services.marketplace.enquiry },
   creditRating: { service: services.creditRating },
   negotiation: {
     service: services.marketplace.negotiation,
@@ -57,11 +58,10 @@ const adapters = VacancyToLease.createRealOrchestratorAdapters({
       resolveInspectorId: (t, u) => staffRepo.estateManagerOf(t, u),
     },
   },
+  renewal: { service: services.lease },
   policy: { service: services.autonomy.policyService },
   events: { bus: services.eventBus },
-  waitlist: {
-    markFilled: async (t, u) => services.waitlist?.markUnitFilled?.(t, u),
-  },
+  waitlist: { service: services.waitlist },
 });
 
 const orchestrator = new VacancyToLease.VacancyToLeaseOrchestrator({

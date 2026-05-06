@@ -18,7 +18,9 @@
     "clean": "pnpm -r clean && rm -rf node_modules",
     "uat:walkthrough": "bash scripts/uat-walkthrough.sh",
     "openapi:export": "pnpm -F @bossnyumba/api-gateway openapi:export",
-    "audit:fix": "pnpm audit --audit-level=high"
+    "audit:fix": "pnpm audit --audit-level=high",
+    "migrate": "pnpm -C packages/database db:migrate",
+    "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.2",

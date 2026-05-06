@@ -9,7 +9,7 @@
 
 import { readdir, readFile } from 'fs/promises';
 import { join, dirname, resolve, relative } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import postgres from 'postgres';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -117,11 +117,23 @@ export async function runMigrations(
   }
 }
 
-const isCliEntry =
-  typeof process !== 'undefined' &&
-  Array.isArray(process.argv) &&
-  typeof process.argv[1] === 'string' &&
-  import.meta.url === `file://${process.argv[1]}`;
+// Detect "run as CLI" robustly. Comparing `file://${argv[1]}` directly breaks
+// on paths containing spaces (`import.meta.url` percent-encodes them; argv
+// does not), so route both through `pathToFileURL`.
+const isCliEntry = (() => {
+  if (typeof process === 'undefined' || !Array.isArray(process.argv)) {
+    return false;
+  }
+  const entry = process.argv[1];
+  if (typeof entry !== 'string' || entry.length === 0) {
+    return false;
+  }
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+})();
 
 if (isCliEntry) {
   runMigrations()

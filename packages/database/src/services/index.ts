@@ -86,3 +86,13 @@ export {
   type CurrencySum,
   type CurrencyRatesService,
 } from './currency-rates.service.js';
+
+// Persona branding — Drizzle-backed persistence for per-tenant
+// kernel-persona overrides (displayName / openingPreamble / voice
+// profile id). Adapts to the kernel's PersonaBrandingResolver port at
+// the api-gateway sovereign composition root. Migration 0118.
+export {
+  createPersonaBrandingService,
+  type PersonaBrandingShape,
+  type PersonaBrandingService,
+} from './persona-branding.service.js';

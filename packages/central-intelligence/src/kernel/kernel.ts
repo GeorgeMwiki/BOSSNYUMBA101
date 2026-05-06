@@ -40,6 +40,7 @@ import type {
 } from './kernel-types.js';
 import type { Citation, Artifact } from '../types.js';
 import { selectPersona, renderIdentityPreamble } from './identity.js';
+import { applyBrandingOverride, type PersonaBrandingResolver } from './branding.js';
 import { isTierCompatibleWithScope, locusPhrase } from './awareness-scopes.js';
 import { checkInviolable } from './inviolable.js';
 import { runPolicyGate } from './policy-gate.js';
@@ -69,6 +70,14 @@ export interface BrainKernelDeps {
   readonly judge?: (text: string) => Promise<{ score: number }>;
   readonly clock?: () => Date;
   readonly rng?: () => number;
+  /**
+   * Optional per-tenant persona-branding resolver. When supplied, the
+   * kernel looks up a {@link PersonaBrandingOverride} keyed by tenantId
+   * + surface BEFORE rendering the identity preamble, so an agency can
+   * re-skin the AI's displayName / openingPreamble without touching
+   * the surface-default personas.
+   */
+  readonly brandingResolver?: PersonaBrandingResolver;
 }
 
 export interface BrainKernel {
@@ -143,8 +152,21 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
             .catch(() => [])
         : [];
 
-      // 6) identity + theory-of-mind + cognitive-load
-      const persona = selectPersona(req);
+      // 6) identity + theory-of-mind + cognitive-load.
+      // Branding override (if any) is applied BEFORE personalisation /
+      // preamble rendering so an agency-level rename or preamble flows
+      // through the rest of the pipeline (drift detection, audit) under
+      // the rebranded id.
+      const baseSurfacePersona = selectPersona(req);
+      const branding = deps.brandingResolver
+        ? await deps.brandingResolver
+            .resolve({
+              tenantId: req.scope.kind === 'tenant' ? req.scope.tenantId : null,
+              surface: req.surface,
+            })
+            .catch(() => null)
+        : null;
+      const persona = applyBrandingOverride(baseSurfacePersona, branding);
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
       const mindState = inferMindState(req.userMessage);
       const recentTurns = deps.recentTurnCounter ? await deps.recentTurnCounter(req.threadId) : 0;

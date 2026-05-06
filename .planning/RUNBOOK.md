@@ -33,11 +33,22 @@ Nyumba Mind works until they are in place.
 | `0114_kernel_substrate.sql` | Sampled CoT reservoir, persona-drift events, per-think provenance |
 | `0115_sovereign_approvals.sql` | Four-eye approval persistence for sovereign-tier writes |
 | `0116_platform_privacy_budget.sql` | Postgres-backed DP epsilon ledger for cohort signals |
+| `0117_currency_rates.sql` | ISO-4217 → USD FX snapshot table (platform-overview revenue normaliser) |
 
-Apply with the workspace's migration runner:
+Apply with the workspace's migration runner. The root-level alias and the
+package script both call the same runner — use whichever you prefer:
 
 ```bash
-pnpm -C packages/database db:migrate
+pnpm migrate                            # repo-root alias (preferred)
+pnpm -C packages/database db:migrate    # equivalent
+```
+
+After 0117 lands, refresh FX rates whenever they drift. Manual upsert:
+
+```bash
+pnpm refresh-fx-rates --rates "USD=1.0,TZS=0.000395,KES=0.0077,EUR=1.08"
+# Provider mode (env-gated, requires FIXER_IO_API_KEY):
+pnpm refresh-fx-rates --provider fixer-io
 ```
 
 Or, if you prefer raw `psql` against the SQL files:

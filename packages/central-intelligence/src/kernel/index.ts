@@ -182,3 +182,9 @@ export {
   type VoiceCodeSwitchingRules,
   type VoiceBindingHint,
 } from './voice-bridge.js';
+export {
+  applyBrandingOverride,
+  createInMemoryPersonaBrandingResolver,
+  type PersonaBrandingOverride,
+  type PersonaBrandingResolver,
+} from './branding.js';

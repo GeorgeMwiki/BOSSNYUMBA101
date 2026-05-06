@@ -216,3 +216,9 @@ export * from './platform-privacy-budget.schema.js';
 // consumed by the platform-overview HQ KPI router's monthly-revenue
 // aggregator to normalise mixed-currency payment sums.
 export * from './currency-rates.schema.js';
+
+// Persona branding (migration 0118) — per-tenant overrides for the
+// kernel's central-intelligence persona (displayName, openingPreamble,
+// voiceProfileId). Composite PK on (tenant_id, surface); empty-string
+// surface acts as the surface-agnostic fallback row.
+export * from './persona-branding.schema.js';

@@ -192,4 +192,57 @@ export class WaitlistService {
   ): Promise<ReadonlyArray<UnitWaitlistEntry>> {
     return this.repo.listForCustomer(tenantId, customerId);
   }
+
+  /**
+   * Mark every active waitlist entry for a unit as `converted`.
+   *
+   * Called when a unit is filled (e.g. a lease becomes active via the
+   * VacancyToLeaseOrchestrator). Status flips to `converted` — the
+   * audit record stays for DPA/compliance; we never hard-delete.
+   *
+   * Idempotent: when there are no active entries the method is a no-op.
+   * Emits one `WaitlistConverted` envelope per affected entry so
+   * notification subscribers can stand down outreach jobs.
+   */
+  async markFilled(args: {
+    readonly tenantId: TenantId;
+    readonly unitId: string;
+    readonly correlationId?: string;
+  }): Promise<void> {
+    const active = await this.repo.listActiveForUnit(args.tenantId, args.unitId);
+    if (active.length === 0) return;
+
+    const correlationId = args.correlationId ?? `waitlist_filled_${Date.now()}`;
+
+    // Sequential awaits — keeps the audit trail deterministic ordering
+    // (a parallel Promise.all would race the event-bus publishes).
+    for (const entry of active) {
+      const timestamp = this.now();
+      const updated = await this.repo.update(entry.id, args.tenantId, {
+        status: 'converted',
+        convertedAt: timestamp,
+        updatedAt: timestamp,
+      });
+      await this.eventBus.publish(
+        createEventEnvelope(
+          {
+            eventId: generateEventId(),
+            eventType: 'WaitlistConverted',
+            timestamp,
+            tenantId: args.tenantId,
+            correlationId,
+            causationId: null,
+            metadata: {},
+            payload: {
+              waitlistId: updated.id,
+              unitId: updated.unitId,
+              customerId: updated.customerId,
+            },
+          } as any,
+          updated.id,
+          'UnitWaitlist'
+        )
+      );
+    }
+  }
 }

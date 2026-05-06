@@ -16,22 +16,27 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   createRealCreditRatingAdapter,
+  createRealEnquiryAdapter,
   createRealEventAdapter,
   createRealInspectionAdapter,
   createRealListingAdapter,
   createRealNegotiationAdapter,
   createRealOrchestratorAdapters,
   createRealPolicyAdapter,
+  createRealRenewalAdapter,
   createRealWaitlistAdapter,
   type RealAutonomyPolicyService,
   type RealCreditRatingService,
+  type RealEnquiryService,
   type RealEventBus,
   type RealInspectionHints,
   type RealInspectionService,
+  type RealLeaseSeedingService,
   type RealListingHints,
   type RealListingService,
   type RealNegotiationHints,
   type RealNegotiationService,
+  type RealWaitlistService,
 } from '../real-adapters.js';
 
 // ---------------------------------------------------------------------------
@@ -404,11 +409,103 @@ describe('createRealEventAdapter', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Enquiry port
+// ---------------------------------------------------------------------------
+
+describe('createRealEnquiryAdapter', () => {
+  it('returns the customerId from EnquiryService.latestApplicant', async () => {
+    const service: RealEnquiryService = {
+      latestApplicant: vi.fn().mockResolvedValue({ customerId: 'cust_42' }),
+    };
+    const adapter = createRealEnquiryAdapter({ service });
+
+    const result = await adapter.latestApplicant('tenant_1', 'lst_1');
+
+    expect(result).toEqual({ customerId: 'cust_42' });
+    expect(service.latestApplicant).toHaveBeenCalledWith({
+      tenantId: 'tenant_1',
+      listingId: 'lst_1',
+    });
+  });
+
+  it('returns null when the service has no applicant for the listing', async () => {
+    const service: RealEnquiryService = {
+      latestApplicant: vi.fn().mockResolvedValue(null),
+    };
+    const adapter = createRealEnquiryAdapter({ service });
+
+    const result = await adapter.latestApplicant('t', 'lst');
+
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Renewal port (semantically: first-term lease seeder)
+// ---------------------------------------------------------------------------
+
+describe('createRealRenewalAdapter', () => {
+  it('returns the leaseId from LeaseService.seedFirstTerm', async () => {
+    const service: RealLeaseSeedingService = {
+      seedFirstTerm: vi.fn().mockResolvedValue({ leaseId: 'lease_x9' }),
+    };
+    const adapter = createRealRenewalAdapter({ service });
+
+    const result = await adapter.seedFirstTerm('tenant_1', 'unit_1', 'cust_1');
+
+    expect(result).toEqual({ leaseId: 'lease_x9' });
+    expect(service.seedFirstTerm).toHaveBeenCalledWith({
+      tenantId: 'tenant_1',
+      unitId: 'unit_1',
+      customerId: 'cust_1',
+    });
+  });
+
+  it('falls back to the default port when the service returns null', async () => {
+    const service: RealLeaseSeedingService = {
+      seedFirstTerm: vi.fn().mockResolvedValue(null),
+    };
+    const adapter = createRealRenewalAdapter({ service });
+
+    const result = await adapter.seedFirstTerm('t', 'u', 'c');
+
+    expect(result).toEqual({ leaseId: null });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Waitlist port
 // ---------------------------------------------------------------------------
 
 describe('createRealWaitlistAdapter', () => {
-  it('invokes the markFilled callback when supplied', async () => {
+  it('invokes WaitlistService.markFilled when a service is supplied', async () => {
+    const service: RealWaitlistService = {
+      markFilled: vi.fn().mockResolvedValue(undefined),
+    };
+    const adapter = createRealWaitlistAdapter({ service });
+
+    await adapter.markUnitFilled('t1', 'u1');
+
+    expect(service.markFilled).toHaveBeenCalledWith({
+      tenantId: 't1',
+      unitId: 'u1',
+    });
+  });
+
+  it('prefers the real service over a bare callback when both are supplied', async () => {
+    const service: RealWaitlistService = {
+      markFilled: vi.fn().mockResolvedValue(undefined),
+    };
+    const markFilled = vi.fn().mockResolvedValue(undefined);
+    const adapter = createRealWaitlistAdapter({ service, markFilled });
+
+    await adapter.markUnitFilled('t1', 'u1');
+
+    expect(service.markFilled).toHaveBeenCalledTimes(1);
+    expect(markFilled).not.toHaveBeenCalled();
+  });
+
+  it('invokes the markFilled callback when only the callback is supplied', async () => {
     const markFilled = vi.fn().mockResolvedValue(undefined);
     const adapter = createRealWaitlistAdapter({ markFilled });
 
@@ -417,7 +514,7 @@ describe('createRealWaitlistAdapter', () => {
     expect(markFilled).toHaveBeenCalledWith('t1', 'u1');
   });
 
-  it('falls back to the default no-op when no callback is supplied', async () => {
+  it('falls back to the default no-op when neither is supplied', async () => {
     const adapter = createRealWaitlistAdapter({});
     await expect(adapter.markUnitFilled('t', 'u')).resolves.toBeUndefined();
   });
@@ -430,11 +527,41 @@ describe('createRealWaitlistAdapter', () => {
 describe('createRealOrchestratorAdapters', () => {
   it('falls through to defaults for ports without supplied deps', async () => {
     const adapters = createRealOrchestratorAdapters({});
-    // enquiry / renewal stay default — sanity-check their shape.
+    // Every port still has a sensible default when no deps are supplied.
     const applicant = await adapters.enquiry.latestApplicant('t', 'lst');
     expect(applicant).toBeNull();
     const lease = await adapters.renewal.seedFirstTerm('t', 'u', 'c');
     expect(lease).toEqual({ leaseId: null });
+  });
+
+  it('wires real enquiry + renewal + waitlist when supplied', async () => {
+    const enquiryService: RealEnquiryService = {
+      latestApplicant: vi.fn().mockResolvedValue({ customerId: 'cust_zzz' }),
+    };
+    const leaseSeedingService: RealLeaseSeedingService = {
+      seedFirstTerm: vi.fn().mockResolvedValue({ leaseId: 'lease_zzz' }),
+    };
+    const waitlistService: RealWaitlistService = {
+      markFilled: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const adapters = createRealOrchestratorAdapters({
+      enquiry: { service: enquiryService },
+      renewal: { service: leaseSeedingService },
+      waitlist: { service: waitlistService },
+    });
+
+    const applicant = await adapters.enquiry.latestApplicant('t1', 'lst_1');
+    expect(applicant).toEqual({ customerId: 'cust_zzz' });
+
+    const lease = await adapters.renewal.seedFirstTerm('t1', 'u1', 'c1');
+    expect(lease).toEqual({ leaseId: 'lease_zzz' });
+
+    await adapters.waitlist.markUnitFilled('t1', 'u1');
+    expect(waitlistService.markFilled).toHaveBeenCalledWith({
+      tenantId: 't1',
+      unitId: 'u1',
+    });
   });
 
   it('wires real listing + credit-rating + policy when supplied, defaults the rest', async () => {
