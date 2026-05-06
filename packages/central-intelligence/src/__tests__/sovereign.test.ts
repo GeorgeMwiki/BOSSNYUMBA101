@@ -75,7 +75,10 @@ describe('surface → persona routing', () => {
     expect(persona.id).toBe('sovereign-admin');
   });
 
-  it('maps admin-portal to ORG_ADMIN_PERSONA (agency brain)', () => {
+  it('maps admin-portal (deprecated) to OWNER_ADVISOR — owner IS the admin', () => {
+    // Consolidated 4-portal model: owner-portal IS the admin portal.
+    // /api/v1/admin/jarvis stays for backwards-compat but routes to
+    // the same OWNER_ADVISOR persona as /api/v1/owner/jarvis.
     const persona = selectPersona({
       threadId: 't',
       userMessage: 'q',
@@ -84,7 +87,7 @@ describe('surface → persona routing', () => {
       stakes: 'low',
       surface: 'admin-portal',
     });
-    expect(persona.id).toBe('org-admin');
+    expect(persona.id).toBe('owner-advisor');
     expect(persona.firstPersonNoun).toBe('we');
   });
 

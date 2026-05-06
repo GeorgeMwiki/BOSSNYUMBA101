@@ -253,8 +253,15 @@ describe('persona selection', () => {
   it('routes platform-hq to SOVEREIGN_ADMIN (Nyumba Mind for HQ)', () => {
     expect(selectPersona(req({ surface: 'platform-hq' }))).toBe(SOVEREIGN_ADMIN_PERSONA);
   });
-  it('routes admin-portal to ORG_ADMIN (agency brain)', () => {
-    expect(selectPersona(req({ surface: 'admin-portal' }))).toBe(ORG_ADMIN_PERSONA);
+  it('routes admin-portal to OWNER_ADVISOR (consolidated owner-is-admin)', () => {
+    // The owner-portal IS the admin portal — owner persona handles both.
+    expect(selectPersona(req({ surface: 'admin-portal' }))).toBe(OWNER_ADVISOR_PERSONA);
+  });
+  it('routes owner-portal to the same OWNER_ADVISOR persona', () => {
+    expect(selectPersona(req({ surface: 'owner-portal' }))).toBe(OWNER_ADVISOR_PERSONA);
+  });
+  it('ORG_ADMIN_PERSONA remains exported as a deprecated alias', () => {
+    expect(ORG_ADMIN_PERSONA.id).toBe('org-admin');
   });
   it('routes tenant-app to resident', () => {
     expect(selectPersona(req({ surface: 'tenant-app' }))).toBe(TENANT_RESIDENT_PERSONA);

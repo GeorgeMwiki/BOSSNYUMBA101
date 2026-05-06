@@ -17,10 +17,24 @@
 
 import type { BossnyumbaClient } from './client.js';
 
+/**
+ * Jarvis surface — names the seat the requester sits in.
+ *
+ * Mirrors LITFIN's tiered AI mapping, scoped to property:
+ *   'customer'  ↔ LITFIN borrower         (tenant resident)
+ *   'manager'   ↔ LITFIN officer          (estate manager)
+ *   'owner'     ↔ LITFIN bank/org admin   (owner — IS the admin)
+ *   'platform'  ↔ LITFIN HQ internal      (BossNyumba HQ)
+ *
+ * `'admin'` is kept as a deprecated alias of `'owner'` for backwards
+ * compatibility with the legacy `apps/admin-portal/`. New consumers
+ * should use `'owner'`. See `apps/admin-portal/DEPRECATED.md`.
+ */
 export type JarvisSurface =
   | 'customer'
   | 'owner'
   | 'manager'
+  /** @deprecated alias of `'owner'` — owners are the admins */
   | 'admin'
   | 'platform';
 

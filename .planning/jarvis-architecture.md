@@ -22,7 +22,22 @@ BossNyumba ships **exactly four** user-facing frontends. They differ by audience
 >
 > The owner's portal **is** the admin portal — there is no separate "agency admin" application. Owners administer their own work inside their portal.
 
-> **Deprecated:** `apps/admin-portal/` (Vite, port 3000) predates this clean four-portal split. It accumulated some HQ-flavoured pages and some agency-admin pages. It is being consolidated into `admin-platform-portal` (HQ pages) and `owner-portal` (admin pages). See `apps/admin-portal/DEPRECATED.md`. The `/api/v1/admin/jarvis` route remains in the gateway for backwards-compatibility but should be considered deprecated alongside the app — new consumers hit `/api/v1/owner/jarvis` or `/api/v1/platform/jarvis`.
+> **Deprecated:** `apps/admin-portal/` (Vite, port 3000) predates this clean four-portal split. It accumulated some HQ-flavoured pages and some agency-admin pages. It is being consolidated into `admin-platform-portal` (HQ pages) and `owner-portal` (admin pages). See `apps/admin-portal/DEPRECATED.md`. The `/api/v1/admin/jarvis` route remains in the gateway for backwards-compatibility but is now a literal alias of `/api/v1/owner/jarvis` — both routes resolve to `OWNER_ADVISOR_PERSONA`. New consumers hit `/api/v1/owner/jarvis` or `/api/v1/platform/jarvis`.
+
+### LITFIN ↔ BossNyumba persona mapping (canonical)
+
+BossNyumba inherits LITFIN's tiered-AI architecture, scoped to property management. The four user-facing seats line up one-to-one:
+
+| LITFIN seat | BossNyumba seat | App | Surface | Persona | Tier |
+|---|---|---|---|---|---|
+| Borrower | Tenant resident | `apps/customer-app/` | `'tenant-app'` (SDK: `'customer'`) | `TENANT_RESIDENT_PERSONA` | `lease` |
+| Officer (loan officer) | Estate manager | `apps/estate-manager-app/` | `'estate-manager-app'` (SDK: `'manager'`) | `ESTATE_MANAGER_PERSONA` | `property` |
+| Bank admin / org admin | **Owner (= admin)** | `apps/owner-portal/` | `'owner-portal'` (SDK: `'owner'`) | `OWNER_ADVISOR_PERSONA` | `portfolio` / `org` |
+| LitFin HQ internal | BossNyumba HQ internal | `apps/admin-platform-portal/` | `'platform-hq'` (SDK: `'platform'`) | `SOVEREIGN_ADMIN_PERSONA` | `industry` |
+
+**Persona consolidation note.** LITFIN's "bank admin" and "org admin" tiers map to a SINGLE BossNyumba persona — `OWNER_ADVISOR_PERSONA` — because in the BossNyumba portal model the **owner IS the admin**. Owners administer their own work inside `owner-portal` and can invite admin sub-users from there to help them run the business. The previous `ORG_ADMIN_PERSONA` is retained as a deprecated export alias for back-compat; the surface map routes both `'owner-portal'` and `'admin-portal'` (deprecated) to `OWNER_ADVISOR_PERSONA`.
+
+**Reports-up chain.** Each lower-tier Jarvis is visible to the higher-tier Jarvis through the awareness lattice: tenant ⊂ lease ⊂ unit ⊂ property ⊂ portfolio ⊂ org ⊂ industry. The estate manager's Jarvis "reports up" to the owner's Jarvis (the owner sees the estate manager's slice plus the tenants under it); the owner's Jarvis "reports up" to BossNyumba HQ via DP-aggregate cohort signals. Same intelligence, same kernel, same gates — narrowed visibility per seat.
 
 ---
 
