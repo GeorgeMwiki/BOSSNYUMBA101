@@ -23,6 +23,7 @@ import {
   users,
   units,
   payments,
+  createCurrencyRatesService,
 } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { getDb } from '../composition/db-client';
@@ -77,33 +78,66 @@ async function countUnitsManaged(db: DrizzleDb): Promise<number | null> {
   }
 }
 
-async function sumMonthlyRevenue(db: DrizzleDb): Promise<number | null> {
-  // TODO (revenue-aggregator): the `payments` table stores per-tenant
-  // collections in MINOR units (cents) and the currency varies per
-  // tenant (KES / TZS / USD). A faithful platform-wide monthly-revenue
-  // metric would normalise all currencies to a single reporting unit
-  // (probably USD) using a daily FX snapshot and only count `completed`
-  // payments. That FX layer is not wired yet — return 0 with this TODO
-  // so the dashboard tile is honest about the gap. Do NOT estimate
-  // revenue from raw mixed-currency sums; that lies to operators.
+/**
+ * Cross-tenant monthly revenue, normalised to USD.
+ *
+ * The `payments` table stores `amount` in MINOR units with a per-row
+ * `currency` (TZS / KES / USD typically). We GROUP BY currency over
+ * the last 30 days where status = 'completed' (the post-success
+ * terminal state in the payment_status enum), then hand the per-
+ * currency slices to the FX normaliser to roll up into a single USD
+ * figure.
+ *
+ * Returns null on hard DB failure so the caller's PARTIAL branch
+ * kicks in. Returns a number (≥ 0, rounded to 2 decimal places) on
+ * success.
+ */
+async function sumMonthlyRevenueUsd(db: DrizzleDb): Promise<number | null> {
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const rows = await db
-      .select({ value: sum(payments.amount) })
+    const rows = (await db
+      .select({
+        currency: payments.currency,
+        amountMinor: sum(payments.amount),
+      })
       .from(payments)
       .where(
         and(
           eq(payments.status, 'completed'),
           gte(payments.completedAt, since),
         ),
-      );
-    // Result is intentionally discarded — see TODO above. We touch the
-    // query to surface a real DB error (the partial-failure branch
-    // depends on at-least-one query throwing); on success we still
-    // return 0 so we never lie about platform revenue.
-    void rows;
-    return 0;
-  } catch {
+      )
+      .groupBy(payments.currency)) as ReadonlyArray<{
+      currency: string | null;
+      amountMinor: string | number | null;
+    }>;
+
+    if (!Array.isArray(rows) || rows.length === 0) return 0;
+
+    const slices = rows
+      .filter((r): r is { currency: string; amountMinor: string | number } => {
+        return (
+          typeof r?.currency === 'string' &&
+          r.currency.length > 0 &&
+          r.amountMinor !== null &&
+          r.amountMinor !== undefined
+        );
+      })
+      .map((r) => ({
+        currency: r.currency,
+        amountMinor: Number(r.amountMinor),
+      }))
+      .filter((s) => Number.isFinite(s.amountMinor));
+
+    if (slices.length === 0) return 0;
+
+    const ratesService = createCurrencyRatesService(db);
+    const usd = await ratesService.normaliseToUsd(slices);
+
+    if (!Number.isFinite(usd) || usd < 0) return 0;
+    return Math.round(usd * 100) / 100;
+  } catch (error) {
+    console.error('platform-overview: monthly-revenue aggregation failed:', error);
     return null;
   }
 }
@@ -151,7 +185,7 @@ platformOverviewRouter.get('/', async (c) => {
       countActiveTenants(db),
       countPlatformUsers(db),
       countUnitsManaged(db),
-      sumMonthlyRevenue(db),
+      sumMonthlyRevenueUsd(db),
     ]);
 
   const anyFailed =
@@ -181,10 +215,9 @@ platformOverviewRouter.get('/', async (c) => {
       platformUsers,
       monthlyRevenue,
       unitsManaged,
-      // TODO (platform-config): currency should come from a
-      // platform_config / billing_settings row once HQ pricing is
-      // multi-currency. Defaulting to USD for now — the frontend
-      // already accepts an optional ISO-4217 code on the response.
+      // monthlyRevenue is FX-normalised to USD via the currency_rates
+      // table (migration 0117). Per-currency payment sums are
+      // converted using the in-DB rate snapshot before reporting.
       currency: 'USD' as const,
     },
   });

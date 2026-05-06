@@ -74,3 +74,15 @@ export {
   type PlatformBudgetLedgerShape,
   type PgBudgetLedgerDeps,
 } from './platform-budget-ledger.service.js';
+
+// Currency rates — Drizzle-backed FX normaliser used by the
+// platform-overview HQ KPI router. Loads ISO-4217 → USD snapshots
+// from `currency_rates` (migration 0117) and converts mixed-currency
+// payment sums into a single USD total. Unknown codes contribute 0
+// with a soft warn — never throws on lookup misses.
+export {
+  createCurrencyRatesService,
+  type CurrencyRate,
+  type CurrencySum,
+  type CurrencyRatesService,
+} from './currency-rates.service.js';

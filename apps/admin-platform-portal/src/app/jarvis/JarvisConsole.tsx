@@ -7,9 +7,14 @@
  * frontend can reuse the same primitive.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
-import { useJarvis } from '@bossnyumba/chat-ui';
+import {
+  MicButton,
+  createWebSpeechAudioPort,
+  useJarvis,
+  type VoiceAudioPort,
+} from '@bossnyumba/chat-ui';
 
 const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
 
@@ -32,11 +37,28 @@ export function JarvisConsole(): JSX.Element {
     [],
   );
 
-  const { turns, status, error, persona, think, reset } = useJarvis({
+  // Voice port — instantiated only on the client (Web Speech needs `window`).
+  const [audioPort, setAudioPort] = useState<VoiceAudioPort | null>(null);
+  useEffect(() => {
+    setAudioPort(createWebSpeechAudioPort());
+  }, []);
+
+  const {
+    turns,
+    status,
+    error,
+    persona,
+    think,
+    reset,
+    isListening,
+    startListening,
+    stopListening,
+  } = useJarvis({
     client,
     threadId,
     defaultStakes: 'medium',
     defaultTier: 'industry',
+    ...(audioPort ? { voice: { audio: audioPort, speakReplies: true } } : {}),
   });
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -95,10 +117,18 @@ export function JarvisConsole(): JSX.Element {
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Ask Nyumba Mind…"
+          placeholder={isListening ? 'Listening…' : 'Ask Nyumba Mind…'}
           disabled={status === 'thinking'}
           className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
         />
+        {audioPort?.sttSupported ? (
+          <MicButton
+            isListening={isListening}
+            onStart={startListening}
+            onStop={stopListening}
+            disabled={status === 'thinking'}
+          />
+        ) : null}
         <button
           type="submit"
           disabled={status === 'thinking' || !draft.trim()}

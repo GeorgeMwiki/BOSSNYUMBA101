@@ -15,15 +15,23 @@
  * local state is the rendering buffer only.
  *
  * Headless on purpose: layout/styling lives in the calling app.
+ *
+ * Voice (optional, opt-in via `voice` config):
+ *   - Pass a `VoiceAudioPort` (e.g. `createWebSpeechAudioPort()`) to
+ *     enable microphone-driven `think()` and (optionally) TTS playback
+ *     of every assistant reply.
+ *   - All existing return fields are preserved; voice fields are
+ *     additive — non-voice callers can ignore them entirely.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   JarvisDecision,
   JarvisStakes,
   JarvisSurfaceClient,
   JarvisThinkRequest,
 } from '@bossnyumba/api-sdk';
+import type { ListeningHandle, VoiceAudioPort } from '../voice/voice-audio-port.js';
 
 export interface JarvisTurn {
   readonly id: string;
@@ -31,6 +39,23 @@ export interface JarvisTurn {
   readonly text: string;
   readonly decision?: JarvisDecision;
   readonly at: string;
+}
+
+export interface UseJarvisVoiceOptions {
+  /** Audio port (Web Speech API by default; swappable). */
+  readonly audio: VoiceAudioPort;
+  /**
+   * When true, every new assistant turn is automatically spoken via
+   * `audio.speak(...)`. The current playback is cancelled if a new
+   * turn arrives or the user starts a fresh listening session.
+   */
+  readonly speakReplies?: boolean;
+  /**
+   * Reserved for future push-to-talk semantics (hold to record).
+   * Currently unused — `startListening`/`stopListening` are toggled
+   * explicitly by the calling component.
+   */
+  readonly pushToTalk?: boolean;
 }
 
 export interface UseJarvisOptions {
@@ -41,6 +66,8 @@ export interface UseJarvisOptions {
   readonly defaultStakes?: JarvisStakes;
   /** Default tier; default = client surface's tier (set by the gateway). */
   readonly defaultTier?: JarvisThinkRequest['tier'];
+  /** Optional voice I/O integration (microphone STT + reply TTS). */
+  readonly voice?: UseJarvisVoiceOptions;
 }
 
 export interface UseJarvisReturn {
@@ -50,6 +77,20 @@ export interface UseJarvisReturn {
   readonly persona: { id: string; displayName: string; firstPersonNoun: string } | null;
   think(message: string, override?: Partial<JarvisThinkRequest>): Promise<JarvisDecision | null>;
   reset(): void;
+  /** True while STT is actively recording. False when no `voice` configured. */
+  readonly isListening: boolean;
+  /**
+   * Begin a microphone-driven turn. On the final transcript the hook
+   * automatically calls `think(transcript)`. No-op when `voice` is
+   * unset or `audio.sttSupported=false`.
+   */
+  startListening(): void;
+  /** Stop the current listening session without submitting. */
+  stopListening(): void;
+  /** True while TTS is playing the latest assistant reply. */
+  readonly isSpeaking: boolean;
+  /** Cancel any in-flight TTS playback immediately. */
+  cancelSpeaking(): void;
 }
 
 export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
@@ -61,7 +102,12 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
     displayName: string;
     firstPersonNoun: string;
   } | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const counter = useRef(0);
+  const listeningHandleRef = useRef<ListeningHandle | null>(null);
+  const speakAbortRef = useRef<AbortController | null>(null);
+  const lastSpokenTurnIdRef = useRef<string | null>(null);
 
   const nextId = useCallback((): string => {
     counter.current += 1;
@@ -130,15 +176,146 @@ export function useJarvis(opts: UseJarvisOptions): UseJarvisReturn {
     [nextId, opts.client, opts.defaultStakes, opts.defaultTier, opts.threadId],
   );
 
+  // --- Voice: cancel any in-flight TTS. ---
+  const cancelSpeaking = useCallback((): void => {
+    const audio = opts.voice?.audio;
+    if (speakAbortRef.current) {
+      speakAbortRef.current.abort();
+      speakAbortRef.current = null;
+    }
+    audio?.cancelSpeech();
+    setIsSpeaking(false);
+  }, [opts.voice?.audio]);
+
+  // --- Voice: stop the current STT session. ---
+  const stopListening = useCallback((): void => {
+    if (listeningHandleRef.current) {
+      try {
+        listeningHandleRef.current.stop();
+      } catch {
+        /* swallow */
+      }
+      listeningHandleRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  // --- Voice: begin an STT session; on final transcript -> think(). ---
+  const startListening = useCallback((): void => {
+    const voice = opts.voice;
+    if (!voice || !voice.audio.sttSupported) return;
+    if (listeningHandleRef.current) return; // already listening
+
+    // A fresh user turn cancels any ongoing assistant playback.
+    cancelSpeaking();
+
+    let finalText = '';
+    try {
+      const handle = voice.audio.startListening((r) => {
+        if (r.isFinal) {
+          finalText = (finalText + ' ' + r.transcript).trim();
+        }
+      });
+      listeningHandleRef.current = {
+        stop(): void {
+          handle.stop();
+          // Submit whatever final text we accumulated.
+          const submission = finalText.trim();
+          if (submission) {
+            void think(submission);
+          }
+        },
+      };
+      setIsListening(true);
+    } catch (err) {
+      console.error('startListening failed', err);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [opts.voice, cancelSpeaking, think]);
+
+  // --- Voice: speak the latest assistant turn when speakReplies=true. ---
+  const speakReplies = opts.voice?.speakReplies ?? false;
+  const audioPort = opts.voice?.audio;
+  useEffect(() => {
+    if (!speakReplies || !audioPort?.ttsSupported) return;
+    const last = turns[turns.length - 1];
+    if (!last || last.role !== 'assistant') return;
+    if (!last.text.trim()) return;
+    if (lastSpokenTurnIdRef.current === last.id) return;
+    lastSpokenTurnIdRef.current = last.id;
+
+    // Cancel any prior speech and start fresh.
+    if (speakAbortRef.current) speakAbortRef.current.abort();
+    const ctrl = new AbortController();
+    speakAbortRef.current = ctrl;
+    setIsSpeaking(true);
+    audioPort
+      .speak(last.text, { signal: ctrl.signal })
+      .catch((err: unknown) => {
+        if ((err as { name?: string })?.name === 'AbortError') return;
+        console.warn('TTS playback failed', err);
+      })
+      .finally(() => {
+        if (speakAbortRef.current === ctrl) speakAbortRef.current = null;
+        setIsSpeaking(false);
+      });
+  }, [turns, speakReplies, audioPort]);
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return (): void => {
+      if (listeningHandleRef.current) {
+        try {
+          listeningHandleRef.current.stop();
+        } catch {
+          /* swallow */
+        }
+        listeningHandleRef.current = null;
+      }
+      if (speakAbortRef.current) {
+        speakAbortRef.current.abort();
+        speakAbortRef.current = null;
+      }
+      audioPort?.cancelSpeech();
+    };
+  }, [audioPort]);
+
   const reset = useCallback(() => {
     setTurns([]);
     setStatus('idle');
     setError(null);
     setPersona(null);
-  }, []);
+    lastSpokenTurnIdRef.current = null;
+    cancelSpeaking();
+    stopListening();
+  }, [cancelSpeaking, stopListening]);
 
   return useMemo(
-    () => ({ turns, status, error, persona, think, reset }),
-    [turns, status, error, persona, think, reset],
+    () => ({
+      turns,
+      status,
+      error,
+      persona,
+      think,
+      reset,
+      isListening,
+      startListening,
+      stopListening,
+      isSpeaking,
+      cancelSpeaking,
+    }),
+    [
+      turns,
+      status,
+      error,
+      persona,
+      think,
+      reset,
+      isListening,
+      startListening,
+      stopListening,
+      isSpeaking,
+      cancelSpeaking,
+    ],
   );
 }

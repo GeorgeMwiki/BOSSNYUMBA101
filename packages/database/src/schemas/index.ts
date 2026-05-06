@@ -211,3 +211,8 @@ export * from './sovereign-approvals.schema.js';
 // PlatformBudgetLedger so cohort DP-aggregator budget consumption
 // survives api-gateway restarts.
 export * from './platform-privacy-budget.schema.js';
+
+// Currency rates (migration 0117) — ISO-4217 → USD FX snapshots
+// consumed by the platform-overview HQ KPI router's monthly-revenue
+// aggregator to normalise mixed-currency payment sums.
+export * from './currency-rates.schema.js';
