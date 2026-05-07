@@ -49,3 +49,26 @@ export {
   type VacancyTrendsInput,
   type VacancyTrendsOutput,
 } from './market-data-tool.js';
+
+// World-model kernel tools — forward-simulate property / tenant /
+// agency state vectors so the brain can reason about trajectories,
+// not just snapshots. Three tools:
+//   - world.property_trajectory
+//   - world.arrears_trajectory
+//   - world.market_regime
+// The composition root binds historical-state fetchers (Drizzle /
+// repository readers) at runtime; tests pass mocked fetchers.
+export {
+  createPropertyTrajectoryTool,
+  createArrearsTrajectoryTool,
+  createMarketRegimeTool,
+  createWorldModelKernelTools,
+  type PropertyTrajectoryInput,
+  type ArrearsTrajectoryInput,
+  type MarketRegimeInput,
+  type PropertyTrajectoryToolDeps,
+  type ArrearsTrajectoryToolDeps,
+  type MarketRegimeToolDeps,
+  type WorldModelToolDeps,
+  type WorldModelKernelToolBundle,
+} from '../world-model/world-model-tool.js';

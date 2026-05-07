@@ -40,6 +40,8 @@ import {
   composeSovereign,
   createDpCohortSource,
   tools as kernelTools,
+  type FeedbackMemoryPort,
+  type MemoryHierarchy,
   type PersonaBrandingOverride,
   type PersonaBrandingResolver,
   type SovereignBrain,
@@ -59,6 +61,11 @@ import {
   createPgApprovalStore,
   createPgTenantAggregateSource,
   createPgPlatformBudgetLedger,
+  createEpisodicMemoryService,
+  createSemanticMemoryService,
+  createProceduralMemoryService,
+  createReflectiveMemoryService,
+  createFeedbackService,
 } from '@bossnyumba/database';
 import {
   createAirbnbMarketDataAdapter,
@@ -190,6 +197,8 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     | undefined;
   let cohortSource: ReturnType<typeof createDpCohortSource> | undefined;
   let brandingResolver: PersonaBrandingResolver | undefined;
+  let memoryHierarchy: MemoryHierarchy | undefined;
+  let feedbackPort: FeedbackMemoryPort | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -239,6 +248,39 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       },
     };
 
+    // LITFIN-style four-tier memory hierarchy (migration 0121).
+    // Drizzle-backed services for episodic / semantic / procedural /
+    // reflective memory; the kernel reads semantic + reflective at
+    // step 4 and writes episodic at step 13. Each port is tenant-
+    // scoped at the call-site through the args the kernel passes; the
+    // services themselves are stateless factories.
+    memoryHierarchy = {
+      episodic: createEpisodicMemoryService(db),
+      semantic: createSemanticMemoryService(db),
+      procedural: createProceduralMemoryService(db),
+      reflective: createReflectiveMemoryService(db),
+    };
+
+    // Online-learning feedback port (migration 0122). The kernel
+    // reads the user's last 10 feedback entries at step 4 and mixes
+    // recent verbatim corrections + per-category negative-rate into
+    // the system prompt so the next turn can apologise / learn /
+    // bias toward conservative output. The Drizzle service exposes
+    // `recallForUser`; we adapt that to the kernel port's
+    // `recallRecent` shape (the methods are structurally compatible
+    // — same args, same return shape — so the adapter is a thin
+    // rename).
+    const feedbackService = createFeedbackService(db);
+    feedbackPort = {
+      async recallRecent(args) {
+        return feedbackService.recallForUser({
+          tenantId: args.tenantId,
+          userId: args.userId,
+          limit: args.limit,
+        });
+      },
+    };
+
     // DP cohort source — only when a privacy-budget envelope is
     // configured. Activation is gated by PRIVACY_BUDGET_EPSILON; an
     // unset/zero/non-numeric value disables the channel and the
@@ -272,6 +314,8 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (groundingFacts) mutable.groundingFacts = groundingFacts;
   if (cohortSource) mutable.cohortSource = cohortSource;
   if (brandingResolver) mutable.brandingResolver = brandingResolver;
+  if (memoryHierarchy) mutable.memory = memoryHierarchy;
+  if (feedbackPort) mutable.feedback = feedbackPort;
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);

@@ -39,9 +39,11 @@ import type {
   ScopeContext,
   ThoughtRequest,
 } from '@bossnyumba/central-intelligence';
+import { createFeedbackService } from '@bossnyumba/database';
 import type { GroundingViewRole } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { getSovereignBrain } from '../composition/sovereign';
+import { getDb } from '../composition/db-client';
 
 export type JarvisSurface = ThoughtRequest['surface'];
 
@@ -93,6 +95,18 @@ const BriefingSchema = z.object({
     )
     .min(1)
     .max(20),
+});
+
+// Feedback signal schema — one row per user per kernel turn. The
+// `correction` signal MAY be paired with a verbatim explanation; the
+// other signals are usually a single click in the UI.
+const FeedbackSchema = z.object({
+  thoughtId: z.string().min(1).max(120),
+  threadId: z.string().min(1).max(120),
+  signal: z.enum(['thumbs-up', 'thumbs-down', 'correction', 'flagged']),
+  rating: z.number().int().min(1).max(5).optional(),
+  correctionText: z.string().max(4_000).optional(),
+  category: z.string().max(64).optional(),
 });
 
 function actorProfileFromContext(
@@ -496,6 +510,68 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
       | 'pending' | 'one-eye' | 'approved' | 'rejected' | 'expired' | undefined;
     const records = await sov.approvals.list(status ? { status } : undefined);
     return c.json({ success: true, approvals: records });
+  });
+
+  // ───────────────────────────────────────────────────────────────────
+  // POST /feedback — online-learning signal capture.
+  //
+  // Persists one row in `kernel_feedback` (migration 0122) keyed by
+  // tenantId + userId + thoughtId. The kernel reads the rolling
+  // window at step 4 (memory recall) on subsequent turns so the
+  // brain learns from real interaction. Mirrors LITFIN's online-
+  // learning loop and closes the "stock LLMs are STATIC" gap.
+  //
+  // Auth: tenantId + userId come from the auth middleware. The body
+  // carries the signal; we never trust caller-supplied identity.
+  // Without a configured DB the route reports a soft 503 — the
+  // signal is dropped rather than queued in memory (which would lie
+  // to the caller about persistence).
+  // ───────────────────────────────────────────────────────────────────
+  app.post('/feedback', zValidator('json', FeedbackSchema), async (c) => {
+    const body = c.req.valid('json');
+    const auth = c.get('auth') ?? {};
+    const tenantId = auth.tenantId ?? null;
+    const userId = auth.userId ?? auth.sub ?? null;
+    if (!tenantId || !userId) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHENTICATED',
+            message: 'feedback requires an authenticated tenant + user',
+          },
+        },
+        401,
+      );
+    }
+
+    const db = getDb();
+    if (!db) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'FEEDBACK_PERSISTENCE_UNAVAILABLE',
+            message: 'feedback store is not configured (DATABASE_URL unset)',
+          },
+        },
+        503,
+      );
+    }
+
+    const svc = createFeedbackService(db);
+    const out = await svc.record({
+      tenantId,
+      userId,
+      thoughtId: body.thoughtId,
+      threadId: body.threadId,
+      signal: body.signal,
+      ...(typeof body.rating === 'number' ? { rating: body.rating } : {}),
+      ...(body.correctionText ? { correctionText: body.correctionText } : {}),
+      ...(body.category ? { category: body.category } : {}),
+    });
+
+    return c.json({ success: true, id: out.id });
   });
 
   return app;

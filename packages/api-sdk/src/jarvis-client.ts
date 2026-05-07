@@ -48,6 +48,46 @@ export type JarvisApprovalStatus =
   | 'pending' | 'one-eye' | 'approved' | 'rejected' | 'expired';
 
 /**
+ * Feedback signal kind. Mirrors the kernel's `FeedbackSignal` so the
+ * SDK and the brain agree on the wire shape one-for-one. The
+ * `correction` signal SHOULD be paired with a verbatim
+ * `correctionText` so the next kernel turn can apologise / adjust.
+ */
+export type FeedbackSignal =
+  | 'thumbs-up'
+  | 'thumbs-down'
+  | 'correction'
+  | 'flagged';
+
+/**
+ * Optional category bucket for `thumbs-down` / `correction` /
+ * `flagged` signals. The kernel rolls these up into a per-category
+ * negative-rate the model sees on the next turn (e.g. "you flagged
+ * 2 of my 14 recent answers as 'hallucinated' — be especially
+ * careful about citations").
+ */
+export type FeedbackCategory =
+  | 'hallucinated'
+  | 'incomplete'
+  | 'wrong-tone'
+  | 'unhelpful'
+  | 'great'
+  | 'other';
+
+export interface JarvisRecordFeedbackRequest {
+  /** Provenance id of the kernel turn being rated. */
+  readonly thoughtId: string;
+  /** Thread id the rated turn belongs to. */
+  readonly threadId: string;
+  readonly signal: FeedbackSignal;
+  /** Optional 1..5 numeric rating; clamped server-side. */
+  readonly rating?: number;
+  /** User's "this is wrong because…" verbatim text. */
+  readonly correctionText?: string;
+  readonly category?: FeedbackCategory | string;
+}
+
+/**
  * Multimodal attachment for {@link JarvisThinkRequest}. Mirrors the
  * kernel's `ThoughtAttachment` shape — base64-encoded image bytes the
  * gateway forwards to a vision-capable Sensor (Claude Opus / Sonnet /
@@ -187,6 +227,18 @@ export interface JarvisSurfaceClient {
   listActions(filter?: {
     status?: JarvisApprovalStatus;
   }): Promise<{ success: true; approvals: ReadonlyArray<JarvisApprovalRecord> }>;
+  /**
+   * Record a feedback signal on a kernel turn. The gateway persists
+   * one row in `kernel_feedback` (migration 0122) keyed by the
+   * caller's tenantId + userId + this `thoughtId`. The kernel reads
+   * the rolling window at step 4 (memory recall) on subsequent turns
+   * so the brain learns from real interaction. Mirrors LITFIN's
+   * online-learning loop and closes the "stock LLMs are STATIC"
+   * assessment gap.
+   */
+  recordFeedback(
+    req: JarvisRecordFeedbackRequest,
+  ): Promise<{ success: true; id: string }>;
 }
 
 const SURFACE_PATH: Record<JarvisSurface, string> = {
@@ -252,6 +304,13 @@ export function createJarvisClient(
       };
       if (filter?.status) args.query = { status: filter.status };
       return client.request<{ success: true; approvals: ReadonlyArray<JarvisApprovalRecord> }>(args);
+    },
+    async recordFeedback(req) {
+      return client.request<{ success: true; id: string }>({
+        method: 'POST',
+        path: `${root}/feedback`,
+        body: req,
+      });
     },
   };
 }

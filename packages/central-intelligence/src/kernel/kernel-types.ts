@@ -10,6 +10,22 @@
  */
 
 import type { ScopeContext, Citation, Artifact } from '../types.js';
+import type {
+  EpisodicMemoryPort,
+  SemanticMemoryPort,
+  ProceduralMemoryPort,
+  ReflectiveMemoryPort,
+} from './memory/types.js';
+import type { FeedbackMemoryPort } from './feedback/types.js';
+
+// Re-export the feedback port so callers reaching the kernel-types
+// barrel get the structural type alongside MemoryHierarchy.
+export type {
+  FeedbackEntry,
+  FeedbackMemoryPort,
+  FeedbackRecallArgs,
+  FeedbackSignal,
+} from './feedback/types.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Awareness scopes — tier-scoped visibility bubbles richer than the
@@ -148,6 +164,17 @@ export interface ProvenanceRecord {
   readonly cohortFingerprints: ReadonlyArray<string>;
   readonly producedAt: string;
   readonly latencyMs: number;
+  /**
+   * Number of debate rounds completed when the kernel routed the
+   * sensor call through the optional debate hook. Absent when the
+   * single-shot sensor path was used.
+   */
+  readonly debateRoundsCompleted?: number;
+  /**
+   * Whether the debate's last two rounds converged (jaccard ≥ 0.8).
+   * Absent when the single-shot sensor path was used.
+   */
+  readonly debateConverged?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -341,3 +368,29 @@ export interface GroundingFactsProvider {
     readonly limit: number;
   }): Promise<ReadonlyArray<GroundingFact>>;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Memory hierarchy — the LITFIN-style four-tier persistent memory the
+// kernel reads from at step 4 (memory recall) and writes to at step 13
+// (provenance write). Every port is optional; the kernel runs with any
+// subset wired.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface MemoryHierarchy {
+  readonly episodic?: EpisodicMemoryPort;
+  readonly semantic?: SemanticMemoryPort;
+  readonly procedural?: ProceduralMemoryPort;
+  readonly reflective?: ReflectiveMemoryPort;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Online-learning feedback port — the brain's "growth" pattern.
+// Re-exported here so `kernel-types` is the single barrel callers
+// import from when wiring kernel deps. The full structural definition
+// lives in `./feedback/types.ts`. Mirrors LITFIN's feedback loop and
+// closes the "stock LLMs are STATIC" assessment gap.
+// ─────────────────────────────────────────────────────────────────────
+
+// (FeedbackMemoryPort, FeedbackEntry, FeedbackSignal are re-exported at
+// the top of this file alongside the memory imports.)
+export type _FeedbackMemoryPortMarker = FeedbackMemoryPort;

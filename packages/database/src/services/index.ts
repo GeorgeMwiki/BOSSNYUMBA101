@@ -120,3 +120,63 @@ export {
   type MarketDataCacheEntry,
   type MarketDataCacheService,
 } from './market-data-cache.service.js';
+
+// Kernel memory hierarchy — LITFIN-style four-tier memory ABOVE the
+// existing thread_events transport. The kernel reads semantic facts +
+// the latest reflective digest at step 4 (memory recall) and writes
+// episodic rows at step 13 (provenance write). Migration 0121.
+//
+// NB: this set of services exposes ONLY the read+write surface. Fact
+// extraction (semantic), pattern observation (procedural), and digest
+// generation (reflective) are the consolidation cycle agent's
+// responsibility — that runs in a separate composition root.
+export {
+  createEpisodicMemoryService,
+  type EpisodicEntry,
+  type EpisodicKind,
+  type EpisodicMemoryService,
+  type EpisodicRecallArgs,
+  type EpisodicRecordArgs,
+} from './kernel-memory-episodic.service.js';
+export {
+  createSemanticMemoryService,
+  type DecayArgs,
+  type LookupArgs,
+  type SearchArgs,
+  type SemanticFact,
+  type SemanticMemoryService,
+  type SemanticSource,
+  type UpsertFactArgs,
+} from './kernel-memory-semantic.service.js';
+export {
+  createProceduralMemoryService,
+  type MatchArgs,
+  type ProceduralMemoryService,
+  type ProceduralPattern,
+  type RecordArgs as ProceduralRecordArgs,
+} from './kernel-memory-procedural.service.js';
+export {
+  createReflectiveMemoryService,
+  type LatestArgs,
+  type ReflectiveDigest,
+  type ReflectiveDigestInput,
+  type ReflectiveMemoryService,
+  type ReflectivePeriodKind,
+  type ReflectiveTopicCount,
+} from './kernel-memory-reflective.service.js';
+
+// Kernel feedback (migration 0122) — online-learning signal store.
+// Captures thumbs / corrections / flags per kernel turn so the kernel
+// can read its own per-user rollup at step 4 (memory recall) and bias
+// the next turn toward conservative, citation-heavy output when the
+// recent negative-rate is elevated. Closes the "stock LLMs are STATIC"
+// assessment gap.
+export {
+  createFeedbackService,
+  type FeedbackEntry,
+  type FeedbackRollup,
+  type FeedbackService,
+  type FeedbackSignal,
+  type RecallArgs as FeedbackRecallArgs,
+  type RollupArgs as FeedbackRollupArgs,
+} from './kernel-feedback.service.js';

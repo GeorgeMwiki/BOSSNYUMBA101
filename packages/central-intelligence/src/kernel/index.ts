@@ -198,6 +198,49 @@ export {
   type PersonaBrandingResolver,
 } from './branding.js';
 
+// LITFIN-style four-tier memory hierarchy ports — episodic, semantic,
+// procedural, reflective. Adapters live in `@bossnyumba/database`; the
+// composition root binds them to the kernel via BrainKernelDeps.memory
+// (and ComposeSovereignConfig.memory).
+export type {
+  EpisodicEntry,
+  EpisodicKind,
+  EpisodicMemoryPort,
+  EpisodicRecallArgs,
+  EpisodicRecordArgs,
+  MemoryHierarchy,
+  ProceduralMatchArgs,
+  ProceduralMemoryPort,
+  ProceduralPattern,
+  ProceduralRecordArgs,
+  ReflectiveDigest,
+  ReflectiveDigestInput,
+  ReflectiveLatestArgs,
+  ReflectiveMemoryPort,
+  ReflectivePeriodKind,
+  ReflectiveTopicCount,
+  SemanticDecayArgs,
+  SemanticFact,
+  SemanticLookupArgs,
+  SemanticMemoryPort,
+  SemanticSearchArgs,
+  SemanticSource,
+  SemanticUpsertArgs,
+} from './memory/index.js';
+
+// Online-learning feedback port — the brain's "growth" pattern.
+// The kernel reads recent feedback at step 4 (memory recall) so the
+// next turn can apologise for past mistakes and bias toward
+// conservative output when the user has been pushing back lately.
+// Mirrors LITFIN's feedback loop and closes the "stock LLMs are
+// STATIC" assessment gap.
+export type {
+  FeedbackEntry,
+  FeedbackMemoryPort,
+  FeedbackRecallArgs,
+  FeedbackSignal,
+} from './feedback/index.js';
+
 /**
  * Graph kernel tools — Neo4j-backed query tools the agent loop can
  * invoke (portfolio concentration, connected parties, lease network,
@@ -205,3 +248,66 @@ export {
  * write `tools.createGraphKernelTools(graphService)`.
  */
 export * as tools from './tools/index.js';
+
+/**
+ * Reflection + consolidation cycle — the brain's "sleep" orchestrator
+ * that compresses episodic entries into semantic facts, procedural
+ * patterns, and reflective digests. The four memory ports above
+ * remain the read+write primitives; this layer owns the periodic
+ * cycle that runs above them.
+ */
+export {
+  runConsolidationCycle,
+  FACT_EXTRACTION_SYSTEM_PROMPT,
+  REFLECTIVE_DIGEST_SYSTEM_PROMPT,
+  DEFAULT_CONSOLIDATION_CONFIG,
+  type ConsolidationConfig,
+  type ConsolidationDeps,
+  type ConsolidationJudgeCallArgs,
+  type ConsolidationJudgePort,
+  type ConsolidationLogger,
+  type ConsolidationReport,
+  type ConsolidationScope,
+  type DetectedPattern,
+  type ExtractedFact,
+  type ReflectiveDigestPayload,
+} from './consolidation/index.js';
+
+/**
+ * Internal debate + counterfactual reasoning — the "multiple voices
+ * in your head" pattern. High-stakes decisions invoke 2–3 voices
+ * arguing different angles, then a synthesiser. Counterfactual
+ * prompts force the brain to imagine alternative paths.
+ */
+export {
+  runDebate,
+  DEFAULT_PROPERTY_DEBATE_VOICES,
+  buildCounterfactuals,
+  runCounterfactuals,
+  type CounterfactualDomain,
+  type CounterfactualOutcome,
+  type CounterfactualScenario,
+  type DebateConfig,
+  type DebateContribution,
+  type DebateDeps,
+  type DebateOutcome,
+  type DebatePersona,
+  type DebateVoice,
+} from './debate/index.js';
+
+/**
+ * World model + trajectory prediction — the kernel's "imagination"
+ * layer. Forward-simulates property / tenant / owner / agency state
+ * vectors so the brain can reason about WHERE THIS IS HEADING, not
+ * just the present tense. Mirrors LITFIN's
+ * `/src/core/credit-mind/world-model/` borrower-trajectory pattern.
+ */
+export * as worldModel from './world-model/index.js';
+
+/**
+ * Introspection layer — the brain's "self-knowledge" pattern.
+ * Decision-trace replay (drift / regression / fairness sweeps) plus
+ * per-persona capability cards (Anthropic-style model cards). Closes
+ * the assessment gap "the brain doesn't know what it can do."
+ */
+export * as introspection from './introspection/index.js';

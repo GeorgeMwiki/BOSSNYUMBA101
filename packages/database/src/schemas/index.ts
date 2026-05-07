@@ -233,3 +233,24 @@ export * from './currency-preferences.schema.js';
 // cache for external market-data adapter responses (Zillow, Airbnb,
 // Rentometer, etc.). Not tenant-scoped; platform-tier external data.
 export * from './market-data-cache.schema.js';
+
+// Kernel memory hierarchy (migration 0121) — LITFIN-style four-tier
+// memory ABOVE the existing thread_events transport: episodic (concrete
+// past events with TTL), semantic (extracted facts with confidence +
+// evidence_count), procedural (recurring workflow patterns with
+// success-rate ranking), and reflective (periodic summaries written by
+// the separate consolidation cycle agent). All tenant-scoped; user-
+// scoped where the memory is personal, with NULL-user variants for
+// tenant-wide facts and tenant-wide rollups.
+export * from './kernel-memory-episodic.schema.js';
+export * from './kernel-memory-semantic.schema.js';
+export * from './kernel-memory-procedural.schema.js';
+export * from './kernel-memory-reflective.schema.js';
+
+// Kernel feedback (migration 0122) — online-learning signal store.
+// Captures thumbs / corrections / flags per kernel turn so the next
+// turn can read the user's recent feedback back at step 4 (memory
+// recall) and bias the response toward conservative, citation-heavy
+// output when the negative-rate is elevated. Closes the "stock LLMs
+// are STATIC" assessment gap.
+export * from './kernel-feedback.schema.js';

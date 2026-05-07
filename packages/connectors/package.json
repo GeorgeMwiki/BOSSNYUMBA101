@@ -1,0 +1,33 @@
+{
+  "name": "@bossnyumba/connectors",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Base connector framework for BossNyumba external integrations. Mirrors LITFIN's base-connector pattern: rate-limit, circuit-breaker, retry, audit, event bus, Zod validation. Every connector (M-Pesa, GePG, Twilio, MLS, credit bureaus, appraisal APIs) inherits this discipline.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2",
+    "zod": "^3.22.4",
+    "@types/node": "^20.11.5"
+  },
+  "peerDependencies": {
+    "zod": ">=3.22.0"
+  }
+}

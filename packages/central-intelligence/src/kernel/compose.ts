@@ -45,7 +45,9 @@ import {
 } from './sensors/anthropic-sensor.js';
 import type {
   CotReservoirSink,
+  FeedbackMemoryPort,
   GroundingFactsProvider,
+  MemoryHierarchy,
   PersonaDriftSink,
   ProvenanceSink,
   Sensor,
@@ -74,6 +76,23 @@ export interface ComposeSovereignConfig {
    * without touching the surface-default personas.
    */
   readonly brandingResolver?: PersonaBrandingResolver;
+  /**
+   * Optional LITFIN-style four-tier memory hierarchy. When provided,
+   * the kernel reads semantic facts + the latest reflective digest at
+   * step 4 and writes episodic rows at step 13. Composition roots in
+   * the api-gateway pass the Drizzle-backed services from
+   * `@bossnyumba/database`; tests pass in-memory fakes.
+   */
+  readonly memory?: MemoryHierarchy;
+  /**
+   * Optional online-learning feedback port. When provided, the kernel
+   * fetches the user's last 10 feedback entries at step 4 (memory
+   * recall) and mixes the verbatim corrections + per-category
+   * negative-rate into the system prompt. Adapters live in
+   * `@bossnyumba/database` (Drizzle service `createFeedbackService`);
+   * tests pass in-memory fakes.
+   */
+  readonly feedback?: FeedbackMemoryPort;
   readonly priorTurnsLoader?: (
     threadId: string,
   ) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>;
@@ -152,6 +171,8 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (resolvedJudge)            (kernelDeps as any).judge = resolvedJudge;
   if (config.rng)               (kernelDeps as any).rng = config.rng;
   if (config.brandingResolver)  (kernelDeps as any).brandingResolver = config.brandingResolver;
+  if (config.memory)            (kernelDeps as any).memory = config.memory;
+  if (config.feedback)          (kernelDeps as any).feedback = config.feedback;
   const kernel = createBrainKernel(kernelDeps);
 
   const approvals = createApprovalGate({

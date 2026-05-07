@@ -42,4 +42,7 @@ export {
   type JarvisApprovalRecord,
   type JarvisApprovalSignature,
   type JarvisSignRequest,
+  type JarvisRecordFeedbackRequest,
+  type FeedbackSignal,
+  type FeedbackCategory,
 } from './jarvis-client.js';

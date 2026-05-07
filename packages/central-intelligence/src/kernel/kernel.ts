@@ -32,6 +32,7 @@ import type {
   GroundingFact,
   GroundingFactsProvider,
   KernelStreamEvent,
+  MemoryHierarchy,
   PersonaDriftSink,
   ProvenanceRecord,
   ProvenanceSink,
@@ -40,6 +41,14 @@ import type {
   SensorCallResult,
   ThoughtRequest,
 } from './kernel-types.js';
+import type {
+  ReflectiveDigest,
+  SemanticFact,
+} from './memory/types.js';
+import type {
+  FeedbackEntry,
+  FeedbackMemoryPort,
+} from './feedback/types.js';
 import type { PersonaIdentity } from './identity.js';
 import type { Citation, Artifact } from '../types.js';
 import { selectPersona, renderIdentityPreamble } from './identity.js';
@@ -57,6 +66,7 @@ import { type BrainCache, thoughtCacheKey, createBrainCache } from './brain-cach
 import { type SensorRouter, createSensorRouter } from './sensor-failover.js';
 import type { CotReservoir } from './cot-reservoir.js';
 import { buildCohortMixin, type CohortSource } from './cohort-signal.js';
+import type { DebateOutcome } from './debate/debate-types.js';
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -82,6 +92,41 @@ export interface BrainKernelDeps {
    * the surface-default personas.
    */
   readonly brandingResolver?: PersonaBrandingResolver;
+  /**
+   * Optional LITFIN-style four-tier memory hierarchy. When supplied,
+   * the kernel:
+   *   - reads `semantic.search(...)` and `reflective.latest(...)` at
+   *     step 4 (memory recall) and mixes the results into the system
+   *     prompt as "What I remember about you" + "Recent reflection";
+   *   - writes two `episodic.record(...)` entries at step 13 (one for
+   *     the user message, one for the agent action).
+   * Every call is wrapped in try/catch; memory is a side-channel and
+   * must never break the main turn.
+   */
+  readonly memory?: MemoryHierarchy;
+  /**
+   * Optional online-learning feedback port. When supplied, the kernel
+   * fetches the user's last 10 feedback entries at step 4 (memory
+   * recall) and mixes a "What I've learned from your feedback:"
+   * fragment into the system prompt, listing recent verbatim
+   * corrections + a per-category negative-rate. When the
+   * negative-rate exceeds 0.25 the kernel also appends a directive
+   * telling the sensor to be more conservative on the next turn.
+   * Failures are swallowed — the side-channel never breaks the turn.
+   */
+  readonly feedback?: FeedbackMemoryPort;
+  /**
+   * Optional internal-debate hook. When supplied AND
+   * `shouldDebate(req)` returns true (default: stakes ≥ 'high'), the
+   * kernel replaces the single sensor call at step 7 with a multi-
+   * voice debate and uses the synthesis text as the sensor output.
+   * Currently honoured by the non-streaming `think(req)` path only;
+   * `thinkStream(req)` falls back to the single-shot sensor path.
+   */
+  readonly debate?: {
+    shouldDebate(req: ThoughtRequest): boolean;
+    runDebate(question: string, context: string): Promise<DebateOutcome>;
+  };
 }
 
 export interface BrainKernel {
@@ -188,6 +233,25 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         ? await deps.priorTurnsLoader(req.threadId)
         : [];
 
+      // 4b) hierarchical memory recall — semantic facts + the latest
+      // reflective digest. Both ports are optional; failures are
+      // swallowed so the side-channel never breaks the turn.
+      const memTenantId =
+        req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+      const memUserId = req.scope.actorUserId;
+      const semanticFacts = await loadSemanticFacts(deps.memory, memTenantId, memUserId);
+      const reflectiveDigest = await loadReflectiveDigest(deps.memory, memTenantId, memUserId);
+
+      // 4c) online-learning feedback recall — the user's last
+      // 10 thumbs / corrections / flags so the next turn can
+      // apologise, learn, and bias toward conservative output when
+      // the negative-rate is elevated.
+      const feedbackRecent = await loadFeedbackRecent(
+        deps.feedback,
+        memTenantId,
+        memUserId,
+      );
+
       // 5) cohort signal
       const cohortMix = deps.cohort
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
@@ -230,6 +294,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         `Behavioural directive: ${renderMindStateDirective(mindState)}`,
         `Verbosity directive: ${renderLoadDirective(loadOut)}`,
         '',
+        renderSemanticMemoryFragment(semanticFacts),
+        '',
+        renderReflectiveDigestFragment(reflectiveDigest),
+        '',
+        renderFeedbackFragment(feedbackRecent),
+        '',
         renderGroundingFragment(groundingFacts),
         '',
         cohortMix.promptFragment,
@@ -242,22 +312,79 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       // sensors are eligible. The attachments themselves are forwarded
       // verbatim and the adapter rebuilds the user message into a
       // multipart content array.
+      //
+      // Optional debate detour: when `deps.debate` is wired and
+      // `shouldDebate(req)` returns true (default: stakes ∈ {high,
+      // critical}), we replace the single sensor call with a multi-
+      // voice debate and use the synthesis text as the sensor output.
       const wantsThinking = req.stakes === 'high' || req.stakes === 'critical';
       const hasAttachments = (req.attachments?.length ?? 0) > 0;
       const required: Array<'vision' | 'thinking' | 'fast' | 'batch'> = [];
       if (wantsThinking) required.push('thinking');
       if (hasAttachments) required.push('vision');
-      const sensorResult = await router.call(
-        {
-          system,
-          userMessage: req.userMessage,
-          priorTurns,
-          extendedThinking: wantsThinking,
-          stakes: req.stakes,
-          ...(req.attachments ? { attachments: req.attachments } : {}),
-        },
-        required,
-      );
+
+      const debateEligible =
+        deps.debate &&
+        (req.stakes === 'high' || req.stakes === 'critical') &&
+        deps.debate.shouldDebate(req);
+
+      let sensorResult: SensorCallResult;
+      let debateRoundsCompleted: number | undefined;
+      let debateConverged: boolean | undefined;
+      if (debateEligible && deps.debate) {
+        const debateStart = clock().getTime();
+        try {
+          const outcome = await deps.debate.runDebate(req.userMessage, system);
+          // The runner stamps the synthesis with `maxRounds + 1`,
+          // and every other contribution carries a round in
+          // [1, maxRounds]. Count distinct rounds excluding the
+          // final synthesis stamp.
+          const allRounds = outcome.contributions.map((c) => c.round);
+          const synthesisStamp = allRounds.length > 0
+            ? Math.max(...allRounds)
+            : 0;
+          const debateRounds = new Set(
+            outcome.contributions
+              .filter((c) => c.round < synthesisStamp)
+              .map((c) => c.round),
+          );
+          debateRoundsCompleted = debateRounds.size;
+          debateConverged = outcome.converged;
+          sensorResult = {
+            text: outcome.synthesis,
+            thought: null,
+            toolCalls: [],
+            latencyMs: clock().getTime() - debateStart,
+            modelId: '__debate__',
+            sensorId: '__debate__',
+          };
+        } catch {
+          // On debate failure, fall back to the single-shot path.
+          sensorResult = await router.call(
+            {
+              system,
+              userMessage: req.userMessage,
+              priorTurns,
+              extendedThinking: wantsThinking,
+              stakes: req.stakes,
+              ...(req.attachments ? { attachments: req.attachments } : {}),
+            },
+            required,
+          );
+        }
+      } else {
+        sensorResult = await router.call(
+          {
+            system,
+            userMessage: req.userMessage,
+            priorTurns,
+            extendedThinking: wantsThinking,
+            stakes: req.stakes,
+            ...(req.attachments ? { attachments: req.attachments } : {}),
+          },
+          required,
+        );
+      }
 
       // 8) normalize
       const normalised = normalize(sensorResult.text);
@@ -338,6 +465,10 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         cohortFingerprints: cohortMix.fingerprints,
         producedAt: capturedAt,
         latencyMs: clock().getTime() - startedAt,
+        ...(debateRoundsCompleted !== undefined
+          ? { debateRoundsCompleted }
+          : {}),
+        ...(debateConverged !== undefined ? { debateConverged } : {}),
       };
 
       if (reservoir) {
@@ -371,6 +502,17 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         // Fire-and-forget; never block the caller on persistence.
         void deps.provenanceSink.record(provenance).catch(() => undefined);
       }
+      // Episodic memory writes — fire-and-forget, never blocks the
+      // caller, errors swallowed.
+      writeEpisodicTurnTrace({
+        memory: deps.memory,
+        tenantId: memTenantId,
+        userId: memUserId,
+        threadId: req.threadId,
+        turnId: thoughtId,
+        userMessage: req.userMessage,
+        agentText: pickAgentTraceText(decision),
+      });
       void rng;
       return decision;
     },
@@ -474,6 +616,20 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         ? await deps.priorTurnsLoader(req.threadId)
         : [];
 
+      // 4b) hierarchical memory recall — semantic + reflective.
+      const memTenantId =
+        req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+      const memUserId = req.scope.actorUserId;
+      const semanticFacts = await loadSemanticFacts(deps.memory, memTenantId, memUserId);
+      const reflectiveDigest = await loadReflectiveDigest(deps.memory, memTenantId, memUserId);
+
+      // 4c) online-learning feedback recall.
+      const feedbackRecent = await loadFeedbackRecent(
+        deps.feedback,
+        memTenantId,
+        memUserId,
+      );
+
       // 5) cohort signal
       const cohortMix = deps.cohort
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
@@ -501,6 +657,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         '',
         `Behavioural directive: ${renderMindStateDirective(mindState)}`,
         `Verbosity directive: ${renderLoadDirective(loadOut)}`,
+        '',
+        renderSemanticMemoryFragment(semanticFacts),
+        '',
+        renderReflectiveDigestFragment(reflectiveDigest),
+        '',
+        renderFeedbackFragment(feedbackRecent),
         '',
         renderGroundingFragment(groundingFacts),
         '',
@@ -710,6 +872,16 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       if (deps.provenanceSink) {
         void deps.provenanceSink.record(provenance).catch(() => undefined);
       }
+      // Episodic memory writes — fire-and-forget.
+      writeEpisodicTurnTrace({
+        memory: deps.memory,
+        tenantId: memTenantId,
+        userId: memUserId,
+        threadId: req.threadId,
+        turnId: thoughtId,
+        userMessage: req.userMessage,
+        agentText: pickAgentTraceText(decision),
+      });
 
       if (decision.kind !== 'refusal') {
         yield { kind: 'confidence', vector: decision.confidence };
@@ -877,6 +1049,242 @@ function renderGroundingFragment(facts: ReadonlyArray<GroundingFact>): string {
     'Grounding facts (tenant-internal; cite by id when you use these):',
     ...lines,
   ].join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Memory hierarchy helpers — read at step 4, write at step 13.
+// Every entry point is wrapped: a failing memory port must NOT break
+// the main turn.
+// ─────────────────────────────────────────────────────────────────────
+
+const MEMORY_SEMANTIC_LIMIT = 10;
+const MEMORY_EPISODIC_SUMMARY_MAX = 500;
+
+async function loadSemanticFacts(
+  memory: MemoryHierarchy | undefined,
+  tenantId: string | null,
+  userId: string,
+): Promise<ReadonlyArray<SemanticFact>> {
+  if (!memory?.semantic || !userId) return [];
+  try {
+    return await memory.semantic.search({
+      tenantId,
+      userId,
+      limit: MEMORY_SEMANTIC_LIMIT,
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function loadReflectiveDigest(
+  memory: MemoryHierarchy | undefined,
+  tenantId: string | null,
+  userId: string,
+): Promise<ReflectiveDigest | null> {
+  if (!memory?.reflective || !userId) return null;
+  try {
+    const digests = await memory.reflective.latest({
+      tenantId,
+      userId,
+      periodKind: 'weekly',
+      n: 1,
+    });
+    return digests[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const FEEDBACK_RECALL_LIMIT = 10;
+const FEEDBACK_NEGATIVE_RATE_THRESHOLD = 0.25;
+const FEEDBACK_MAX_VERBATIM_CORRECTIONS = 3;
+const FEEDBACK_CORRECTION_TEXT_MAX = 200;
+
+async function loadFeedbackRecent(
+  feedback: FeedbackMemoryPort | undefined,
+  tenantId: string | null,
+  userId: string,
+): Promise<ReadonlyArray<FeedbackEntry>> {
+  if (!feedback || !tenantId || !userId) return [];
+  try {
+    return await feedback.recallRecent({
+      tenantId,
+      userId,
+      limit: FEEDBACK_RECALL_LIMIT,
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Render the "What I've learned from your feedback" fragment.
+ *
+ * Lists up to 3 verbatim recent corrections, then a per-category
+ * negative-rate sentence, and (when negativeRate > 0.25) appends a
+ * conservative directive instructing the sensor to cite every
+ * numerical claim and ask clarifying questions when uncertain.
+ *
+ * Empty / undefined input ⇒ empty fragment (compose() filters falsy
+ * lines, so the system prompt stays clean).
+ */
+function renderFeedbackFragment(
+  entries: ReadonlyArray<FeedbackEntry>,
+): string {
+  if (!entries || entries.length === 0) return '';
+
+  const corrections = entries
+    .filter((e) => e.signal === 'correction' && !!e.correctionText)
+    .slice(0, FEEDBACK_MAX_VERBATIM_CORRECTIONS);
+
+  const total = entries.length;
+  const negativeCount = entries.filter(
+    (e) => e.signal === 'thumbs-down' || e.signal === 'correction',
+  ).length;
+  const negativeRate = total > 0 ? negativeCount / total : 0;
+
+  // Per-category bucket. We only enumerate the negative buckets the
+  // user has actually tagged so the fragment stays compact.
+  const categoryCounts: Record<string, number> = {};
+  for (const e of entries) {
+    if (e.category && (e.signal === 'thumbs-down' || e.signal === 'correction')) {
+      categoryCounts[e.category] = (categoryCounts[e.category] ?? 0) + 1;
+    }
+  }
+  const dominantCategory = pickDominantCategory(categoryCounts);
+
+  const lines: string[] = ["What I've learned from your feedback:"];
+
+  if (corrections.length > 0) {
+    lines.push('  Recent corrections you gave me:');
+    for (const c of corrections) {
+      const text = (c.correctionText ?? '').slice(
+        0,
+        FEEDBACK_CORRECTION_TEXT_MAX,
+      );
+      lines.push(`    - "${text}"`);
+    }
+  }
+
+  // Always render the rate sentence so the model knows the weight
+  // even when no verbatim corrections were given (e.g. only thumbs).
+  if (dominantCategory) {
+    lines.push(
+      `  You've flagged ${negativeCount} of my ${total} recent answers as "${dominantCategory}" — be especially careful about that.`,
+    );
+  } else {
+    lines.push(
+      `  You've flagged ${negativeCount} of my ${total} recent answers as negative.`,
+    );
+  }
+
+  if (negativeRate > FEEDBACK_NEGATIVE_RATE_THRESHOLD) {
+    lines.push(
+      "  You've had a higher-than-usual rate of negative feedback. Be conservative; cite every numerical claim; ask clarifying questions when uncertain.",
+    );
+  }
+
+  return lines.join('\n');
+}
+
+function pickDominantCategory(
+  counts: Record<string, number>,
+): string | null {
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [cat, n] of Object.entries(counts)) {
+    if (n > bestCount) {
+      best = cat;
+      bestCount = n;
+    }
+  }
+  return best;
+}
+
+function renderSemanticMemoryFragment(
+  facts: ReadonlyArray<SemanticFact>,
+): string {
+  if (facts.length === 0) return '';
+  const lines = facts.map((f) => {
+    const valueStr = stringifyFactValue(f.value);
+    const conf = Math.round((Number(f.confidence) || 0) * 100);
+    return `  - ${f.key}: ${valueStr} (conf ${conf}%)`;
+  });
+  return ['What I remember about you:', ...lines].join('\n');
+}
+
+function renderReflectiveDigestFragment(
+  digest: ReflectiveDigest | null,
+): string {
+  if (!digest || !digest.summary) return '';
+  return ['Recent reflection:', `  - ${digest.summary}`].join('\n');
+}
+
+function stringifyFactValue(v: unknown): string {
+  if (v === null || v === undefined) return 'unknown';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try {
+    return JSON.stringify(v).slice(0, 200);
+  } catch {
+    return String(v);
+  }
+}
+
+interface EpisodicTurnTraceArgs {
+  readonly memory: MemoryHierarchy | undefined;
+  readonly tenantId: string | null;
+  readonly userId: string;
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly userMessage: string;
+  readonly agentText: string;
+}
+
+function writeEpisodicTurnTrace(args: EpisodicTurnTraceArgs): void {
+  const { memory, tenantId, userId, threadId, turnId, userMessage, agentText } = args;
+  if (!memory?.episodic || !userId) return;
+  // Fire-and-forget — never await; never let the side-channel break
+  // the main turn. Each call self-catches; we wrap in try anyway in
+  // case the port adapter throws synchronously.
+  try {
+    void memory.episodic
+      .record({
+        tenantId,
+        userId,
+        threadId,
+        turnId,
+        kind: 'user-message',
+        summary: (userMessage ?? '').slice(0, MEMORY_EPISODIC_SUMMARY_MAX),
+      })
+      .catch(() => undefined);
+  } catch {
+    // ignored
+  }
+  try {
+    void memory.episodic
+      .record({
+        tenantId,
+        userId,
+        threadId,
+        turnId,
+        kind: 'agent-action',
+        summary: (agentText ?? '').slice(0, MEMORY_EPISODIC_SUMMARY_MAX),
+      })
+      .catch(() => undefined);
+  } catch {
+    // ignored
+  }
+}
+
+function pickAgentTraceText(decision: BrainDecision): string {
+  if (decision.kind === 'answer' || decision.kind === 'softened') {
+    return decision.text ?? '';
+  }
+  // Refusals: carry the reason instead so the trail still records WHY
+  // the agent acted (or refused to act).
+  return decision.reason ?? 'refusal';
 }
 
 function formatGroundingValue(f: GroundingFact): string {
