@@ -30,7 +30,7 @@ export function parseSseBuffer(buffer: string): ParseStep {
   const events: SseEvent[] = [];
   let work = buffer;
 
-  while (true) {
+  for (;;) {
     const sep = work.indexOf('\n\n');
     if (sep === -1) break;
     const raw = work.slice(0, sep);
@@ -70,7 +70,7 @@ export async function readSseStream(
   let buffer = '';
 
   try {
-    while (true) {
+    for (;;) {
       if (signal?.aborted) {
         await reader.cancel();
         return;

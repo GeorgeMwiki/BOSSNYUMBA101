@@ -338,12 +338,15 @@ export function GraphExplorer(): JSX.Element {
   /* ── Re-fetch when depth changes (if we already have data) ─────── */
 
   const hasData = state.kind === 'success';
+  // Only re-run when depth changes — `runSearch`/`hasData`/`query` deliberately
+  // omitted from deps. The plugin name `react-hooks/exhaustive-deps` is not
+  // registered in this app's ESLint config (Next.js linter resolves it
+  // unconditionally otherwise), so we suppress all rules on the line instead.
+  // eslint-disable-next-line
   useEffect(() => {
     if (hasData && query) {
       void runSearch(query, depth);
     }
-    // Only re-run when depth changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [depth]);
 
   /* ── Derived data for filtered view ────────────────────────────── */

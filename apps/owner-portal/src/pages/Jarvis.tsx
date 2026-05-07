@@ -3,22 +3,38 @@
  *
  * Property owners get their own first-person AI counterpart sitting on
  * top of the central-intelligence brain kernel. This page is the
- * owner's daily chat surface — sends thoughts to the owner Jarvis
- * surface and renders the typed decision (citations, confidence,
- * persona greeting).
+ * owner's daily chat surface and reuses the same brain-DNA primitives
+ * as the platform-tier console (memory, debate, world model, online
+ * learning, agency, voice, vision, citations) — the only thing that
+ * differs is the surface tier (`owner` vs `platform`) and the persona.
  *
  * Mount point: /jarvis
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
-import { useJarvis } from '@bossnyumba/chat-ui';
+import {
+  MicButton,
+  createWebSpeechAudioPort,
+  useJarvis,
+  type VoiceAudioPort,
+} from '@bossnyumba/chat-ui';
 
 const DEFAULT_GATEWAY = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
+// UI-side cap. The gateway enforces 10 / 4 MiB per attachment as the
+// hard server-side limit; the console intentionally caps lower so an
+// owner does not staple a presentation deck onto a chat turn.
+const MAX_IMAGES_PER_TURN = 5;
+const ALLOWED_IMAGE_MIME = 'image/png,image/jpeg,image/gif,image/webp';
+
 export default function Jarvis(): JSX.Element {
   const [draft, setDraft] = useState('');
-  const [threadId] = useState(() => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [threadId] = useState(
+    () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  );
+  const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const client = useMemo(
     () =>
@@ -32,19 +48,66 @@ export default function Jarvis(): JSX.Element {
     [],
   );
 
-  const { turns, status, error, persona, think, reset } = useJarvis({
+  // Voice port — instantiated only on the client (Web Speech needs `window`).
+  const [audioPort, setAudioPort] = useState<VoiceAudioPort | null>(null);
+  useEffect(() => {
+    setAudioPort(createWebSpeechAudioPort());
+  }, []);
+
+  const {
+    turns,
+    status,
+    error,
+    persona,
+    think,
+    thinkWithAttachments,
+    reset,
+    isListening,
+    startListening,
+    stopListening,
+  } = useJarvis({
     client,
     threadId,
     defaultStakes: 'medium',
     defaultTier: 'portfolio',
+    ...(audioPort ? { voice: { audio: audioPort, speakReplies: true } } : {}),
   });
+
+  function onPickImages(e: React.ChangeEvent<HTMLInputElement>): void {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setPendingImages((prev) => {
+      const seen = new Set(prev.map((f) => `${f.name}::${f.size}`));
+      const merged: File[] = [...prev];
+      for (const f of files) {
+        const k = `${f.name}::${f.size}`;
+        if (!seen.has(k)) {
+          merged.push(f);
+          seen.add(k);
+        }
+      }
+      return merged.slice(0, MAX_IMAGES_PER_TURN);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeImage(idx: number): void {
+    setPendingImages((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     const text = draft.trim();
-    if (!text || status === 'thinking') return;
+    if (status === 'thinking') return;
+    if (!text && pendingImages.length === 0) return;
     setDraft('');
-    await think(text);
+    if (pendingImages.length > 0) {
+      const images = pendingImages;
+      setPendingImages([]);
+      await thinkWithAttachments(text, images);
+    } else {
+      await think(text);
+    }
   }
 
   return (
@@ -89,6 +152,25 @@ export default function Jarvis(): JSX.Element {
                         {t.decision.kind === 'refusal' ? ' · refused' : ''}
                       </div>
                     ) : null}
+                    {t.role === 'assistant' &&
+                    t.decision?.citations &&
+                    t.decision.citations.length > 0 ? (
+                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {t.decision.citations.map((cite) => (
+                          <li
+                            key={cite.id}
+                            className="rounded border border-border bg-surface px-2 py-1"
+                          >
+                            <span className="font-medium text-foreground">
+                              {cite.label}
+                            </span>{' '}
+                            <span className="text-muted-foreground">
+                              · grounded {(cite.confidence * 100).toFixed(0)}%
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ))
               )}
@@ -100,18 +182,73 @@ export default function Jarvis(): JSX.Element {
               ) : null}
             </div>
 
+            {pendingImages.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {pendingImages.map((f, i) => (
+                  <span
+                    key={`${f.name}_${f.size}_${i}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-sunken px-3 py-1 text-xs text-foreground"
+                  >
+                    <span className="max-w-[14rem] truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      aria-label={`Remove ${f.name}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
             <form onSubmit={onSubmit} className="flex gap-2">
               <input
                 type="text"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask your Portfolio Concierge…"
+                placeholder={isListening ? 'Listening…' : 'Ask your Portfolio Concierge…'}
                 disabled={status === 'thinking'}
                 className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
               />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_MIME}
+                multiple
+                onChange={onPickImages}
+                className="hidden"
+                aria-label="Attach images"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={status === 'thinking' || pendingImages.length >= MAX_IMAGES_PER_TURN}
+                aria-label="Attach images"
+                title={
+                  pendingImages.length >= MAX_IMAGES_PER_TURN
+                    ? `Up to ${MAX_IMAGES_PER_TURN} images per turn`
+                    : 'Attach images (lease scan, property photo, damage assessment)'
+                }
+                className="rounded border border-border bg-surface px-3 py-2 text-sm text-foreground disabled:opacity-50"
+              >
+                Image
+              </button>
+              {audioPort?.sttSupported ? (
+                <MicButton
+                  isListening={isListening}
+                  onStart={startListening}
+                  onStop={stopListening}
+                  disabled={status === 'thinking'}
+                />
+              ) : null}
               <button
                 type="submit"
-                disabled={status === 'thinking' || !draft.trim()}
+                disabled={
+                  status === 'thinking' ||
+                  (!draft.trim() && pendingImages.length === 0)
+                }
                 className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 Send

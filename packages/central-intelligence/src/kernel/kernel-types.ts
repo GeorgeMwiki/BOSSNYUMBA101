@@ -394,3 +394,35 @@ export interface MemoryHierarchy {
 // (FeedbackMemoryPort, FeedbackEntry, FeedbackSignal are re-exported at
 // the top of this file alongside the memory imports.)
 export type _FeedbackMemoryPortMarker = FeedbackMemoryPort;
+
+// ─────────────────────────────────────────────────────────────────────
+// Agency port — optional. When wired, the kernel's step 4 (memory
+// recall) reads the user's ACTIVE goals and mixes them into the system
+// prompt as "**What you've asked me to work on:**" so the next turn
+// references the persistent objective stack. The full executor +
+// wake-loop live above the kernel; the kernel only consumes the goals
+// reader for prompt mix-in.
+//
+// The full agency surface (typed write-tools, executor, wake-loop) is
+// re-exported under the kernel's `agency` namespace; this port is the
+// minimal slice the kernel itself needs.
+// ─────────────────────────────────────────────────────────────────────
+
+import type {
+  ExecutorOutcome,
+  GoalsPort,
+  PlanDecomposerArgs,
+  PlanDecomposerDeps,
+  DecomposedStep,
+} from './agency/index.js';
+
+export interface AgencyKernelPort {
+  readonly goals: GoalsPort;
+  readonly executor: { executeGoal(id: string): Promise<ExecutorOutcome> };
+  readonly planDecomposer: (
+    args: PlanDecomposerArgs,
+    deps: PlanDecomposerDeps,
+  ) => Promise<ReadonlyArray<DecomposedStep>>;
+}
+
+export type _AgencyKernelPortMarker = AgencyKernelPort;

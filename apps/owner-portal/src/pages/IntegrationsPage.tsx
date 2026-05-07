@@ -1,45 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslations } from 'next-intl';
-import {
-  Plug,
-  Webhook,
-  Key,
-  CheckCircle,
-  AlertTriangle,
-  ArrowUpRight,
-  Settings,
-} from 'lucide-react';
+import { Webhook, Key, ArrowUpRight } from 'lucide-react';
 
-interface Integration {
-  id: string;
-  name: string;
-  type: string;
-  status: 'connected' | 'disconnected' | 'error';
-  description: string;
-  lastSync: string | null;
-}
-
-function buildIntegrations(t: (k: string) => string): Integration[] {
-  return [
-    { id: '1', name: 'M-Pesa', type: t('types.payment'), status: 'connected', description: t('items.mpesa'), lastSync: new Date().toISOString() },
-    { id: '2', name: 'SendGrid', type: t('types.email'), status: 'connected', description: t('items.sendgrid'), lastSync: new Date().toISOString() },
-    { id: '3', name: "Africa's Talking", type: t('types.sms'), status: 'connected', description: t('items.africasTalking'), lastSync: new Date(Date.now() - 3600000).toISOString() },
-    { id: '4', name: 'Stripe', type: t('types.payment'), status: 'disconnected', description: t('items.stripe'), lastSync: null },
-    { id: '5', name: 'Google Analytics', type: t('types.analytics'), status: 'connected', description: t('items.googleAnalytics'), lastSync: new Date(Date.now() - 86400000).toISOString() },
-    { id: '6', name: 'Slack', type: t('types.notifications'), status: 'disconnected', description: t('items.slack'), lastSync: null },
-  ];
-}
-
-const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
-  connected: { color: 'text-green-600', icon: CheckCircle },
-  disconnected: { color: 'text-gray-400', icon: AlertTriangle },
-  error: { color: 'text-red-600', icon: AlertTriangle },
-};
-
+/**
+ * IntegrationsPage — owner-portal hub for third-party integrations.
+ *
+ * Acts as a navigation surface only. The previous implementation
+ * rendered a hand-built integrations grid (M-Pesa, SendGrid, Stripe…)
+ * with hardcoded `connected` / `disconnected` statuses and made-up
+ * `lastSync` timestamps. None of that data was real, and the Connect /
+ * Configure buttons did nothing. The grid has been removed; reintroduce
+ * once the gateway exposes a real
+ * `GET /integrations` listing with live status and sync metadata.
+ */
 export default function IntegrationsPage() {
   const t = useTranslations('integrationsPage');
-  const integrations = buildIntegrations(t);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -53,7 +29,7 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      {/* Quick Links */}
+      {/* Quick Links — link out to the real subpages where live data lives. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link
           to="/integrations/webhooks"
@@ -85,49 +61,6 @@ export default function IntegrationsPage() {
           </div>
           <ArrowUpRight className="h-5 w-5 text-gray-400" />
         </Link>
-      </div>
-
-      {/* Integrations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {integrations.map((integration) => {
-          const config = statusConfig[integration.status];
-          return (
-            <div
-              key={integration.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Plug className="h-5 w-5 text-gray-600" />
-                </div>
-                <span
-                  className={`inline-flex items-center gap-1 text-xs font-medium ${
-                    config.color
-                  }`}
-                >
-                  <config.icon className="h-3 w-3" />
-                  {integration.status}
-                </span>
-              </div>
-              <h3 className="font-semibold text-gray-900">{integration.name}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{integration.type}</p>
-              <p className="text-sm text-gray-600 mt-2">
-                {integration.description}
-              </p>
-              {integration.lastSync && (
-                <p className="text-xs text-gray-400 mt-3">
-                  {t('lastSync', { date: new Date(integration.lastSync).toLocaleString() })}
-                </p>
-              )}
-              <div className="mt-4 flex gap-2">
-                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50">
-                  <Settings className="h-4 w-4" />
-                  {integration.status === 'connected' ? t('configure') : t('connect')}
-                </button>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

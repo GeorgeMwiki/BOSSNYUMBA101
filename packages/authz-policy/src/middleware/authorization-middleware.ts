@@ -215,8 +215,11 @@ export function requirePermission(permission: string) {
   ) {
     return async function (this: TThis, ...args: TArgs): Promise<TReturn> {
       // This would need access to the auth context and authorization service
-      // In practice, this would be injected or accessed via async local storage
-      console.log(`Checking permission: ${permission}`);
+      // In practice, this would be injected or accessed via async local storage.
+      // LINT: console.log left intentionally — replace with logger when wired.
+      // Stub no-op: real permission resolution lives in the authorization
+      // service; the decorator is a placeholder pending DI integration.
+      void permission;
       return target.apply(this, args);
     };
   };

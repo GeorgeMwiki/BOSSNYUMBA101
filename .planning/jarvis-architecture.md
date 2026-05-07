@@ -285,18 +285,45 @@ Three environment variables flip the brain from dev-stub to live:
 
 The Anthropic SDK is dynamically imported so the gateway can boot without the package installed; if `import('@anthropic-ai/sdk')` fails, the composition layer logs once and falls back to the stub sensor.
 
+These three are the *brain-on/off* switches. The brain-DNA layer above
+the kernel (memory, market data, public surface rate-limit, NEXT_PUBLIC
+client-side URLs, etc.) consumes a second tier of variables —
+`MARKET_DATA_PROVIDER` + `ZILLOW_API_KEY` + `AIRBNB_API_KEY`,
+`PUBLIC_RATE_LIMIT_SALT`, `NEXT_PUBLIC_API_GATEWAY_URL`,
+`NEXT_PUBLIC_OWNER_PORTAL_URL`. See RUNBOOK §1.5 for the consolidated
+inventory.
+
 ---
 
 ## 9. Migration roster — must run before live testing
 
-The kernel substrate and approval gate require two SQL migrations to be applied against the configured `DATABASE_URL`:
+The brain-DNA arc spans migrations **0114 through 0123**. The first
+three (`0114`, `0115`, `0116`) are the audit + approvals + privacy
+floor — without them the kernel boots in-memory and the audit chain
+resets on every gateway restart. Migrations 0117–0123 unlock specific
+brain-DNA modules (currency, branding, market-data cache, memory
+hierarchy, online-learning feedback, agency layer); see RUNBOOK §1.2
+for the full ten-row table and verification queries.
 
 | Migration | File | Tables introduced |
 |---|---|---|
 | `0114_kernel_substrate.sql` | `packages/database/src/migrations/0114_kernel_substrate.sql` | `kernel_cot_reservoir`, `kernel_persona_drift_events`, `kernel_provenance` (plus enums `kernel_stakes`, `kernel_tier`, `kernel_scope_kind`, `persona_drift_violation`, `persona_drift_severity`) |
 | `0115_sovereign_approvals.sql` | `packages/database/src/migrations/0115_sovereign_approvals.sql` | `sovereign_approvals` (plus enums `sovereign_approval_status`, `sovereign_approval_stakes`) |
+| `0116_platform_privacy_budget.sql` | same path | `platform_privacy_budget`, `platform_privacy_budget_reservations` (DP epsilon ledger + reservation log) |
+| `0117_currency_rates.sql` | same path | `currency_rates` (ISO-4217 → USD FX snapshot for the platform-overview revenue normaliser) |
+| `0118_persona_branding.sql` | same path | `persona_branding` keyed by `(tenant_id, surface)` — re-skins displayName / openingPreamble / voiceProfileId |
+| `0119_currency_preferences.sql` | same path | `currency_preferences` — user → tenant → platform-default resolution chain |
+| `0120_market_data_cache.sql` | same path | `market_data_cache` — TTL cache for Zillow / Airbnb / regional rent feeds |
+| `0121_kernel_memory_stores.sql` | same path | `kernel_memory_episodic`, `_semantic`, `_procedural`, `_reflective` (four-tier memory hierarchy) |
+| `0122_kernel_feedback.sql` | same path | `kernel_feedback` — thumbs / explicit-correction signal store for online learning |
+| `0123_kernel_agency.sql` | same path | `kernel_goals` (persistent objective stack) and `kernel_action_audit` (append-only every-transition log) |
 
-If either migration is missing, the gateway will boot — the composition layer skips the Drizzle sinks when the DB query for the table fails — but the audit chain becomes in-memory and resets on every gateway restart. Production must apply both before serving live thinks.
+All ten migrations are idempotent (`CREATE … IF NOT EXISTS` /
+`DO $$ EXCEPTION duplicate_object` guards) and safe to re-run on an
+already-migrated environment. The composition layer in
+`services/api-gateway/src/composition/sovereign.ts` skips the
+Drizzle-backed sinks when the corresponding table query fails, so a
+partial migration set still boots — it just runs in-memory.
 
 ---
 
@@ -411,7 +438,81 @@ A HQ employee at `apps/admin-platform-portal/` opens `/jarvis`, types "what is t
 
 ---
 
-## 14. File map (essential paths)
+## 14. Brain-DNA layer — modules above the kernel
+
+The 13-step `think()` pipeline in §13 is the *cognitive core*. Above
+it, the brain-DNA layer adds nine sub-modules that give the kernel
+persistent memory, world simulation, internal debate, online learning,
+self-knowledge, agency, voice, and per-tenant branding. Every module
+is composable behind a duck-typed port; the api-gateway composition
+root binds the production adapter and tests bind in-memory fakes.
+
+| Module | Code path | Role above the kernel |
+|---|---|---|
+| memory | `packages/central-intelligence/src/kernel/memory/` | Four-tier hierarchy: episodic / semantic / procedural / reflective. Read at step 4 of `think()`; written by the surface routers and the consolidation runner. Backed by 0121. |
+| consolidation | `packages/central-intelligence/src/kernel/consolidation/` | Runs offline (cron) — extracts facts, detects procedural patterns, writes weekly digests, purges TTL'd episodes, decays old facts. |
+| world-model | `packages/central-intelligence/src/kernel/world-model/` | Forward-simulation tools (`forecastPropertyTrajectory`, `forecastTenantArrearsTrajectory`, `forecastOwnerCashflow`, `detectMarketRegime`) the kernel can invoke through the tool registry. |
+| debate | `packages/central-intelligence/src/kernel/debate/` | High-stakes deliberation — `runDebate(question, context, deps, config)` for N-voice × R-round synthesis, `buildCounterfactuals` + `runCounterfactuals` for "what-if" perturbations. |
+| feedback | `packages/central-intelligence/src/kernel/feedback/` | Online-learning side-channel — at step 4 the kernel reads recent thumbs / corrections and biases the next turn toward conservative output when the negative-rate is elevated. Backed by 0122. |
+| introspection | `packages/central-intelligence/src/kernel/introspection/` | Decision-trace replay (`runDecisionReplay`) re-runs historical thoughts through current logic to detect drift / regression / fairness anomalies; `CAPABILITY_CARDS` document each persona's claims, refusals, and uncertainty bands. |
+| agency | `packages/central-intelligence/src/kernel/agency/` | Persistent `goals/` + plan decomposer; typed `action-tools/` registry; `executor/` with autonomy policy + audit; `initiative/` wake-loop. Backed by 0123. |
+| voice | `packages/central-intelligence/src/voice/` + `kernel/voice-bridge.ts` | Voice resolver maps `ScopeContext` → `VoiceBinding`; voice-bridge marries the cognitive persona with the voice-persona-dna profile (tone / register / code-switching / greeting / closing / taboos). |
+| branding | `packages/central-intelligence/src/kernel/branding.ts` (+ `services/persona-branding.service.ts`) | Per-tenant `(tenant_id, surface)` overrides re-skin `displayName` / `openingPreamble` / `voiceProfileId` immutably without replacing the surface-default persona. Backed by 0118. |
+
+### Two-mode invocation
+
+| Mode | Entry | Trigger |
+|---|---|---|
+| In-process — read-only at step 4 of `think()` | `kernel.think(req)` | Memory recall, feedback recall, capability-card lookup. |
+| In-process — tool call from the kernel | Tool registry | World-model forecasts, debate, counterfactuals, market-data adapters. |
+| Out-of-process — scheduled | `consolidation-runner.ts` CLI; `runWakeCycle` library | The brain's "sleep" cycle and the proactive-initiative loop. See RUNBOOK §6 for cron wiring. |
+
+### Online-learning loop in detail
+
+1. User sends a turn → kernel writes one episodic row.
+2. User leaves a thumbs-down or correction → gateway writes a
+   `kernel_feedback` row.
+3. Next turn from the same user → step 4 of `think()` reads the
+   recent feedback through the feedback port; the system prompt is
+   augmented with an apology / conservative-bias hint.
+4. Overnight, the consolidation cycle re-reads episodes and writes
+   higher-confidence facts to `kernel_memory_semantic` whenever the
+   same fact recurred (`evidence_count` increments).
+5. Procedural patterns detected over the same window become
+   ranked-by-success-rate suggestions for future tool invocations.
+
+### Agency layer in detail
+
+The agency layer is the kernel's "acts in full control" slice:
+
+- `goals.open(...)` writes a `kernel_goals` row with a JSON
+  `steps` decomposition produced by the plan-decomposer.
+- `executor.executeGoal(goalId)` walks each step, calls the typed
+  action-tool, writes one `kernel_action_audit` row per transition
+  (`running` → `done` | `failed` | `awaiting-approval` | `skipped` |
+  `unknown-tool`).
+- `awaiting-approval` outcomes are routed through the existing
+  four-eye `sovereign_approvals` gate (§12) — sovereign-tier writes
+  remain double-signed even when the executor proposes them.
+- The wake-loop runs each registered `WakeTrigger.detect(...)`,
+  opens any returned goals, and immediately executes them — so the
+  brain can act between user turns when a deterministic detector
+  fires (arrears spike, vacancy-rate jump, expiring leases).
+
+### Per-tenant branding in detail
+
+Tenants (typically agencies) configure overrides in the
+`persona_branding` table keyed by `(tenant_id, surface)`. An empty
+`surface` row is the surface-agnostic fallback; surface-specific rows
+override it. The kernel loads the override at request time and applies
+it IMMUTABLY — a fresh `PersonaIdentity` is returned, the base persona
+is left untouched, and `voice` / `tone` / `taboos` / `firstPersonNoun`
+all flow through unchanged. Voice profile id is consumed by the
+voice-bridge separately.
+
+---
+
+## 15. File map (essential paths)
 
 ```
 packages/central-intelligence/src/
@@ -431,27 +532,50 @@ packages/central-intelligence/src/
 │   ├── proactive-nudge.ts         // NudgeRouter
 │   ├── cohort-signal.ts           // CohortSource port + buildCohortMixin()
 │   ├── cot-reservoir.ts           // sampled chain-of-thought reservoir
+│   ├── branding.ts                // per-tenant persona overrides (table 0118)
+│   ├── voice-bridge.ts            // marries cognitive persona + voice-persona-dna profile
+│   ├── public-inviolable.ts       // hard refusal gate for the unauthenticated public surface
+│   ├── memory/                    // four-tier memory ports (table 0121)
+│   ├── consolidation/             // "sleep" cycle — facts / patterns / digests / TTL / decay
+│   ├── world-model/               // trajectory + regime-detector tools
+│   ├── debate/                    // N-voice × R-round + counterfactuals
+│   ├── feedback/                  // online-learning side-channel (table 0122)
+│   ├── introspection/             // decision-trace replay + capability cards
+│   ├── agency/                    // goals + action-tools + executor + wake-loop (table 0123)
 │   ├── sources/dp-cohort-source.ts
 │   └── sensors/anthropic-sensor.ts, anthropic-judge.ts
+└── voice/resolver.ts              // ScopeContext → VoiceBinding
 
 services/api-gateway/src/
 ├── routes/
 │   ├── jarvis-router-factory.ts   // createJarvisRouter() + 5 pre-configured surface routers
 │   ├── admin-jarvis.router.ts     // thin re-export of orgAdminJarvisRouter
+│   ├── platform-overview.router.ts
 │   └── …
 ├── composition/
 │   ├── sovereign.ts               // getSovereignBrain({ tenantId }) — env-driven boot
+│   ├── consolidation-runner.ts    // CLI + library entry for the brain's "sleep" cycle
 │   └── db-client.ts               // getDb()
+├── middleware/public-ai-rate-limit.ts  // sliding-window guard on /api/v1/public/*
 └── index.ts                       // mounts /api/v1/{customer,owner,manager,admin,platform}/jarvis
 
 packages/database/src/
 ├── migrations/
-│   ├── 0114_kernel_substrate.sql  // CoT reservoir, drift events, provenance
-│   └── 0115_sovereign_approvals.sql // four-eye approval gate
+│   ├── 0114_kernel_substrate.sql       // CoT reservoir, drift events, provenance
+│   ├── 0115_sovereign_approvals.sql    // four-eye approval gate
+│   ├── 0116_platform_privacy_budget.sql // DP epsilon ledger + reservation log
+│   ├── 0117_currency_rates.sql         // FX snapshot
+│   ├── 0118_persona_branding.sql       // per-tenant persona overrides
+│   ├── 0119_currency_preferences.sql   // user / tenant / platform display-currency
+│   ├── 0120_market_data_cache.sql      // TTL cache for Zillow / Airbnb
+│   ├── 0121_kernel_memory_stores.sql   // episodic / semantic / procedural / reflective
+│   ├── 0122_kernel_feedback.sql        // thumbs / corrections store
+│   └── 0123_kernel_agency.sql          // kernel_goals + kernel_action_audit
 └── services/
     ├── kernel-grounding.service.ts
     ├── kernel-memory.service.ts
-    └── kernel-substrate.service.ts
+    ├── kernel-substrate.service.ts
+    └── persona-branding.service.ts
 
 packages/api-sdk/src/jarvis-client.ts   // createJarvisClient(client, surface)
 packages/chat-ui/src/hooks/useJarvis.ts // useJarvis hook (headless)
@@ -466,7 +590,7 @@ apps/
 
 ---
 
-## 15. Quick reference — at-a-glance answers
+## 16. Quick reference — at-a-glance answers
 
 - **Where is the persona catalogue?** `packages/central-intelligence/src/kernel/identity.ts`.
 - **Where is the surface → persona map?** Same file, `SURFACE_DEFAULT_PERSONA`.
@@ -478,3 +602,9 @@ apps/
 - **Can a tenant resident escalate themselves to an industry-tier query?** No. The factory tightens the per-request `tier` enum to consumer tiers, and even if the body bypassed Zod, `isTierCompatibleWithScope` would refuse it.
 - **Can two users in the same tenant share a cached thought?** No. `thoughtCacheKey` mixes in `actorUserId`.
 - **Does `admin-portal` mean BossNyumba HQ?** No — and `admin-portal` is **deprecated**. HQ is `admin-platform-portal`. Customer-side admin work belongs in `owner-portal` (owners are the admins; they invite their own admin sub-users there). See the DO NOT CONFUSE callout in Section 1 and `apps/admin-portal/DEPRECATED.md`.
+- **Where do the brain-DNA modules live?** §14 above; code under `packages/central-intelligence/src/kernel/{memory,consolidation,world-model,debate,feedback,introspection,agency}/` plus `voice/` and `kernel/branding.ts`.
+- **How does the brain learn from feedback?** Thumbs / corrections written to `kernel_feedback` (table 0122) are read at step 4 of the next `think()` and bias the system prompt. Overnight, the consolidation cycle reinforces semantic facts whose `evidence_count` increased. See §14 "Online-learning loop".
+- **Where is the consolidation runner wired?** `services/api-gateway/src/composition/consolidation-runner.ts`. RUNBOOK §6 has the cron wiring.
+- **How does a tenant agency rebrand the AI?** Insert a row in `persona_branding` keyed by `(tenant_id, surface)` with a `display_name` / `opening_preamble` / `voice_profile_id`. The kernel applies the override immutably; voice / tone / taboos / first-person-noun all flow through unchanged. See §14 "Per-tenant branding".
+- **Does the brain take action on its own?** Yes — through the agency layer (§14). Persistent goals decompose into typed action-tool calls; the executor walks each step and writes one `kernel_action_audit` row per transition; sovereign-tier writes still pass through the four-eye gate (§12).
+- **Which user-memory rules are load-bearing here?** `feedback_user_currency_choice.md` (migration 0119 is its implementation) and `feedback_world_starting_tz.md` (no hard-coded jurisdiction / currency / locale branches in business logic).

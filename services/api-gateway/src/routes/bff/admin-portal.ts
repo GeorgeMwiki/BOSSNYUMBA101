@@ -11,8 +11,23 @@
  * — this BFF gives the admin landing page its top-of-screen tiles.
  *
  * Endpoints:
- *   GET /overview   — tenant-wide counts + balances
- *   GET /tenants    — convenience alias for superadmin listing (delegated)
+ *   GET /overview         — tenant-wide counts + balances
+ *   GET /tenants          — convenience alias for superadmin listing (delegated)
+ *   GET /webhooks         — frontend gap-fix: honest empty list until the
+ *                            outbound webhook registry has a UI surface.
+ *   GET /api-keys         — frontend gap-fix: honest empty list until the
+ *                            api-key registry exposes a list endpoint.
+ *   GET /roles            — frontend gap-fix: honest empty list until the
+ *                            roles read-model is exported here.
+ *   GET /roles/audit      — frontend gap-fix: honest empty list until the
+ *                            role-change audit trail is wired.
+ *
+ * The four "honest empty" handlers below intentionally return
+ * `{ success: true, data: [] }` rather than 503 / `notImplemented` so the
+ * owner-portal admin dashboard can render an empty state instead of a
+ * spinner that never resolves. Each handler has a clear TODO marker
+ * pointing at the backend service that needs to be wired before they
+ * begin returning real rows.
  */
 
 import { Hono } from 'hono';
@@ -81,6 +96,48 @@ app.get('/overview', async (c) => {
       fallback: 'Query failed',
     });
   }
+});
+
+// ----------------------------------------------------------------------------
+// Frontend gap-fix endpoints — owner-portal calls these for the admin
+// dashboard cards. The underlying domain services either don't expose a
+// list endpoint yet or live behind a registry that the gateway hasn't
+// surfaced. Returning an empty array (success: true) lets the page render
+// the empty state cleanly. When the underlying services land, swap the
+// stub for a real query.
+// ----------------------------------------------------------------------------
+
+// GET /webhooks — outbound webhook subscriptions registry.
+// TODO(api-gateway): wire to webhook-delivery service / outbound-webhooks
+// table once the read endpoint lands. Today only the inbound delivery
+// receipt path (`/notification-webhooks/*`) and the DLQ
+// (`/webhooks` from createWebhookDlqRouter) exist; the registry of
+// subscriptions a tenant has configured is not exposed.
+app.get('/webhooks', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+// GET /api-keys — tenant-scoped API key listing.
+// TODO(api-gateway): wire to assertApiKeyConfig registry. The current
+// `api-key-registry` middleware enforces presence at boot but does not
+// expose a list/CRUD surface for the UI.
+app.get('/api-keys', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+// GET /roles — tenant-scoped roles read-model.
+// TODO(api-gateway): wire to a Drizzle query over `roles` once the role
+// listing is gated behind the same RBAC predicates the assignment flow
+// uses. Returning empty here until then so the page renders.
+app.get('/roles', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
+// GET /roles/audit — recent role change audit entries.
+// TODO(api-gateway): wire to audit-trail (`/audit-trail/entries` filter
+// for role-change events) once that filter is exposed.
+app.get('/roles/audit', (c) => {
+  return c.json({ success: true, data: [] });
 });
 
 export const adminPortalRouter = app;

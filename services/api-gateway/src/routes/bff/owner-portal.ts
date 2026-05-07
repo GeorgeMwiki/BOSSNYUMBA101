@@ -676,4 +676,17 @@ app.post('/documents/:id/sign', async (c) => {
   return c.json({ success: true, data: { id: row.id, signedAt: metadata.signedAt } });
 });
 
+// ----------------------------------------------------------------------------
+// Frontend gap-fix endpoint — owner-portal CoOwnerInviteModal renders the
+// co-owners list above the "+ Invite" button. The underlying co-owner
+// invitation pipeline is still in design (a co-owner becomes a USER row
+// with role=OWNER scoped to the same `propertyAccess` set as the inviter).
+// Returning an empty array keeps the page renderable until that lands.
+// TODO(api-gateway): join `users` ⨝ `user_property_access` filtered to
+// rows where the inviter shares any `propertyAccess[*]`.
+// ----------------------------------------------------------------------------
+app.get('/co-owners', (c) => {
+  return c.json({ success: true, data: [] });
+});
+
 export const ownerPortalRouter = app;

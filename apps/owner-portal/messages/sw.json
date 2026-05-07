@@ -749,6 +749,17 @@
     "tenant": "Mpangaji"
   },
   "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Simamia vituo vya webhook vya nje katika jukwaa",
+    "addWebhook": "Ongeza webhook",
+    "totalWebhooks": "Jumla ya webhooks",
+    "active": "Inayotumika",
+    "inactive": "Haitumiki",
+    "failing": "Inashindwa",
+    "platformLevel": "Kiwango cha jukwaa",
+    "searchWebhooks": "Tafuta webhooks…",
+    "allStatus": "Hali zote",
+    "errorLoad": "Kupakia webhooks kumeshindikana. Tafadhali jaribu tena.",
     "emptyTitle": "Hakuna webhooks zilizopatikana",
     "emptyDescription": "Ongeza webhook kupokea matukio ya wakati halisi kutoka kwa jukwaa."
   },

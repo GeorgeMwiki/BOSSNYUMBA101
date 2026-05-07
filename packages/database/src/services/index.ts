@@ -180,3 +180,28 @@ export {
   type RecallArgs as FeedbackRecallArgs,
   type RollupArgs as FeedbackRollupArgs,
 } from './kernel-feedback.service.js';
+
+// Kernel agency (migration 0123) — Drizzle-backed GoalsPort +
+// ActionAuditSink. The kernel reads ACTIVE goals at step 4 (memory
+// recall) and the wake-loop opens new goals through the same service.
+// The audit sink is append-only.
+export {
+  createKernelGoalsService,
+  type Goal as KernelGoal,
+  type GoalListArgs as KernelGoalListArgs,
+  type GoalMetrics as KernelGoalMetrics,
+  type GoalOpenArgs as KernelGoalOpenArgs,
+  type GoalPriority as KernelGoalPriority,
+  type GoalStatus as KernelGoalStatus,
+  type GoalStep as KernelGoalStep,
+  type GoalStepDraft as KernelGoalStepDraft,
+  type GoalStepStatus as KernelGoalStepStatus,
+  type GoalUpdateStepArgs as KernelGoalUpdateStepArgs,
+  type KernelGoalsService,
+} from './kernel-goals.service.js';
+export {
+  createKernelActionAuditService,
+  type ActionAuditDecision as KernelActionAuditDecision,
+  type ActionAuditEntry as KernelActionAuditEntry,
+  type KernelActionAuditService,
+} from './kernel-action-audit.service.js';

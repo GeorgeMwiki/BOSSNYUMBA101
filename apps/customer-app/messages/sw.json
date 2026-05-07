@@ -522,6 +522,10 @@
     "houseRules": "Kanuni za Nyumba",
     "requestDetail": "Maelezo ya Ombi",
     "maintenanceRequest": "Ombi la Matengenezo",
+    "maintenance": "Matengenezo",
+    "community": "Jumuiya",
+    "utilities": "Huduma",
+    "rateService": "Kadiria Huduma",
     "downloadDocument": "Pakua hati"
   },
   "messagesList": {

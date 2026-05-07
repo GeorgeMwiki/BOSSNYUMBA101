@@ -1,140 +1,15 @@
 'use client';
 
-import Link from 'next/link';
-import { Zap, Droplets, Plus, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { LiveDataRequiredScreen } from '@/components/LiveDataRequired';
 
 export default function UtilitiesPage() {
-  const t = useTranslations('utilitiesPage');
-  const utilities = [
-    {
-      id: 'water',
-      type: t('water'),
-      icon: Droplets,
-      lastReading: 245,
-      unit: 'm³',
-      dueDate: '2024-03-01',
-      amount: 3200,
-      status: 'pending' as const,
-    },
-    {
-      id: 'electricity',
-      type: t('electricity'),
-      icon: Zap,
-      lastReading: 1250,
-      unit: 'kWh',
-      dueDate: '2024-03-01',
-      amount: 8750,
-      status: 'paid' as const,
-    },
-  ];
-  const recentBills = [
-    { id: '1', month: t('februaryYear', { year: 2024 }), total: 11950, paid: true },
-    { id: '2', month: t('januaryYear', { year: 2024 }), total: 10800, paid: true },
-  ];
+  const t = useTranslations('pageHeaders');
   return (
-    <>
-      <PageHeader
-        title={t('title')}
-        action={
-          <Link href="/utilities/submit-reading" className="btn-primary text-sm">
-            <Plus className="w-4 h-4 mr-1" />
-            {t('submitReading')}
-          </Link>
-        }
-      />
-
-      <div className="px-4 py-4 space-y-6">
-        {/* Submit Reading CTA */}
-        <Link
-          href="/utilities/submit-reading"
-          className="card p-4 flex items-center justify-between bg-primary-50 border-primary-100 hover:bg-primary-100 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-500 rounded-lg">
-              <Plus className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="font-medium">{t('submitMeterReading')}</div>
-              <div className="text-sm text-gray-600">
-                {t('enterCurrentReadings')}
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-primary-600" />
-        </Link>
-
-        {/* Current Readings */}
-        <section>
-          <h3 className="text-sm font-medium text-gray-500 mb-3">
-            {t('currentReadings')}
-          </h3>
-          <div className="space-y-3">
-            {utilities.map((util) => {
-              const Icon = util.icon;
-              return (
-                <div key={util.id} className="card p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gray-100 rounded-lg">
-                        <Icon className="w-5 h-5 text-gray-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium">{util.type}</div>
-                        <div className="text-xs text-gray-500">
-                          {t('lastPrefix')}: {util.lastReading} {util.unit}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
-                    <span className="text-gray-500">{t('duePrefix')} {util.dueDate}</span>
-                    <span className="font-medium">
-                      KES {util.amount.toLocaleString()}
-                    </span>
-                  </div>
-                  {util.status === 'pending' && (
-                    <span className="badge-warning mt-2 inline-block">{t('pending')}</span>
-                  )}
-                  {util.status === 'paid' && (
-                    <span className="badge-success mt-2 inline-block">{t('paid')}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Recent Bills */}
-        <section>
-          <h3 className="text-sm font-medium text-gray-500 mb-3">
-            {t('recentBills')}
-          </h3>
-          <div className="card divide-y divide-gray-100">
-            {recentBills.map((bill) => (
-              <div
-                key={bill.id}
-                className="flex items-center justify-between p-4"
-              >
-                <div>
-                  <div className="font-medium text-sm">{bill.month}</div>
-                  <div className="text-xs text-gray-500">
-                    KES {bill.total.toLocaleString()}
-                  </div>
-                </div>
-                <span
-                  className={
-                    bill.paid ? 'badge-success' : 'badge-warning'
-                  }
-                >
-                  {bill.paid ? t('paid') : t('pending')}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-    </>
+    <LiveDataRequiredScreen
+      title={t('utilities')}
+      feature="utility readings and bills"
+      description="Hardcoded utility readings and bill totals have been removed. This screen now requires live utility data from the gateway."
+    />
   );
 }

@@ -37,9 +37,11 @@
  */
 
 import {
+  agency as agencyKernel,
   composeSovereign,
   createDpCohortSource,
   tools as kernelTools,
+  type AgencyKernelPort,
   type FeedbackMemoryPort,
   type MemoryHierarchy,
   type PersonaBrandingOverride,
@@ -66,6 +68,8 @@ import {
   createProceduralMemoryService,
   createReflectiveMemoryService,
   createFeedbackService,
+  createKernelGoalsService,
+  createKernelActionAuditService,
 } from '@bossnyumba/database';
 import {
   createAirbnbMarketDataAdapter,
@@ -199,6 +203,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   let brandingResolver: PersonaBrandingResolver | undefined;
   let memoryHierarchy: MemoryHierarchy | undefined;
   let feedbackPort: FeedbackMemoryPort | undefined;
+  let agencyPort: AgencyKernelPort | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -281,6 +286,37 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       },
     };
 
+    // Agency layer (migration 0123) — persistent objectives the brain
+    // works on across days, the typed-write tool registry (5 stubs;
+    // composition root replaces with real domain-service adapters
+    // later), the autonomous executor (four-eye-gated on high-stakes),
+    // and the wake-loop. The kernel itself only consumes the goals
+    // reader for prompt mix-in; the executor + wake-loop live above
+    // the kernel and are scheduled separately.
+    //
+    // No real autonomy-policy adapter is wired yet — the executor
+    // falls back to the in-process default-allow-low-stakes policy
+    // which routes every medium+ stake through the four-eye gate. A
+    // future wiring will read per-tenant policies from migration
+    // 0080 (`autonomy_policies`) here.
+    const goalsService = createKernelGoalsService(db);
+    const auditSink = createKernelActionAuditService(db);
+    const toolRegistry = agencyKernel.createActionToolRegistry();
+    for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
+      toolRegistry.register(stub);
+    }
+    const agencyExecutor = agencyKernel.createExecutor({
+      goals: goalsService,
+      tools: toolRegistry,
+      auditSink,
+      autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+    });
+    agencyPort = {
+      goals: goalsService,
+      executor: agencyExecutor,
+      planDecomposer: agencyKernel.decomposePlan,
+    };
+
     // DP cohort source — only when a privacy-budget envelope is
     // configured. Activation is gated by PRIVACY_BUDGET_EPSILON; an
     // unset/zero/non-numeric value disables the channel and the
@@ -316,6 +352,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (brandingResolver) mutable.brandingResolver = brandingResolver;
   if (memoryHierarchy) mutable.memory = memoryHierarchy;
   if (feedbackPort) mutable.feedback = feedbackPort;
+  if (agencyPort) mutable.agency = agencyPort;
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);

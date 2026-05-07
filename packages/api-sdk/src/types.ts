@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED — do not edit by hand.
  * Source: Docs/api/openapi.generated.json
- * Generated: 2026-05-07T21:51:52.076Z
+ * Generated: 2026-05-07T23:57:45.262Z
  * Run `pnpm -C packages/api-sdk generate` to regenerate.
  */
 

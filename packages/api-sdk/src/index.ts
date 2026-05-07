@@ -38,6 +38,7 @@ export {
   type JarvisBriefing,
   type JarvisBriefingDataPoint,
   type JarvisBriefingRequest,
+  type JarvisBriefingResponse,
   type JarvisProposeActionRequest,
   type JarvisApprovalRecord,
   type JarvisApprovalSignature,

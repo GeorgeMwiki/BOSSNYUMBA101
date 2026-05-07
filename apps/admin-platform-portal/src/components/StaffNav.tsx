@@ -3,12 +3,63 @@ import { cookies } from 'next/headers';
 import { Logomark } from '@bossnyumba/design-system';
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
 
-const NAV_ITEMS = [
-  { href: '/industry', label: 'Industry dashboard' },
-  { href: '/radar', label: 'Early-warning radar' },
-  { href: '/insights', label: 'Cross-tenant insights' },
-  { href: '/forecasts', label: 'Platform forecasts' },
-] as const;
+interface NavGroup {
+  readonly heading: string;
+  readonly items: ReadonlyArray<{ readonly href: string; readonly label: string }>;
+}
+
+/**
+ * Navigation is grouped so HQ operators can find all sibling surfaces
+ * once they've migrated past the four hero industry views. Every page
+ * that ships in this app has a nav entry — no orphan pages, no dead
+ * links. New pages must be added here when their `page.tsx` lands.
+ */
+const NAV_GROUPS: ReadonlyArray<NavGroup> = [
+  {
+    heading: 'Industry',
+    items: [
+      { href: '/industry', label: 'Industry dashboard' },
+      { href: '/radar', label: 'Early-warning radar' },
+      { href: '/insights', label: 'Cross-tenant insights' },
+      { href: '/forecasts', label: 'Platform forecasts' },
+    ],
+  },
+  {
+    heading: 'Conversation',
+    items: [
+      { href: '/jarvis', label: 'Nyumba Mind' },
+      { href: '/ask', label: 'Talk to the industry' },
+    ],
+  },
+  {
+    heading: 'Platform',
+    items: [
+      { href: '/platform/overview', label: 'Platform overview' },
+      { href: '/platform/subscriptions', label: 'Subscriptions' },
+      { href: '/platform/billing', label: 'Billing' },
+      { href: '/platform/feature-flags', label: 'Global flags' },
+    ],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { href: '/system-health', label: 'System health' },
+      { href: '/control-tower', label: 'Control tower' },
+      { href: '/webhook-dlq', label: 'Webhook DLQ' },
+      { href: '/ai-costs', label: 'AI spend' },
+      { href: '/feature-flags', label: 'Caller flags' },
+    ],
+  },
+  {
+    heading: 'Data & compliance',
+    items: [
+      { href: '/data-privacy', label: 'Data privacy' },
+      { href: '/integrations', label: 'API integrations' },
+      { href: '/legacy-migration', label: 'Legacy LPMS migration' },
+      { href: '/warehouse', label: 'Warehouse' },
+    ],
+  },
+];
 
 interface BudgetPayload {
   readonly remainingEpsilon?: number;
@@ -50,15 +101,22 @@ export async function StaffNav() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors"
-          >
-            {item.label}
-          </Link>
+      <nav className="flex-1 overflow-y-auto p-4 space-y-5">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.heading} className="space-y-1">
+            <div className="px-3 text-[0.62rem] uppercase tracking-widest text-neutral-500 mb-1">
+              {group.heading}
+            </div>
+            {group.items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         ))}
       </nav>
 

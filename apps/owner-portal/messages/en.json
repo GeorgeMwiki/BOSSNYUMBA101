@@ -749,6 +749,17 @@
     "tenant": "Tenant"
   },
   "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Manage outbound webhook endpoints across the platform",
+    "addWebhook": "Add webhook",
+    "totalWebhooks": "Total webhooks",
+    "active": "Active",
+    "inactive": "Inactive",
+    "failing": "Failing",
+    "platformLevel": "Platform-level",
+    "searchWebhooks": "Search webhooks…",
+    "allStatus": "All statuses",
+    "errorLoad": "Failed to load webhooks. Please try again.",
     "emptyTitle": "No webhooks found",
     "emptyDescription": "Add a webhook to receive real-time events from the platform."
   },

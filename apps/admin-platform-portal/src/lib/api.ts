@@ -17,24 +17,26 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+/**
+ * Resolve the API base lazily on each request — module-load-time throws
+ * break Next's prerender (the migrated client pages are imported by
+ * SSR even though they're 'use client'). When NEXT_PUBLIC_API_URL is
+ * unset we fall back to a same-origin '/api/v1', which is the right
+ * behaviour for both build-time and runtime: at runtime the platform
+ * portal is fronted by the same gateway, and at build time the request
+ * never actually fires because the components are client-only fetchers.
+ */
 function getApiBase(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configured) {
     const trimmed = configured.replace(/\/$/, '');
     return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
   }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'admin-platform-portal: NEXT_PUBLIC_API_URL is required in production builds.'
-    );
-  }
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return 'http://localhost:4000/api/v1';
   }
   return '/api/v1';
 }
-
-const API_BASE = getApiBase();
 
 async function request<T>(
   endpoint: string,
@@ -57,8 +59,9 @@ async function request<T>(
     ...options.headers,
   };
 
+  const apiBase = getApiBase();
   try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(`${apiBase}${endpoint}`, {
       ...options,
       headers,
       credentials: 'include',

@@ -25,6 +25,7 @@
 
 import { createHash, randomUUID } from 'crypto';
 import type {
+  AgencyKernelPort,
   BrainDecision,
   ConfidenceVector,
   GateOutcome,
@@ -41,6 +42,7 @@ import type {
   SensorCallResult,
   ThoughtRequest,
 } from './kernel-types.js';
+import type { Goal } from './agency/index.js';
 import type {
   ReflectiveDigest,
   SemanticFact,
@@ -127,6 +129,15 @@ export interface BrainKernelDeps {
     shouldDebate(req: ThoughtRequest): boolean;
     runDebate(question: string, context: string): Promise<DebateOutcome>;
   };
+  /**
+   * Optional agency port. When supplied, step 4 (memory recall) also
+   * reads the user's ACTIVE goals via `agency.goals.list(...)` and
+   * mixes them into the system prompt as a "What you've asked me to
+   * work on" fragment. Errors from the goals reader are swallowed —
+   * the agency channel is a side-channel, never breaks the turn. The
+   * full executor + wake-loop live above the kernel.
+   */
+  readonly agency?: AgencyKernelPort;
 }
 
 export interface BrainKernel {
@@ -252,6 +263,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         memUserId,
       );
 
+      // 4d) agency — active goals for the (tenant, user) pair.
+      const activeGoals = await loadActiveGoals(
+        deps.agency,
+        memTenantId,
+        memUserId,
+      );
+
       // 5) cohort signal
       const cohortMix = deps.cohort
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
@@ -299,6 +317,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         renderReflectiveDigestFragment(reflectiveDigest),
         '',
         renderFeedbackFragment(feedbackRecent),
+        '',
+        renderActiveGoalsFragment(activeGoals),
         '',
         renderGroundingFragment(groundingFacts),
         '',
@@ -630,6 +650,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         memUserId,
       );
 
+      // 4d) agency — active goals for the (tenant, user) pair.
+      const activeGoals = await loadActiveGoals(
+        deps.agency,
+        memTenantId,
+        memUserId,
+      );
+
       // 5) cohort signal
       const cohortMix = deps.cohort
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
@@ -663,6 +690,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         renderReflectiveDigestFragment(reflectiveDigest),
         '',
         renderFeedbackFragment(feedbackRecent),
+        '',
+        renderActiveGoalsFragment(activeGoals),
         '',
         renderGroundingFragment(groundingFacts),
         '',
@@ -1285,6 +1314,42 @@ function pickAgentTraceText(decision: BrainDecision): string {
   // Refusals: carry the reason instead so the trail still records WHY
   // the agent acted (or refused to act).
   return decision.reason ?? 'refusal';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Agency helpers — read at step 4 (memory recall) for the prompt mix-
+// in. The agency port is optional; failures are swallowed so the
+// side-channel never breaks the turn.
+// ─────────────────────────────────────────────────────────────────────
+
+const AGENCY_GOAL_LIMIT = 5;
+
+async function loadActiveGoals(
+  agency: AgencyKernelPort | undefined,
+  tenantId: string | null,
+  userId: string,
+): Promise<ReadonlyArray<Goal>> {
+  if (!agency || !tenantId || !userId) return [];
+  try {
+    return await agency.goals.list({
+      tenantId,
+      userId,
+      status: 'active',
+      limit: AGENCY_GOAL_LIMIT,
+    });
+  } catch {
+    return [];
+  }
+}
+
+function renderActiveGoalsFragment(goals: ReadonlyArray<Goal>): string {
+  if (!goals || goals.length === 0) return '';
+  const lines = goals.map((g) => {
+    const total = g.metrics.stepsTotal;
+    const done = g.metrics.stepsDone;
+    return `  - ${g.title} (${g.priority}, ${done}/${total} steps done)`;
+  });
+  return ["**What you've asked me to work on:**", ...lines].join('\n');
 }
 
 function formatGroundingValue(f: GroundingFact): string {

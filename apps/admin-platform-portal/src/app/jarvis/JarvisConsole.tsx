@@ -143,6 +143,25 @@ export function JarvisConsole(): JSX.Element {
                   {t.decision.kind === 'refusal' ? ' · refused' : ''}
                 </div>
               ) : null}
+              {t.role === 'assistant' &&
+              t.decision?.citations &&
+              t.decision.citations.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {t.decision.citations.map((cite) => (
+                    <li
+                      key={cite.id}
+                      className="rounded border border-border bg-surface px-2 py-1"
+                    >
+                      <span className="font-medium text-foreground">
+                        {cite.label}
+                      </span>{' '}
+                      <span className="text-muted-foreground">
+                        · grounded {(cite.confidence * 100).toFixed(0)}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ))
         )}

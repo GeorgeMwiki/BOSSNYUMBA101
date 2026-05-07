@@ -522,6 +522,10 @@
     "houseRules": "House Rules",
     "requestDetail": "Request Detail",
     "maintenanceRequest": "Maintenance Request",
+    "maintenance": "Maintenance",
+    "community": "Community",
+    "utilities": "Utilities",
+    "rateService": "Rate Service",
     "downloadDocument": "Download document"
   },
   "messagesList": {

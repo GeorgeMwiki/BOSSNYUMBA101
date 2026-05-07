@@ -44,6 +44,7 @@ import {
   type AnthropicMessagesClient,
 } from './sensors/anthropic-sensor.js';
 import type {
+  AgencyKernelPort,
   CotReservoirSink,
   FeedbackMemoryPort,
   GroundingFactsProvider,
@@ -93,6 +94,13 @@ export interface ComposeSovereignConfig {
    * tests pass in-memory fakes.
    */
   readonly feedback?: FeedbackMemoryPort;
+  /**
+   * Optional agency port — the brain's "acts in full control" stack.
+   * When provided the kernel mixes ACTIVE goals into its system prompt
+   * at step 4, so the next turn references the persistent objective
+   * stack. The full executor + wake-loop live above the kernel.
+   */
+  readonly agency?: AgencyKernelPort;
   readonly priorTurnsLoader?: (
     threadId: string,
   ) => Promise<ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>>;
@@ -173,6 +181,7 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.brandingResolver)  (kernelDeps as any).brandingResolver = config.brandingResolver;
   if (config.memory)            (kernelDeps as any).memory = config.memory;
   if (config.feedback)          (kernelDeps as any).feedback = config.feedback;
+  if (config.agency)            (kernelDeps as any).agency = config.agency;
   const kernel = createBrainKernel(kernelDeps);
 
   const approvals = createApprovalGate({

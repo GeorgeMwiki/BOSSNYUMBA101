@@ -254,3 +254,11 @@ export * from './kernel-memory-reflective.schema.js';
 // output when the negative-rate is elevated. Closes the "stock LLMs
 // are STATIC" assessment gap.
 export * from './kernel-feedback.schema.js';
+
+// Kernel agency (migration 0123) — persistent objectives + executor
+// audit trail. `kernel_goals` carries the brain's per-(tenant, user)
+// objective stack with a JSON `steps` array; `kernel_action_audit` is
+// the append-only every-transition log the executor writes. Together
+// they back the agency layer's "acts in full control" kernel slice.
+export * from './kernel-goals.schema.js';
+export * from './kernel-action-audit.schema.js';

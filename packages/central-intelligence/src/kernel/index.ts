@@ -311,3 +311,11 @@ export * as worldModel from './world-model/index.js';
  * the assessment gap "the brain doesn't know what it can do."
  */
 export * as introspection from './introspection/index.js';
+
+/**
+ * Agency layer — goal tracker, plan decomposer, autonomous executor,
+ * action-tool registry, and the proactive wake-loop. The kernel itself
+ * mixes ACTIVE goals into its system prompt (step 4 extension); the
+ * loop runs above the kernel and is scheduled by the api-gateway.
+ */
+export * as agency from './agency/index.js';

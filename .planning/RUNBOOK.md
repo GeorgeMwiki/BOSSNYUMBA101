@@ -23,17 +23,27 @@ psql "$DATABASE_URL" -c 'SELECT 1;'
 `DATABASE_URL` must be set in `.env` (gateway reads it from repo root).
 Format: `postgres://user:pass@host:5432/dbname`.
 
-### 1.2 Migrations 0114, 0115, 0116 applied
+### 1.2 Migrations 0114–0123 applied
 
-These three are the kernel's persistence floor — nothing else in
-Nyumba Mind works until they are in place.
+The full brain-DNA arc spans ten migrations. Everything below 0114 is
+domain substrate (tenants, leases, payments, etc.); 0114 onward is the
+central-intelligence kernel and its companions. Nothing in Nyumba Mind
+fully works until at least 0114–0116 are applied; the agency layer
+(0123) and consolidation cycle (0121) require their own tables before
+their respective code paths persist anything.
 
 | Migration | Purpose |
 |---|---|
 | `0114_kernel_substrate.sql` | Sampled CoT reservoir, persona-drift events, per-think provenance |
 | `0115_sovereign_approvals.sql` | Four-eye approval persistence for sovereign-tier writes |
-| `0116_platform_privacy_budget.sql` | Postgres-backed DP epsilon ledger for cohort signals |
+| `0116_platform_privacy_budget.sql` | Postgres-backed DP epsilon ledger + reservation log for cohort signals |
 | `0117_currency_rates.sql` | ISO-4217 → USD FX snapshot table (platform-overview revenue normaliser) |
+| `0118_persona_branding.sql` | Per-tenant `(tenant_id, surface)` overrides for displayName / openingPreamble / voice profile id |
+| `0119_currency_preferences.sql` | Per-user / per-tenant / platform-default display-currency choice (resolution chain user → tenant → platform) |
+| `0120_market_data_cache.sql` | Platform-wide TTL cache for external market-data adapters (Zillow, Airbnb, …) |
+| `0121_kernel_memory_stores.sql` | Four-tier memory hierarchy: `kernel_memory_episodic`, `_semantic`, `_procedural`, `_reflective` |
+| `0122_kernel_feedback.sql` | `kernel_feedback` — thumbs / explicit-correction signals captured per turn for online learning |
+| `0123_kernel_agency.sql` | `kernel_goals` (persistent objective stack with JSON `steps`) and `kernel_action_audit` (append-only every-transition log) |
 
 Apply with the workspace's migration runner. The root-level alias and the
 package script both call the same runner — use whichever you prefer:
@@ -57,15 +67,19 @@ Or, if you prefer raw `psql` against the SQL files:
 psql "$DATABASE_URL" -f packages/database/src/migrations/0114_kernel_substrate.sql
 psql "$DATABASE_URL" -f packages/database/src/migrations/0115_sovereign_approvals.sql
 psql "$DATABASE_URL" -f packages/database/src/migrations/0116_platform_privacy_budget.sql
+# … through 0123 …
+psql "$DATABASE_URL" -f packages/database/src/migrations/0123_kernel_agency.sql
 ```
 
-Verify they took:
+Verify the kernel-side tables took:
 
 ```bash
-psql "$DATABASE_URL" -c "\dt kernel_provenance kernel_persona_drift_events sovereign_approvals platform_privacy_budget"
+psql "$DATABASE_URL" -c "\dt kernel_provenance kernel_persona_drift_events sovereign_approvals platform_privacy_budget kernel_memory_episodic kernel_memory_semantic kernel_memory_procedural kernel_memory_reflective kernel_feedback kernel_goals kernel_action_audit persona_branding currency_preferences currency_rates market_data_cache"
 ```
 
-All four tables should be listed.
+All fifteen tables should be listed. Migrations are idempotent (CREATE
+TABLE / INDEX / TYPE … IF NOT EXISTS guards), so re-running the runner
+on an already-migrated environment is a no-op.
 
 ### 1.3 ANTHROPIC_API_KEY
 
@@ -90,15 +104,60 @@ stays inert — no cross-tenant cohort signals will surface in HQ
 briefings. You typically want this set in production, but leaving it
 unset is a valid "tenant signals only" mode.
 
-### 1.5 Other required env
+### 1.5 Env-var inventory (consolidated)
 
-| Var | Required when | Notes |
+This is the full list of environment variables the gateway and the
+brain-DNA stack read at boot. Verify every required row before
+declaring a host "ready"; missing optional rows degrade specific
+features but do not block boot.
+
+| Var | Required | Read by | What it activates |
+|---|---|---|---|
+| `DATABASE_URL` | always | `services/api-gateway/src/composition/db-client.ts` | Postgres connection. Fail-fast at boot; without it pure-DB endpoints return 503 and Drizzle-backed kernel sinks fall back to in-memory. |
+| `JWT_SECRET` | always | `services/api-gateway/src/middleware/auth.ts` | Auth middleware refuses to start without it. |
+| `REDIS_URL` | recommended in prod | api-gateway rate-limit middleware | Falls back to in-memory rate limiter; prod HPA scales replicas so in-memory under-counts. |
+| `ALLOWED_ORIGINS` | prod | api-gateway CORS bootstrap | Comma-separated list of `https://...` origins. Fatal if missing in prod. |
+| `API_GATEWAY_URL` | for Next BFFs | `apps/admin-platform-portal/*` BFF routes | Server-side gateway URL; defaults to `http://localhost:4000`. |
+| `ANTHROPIC_API_KEY` | for live AI | `services/api-gateway/src/composition/sovereign.ts` | Wires Claude sensors via `@anthropic-ai/sdk`. Without it the gateway boots into **stub-sensor mode** (echoes input verbatim). |
+| `PRIVACY_BUDGET_EPSILON` | for cohort signals | sovereign composition | Activates the DP cohort source with ε for the rolling window. Pairs with optional `PRIVACY_BUDGET_DELTA` (default `1e-6`). Unset = "tenant signals only" mode. |
+| `PUBLIC_RATE_LIMIT_SALT` | prod (public surface) | `services/api-gateway/src/middleware/public-ai-rate-limit.ts` | Salt mixed into `sha256(req.ip)` so the per-IP sliding-window bucket key is non-guessable. A non-secret dev default is used when unset. Required for the unauthenticated `/api/v1/public/*` surface in production. |
+| `MARKET_DATA_PROVIDER` | optional | sovereign composition | `'zillow' \| 'airbnb'`. Selects which adapter is wired into the kernel's market-data tool bundle. Without it no adapter is wired and the tool surfaces a friendly "not configured" message. |
+| `ZILLOW_API_KEY` | with `MARKET_DATA_PROVIDER=zillow` | sovereign composition | Real upstream credential for the Zillow adapter. Without it the adapter resolves every call to `{ kind: 'unconfigured' }` (it never throws). |
+| `AIRBNB_API_KEY` | with `MARKET_DATA_PROVIDER=airbnb` | sovereign composition | Same pattern as `ZILLOW_API_KEY` for the Airbnb adapter. |
+| `FIXER_IO_API_KEY` | optional | `pnpm refresh-fx-rates --provider fixer-io` | Live FX provider. Manual rates remain available without it. |
+| `NEXT_PUBLIC_API_GATEWAY_URL` | client-side | `JarvisConsole.tsx` in customer-app, admin-platform-portal, estate-manager-app | Browser-visible gateway URL the `useJarvis` hook uses. Defaults to `http://localhost:4000`. |
+| `NEXT_PUBLIC_OWNER_PORTAL_URL` | client-side (HQ) | `apps/admin-platform-portal/src/app/platform/subscriptions/SubscriptionsClient.tsx` | Cross-link out from HQ to a tenant's owner-portal billing page. Defaults to `http://localhost:3001`. |
+| `NEXT_PUBLIC_PLATFORM_PORTAL_URL` | client-side | (planned) | Reserved for symmetric reverse links from owner / manager portals back to HQ. Claim — verify before live; not currently referenced in any portal. |
+
+The three production switches that flip the brain from dev-stub to
+live remain `ANTHROPIC_API_KEY`, `DATABASE_URL`, and
+`PRIVACY_BUDGET_EPSILON` (see `.planning/jarvis-architecture.md` §8).
+
+### 1.6 Brain-DNA modules
+
+The kernel ships nine sub-modules above the original 13-step `think()`
+pipeline. Every module is composable behind a duck-typed port — the
+api-gateway's composition root binds the production adapter; tests
+bind in-memory fakes.
+
+| Module | Code path | One-line summary |
 |---|---|---|
-| `DATABASE_URL` | always | Fail-fast at boot |
-| `JWT_SECRET` | always | Auth middleware refuses to start without it |
-| `REDIS_URL` | recommended in prod | Falls back to in-memory rate limiter; prod HPA scales replicas so in-memory under-counts |
-| `ALLOWED_ORIGINS` | prod | Comma-separated list of `https://...` origins, fatal if missing in prod |
-| `API_GATEWAY_URL` | for BFFs | Read by Next.js BFF routes (admin-platform-portal etc.). Defaults to `http://localhost:4000` |
+| memory | `packages/central-intelligence/src/kernel/memory/` | Four-tier memory hierarchy ports: episodic / semantic / procedural / reflective. Backed by 0121 tables; in-memory fakes for tests. |
+| consolidation | `packages/central-intelligence/src/kernel/consolidation/` | The brain's "sleep" pass: episodic → fact extraction → procedural-pattern detection → weekly reflective digest → TTL purge → semantic decay. |
+| world-model | `packages/central-intelligence/src/kernel/world-model/` | Forward-simulate property / tenant / owner / agency state vectors so the brain reasons about TRAJECTORY, not just current state. Includes regime detector. |
+| debate | `packages/central-intelligence/src/kernel/debate/` | N-voice × R-round internal debate + counterfactual perturbations. Public surface: `runDebate`, `buildCounterfactuals`, `runCounterfactuals`. |
+| feedback | `packages/central-intelligence/src/kernel/feedback/` | Online-learning side-channel — read-only access at step 4 (memory recall) to recent thumbs / explicit corrections so the next turn can apologise and bias toward conservative output. |
+| introspection | `packages/central-intelligence/src/kernel/introspection/` | Self-knowledge layer: decision-trace replay (re-run history through current logic to detect drift) + per-persona capability cards. |
+| agency | `packages/central-intelligence/src/kernel/agency/` | The "acts in full control" slice: persistent goals + plan decomposer, typed write-tool registry, autonomous executor with autonomy policy + audit, wake-loop / initiative triggers. |
+| voice | `packages/central-intelligence/src/voice/` + `kernel/voice-bridge.ts` | Voice resolver maps a `ScopeContext` to a first-person voice binding; voice-bridge marries the cognitive persona with the voice-persona-dna profile (tone / pace / register / code-switching / greeting / closing / taboos). |
+| branding | `packages/central-intelligence/src/kernel/branding.ts` (+ 0118 table + `persona-branding.service.ts`) | Per-tenant `(tenant_id, surface)` overrides that re-skin `displayName` / `openingPreamble` / `voiceProfileId` without replacing the surface-default persona. |
+
+These nine modules ride on top of the core kernel pipeline (cache →
+inviolable → tier check → memory recall → cohort signal → prompt
+assembly → sensor → normalise → judge → drift → policy → confidence →
+provenance) — they do not replace any existing step; they augment what
+the kernel can read at step 4 (memory + feedback) and what it can do
+above the kernel (consolidation, debate, agency, introspection).
 
 ---
 
@@ -303,7 +362,8 @@ introduces itself before any tool use.
 ## 5. Live monitoring
 
 Once thoughts are flowing, these queries answer "is the kernel actually
-recording what it claims to record?"
+recording what it claims to record?" Every section below is a
+copy-paste-ready Postgres query.
 
 ### 5.1 Latest provenance entries
 
@@ -316,6 +376,16 @@ SELECT thought_id, scope_kind, tenant_id, surface, tier, stakes,
 FROM kernel_provenance
 ORDER BY created_at DESC
 LIMIT 20;
+```
+
+Aggregate view — decisions per surface in the last hour:
+
+```sql
+SELECT surface, decision_kind, COUNT(*) AS n
+FROM kernel_provenance
+WHERE created_at > NOW() - INTERVAL '1 hour'
+GROUP BY 1, 2
+ORDER BY 1, 2;
 ```
 
 ### 5.2 Persona drift events
@@ -331,7 +401,75 @@ ORDER BY created_at DESC
 LIMIT 50;
 ```
 
-### 5.3 Pending approvals
+Drift rate per persona over 24h:
+
+```sql
+SELECT persona_id, violation, COUNT(*) AS n
+FROM kernel_persona_drift_events
+WHERE created_at > NOW() - INTERVAL '24 hours'
+GROUP BY 1, 2
+ORDER BY n DESC;
+```
+
+### 5.3 Episodic memory — what the brain has seen recently
+
+```sql
+SELECT id, tenant_id, user_id, thread_id, kind, summary, captured_at
+FROM kernel_memory_episodic
+WHERE captured_at > NOW() - INTERVAL '24 hours'
+ORDER BY captured_at DESC
+LIMIT 50;
+```
+
+Per-tenant episodic volume — useful before kicking off a consolidation
+run to confirm there is something to consolidate:
+
+```sql
+SELECT tenant_id, COUNT(*) AS rows, MIN(captured_at) AS first, MAX(captured_at) AS latest
+FROM kernel_memory_episodic
+WHERE captured_at > NOW() - INTERVAL '14 days'
+GROUP BY tenant_id
+ORDER BY rows DESC;
+```
+
+### 5.4 Active goals (agency layer)
+
+```sql
+SELECT id, tenant_id, user_id, title, status, priority,
+       steps_done, steps_total, created_at, updated_at
+FROM kernel_goals
+WHERE status IN ('open', 'running', 'awaiting-approval')
+ORDER BY priority DESC, updated_at DESC
+LIMIT 50;
+```
+
+### 5.5 Action audit — every executor transition
+
+Append-only log of every step the executor walks; powers replay +
+drift dashboards.
+
+```sql
+SELECT goal_id, step_id, tool_name, decision, outcome,
+       error_message, latency_ms, captured_at
+FROM kernel_action_audit
+ORDER BY captured_at DESC
+LIMIT 50;
+```
+
+Failure rate per tool in the last 24h:
+
+```sql
+SELECT tool_name,
+       COUNT(*) FILTER (WHERE decision = 'failed') AS failed,
+       COUNT(*) FILTER (WHERE decision = 'done')   AS done,
+       COUNT(*) AS total
+FROM kernel_action_audit
+WHERE captured_at > NOW() - INTERVAL '24 hours'
+GROUP BY tool_name
+ORDER BY total DESC;
+```
+
+### 5.6 Pending approvals
 
 Sovereign-tier write proposals waiting on a second eye:
 
@@ -343,7 +481,7 @@ WHERE status IN ('pending', 'one-eye')
 ORDER BY proposed_at DESC;
 ```
 
-### 5.4 DP epsilon spend
+### 5.7 DP epsilon spend
 
 Single-row table reflecting the rolling-window cohort budget. If
 `spent_epsilon` is creeping toward `total_epsilon`, the cohort source
@@ -363,15 +501,117 @@ LIMIT 25;
 
 ---
 
-## 6. Known limitations
+## 6. Cron / scheduled jobs
+
+Two brain-DNA modules need to be invoked on a schedule. Neither
+installs its own cron — they expose a CLI entry and a library entry,
+and the deployment chooses how to fire them (Kubernetes `CronJob`,
+container-host crontab, GitHub-Actions scheduled workflow, etc.).
+
+### 6.1 Consolidation runner — the brain's "sleep" cycle
+
+Composition entry: `services/api-gateway/src/composition/consolidation-runner.ts`.
+
+What it does (per `(tenantId, userId)` scope with episodic activity in
+the last 14 days):
+
+1. Reads recent episodic entries.
+2. Extracts SEMANTIC FACTS via a Haiku judge call; upserts each into
+   `kernel_memory_semantic`.
+3. Detects PROCEDURAL PATTERNS by sliding a 3-step window over the
+   tool-result episodic stream; upserts repeats into
+   `kernel_memory_procedural`.
+4. Once per week per scope, generates a REFLECTIVE DIGEST (summary +
+   top topics + sentiment + action items) into `kernel_memory_reflective`.
+5. Calls `episodic.purgeExpired()` to enforce TTL.
+6. Calls `semantic.decay({ decayPerDay: 0.005 })` so old facts fade
+   unless re-seen.
+
+Per-tenant failures are caught + logged and the runner moves on.
+Missing prerequisites (`DATABASE_URL` or `ANTHROPIC_API_KEY`) make the
+runner a no-op rather than a crash, so a misconfigured cron does not
+take a deployment down.
+
+CLI invocation (production wiring):
+
+```bash
+# Build first if running from compiled JS:
+pnpm -C services/api-gateway build
+node services/api-gateway/dist/composition/consolidation-runner.js
+```
+
+Recommended cadence: hourly to twice-daily depending on episodic
+volume per tenant. The runner exits 0 on full success, 1 on
+partial-with-errors, 2 on a fatal config error.
+
+Suggested Kubernetes `CronJob` shape (*claim — the chart does not
+ship one yet; verify before live*):
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: consolidation-runner
+spec:
+  schedule: "17 * * * *"          # 17 past every hour
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: runner
+            image: <api-gateway-image>
+            command: ["node", "services/api-gateway/dist/composition/consolidation-runner.js"]
+            envFrom:
+              - secretRef: { name: api-gateway-env }
+          restartPolicy: OnFailure
+```
+
+### 6.2 Wake-loop — proactive initiative triggers
+
+Library entry: `runWakeCycle` from
+`packages/central-intelligence/src/kernel/agency/initiative/wake-loop.ts`.
+
+Per-tenant detector pass:
+
+1. For each registered `WakeTrigger`, call `detect({ tenantId, clock })`.
+2. Each detected `WakeTriggerDetectedGoal` is opened via
+   `goals.open(...)` (writes a `kernel_goals` row).
+3. Each opened goal is immediately handed to `executor.executeGoal(goalId)`,
+   whose every step transition writes one `kernel_action_audit` row.
+
+Trigger-level failures are isolated — a failing detector or executor
+for one trigger never stops the others. The loop is single-pass; the
+deployment schedules it (cron, queue worker, SaaS scheduler).
+
+Each `WakeTrigger` exposes an optional `cron` string field — the
+schedule the trigger PREFERS. The wake-loop itself does not consume
+the field; it is metadata for whoever wires the cron. Wire one
+scheduled job per cadence (e.g. one `CronJob` for hourly triggers, one
+for daily triggers) and pass the matching trigger subset.
+
+Recommended cadence: every 5–15 minutes for "near-real-time" triggers
+(arrears spike detector, vacancy-rate jump), hourly for digest-style
+triggers, daily for reflection / capability-card refresh.
+
+Both runners are deliberately single-shot so the deployment owns the
+retry + backoff policy. Do not loop them inside the api-gateway
+process — they belong in their own short-lived workload.
+
+---
+
+## 7. Known limitations
 
 Be honest with operators about what's not yet wired. None of these
 block the kernel from booting; they are gaps to flag in the rollout
 note.
 
-- **Voice audio I/O.** The /voice router exists but the round-trip
-  audio path (mic capture → STT → kernel → TTS → playback) is not
-  wired through the portals. Text-only Jarvis works; voice does not.
+- **Voice audio I/O.** The voice resolver, voice-bridge (in
+  `kernel/voice-bridge.ts`), and per-tenant `voiceProfileId` plumbing
+  through the persona-branding table are all shipped — but the
+  end-to-end audio path (mic capture → STT → kernel → TTS → playback)
+  is not wired through the portals. Text-only Jarvis works; the
+  speaking surface does not.
 - **HQ overview trend chart.** The recharts panel on
   `/platform/overview` is a placeholder shape. The KPI tiles are live;
   the trendline is mocked until the time-series source is wired.
@@ -389,7 +629,7 @@ note.
 
 ---
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 ### "Stub sensor: echoing user message back"
 
@@ -443,21 +683,72 @@ the gateway is actually listening on that host:port.
 
 ---
 
-## 8. Reference
+## 9. Reference
+
+### Planning docs
 
 - `.planning/jarvis-architecture.md` — canonical reference for the
-  four-portal split, persona catalogue, scope lattice, and grounding
-  pyramid.
+  four-portal split, persona catalogue, scope lattice, grounding
+  pyramid, and the brain-DNA layer above the kernel.
+- `.planning/litfin-parity-plan.md` — origin doc for the
+  brain+mind-parity work that produced migrations 0114–0123.
 - `apps/admin-portal/DEPRECATED.md` — why the legacy admin-portal
   exists, what's being migrated where.
+
+### Migrations (kernel substrate + companions)
+
 - `packages/database/src/migrations/0114_kernel_substrate.sql` —
   kernel CoT reservoir + persona drift + provenance schema.
 - `packages/database/src/migrations/0115_sovereign_approvals.sql` —
   four-eye approval table and audit log.
 - `packages/database/src/migrations/0116_platform_privacy_budget.sql`
-  — Postgres-backed DP epsilon ledger.
+  — Postgres-backed DP epsilon ledger + reservation log.
+- `packages/database/src/migrations/0117_currency_rates.sql` — FX
+  snapshot table for revenue normalisation.
+- `packages/database/src/migrations/0118_persona_branding.sql` —
+  per-tenant persona overrides.
+- `packages/database/src/migrations/0119_currency_preferences.sql` —
+  per-user / per-tenant / platform display-currency choice.
+- `packages/database/src/migrations/0120_market_data_cache.sql` —
+  TTL cache for external market-data adapters.
+- `packages/database/src/migrations/0121_kernel_memory_stores.sql` —
+  episodic / semantic / procedural / reflective stores.
+- `packages/database/src/migrations/0122_kernel_feedback.sql` —
+  thumbs / explicit-correction signal store.
+- `packages/database/src/migrations/0123_kernel_agency.sql` —
+  `kernel_goals` + `kernel_action_audit`.
+
+### Code paths
+
 - `services/api-gateway/src/routes/jarvis-router-factory.ts` — the
   factory every Jarvis surface goes through (`/think`, `/stream`,
   `/briefing`, `/actions`).
 - `services/api-gateway/src/routes/platform-overview.router.ts` — HQ
   KPI aggregator wired into `admin-platform-portal /platform/overview`.
+- `services/api-gateway/src/composition/sovereign.ts` — single source
+  of truth for how the api-gateway boots the sovereign AI; reads
+  `ANTHROPIC_API_KEY`, `MARKET_DATA_PROVIDER`, `ZILLOW_API_KEY`,
+  `AIRBNB_API_KEY`.
+- `services/api-gateway/src/composition/consolidation-runner.ts` —
+  composition entry + CLI for the brain's "sleep" cycle.
+- `packages/central-intelligence/src/kernel/agency/initiative/wake-loop.ts`
+  — `runWakeCycle` proactive-initiative loop.
+- `packages/central-intelligence/src/kernel/memory/` — four-tier
+  memory hierarchy ports.
+- `packages/central-intelligence/src/kernel/world-model/` —
+  trajectory + regime-detector tools.
+- `packages/central-intelligence/src/kernel/debate/` — N-voice
+  internal debate + counterfactuals.
+
+### User-memory rules referenced by this codebase
+
+The following per-user feedback rules (in
+`~/.claude/projects/.../memory/`) document policy choices that are now
+load-bearing in the migrations and brain-DNA modules described above:
+
+- `feedback_user_currency_choice.md` — `currency_preferences` table
+  and the user → tenant → platform-default resolution chain
+  (migration 0119 implements it).
+- `feedback_world_starting_tz.md` — "built for the world, starting
+  with TZ" — TZ defaults are seeded values, never hard-coded
+  jurisdiction / currency / locale branches in business logic.

@@ -155,6 +155,13 @@ import forecastRouter from './routes/forecast.router';
 // 503 INTELLIGENCE_SERVICE_UNAVAILABLE when CI_LLM_URL / adapter is
 // not wired (no mock agents, ever).
 import intelligenceRouter from './routes/intelligence.router';
+// Frontend gap-fix BFF routers — owner-portal hits these top-level paths
+// for the analytics + portfolio dashboards. Until dedicated aggregator
+// services are wired, both routers return "honest empty" shapes so the
+// owner-portal renders an empty state instead of stalling on a never-
+// resolving fetch. See each router's TODO marker for the followup.
+import analyticsRouter from './routes/analytics.router';
+import portfolioRouter from './routes/portfolio.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
 import {
@@ -734,6 +741,13 @@ api.route(
     getJobs: () => heartbeatSupervisor.riskJobs,
   }),
 );
+// Frontend gap-fix routers — owner-portal hits these top-level paths.
+// `/analytics/summary`, `/portfolio/{summary,performance,growth}`. Until
+// dedicated aggregators land, each returns an "honest empty" shape so
+// the dashboard pages render the empty state cleanly. See each router
+// for the TODO marker pointing at the followup work.
+api.route('/analytics', analyticsRouter);
+api.route('/portfolio', portfolioRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue
@@ -846,6 +860,8 @@ const openApiRouter = createOpenApiRouter({
     { prefix: '/damage-deductions', app: damageDeductionsRouter, defaultTag: 'damage-deductions' },
     { prefix: '/conditional-surveys', app: conditionalSurveysRouter, defaultTag: 'conditional-surveys' },
     { prefix: '/far', app: farRouter, defaultTag: 'far' },
+    { prefix: '/analytics', app: analyticsRouter, defaultTag: 'analytics' },
+    { prefix: '/portfolio', app: portfolioRouter, defaultTag: 'portfolio' },
   ],
 });
 api.route('/', openApiRouter);

@@ -125,6 +125,14 @@ export interface JarvisDecision {
   readonly text?: string;
   readonly hedge?: string;
   readonly reason?: string;
+  /**
+   * Populated only on `kind: 'refusal'`. Names the gate layer that
+   * blocked the turn (`'inviolable' | 'policy' | 'drift'`). Mirrors
+   * the kernel's `BrainDecision.gateThatRefused` field — the SDK
+   * keeps the wider `string` here so that future kernel additions
+   * don't require an SDK rev to compile.
+   */
+  readonly gateThatRefused?: 'inviolable' | 'policy' | 'drift';
   readonly confidence?: {
     readonly groundedness: number;
     readonly stability: number;
@@ -199,6 +207,15 @@ export interface JarvisApprovalRecord {
     readonly thoughtId: string;
     readonly summary: string;
     readonly toolName: string;
+    /**
+     * Opaque tool payload echoed back by the gateway. The kernel's
+     * `ProposedAction.payload` is `Readonly<Record<string, unknown>>`;
+     * we mirror that as a plain index signature so SDK consumers can
+     * surface the action contents in approval-review UIs without a
+     * cast. Schema validation happens on the executor side at run
+     * time — the SDK does not narrow it.
+     */
+    readonly payload: Readonly<Record<string, unknown>>;
     readonly stakes: 'medium' | 'high' | 'critical';
     readonly proposedAt: string;
     readonly expiresAt: string;
@@ -212,10 +229,23 @@ export interface JarvisSignRequest {
   readonly comment?: string;
 }
 
+/**
+ * Briefing response — gateway returns the originating `surface` along
+ * with the composed briefing so the client can verify (e.g. in dev
+ * tools / audit logs) which Jarvis surface produced the result. The
+ * SDK mirrors that 1:1 to avoid stripping fields a consumer may want
+ * to display.
+ */
+export interface JarvisBriefingResponse {
+  readonly success: true;
+  readonly surface: string;
+  readonly briefing: JarvisBriefing;
+}
+
 export interface JarvisSurfaceClient {
   readonly surface: JarvisSurface;
   think(req: JarvisThinkRequest): Promise<JarvisThinkResponse>;
-  briefing(req: JarvisBriefingRequest): Promise<{ success: true; briefing: JarvisBriefing }>;
+  briefing(req: JarvisBriefingRequest): Promise<JarvisBriefingResponse>;
   proposeAction(
     req: JarvisProposeActionRequest,
   ): Promise<{ success: true; approval: JarvisApprovalRecord }>;
@@ -271,7 +301,7 @@ export function createJarvisClient(
       });
     },
     async briefing(req) {
-      return client.request<{ success: true; briefing: JarvisBriefing }>({
+      return client.request<JarvisBriefingResponse>({
         method: 'POST',
         path: `${root}/briefing`,
         body: req,
