@@ -16,6 +16,10 @@
  */
 
 import type { BossnyumbaClient } from './client.js';
+import {
+  createJarvisStream,
+  type JarvisStreamHandle,
+} from './jarvis-stream.js';
 
 /**
  * Jarvis surface — names the seat the requester sits in.
@@ -245,6 +249,16 @@ export interface JarvisBriefingResponse {
 export interface JarvisSurfaceClient {
   readonly surface: JarvisSurface;
   think(req: JarvisThinkRequest): Promise<JarvisThinkResponse>;
+  /**
+   * Open an SSE stream for the same think request. Returns a handle
+   * exposing an `AsyncIterable<JarvisStreamEvent>` of decoded events
+   * plus an `abort()` method. The single-shot `think()` method is
+   * preserved — streaming is additive.
+   */
+  stream(
+    req: JarvisThinkRequest,
+    options?: { signal?: AbortSignal; maxReconnect?: number },
+  ): JarvisStreamHandle;
   briefing(req: JarvisBriefingRequest): Promise<JarvisBriefingResponse>;
   proposeAction(
     req: JarvisProposeActionRequest,
@@ -299,6 +313,9 @@ export function createJarvisClient(
         path: `${root}/think`,
         body: req,
       });
+    },
+    stream(req, options) {
+      return createJarvisStream(client, surface, req, options ?? {});
     },
     async briefing(req) {
       return client.request<JarvisBriefingResponse>({

@@ -47,3 +47,16 @@ export {
   type FeedbackSignal,
   type FeedbackCategory,
 } from './jarvis-client.js';
+
+// Per-user Jarvis streaming — SSE channel for the same surfaces as
+// `createJarvisClient`. Additive to the single-shot `think()` method.
+export {
+  createJarvisStream,
+  parseSseBlock,
+  translateEvent,
+  type JarvisStreamEvent,
+  type JarvisStreamHandle,
+  type JarvisStreamPersona,
+  type JarvisStreamConfidence,
+  type JarvisStreamGateVerdict,
+} from './jarvis-stream.js';

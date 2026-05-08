@@ -28,11 +28,12 @@
  */
 
 import { Hono } from 'hono';
-import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
 import {
   workOrders,
   inspections,
   vendors,
+  vendorScorecards,
   properties,
   units,
   arrearsCases,
@@ -226,6 +227,63 @@ app.get('/work-orders', async (c) => {
   }
 });
 
+// IMPORTANT: /work-orders/queue MUST register before /work-orders/:id.
+// Hono dispatches in registration order; otherwise the static
+// "queue" string matches the dynamic :id slot.
+app.get('/work-orders/queue', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const userId = c.get('userId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    // Pull "active or pending" WOs scoped to properties this manager
+    // manages. The status filter excludes terminal states.
+    const rows = await db
+      .select({
+        id: workOrders.id,
+        tenantId: workOrders.tenantId,
+        propertyId: workOrders.propertyId,
+        unitId: workOrders.unitId,
+        workOrderNumber: workOrders.workOrderNumber,
+        title: workOrders.title,
+        priority: workOrders.priority,
+        status: workOrders.status,
+        category: workOrders.category,
+        scheduledAt: workOrders.scheduledAt,
+        responseDueAt: workOrders.responseDueAt,
+        resolutionDueAt: workOrders.resolutionDueAt,
+        createdAt: workOrders.createdAt,
+      })
+      .from(workOrders)
+      .innerJoin(properties, eq(workOrders.propertyId, properties.id))
+      .where(
+        and(
+          eq(workOrders.tenantId, tenantId),
+          eq(properties.managerId, userId),
+          sql`${workOrders.status} NOT IN ('completed','cancelled','closed')`,
+        ),
+      )
+      .orderBy(
+        sql`CASE ${workOrders.priority} WHEN 'emergency' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`,
+        desc(workOrders.createdAt),
+      )
+      .limit(limit);
+
+    return c.json({
+      success: true,
+      data: rows,
+      meta: { managerId: userId, count: rows.length },
+    });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'MANAGER_WORK_ORDER_QUEUE_FAILED',
+      status: 503,
+      fallback: 'Work order queue query failed',
+    });
+  }
+});
+
 app.get('/work-orders/:id', async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
@@ -381,6 +439,154 @@ app.get('/sla', (c) => {
       note: 'SLA analytics pending — work-order-event-stream aggregation not yet wired.',
     },
   });
+});
+
+// ============================================================================
+// Manager-app aggregator endpoints (real-wrap reads).
+//
+//   GET /work-orders/queue           — active+pending WOs, manager-scoped
+//   GET /inspections/upcoming        — inspections in the next 30 days
+//   GET /escalations                 — open exceptions/escalations
+//   GET /vendors/scorecards          — vendor scorecards (real if rows; empty otherwise)
+//
+// All four queries are tenant-scoped. "manager-scoped" filtering uses
+// `properties.managerId === auth.userId` because the work_orders table
+// has no explicit assignee column today (assignedBy is the actor that
+// performed the assign action, not the assignee). Until a dedicated
+// `assigned_to` column lands, scoping by managed-property is the
+// honest interpretation.
+// ============================================================================
+
+app.get('/inspections/upcoming', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const userId = c.get('userId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    // 30-day rolling window. We avoid `BETWEEN` because driver coercion
+    // varies; explicit gte/lte against NOW() and NOW() + interval is
+    // portable.
+    const rows = await db
+      .select({
+        id: inspections.id,
+        tenantId: inspections.tenantId,
+        propertyId: inspections.propertyId,
+        unitId: inspections.unitId,
+        type: inspections.type,
+        status: inspections.status,
+        scheduledDate: inspections.scheduledDate,
+        inspectorId: inspections.inspectorId,
+      })
+      .from(inspections)
+      .innerJoin(properties, eq(inspections.propertyId, properties.id))
+      .where(
+        and(
+          eq(inspections.tenantId, tenantId),
+          eq(properties.managerId, userId),
+          sql`${inspections.scheduledDate} IS NOT NULL`,
+          sql`${inspections.scheduledDate} >= NOW()`,
+          sql`${inspections.scheduledDate} <= NOW() + INTERVAL '30 days'`,
+          sql`${inspections.status} IN ('scheduled','in_progress')`,
+        ),
+      )
+      .orderBy(inspections.scheduledDate)
+      .limit(limit);
+
+    return c.json({
+      success: true,
+      data: rows,
+      meta: { managerId: userId, windowDays: 30, count: rows.length },
+    });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'MANAGER_UPCOMING_INSPECTIONS_FAILED',
+      status: 503,
+      fallback: 'Upcoming inspections query failed',
+    });
+  }
+});
+
+app.get('/escalations', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    // The exception inbox lives in the autonomy package's repo (Postgres
+    // when wired, in-memory fallback otherwise). The BFF is a read-roll-up
+    // surface, so we proxy via the tenant-scoped exceptions table when
+    // available, and emit honest-empty when it isn't.
+    const services = c.get('services') ?? {};
+    const inbox = services.autonomy?.exceptionInbox ?? services.exceptionInbox;
+    if (inbox && typeof inbox.listOpen === 'function') {
+      const items = await inbox.listOpen(tenantId, { limit });
+      return c.json({
+        success: true,
+        data: items,
+        meta: { source: 'autonomy.exceptionInbox', count: items.length },
+      });
+    }
+
+    // No inbox bound — return honest empty.
+    return c.json({
+      success: true,
+      data: [],
+      meta: {
+        source: 'honest-empty',
+        note: 'autonomy.exceptionInbox not wired; manager BFF has no upstream to query',
+      },
+    });
+  } catch (err) {
+    return routeCatch(c, err, {
+      code: 'MANAGER_ESCALATIONS_FAILED',
+      status: 503,
+      fallback: 'Escalations query failed',
+    });
+  }
+});
+
+app.get('/vendors/scorecards', async (c) => {
+  const db = (c.get('services') ?? {}).db;
+  if (!db) return dbUnavailable(c);
+  const tenantId = c.get('tenantId');
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? '50') || 50));
+  try {
+    const rows = await db
+      .select()
+      .from(vendorScorecards)
+      .where(eq(vendorScorecards.tenantId, tenantId))
+      .limit(limit);
+
+    return c.json({
+      success: true,
+      data: rows,
+      meta: { count: rows.length },
+    });
+  } catch (err) {
+    // If the table isn't present (relation undefined), fall through to
+    // honest-empty rather than 503.
+    if (
+      err &&
+      typeof err === 'object' &&
+      ((err as { code?: string }).code === '42P01' ||
+        (err as { code?: string }).code === '42703')
+    ) {
+      return c.json({
+        success: true,
+        data: [],
+        meta: {
+          source: 'honest-empty',
+          note: 'vendor_scorecards table not yet provisioned in this environment',
+        },
+      });
+    }
+    return routeCatch(c, err, {
+      code: 'MANAGER_VENDOR_SCORECARDS_FAILED',
+      status: 503,
+      fallback: 'Vendor scorecards query failed',
+    });
+  }
 });
 
 // Mutations route through the canonical tenant-scoped routers. The BFF

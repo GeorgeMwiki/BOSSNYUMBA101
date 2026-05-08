@@ -44,6 +44,7 @@ import type { GroundingViewRole } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { getSovereignBrain } from '../composition/sovereign';
 import { getDb } from '../composition/db-client';
+import { withKernelSpan, type KernelTraceScope } from '../observability/kernel-tracing';
 
 export type JarvisSurface = ThoughtRequest['surface'];
 
@@ -299,7 +300,19 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
 
     const basePersona = selectPersona(req);
     const personalised = personalisePersona(basePersona, profile);
-    const decision = await sov.kernel.think(req);
+    const traceScope: KernelTraceScope = {
+      tenantId: scope.kind === 'tenant' ? scope.tenantId ?? null : null,
+      userId: scope.actorUserId ?? null,
+      surface: config.surface,
+      tier: req.tier,
+      stakes: req.stakes,
+      scopeKind: scope.kind,
+    };
+    const decision = await withKernelSpan(
+      `tho_pending_${body.threadId}`,
+      traceScope,
+      () => sov.kernel.think(req),
+    );
 
     return c.json({
       success: true,
@@ -358,9 +371,41 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const basePersona = selectPersona(req);
     const personalised = personalisePersona(basePersona, profile);
 
+    // Stream-turn span — the iterator is consumed inside a
+    // `withKernelSpan` wrapper so the streamed turn shows up in OTel
+    // alongside non-streaming /think calls. We collect the final
+    // decision (emitted via the `done` event) and return it as the
+    // span result; if the stream errors, the wrapper records the
+    // exception and re-throws.
+    const streamTraceScope: KernelTraceScope = {
+      tenantId: scope.kind === 'tenant' ? scope.tenantId ?? null : null,
+      userId: scope.actorUserId ?? null,
+      surface: config.surface,
+      tier: req.tier,
+      stakes: req.stakes,
+      scopeKind: scope.kind,
+    };
+
     return streamSSE(c, async (stream) => {
       try {
-        for await (const ev of sov.kernel.thinkStream(req)) {
+        await withKernelSpan(
+          `tho_stream_${body.threadId}`,
+          streamTraceScope,
+          // The wrapper expects a thennable returning a KernelDecisionForSpan
+          // shape; we synthesise one from the final `done` event so the
+          // span's decision-attribute set lines up with the non-streaming
+          // /think handler.
+          async () => {
+            let finalDecision: any = {
+              kind: 'unknown',
+              provenance: {
+                thoughtId: `tho_stream_${body.threadId}`,
+                sensorId: '__streaming__',
+                modelId: '__streaming__',
+                latencyMs: 0,
+              },
+            };
+            for await (const ev of sov.kernel.thinkStream(req)) {
           if (ev.kind === 'turn_start') {
             await stream.writeSSE({
               event: 'turn_start',
@@ -403,6 +448,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
             continue;
           }
           if (ev.kind === 'done') {
+            finalDecision = ev.decision;
             await stream.writeSSE({
               event: 'done',
               data: JSON.stringify({
@@ -410,9 +456,12 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
                 kind: ev.decision.kind,
               }),
             });
-            return;
-          }
-        }
+                return finalDecision;
+              }
+            }
+            return finalDecision;
+          },
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : 'thinkStream failed';
         await stream.writeSSE({
@@ -433,19 +482,45 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
     const scope = scopeFromContext(c, config.surface);
     const sov = await getSovereignBrain(sovereignScopeFromContext(c, config.surface));
 
-    const briefing = await sov.briefing.compose({
-      day: body.day,
-      user: profile,
-      scope,
-      threadId: body.threadId,
-      dataPoints: body.dataPoints,
-      topPriority:
-        body.dataPoints.find((d) => d.severity === 'urgent') ??
-        body.dataPoints.find((d) => d.severity === 'warn') ??
-        body.dataPoints[0] ??
-        null,
-    });
-    return c.json({ success: true, surface: config.surface, briefing });
+    const briefingTraceScope: KernelTraceScope = {
+      tenantId: scope.kind === 'tenant' ? scope.tenantId ?? null : null,
+      userId: scope.actorUserId ?? null,
+      surface: config.surface,
+      tier: 'briefing',
+      stakes: 'low',
+      scopeKind: scope.kind,
+    };
+    const briefing = await withKernelSpan(
+      `tho_briefing_${body.threadId}`,
+      briefingTraceScope,
+      async () => {
+        const composed = await sov.briefing.compose({
+          day: body.day,
+          user: profile,
+          scope,
+          threadId: body.threadId,
+          dataPoints: body.dataPoints,
+          topPriority:
+            body.dataPoints.find((d) => d.severity === 'urgent') ??
+            body.dataPoints.find((d) => d.severity === 'warn') ??
+            body.dataPoints[0] ??
+            null,
+        });
+        // Briefings don't have a kernel-grade decision shape; synthesise a
+        // minimal one so the trace span gets populated cleanly.
+        return {
+          kind: 'answer',
+          provenance: {
+            thoughtId: `tho_briefing_${body.threadId}`,
+            sensorId: '__briefing__',
+            modelId: '__briefing__',
+            latencyMs: 0,
+          },
+          briefing: composed,
+        } as any;
+      },
+    );
+    return c.json({ success: true, surface: config.surface, briefing: (briefing as any).briefing });
   });
 
   app.post('/actions', zValidator('json', ProposeActionSchema), async (c) => {

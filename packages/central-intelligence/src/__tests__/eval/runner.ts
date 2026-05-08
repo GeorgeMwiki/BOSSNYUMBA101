@@ -128,6 +128,13 @@ export async function runEvalScenario(scenario: EvalScenario): Promise<EvalResul
   const provenance = createInMemoryProvenanceSink();
   const sinks: SubstrateSinks = { cot, drift, provenance };
 
+  // Multi-turn scenarios carry an in-line `priorTurns` array; we
+  // surface it through `priorTurnsLoader` so the kernel mixes it into
+  // the sensor call args exactly the same way it would in production.
+  const priorTurnsLoader = scenario.priorTurns
+    ? async (_threadId: string) => scenario.priorTurns!
+    : undefined;
+
   const sov = composeSovereign({
     extraSensors: [buildStubSensor(scenario)],
     substrateSinks: sinks,
@@ -137,6 +144,7 @@ export async function runEvalScenario(scenario: EvalScenario): Promise<EvalResul
     // Deterministic rng — high enough to suppress all CoT sampling
     // except critical-stakes (rate=1.0). Keeps drift sinks comparable.
     rng: () => 0.999,
+    ...(priorTurnsLoader ? { priorTurnsLoader } : {}),
   });
 
   const startedWall = Date.now();
@@ -188,6 +196,27 @@ export async function runEvalScenario(scenario: EvalScenario): Promise<EvalResul
         failures.push(`output should NOT contain "${fragment}"`);
       }
     }
+  }
+
+  // ── domain-capability single-substring assertions (additive sugar)
+  // The richer mustContain/mustNotContain arrays are still preferred;
+  // these fields exist so capability scenarios can spell intent more
+  // tersely (one assertion per scenario).
+  if (
+    scenario.expected.expectedSubstring !== undefined &&
+    !text.includes(scenario.expected.expectedSubstring)
+  ) {
+    failures.push(
+      `output should contain expectedSubstring "${scenario.expected.expectedSubstring}"`,
+    );
+  }
+  if (
+    scenario.expected.expectedNotSubstring !== undefined &&
+    text.includes(scenario.expected.expectedNotSubstring)
+  ) {
+    failures.push(
+      `output should NOT contain expectedNotSubstring "${scenario.expected.expectedNotSubstring}"`,
+    );
   }
 
   // ── confidence floor assertion (only for non-refusal) ──────────
@@ -321,11 +350,16 @@ function decisionConfidence(d: BrainDecision): number {
 
 function readGateStatus(
   d: BrainDecision,
-  gate: 'inviolable' | 'policy' | 'drift',
+  gate: 'inviolable' | 'policy' | 'drift' | 'cognitive-load',
 ): GateVerdict['status'] {
   if (d.kind === 'refusal') {
+    // cognitive-load can never be the refusing gate (kernel only ever
+    // refuses at inviolable / policy / drift). For a refusal decision
+    // a non-refusing gate effectively reports "pass".
+    if (gate === 'cognitive-load') return 'pass';
     return d.gateThatRefused === gate ? 'block' : 'pass';
   }
+  if (gate === 'cognitive-load') return d.gates.cognitiveLoad.status;
   return d.gates[gate].status;
 }
 

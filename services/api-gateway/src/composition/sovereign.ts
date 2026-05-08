@@ -61,6 +61,7 @@ import {
   createMarketDataCacheService,
   createPersonaBrandingService,
   createPgApprovalStore,
+  createPgAutonomyPolicyService,
   createPgTenantAggregateSource,
   createPgPlatformBudgetLedger,
   createEpisodicMemoryService,
@@ -85,6 +86,7 @@ import {
 // `packages/database/src/services/kernel-grounding.service.ts`.
 type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
+import { wrapAnthropicWithCircuitBreaker } from './anthropic-circuit-breaker';
 
 // ---------------------------------------------------------------------------
 // Anthropic SDK loader — optional. We only require the SDK when the
@@ -204,6 +206,13 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   let memoryHierarchy: MemoryHierarchy | undefined;
   let feedbackPort: FeedbackMemoryPort | undefined;
   let agencyPort: AgencyKernelPort | undefined;
+  // Real wake triggers (arrears.30d-threshold, lease.expiring-30d,
+  // vacancy.30d-vacant) — stored on the SovereignBrain's mutable bag
+  // for a future scheduler composition root to consume. Empty array
+  // when DB is unavailable (no real reader to query).
+  let realWakeTriggers:
+    | ReturnType<typeof agencyKernel.createRealWakeTriggers>
+    | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -335,10 +344,68 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
         },
       });
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Real-adapter upgrade pass (additive). When the DB is up we:
+    //   1. Read the per-tenant autonomy policy from migration 0080
+    //      (`autonomy_policies`) instead of the default-allow-low-
+    //      stakes stub. Falls back to default-allow when row missing /
+    //      autonomous mode disabled / policy_json malformed / DB error.
+    //   2. Register the FIVE real action-tool adapters on top of the
+    //      stubs. Real-name registrations overwrite stub-name
+    //      registrations in the in-process map, so the executor
+    //      invokes the real adapter when present. Each real adapter
+    //      itself returns `{ ok:false, message:'service not yet wired:
+    //      ...' }` when the underlying domain port isn't available —
+    //      no faked successes.
+    //   3. Build the real wake-trigger detectors (arrears, lease-
+    //      expiring, vacancy). When their read ports aren't wired the
+    //      detectors emit empty arrays so the wake-loop's count stays
+    //      accurate. Stored on a module-local for the scheduler-
+    //      composition root to pick up — the kernel itself does not
+    //      run the wake-loop synchronously here.
+    // ─────────────────────────────────────────────────────────────────
+    const realPolicyService = createPgAutonomyPolicyService(db);
+    const realAutonomyPolicy = {
+      decide: (args: {
+        readonly tenantId: string;
+        readonly userId: string;
+        readonly toolName: string;
+        readonly stakes: 'low' | 'medium' | 'high' | 'critical';
+      }) => realPolicyService.decide(args),
+    };
+    for (const realTool of agencyKernel.createRealActionTools({})) {
+      toolRegistry.register(realTool);
+    }
+    const realAgencyExecutor = agencyKernel.createExecutor({
+      goals: goalsService,
+      tools: toolRegistry,
+      auditSink,
+      autonomyPolicy: realAutonomyPolicy,
+    });
+    agencyPort = {
+      goals: goalsService,
+      executor: realAgencyExecutor,
+      planDecomposer: agencyKernel.decomposePlan,
+    };
+    // Real wake triggers — instantiated and held on the cached
+    // SovereignBrain's `mutable` bag below so a future scheduler
+    // composition root can pick them up without re-reading the DB.
+    realWakeTriggers = agencyKernel.createRealWakeTriggers({});
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
-  const anthropic = await loadAnthropicClient();
+  // The raw client is wrapped in a process-wide circuit breaker so the
+  // sensor-failover layer sees a typed `AnthropicCircuitOpenError` and
+  // can fail-over to the next sensor instead of retrying every turn
+  // against an upstream that is already known to be down.
+  const anthropicRaw = await loadAnthropicClient();
+  const anthropic = anthropicRaw
+    ? wrapAnthropicWithCircuitBreaker(anthropicRaw, {
+        failureThreshold: 5,
+        recoveryTimeoutMs: 30_000,
+      })
+    : null;
 
   const mutable: Record<string, unknown> = {};
   if (anthropic) mutable.anthropicClient = anthropic;
@@ -353,6 +420,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (memoryHierarchy) mutable.memory = memoryHierarchy;
   if (feedbackPort) mutable.feedback = feedbackPort;
   if (agencyPort) mutable.agency = agencyPort;
+  if (realWakeTriggers && realWakeTriggers.length > 0) {
+    mutable.realWakeTriggers = realWakeTriggers;
+  }
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 
   return composeSovereign(mutable as Parameters<typeof composeSovereign>[0]);

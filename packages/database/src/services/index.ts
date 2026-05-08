@@ -205,3 +205,16 @@ export {
   type ActionAuditEntry as KernelActionAuditEntry,
   type KernelActionAuditService,
 } from './kernel-action-audit.service.js';
+
+// Per-tenant autonomy policy reader (migration 0080 — autonomy_policies).
+// Adapts to the kernel-agency `AutonomyPolicyPort` shape; falls back to
+// default-allow-low-stakes whenever the row is missing, autonomous mode
+// is disabled, the policy_json is malformed, or the DB query throws.
+export {
+  createPgAutonomyPolicyService,
+  defaultAllowLowStakes as defaultAllowLowStakesAutonomy,
+  type AutonomyPolicyDecideArgs,
+  type AutonomyPolicyDecision,
+  type AutonomyStakes,
+  type PgAutonomyPolicyService,
+} from './autonomy-policy.service.js';

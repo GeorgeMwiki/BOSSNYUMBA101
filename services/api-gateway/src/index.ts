@@ -18,6 +18,12 @@ if (!process.env.BOSSNYUMBA_SKIP_DOTENV) {
   loadDotenv({ path: resolvePath(process.cwd(), '.env'), override: true });
 }
 
+// OpenTelemetry bootstrap — must run BEFORE any other module imports
+// the OTel API or kernels emit spans. The bootstrap is idempotent and
+// no-ops when OTEL_ENABLED=false.
+import { bootstrapOTel } from './observability/otel-bootstrap';
+bootstrapOTel({});
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -162,8 +168,14 @@ import intelligenceRouter from './routes/intelligence.router';
 // resolving fetch. See each router's TODO marker for the followup.
 import analyticsRouter from './routes/analytics.router';
 import portfolioRouter from './routes/portfolio.router';
+// Estate-manager-app dependency — list/create unit subdivision children,
+// and list FAR / asset-component breakdown for a unit. Mounted under
+// /api/v1/units/:id/{subdivision,components}.
+import unitSubdivisionRouter from './routes/unit-subdivision.router';
+import unitComponentsRouter from './routes/unit-components.router';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { createRateLimitMiddleware } from './middleware/rate-limit-redis.middleware';
+import { getSharedPerTenantRateBudget } from './middleware/per-tenant-rate-budget';
 import {
   startOutboxWorker,
   stopOutboxWorker,
@@ -702,6 +714,18 @@ api.route('/vacancy-pipeline', vacancyPipelineRouter);
 // surface-specific persona and personalises the opening with the
 // operator's name. See packages/central-intelligence/src/kernel/
 // identity.ts for the persona catalogue.
+//
+// Per-tenant token-budget — only mounted on Jarvis kernel routes so a
+// runaway tenant cannot starve the platform's Anthropic budget. Auth
+// runs first inside each surface's router, then `tenantId` is on the
+// context for the budget gate. Process-local in-memory bucket; see
+// `per-tenant-rate-budget.ts` for the documented Redis upgrade.
+const tenantBudget = getSharedPerTenantRateBudget();
+api.use('/customer/jarvis/*', tenantBudget.handler);
+api.use('/owner/jarvis/*', tenantBudget.handler);
+api.use('/manager/jarvis/*', tenantBudget.handler);
+api.use('/admin/jarvis/*', tenantBudget.handler);
+api.use('/platform/jarvis/*', tenantBudget.handler);
 api.route('/customer/jarvis', tenantJarvisRouter);
 api.route('/owner/jarvis', ownerJarvisRouter);
 api.route('/manager/jarvis', managerJarvisRouter);
@@ -748,6 +772,11 @@ api.route(
 // for the TODO marker pointing at the followup work.
 api.route('/analytics', analyticsRouter);
 api.route('/portfolio', portfolioRouter);
+// Unit subdivision + components — Manager-app dependency. Hono mounts
+// path-param prefixes correctly: `:id` is parsed and exposed via
+// `c.req.param('id')` inside the sub-router.
+api.route('/units/:id/subdivision', unitSubdivisionRouter);
+api.route('/units/:id/components', unitComponentsRouter);
 
 // Wave 12 — Webhook DLQ admin router. Mounted at /api/v1/webhooks via
 // the factory's own prefix. The factory expects a repository + requeue

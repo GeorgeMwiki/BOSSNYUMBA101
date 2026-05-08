@@ -13,6 +13,7 @@ import {
   MicButton,
   createWebSpeechAudioPort,
   useJarvis,
+  useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
 
@@ -28,6 +29,9 @@ export function JarvisConsole(): JSX.Element {
   const [draft, setDraft] = useState('');
   const [threadId] = useState(() => `hq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
+  // Default to streaming for visibly faster UX; the toggle lets ops
+  // compare wire-level streaming against the single-shot /think path.
+  const [mode, setMode] = useState<'stream' | 'single-shot'>('stream');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const client = useMemo(
@@ -52,13 +56,13 @@ export function JarvisConsole(): JSX.Element {
   }, []);
 
   const {
-    turns,
-    status,
-    error,
+    turns: singleShotTurns,
+    status: singleShotStatus,
+    error: singleShotError,
     persona,
     think,
     thinkWithAttachments,
-    reset,
+    reset: singleShotReset,
     isListening,
     startListening,
     stopListening,
@@ -69,6 +73,38 @@ export function JarvisConsole(): JSX.Element {
     defaultTier: 'industry',
     ...(audioPort ? { voice: { audio: audioPort, speakReplies: true } } : {}),
   });
+
+  // Streaming variant — same surface client; visibly faster UX because
+  // each `delta` event is rendered as it arrives rather than waiting
+  // for the full /think round-trip.
+  const {
+    turns: streamTurns,
+    status: streamStatus,
+    error: streamError,
+    startStream,
+    abort: abortStream,
+    reset: streamReset,
+  } = useJarvisStream({
+    client,
+    threadId,
+    defaultStakes: 'medium',
+    defaultTier: 'industry',
+  });
+
+  const isStreaming = mode === 'stream';
+  const turns = isStreaming ? streamTurns : singleShotTurns;
+  const error = isStreaming ? streamError : singleShotError;
+  const isThinking = isStreaming
+    ? streamStatus === 'streaming'
+    : singleShotStatus === 'thinking';
+  const reset = isStreaming ? streamReset : singleShotReset;
+  const streamPersona = streamTurns
+    .slice()
+    .reverse()
+    .find((t) => t.role === 'assistant')?.persona;
+  const visiblePersona = isStreaming
+    ? (streamPersona ?? persona)
+    : persona;
 
   function onPickImages(e: React.ChangeEvent<HTMLInputElement>): void {
     const files = Array.from(e.target.files ?? []);
@@ -99,12 +135,16 @@ export function JarvisConsole(): JSX.Element {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     const text = draft.trim();
-    if (status === 'thinking') return;
+    if (isThinking) return;
     if (!text && pendingImages.length === 0) return;
     setDraft('');
-    if (pendingImages.length > 0) {
-      const images = pendingImages;
-      setPendingImages([]);
+    const images = pendingImages;
+    setPendingImages([]);
+    if (isStreaming) {
+      await startStream(text, images.length > 0 ? images : undefined);
+      return;
+    }
+    if (images.length > 0) {
       await thinkWithAttachments(text, images);
     } else {
       await think(text);
@@ -113,11 +153,40 @@ export function JarvisConsole(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-4">
-      {persona ? (
-        <div className="rounded border border-border bg-surface-sunken px-4 py-2 text-sm text-muted-foreground">
-          {persona.displayName} · {persona.firstPersonNoun === 'we' ? 'plural voice' : 'singular voice'}
+      <div className="flex items-center justify-between gap-3">
+        {visiblePersona ? (
+          <div className="rounded border border-border bg-surface-sunken px-4 py-2 text-sm text-muted-foreground">
+            {visiblePersona.displayName} · {visiblePersona.firstPersonNoun === 'we' ? 'plural voice' : 'singular voice'}
+          </div>
+        ) : <span />}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Mode</span>
+          <button
+            type="button"
+            onClick={() => setMode('stream')}
+            className={
+              mode === 'stream'
+                ? 'rounded border border-primary bg-primary px-2 py-1 text-primary-foreground'
+                : 'rounded border border-border bg-surface px-2 py-1 text-foreground'
+            }
+            aria-pressed={mode === 'stream'}
+          >
+            stream
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('single-shot')}
+            className={
+              mode === 'single-shot'
+                ? 'rounded border border-primary bg-primary px-2 py-1 text-primary-foreground'
+                : 'rounded border border-border bg-surface px-2 py-1 text-foreground'
+            }
+            aria-pressed={mode === 'single-shot'}
+          >
+            single-shot
+          </button>
         </div>
-      ) : null}
+      </div>
 
       <div className="flex min-h-[60vh] flex-col gap-3 rounded border border-border bg-surface p-4 overflow-y-auto">
         {turns.length === 0 ? (
@@ -126,47 +195,57 @@ export function JarvisConsole(): JSX.Element {
             arrears patterns. Every claim is grounded in DP-aggregate evidence.
           </p>
         ) : (
-          turns.map((t) => (
-            <div
-              key={t.id}
-              className={
-                t.role === 'user'
-                  ? 'self-end max-w-[80%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground'
-                  : 'self-start max-w-[80%] rounded-lg bg-surface-sunken px-3 py-2 text-sm text-foreground'
-              }
-            >
-              <div className="whitespace-pre-wrap">{t.text}</div>
-              {t.role === 'assistant' && t.decision?.confidence ? (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  confidence {(t.decision.confidence.overall * 100).toFixed(0)}%
-                  {t.decision.kind === 'softened' ? ' · softened' : ''}
-                  {t.decision.kind === 'refusal' ? ' · refused' : ''}
-                </div>
-              ) : null}
-              {t.role === 'assistant' &&
-              t.decision?.citations &&
-              t.decision.citations.length > 0 ? (
-                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  {t.decision.citations.map((cite) => (
-                    <li
-                      key={cite.id}
-                      className="rounded border border-border bg-surface px-2 py-1"
-                    >
-                      <span className="font-medium text-foreground">
-                        {cite.label}
-                      </span>{' '}
-                      <span className="text-muted-foreground">
-                        · grounded {(cite.confidence * 100).toFixed(0)}%
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ))
+          turns.map((t) => {
+            // Both turn shapes overlap on `id`, `role`, `text`. The
+            // streaming turn carries `finalDecision`; the single-shot
+            // turn carries `decision`. Coalesce so the renderer stays
+            // mode-agnostic.
+            const tt = t as { decision?: any; finalDecision?: any } & typeof t;
+            const decision = tt.finalDecision ?? tt.decision;
+            return (
+              <div
+                key={t.id}
+                className={
+                  t.role === 'user'
+                    ? 'self-end max-w-[80%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground'
+                    : 'self-start max-w-[80%] rounded-lg bg-surface-sunken px-3 py-2 text-sm text-foreground'
+                }
+              >
+                <div className="whitespace-pre-wrap">{t.text}</div>
+                {t.role === 'assistant' && decision?.confidence ? (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    confidence {(decision.confidence.overall * 100).toFixed(0)}%
+                    {decision.kind === 'softened' ? ' · softened' : ''}
+                    {decision.kind === 'refusal' ? ' · refused' : ''}
+                  </div>
+                ) : null}
+                {t.role === 'assistant' &&
+                decision?.citations &&
+                decision.citations.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {decision.citations.map((cite: any) => (
+                      <li
+                        key={cite.id}
+                        className="rounded border border-border bg-surface px-2 py-1"
+                      >
+                        <span className="font-medium text-foreground">
+                          {cite.label}
+                        </span>{' '}
+                        <span className="text-muted-foreground">
+                          · grounded {(cite.confidence * 100).toFixed(0)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            );
+          })
         )}
-        {status === 'thinking' ? (
-          <div className="self-start text-xs text-muted-foreground italic">thinking…</div>
+        {isThinking ? (
+          <div className="self-start text-xs text-muted-foreground italic">
+            {isStreaming ? 'streaming…' : 'thinking…'}
+          </div>
         ) : null}
         {error ? (
           <div className="self-start text-xs text-destructive">error: {error}</div>
@@ -200,7 +279,7 @@ export function JarvisConsole(): JSX.Element {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={isListening ? 'Listening…' : 'Ask Nyumba Mind…'}
-          disabled={status === 'thinking'}
+          disabled={isThinking}
           className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
         />
         <input
@@ -215,7 +294,7 @@ export function JarvisConsole(): JSX.Element {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={status === 'thinking' || pendingImages.length >= MAX_IMAGES_PER_TURN}
+          disabled={isThinking || pendingImages.length >= MAX_IMAGES_PER_TURN}
           aria-label="Attach images"
           title={
             pendingImages.length >= MAX_IMAGES_PER_TURN
@@ -231,19 +310,28 @@ export function JarvisConsole(): JSX.Element {
             isListening={isListening}
             onStart={startListening}
             onStop={stopListening}
-            disabled={status === 'thinking'}
+            disabled={isThinking}
           />
         ) : null}
         <button
           type="submit"
           disabled={
-            status === 'thinking' ||
+            isThinking ||
             (!draft.trim() && pendingImages.length === 0)
           }
           className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           Send
         </button>
+        {isStreaming && isThinking ? (
+          <button
+            type="button"
+            onClick={abortStream}
+            className="rounded border border-border bg-surface px-3 py-2 text-sm text-foreground"
+          >
+            Abort
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={reset}

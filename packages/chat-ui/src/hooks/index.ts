@@ -7,3 +7,4 @@
  */
 export * from './useChatStream.js';
 export * from './useJarvis.js';
+export * from './useJarvisStream.js';
