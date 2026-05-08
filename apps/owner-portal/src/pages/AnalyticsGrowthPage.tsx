@@ -1,12 +1,19 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
+/**
+ * AnalyticsGrowthPage — placeholder until the growth analytics
+ * endpoint lands.
+ *
+ * Required gateway route:
+ *   GET /api/v1/analytics/growth?range=30d
+ */
 export default function AnalyticsGrowthPage() {
   const t = useTranslations('analyticsGrowthPage');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('title')}
-      feature={t('feature')}
+      endpoint="GET /api/v1/analytics/growth"
       description={t('description')}
     />
   );

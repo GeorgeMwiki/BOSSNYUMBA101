@@ -1,12 +1,20 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
+/**
+ * CommunicationsBroadcastsPage — placeholder until the broadcasts API
+ * lands.
+ *
+ * Required gateway routes:
+ *   GET  /api/v1/owner/messaging/broadcasts
+ *   POST /api/v1/owner/messaging/broadcasts
+ */
 export default function CommunicationsBroadcastsPage() {
   const t = useTranslations('communicationsBroadcastsPage');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('title')}
-      feature={t('feature')}
+      endpoint="GET /api/v1/owner/messaging/broadcasts"
       description={t('description')}
     />
   );

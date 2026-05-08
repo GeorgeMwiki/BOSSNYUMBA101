@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
 /**
  * CommunicationsCampaignsPage — placeholder until the campaigns API
@@ -8,15 +8,15 @@ import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPag
  * sent / open-rate / click-rate numbers and 2025-01 dates. That is
  * dishonest sample data, not live state. Reintroduce the real
  * filterable list once the gateway exposes
- * `GET /owner/messaging/campaigns` (and the matching state-mutation
+ * `GET /api/v1/owner/messaging/campaigns` (and the matching state-mutation
  * endpoints to start / pause / archive a campaign).
  */
 export default function CommunicationsCampaignsPage() {
   const t = useTranslations('campaignsPage');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('title')}
-      feature={t('subtitle')}
+      endpoint="GET /api/v1/owner/messaging/campaigns"
       description={t('subtitle')}
     />
   );

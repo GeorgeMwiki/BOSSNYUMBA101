@@ -1,12 +1,21 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
+/**
+ * UsersPage — placeholder until the user-administration endpoints land.
+ *
+ * Required gateway routes:
+ *   GET    /api/v1/admin/users
+ *   POST   /api/v1/admin/users
+ *   PATCH  /api/v1/admin/users/:id
+ *   DELETE /api/v1/admin/users/:id
+ */
 export function UsersPage() {
   const t = useTranslations('pages');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('usersTitle')}
-      feature={t('usersFeature')}
+      endpoint="GET /api/v1/admin/users"
       description={t('usersDescription')}
     />
   );

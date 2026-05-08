@@ -1,22 +1,21 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
 /**
  * AnalyticsExportsPage — placeholder until the export-templates and
  * recent-exports endpoints land.
  *
- * The previous implementation rendered hand-built sample templates with
- * `Date.now()`-derived "last exported" timestamps that always looked
- * fresh. That was dishonest UI: nothing was actually exported. The
- * page now declares the gap explicitly so an operator can't mistake
- * the surface for working analytics tooling.
+ * Required gateway routes:
+ *   GET  /api/v1/analytics/exports/templates
+ *   GET  /api/v1/analytics/exports/recent
+ *   POST /api/v1/analytics/exports
  */
 export default function AnalyticsExportsPage() {
   const t = useTranslations('analyticsExports');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('title')}
-      feature={t('subtitle')}
+      endpoint="GET /api/v1/analytics/exports/templates"
       description={t('subtitle')}
     />
   );
