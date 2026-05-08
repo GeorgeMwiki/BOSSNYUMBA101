@@ -83,9 +83,18 @@ export function initTracing(config: TelemetryConfig): NodeSDK {
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
-    sdkInstance?.shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.error('Error terminating tracing', error))
+    sdkInstance
+      ?.shutdown()
+      .catch((error) => {
+        // Shutdown is a process-terminating event; emit to stderr so
+        // operators see why tracing failed to drain. Avoid console.log
+        // (info-level) per coding style — only diagnostic on failure.
+        process.stderr.write(
+          `[observability] error terminating tracing: ${
+            error instanceof Error ? error.message : String(error)
+          }\n`
+        );
+      })
       .finally(() => process.exit(0));
   });
 

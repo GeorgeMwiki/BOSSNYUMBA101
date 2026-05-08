@@ -416,33 +416,41 @@ export const HealthCheckBuilders = {
     name: string,
     healthEndpoint: string,
     options?: Partial<HealthCheckDefinition>
-  ): HealthCheckDefinition => ({
-    name,
-    type: HealthCheckType.DEPENDENCY,
-    dependencyType: DependencyType.EXTERNAL_API,
-    critical: false,
-    timeoutMs: 10000,
-    intervalMs: 60000,
-    failureThreshold: 3,
-    successThreshold: 1,
-    ...options,
-    check: async () => {
-      try {
-        const response = await fetch(healthEndpoint, { method: 'HEAD' });
-        const healthy = response.ok;
-        return {
-          healthy,
-          message: healthy ? `${name} is available` : `${name} returned ${response.status}`,
-          details: { statusCode: response.status },
-        };
-      } catch (error) {
-        return {
-          healthy: false,
-          message: `${name} is unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        };
-      }
-    },
-  }),
+  ): HealthCheckDefinition => {
+    const effectiveTimeout = options?.timeoutMs ?? 10000;
+    return {
+      name,
+      type: HealthCheckType.DEPENDENCY,
+      dependencyType: DependencyType.EXTERNAL_API,
+      critical: false,
+      timeoutMs: effectiveTimeout,
+      intervalMs: 60000,
+      failureThreshold: 3,
+      successThreshold: 1,
+      ...options,
+      check: async () => {
+        try {
+          // Wire the configured timeoutMs to the network call so a hanging
+          // upstream cannot stall the health probe scheduler.
+          const response = await fetch(healthEndpoint, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(effectiveTimeout),
+          });
+          const healthy = response.ok;
+          return {
+            healthy,
+            message: healthy ? `${name} is available` : `${name} returned ${response.status}`,
+            details: { statusCode: response.status },
+          };
+        } catch (error) {
+          return {
+            healthy: false,
+            message: `${name} is unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          };
+        }
+      },
+    };
+  },
 
   /**
    * Memory usage check

@@ -399,25 +399,46 @@ export class WorkflowEngine {
         method: string;
         headers?: Record<string, string>;
         body?: unknown;
+        timeoutMs?: number;
       };
-      
-      const response = await fetch(String(this.interpolate(config.url, context)), {
-        method: config.method,
-        headers: config.headers,
-        body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,
-      });
-      
-      return {
-        statusCode: response.status,
-        body: await response.json().catch((): null => null),
-      };
+
+      // Default 30s timeout — workflows must never hang on a slow upstream.
+      const timeoutMs = typeof config.timeoutMs === 'number' && config.timeoutMs > 0
+        ? config.timeoutMs
+        : 30_000;
+
+      try {
+        const response = await fetch(String(this.interpolate(config.url, context)), {
+          method: config.method,
+          headers: config.headers,
+          body: config.body ? JSON.stringify(this.interpolate(config.body, context)) : undefined,
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+
+        return {
+          statusCode: response.status,
+          body: await response.json().catch((): null => null),
+        };
+      } catch (error) {
+        return {
+          statusCode: 0,
+          body: null,
+          error: error instanceof Error ? error.message : 'request failed',
+        };
+      }
     });
 
     // Wait handler
     this.actionHandlers.set(ActionType.WAIT, async (action) => {
       const { duration } = action.config as { duration: number };
-      await new Promise(resolve => setTimeout(resolve, duration));
-      return { waited: duration };
+      // Guard against NaN, negative, or absurd durations that would stall the engine.
+      const safeDuration = Number.isFinite(duration) && duration > 0
+        ? Math.min(Math.floor(duration), 24 * 60 * 60 * 1000)
+        : 0;
+      if (safeDuration > 0) {
+        await new Promise((resolve) => setTimeout(resolve, safeDuration));
+      }
+      return { waited: safeDuration };
     });
 
     // Conditional handler (returns which branch to take)
