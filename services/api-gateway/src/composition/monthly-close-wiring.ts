@@ -66,6 +66,10 @@ import { createDrizzleReconciliationAdapter } from '../services/monthly-close/re
 import { createDrizzleStatementAdapter } from '../services/monthly-close/statement-adapter.js';
 import { createDrizzleDisbursementAdapter } from '../services/monthly-close/disbursement-adapter.js';
 import { createDrizzleNotificationAdapter } from '../services/monthly-close/notification-adapter.js';
+import {
+  withAgentSpan,
+  recordDegraded,
+} from '../instrumentation/agent-spans.js';
 
 const { MonthlyCloseOrchestrator } = MonthlyClose;
 
@@ -143,9 +147,81 @@ export function createMonthlyCloseWiring(
     logger,
   };
 
+  const orchestrator = new MonthlyCloseOrchestrator(orchestratorDeps);
   return {
-    orchestrator: new MonthlyCloseOrchestrator(orchestratorDeps),
+    orchestrator: instrumentOrchestrator(orchestrator),
   };
+}
+
+/**
+ * Wrap the orchestrator's public async methods (`triggerRun`,
+ * `listRuns`, `getRun`, `approveStep`) in `withAgentSpan(...)` so
+ * operators see latency and error rate per-method in Prometheus +
+ * per-tenant traces. Behaviour is otherwise unchanged — the wrappers
+ * proxy the underlying instance method 1:1.
+ *
+ * Methods are rebound on the instance (rather than via Object.create)
+ * because `MonthlyCloseOrchestrator` reads private fields through
+ * `this`, and a prototype-only proxy would break those reads. Rebinding
+ * happens once at wiring-construction time (not per call).
+ */
+function instrumentOrchestrator(
+  orchestrator: InstanceType<typeof MonthlyCloseOrchestrator>,
+): InstanceType<typeof MonthlyCloseOrchestrator> {
+  const originalTriggerRun = orchestrator.triggerRun.bind(orchestrator);
+  const originalListRuns = orchestrator.listRuns.bind(orchestrator);
+  const originalGetRun = orchestrator.getRun.bind(orchestrator);
+  const originalApproveStep = orchestrator.approveStep.bind(orchestrator);
+
+  orchestrator.triggerRun = (input) =>
+    withAgentSpan(
+      'monthly-close',
+      'triggerRun',
+      () => originalTriggerRun(input),
+      {
+        tenantId: input?.tenantId ?? null,
+        attributes: {
+          ...(typeof input?.periodYear === 'number' && {
+            periodYear: input.periodYear,
+          }),
+          ...(typeof input?.periodMonth === 'number' && {
+            periodMonth: input.periodMonth,
+          }),
+        },
+      },
+    );
+
+  orchestrator.listRuns = (tenantId, limit) =>
+    withAgentSpan(
+      'monthly-close',
+      'listRuns',
+      () => originalListRuns(tenantId, limit),
+      { tenantId },
+    );
+
+  orchestrator.getRun = (runId, tenantId) =>
+    withAgentSpan(
+      'monthly-close',
+      'getRun',
+      () => originalGetRun(runId, tenantId),
+      { tenantId, attributes: { runId } },
+    );
+
+  orchestrator.approveStep = (input) =>
+    withAgentSpan(
+      'monthly-close',
+      'approveStep',
+      () => originalApproveStep(input),
+      {
+        tenantId: input?.tenantId ?? null,
+        attributes: {
+          ...(input?.runId && { runId: input.runId }),
+          ...(input?.stepName && { stepName: input.stepName }),
+        },
+      },
+    );
+
+  return orchestrator;
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +439,7 @@ function makeOnceWarner(
   return () => {
     if (warned) return;
     warned = true;
+    recordDegraded('monthly-close', portName, degradedReason);
     logger.warn(
       {
         port: portName,

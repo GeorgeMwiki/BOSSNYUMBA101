@@ -60,6 +60,10 @@ import {
   ModelTier,
   type BudgetGuardedAnthropicClient,
 } from '@bossnyumba/ai-copilot/providers';
+import {
+  withAgentSpan,
+  recordDegraded,
+} from '../instrumentation/agent-spans.js';
 
 /**
  * DatabaseClient derived via `ReturnType<typeof createDatabaseClient>`
@@ -568,34 +572,95 @@ export function createPredictiveInterventionsWiring(
   const repo = createRepoAdapter(deps.db, now, deps.logger);
   const factory = deps.anthropicClientFactory ?? null;
 
+  // No anthropic client factory means the LLM port runs in heuristic-
+  // baseline mode for every tenant. Surface that on the
+  // `agent_port_degraded_total` counter so dashboards can flag the
+  // posture explicitly.
+  if (!factory) {
+    recordDegraded(
+      'predictive-interventions',
+      'ClassifyLLMPort',
+      'NO_ANTHROPIC_CLIENT_FACTORY',
+    );
+  }
+
   // Heuristic-baseline agent — used when the caller doesn't have a
   // tenant context (e.g. background jobs running ahead of the
-  // request-scoped LLM client).
-  const baselineAgent = createPredictiveInterventions({
-    repo,
-    now,
-    // llm/publisher/budgetGuard intentionally omitted.
-  });
+  // request-scoped LLM client). We instrument once so reference
+  // identity holds across `agent` and the no-factory `agentFor` path.
+  const baselineAgent = instrumentPredictiveAgent(
+    createPredictiveInterventions({
+      repo,
+      now,
+      // llm/publisher/budgetGuard intentionally omitted.
+    }),
+  );
 
   function buildAgentForTenant(tenantId: string) {
     if (!factory || !tenantId) {
-      // Without a factory we share the baseline agent — feature-snapshot
-      // tenancy still routes correctly because the agent threads the
-      // tenantId from `features.tenantId`.
+      // Without a factory we share the (already-instrumented) baseline
+      // agent — feature-snapshot tenancy still routes correctly because
+      // the agent threads the tenantId from `features.tenantId`.
       return baselineAgent;
     }
     const client = factory(tenantId, 'predictive-interventions:predict');
     const llm = createAnthropicClassifyPort(client);
-    return createPredictiveInterventions({
-      repo,
-      llm,
-      now,
-    });
+    return instrumentPredictiveAgent(
+      createPredictiveInterventions({
+        repo,
+        llm,
+        now,
+      }),
+    );
   }
 
   return {
     agent: baselineAgent,
     agentFor: buildAgentForTenant,
+  };
+}
+
+/**
+ * Wrap the agent's three public methods (`predictOne`, `runNightly`,
+ * `listRecent`) in `withAgentSpan(...)` so each invocation produces an
+ * `agent.predictive-interventions.*` span and increments the per-agent
+ * counter / latency histogram. Returns a fresh object — does not
+ * mutate the underlying agent.
+ */
+function instrumentPredictiveAgent(
+  agent: ReturnType<typeof createPredictiveInterventions>,
+): ReturnType<typeof createPredictiveInterventions> {
+  return {
+    predictOne(features, horizonDays) {
+      return withAgentSpan(
+        'predictive-interventions',
+        'predictOne',
+        () => agent.predictOne(features, horizonDays),
+        {
+          tenantId: features?.tenantId ?? null,
+          attributes: {
+            ...(features?.customerId && { customerId: features.customerId }),
+            ...(typeof horizonDays === 'number' && { horizonDays }),
+          },
+        },
+      );
+    },
+    runNightly(tenantId) {
+      return withAgentSpan(
+        'predictive-interventions',
+        'runNightly',
+        () => agent.runNightly(tenantId),
+        { tenantId },
+      );
+    },
+    listRecent(tenantId, customerId) {
+      return withAgentSpan(
+        'predictive-interventions',
+        'listRecent',
+        () => agent.listRecent(tenantId, customerId),
+        { tenantId, attributes: { customerId } },
+      );
+    },
   };
 }
 

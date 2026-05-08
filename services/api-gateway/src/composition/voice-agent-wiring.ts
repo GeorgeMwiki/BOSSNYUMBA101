@@ -39,6 +39,10 @@
 
 import { createDatabaseClient, createVoiceTurnsService } from '@bossnyumba/database';
 import { VoiceAgent as VoiceAgentNs } from '@bossnyumba/ai-copilot/ai-native';
+import {
+  withAgentSpan,
+  recordDegraded,
+} from '../instrumentation/agent-spans.js';
 
 /**
  * DatabaseClient + VoiceTurnsService types derived via `ReturnType<typeof
@@ -177,6 +181,7 @@ function detectLanguageFromTranscript(text: string): string {
 function createDegradedVoiceBrainStub(
   logger?: VoiceAgentWiringDeps['logger'],
 ): VoiceBrainPort {
+  recordDegraded('voice-agent', 'VoiceBrainPort', 'KERNEL_NOT_WIRED');
   if (logger) {
     logger.warn(
       {
@@ -284,6 +289,11 @@ function createRealVoiceBrain(
         };
         return response;
       } catch (error) {
+        recordDegraded(
+          'voice-agent',
+          'VoiceBrainPort',
+          'KERNEL_THINK_FAILED',
+        );
         if (logger) {
           logger.warn(
             {
@@ -438,5 +448,31 @@ export function createVoiceAgentWiring(
     // resolves customerId to null for the turn (best-effort contract).
   });
 
-  return Object.freeze({ agent });
+  return Object.freeze({ agent: instrumentVoiceAgent(agent) });
+}
+
+/**
+ * Wrap the voice agent's `turn(...)` method in `withAgentSpan(...)` so
+ * each call emits an `agent.voice-agent.turn` span (with `tenant_id`
+ * + `sessionId` attributes) and bumps the per-agent counter +
+ * latency histogram. Returns a fresh frozen object — does not mutate
+ * the underlying agent.
+ */
+function instrumentVoiceAgent(agent: VoiceAgent): VoiceAgent {
+  return Object.freeze({
+    turn(input) {
+      return withAgentSpan(
+        'voice-agent',
+        'turn',
+        () => agent.turn(input),
+        {
+          tenantId: input?.tenantId ?? null,
+          attributes: {
+            ...(input?.sessionId && { sessionId: input.sessionId }),
+            ...(input?.languageCode && { languageCode: input.languageCode }),
+          },
+        },
+      );
+    },
+  });
 }
