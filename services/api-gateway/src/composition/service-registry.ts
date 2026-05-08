@@ -1482,7 +1482,17 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // STT/TTS, reconciliation/statements/disbursement) are stub
     // adapters today so the registry is operable end-to-end without
     // external creds — concrete adapters land in follow-ups.
-    monthlyClose: createMonthlyCloseWiring({ db }),
+    monthlyClose: createMonthlyCloseWiring({
+      db,
+      eventBus,
+      autonomyRepository: new PostgresAutonomyPolicyRepository(db),
+    }),
+    // `kernelThink` is omitted here — until the central-intelligence
+    // BrainKernel is constructed at this composition root, the voice
+    // agent runs with the degraded (KERNEL_NOT_WIRED) brain stub.
+    // Once `createBrainKernel(...)` is wired (next scrub wave), pass
+    // its `.think` reference here to upgrade voice turns to the full
+    // 13-step disciplined pipeline.
     voiceAgent: createVoiceAgentWiring({ db }),
     marketSurveillance: createMarketSurveillanceWiring({ db }),
     predictiveInterventions: createPredictiveInterventionsWiring({ db }),

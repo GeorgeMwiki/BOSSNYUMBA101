@@ -11,16 +11,30 @@
  * responses, and an unresolved caller still gets answered (just without
  * personalized context).
  *
- * The `VoiceBrainPort` is wired to a degraded-mode stub that politely
- * signals VOICE_BRAIN_NOT_CONFIGURED in the detected language. The
- * agent is therefore *operable* in production from day one — every
- * turn round-trips through STT-skip → brain-stub → TTS-skip → DB
- * persist — and the platform can swap the brain stub for the real
- * central-intelligence kernel later without re-wiring.
+ * The `VoiceBrainPort` is wired in two modes:
+ *
+ *   - When `deps.kernelThink` is provided (the central-intelligence
+ *     `BrainKernel.think` reference), the brain adapts every turn into
+ *     a `ThoughtRequest`, invokes the kernel's disciplined 13-step
+ *     pipeline, and maps the resulting `BrainDecision` back onto the
+ *     voice-agent's `VoiceBrainResponse` shape — model version is
+ *     surfaced from the decision provenance, refusals and softens
+ *     degrade gracefully into a text reply, tenant isolation is
+ *     preserved on every kernel call.
+ *   - When `kernelThink` is null/undefined the wiring falls back to a
+ *     polite degraded stub that signals `VOICE_BRAIN_NOT_CONFIGURED`
+ *     in the detected language — same behaviour as commit f3f02d2.
  *
  * Tenant isolation: enforced by the agent's input contract
- * (`tenantId` mandatory on every turn) and by the storage adapter's
- * `tenant_id` column index on every read/write.
+ * (`tenantId` mandatory on every turn), by the storage adapter's
+ * `tenant_id` column index on every read/write, and by the kernel
+ * adapter scoping every `ThoughtRequest.scope` to the calling tenant.
+ *
+ * Duck-typed kernel coupling: `kernelThink` is duck-typed via
+ * structural input/output shapes so this composition file remains
+ * importable even when `@bossnyumba/central-intelligence` is not
+ * installed (test isolation, partial deployments, lighter-weight
+ * service builds).
  */
 
 import { createDatabaseClient, createVoiceTurnsService } from '@bossnyumba/database';
@@ -42,9 +56,83 @@ type VoiceTurnRepository = VoiceAgentNs.VoiceTurnRepository;
 type VoiceBrainPort = VoiceAgentNs.VoiceBrainPort;
 type VoiceBrainResponse = VoiceAgentNs.VoiceBrainResponse;
 
+/**
+ * Structural shape of `BrainKernel.think` from
+ * `@bossnyumba/central-intelligence`. Duck-typed so this file does
+ * NOT pull a hard import on the kernel package — composition root
+ * binds the real reference at registry-construction time.
+ *
+ * The kernel's `ThoughtRequest` exposes more knobs than the voice
+ * agent needs (attachments, judge requests, ipHash). The adapter
+ * builds the minimal request shape from the per-turn voice input and
+ * leaves optional fields unset.
+ */
+export interface KernelThoughtRequestLike {
+  readonly threadId: string;
+  readonly userMessage: string;
+  readonly scope:
+    | {
+        readonly kind: 'tenant';
+        readonly tenantId: string;
+        readonly actorUserId: string;
+        readonly roles: ReadonlyArray<string>;
+        readonly personaId: string;
+      }
+    | {
+        readonly kind: 'platform';
+        readonly actorUserId: string;
+        readonly roles: ReadonlyArray<string>;
+        readonly personaId: string;
+      };
+  readonly tier:
+    | 'tenant'
+    | 'lease'
+    | 'unit'
+    | 'block'
+    | 'property'
+    | 'portfolio'
+    | 'org'
+    | 'industry';
+  readonly stakes: 'low' | 'medium' | 'high' | 'critical';
+  readonly surface:
+    | 'marketing'
+    | 'tenant-app'
+    | 'owner-portal'
+    | 'estate-manager-app'
+    | 'admin-portal'
+    | 'platform-hq'
+    | 'classroom';
+}
+
+/**
+ * Structural shape of the kernel's `BrainDecision` discriminated
+ * union. Adapter only reads the fields it needs (`text`, `reason`,
+ * `provenance.modelId`).
+ */
+export interface KernelBrainDecisionLike {
+  readonly kind: 'answer' | 'softened' | 'refusal';
+  readonly text?: string;
+  readonly reason?: string;
+  readonly provenance: {
+    readonly modelId: string;
+  };
+}
+
+export type KernelThinkFn = (
+  req: KernelThoughtRequestLike,
+) => Promise<KernelBrainDecisionLike>;
+
 export interface VoiceAgentWiringDeps {
   readonly db: DatabaseClient | null;
   readonly logger?: { warn(meta: object, msg: string): void };
+  /**
+   * Optional reference to `BrainKernel.think` from
+   * `@bossnyumba/central-intelligence`. When provided, every voice
+   * turn round-trips through the kernel's 13-step disciplined
+   * pipeline. When null/undefined, the wiring falls back to the
+   * polite degraded stub that emits `VOICE_BRAIN_NOT_CONFIGURED`.
+   */
+  readonly kernelThink?: KernelThinkFn | null;
 }
 
 export interface VoiceAgentWiring {
@@ -80,16 +168,24 @@ function detectLanguageFromTranscript(text: string): string {
 /**
  * Build the degraded-mode `VoiceBrainPort`.
  *
- * TODO: wire to central-intelligence kernel for real voice responses.
- *
- * Until the kernel adapter ships, every turn returns a polite
- * "voice service not yet configured" reply in the detected language.
- * `modelVersion` is tagged `VOICE_BRAIN_NOT_CONFIGURED` so audit and
- * dashboards can flag these turns explicitly.
+ * Used when `kernelThink` is not wired (`KERNEL_NOT_WIRED`). Every
+ * turn returns a polite "voice service not yet configured" reply in
+ * the detected language. `modelVersion` is tagged
+ * `VOICE_BRAIN_NOT_CONFIGURED` so audit and dashboards can flag these
+ * turns explicitly.
  */
 function createDegradedVoiceBrainStub(
   logger?: VoiceAgentWiringDeps['logger'],
 ): VoiceBrainPort {
+  if (logger) {
+    logger.warn(
+      {
+        port: 'VoiceBrainPort',
+        degraded_reason: 'KERNEL_NOT_WIRED',
+      },
+      'voice-brain stub installed (KERNEL_NOT_WIRED)',
+    );
+  }
   return {
     async turn(input) {
       const lang = input.languageCode || detectLanguageFromTranscript(input.userTranscript);
@@ -116,6 +212,127 @@ function createDegradedVoiceBrainStub(
       return response;
     },
   };
+}
+
+/**
+ * Persona id used when the voice agent constructs a kernel scope. The
+ * kernel's `selectPersona(req)` consults `req.surface` (the voice
+ * surface maps to the tenant-app default persona) so this id is the
+ * fallback identifier carried through provenance / audit only — it
+ * does NOT control persona selection. Surface-level persona binding
+ * happens inside the kernel's identity layer.
+ */
+const KERNEL_VOICE_PERSONA_ID = 'voice-agent-default';
+
+/**
+ * Default actor id used when no caller-side actor is resolved. The
+ * voice surface today routes anonymous calls before a customer is
+ * matched (resolver port unwired); the kernel still requires a non-
+ * empty `actorUserId` for memory recall. We use a stable per-session
+ * identifier so memory entries cohere across turns of one call.
+ */
+function deriveActorUserId(input: {
+  readonly customerId: string | null;
+  readonly sessionId: string;
+}): string {
+  return input.customerId ?? `voice-session:${input.sessionId}`;
+}
+
+/**
+ * Build a real `VoiceBrainPort` backed by the central-intelligence
+ * kernel. Adapter is intentionally narrow — voice turns are short,
+ * streaming-capable, and tenant-scoped.
+ */
+function createRealVoiceBrain(
+  kernelThink: KernelThinkFn,
+  logger?: VoiceAgentWiringDeps['logger'],
+): VoiceBrainPort {
+  return {
+    async turn(input) {
+      const actorUserId = deriveActorUserId({
+        customerId: input.customerId,
+        sessionId: input.sessionId,
+      });
+
+      const req: KernelThoughtRequestLike = {
+        threadId: input.sessionId,
+        userMessage: input.userTranscript,
+        scope: {
+          kind: 'tenant',
+          tenantId: input.tenantId,
+          actorUserId,
+          roles: ['tenant'],
+          personaId: KERNEL_VOICE_PERSONA_ID,
+        },
+        tier: 'tenant',
+        // Voice turns favour latency over depth — `medium` skips the
+        // judge and extended-thinking branches in the kernel.
+        stakes: 'medium',
+        surface: 'tenant-app',
+      };
+
+      try {
+        const decision = await kernelThink(req);
+        const text = pickVoiceTextFromDecision(decision, input.languageCode || detectLanguageFromTranscript(input.userTranscript));
+        const response: VoiceBrainResponse = {
+          text,
+          toolCalls: [],
+          modelVersion: decision.provenance.modelId,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsdMicro: 0,
+        };
+        return response;
+      } catch (error) {
+        if (logger) {
+          logger.warn(
+            {
+              port: 'VoiceBrainPort',
+              tenantId: input.tenantId,
+              sessionId: input.sessionId,
+              promptHash: input.promptHash,
+              degraded_reason: 'KERNEL_THINK_FAILED',
+              error: error instanceof Error ? error.message : String(error),
+            },
+            'kernel.think threw — degrading voice turn',
+          );
+        }
+        const lang =
+          input.languageCode || detectLanguageFromTranscript(input.userTranscript);
+        const reply = DEGRADED_REPLIES[lang] ?? DEGRADED_REPLIES.en;
+        const response: VoiceBrainResponse = {
+          text: reply,
+          toolCalls: [],
+          modelVersion: 'VOICE_BRAIN_KERNEL_ERROR',
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsdMicro: 0,
+        };
+        return response;
+      }
+    },
+  };
+}
+
+/**
+ * Map a kernel `BrainDecision` onto a voice text reply.
+ *
+ *   - `answer`   → the answer text verbatim.
+ *   - `softened` → the softened text (the hedge is dropped from the
+ *     spoken reply since voice surfaces lack room for an inline
+ *     "but"; future work will read the hedge as a follow-up turn).
+ *   - `refusal`  → the polite degraded reply in the caller's
+ *     language. The `reason` is logged separately by the kernel's
+ *     drift / policy gates.
+ */
+function pickVoiceTextFromDecision(
+  decision: KernelBrainDecisionLike,
+  fallbackLanguage: string,
+): string {
+  if (decision.kind === 'answer' || decision.kind === 'softened') {
+    return decision.text ?? DEGRADED_REPLIES[fallbackLanguage] ?? DEGRADED_REPLIES.en;
+  }
+  return DEGRADED_REPLIES[fallbackLanguage] ?? DEGRADED_REPLIES.en;
 }
 
 /**
@@ -208,7 +425,9 @@ export function createVoiceAgentWiring(
 
   const turnsService = createVoiceTurnsService(deps.db);
   const repo = adaptToVoiceTurnRepository(turnsService);
-  const brain = createDegradedVoiceBrainStub(deps.logger);
+  const brain = deps.kernelThink
+    ? createRealVoiceBrain(deps.kernelThink, deps.logger)
+    : createDegradedVoiceBrainStub(deps.logger);
 
   const agent = VoiceAgentNs.createVoiceAgent({
     brain,

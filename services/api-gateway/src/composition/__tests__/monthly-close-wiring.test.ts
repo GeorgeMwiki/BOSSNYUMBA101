@@ -283,4 +283,190 @@ describe('createMonthlyCloseWiring', () => {
       'MONTHLY_CLOSE_RUN_NOT_FOUND',
     );
   });
+
+  // ---------------------------------------------------------------------
+  // Real-adapter wirings — Wave 28 Phase B follow-on. The autonomy port
+  // and event port now bind to real repository / event-bus instances
+  // when the parent composition root supplies them.
+  // ---------------------------------------------------------------------
+
+  it('binds the autonomy port to the real repository when supplied', async () => {
+    const repoGet = vi.fn().mockResolvedValue(null);
+    const repo = {
+      get: repoGet,
+      upsert: vi.fn(),
+    };
+    const warns: Array<{ meta: object; msg: string }> = [];
+    const wiring = createMonthlyCloseWiring({
+      db: fakeDb,
+      autonomyRepository: repo as never,
+      logger: {
+        info: () => undefined,
+        warn: (meta, msg) => warns.push({ meta, msg }),
+      },
+    });
+    expect(wiring).not.toBeNull();
+
+    await wiring!.orchestrator.triggerRun({
+      tenantId: 'tenant-real-autonomy',
+      trigger: 'manual',
+      triggeredBy: 'user-1',
+      periodYear: 2026,
+      periodMonth: 4,
+    });
+
+    // The real adapter MUST consult the repository. A null row drives
+    // the safe-default (autonomousModeEnabled: false) path so the run
+    // still parks at the disbursement gate without crashing.
+    expect(repoGet).toHaveBeenCalledWith('tenant-real-autonomy');
+
+    // Falling back through the `no_policy_row` reason is structured so
+    // operators can pivot on `degraded_reason` in their log pipeline.
+    const autonomyWarn = warns.find(
+      (w) => (w.meta as { port?: string }).port === 'autonomy',
+    );
+    expect(autonomyWarn).toBeDefined();
+    expect(
+      (autonomyWarn?.meta as { degraded_reason?: string }).degraded_reason,
+    ).toBe('no_policy_row');
+  });
+
+  it('respects an autonomousModeEnabled=true policy row', async () => {
+    // The orchestrator's port shape only reads `autonomousModeEnabled`
+    // and `finance.autoApproveRefundsMinorUnits`, so a partial row is
+    // structurally sufficient. We cast through `unknown` at the
+    // mockResolvedValue boundary rather than fabricating a full policy.
+    const partialPolicy = {
+      tenantId: 'tenant-enabled',
+      autonomousModeEnabled: true,
+      finance: { autoApproveRefundsMinorUnits: 10_000 },
+    };
+    const repo = {
+      get: vi.fn().mockResolvedValue(partialPolicy as unknown),
+      upsert: vi.fn(),
+    };
+    const wiring = createMonthlyCloseWiring({
+      db: fakeDb,
+      autonomyRepository: repo as never,
+    });
+    expect(wiring).not.toBeNull();
+
+    const result = await wiring!.orchestrator.triggerRun({
+      tenantId: 'tenant-enabled',
+      trigger: 'manual',
+      triggeredBy: 'user-1',
+      periodYear: 2026,
+      periodMonth: 4,
+    });
+
+    // With autonomousModeEnabled=true and zero owners (statement stub
+    // returns []), the run should reach completed status because there
+    // is no disbursement batch to park.
+    expect(result.run).toBeDefined();
+    expect(repo.get).toHaveBeenCalled();
+  });
+
+  it('absorbs autonomy repo errors and falls back to safe defaults', async () => {
+    const repo = {
+      get: vi.fn().mockRejectedValue(new Error('db down')),
+      upsert: vi.fn(),
+    };
+    const warns: Array<{ meta: object; msg: string }> = [];
+    const wiring = createMonthlyCloseWiring({
+      db: fakeDb,
+      autonomyRepository: repo as never,
+      logger: {
+        info: () => undefined,
+        warn: (meta, msg) => warns.push({ meta, msg }),
+      },
+    });
+    expect(wiring).not.toBeNull();
+
+    const result = await wiring!.orchestrator.triggerRun({
+      tenantId: 'tenant-broken-autonomy',
+      trigger: 'manual',
+      triggeredBy: 'user-1',
+      periodYear: 2026,
+      periodMonth: 4,
+    });
+    expect(result.run).toBeDefined();
+
+    const portWarns = warns.filter(
+      (w) => (w.meta as { port?: string }).port === 'autonomy',
+    );
+    // Repository error path must emit a structured warning so ops see
+    // the degraded posture.
+    const reasons = portWarns
+      .map((w) => (w.meta as { degraded_reason?: string }).degraded_reason)
+      .filter((r): r is string => typeof r === 'string');
+    expect(reasons).toContain('repository_error');
+  });
+
+  it('publishes orchestrator events onto the supplied EventBus', async () => {
+    const published: unknown[] = [];
+    const eventBus = {
+      publish: vi.fn().mockImplementation(async (envelope: unknown) => {
+        published.push(envelope);
+      }),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    // Auto-approve policy so the run reaches the emit_completed_event
+    // step (rather than parking at awaiting_approval which emits the
+    // alternative event type).
+    const repo = {
+      get: vi.fn().mockResolvedValue({
+        tenantId: 'tenant-bus',
+        autonomousModeEnabled: true,
+        finance: { autoApproveRefundsMinorUnits: 0 },
+      }),
+      upsert: vi.fn(),
+    };
+    const wiring = createMonthlyCloseWiring({
+      db: fakeDb,
+      eventBus: eventBus as never,
+      autonomyRepository: repo as never,
+    });
+    expect(wiring).not.toBeNull();
+
+    await wiring!.orchestrator.triggerRun({
+      tenantId: 'tenant-bus',
+      trigger: 'manual',
+      triggeredBy: 'user-1',
+      periodYear: 2026,
+      periodMonth: 4,
+    });
+
+    expect(eventBus.publish).toHaveBeenCalled();
+    const first = published[0] as {
+      event: { eventType: string; tenantId: string };
+      aggregateType: string;
+    };
+    expect(first.aggregateType).toBe('MonthlyCloseRun');
+    expect([
+      'MonthlyCloseCompleted',
+      'MonthlyCloseAwaitingApproval',
+    ]).toContain(first.event.eventType);
+    expect(first.event.tenantId).toBe('tenant-bus');
+  });
+
+  it('absorbs EventBus publish failures so a run never tears down on a flaky bus', async () => {
+    const eventBus = {
+      publish: vi.fn().mockRejectedValue(new Error('bus down')),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const wiring = createMonthlyCloseWiring({
+      db: fakeDb,
+      eventBus: eventBus as never,
+    });
+    expect(wiring).not.toBeNull();
+
+    const result = await wiring!.orchestrator.triggerRun({
+      tenantId: 'tenant-flaky-bus',
+      trigger: 'manual',
+      triggeredBy: 'user-1',
+      periodYear: 2026,
+      periodMonth: 4,
+    });
+    expect(result.run).toBeDefined();
+  });
 });

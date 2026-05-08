@@ -1,38 +1,39 @@
 /**
  * Monthly-close wiring — composes the `MonthlyCloseOrchestrator` with the
  * Drizzle-backed `monthly_close_runs` storage adapter (migration 0099,
- * shipped in commit e33cebc) so the orchestrator is constructable in
- * production today.
+ * shipped in commit e33cebc) and binds the side-effect ports to whatever
+ * concrete services the parent composition root can supply.
  *
- * Wave 28 Phase A Agent PhA2 → Phase B follow-on. Persistence is the
- * load-bearing piece for the human-in-the-loop story (resume + audit
- * trail), so we wire the real `RunStorePort` even before the rest of
- * the side-effect ports have concrete adapters. The remaining ports —
- * reconciliation, statements, disbursement, notifications, events,
- * autonomy policy — are intentionally implemented as graceful no-op
- * stubs that:
+ * Wave 28 Phase A → Phase B: a previous revision constructed every
+ * external port as a stub. This revision upgrades two ports to real
+ * adapters and tightens the remaining stubs:
  *
- *   - return zero-valued / empty results so step bodies execute end-to-
- *     end without throwing (the orchestrator marks each step `executed`
- *     in `monthly_close_run_steps` so operators can SEE the run worked
- *     against real Postgres),
- *   - emit a single `console.warn` the first time each stub is invoked
- *     so degraded mode is observable in logs, and
- *   - default the autonomy policy to `autonomousModeEnabled = false`
- *     which forces the disbursement step to park as `awaiting_approval`
- *     — that is the safe degraded-mode posture until a real
- *     `AutonomyPolicyPort` is plumbed in.
+ *   - `AutonomyPolicyPort`  → real adapter over `AutonomyPolicyRepository`
+ *     (Postgres-backed `autonomy_policies` table). The orchestrator only
+ *     needs the master switch + a single `finance` knob; we project the
+ *     full `AutonomyPolicy` down to that narrow shape and fall back to a
+ *     safe `autonomousModeEnabled = false` when no row exists.
  *
- * Each stub carries a `TODO: replace with real <X>Port adapter` comment
- * pointing at the eventual concrete adapter (payments-ledger, statement
- * generator, payouts service, notification dispatch, event bus). The
- * router (`routes/monthly-close.router.ts`) already tolerates a missing
- * orchestrator — what we want from this wiring is for the orchestrator
- * to BE present, persist runs/steps to Postgres, and produce a faithful
- * audit trail the moment migration 0099 is applied.
+ *   - `EventPort`           → real adapter wrapping the platform
+ *     `EventBus` (`@bossnyumba/domain-services`). Each orchestrator event
+ *     is wrapped into an `EventEnvelope<DomainEvent>` so existing
+ *     subscribers — including the observability bridge that backs the
+ *     webhook outbox — see the published `MonthlyCloseCompleted` /
+ *     `MonthlyCloseAwaitingApproval` event types.
  *
- * The DI shape mirrors `classroom-wiring.ts` so the parent composition
- * root can drop the factory output straight into its `ServiceRegistry`.
+ *   - `ReconciliationPort`, `StatementPort`, `DisbursementPort`,
+ *     `NotificationPort` remain degraded-mode stubs because no
+ *     period-bulk adapter exists in `domain-services` today
+ *     (`PaymentService` operates per-payment, `ReportService.getStatement`
+ *     operates per-customer, no `Disbursement` / `OwnerPayout` aggregate
+ *     exists yet). Each stub now logs a structured
+ *     `{ port, degraded_reason }` warning the first time it is invoked
+ *     so operators see the gap explicitly in their log pipeline rather
+ *     than discovering it in production via missing audit trails.
+ *
+ * The DI shape stays compatible with the old `{ db, logger? }` signature
+ * via optional `eventBus` / `autonomyRepository` slots — older callers
+ * (and the test suite) keep working without retrofit.
  */
 
 import { MonthlyClose } from '@bossnyumba/ai-copilot/orchestrators';
@@ -40,6 +41,15 @@ import {
   createMonthlyCloseRunsService,
   createDatabaseClient,
 } from '@bossnyumba/database';
+import type {
+  AutonomyPolicy,
+  AutonomyPolicyRepository,
+} from '@bossnyumba/ai-copilot/autonomy';
+import type {
+  DomainEvent,
+  EventBus,
+  EventEnvelope,
+} from '@bossnyumba/domain-services';
 
 const { MonthlyCloseOrchestrator } = MonthlyClose;
 
@@ -62,6 +72,23 @@ type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 
 export interface MonthlyCloseWiringDeps {
   readonly db: DatabaseClient | null;
+  /**
+   * Platform `EventBus`. When provided, the orchestrator's `EventPort`
+   * publishes each `MonthlyCloseCompleted` / `MonthlyCloseAwaitingApproval`
+   * envelope onto the bus so downstream subscribers (webhook outbox,
+   * observability bridge, etc.) receive it. When absent, the wiring
+   * falls back to the structured-degraded stub.
+   */
+  readonly eventBus?: EventBus;
+  /**
+   * Per-tenant autonomy policy repository. When provided, the
+   * orchestrator's autonomy gate consults the live policy row before
+   * deciding whether to auto-execute the disbursement batch. When
+   * absent, the wiring falls back to the safe-default stub
+   * (`autonomousModeEnabled: false`) so disbursements always park for
+   * human approval.
+   */
+  readonly autonomyRepository?: AutonomyPolicyRepository;
   readonly logger?: {
     warn(meta: object, msg: string): void;
     info(meta: object, msg: string): void;
@@ -95,8 +122,12 @@ export function createMonthlyCloseWiring(
     statements: createStubStatementPort(logger),
     disbursement: createStubDisbursementPort(logger),
     notifications: createStubNotificationPort(logger),
-    eventBus: createStubEventPort(logger),
-    autonomy: createStubAutonomyPort(logger),
+    eventBus: deps.eventBus
+      ? createRealEventPort(deps.eventBus, logger)
+      : createStubEventPort(logger),
+    autonomy: deps.autonomyRepository
+      ? createRealAutonomyPort(deps.autonomyRepository, logger)
+      : createStubAutonomyPort(logger),
     logger,
   };
 
@@ -169,36 +200,180 @@ function adaptStore(
 }
 
 // ---------------------------------------------------------------------------
+// Real adapters
+// ---------------------------------------------------------------------------
+
+/**
+ * Real `AutonomyPolicyPort` adapter. Reads the per-tenant policy row
+ * via `AutonomyPolicyRepository.get` and projects it down to the narrow
+ * shape the orchestrator's autonomy gate consumes.
+ *
+ * Falls back to `autonomousModeEnabled: false` when:
+ *   - the repo returns `null` (no row for this tenant),
+ *   - the repo throws (we never let an autonomy lookup tear down a run;
+ *     parking the disbursement batch is the safe degraded posture).
+ *
+ * Each fallback logs a structured `{ port: 'autonomy', degraded_reason }`
+ * warning so operators can see the row is missing or the table is
+ * unreachable.
+ */
+function createRealAutonomyPort(
+  repo: AutonomyPolicyRepository,
+  logger: OrchestratorLogger,
+): AutonomyPolicyPort {
+  const warnedTenants = new Set<string>();
+  const warnOnce = (tenantId: string, reason: string): void => {
+    const key = `${tenantId}:${reason}`;
+    if (warnedTenants.has(key)) return;
+    warnedTenants.add(key);
+    logger.warn(
+      {
+        port: 'autonomy',
+        tenantId,
+        degraded_reason: reason,
+      },
+      `monthly-close: autonomy port falling back to safe defaults — ${reason}`,
+    );
+  };
+
+  return {
+    async getPolicy(tenantId) {
+      let policy: AutonomyPolicy | null = null;
+      try {
+        policy = await repo.get(tenantId);
+      } catch (err) {
+        warnOnce(tenantId, 'repository_error');
+        logger.warn(
+          {
+            port: 'autonomy',
+            tenantId,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'monthly-close: autonomy policy read failed — defaulting to disabled',
+        );
+        return safeAutonomyDefault();
+      }
+
+      if (!policy) {
+        warnOnce(tenantId, 'no_policy_row');
+        return safeAutonomyDefault();
+      }
+
+      return {
+        autonomousModeEnabled: policy.autonomousModeEnabled,
+        finance: {
+          autoApproveRefundsMinorUnits:
+            policy.finance?.autoApproveRefundsMinorUnits ?? 0,
+        },
+      };
+    },
+  };
+}
+
+function safeAutonomyDefault(): {
+  readonly autonomousModeEnabled: boolean;
+  readonly finance: { readonly autoApproveRefundsMinorUnits: number };
+} {
+  return {
+    autonomousModeEnabled: false,
+    finance: {
+      autoApproveRefundsMinorUnits: 0,
+    },
+  };
+}
+
+/**
+ * Real `EventPort` adapter. Wraps the orchestrator's flat event shape
+ * into the platform's `EventEnvelope<DomainEvent>` and publishes onto
+ * the injected `EventBus`. Failures are absorbed (the orchestrator
+ * already guards `safePublish`, and the bus contract requires
+ * subscriber failures not to tear down publishers).
+ */
+function createRealEventPort(
+  bus: EventBus,
+  logger: OrchestratorLogger,
+): EventPort {
+  return {
+    async publish(event) {
+      const envelope: EventEnvelope<DomainEvent & { eventType: string }> = {
+        event: {
+          eventId: `monthly_close_${event.runId}_${event.type}`,
+          eventType: event.type,
+          // ISOTimestamp is a structural string brand — `toISOString` is
+          // the canonical producer everywhere else in the codebase.
+          timestamp: new Date().toISOString() as DomainEvent['timestamp'],
+          tenantId: event.tenantId as DomainEvent['tenantId'],
+          correlationId: event.runId,
+          causationId: null,
+          metadata: {
+            source: 'monthly-close-orchestrator',
+            runId: event.runId,
+            ...event.payload,
+          },
+        },
+        version: 1,
+        aggregateId: event.runId,
+        aggregateType: 'MonthlyCloseRun',
+      };
+      try {
+        await bus.publish(envelope);
+      } catch (err) {
+        logger.warn(
+          {
+            port: 'eventBus',
+            runId: event.runId,
+            eventType: event.type,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'monthly-close: eventBus publish failed (non-fatal)',
+        );
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Stub ports — degraded-mode safe defaults
 // ---------------------------------------------------------------------------
 
 /**
  * Internal helper — guarantees each stub port logs a single
  * `degraded_port` warning on first invocation rather than spamming the
- * logger on every step. Returns a function that is idempotent for the
- * lifetime of this module instance.
+ * logger on every step. The reason string is structured so log
+ * aggregators can group on `degraded_reason` and surface gaps to ops.
  */
 function makeOnceWarner(
   logger: OrchestratorLogger,
   portName: string,
+  degradedReason: string,
 ): () => void {
   let warned = false;
   return () => {
     if (warned) return;
     warned = true;
     logger.warn(
-      { port: portName, status: 'degraded' },
-      `monthly-close: ${portName} running in degraded stub mode — TODO replace with real adapter`,
+      {
+        port: portName,
+        status: 'degraded',
+        degraded_reason: degradedReason,
+      },
+      `monthly-close: ${portName} running in degraded stub mode (${degradedReason}) — TODO replace with real adapter`,
     );
   };
 }
 
 // TODO: replace with real ReconciliationPort adapter wired to the
-// payments-ledger reconciliation engine (PaymentReconciliationService).
+// payments-ledger reconciliation engine. `PaymentService.reconcilePayment`
+// in `@bossnyumba/domain-services/payment` operates per-payment; no
+// period-bulk `reconcileForPeriod` aggregate exists yet.
 function createStubReconciliationPort(
   logger: OrchestratorLogger,
 ): ReconciliationPort {
-  const warn = makeOnceWarner(logger, 'reconciliation');
+  const warn = makeOnceWarner(
+    logger,
+    'reconciliation',
+    'no_period_bulk_adapter',
+  );
   return {
     async reconcileForPeriod() {
       warn();
@@ -213,11 +388,17 @@ function createStubReconciliationPort(
 }
 
 // TODO: replace with real StatementPort adapter wired to the owner
-// statement generator (domain-services/statements).
+// statement generator. `ReportService.getStatement` in
+// `@bossnyumba/domain-services/report` operates per-customer; no
+// per-period-bulk-owners aggregate exists yet.
 function createStubStatementPort(
   logger: OrchestratorLogger,
 ): StatementPort {
-  const warn = makeOnceWarner(logger, 'statements');
+  const warn = makeOnceWarner(
+    logger,
+    'statements',
+    'no_period_bulk_adapter',
+  );
   return {
     async generateOwnerStatementsForPeriod() {
       warn();
@@ -227,11 +408,16 @@ function createStubStatementPort(
 }
 
 // TODO: replace with real DisbursementPort adapter wired to the
-// payouts service + per-tenant maintenance ledger.
+// payouts service + per-tenant maintenance ledger. No `Disbursement`
+// or `OwnerPayout` aggregate exists in `domain-services` today.
 function createStubDisbursementPort(
   logger: OrchestratorLogger,
 ): DisbursementPort {
-  const warn = makeOnceWarner(logger, 'disbursement');
+  const warn = makeOnceWarner(
+    logger,
+    'disbursement',
+    'no_payouts_service',
+  );
   return {
     async computeBreakdown() {
       warn();
@@ -257,11 +443,17 @@ function createStubDisbursementPort(
 }
 
 // TODO: replace with real NotificationPort adapter wired to the
-// notification_dispatch_log + email/SMS provider integrations.
+// notification_dispatch_log + email/SMS provider integrations. The
+// existing `MessagingService` in `domain-services/messaging` covers
+// in-app conversations, not statement-ready email blasts.
 function createStubNotificationPort(
   logger: OrchestratorLogger,
 ): NotificationPort {
-  const warn = makeOnceWarner(logger, 'notifications');
+  const warn = makeOnceWarner(
+    logger,
+    'notifications',
+    'no_dispatch_adapter',
+  );
   return {
     async sendStatementEmail(input) {
       warn();
@@ -272,10 +464,11 @@ function createStubNotificationPort(
   };
 }
 
-// TODO: replace with real EventPort adapter wired to the platform
-// event bus (Wave-2 EventBus / Kafka outbox).
+// Stub `EventPort` — used only when no `EventBus` is injected.
+// Production callers always pass `eventBus` so this path only runs in
+// tests / degraded composition.
 function createStubEventPort(logger: OrchestratorLogger): EventPort {
-  const warn = makeOnceWarner(logger, 'eventBus');
+  const warn = makeOnceWarner(logger, 'eventBus', 'no_event_bus_injected');
   return {
     async publish() {
       warn();
@@ -285,23 +478,22 @@ function createStubEventPort(logger: OrchestratorLogger): EventPort {
   };
 }
 
-// TODO: replace with real AutonomyPolicyPort adapter wired to the
-// AutonomyPolicyService living in `composition/autonomy-policy-repository`.
-// Default returns `autonomousModeEnabled: false` so any disbursement
-// batch is parked for human approval — the safe degraded posture.
+// Stub `AutonomyPolicyPort` — used only when no `AutonomyPolicyRepository`
+// is injected. Returns `autonomousModeEnabled: false` so any
+// disbursement batch is parked for human approval — the safe degraded
+// posture.
 function createStubAutonomyPort(
   logger: OrchestratorLogger,
 ): AutonomyPolicyPort {
-  const warn = makeOnceWarner(logger, 'autonomy');
+  const warn = makeOnceWarner(
+    logger,
+    'autonomy',
+    'no_policy_repository_injected',
+  );
   return {
     async getPolicy() {
       warn();
-      return {
-        autonomousModeEnabled: false,
-        finance: {
-          autoApproveRefundsMinorUnits: 0,
-        },
-      };
+      return safeAutonomyDefault();
     },
   };
 }
