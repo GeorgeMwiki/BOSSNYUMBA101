@@ -108,34 +108,43 @@ app.get('/overview', async (c) => {
 // ----------------------------------------------------------------------------
 
 // GET /webhooks — outbound webhook subscriptions registry.
-// TODO(api-gateway): wire to webhook-delivery service / outbound-webhooks
-// table once the read endpoint lands. Today only the inbound delivery
-// receipt path (`/notification-webhooks/*`) and the DLQ
-// (`/webhooks` from createWebhookDlqRouter) exist; the registry of
-// subscriptions a tenant has configured is not exposed.
+// TODO(api-gateway, ADMIN-BFF-001): wire to webhook-delivery service /
+//   outbound-webhooks table once the read endpoint lands. Today only
+//   the inbound delivery receipt path (`/notification-webhooks/*`) and
+//   the DLQ (`/webhooks` from createWebhookDlqRouter) exist; the
+//   registry of subscriptions a tenant has configured is not exposed.
+//   Concrete next-step: expose `repos.outboundWebhooks.findMany(tenantId)`
+//   from @bossnyumba/database and call it here scoped to auth.tenantId.
 app.get('/webhooks', (c) => {
   return c.json({ success: true, data: [] });
 });
 
 // GET /api-keys — tenant-scoped API key listing.
-// TODO(api-gateway): wire to assertApiKeyConfig registry. The current
-// `api-key-registry` middleware enforces presence at boot but does not
-// expose a list/CRUD surface for the UI.
+// TODO(api-gateway, ADMIN-BFF-002): wire to assertApiKeyConfig registry.
+//   The current `api-key-registry` middleware enforces presence at boot
+//   but does not expose a list/CRUD surface for the UI. Concrete
+//   next-step: add `apiKeyRegistry.listForTenant(tenantId)` returning
+//   { keyId, label, lastUsedAt } (never the secret) and call it here.
 app.get('/api-keys', (c) => {
   return c.json({ success: true, data: [] });
 });
 
 // GET /roles — tenant-scoped roles read-model.
-// TODO(api-gateway): wire to a Drizzle query over `roles` once the role
-// listing is gated behind the same RBAC predicates the assignment flow
-// uses. Returning empty here until then so the page renders.
+// TODO(api-gateway, ADMIN-BFF-003): wire to a Drizzle query over
+//   `roles` once the role listing is gated behind the same RBAC
+//   predicates the assignment flow uses. Concrete next-step: select
+//   from `roles` where tenantId = auth.tenantId, returning
+//   { id, name, scope }. Returning empty here until then so the page
+//   renders.
 app.get('/roles', (c) => {
   return c.json({ success: true, data: [] });
 });
 
 // GET /roles/audit — recent role change audit entries.
-// TODO(api-gateway): wire to audit-trail (`/audit-trail/entries` filter
-// for role-change events) once that filter is exposed.
+// TODO(api-gateway, ADMIN-BFF-004): wire to audit-trail
+//   (`/audit-trail/entries?eventType=role_change&tenantId=...`) once
+//   that filter is exposed by the audit-trail router. Today the audit
+//   trail does not expose a typed eventType filter.
 app.get('/roles/audit', (c) => {
   return c.json({ success: true, data: [] });
 });

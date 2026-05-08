@@ -10,37 +10,98 @@
  *   GET /portfolio/performance   per-property revenue / NOI / cap rate
  *   GET /portfolio/growth        per-month collections trend
  *
- * Until an owner-scoped portfolio aggregator lands, each endpoint
- * returns an "honest empty" shape so the dashboard renders cleanly.
+ * `/summary` runs a live aggregation when repos are wired (scoped to
+ * the caller's `propertyAccess` set, mirroring `getOwnerScope` in
+ * owner-portal.ts). `/performance` and `/growth` still return an
+ * "honest empty" shape until per-property revenue/NOI rollups land.
  *
- * Some of this data is already computable from the existing
- * `/owner/financial/stats` BFF (which scopes to `propertyAccess`); when
- * the FE/BE contracts are reconciled we can shim through to that here.
- *
- * TODO(api-gateway): swap each handler for a Drizzle query that joins
- * properties → units → leases → invoices → payments scoped to
- * `auth.propertyAccess` (cf. ownerPortalRouter.getOwnerScope).
+ * TODO(api-gateway, PORT-005): swap `/performance` + `/growth` for
+ *   Drizzle queries that join properties → units → leases → invoices
+ *   → payments scoped to `auth.propertyAccess`. The summary endpoint
+ *   here is the reference shape — extend it with per-property buckets
+ *   for `/performance` and per-month buckets for `/growth`.
  */
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/hono-auth';
+import { databaseMiddleware } from '../middleware/database';
+import { logger } from '../utils/logger';
 
 const portfolioRouter = new Hono();
 portfolioRouter.use('*', authMiddleware);
+portfolioRouter.use('*', databaseMiddleware);
 
-portfolioRouter.get('/summary', (c) => {
-  return c.json({
-    success: true,
-    data: {
-      totalProperties: 0,
-      totalUnits: 0,
-      occupiedUnits: 0,
-      vacantUnits: 0,
-      occupancyRate: 0,
-      activeLeases: 0,
-      meta: { source: 'empty' },
-    },
-  });
+const EMPTY_SUMMARY = {
+  totalProperties: 0,
+  totalUnits: 0,
+  occupiedUnits: 0,
+  vacantUnits: 0,
+  occupancyRate: 0,
+  activeLeases: 0,
+};
+
+portfolioRouter.get('/summary', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos');
+
+  if (!repos || !auth?.tenantId) {
+    return c.json({
+      success: true,
+      data: { ...EMPTY_SUMMARY, meta: { source: 'empty' } },
+    });
+  }
+
+  try {
+    const propertyAccess = auth.propertyAccess;
+    const allowsAll = Array.isArray(propertyAccess) && propertyAccess.includes('*');
+    const allowedIds = new Set<string>(
+      Array.isArray(propertyAccess) ? propertyAccess.filter((id) => id !== '*') : [],
+    );
+
+    const [propertiesResult, unitsResult, leasesResult] = await Promise.all([
+      repos.properties.findMany(auth.tenantId, { limit: 1000, offset: 0 }),
+      repos.units.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+      repos.leases.findMany(auth.tenantId, { limit: 5000, offset: 0 }),
+    ]);
+
+    const scopedProperties = allowsAll
+      ? propertiesResult.items ?? []
+      : (propertiesResult.items ?? []).filter((p) => allowedIds.has(p.id));
+    const propertyIds = new Set(scopedProperties.map((p) => p.id));
+
+    const scopedUnits = (unitsResult.items ?? []).filter((u) => propertyIds.has(u.propertyId));
+    const occupiedUnits = scopedUnits.filter((u) => u.status === 'occupied').length;
+    const vacantUnits = scopedUnits.length - occupiedUnits;
+    const occupancyRate = scopedUnits.length === 0 ? 0 : occupiedUnits / scopedUnits.length;
+
+    const unitIds = new Set(scopedUnits.map((u) => u.id));
+    const activeLeases = (leasesResult.items ?? []).filter(
+      (l) =>
+        l.status === 'active' && (propertyIds.has(l.propertyId) || unitIds.has(l.unitId)),
+    ).length;
+
+    return c.json({
+      success: true,
+      data: {
+        totalProperties: scopedProperties.length,
+        totalUnits: scopedUnits.length,
+        occupiedUnits,
+        vacantUnits,
+        occupancyRate,
+        activeLeases,
+        meta: { source: 'live' },
+      },
+    });
+  } catch (error) {
+    logger.warn('portfolio summary aggregation failed; falling back to empty', {
+      tenantId: auth.tenantId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return c.json({
+      success: true,
+      data: { ...EMPTY_SUMMARY, meta: { source: 'empty' } },
+    });
+  }
 });
 
 portfolioRouter.get('/performance', (c) => {

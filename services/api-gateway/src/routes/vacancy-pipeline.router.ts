@@ -28,6 +28,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch, safeInternalError } from '../utils/safe-error';
+import { logger } from '../utils/logger';
 // The orchestrators barrel namespaces each subtree, so we import the
 // whole `VacancyToLease` namespace and dereference it at each use-site.
 // This stays consistent with `monthly-close.router.ts`, which uses the
@@ -57,8 +58,16 @@ app.use('*', authMiddleware);
 // Repository — for Wave 27 we ship the in-memory repo per process. The
 // Postgres-backed adapter lands in a follow-up once composition-root
 // wiring is agreed (table already exists via migration 0098).
-// TODO(WAVE-28+): swap for a Postgres-backed repository that reads/writes
-// the `vacancy_pipeline_runs` table via the shared drizzle client.
+//
+// TODO(api-gateway, WAVE-28-VPR-001): swap for a Postgres-backed repository
+//   that reads/writes the `vacancy_pipeline_runs` table via the shared
+//   drizzle client. Concrete next-step:
+//     1. Add `PostgresVacancyPipelineRunRepository` in @bossnyumba/ai-copilot
+//        next to InMemoryVacancyPipelineRunRepository.
+//     2. Inject via composition root (services/api-gateway/src/composition/*)
+//        rather than constructing here so multiple replicas share state.
+//     3. Delete `sharedRepo` once the orchestrator is built at the
+//        composition root.
 // ---------------------------------------------------------------------------
 const sharedRepo: VacancyPipelineRunRepository =
   new InMemoryVacancyPipelineRunRepository();
@@ -80,9 +89,38 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
     async publishListing(tenantId, unitId, initiatedBy, corr) {
       const listing = services.marketplace?.listing;
       if (!listing) {
-        // TODO(WAVE-28+): degrade cleanly when marketplace is offline.
+        // Marketplace offline: log a structured warning so the gap is
+        // visible in observability, then surface as a 503-equivalent
+        // through the orchestrator's error taxonomy. The caller's
+        // VacancyPipelineRun stays in `awaiting_listing` so a retry
+        // can pick up where this left off.
+        logger.warn('vacancy-pipeline: marketplace.listing unavailable', {
+          tenantId,
+          unitId,
+          correlationId,
+        });
         throw new Error('marketplace.listing service unavailable');
       }
+
+      // Pull the unit's current asking rent when units service exposes
+      // it; otherwise fall through to ListingService's tenant-default
+      // pricing logic (which will reject if no default exists).
+      let headlinePrice = 0;
+      try {
+        const unitsService = services.units;
+        if (unitsService && typeof unitsService.findById === 'function') {
+          const unit = await unitsService.findById(tenantId, unitId);
+          const rent = Number(unit?.askingRent ?? unit?.monthlyRent ?? 0);
+          if (Number.isFinite(rent) && rent > 0) headlinePrice = rent;
+        }
+      } catch (err) {
+        logger.warn('vacancy-pipeline: failed to read unit asking rent', {
+          tenantId,
+          unitId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
       // The real `publish` returns a Result<Listing, Error>. We read
       // only the id here — upstream services already emit their own
       // events so the orchestrator doesn't need to re-emit.
@@ -91,7 +129,7 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
         {
           unitId,
           listingKind: 'unit_for_rent',
-          headlinePrice: 0, // TODO(WAVE-28+): pull from unit's current asking rent
+          headlinePrice,
           currency: '', // ListingService fills from tenant region config
           negotiable: true,
           publishImmediately: true,
@@ -112,11 +150,11 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
 
   const enquiryPort: OrchestratorEnquiryPort = {
     async latestApplicant() {
-      // TODO(WAVE-28+): when EnquiryService exposes a query surface for
-      // the highest-ranked enquirer per listing, wire it in here. For
-      // now we return null so the orchestrator just bumps into
-      // receiving_inquiries without populating applicantCustomerId —
-      // operators can advance manually via POST /:runId/advance.
+      // TODO(api-gateway, WAVE-28-VPR-002): when EnquiryService exposes
+      //   `findHighestRankedApplicant(tenantId, listingId)`, wire it in
+      //   here. Today we return null so the orchestrator stays in
+      //   `receiving_inquiries` without populating applicantCustomerId —
+      //   operators advance manually via POST /:runId/advance.
       return null;
     },
   };
@@ -125,7 +163,10 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
     async score(tenantId, customerId) {
       const rating = services.creditRating;
       if (!rating) {
-        // TODO(WAVE-28+): fall back to a pending-review score instead of throwing.
+        // TODO(api-gateway, WAVE-28-VPR-003): fall back to a
+        //   `pending_review` snapshot ({ score: null, reasons: [...] })
+        //   instead of throwing once the orchestrator's policy port
+        //   accepts pending-review decisions.
         throw new Error('creditRating service unavailable');
       }
       const snapshot = await rating.computeRating(tenantId, customerId);
@@ -135,27 +176,30 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
 
   const negotiationPort: OrchestratorNegotiationPort = {
     async proposeOffer() {
-      // TODO(WAVE-28+): wire to NegotiationService.startNegotiation with
-      // the real offer inputs (policyId, opening offer, floor, ceiling).
-      // For now the orchestrator merely records that an offer should
-      // exist — the customer-app initiates the actual negotiation today.
+      // TODO(api-gateway, WAVE-28-VPR-004): wire to
+      //   NegotiationService.startNegotiation with real offer inputs
+      //   (policyId, opening offer, floor, ceiling). Today the
+      //   customer-app initiates the actual negotiation; the
+      //   orchestrator just records that an offer *should* exist.
       return { negotiationId: `pending_${Date.now()}` };
     },
   };
 
   const inspectionPort: OrchestratorInspectionPort = {
     async scheduleMoveInInspection() {
-      // TODO(WAVE-28+): wire to the inspections router / service. For
-      // today, the move-in inspection is created manually from the
-      // estate-manager app; the orchestrator just records the transition.
+      // TODO(api-gateway, WAVE-28-VPR-005): wire to the inspections
+      //   router / service. Today the move-in inspection is created
+      //   manually from the estate-manager app; the orchestrator just
+      //   records the transition.
       return { inspectionId: null };
     },
   };
 
   const renewalPort: OrchestratorRenewalPort = {
     async seedFirstTerm() {
-      // TODO(WAVE-28+): call RenewalService.createInitialTerm when
-      // available. Today leases are created through `/leases` directly.
+      // TODO(api-gateway, WAVE-28-VPR-006): call
+      //   RenewalService.createInitialTerm when available. Today
+      //   leases are created through `/leases` directly.
       return { leaseId: null };
     },
   };
@@ -165,11 +209,13 @@ function buildOrchestrator(c: any): VacancyToLeaseOrchestrator | null {
       const vacancyHandler = services.waitlist?.vacancyHandler;
       if (!vacancyHandler) return;
       // WaitlistVacancyHandler exposes a register/handle flow keyed on
-      // the event bus; the best we can do without a direct `markFilled`
-      // API is to emit a UnitFilled event on the orchestrator event
-      // port instead. TODO(WAVE-28+): expose a first-class
-      // `markUnitFilled(tenantId, unitId)` on WaitlistService.
-      // For now this is a no-op that keeps the orchestrator compiling.
+      // the event bus; without a direct `markFilled` API we instead
+      // rely on the orchestrator's eventPort to emit `UnitFilled`.
+      // TODO(api-gateway, WAVE-28-VPR-007): expose a first-class
+      //   `markUnitFilled(tenantId, unitId)` on WaitlistService and
+      //   call it here so the bus path becomes a fallback rather than
+      //   the only path. For now this is a no-op so the orchestrator
+      //   compiles.
       return;
     },
   };

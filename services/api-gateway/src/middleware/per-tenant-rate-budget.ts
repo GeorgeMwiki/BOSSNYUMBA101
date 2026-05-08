@@ -13,8 +13,19 @@
  * activity NEVER affects another's budget.
  *
  * Process-local: the in-memory map will not synchronise across
- * api-gateway replicas. Documented TODO below mirrors the Redis-backed
- * upgrade path used by the public AI rate limiter.
+ * api-gateway replicas.
+ *
+ * TODO(api-gateway, RATE-BUDGET-001): swap the in-memory `buckets`
+ *   map for a Redis-backed sliding-window store that mirrors the
+ *   approach in `rate-limit-redis.middleware.ts` /
+ *   `public-ai-rate-limit.ts`. Concrete next-step:
+ *     1. Define a `BudgetStore` port (get/add/expire) and back it
+ *        with `ioredis` in production, the in-memory shape in tests.
+ *     2. Use a Redis sorted-set keyed `tenant:budget:{tenantId}` with
+ *        score = sample timestamp; ZRANGEBYSCORE prunes the window.
+ *     3. Apply ZADD + ZREMRANGEBYSCORE inside a Lua script for
+ *        atomicity across replicas.
+ *     4. Keep the in-memory store as the test seam.
  *
  * Cost-estimate strategy:
  *   - Use `Content-Length` as the upper bound on input characters.

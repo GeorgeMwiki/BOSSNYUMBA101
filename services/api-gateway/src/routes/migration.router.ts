@@ -164,12 +164,17 @@ export function createMigrationRouter(deps: {
     };
     if (!body.message) return c.json({ error: 'missing message' }, 400);
 
-    // TODO(KI-013): wire to MigrationWizardCopilot via the shared
-    //   BrainRegistry once the copilot is registered at composition root.
-    //     const copilot = registry.getMigrationWizard(tenantId);
-    //     const out = await copilot.run({ tenantId, actorId, runId, message });
-    //     return c.json(out);
-    //   See Docs/KNOWN_ISSUES.md#ki-013.
+    // TODO(api-gateway, KI-013): wire to MigrationWizardCopilot via
+    //   the shared BrainRegistry once the copilot is registered at
+    //   composition root. Concrete next-step:
+    //     1. Add `MigrationWizardCopilot` to ServiceRegistry alongside
+    //        the other AI agents (services/api-gateway/src/composition/*).
+    //     2. Pass the registry to `createMigrationRouter` via deps.
+    //     3. Replace this stub body with:
+    //          const copilot = deps.registry.getMigrationWizard(tenantId);
+    //          const out = await copilot.run({ tenantId, actorId, runId, message });
+    //          return c.json(out);
+    //   See Docs/KNOWN_ISSUES.md#ki-013 for the broader context.
     return c.json({
       runId,
       ack: true,

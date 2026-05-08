@@ -33,6 +33,7 @@ import { letterRequests, negotiations } from '@bossnyumba/database';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { databaseMiddleware } from '../../middleware/database';
 import { safeInternalError } from '../../utils/safe-error';
+import { logger } from '../../utils/logger';
 import { mapWorkOrderRow } from '../db-mappers';
 
 const app = new Hono();
@@ -311,8 +312,14 @@ app.get('/move-out/disputes', async (c) => {
     // a "by tenant user" filter we surface a structural empty list with a
     // TODO note. We still call listOpen so connectivity errors surface
     // here instead of being swallowed silently.
-    // TODO(api-gateway): once `leases` exposes a `findByCustomer`, join
-    // that against the damage-deduction `leaseId` to scope to caller.
+    //
+    // TODO(api-gateway, CUST-BFF-001): once `repos.leases` exposes a
+    //   `findByCustomer(tenantId, customerId)` query, intersect its
+    //   leaseIds with the damage-deduction rows from `repo.listOpen`
+    //   and return only the caller's disputes. Concrete next-step:
+    //     1. Add `findByCustomer` to LeaseRepository in
+    //        @bossnyumba/database.
+    //     2. Replace this stub with the intersected list.
     await repo.listOpen(auth.tenantId);
     return c.json({
       success: true,
@@ -320,6 +327,11 @@ app.get('/move-out/disputes', async (c) => {
       meta: { note: 'tenant-filter on damage-deductions pending' },
     });
   } catch (error) {
+    logger.warn('customer-app: damage-deductions listOpen failed', {
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return safeInternalError(c, error, {
       code: 'DISPUTES_LIST_FAILED',
       status: 500,
