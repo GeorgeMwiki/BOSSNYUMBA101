@@ -22,14 +22,26 @@
  *     `MonthlyCloseAwaitingApproval` event types.
  *
  *   - `ReconciliationPort`, `StatementPort`, `DisbursementPort`,
- *     `NotificationPort` remain degraded-mode stubs because no
- *     period-bulk adapter exists in `domain-services` today
- *     (`PaymentService` operates per-payment, `ReportService.getStatement`
- *     operates per-customer, no `Disbursement` / `OwnerPayout` aggregate
- *     exists yet). Each stub now logs a structured
- *     `{ port, degraded_reason }` warning the first time it is invoked
- *     so operators see the gap explicitly in their log pipeline rather
- *     than discovering it in production via missing audit trails.
+ *     `NotificationPort` are now real Drizzle-backed period-bulk
+ *     adapters (Wave-2 deep-scrub B1):
+ *       * Reconciliation aggregates `payments` joined with `invoices`
+ *         for the closing window and reports
+ *         `{ reconciled, unmatched, grossRentMinor, currency }` in a
+ *         single round-trip.
+ *       * Statement adapter walks owners with active leases in the
+ *         period, computes per-owner gross rent, and writes a
+ *         `draft` row per owner into `owner_statements` (existing
+ *         schema) — PDF rendering stays a follow-up worker.
+ *       * Disbursement adapter computes per-owner breakdown from the
+ *         payments / leases / properties chain and records each
+ *         `executeDisbursement` call into `event_outbox` as a
+ *         `MonthlyCloseDisbursementProposed` event so the eventual
+ *         payouts worker has a durable queue.
+ *       * Notification adapter writes one row per (owner, statement)
+ *         into the existing `notification_dispatch_log` (status
+ *         `pending`); the dispatcher worker drains it.
+ *     The wiring still falls back to the original stubs (with refined
+ *     `degraded_reason` strings) when no DB is provided.
  *
  * The DI shape stays compatible with the old `{ db, logger? }` signature
  * via optional `eventBus` / `autonomyRepository` slots — older callers
@@ -50,13 +62,13 @@ import type {
   EventBus,
   EventEnvelope,
 } from '@bossnyumba/domain-services';
+import { createDrizzleReconciliationAdapter } from '../services/monthly-close/reconciliation-adapter.js';
+import { createDrizzleStatementAdapter } from '../services/monthly-close/statement-adapter.js';
+import { createDrizzleDisbursementAdapter } from '../services/monthly-close/disbursement-adapter.js';
+import { createDrizzleNotificationAdapter } from '../services/monthly-close/notification-adapter.js';
 
 const { MonthlyCloseOrchestrator } = MonthlyClose;
 
-type ReconciliationPort = MonthlyClose.ReconciliationPort;
-type StatementPort = MonthlyClose.StatementPort;
-type DisbursementPort = MonthlyClose.DisbursementPort;
-type NotificationPort = MonthlyClose.NotificationPort;
 type EventPort = MonthlyClose.EventPort;
 type AutonomyPolicyPort = MonthlyClose.AutonomyPolicyPort;
 type RunStorePort = MonthlyClose.RunStorePort;
@@ -118,10 +130,10 @@ export function createMonthlyCloseWiring(
 
   const orchestratorDeps: MonthlyCloseOrchestratorDeps = {
     store,
-    reconciliation: createStubReconciliationPort(logger),
-    statements: createStubStatementPort(logger),
-    disbursement: createStubDisbursementPort(logger),
-    notifications: createStubNotificationPort(logger),
+    reconciliation: createDrizzleReconciliationAdapter(deps.db, logger),
+    statements: createDrizzleStatementAdapter(deps.db, logger),
+    disbursement: createDrizzleDisbursementAdapter(deps.db, logger),
+    notifications: createDrizzleNotificationAdapter(deps.db, logger),
     eventBus: deps.eventBus
       ? createRealEventPort(deps.eventBus, logger)
       : createStubEventPort(logger),
@@ -362,107 +374,12 @@ function makeOnceWarner(
   };
 }
 
-// TODO: replace with real ReconciliationPort adapter wired to the
-// payments-ledger reconciliation engine. `PaymentService.reconcilePayment`
-// in `@bossnyumba/domain-services/payment` operates per-payment; no
-// period-bulk `reconcileForPeriod` aggregate exists yet.
-function createStubReconciliationPort(
-  logger: OrchestratorLogger,
-): ReconciliationPort {
-  const warn = makeOnceWarner(
-    logger,
-    'reconciliation',
-    'no_period_bulk_adapter',
-  );
-  return {
-    async reconcileForPeriod() {
-      warn();
-      return {
-        reconciled: 0,
-        unmatched: 0,
-        grossRentMinor: 0,
-        currency: 'KES',
-      };
-    },
-  };
-}
-
-// TODO: replace with real StatementPort adapter wired to the owner
-// statement generator. `ReportService.getStatement` in
-// `@bossnyumba/domain-services/report` operates per-customer; no
-// per-period-bulk-owners aggregate exists yet.
-function createStubStatementPort(
-  logger: OrchestratorLogger,
-): StatementPort {
-  const warn = makeOnceWarner(
-    logger,
-    'statements',
-    'no_period_bulk_adapter',
-  );
-  return {
-    async generateOwnerStatementsForPeriod() {
-      warn();
-      return { statements: [] };
-    },
-  };
-}
-
-// TODO: replace with real DisbursementPort adapter wired to the
-// payouts service + per-tenant maintenance ledger. No `Disbursement`
-// or `OwnerPayout` aggregate exists in `domain-services` today.
-function createStubDisbursementPort(
-  logger: OrchestratorLogger,
-): DisbursementPort {
-  const warn = makeOnceWarner(
-    logger,
-    'disbursement',
-    'no_payouts_service',
-  );
-  return {
-    async computeBreakdown() {
-      warn();
-      return {
-        grossRentMinor: 0,
-        platformFeeMinor: 0,
-        maintenanceMinor: 0,
-        currency: 'KES',
-        destination: 'pending_destination',
-      };
-    },
-    async executeDisbursement(input) {
-      warn();
-      // No real money should move via the stub. Surface a
-      // deterministic-but-clearly-fake disbursement id so audit logs
-      // make the degraded path obvious.
-      return {
-        disbursementId: `stub_disbursement_${input.idempotencyKey}`,
-        status: 'stubbed',
-      };
-    },
-  };
-}
-
-// TODO: replace with real NotificationPort adapter wired to the
-// notification_dispatch_log + email/SMS provider integrations. The
-// existing `MessagingService` in `domain-services/messaging` covers
-// in-app conversations, not statement-ready email blasts.
-function createStubNotificationPort(
-  logger: OrchestratorLogger,
-): NotificationPort {
-  const warn = makeOnceWarner(
-    logger,
-    'notifications',
-    'no_dispatch_adapter',
-  );
-  return {
-    async sendStatementEmail(input) {
-      warn();
-      return {
-        dispatchId: `stub_dispatch_${input.tenantId}_${input.ownerId}`,
-      };
-    },
-  };
-}
+// The old stub ReconciliationPort / StatementPort / DisbursementPort /
+// NotificationPort factories were removed in Wave-2 deep-scrub B1
+// in favour of the real Drizzle-backed adapters in
+// `services/monthly-close/`. The `makeOnceWarner` helper below is
+// retained because the EventBus / AutonomyPolicy stubs still use it
+// when the parent composition root opts out of those wirings.
 
 // Stub `EventPort` — used only when no `EventBus` is injected.
 // Production callers always pass `eventBus` so this path only runs in

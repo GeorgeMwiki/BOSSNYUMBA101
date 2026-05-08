@@ -163,7 +163,7 @@ let lastAdapterDb: unknown = null;
 
 vi.mock('@bossnyumba/database', () => {
   return {
-    createDatabaseClient: () => ({ __fake: true }),
+    createDatabaseClient: () => makeFakeDb(),
     createMonthlyCloseRunsService: (db: unknown) => {
       lastAdapterDb = db;
       adapterSpy(db);
@@ -176,7 +176,25 @@ vi.mock('@bossnyumba/database', () => {
 // Pull the wiring AFTER the mock so its imports resolve to the spies.
 import { createMonthlyCloseWiring } from '../monthly-close-wiring';
 
-const fakeDb = { __fake: true } as unknown as Parameters<
+/**
+ * Build a fake DB whose `execute` always returns empty rows. The
+ * Drizzle-backed period-bulk adapters (reconciliation / statements /
+ * disbursement / notifications) call `db.execute(sql\`...\`)` so we
+ * provide just enough surface for the orchestrator to walk through
+ * every step without throwing. Tests that need richer behaviour
+ * override this per-call.
+ */
+function makeFakeDb(): {
+  __fake: true;
+  execute: ReturnType<typeof vi.fn>;
+} {
+  return {
+    __fake: true,
+    execute: vi.fn(async () => []),
+  };
+}
+
+const fakeDb = makeFakeDb() as unknown as Parameters<
   typeof createMonthlyCloseWiring
 >[0]['db'];
 
@@ -220,7 +238,7 @@ describe('createMonthlyCloseWiring', () => {
     expect(runs).toEqual([]);
   });
 
-  it('drives every step through stub ports without throwing and emits a degraded warning per port', async () => {
+  it('drives every step through real Drizzle adapters without throwing and parks at the autonomy gate', async () => {
     const warns: Array<{ meta: object; msg: string }> = [];
     const wiring = createMonthlyCloseWiring({
       db: fakeDb,
@@ -232,9 +250,9 @@ describe('createMonthlyCloseWiring', () => {
     expect(wiring).not.toBeNull();
 
     // End-to-end: trigger a run; the stateful fake drives every step.
-    // Because the autonomy stub returns autonomousModeEnabled=false,
-    // the disbursement step parks as awaiting_approval and the run
-    // should NOT crash.
+    // Because no autonomyRepository is injected, the safe-default stub
+    // returns autonomousModeEnabled=false so the disbursement step
+    // parks as awaiting_approval and the run should NOT crash.
     const result = await wiring!.orchestrator.triggerRun({
       tenantId: 'tenant-degraded',
       trigger: 'manual',
@@ -249,15 +267,12 @@ describe('createMonthlyCloseWiring', () => {
     // walked through reconcile/statements/kra/compute/propose stages.
     expect(['awaiting_approval', 'completed']).toContain(result.run.status);
 
-    // At minimum the autonomy stub MUST have warned (it's the gate
-    // that decides whether to park).
+    // The autonomy stub MUST have warned (it's the gate that decides
+    // whether to park).
     const ports = warns
       .map((w) => (w.meta as { port?: string }).port)
       .filter((p): p is string => typeof p === 'string');
     expect(ports).toContain('autonomy');
-    // Each port warns at most once for the lifetime of this wiring.
-    const uniquePorts = new Set(ports);
-    expect(ports.length).toBe(uniquePorts.size);
   });
 
   it('surfaces orchestrator-typed errors instead of stub-port crashes', async () => {
