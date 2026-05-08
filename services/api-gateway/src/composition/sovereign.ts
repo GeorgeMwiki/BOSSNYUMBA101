@@ -87,6 +87,10 @@ import {
 type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
 import { wrapAnthropicWithCircuitBreaker } from './anthropic-circuit-breaker';
+import {
+  createBoundActionToolDeps,
+  createBoundWakeReadDeps,
+} from './agency-port-bindings';
 
 // ---------------------------------------------------------------------------
 // Anthropic SDK loader — optional. We only require the SDK when the
@@ -374,7 +378,16 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
         readonly stakes: 'low' | 'medium' | 'high' | 'critical';
       }) => realPolicyService.decide(args),
     };
-    for (const realTool of agencyKernel.createRealActionTools({})) {
+    // Bind the FIVE real action-tool ports to live Drizzle write paths
+    // (notifications.dispatch_log, repos.workOrders.create equivalent,
+    // repos.inspections.create equivalent, arrears_cases ladder
+    // promotion, marketplace_listings publish). The kernel adapters
+    // own the honest-error contract — when a port itself rejects
+    // (e.g. unit not found) the adapter surfaces a structured
+    // `service not yet wired: <reason>` to the executor. See
+    // `./agency-port-bindings.ts` for the per-port query shapes.
+    const boundActionToolDeps = createBoundActionToolDeps(db);
+    for (const realTool of agencyKernel.createRealActionTools(boundActionToolDeps)) {
       toolRegistry.register(realTool);
     }
     const realAgencyExecutor = agencyKernel.createExecutor({
@@ -388,10 +401,16 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       executor: realAgencyExecutor,
       planDecomposer: agencyKernel.decomposePlan,
     };
-    // Real wake triggers — instantiated and held on the cached
-    // SovereignBrain's `mutable` bag below so a future scheduler
-    // composition root can pick them up without re-reading the DB.
-    realWakeTriggers = agencyKernel.createRealWakeTriggers({});
+    // Real wake triggers — bound to Drizzle read ports (arrears_cases,
+    // leases, units). Held on the cached SovereignBrain's `mutable`
+    // bag below so a future scheduler composition root can pick them
+    // up without re-reading the DB.
+    const boundWakeReadDeps = createBoundWakeReadDeps(db);
+    realWakeTriggers = agencyKernel.createRealWakeTriggers({
+      arrears: boundWakeReadDeps.arrearsRead,
+      leases: boundWakeReadDeps.leaseRead,
+      vacancy: boundWakeReadDeps.vacancyRead,
+    });
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.

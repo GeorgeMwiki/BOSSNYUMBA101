@@ -8,15 +8,19 @@
  * learning, agency, voice, vision, citations) — the only thing that
  * differs is the surface tier (`owner` vs `platform`) and the persona.
  *
- * Mount point: /jarvis
+ * Mounts at `/jarvis`. Mirrors the streaming pattern from
+ * `apps/admin-platform-portal/src/app/jarvis/JarvisConsole.tsx`:
+ * a stream/single-shot toggle (persisted in localStorage), live token
+ * deltas via SSE in stream mode, and an abort button while streaming.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createBossnyumbaClient, createJarvisClient } from '@bossnyumba/api-sdk';
 import {
   MicButton,
   createWebSpeechAudioPort,
   useJarvis,
+  useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
 
@@ -28,13 +32,40 @@ const DEFAULT_GATEWAY = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const MAX_IMAGES_PER_TURN = 5;
 const ALLOWED_IMAGE_MIME = 'image/png,image/jpeg,image/gif,image/webp';
 
+const MODE_STORAGE_KEY = 'bossnyumba.jarvis.mode';
+type JarvisMode = 'stream' | 'single-shot';
+
+function readStoredMode(): JarvisMode {
+  if (typeof window === 'undefined') return 'stream';
+  try {
+    const raw = window.localStorage.getItem(MODE_STORAGE_KEY);
+    return raw === 'single-shot' ? 'single-shot' : 'stream';
+  } catch {
+    return 'stream';
+  }
+}
+
 export default function Jarvis(): JSX.Element {
   const [draft, setDraft] = useState('');
   const [threadId] = useState(
     () => `own_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   );
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
+  // Default to streaming for visibly faster UX; the toggle lets owners
+  // fall back to the single-shot /think path if desired. Preference is
+  // restored from localStorage so the choice survives reloads.
+  const [mode, setMode] = useState<JarvisMode>(() => readStoredMode());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const updateMode = useCallback((next: JarvisMode): void => {
+    setMode(next);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(MODE_STORAGE_KEY, next);
+    } catch {
+      // Storage may be unavailable (private mode quota); ignore.
+    }
+  }, []);
 
   const client = useMemo(
     () =>
@@ -55,13 +86,13 @@ export default function Jarvis(): JSX.Element {
   }, []);
 
   const {
-    turns,
-    status,
-    error,
+    turns: singleShotTurns,
+    status: singleShotStatus,
+    error: singleShotError,
     persona,
     think,
     thinkWithAttachments,
-    reset,
+    reset: singleShotReset,
     isListening,
     startListening,
     stopListening,
@@ -72,6 +103,36 @@ export default function Jarvis(): JSX.Element {
     defaultTier: 'portfolio',
     ...(audioPort ? { voice: { audio: audioPort, speakReplies: true } } : {}),
   });
+
+  // Streaming variant — same surface client; visibly faster UX because
+  // each `delta` event is rendered as it arrives rather than waiting
+  // for the full /think round-trip.
+  const {
+    turns: streamTurns,
+    status: streamStatus,
+    error: streamError,
+    startStream,
+    abort: abortStream,
+    reset: streamReset,
+  } = useJarvisStream({
+    client,
+    threadId,
+    defaultStakes: 'medium',
+    defaultTier: 'portfolio',
+  });
+
+  const isStreaming = mode === 'stream';
+  const turns = isStreaming ? streamTurns : singleShotTurns;
+  const error = isStreaming ? streamError : singleShotError;
+  const isThinking = isStreaming
+    ? streamStatus === 'streaming'
+    : singleShotStatus === 'thinking';
+  const reset = isStreaming ? streamReset : singleShotReset;
+  const streamPersona = streamTurns
+    .slice()
+    .reverse()
+    .find((t) => t.role === 'assistant')?.persona;
+  const visiblePersona = isStreaming ? (streamPersona ?? persona) : persona;
 
   function onPickImages(e: React.ChangeEvent<HTMLInputElement>): void {
     const files = Array.from(e.target.files ?? []);
@@ -98,12 +159,16 @@ export default function Jarvis(): JSX.Element {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     const text = draft.trim();
-    if (status === 'thinking') return;
+    if (isThinking) return;
     if (!text && pendingImages.length === 0) return;
     setDraft('');
-    if (pendingImages.length > 0) {
-      const images = pendingImages;
-      setPendingImages([]);
+    const images = pendingImages;
+    setPendingImages([]);
+    if (isStreaming) {
+      await startStream(text, images.length > 0 ? images : undefined);
+      return;
+    }
+    if (images.length > 0) {
       await thinkWithAttachments(text, images);
     } else {
       await think(text);
@@ -121,12 +186,51 @@ export default function Jarvis(): JSX.Element {
       <main className="flex flex-1 justify-center px-6 py-6">
         <div className="w-full max-w-3xl">
           <div className="flex flex-col gap-4">
-            {persona ? (
-              <div className="rounded border border-border bg-surface-sunken px-4 py-2 text-sm text-muted-foreground">
-                {persona.displayName} ·{' '}
-                {persona.firstPersonNoun === 'we' ? 'plural voice' : 'singular voice'}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {visiblePersona ? (
+                  <div className="rounded border border-border bg-surface-sunken px-4 py-2 text-sm text-muted-foreground">
+                    {visiblePersona.displayName} ·{' '}
+                    {visiblePersona.firstPersonNoun === 'we'
+                      ? 'plural voice'
+                      : 'singular voice'}
+                  </div>
+                ) : null}
+                <span
+                  className="rounded-full border border-border bg-surface-sunken px-2 py-1 text-xs text-muted-foreground"
+                  aria-label={isStreaming ? 'Streaming mode active' : 'Single-shot mode active'}
+                >
+                  {isStreaming ? '⚡ Live' : '📦 Single-shot'}
+                </span>
               </div>
-            ) : null}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Mode</span>
+                <button
+                  type="button"
+                  onClick={() => updateMode('stream')}
+                  className={
+                    mode === 'stream'
+                      ? 'rounded border border-primary bg-primary px-2 py-1 text-primary-foreground'
+                      : 'rounded border border-border bg-surface px-2 py-1 text-foreground'
+                  }
+                  aria-pressed={mode === 'stream'}
+                >
+                  stream
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateMode('single-shot')}
+                  className={
+                    mode === 'single-shot'
+                      ? 'rounded border border-primary bg-primary px-2 py-1 text-primary-foreground'
+                      : 'rounded border border-border bg-surface px-2 py-1 text-foreground'
+                  }
+                  aria-pressed={mode === 'single-shot'}
+                >
+                  single-shot
+                </button>
+              </div>
+            </div>
 
             <div className="flex min-h-[60vh] flex-col gap-3 rounded border border-border bg-surface p-4 overflow-y-auto">
               {turns.length === 0 ? (
@@ -135,47 +239,56 @@ export default function Jarvis(): JSX.Element {
                   vacancy drift, tenant arrears. Every claim is grounded in evidence.
                 </p>
               ) : (
-                turns.map((t) => (
-                  <div
-                    key={t.id}
-                    className={
-                      t.role === 'user'
-                        ? 'self-end max-w-[80%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground'
-                        : 'self-start max-w-[80%] rounded-lg bg-surface-sunken px-3 py-2 text-sm text-foreground'
-                    }
-                  >
-                    <div className="whitespace-pre-wrap">{t.text}</div>
-                    {t.role === 'assistant' && t.decision?.confidence ? (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        confidence {(t.decision.confidence.overall * 100).toFixed(0)}%
-                        {t.decision.kind === 'softened' ? ' · softened' : ''}
-                        {t.decision.kind === 'refusal' ? ' · refused' : ''}
-                      </div>
-                    ) : null}
-                    {t.role === 'assistant' &&
-                    t.decision?.citations &&
-                    t.decision.citations.length > 0 ? (
-                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        {t.decision.citations.map((cite) => (
-                          <li
-                            key={cite.id}
-                            className="rounded border border-border bg-surface px-2 py-1"
-                          >
-                            <span className="font-medium text-foreground">
-                              {cite.label}
-                            </span>{' '}
-                            <span className="text-muted-foreground">
-                              · grounded {(cite.confidence * 100).toFixed(0)}%
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ))
+                turns.map((t) => {
+                  // The single-shot turn carries `decision`; the
+                  // streaming turn carries `finalDecision`. Coalesce so
+                  // the renderer stays mode-agnostic.
+                  const tt = t as { decision?: any; finalDecision?: any } & typeof t;
+                  const decision = tt.finalDecision ?? tt.decision;
+                  return (
+                    <div
+                      key={t.id}
+                      className={
+                        t.role === 'user'
+                          ? 'self-end max-w-[80%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground'
+                          : 'self-start max-w-[80%] rounded-lg bg-surface-sunken px-3 py-2 text-sm text-foreground'
+                      }
+                    >
+                      <div className="whitespace-pre-wrap">{t.text}</div>
+                      {t.role === 'assistant' && decision?.confidence ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          confidence {(decision.confidence.overall * 100).toFixed(0)}%
+                          {decision.kind === 'softened' ? ' · softened' : ''}
+                          {decision.kind === 'refusal' ? ' · refused' : ''}
+                        </div>
+                      ) : null}
+                      {t.role === 'assistant' &&
+                      decision?.citations &&
+                      decision.citations.length > 0 ? (
+                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                          {decision.citations.map((cite: any) => (
+                            <li
+                              key={cite.id}
+                              className="rounded border border-border bg-surface px-2 py-1"
+                            >
+                              <span className="font-medium text-foreground">
+                                {cite.label}
+                              </span>{' '}
+                              <span className="text-muted-foreground">
+                                · grounded {(cite.confidence * 100).toFixed(0)}%
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  );
+                })
               )}
-              {status === 'thinking' ? (
-                <div className="self-start text-xs text-muted-foreground italic">thinking…</div>
+              {isThinking ? (
+                <div className="self-start text-xs text-muted-foreground italic">
+                  {isStreaming ? 'streaming…' : 'thinking…'}
+                </div>
               ) : null}
               {error ? (
                 <div className="self-start text-xs text-destructive">error: {error}</div>
@@ -209,7 +322,7 @@ export default function Jarvis(): JSX.Element {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder={isListening ? 'Listening…' : 'Ask your Portfolio Concierge…'}
-                disabled={status === 'thinking'}
+                disabled={isThinking}
                 className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
               />
               <input
@@ -224,7 +337,7 @@ export default function Jarvis(): JSX.Element {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={status === 'thinking' || pendingImages.length >= MAX_IMAGES_PER_TURN}
+                disabled={isThinking || pendingImages.length >= MAX_IMAGES_PER_TURN}
                 aria-label="Attach images"
                 title={
                   pendingImages.length >= MAX_IMAGES_PER_TURN
@@ -240,19 +353,25 @@ export default function Jarvis(): JSX.Element {
                   isListening={isListening}
                   onStart={startListening}
                   onStop={stopListening}
-                  disabled={status === 'thinking'}
+                  disabled={isThinking}
                 />
               ) : null}
               <button
                 type="submit"
-                disabled={
-                  status === 'thinking' ||
-                  (!draft.trim() && pendingImages.length === 0)
-                }
+                disabled={isThinking || (!draft.trim() && pendingImages.length === 0)}
                 className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 Send
               </button>
+              {isStreaming && isThinking ? (
+                <button
+                  type="button"
+                  onClick={abortStream}
+                  className="rounded border border-border bg-surface px-3 py-2 text-sm text-foreground"
+                >
+                  Abort
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={reset}
