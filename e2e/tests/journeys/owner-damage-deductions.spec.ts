@@ -57,12 +57,9 @@ test.describe('owner-portal damage-deduction approvals @journeys', () => {
   test.skip(!USE_REAL_SERVERS, 'Requires real owner-portal dev server (USE_REAL_SERVERS=1).');
 
   // The owner-portal does not yet mount DamageDeductionApproval at a routed
-  // page in this branch. Once `/damage-deductions/page.tsx` (or similar)
-  // is wired, drop the fixme.
-  test.fixme(
-    true,
-    'DamageDeductionApproval component exists at apps/owner-portal/src/features/damage-deductions/ but is not yet mounted at a Next.js page route. Wire /damage-deductions to remove this fixme.',
-  );
+  // Wired in commit C4 (wave-3): /damage-deductions route mounts
+  // DamageDeductionsPage which renders the DamageDeductionApproval
+  // feature component inside the existing PrivateRoute > Layout wrap.
 
   test.beforeEach(async ({ page }) => {
     await seedOwnerAuth(page);

@@ -44,10 +44,9 @@ test.describe('owner-portal gamification @journeys', () => {
   test.use({ baseURL: OWNER_BASE_URL });
   test.skip(!USE_REAL_SERVERS, 'Requires real owner-portal dev server (USE_REAL_SERVERS=1).');
 
-  test.fixme(
-    true,
-    'GamificationDashboard component exists at apps/owner-portal/src/features/gamification/ but is not yet mounted at a Next.js page route. Wire /gamification to remove this fixme.',
-  );
+  // Wired in commit C4 (wave-3): /gamification route mounts
+  // GamificationPage which renders the GamificationDashboard feature
+  // component inside the existing PrivateRoute > Layout wrap.
 
   test.beforeEach(async ({ page }) => {
     await seedOwnerAuth(page);
