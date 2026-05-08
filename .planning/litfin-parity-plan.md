@@ -160,6 +160,34 @@ Logged here so reviewers do not re-open the same gap on the agent side.
   `marketSurveillance`, `predictiveInterventions`). Each returns
   `null` when `DATABASE_URL` is unset, preserving the degraded-mode
   contract. Commit `f3f02d2`.
+- [x] **Real Drizzle period-bulk adapters for the Monthly Close
+  Orchestrator.** The four port stubs (Reconciliation / Statement /
+  Disbursement / Notification) have been replaced with tenant-scoped
+  Drizzle adapters under
+  `services/api-gateway/src/services/monthly-close/`. Disbursements
+  queue `MonthlyCloseDisbursementProposed` to `event_outbox`;
+  notifications insert into `notification_dispatch_log`. Statement
+  PDF rendering remains a follow-up worker (rows persist with
+  `degraded_reason: 'no_pdf_renderer'`). Commit `0ac239f`.
+- [x] **BrainKernel constructed at the api-gateway composition root.**
+  `services/api-gateway/src/composition/brain-kernel-wiring.ts` (203
+  lines) constructs the central-intelligence kernel against the
+  budget-guarded Anthropic client + the in-memory `cot-reservoir`,
+  `brain-cache`, and `sensor-failover` adapters. Voice-agent wiring
+  now flips from the polite `VOICE_BRAIN_NOT_CONFIGURED` stub to the
+  real kernel-think path when `ANTHROPIC_API_KEY` is set. Commit
+  `eb21991`.
+- [x] **Customer-app currency hook + KES-literal cleanup.**
+  `apps/customer-app/src/lib/hooks/useCurrencyPreference.ts` resolves
+  the user → tenant → platform-default chain via api-client.
+  Hardcoded `'KES'` removed from 8 customer-app files. `/messages`
+  page wired to `messagingService.list` + `send`. Commit `464f139`.
+- [x] **Estate-manager home + briefing pages wired to head-briefing
+  router.** New `packages/api-client/src/services/head-briefing.ts`
+  with typed `getMyBriefing()` / `getMyBriefingMarkdown()` /
+  `getMyBriefingVoiceNarration()`. Estate-manager home + briefing
+  pages render all six `BriefingDocument` sections live. Commit
+  `0796887`.
 
 Stubs still open (data-integration / external-adapter phase):
 concrete Reconciliation / Statement / Disbursement port adapters for

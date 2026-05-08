@@ -109,17 +109,27 @@ Composition root injection on the `services.aiNative` object:
 - `dynamicPricing`, `docIntelligence`, `docIntelligenceRepo`,
   `legalDrafter`, `legalDraftRepo` — **still pending** the Agent-Z5
   Postgres-repo work; routers continue to 503 until those slots land.
-- `voiceAgent` — **WIRED** as of commit `f3f02d2`.
+- `voiceAgent` — **WIRED + REAL BRAIN** as of commits `f3f02d2`
+  (registry slot) and `eb21991` (BrainKernel composition root).
   `services/api-gateway/src/composition/voice-agent-wiring.ts`
   constructs `createVoiceAgent` against a Drizzle-backed
   `VoiceTurnRepository` (commit `e33cebc`,
   `packages/database/src/services/voice-turns.service.ts`) and exposes
-  it on `ServiceRegistry.voiceAgent`. The Brain port runs in
-  heuristic-language-detection mode (sw / es / fr / en — never hardcodes
-  'en'); `VoiceSttPort`, `VoiceTtsPort`, and `CustomerResolverPort` are
-  passed as `null` (the agent's degraded mode preserves text-only
-  behaviour). When `DATABASE_URL` is unset the wiring returns `null` so
-  the existing 503 contract still holds.
+  it on `ServiceRegistry.voiceAgent`. The new
+  `services/api-gateway/src/composition/brain-kernel-wiring.ts`
+  constructs the central-intelligence kernel against the
+  budget-guarded Anthropic client + `cot-reservoir` / `brain-cache` /
+  `sensor-failover` in-memory adapters; the voice agent's
+  `VoiceBrainPort` is now bound to `kernel.think`. When
+  `ANTHROPIC_API_KEY` is set, every voice turn round-trips through
+  the kernel's 13-step pipeline (cache → inviolable → tier → memory →
+  cohort → persona → sensor failover → normalize → judge → drift →
+  policy → confidence → provenance). When unset, transparently falls
+  back to the heuristic-language-detection stub (sw / es / fr / en —
+  never hardcodes 'en'). `VoiceSttPort`, `VoiceTtsPort`, and
+  `CustomerResolverPort` still pass as `null` (the agent's degraded
+  mode preserves text-only behaviour). When `DATABASE_URL` is unset
+  the wiring returns `null` so the existing 503 contract still holds.
 
 Each remaining slot depends on: concrete Postgres repositories (TODO
 Agent Z5), a budget-guarded Anthropic/OpenAI LLM port (`withBudgetGuard`

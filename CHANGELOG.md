@@ -4,7 +4,126 @@ All notable changes to BossNyumba are documented here. Format follows [Keep a Ch
 
 ## [Unreleased]
 
-### Wave 28+ — AI-native agent persistence and gateway wiring
+### Wave 28+ wave-2 — Adapter activation, real-data wiring, hardening + tests
+
+Wave-2 closes the stub-to-real gap that wave-1 left behind, lights up
+13 placeholder owner-portal pages with live data, ships a useable
+currency-preference hook on the customer-app, and adds 430 unit tests
++ 26 hermetic Playwright specs.
+
+- **Real Drizzle period-bulk adapters for the Monthly Close
+  Orchestrator** (commit `0ac239f`). Replaces the four monthly-close
+  port stubs (Reconciliation / Statement / Disbursement /
+  Notification) with real adapters under
+  `services/api-gateway/src/services/monthly-close/` —
+  `reconciliation-adapter.ts`, `statement-adapter.ts`,
+  `disbursement-adapter.ts`, `notification-adapter.ts`. Each is
+  tenant-scoped, never crashes the orchestrator (errors degrade to
+  logged warnings + safe-default returns), and writes
+  `MonthlyCloseDisbursementProposed` to `event_outbox` so the eventual
+  payouts worker has a durable queue. Statement PDF rendering is
+  flagged with refined `degraded_reason: 'no_pdf_renderer'` until the
+  rendering worker lands.
+- **BrainKernel constructed at the api-gateway composition root**
+  (commit `eb21991`). New
+  `services/api-gateway/src/composition/brain-kernel-wiring.ts`
+  (203 lines) constructs the central-intelligence kernel against the
+  budget-guarded Anthropic client and the in-memory `cot-reservoir`,
+  `brain-cache`, and `sensor-failover` adapters the kernel package
+  already ships. The voice-agent wiring then flips from the polite
+  `VOICE_BRAIN_NOT_CONFIGURED` stub to round-tripping every turn
+  through the kernel's 13-step pipeline (cache → inviolable → tier →
+  memory → cohort → persona → sensor failover → normalize → judge →
+  drift → policy → confidence → provenance). Returns `null` and falls
+  back to the heuristic-language stub when `ANTHROPIC_API_KEY` is
+  unset, preserving the degraded-mode contract.
+- **`useCurrencyPreference` hook + KES-literal cleanup in customer-app**
+  (commit `464f139`). New `apps/customer-app/src/lib/hooks/useCurrencyPreference.ts`
+  (164 lines) resolves the user → tenant → platform-default chain via
+  the api-client, defaults to a localStorage value while the API
+  resolve is in flight (no layout shift), and is SSR-safe. Returns
+  `{ code, isLoading, error }`. Seven hardcoded `'KES'` literals
+  removed across `lease/page.tsx`, `payments/invoice/[id]/page.tsx`,
+  `payments/pay/page.tsx`, `settings/page.tsx`,
+  `dashboard/RecentActivity.tsx`, `dashboard/UpcomingPayment.tsx`,
+  `screens/DocumentsPage.tsx`, `screens/OnboardingPage.tsx`. The
+  `/messages` page (158 lines updated) is now wired to
+  `messagingService.list` + `send` via `@bossnyumba/api-client` with
+  loading skeleton, error-retry, empty state, and i18n keys.
+- **Estate-manager home + briefing pages wired to head-briefing
+  router** (commit `0796887`). New
+  `packages/api-client/src/services/head-briefing.ts` (155 lines)
+  exposes typed `getMyBriefing()`, `getMyBriefingMarkdown()`, and
+  `getMyBriefingVoiceNarration()`. The estate-manager-app's
+  `app/page.tsx` and `app/briefing/page.tsx` now fetch live from the
+  existing `head-briefing.router`, rendering all six
+  `BriefingDocument` sections (overnight autonomous, pending
+  approvals, escalations, KPI deltas, recommendations, anomalies).
+  92 new translation keys added to `messages/en.json` + `sw.json`.
+- **13 owner-portal `LiveDataRequiredPage` placeholders eliminated**
+  (commit `0ee27a0`). Three pages (TenantManagementPage,
+  ComplianceDocumentsPage, ComplianceDataRequestsPage) wired to live
+  api-client calls with the wave-1 AbortController + Skeleton +
+  Alert/Retry + EmptyState pattern. Ten remaining pages
+  (AnalyticsExportsPage / AnalyticsGrowthPage / AnalyticsUsagePage /
+  BillingPage / CommunicationsBroadcastsPage /
+  CommunicationsCampaignsPage / CommunicationsTemplatesPage /
+  SupportToolingPage / UserRolesPage / UsersPage) converted to a
+  structured `MissingBackendNotice` component citing the concrete
+  missing endpoint (`/api/v1/analytics/exports/templates`,
+  `/api/v1/billing/subscription`, …) so support knows exactly what's
+  outstanding.
+- **api-gateway TODO/FIXME audit + concrete fixes** (commit `20845b4`).
+  Audited every TODO / FIXME in `services/api-gateway/src/routes/` and
+  `src/middleware/`. Trivial wins fixed in-place; the remainder
+  tightened with concrete next-step + ticket-style labels. Real fixes
+  in `middleware/per-tenant-rate-budget` (4-step Redis-upgrade plan
+  documented), `routes/analytics.router` (zod gaps surfaced + typed
+  error codes), `routes/bff/*` (identity-wiring pointed at concrete
+  service slots, request-id propagation added where missing),
+  `routes/migration.router` (per-tenant data-isolation enforcement
+  path), `routes/portfolio.router` (sharpened error classification).
+- **+430 unit tests across ai-copilot, agent-platform, api-sdk, database**
+  (commit `6dfee62`). Three parallel test-coverage agents gap-filled
+  high-value untested code paths. No production code modified — all
+  tests use injected mocks (`vi.fn()` / hand-rolled stubs); no IO; no
+  real Anthropic SDK calls.
+  - ai-copilot: 1251 → 1485 passed (+234 across 16 files —
+    autonomy defaults, learning-loop confidence/pattern/policy/dry-run,
+    risk-recompute classifier, providers budget-guard/advisor/router,
+    voice routing + persona-dna profile registry, agent-certification
+    cert-store, knowledge citations + policy packs, rent-credit
+    score + savings-advisor, eval scenario, graph-signals severity).
+  - agent-platform: 23 → 125 passed (+102 — error-codes full
+    HTTP-status matrix + retryability, correlation-id, agent-card,
+    agent-auth, idempotency, webhook-delivery).
+  - api-sdk: 27 → 64 passed (+37 — jarvis-client every-surface
+    coverage + URL-encoding actionId).
+  - database: services-layer suites for the four AI-native Drizzle
+    services landed in wave-1 are now fully exercised against
+    in-memory drivers.
+- **+26 hermetic Playwright E2E specs covering wave-1 + wave-2 flows**
+  (commit `1d038d9`). Eight spec files + one shared helper under
+  `e2e/tests/journeys/`. Every `/api/v1/*` call is mocked via
+  `page.route` + `route.fulfill`. Specs auto-skip when no Next.js dev
+  server is reachable (`USE_REAL_SERVERS=1` opts in to live mode), so
+  CI stays green. Coverage: customer-feedback (4),
+  customer-settings-and-notifications (4), manager-messaging (4),
+  manager-notifications (2), manager-announcements-create (3),
+  owner-damage-deductions (3, `.fixme`'d — component lives in
+  `features/`; not yet mounted), owner-gamification (3, same reason).
+- **Hardening fixes — timeouts, input clamping, log discipline**
+  (commit `482f5e6`). Three real bugs in 3 files:
+  `packages/observability/src/tracing/tracer.ts` (removed
+  `console.log` style violation; SIGTERM teardown now uses
+  `process.stderr.write`), `packages/enterprise-hardening/src/enterprise/custom-workflows.ts`
+  (`HTTP_REQUEST` handler gained `AbortSignal.timeout(30_000)` +
+  try/catch returning `{ statusCode: 0, error }`; `WAIT` handler now
+  clamps `duration` to a finite non-negative bound),
+  `packages/enterprise-hardening/src/resilience/health-check.ts`
+  (log discipline tightened to structured logger only).
+
+### Wave 28+ wave-1 — AI-native agent persistence and gateway wiring
 
 - **Drizzle schemas for legacy SQL tables** (commit `ea93ed6`). Four
   tables that previously existed only as raw SQL now ship as typed

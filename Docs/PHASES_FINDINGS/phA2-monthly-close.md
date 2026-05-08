@@ -217,10 +217,30 @@ Typechecks clean:
   router still returns 503 `MONTHLY_CLOSE_UNAVAILABLE` when
   `DATABASE_URL` is unset (the wiring returns `null` to preserve
   the degraded-mode contract), but the orchestrator now persists run
-  + step state to Postgres in normal operation. The remaining
-  external ports (Reconciliation / Statement / Disbursement /
-  Notification / Event / AutonomyPolicy) are still graceful no-op
-  stubs until concrete adapters land — see the wiring file's TODOs.
+  + step state to Postgres in normal operation.
+- **Reconciliation / Statement / Disbursement / Notification ports
+  now backed by real Drizzle period-bulk adapters** (commit `0ac239f`).
+  Files under `services/api-gateway/src/services/monthly-close/`:
+  - `reconciliation-adapter.ts` aggregates `payments` joined with
+    `invoices` for the closing window in one round-trip, returning
+    `{ reconciled, unmatched, grossRentMinor, currency }`.
+  - `statement-adapter.ts` walks owners with active leases in the
+    period, computes per-owner gross, writes `draft` rows into
+    `owner_statements`. PDF rendering stays a follow-up worker —
+    rows persist with `degraded_reason: 'no_pdf_renderer'`.
+  - `disbursement-adapter.ts` computes per-owner breakdown from
+    `payments → leases → properties`; records every
+    `executeDisbursement` call into `event_outbox` as
+    `MonthlyCloseDisbursementProposed` for the eventual payouts
+    worker.
+  - `notification-adapter.ts` inserts one row per (owner, statement)
+    into `notification_dispatch_log` with `status='pending'`.
+  Each adapter is tenant-scoped and never crashes the orchestrator —
+  errors degrade to logged warnings + safe-default returns. The
+  remaining stub is `AutonomyPolicyPort` (still defaults
+  `autonomousModeEnabled = false` so disbursement batches park as
+  `awaiting_approval` — money never auto-moves until the concrete
+  autonomy adapter lands).
 - **Disbursement destination is pass-through.** The orchestrator
   reads `destination` from the existing `DisbursementService`
   breakdown. If the owner has no registered bank account, that

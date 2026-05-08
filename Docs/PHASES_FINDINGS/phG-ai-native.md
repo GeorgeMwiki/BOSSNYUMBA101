@@ -251,16 +251,21 @@ services.naturalLanguageQuery   = createNaturalLanguageQuery({ runner, llm, budg
 services.patternMiner           = createPatternMiner({ repo, llm, budgetGuard });
 ```
 
-**Wiring status (2026-05-08).** Of the eight, `marketSurveillance` and
-`predictiveInterventions` now have real Drizzle-backed wirings under
+**Wiring status (2026-05-08, post wave-2).** Of the eight,
+`marketSurveillance` and `predictiveInterventions` now have real
+Drizzle-backed wirings under
 `services/api-gateway/src/composition/{market-surveillance,predictive-interventions}-wiring.ts`
 (commit `f3f02d2`); their persistence ports (`market_rate_snapshots`,
 `tenant_predictions`, `predictive_intervention_opportunities`) route
 through the typed services in `packages/database/src/services/`
 (commit `e33cebc`). The external `MarketRatePort` and the LLM port for
 predictions are still stubbed (heuristic-baseline mode) until concrete
-adapters land. The other six services remain unwired in the registry —
-their routers continue to return 503 with a clear reason until those
+adapters land — the surveillance loop returns `[]` from
+`listActiveUnits` and predictions fall back to heuristic baselines.
+The other six services (`sentimentMonitor`, `multimodalInspection`,
+`polyglotSupport`, `policySimulator`, `naturalLanguageQuery`,
+`patternMiner`) remain unwired in the registry — their routers
+continue to return 503 with a clear `*_UNAVAILABLE` code until those
 slots ship.
 
 Repositories are thin `postgres-js` wrappers — straight INSERTs /
