@@ -360,7 +360,24 @@ export function RegisterPage() {
                 <div className="flex items-start gap-2">
                   <input type="checkbox" id="acceptTerms" {...registerDetails('acceptTerms')} className="mt-1" />
                   <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                    {t('iAgreeTo')} <a href="#" className="text-blue-600 hover:underline">{t('termsOfService')}</a> {t('and')} <a href="#" className="text-blue-600 hover:underline">{t('privacyPolicy')}</a>
+                    {t('iAgreeTo')}{' '}
+                    <a
+                      href="/legal/terms"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {t('termsOfService')}
+                    </a>{' '}
+                    {t('and')}{' '}
+                    <a
+                      href="/legal/privacy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {t('privacyPolicy')}
+                    </a>
                   </label>
                 </div>
                 {detailsState.errors.acceptTerms && <p role="alert" className="text-xs text-red-600">{detailsState.errors.acceptTerms.message}</p>}
