@@ -199,6 +199,7 @@ import {
   createVoiceAgentWiring,
   type VoiceAgentWiring,
 } from './voice-agent-wiring.js';
+import { createBrainKernelWiring } from './brain-kernel-wiring.js';
 import {
   createMarketSurveillanceWiring,
   type MarketSurveillanceWiring,
@@ -1487,13 +1488,23 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       eventBus,
       autonomyRepository: new PostgresAutonomyPolicyRepository(db),
     }),
-    // `kernelThink` is omitted here — until the central-intelligence
-    // BrainKernel is constructed at this composition root, the voice
-    // agent runs with the degraded (KERNEL_NOT_WIRED) brain stub.
-    // Once `createBrainKernel(...)` is wired (next scrub wave), pass
-    // its `.think` reference here to upgrade voice turns to the full
-    // 13-step disciplined pipeline.
-    voiceAgent: createVoiceAgentWiring({ db }),
+    // Central-intelligence `BrainKernel` is constructed once per
+    // gateway boot. When no Anthropic key is configured the wiring
+    // returns null and the voice agent transparently falls back to
+    // its degraded `VOICE_BRAIN_NOT_CONFIGURED` stub. When the kernel
+    // is composed, every voice turn round-trips through the
+    // disciplined 13-step pipeline (cache → inviolable → tier →
+    // memory → cohort → persona → sensor failover → normalize →
+    // judge → drift → policy → confidence → provenance).
+    voiceAgent: (() => {
+      const brainKernel = createBrainKernelWiring({
+        buildBudgetGuardedAnthropicClient,
+      });
+      return createVoiceAgentWiring({
+        db,
+        ...(brainKernel ? { kernelThink: brainKernel.think } : {}),
+      });
+    })(),
     marketSurveillance: createMarketSurveillanceWiring({ db }),
     predictiveInterventions: createPredictiveInterventionsWiring({ db }),
     eventBus,
