@@ -24,6 +24,9 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
+
+const SAMPLE_MONTHLY_RENT = 40000;
 
 interface Document {
   id: string;
@@ -174,6 +177,7 @@ const categoryConfig = {
 
 export default function DocumentsPage() {
   const t = useTranslations('documentsScreen');
+  const { format: formatCurrency } = useCurrencyPreference();
   const [activeTab, setActiveTab] = useState<'documents' | 'rules'>('documents');
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -239,7 +243,7 @@ export default function DocumentsPage() {
                   </div>
                   <div>
                     <div className="opacity-75 mb-0.5">{t('monthlyRent')}</div>
-                    <div className="font-medium">KES 40,000</div>
+                    <div className="font-medium">{formatCurrency(SAMPLE_MONTHLY_RENT)}</div>
                   </div>
                   <div>
                     <div className="opacity-75 mb-0.5">{t('status')}</div>

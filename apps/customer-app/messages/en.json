@@ -545,7 +545,8 @@
     "loading": "Loading messages…",
     "errorLoad": "Failed to load messages.",
     "empty": "No messages yet.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "untitled": "Conversation"
   },
   "feedbackPage": {
     "title": "Submit Feedback",
@@ -875,10 +876,22 @@
     "submitting": "Submitting...",
     "submitFeedback": "Submit Feedback",
     "category": {
-      "quality": { "label": "Work Quality", "description": "Was the issue properly fixed?" },
-      "timeliness": { "label": "Timeliness", "description": "Was the service completed on time?" },
-      "communication": { "label": "Communication", "description": "Were you kept informed?" },
-      "professionalism": { "label": "Professionalism", "description": "Was the technician courteous?" }
+      "quality": {
+        "label": "Work Quality",
+        "description": "Was the issue properly fixed?"
+      },
+      "timeliness": {
+        "label": "Timeliness",
+        "description": "Was the service completed on time?"
+      },
+      "communication": {
+        "label": "Communication",
+        "description": "Were you kept informed?"
+      },
+      "professionalism": {
+        "label": "Professionalism",
+        "description": "Was the technician courteous?"
+      }
     },
     "tag": {
       "professional": "Professional",

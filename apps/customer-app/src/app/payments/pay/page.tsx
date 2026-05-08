@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CURRENT_BALANCE } from '@/lib/payments-data';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
 
@@ -68,7 +69,9 @@ function PayPageInner() {
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
   const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
-  
+
+  const { code: currencyCode, format: formatCurrency } = useCurrencyPreference();
+
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [showAmountInput, setShowAmountInput] = useState(false);
@@ -99,7 +102,7 @@ function PayPageInner() {
             <div>
               <div className="text-sm text-gray-500">{t('amountToPay')}</div>
               <div className="text-3xl font-bold text-gray-900">
-                KES {paymentAmount.toLocaleString()}
+                {formatCurrency(paymentAmount)}
               </div>
             </div>
             <button
@@ -115,7 +118,7 @@ function PayPageInner() {
               <label className="label">{t('enterCustomAmount')}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                  KES
+                  {currencyCode}
                 </span>
                 <input
                   type="number"

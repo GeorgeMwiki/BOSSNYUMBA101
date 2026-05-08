@@ -1,9 +1,16 @@
 /**
- * Tenant ↔ property manager messages list — Wave 15 UI gap closure.
+ * Tenant ↔ property manager conversations list.
  *
- * Fetches /api/v1/messaging/threads for the authenticated tenant and
- * renders latest preview. Clicking a thread navigates to the detail
- * route that already exists under `[id]`.
+ * Wave 22: rewired to consume `messagingService.listConversations()`
+ * from `@bossnyumba/api-client`. The gateway currently returns raw
+ * snake_case rows from the `conversations` table (subject /
+ * created_at / updated_at) — the api-client's typed `Conversation`
+ * shape (camelCase + nested participants) drifts from that. We
+ * tolerate both shapes via a thin adapter so the page works both
+ * before and after a future gateway-side normalisation pass.
+ *
+ * Loading / error / empty / retry states mirror the pattern used by
+ * `apps/customer-app/src/app/feedback/history/page.tsx`.
  */
 'use client';
 
@@ -11,13 +18,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { MessageSquare, Loader2 } from 'lucide-react';
+import { messagingService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-interface Thread {
+interface ConversationView {
   readonly id: string;
   readonly subject: string;
   readonly lastMessagePreview: string;
-  readonly lastMessageAt: string;
+  readonly lastMessageAt: string | null;
   readonly unreadCount: number;
   readonly counterpart: {
     readonly name: string;
@@ -25,19 +33,87 @@ interface Thread {
   };
 }
 
-function apiBase(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
-  if (url?.trim()) {
-    const base = url.trim().replace(/\/$/, '');
-    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+/**
+ * Snake-case raw row shape returned by the api-gateway today
+ * (`services/api-gateway/src/routes/messaging.ts` SELECTs the columns
+ * directly). Kept narrow — only the fields we actually render.
+ */
+interface RawConversationRow {
+  readonly id: string;
+  readonly subject?: string | null;
+  readonly created_at?: string | null;
+  readonly updated_at?: string | null;
+  readonly entity_type?: string | null;
+  readonly created_by?: string | null;
+}
+
+/** Adapt either the api-client typed shape or the raw gateway row. */
+function adaptConversation(input: unknown): ConversationView | null {
+  if (!input || typeof input !== 'object') return null;
+  const obj = input as Record<string, unknown>;
+  const id = typeof obj.id === 'string' ? obj.id : null;
+  if (!id) return null;
+
+  const subject =
+    (typeof obj.subject === 'string' && obj.subject.trim().length > 0
+      ? obj.subject
+      : null) ?? '';
+
+  // api-client typed shape carries `lastMessage.content` and `unreadCount`.
+  // Raw gateway rows do not — we fall back to empty strings / 0 there.
+  const lastMessage =
+    obj.lastMessage && typeof obj.lastMessage === 'object'
+      ? (obj.lastMessage as Record<string, unknown>)
+      : null;
+  const lastMessagePreview =
+    lastMessage && typeof lastMessage.content === 'string'
+      ? lastMessage.content
+      : '';
+
+  const lastMessageAt =
+    typeof obj.updatedAt === 'string'
+      ? obj.updatedAt
+      : typeof (obj as RawConversationRow).updated_at === 'string'
+        ? (obj as RawConversationRow).updated_at ?? null
+        : null;
+
+  const unreadCount =
+    typeof obj.unreadCount === 'number' && Number.isFinite(obj.unreadCount)
+      ? obj.unreadCount
+      : 0;
+
+  // Counterpart hydration: api-client surfaces a `participants` array.
+  // Raw rows don't yet — we fall back to a sensible label.
+  let counterpartName = '';
+  let counterpartRole = '';
+  if (Array.isArray(obj.participants)) {
+    const other = (obj.participants as Array<Record<string, unknown>>).find(
+      (p) => typeof p?.type === 'string' && p.type !== 'customer',
+    );
+    if (other) {
+      counterpartName = typeof other.name === 'string' ? other.name : '';
+      counterpartRole = typeof other.type === 'string' ? other.type : '';
+    }
   }
-  return 'http://localhost:4001/api/v1';
+  if (!counterpartRole) {
+    const entityType = (obj as RawConversationRow).entity_type;
+    if (typeof entityType === 'string') counterpartRole = entityType;
+  }
+
+  return {
+    id,
+    subject,
+    lastMessagePreview,
+    lastMessageAt,
+    unreadCount,
+    counterpart: { name: counterpartName, role: counterpartRole },
+  };
 }
 
 export default function MessagesPage() {
   const t = useTranslations('pageHeaders');
   const tList = useTranslations('messagesList');
-  const [threads, setThreads] = useState<readonly Thread[]>([]);
+  const [threads, setThreads] = useState<readonly ConversationView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -48,24 +124,13 @@ export default function MessagesPage() {
       setLoading(true);
       setError(null);
       try {
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('customer_token') ?? ''
-            : '';
-        const res = await fetch(`${apiBase()}/messaging/threads`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const body = (await res.json()) as {
-          success?: boolean;
-          data?: readonly Thread[];
-          error?: { message?: string };
-        };
+        const response = await messagingService.listConversations({ pageSize: 50 });
         if (!active) return;
-        if (!res.ok || !body.success) {
-          setError(body.error?.message ?? tList('errorLoad'));
-        } else {
-          setThreads(body.data ?? []);
-        }
+        const rows = Array.isArray(response.data) ? response.data : [];
+        const adapted = rows
+          .map((row) => adaptConversation(row))
+          .filter((row): row is ConversationView => row !== null);
+        setThreads(adapted);
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : tList('errorLoad'));
@@ -106,26 +171,37 @@ export default function MessagesPage() {
             {tList('empty')}
           </div>
         )}
-        {threads.map((t) => (
+        {threads.map((thread) => (
           <Link
-            key={t.id}
-            href={`/messages/${t.id}`}
+            key={thread.id}
+            href={`/messages/${thread.id}`}
             className="block rounded-lg bg-gray-800 border border-gray-700 p-4 hover:border-blue-500"
           >
             <div className="flex items-center justify-between">
-              <div className="font-medium text-white">{t.subject}</div>
-              {t.unreadCount > 0 && (
+              <div className="font-medium text-white">
+                {thread.subject || tList('untitled')}
+              </div>
+              {thread.unreadCount > 0 && (
                 <span className="text-xs bg-blue-600 text-white rounded-full px-2 py-0.5">
-                  {t.unreadCount}
+                  {thread.unreadCount}
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-400 mt-1 truncate">
-              {t.lastMessagePreview}
-            </p>
+            {thread.lastMessagePreview && (
+              <p className="text-sm text-gray-400 mt-1 truncate">
+                {thread.lastMessagePreview}
+              </p>
+            )}
             <p className="text-xs text-gray-500 mt-1">
-              {t.counterpart.name} · {t.counterpart.role} ·{' '}
-              {new Date(t.lastMessageAt).toLocaleString()}
+              {[
+                thread.counterpart.name,
+                thread.counterpart.role,
+                thread.lastMessageAt
+                  ? new Date(thread.lastMessageAt).toLocaleString()
+                  : null,
+              ]
+                .filter((part): part is string => Boolean(part))
+                .join(' · ')}
             </p>
           </Link>
         ))}

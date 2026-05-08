@@ -7,9 +7,11 @@ import { Calendar, FileText, Home } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
 export default function LeasePage() {
   const t = useTranslations('leaseIndex');
+  const { format: formatCurrency } = useCurrencyPreference();
   const leaseQuery = useQuery({
     queryKey: ['customer-current-lease'],
     queryFn: () => api.lease.getCurrent(),
@@ -66,7 +68,7 @@ export default function LeasePage() {
                 </div>
                 <div className="rounded-xl border border-white/10 p-3">
                   <div className="text-gray-400">{t('rent')}</div>
-                  <div className="mt-1 text-white">KES {Number(lease.rentAmount).toLocaleString()}</div>
+                  <div className="mt-1 text-white">{formatCurrency(Number(lease.rentAmount))}</div>
                 </div>
                 <div className="rounded-xl border border-white/10 p-3">
                   <div className="text-gray-400">{t('status')}</div>

@@ -4,9 +4,12 @@ import { useEffect, useState, useTransition } from 'react';
 import { Bell, Mail, MessageSquare, Globe, DollarSign } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import {
+  CURRENCY_STORAGE_KEY,
+  FALLBACK_CURRENCY,
+} from '@/lib/hooks/useCurrencyPreference';
 
 const NOTIFICATIONS_STORAGE_KEY = 'customer_notification_prefs_v1';
-const CURRENCY_STORAGE_KEY = 'customer_display_currency';
 const LOCALE_COOKIE = 'NEXT_LOCALE';
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
@@ -48,11 +51,11 @@ function writePrefs(prefs: NotificationPrefs): void {
 }
 
 function readCurrency(): string {
-  if (typeof window === 'undefined') return 'KES';
+  if (typeof window === 'undefined') return FALLBACK_CURRENCY;
   try {
-    return window.localStorage.getItem(CURRENCY_STORAGE_KEY) ?? 'KES';
+    return window.localStorage.getItem(CURRENCY_STORAGE_KEY) ?? FALLBACK_CURRENCY;
   } catch {
-    return 'KES';
+    return FALLBACK_CURRENCY;
   }
 }
 
@@ -61,7 +64,7 @@ export default function SettingsPage() {
   const activeLocale = useLocale();
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [language, setLanguage] = useState<string>(activeLocale);
-  const [currency, setCurrency] = useState<string>('KES');
+  const [currency, setCurrency] = useState<string>(FALLBACK_CURRENCY);
   const [, startTransition] = useTransition();
 
   useEffect(() => {

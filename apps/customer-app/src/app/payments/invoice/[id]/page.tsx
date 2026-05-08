@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, Download, CreditCard, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
 // Mock invoice data - would come from API
 const invoices: Record<
@@ -118,6 +119,7 @@ export default function InvoicePage() {
   const t = useTranslations('invoicePage');
   const params = useParams();
   const router = useRouter();
+  const { format: formatCurrency } = useCurrencyPreference();
   const id = params.id as string;
   const invoice = invoices[id] || invoices['1'];
 
@@ -151,7 +153,7 @@ export default function InvoicePage() {
             <span className={status.color}>{status.label}</span>
           </div>
           <div className="text-2xl font-bold text-primary-600">
-            KES {invoice.amount.toLocaleString()}
+            {formatCurrency(invoice.amount)}
           </div>
         </div>
 
@@ -172,14 +174,14 @@ export default function InvoicePage() {
                     <div className="text-sm text-gray-500">{t('qty')}: {item.quantity}</div>
                   )}
                 </div>
-                <div className="font-medium">KES {item.amount.toLocaleString()}</div>
+                <div className="font-medium">{formatCurrency(item.amount)}</div>
               </div>
             ))}
           </div>
           <div className="p-4 bg-gray-50 border-t border-gray-100">
             <div className="flex justify-between font-semibold">
               <span>{t('total')}</span>
-              <span>KES {invoice.amount.toLocaleString()}</span>
+              <span>{formatCurrency(invoice.amount)}</span>
             </div>
           </div>
         </section>

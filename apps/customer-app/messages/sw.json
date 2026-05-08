@@ -545,7 +545,8 @@
     "loading": "Inapakia ujumbe…",
     "errorLoad": "Imeshindwa kupakia ujumbe.",
     "empty": "Bado hakuna ujumbe.",
-    "retry": "Jaribu tena"
+    "retry": "Jaribu tena",
+    "untitled": "Mazungumzo"
   },
   "feedbackPage": {
     "title": "Wasilisha Maoni",
@@ -875,10 +876,22 @@
     "submitting": "Inawasilisha...",
     "submitFeedback": "Wasilisha Maoni",
     "category": {
-      "quality": { "label": "Ubora wa Kazi", "description": "Je, tatizo lilirekebishwa vizuri?" },
-      "timeliness": { "label": "Wakati", "description": "Je, huduma ilikamilika kwa wakati?" },
-      "communication": { "label": "Mawasiliano", "description": "Je, ulipata taarifa?" },
-      "professionalism": { "label": "Utaalamu", "description": "Je, fundi alikuwa na adabu?" }
+      "quality": {
+        "label": "Ubora wa Kazi",
+        "description": "Je, tatizo lilirekebishwa vizuri?"
+      },
+      "timeliness": {
+        "label": "Wakati",
+        "description": "Je, huduma ilikamilika kwa wakati?"
+      },
+      "communication": {
+        "label": "Mawasiliano",
+        "description": "Je, ulipata taarifa?"
+      },
+      "professionalism": {
+        "label": "Utaalamu",
+        "description": "Je, fundi alikuwa na adabu?"
+      }
     },
     "tag": {
       "professional": "Mtaalamu",
