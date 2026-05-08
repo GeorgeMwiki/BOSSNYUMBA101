@@ -73,6 +73,10 @@ import {
   type MarketSurveillanceRepository,
   type UnitForSurveillance,
 } from '@bossnyumba/ai-copilot/ai-native';
+import {
+  withAgentSpan,
+  recordDegraded,
+} from '../instrumentation/agent-spans.js';
 
 /**
  * `DatabaseClient` is derived via `ReturnType<typeof createDatabaseClient>`
@@ -463,5 +467,59 @@ export function createMarketSurveillanceWiring(
     port,
   });
 
-  return { agent };
+  // Surface the not-yet-configured comparables stub on the
+  // `agent_port_degraded_total` counter at wiring-construction time.
+  // Recording happens once per wiring (NOT per scan) so the counter
+  // reflects the configured posture rather than blowing up under load.
+  if (port.adapterId === STUB_ADAPTER_ID) {
+    recordDegraded(
+      'market-surveillance',
+      'MarketRatePort',
+      'STUB_NOT_CONFIGURED',
+    );
+  }
+
+  return { agent: instrumentMarketSurveillance(agent) };
+}
+
+/**
+ * Wrap the surveillance agent's three public methods (`scanTenant`,
+ * `scanUnit`, `listRecentSnapshots`) in `withAgentSpan(...)` so each
+ * call emits a per-agent span + counter + latency histogram. Returns
+ * a fresh object — does not mutate the underlying agent.
+ */
+function instrumentMarketSurveillance(
+  agent: MarketSurveillance,
+): MarketSurveillance {
+  return {
+    scanTenant(tenantId) {
+      return withAgentSpan(
+        'market-surveillance',
+        'scanTenant',
+        () => agent.scanTenant(tenantId),
+        { tenantId },
+      );
+    },
+    scanUnit(unit) {
+      return withAgentSpan(
+        'market-surveillance',
+        'scanUnit',
+        () => agent.scanUnit(unit),
+        {
+          tenantId: unit?.tenantId ?? null,
+          attributes: {
+            ...(unit?.unitId && { unitId: unit.unitId }),
+          },
+        },
+      );
+    },
+    listRecentSnapshots(tenantId, params) {
+      return withAgentSpan(
+        'market-surveillance',
+        'listRecentSnapshots',
+        () => agent.listRecentSnapshots(tenantId, params),
+        { tenantId },
+      );
+    },
+  };
 }
