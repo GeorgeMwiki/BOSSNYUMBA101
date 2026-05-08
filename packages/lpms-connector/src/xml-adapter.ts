@@ -33,6 +33,7 @@ import {
 } from './types.js';
 import {
   LpmsParseError,
+  LPMS_MAX_INPUT_BYTES,
   type LpmsAdapter,
   type LpmsIngestionContext,
   type LpmsIngestionError,
@@ -187,6 +188,19 @@ export class LpmsXmlAdapter implements LpmsAdapter<string, XmlAdapterOptions> {
     if (typeof input !== 'string' || input.trim().length === 0) {
       throw new LpmsParseError('xml', 'input must be a non-empty string');
     }
+    if (input.length > LPMS_MAX_INPUT_BYTES) {
+      throw new LpmsParseError(
+        'xml',
+        `input exceeds ${LPMS_MAX_INPUT_BYTES} bytes; chunk the export`,
+      );
+    }
+    // SECURITY: pin the wrapper-tag lookup to a safe identifier shape.
+    // Without this, a malicious caller could pass `__proto__` etc. as the
+    // rootTag and traverse the prototype chain of the parsed object.
+    const rootTagInput = options?.rootTag ?? 'export';
+    if (!/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(rootTagInput)) {
+      throw new LpmsParseError('xml', `invalid rootTag: ${rootTagInput}`);
+    }
 
     // fast-xml-parser options: coerce numbers to strings
     // (we do our own numeric coercion for consistency with CSV/JSON), keep
@@ -210,7 +224,7 @@ export class LpmsXmlAdapter implements LpmsAdapter<string, XmlAdapterOptions> {
       );
     }
 
-    const rootTag = options?.rootTag ?? 'export';
+    const rootTag = rootTagInput;
     const aliases = mergeAliases(options?.aliasMap);
     const errors: LpmsIngestionError[] = [];
 
