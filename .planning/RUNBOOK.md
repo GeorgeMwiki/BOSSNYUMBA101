@@ -598,6 +598,134 @@ Both runners are deliberately single-shot so the deployment owns the
 retry + backoff policy. Do not loop them inside the api-gateway
 process — they belong in their own short-lived workload.
 
+### 6.3 AI-native agents — Monthly Close, Voice, Market Surveillance, Predictive Interventions
+
+Four AI-native agents are wired into the api-gateway composition root
+(`services/api-gateway/src/composition/{monthly-close,voice-agent,market-surveillance,predictive-interventions}-wiring.ts`).
+Each is exposed as an optional slot on `ServiceRegistry` and returns
+`null` when `DATABASE_URL` is unset — routers that depend on a slot
+already render a 503 envelope when they see a null wiring, so a missing
+DB does not crash boot.
+
+#### Env vars that flip stub adapters to real
+
+The wirings ship with graceful stubs for every external port; setting
+the env var below activates the real adapter when (and only when) it
+lands. Until then the agent runs in degraded mode and persistence still
+works.
+
+| Agent | Env var (when adapter lands) | Today's stub |
+|---|---|---|
+| Monthly Close — Reconciliation / Statement / Disbursement / Notification / Event ports | (no env gate yet — concrete adapters land in follow-up commits, then they will read existing `services/payments-ledger`, notification, and event-bus config) | Each stub emits a single `console.warn` the first time it is invoked so degraded mode is observable in logs. |
+| Monthly Close — `AutonomyPolicyPort` | (no env gate yet — concrete autonomy-policy adapter lands in follow-up commit) | Stub returns `autonomousModeEnabled = false` so disbursement batches park as `awaiting_approval`. **Money never auto-moves in degraded mode.** |
+| Voice Agent — `VoiceBrainPort` | `ANTHROPIC_API_KEY` (Anthropic-backed brain reuses the existing key once the adapter lands) | Heuristic-language detection (`sw` / `es` / `fr` / `en`) — never hardcodes 'en'. |
+| Voice Agent — `VoiceSttPort` / `VoiceTtsPort` / `CustomerResolverPort` | (no env gate yet — adapters land in follow-up) | All three pass as `null`; the agent's degraded mode preserves text-only behaviour. |
+| Market Surveillance — `MarketRatePort` | (no env gate yet — Zillow / Rentometer adapter lands in follow-up; will read `MARKET_DATA_PROVIDER`, `ZILLOW_API_KEY`, `AIRBNB_API_KEY`, see §1.5) | Stub `MarketRatePort` with `adapterId='stub-not-configured'`. `listActiveUnits` returns `[]` so the surveillance loop no-ops cleanly. |
+| Predictive Interventions — LLM port | `ANTHROPIC_API_KEY` (LLM-backed predictor lands in follow-up commit) | LLM port is `undefined` → heuristic-baseline predictions only. `listActiveTenants` returns `[]` until the occupancy/leases adapter lands. |
+
+#### Inspecting run state
+
+The four agents persist state through the Drizzle services in
+`packages/database/src/services/`. Live monitoring queries:
+
+```sql
+-- Monthly Close: most recent run per tenant + period
+SELECT id, tenant_id, period_year, period_month, status, trigger,
+       started_at, completed_at, last_error
+FROM monthly_close_runs
+ORDER BY started_at DESC
+LIMIT 25;
+
+-- Monthly Close: per-step audit trail for a run
+SELECT step_name, decision, actor, policy_rule, started_at,
+       completed_at, duration_ms, error_message
+FROM monthly_close_run_steps
+WHERE run_id = '<runId>'
+ORDER BY step_index;
+
+-- Voice Agent: recent voice turns. degraded_mode = TRUE means the STT /
+-- TTS / brain adapter was not configured; the row is still persisted so
+-- the conversation is auditable.
+SELECT id, tenant_id, session_id, turn_index, detected_language,
+       degraded_mode, model_version, latency_ms, created_at
+FROM voice_turns
+WHERE created_at > NOW() - INTERVAL '24 hours'
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- Market Surveillance: latest comparable-rent snapshots per unit.
+-- source_adapter='stub-not-configured' marks degraded-mode snapshots.
+SELECT unit_id, observed_at, currency_code, our_rent_amount_minor,
+       market_median_minor, market_p25_minor, market_p75_minor,
+       drift_flag, source_adapter
+FROM market_rate_snapshots
+ORDER BY observed_at DESC
+LIMIT 50;
+
+-- Predictive Interventions: open opportunities (need owner attention).
+-- signal_type carries the kind ('high_default_risk', 'high_churn_risk', …).
+SELECT id, tenant_id, customer_id, signal_type, suggested_action,
+       status, created_at
+FROM predictive_intervention_opportunities
+WHERE status = 'open'
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
+#### Manually triggering a monthly-close run
+
+The Monthly Close Orchestrator runs on the `monthly_close` background
+task (registered unconditionally in
+`services/api-gateway/src/composition/background-wiring.ts`, schedule
+`0 2 1 * *` — 02:00 on the 1st of every month). To run a tenant's close
+ad-hoc, POST to the router (mounted at `/api/v1/monthly-close`):
+
+```bash
+# Trigger (or resume) the close for the caller's tenant + period.
+# Tenant id is bound from the JWT, not the body.
+curl -X POST http://localhost:4000/api/v1/monthly-close/trigger \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"periodYear":2026,"periodMonth":4}'
+```
+
+Idempotency: a re-trigger for an in-progress `(tenantId, periodYear,
+periodMonth)` returns the same run with `resumed: true`. A re-trigger
+for a completed period returns 409 `MonthlyCloseAlreadyCompleted`.
+These invariants are also enforced at the DB layer via the unique
+indexes on `monthly_close_runs (tenant_id, period_year, period_month)`
+and `monthly_close_run_steps (run_id, step_name)` — re-triggers surface
+Postgres `23505` to the orchestrator.
+
+If a step pauses as `awaiting_approval` (the autonomy-policy stub
+forces this on disbursement batches today), an operator approves and
+the orchestrator resumes:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/monthly-close/<runId>/approve-step \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"stepName":"propose_disbursement_batch"}'
+```
+
+Auth: the router is gated on `SUPER_ADMIN` / `ADMIN` / `TENANT_ADMIN`.
+Returns 503 `MONTHLY_CLOSE_UNAVAILABLE` when the registry slot is
+`null` (most commonly because `DATABASE_URL` is unset), 404 when the
+run is not found, and 409 when the step is not in
+`awaiting_approval` state.
+
+#### Boot-log smoke-check
+
+If `service-registry: live (Postgres-backed domain services wired)` is
+in the boot log, the four wirings will have run. Each stub external
+port emits a single `console.warn` (or `logger.warn`) prefixed with the
+agent name (`[monthly-close]`, voice-agent, market-surveillance,
+predictive-interventions) the FIRST time it is invoked, so you will see
+degraded-mode noise in logs only once per stub per process. If
+`service-registry: degraded` was logged instead, every slot is `null` —
+the routers will return 503 with a clear reason until `DATABASE_URL`
+is set and the gateway is restarted.
+
 ---
 
 ## 7. Known limitations

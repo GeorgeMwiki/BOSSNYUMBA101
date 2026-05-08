@@ -206,15 +206,21 @@ Typechecks clean:
   `result_json`. Actual submission lands in Wave-34 when the KRA
   eTIMS adapter is wired. Marker: `TODO(WAVE-34): KRA eTIMS adapter`
   in `orchestrator-service.ts`.
-- **Registry slot not plumbed.** The router looks up
+- **Registry slot now plumbed.** The router looks up
   `services.monthlyClose?.orchestrator` off the `services` Hono
-  context key. Wiring that slot onto `ServiceRegistry` is fenced
-  to another agent (instructions: *"DO NOT touch:
-  service-registry.ts, service-context.middleware.ts"*). Until then
-  the router degrades to 503 `MONTHLY_CLOSE_UNAVAILABLE` and the
-  cron task reports `insightsEmitted: 0`. The orchestrator class,
-  tests, ports, router, and migration are all ready to go the
-  instant the registry slot lands.
+  context key. As of commit `f3f02d2` the
+  `services/api-gateway/src/composition/monthly-close-wiring.ts`
+  factory constructs the `MonthlyCloseOrchestrator` against the
+  Drizzle-backed `RunStorePort` (commit `e33cebc`,
+  `packages/database/src/services/monthly-close-runs.service.ts`)
+  and the slot is wired onto `ServiceRegistry.monthlyClose`. The
+  router still returns 503 `MONTHLY_CLOSE_UNAVAILABLE` when
+  `DATABASE_URL` is unset (the wiring returns `null` to preserve
+  the degraded-mode contract), but the orchestrator now persists run
+  + step state to Postgres in normal operation. The remaining
+  external ports (Reconciliation / Statement / Disbursement /
+  Notification / Event / AutonomyPolicy) are still graceful no-op
+  stubs until concrete adapters land — see the wiring file's TODOs.
 - **Disbursement destination is pass-through.** The orchestrator
   reads `destination` from the existing `DisbursementService`
   breakdown. If the owner has no registered bank account, that

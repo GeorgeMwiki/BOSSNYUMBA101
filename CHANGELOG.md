@@ -4,6 +4,43 @@ All notable changes to BossNyumba are documented here. Format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Wave 28+ — AI-native agent persistence and gateway wiring
+
+- **Drizzle schemas for legacy SQL tables** (commit `ea93ed6`). Four
+  tables that previously existed only as raw SQL now ship as typed
+  Drizzle schemas under `packages/database/src/schemas/`:
+  `voice-turns.schema.ts` (migration 0110), `tenant-predictions.schema.ts`
+  (0106 — also covers `predictive_intervention_opportunities`),
+  `market-rate-snapshots.schema.ts` (0103), and
+  `monthly-close-runs.schema.ts` (0099 — also covers
+  `monthly_close_run_steps`). Consumers stop hand-rolling SQL against
+  these tables; uniqueness / idempotency invariants are preserved at
+  the schema layer.
+- **Drizzle services on top of those schemas** (commit `e33cebc`).
+  Four services in `packages/database/src/services/` adapt the schemas
+  to the consumer-side ports of the Voice Agent (`voice-turns.service`),
+  Market-Rate Surveillance (`market-rate-snapshots.service`),
+  Predictive Interventions (`tenant-predictions.service`), and the
+  Monthly Close Orchestrator (`monthly-close-runs.service`). All four
+  are duck-typed at the boundary so `@bossnyumba/database` does NOT
+  compile-time-depend on `@bossnyumba/ai-copilot`. +33 new database
+  tests (134 passed total, was 101).
+- **4 AI-native agents wired into the api-gateway composition root**
+  (commit `f3f02d2`). New wirings under
+  `services/api-gateway/src/composition/`: `monthly-close-wiring.ts`,
+  `voice-agent-wiring.ts`, `market-surveillance-wiring.ts`,
+  `predictive-interventions-wiring.ts`. Each is exposed as a typed
+  optional slot on `ServiceRegistry` (`monthlyClose`, `voiceAgent`,
+  `marketSurveillance`, `predictiveInterventions`) and returns `null`
+  when `DATABASE_URL` is unset so the existing degraded-mode router
+  contract is preserved. The Monthly Close Orchestrator's stub
+  `AutonomyPolicyPort` defaults `autonomousModeEnabled = false` so
+  disbursement batches park as `awaiting_approval` — never silently
+  auto-move money — until a real autonomy adapter lands. +25 new
+  api-gateway tests across the 4 wirings (343 passed total, was 318).
+- **Closed staleness in `Docs/PHASES_FINDINGS/phA2-monthly-close.md`**:
+  the "Registry slot not plumbed" Known Limit is now resolved.
+
 ### Wave 5 — Deep scrub: live data, security close-out, env hardening
 
 - **10 domain endpoints promoted from scaffolded-503 to LIVE** with real

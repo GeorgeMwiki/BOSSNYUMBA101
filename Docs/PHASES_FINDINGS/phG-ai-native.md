@@ -234,10 +234,10 @@ psql bossnyumba -f 0106_tenant_predictions.sql         — CREATE TABLE + index 
 
 ---
 
-## Integration points (composition-root wiring — for Agent Z)
+## Integration points (composition-root wiring)
 
-The gateway composition root should construct the eight services using
-the live Postgres client + Anthropic/OpenAI client, then inject them via
+The gateway composition root constructs the services using the live
+Postgres client + Anthropic/OpenAI client and injects them via
 `services.*` on the Hono context:
 
 ```ts
@@ -250,6 +250,18 @@ services.policySimulator        = createPolicySimulator({ loadLeases });
 services.naturalLanguageQuery   = createNaturalLanguageQuery({ runner, llm, budgetGuard });
 services.patternMiner           = createPatternMiner({ repo, llm, budgetGuard });
 ```
+
+**Wiring status (2026-05-08).** Of the eight, `marketSurveillance` and
+`predictiveInterventions` now have real Drizzle-backed wirings under
+`services/api-gateway/src/composition/{market-surveillance,predictive-interventions}-wiring.ts`
+(commit `f3f02d2`); their persistence ports (`market_rate_snapshots`,
+`tenant_predictions`, `predictive_intervention_opportunities`) route
+through the typed services in `packages/database/src/services/`
+(commit `e33cebc`). The external `MarketRatePort` and the LLM port for
+predictions are still stubbed (heuristic-baseline mode) until concrete
+adapters land. The other six services remain unwired in the registry —
+their routers continue to return 503 with a clear reason until those
+slots ship.
 
 Repositories are thin `postgres-js` wrappers — straight INSERTs /
 SELECTs against the migration tables. They're intentionally left out of

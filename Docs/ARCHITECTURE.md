@@ -247,3 +247,48 @@ apps/*           → packages/design-system, packages/api-client, packages/domai
 api-gateway      → packages/database, packages/authz-policy
 domain-services  → packages/database, packages/domain-models
 ```
+
+---
+
+## AI-native agent wirings (composition root)
+
+Four AI-native agents are wired into `services/api-gateway/src/composition/`
+and exposed as typed optional slots on `ServiceRegistry`. Each returns
+`null` when `DATABASE_URL` is unset so the existing degraded-mode router
+contract holds.
+
+| Agent | Wiring file | Registry slot | Persistence (Drizzle) | Migration |
+|-------|-------------|---------------|------------------------|-----------|
+| Monthly Close Orchestrator | `monthly-close-wiring.ts` | `monthlyClose` | `monthly_close_runs` + `monthly_close_run_steps` | `0099` |
+| Voice Agent (Mr. Mwikila) | `voice-agent-wiring.ts` | `voiceAgent` | `voice_turns` | `0110` |
+| Market-Rate Surveillance | `market-surveillance-wiring.ts` | `marketSurveillance` | `market_rate_snapshots` | `0103` |
+| Predictive Interventions | `predictive-interventions-wiring.ts` | `predictiveInterventions` | `tenant_predictions` + `predictive_intervention_opportunities` | `0106` |
+
+### What's wired vs what's stubbed
+
+| Capability | Wired today | Stubbed (follow-up adapter) |
+|------------|-------------|------------------------------|
+| Monthly Close — RunStorePort (Postgres run + step audit trail) | LIVE | Reconciliation, Statement, Disbursement, Notification, Event ports are graceful no-op stubs that warn-once. AutonomyPolicy stub returns `autonomousModeEnabled=false` so batches park as `awaiting_approval`. |
+| Voice Agent — VoiceTurnRepository (append-only voice-turn log) | LIVE | STT / TTS / customer-resolver = null. Brain port is a heuristic-language stub (sw / es / fr / en — never hardcodes 'en'). |
+| Market Surveillance — snapshot persistence | LIVE | `MarketRatePort` is a stub with `adapterId='stub-not-configured'`; `listActiveUnits` returns `[]` until the units adapter lands. |
+| Predictive Interventions — prediction + opportunity persistence | LIVE | LLM port = undefined → heuristic-baseline mode. `listActiveTenants` returns `[]` until the occupancy/leases adapter lands. |
+
+The follow-up adapters (concrete Reconciliation/Statement/Disbursement
+port adapters; Anthropic-backed `VoiceBrain`; Zillow / Rentometer
+`MarketRatePort`; occupancy / lease join for `listActive*`) are flagged
+inline with `TODO` comments in each wiring file.
+
+### Drizzle schemas + services
+
+The four agents' persistence ports route through typed Drizzle schemas
+in `packages/database/src/schemas/` and consumer-shaped services in
+`packages/database/src/services/`:
+
+- `voice-turns.schema.ts` + `voice-turns.service.ts`
+- `market-rate-snapshots.schema.ts` + `market-rate-snapshots.service.ts`
+- `tenant-predictions.schema.ts` + `tenant-predictions.service.ts`
+- `monthly-close-runs.schema.ts` + `monthly-close-runs.service.ts`
+
+Services are duck-typed at the boundary so `@bossnyumba/database` does
+NOT compile-time-depend on `@bossnyumba/ai-copilot`. Composition roots
+adapt the database service shape onto the consumer's port.

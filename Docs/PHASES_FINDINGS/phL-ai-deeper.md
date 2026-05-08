@@ -102,14 +102,27 @@ review regardless of application-level autonomy policy).
 - `services/api-gateway/src/routes/ai-native.router.ts` — PhL endpoints appended
 - `packages/database/src/migrations/{0107,0108,0109,0110}*.sql`
 
-## Composition-root to-do (not in PhL scope)
+## Composition-root status
 
-Composition root must inject these on the `services.aiNative` object:
-- `dynamicPricing`, `docIntelligence`, `docIntelligenceRepo`
-- `legalDrafter`, `legalDraftRepo`
-- `voiceAgent`
+Composition root injection on the `services.aiNative` object:
 
-Each depends on: concrete Postgres repositories (TODO Agent Z5), a
-budget-guarded Anthropic/OpenAI LLM port (`withBudgetGuard` from
-providers/), a LeaseLawDispatchPort binding to compliance-plugins, and
-optional STT/TTS adapters for voice (degrades gracefully when absent).
+- `dynamicPricing`, `docIntelligence`, `docIntelligenceRepo`,
+  `legalDrafter`, `legalDraftRepo` — **still pending** the Agent-Z5
+  Postgres-repo work; routers continue to 503 until those slots land.
+- `voiceAgent` — **WIRED** as of commit `f3f02d2`.
+  `services/api-gateway/src/composition/voice-agent-wiring.ts`
+  constructs `createVoiceAgent` against a Drizzle-backed
+  `VoiceTurnRepository` (commit `e33cebc`,
+  `packages/database/src/services/voice-turns.service.ts`) and exposes
+  it on `ServiceRegistry.voiceAgent`. The Brain port runs in
+  heuristic-language-detection mode (sw / es / fr / en — never hardcodes
+  'en'); `VoiceSttPort`, `VoiceTtsPort`, and `CustomerResolverPort` are
+  passed as `null` (the agent's degraded mode preserves text-only
+  behaviour). When `DATABASE_URL` is unset the wiring returns `null` so
+  the existing 503 contract still holds.
+
+Each remaining slot depends on: concrete Postgres repositories (TODO
+Agent Z5), a budget-guarded Anthropic/OpenAI LLM port (`withBudgetGuard`
+from providers/), a `LeaseLawDispatchPort` binding to compliance-plugins,
+and (for voice) real STT/TTS adapters bound to `VoiceSttPort` /
+`VoiceTtsPort`.

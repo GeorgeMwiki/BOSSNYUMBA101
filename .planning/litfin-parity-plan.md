@@ -136,3 +136,34 @@ Target ≥80% statement coverage for the kernel subpackage.
 - Real-time WebSocket — orthogonal infra concern.
 - Real Zillow/Airbnb adapters — already stubbed; closing those is a
   data-integration phase, not a kernel concern.
+
+## Adjacent work shipped (not kernel parity, but unblocks the agent layer)
+
+These are NOT items from the LITFIN-parity gap list; they are the
+AI-native agent persistence + gateway wirings the kernel sits next to.
+Logged here so reviewers do not re-open the same gap on the agent side.
+
+- [x] `packages/database/src/schemas/` — typed Drizzle mirrors for
+  legacy migrations 0099 / 0103 / 0106 / 0110 (`voice-turns`,
+  `tenant-predictions` + `predictive_intervention_opportunities`,
+  `market-rate-snapshots`, `monthly-close-runs` +
+  `monthly_close_run_steps`). Commit `ea93ed6`.
+- [x] `packages/database/src/services/` — Drizzle services on top of
+  the four schemas (voice-turns, market-rate-snapshots,
+  tenant-predictions, monthly-close-runs). Duck-typed at the boundary;
+  no compile-time dep on `@bossnyumba/ai-copilot`. Commit `e33cebc`.
+- [x] `services/api-gateway/src/composition/` — four agent wirings
+  (`monthly-close-wiring.ts`, `voice-agent-wiring.ts`,
+  `market-surveillance-wiring.ts`,
+  `predictive-interventions-wiring.ts`) plus the matching
+  `ServiceRegistry` slots (`monthlyClose`, `voiceAgent`,
+  `marketSurveillance`, `predictiveInterventions`). Each returns
+  `null` when `DATABASE_URL` is unset, preserving the degraded-mode
+  contract. Commit `f3f02d2`.
+
+Stubs still open (data-integration / external-adapter phase):
+concrete Reconciliation / Statement / Disbursement port adapters for
+the Monthly Close Orchestrator, Anthropic-backed `VoiceBrainPort` for
+the voice agent, real `MarketRatePort` adapter (Zillow / Rentometer),
+and the occupancy / leases `listActive*` adapters for both
+surveillance and predictive interventions.
