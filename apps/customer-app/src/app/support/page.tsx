@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
   Phone,
@@ -8,7 +7,6 @@ import {
   MessageSquare,
   AlertCircle,
   ChevronRight,
-  Send,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -25,15 +23,6 @@ export default function SupportPage() {
     { question: t('faq5Q'), answer: t('faq5A') },
   ];
   const emergencyContacts = getEmergencyContacts();
-  const [feedback, setFeedback] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmitFeedback = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!feedback.trim()) return;
-    setSubmitted(true);
-    setFeedback('');
-  };
 
   return (
     <>
@@ -174,37 +163,16 @@ export default function SupportPage() {
           </p>
           <Link
             href="/feedback"
-            className="text-sm text-primary-600 font-medium mb-3 block"
+            className="card p-4 flex items-center justify-between hover:bg-gray-50"
           >
-            {t('goToFeedback')}
-          </Link>
-          {submitted ? (
-            <div className="card p-4 bg-success-50 text-success-700">
-              <p className="text-sm font-medium">
-                {t('feedbackThanks')}
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmitFeedback} className="card p-4 space-y-4">
-              <div>
-                <label htmlFor="feedback" className="label">
-                  {t('feedbackLabel')}
-                </label>
-                <textarea
-                  id="feedback"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  rows={4}
-                  className="input min-h-[100px]"
-                  placeholder={t('feedbackPlaceholder')}
-                />
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary-50 rounded-lg">
+                <MessageSquare className="w-5 h-5 text-primary-600" />
               </div>
-              <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
-                <Send className="w-4 h-4" />
-                {t('submitCta')}
-              </button>
-            </form>
-          )}
+              <span className="font-medium">{t('goToFeedback')}</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
         </section>
       </div>
     </>

@@ -339,7 +339,14 @@
     "pastSubmissions": "Maoni ya awali",
     "emptyTitle": "Bado hakuna maoni",
     "emptyBody": "Maoni yako yatakayowasilishwa yataonekana hapa",
-    "emptyCta": "Wasilisha maoni"
+    "emptyCta": "Wasilisha maoni",
+    "loading": "Inapakia maoni yako…",
+    "errorLoad": "Imeshindwa kupakia maoni yako.",
+    "retry": "Jaribu tena",
+    "statusOpen": "Wazi",
+    "statusInProgress": "Inashughulikiwa",
+    "statusResolved": "Imetatuliwa",
+    "statusClosed": "Imefungwa"
   },
   "requestFeedback": {
     "title": "Kadiria Huduma",
@@ -528,6 +535,12 @@
     "rateService": "Kadiria Huduma",
     "downloadDocument": "Pakua hati"
   },
+  "notificationsList": {
+    "loading": "Inapakia…",
+    "errorLoad": "Imeshindwa kupakia arifa.",
+    "retry": "Jaribu tena",
+    "empty": "Hakuna arifa mpya."
+  },
   "messagesList": {
     "loading": "Inapakia ujumbe…",
     "errorLoad": "Imeshindwa kupakia ujumbe.",
@@ -552,7 +565,8 @@
     "messageLabel": "Maoni yako",
     "messagePlaceholder": "Shiriki mapendekezo yako au ripoti suala...",
     "submitting": "Inawasilisha...",
-    "submit": "Wasilisha Maoni"
+    "submit": "Wasilisha Maoni",
+    "errorSubmit": "Imeshindwa kuwasilisha maoni. Tafadhali jaribu tena."
   },
   "propertyRules": {
     "title": "Kanuni za Mali",

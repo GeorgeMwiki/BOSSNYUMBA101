@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Send, MessageSquare, ChevronRight } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { feedbackService, type FeedbackType } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+
+const TYPE_TO_API: Record<string, FeedbackType> = {
+  suggestion: 'SUGGESTION',
+  complaint: 'COMPLAINT',
+  compliment: 'PRAISE',
+  other: 'GENERAL',
+};
 
 export default function FeedbackPage() {
   const t = useTranslations('feedbackPage');
@@ -15,7 +22,6 @@ export default function FeedbackPage() {
     { value: 'compliment', label: t('typeCompliment') },
     { value: 'other', label: t('typeOther') },
   ];
-  const router = useRouter();
   const [formData, setFormData] = useState({
     type: '',
     subject: '',
@@ -23,16 +29,31 @@ export default function FeedbackPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.message.trim()) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setSubmitted(true);
-    setIsSubmitting(false);
-    setFormData({ type: '', subject: '', message: '' });
+    setError(null);
+    try {
+      const apiType: FeedbackType = TYPE_TO_API[formData.type] ?? 'GENERAL';
+      const subjectFallback = feedbackTypes.find((opt) => opt.value === formData.type)?.label
+        ?? t('typeOther');
+      await feedbackService.create({
+        type: apiType,
+        subject: formData.subject.trim() || subjectFallback,
+        description: formData.message.trim(),
+      });
+      setSubmitted(true);
+      setFormData({ type: '', subject: '', message: '' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('errorSubmit');
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -85,6 +106,15 @@ export default function FeedbackPage() {
         <p className="text-sm text-gray-500">
           {t('intro')}
         </p>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700"
+          >
+            {error}
+          </div>
+        )}
 
         <section>
           <label className="label">{t('typeLabel')}</label>
