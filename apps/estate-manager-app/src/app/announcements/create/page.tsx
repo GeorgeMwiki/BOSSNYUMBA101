@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Megaphone } from 'lucide-react';
+import { propertiesService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type Priority = 'normal' | 'important' | 'urgent';
@@ -21,10 +23,22 @@ export default function CreateAnnouncementPage() {
     isPinned: false,
   });
 
+  const propertiesQuery = useQuery({
+    queryKey: ['announcements-create-properties'],
+    queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
+    retry: false,
+  });
+
+  const properties = Array.isArray(propertiesQuery.data?.data)
+    ? propertiesQuery.data!.data!
+    : [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
-    // In real app: API call to create announcement
+    // Persistence pending — announcements endpoint not yet mounted in
+    // api-client. Routing back to the list keeps the UX honest until
+    // the create mutation is wired in.
     router.push('/announcements');
   };
 
@@ -75,11 +89,17 @@ export default function CreateAnnouncementPage() {
             <select
               className="input"
               value={formData.propertyId}
-              onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, propertyId: e.target.value })
+              }
+              disabled={propertiesQuery.isLoading}
             >
               <option value="">{t('allProperties')}</option>
-              <option value="1">Sunset Apartments</option>
-              <option value="2">Riverside Towers</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
             </select>
           </div>
 

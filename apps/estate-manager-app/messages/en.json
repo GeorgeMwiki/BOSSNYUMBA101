@@ -806,7 +806,8 @@
     "message": "Message",
     "messagePlaceholder": "Type your message...",
     "cancel": "Cancel",
-    "sendMessage": "Send Message"
+    "sendMessage": "Send Message",
+    "noRecipients": "No recipients found. Add a customer first."
   },
   "leaseRenewal": {
     "title": "Lease Renewal — {id}",
@@ -1130,6 +1131,16 @@
     "createToNotify": "Create an announcement to notify residents",
     "createAnnouncement": "Create Announcement"
   },
+  "notificationsList": {
+    "unreadCount": "{count} unread",
+    "markAllRead": "Mark all read",
+    "marking": "Marking...",
+    "settingsAria": "Notification settings",
+    "failedToLoad": "Failed to load notifications",
+    "retry": "Retry",
+    "emptyTitle": "All quiet here",
+    "emptyDesc": "You're up to date — new alerts will appear here."
+  },
   "messagingList": {
     "title": "Messages",
     "unreadCount": "{count} unread",
@@ -1139,7 +1150,16 @@
     "noConversations": "No conversations",
     "noMatches": "No conversations match your search",
     "startNew": "Start a new conversation",
-    "newMessage": "New Message"
+    "newMessage": "New Message",
+    "untitledConversation": "Untitled conversation",
+    "failedToLoad": "Failed to load conversations",
+    "retry": "Retry",
+    "failedToSend": "Failed to send message",
+    "sending": "Sending...",
+    "loadingMessages": "Loading messages...",
+    "noMessagesYet": "No messages yet — say hello.",
+    "createFailed": "Failed to start conversation",
+    "creating": "Starting..."
   },
   "simple": {
     "customerOnboarding": "Customer Onboarding",

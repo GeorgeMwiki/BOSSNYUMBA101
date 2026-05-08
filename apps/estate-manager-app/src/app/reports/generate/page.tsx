@@ -2,8 +2,10 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { propertiesService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
@@ -32,9 +34,21 @@ function GenerateReportPageInner() {
     propertyId: '',
   });
 
+  const propertiesQuery = useQuery({
+    queryKey: ['reports-generate-properties'],
+    queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
+    retry: false,
+  });
+
+  const properties = Array.isArray(propertiesQuery.data?.data)
+    ? propertiesQuery.data!.data!
+    : [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In real app: API call to generate report
+    // Generation pending — reports endpoint not yet wired in api-client.
+    // Routing back to the list keeps the UX honest until the mutation
+    // is connected.
     router.push('/reports');
   };
 
@@ -86,11 +100,17 @@ function GenerateReportPageInner() {
             <select
               className="input"
               value={formData.propertyId}
-              onChange={(e) => setFormData({ ...formData, propertyId: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, propertyId: e.target.value })
+              }
+              disabled={propertiesQuery.isLoading}
             >
               <option value="">{t('allProperties')}</option>
-              <option value="1">Sunset Apartments</option>
-              <option value="2">Riverside Towers</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
             </select>
           </div>
 

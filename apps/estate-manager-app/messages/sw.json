@@ -806,7 +806,8 @@
     "message": "Ujumbe",
     "messagePlaceholder": "Andika ujumbe wako...",
     "cancel": "Ghairi",
-    "sendMessage": "Tuma Ujumbe"
+    "sendMessage": "Tuma Ujumbe",
+    "noRecipients": "Hakuna wapokeaji walipopatikana. Ongeza mteja kwanza."
   },
   "leaseRenewal": {
     "title": "Uhuishaji wa Mkataba — {id}",
@@ -1130,6 +1131,16 @@
     "createToNotify": "Unda tangazo kujulisha wakazi",
     "createAnnouncement": "Unda Tangazo"
   },
+  "notificationsList": {
+    "unreadCount": "{count} hayajasomwa",
+    "markAllRead": "Soma yote",
+    "marking": "Inasoma...",
+    "settingsAria": "Mipangilio ya arifa",
+    "failedToLoad": "Imeshindwa kupakia arifa",
+    "retry": "Jaribu tena",
+    "emptyTitle": "Hakuna arifa hapa",
+    "emptyDesc": "Umepitia yote — arifa mpya zitaonekana hapa."
+  },
   "messagingList": {
     "title": "Ujumbe",
     "unreadCount": "{count} hayajasomwa",
@@ -1139,7 +1150,16 @@
     "noConversations": "Hakuna mazungumzo",
     "noMatches": "Hakuna mazungumzo yanayolingana na utafutaji wako",
     "startNew": "Anzisha mazungumzo mapya",
-    "newMessage": "Ujumbe Mpya"
+    "newMessage": "Ujumbe Mpya",
+    "untitledConversation": "Mazungumzo bila kichwa",
+    "failedToLoad": "Imeshindwa kupakia mazungumzo",
+    "retry": "Jaribu tena",
+    "failedToSend": "Imeshindwa kutuma ujumbe",
+    "sending": "Inatuma...",
+    "loadingMessages": "Inapakia ujumbe...",
+    "noMessagesYet": "Hakuna ujumbe bado — sema hujambo.",
+    "createFailed": "Imeshindwa kuanzisha mazungumzo",
+    "creating": "Inaanzisha..."
   },
   "simple": {
     "customerOnboarding": "Uandikishaji wa Mteja",
