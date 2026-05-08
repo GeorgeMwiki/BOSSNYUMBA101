@@ -262,3 +262,26 @@ export * from './kernel-feedback.schema.js';
 // they back the agency layer's "acts in full control" kernel slice.
 export * from './kernel-goals.schema.js';
 export * from './kernel-action-audit.schema.js';
+
+// Legacy migration coverage — Drizzle mirrors for tables that existed
+// only in raw SQL. Closes the type-safety gap so consumers don't
+// hand-roll raw SQL against these tables.
+//
+// Monthly close orchestrator (migration 0099) — per-tenant run state +
+// step-by-step audit for `MonthlyCloseOrchestrator` (Wave 28 Phase A).
+export * from './monthly-close-runs.schema.js';
+
+// Market-rate surveillance snapshots (migration 0103) — daily per-unit
+// comparable-rent rolling percentile band fed by the MarketRatePort
+// abstraction. ISO-4217 currency, BIGINT minor units.
+export * from './market-rate-snapshots.schema.js';
+
+// Tenant predictions + predictive intervention opportunities
+// (migration 0106) — nightly per-tenant probability distribution over
+// the next 30/60/90 days; advisor surfaces open opportunities.
+export * from './tenant-predictions.schema.js';
+
+// Voice conversational turns (migration 0110) — append-only log of
+// voice-mediated turns owned by Agent PhL (voice-first tenant/owner
+// agent). Detects ANY language (never hardcoded en/sw).
+export * from './voice-turns.schema.js';
