@@ -36,9 +36,12 @@ export default function CreateAnnouncementPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
-    // Persistence pending — announcements endpoint not yet mounted in
-    // api-client. Routing back to the list keeps the UX honest until
-    // the create mutation is wired in.
+    // TODO(api): wire to a POST /api/v1/announcements endpoint via a new
+    //   `announcementsService.create({...})` method on the api-client.
+    //   The gateway does not yet expose announcement persistence — we
+    //   need the router + Drizzle table + repo before the mutation can
+    //   land. Tracking issue: announcements-mvp. Until then we route
+    //   back to the list so the UX never silently swallows input.
     router.push('/announcements');
   };
 

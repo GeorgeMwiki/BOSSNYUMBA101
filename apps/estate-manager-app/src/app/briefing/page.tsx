@@ -15,12 +15,18 @@
  * Right rail : tenant-sentiment strip, upcoming-week outlook, a "ask
  *              Mwikila" prompt
  *
- * Every state is fully wired (loading / empty / error / success) with
- * skeletons that match the final content shape.
+ * Data flow: a single TanStack Query against `headBriefingService.
+ * getMyBriefing()` resolves the BriefingDocument the gateway composes
+ * from autonomy, approvals, exception inbox and KPI sources. The
+ * gateway returns 503 HEAD_BRIEFING_UNAVAILABLE when the composer is
+ * not wired (degraded mode); we surface that as honest empty sections
+ * with a retry affordance — the page never black-screens.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -30,20 +36,38 @@ import {
   MessageSquare,
   MoreHorizontal,
   Sparkles,
-  TrendingUp,
-  Wallet,
   X,
 } from 'lucide-react';
 import { Logomark, ScrubbableChart } from '@bossnyumba/design-system';
+import {
+  headBriefingService,
+  type BriefingDocument,
+  type EscalationItem,
+  type KpiDelta,
+  type KpiDelta30d,
+  type NotableAutonomousAction,
+  type PendingApprovalItem,
+} from '@bossnyumba/api-client';
 
 type DecisionState = 'idle' | 'approved' | 'declined';
 
 export default function BriefingPage() {
-  const [decisions, setDecisions] = useState<Record<string, DecisionState>>({
-    'dec-01': 'idle',
-    'dec-02': 'idle',
-    'dec-03': 'idle',
+  const t = useTranslations('briefingPage');
+  const [decisions, setDecisions] = useState<Record<string, DecisionState>>({});
+
+  const briefingQuery = useQuery({
+    queryKey: ['head-briefing', 'full'],
+    queryFn: () => headBriefingService.getMyBriefing(),
+    retry: 1,
+    staleTime: 60_000,
   });
+
+  const briefing: BriefingDocument | null = briefingQuery.data?.success
+    ? briefingQuery.data.data
+    : null;
+  const isDegraded =
+    briefingQuery.isError ||
+    (briefingQuery.isSuccess && briefingQuery.data?.success === false);
 
   const decide = (id: string, state: Exclude<DecisionState, 'idle'>) =>
     setDecisions((s) => ({ ...s, [id]: state }));
@@ -56,23 +80,28 @@ export default function BriefingPage() {
           <div className="flex items-center gap-2">
             <Logomark size={26} />
             <span className="font-display text-xl font-medium tracking-tight">
-              Head briefing
+              {t('title')}
             </span>
           </div>
           <div className="mx-auto flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-xs text-neutral-500">
             <Clock className="h-3.5 w-3.5" />
-            <span className="tabular-nums">07:04</span>
-            <span>·</span>
-            <span>Nairobi</span>
+            <span className="tabular-nums">
+              {formatTime(briefing?.generatedAt)}
+            </span>
             <span className="mx-1 h-3 w-px bg-border" />
-            <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            <span>All systems operational</span>
+            <span
+              className={
+                'h-1.5 w-1.5 rounded-full ' +
+                (isDegraded ? 'bg-warning' : 'bg-success')
+              }
+            />
+            <span>{isDegraded ? t('systemsDegraded') : t('systemsOk')}</span>
           </div>
           <Link
             href="/"
             className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
           >
-            Exit briefing
+            {t('exit')}
           </Link>
         </div>
       </header>
@@ -81,31 +110,39 @@ export default function BriefingPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr_320px]">
           {/* ──────────────────────  LEFT RAIL  ────────────────────── */}
           <aside className="space-y-6">
-            {/* Good-morning */}
             <section>
               <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
-                Monday · 22 April
+                {formatDateBadge(briefing?.generatedAt)}
               </p>
               <h1 className="mt-2 font-display text-3xl font-medium leading-tight tracking-tight">
-                Good morning, George.
+                {t('greeting')}
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-                Portfolio is steady. Three decisions need you before 10am.
-                Mwikila is ready.
+                {briefingQuery.isLoading
+                  ? t('loading')
+                  : briefing?.headline ??
+                    (isDegraded ? t('degradedSubtitle') : t('quietStart'))}
               </p>
             </section>
 
             {/* KPIs */}
             <section className="space-y-3">
               <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-                Portfolio health
+                {t('portfolioHealth')}
               </h2>
-              <StatRow label="Autonomous actions" value="148" delta="+12%" trend="up" />
-              <StatRow label="Escalations"        value="3"   delta="-2"   trend="down" />
-              <StatRow label="NOI · MTD"          value="₦4.82M" delta="+0.4%" trend="up" />
-              <StatRow label="Tenant sentiment"   value="0.81" delta="+0.03" trend="up" />
-              <StatRow label="Collection rate"    value="97.4%" delta="+0.2" trend="up" />
-              <StatRow label="Occupancy"          value="96.2%" delta="0.0" trend="flat" />
+              {briefingQuery.isLoading ? (
+                <KpiSkeletons />
+              ) : (
+                <KpiList
+                  briefing={briefing}
+                  totalActionsLabel={t('kpiAutonomous')}
+                  escalationsLabel={t('kpiEscalations')}
+                  noiLabel={t('kpiNoi')}
+                  sentimentLabel={t('kpiSentiment')}
+                  collectionsLabel={t('kpiCollections')}
+                  occupancyLabel={t('kpiOccupancy')}
+                />
+              )}
             </section>
 
             {/* Autonomy */}
@@ -113,22 +150,25 @@ export default function BriefingPage() {
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-signal-500" />
                 <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-                  Autonomy
+                  {t('autonomy')}
                 </h2>
               </div>
               <p className="mt-2 font-display text-3xl font-medium tabular-nums leading-none">
-                L3
+                {t('autonomyLevelBadge')}
               </p>
-              <p className="mt-1 font-display text-lg font-medium">Act on most</p>
+              <p className="mt-1 font-display text-lg font-medium">
+                {t('autonomyHeadline')}
+              </p>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-                Mwikila runs the portfolio. You see exceptions only. 7 red-line
-                actions still require your approval.
+                {t('autonomySubtitle', {
+                  redlines: briefing?.pendingApprovals.count ?? 0,
+                })}
               </p>
               <Link
                 href="/autonomy"
                 className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-signal-500 transition-colors hover:text-signal-400"
               >
-                Tune policy
+                {t('tunePolicy')}
                 <ArrowUpRight className="h-3 w-3" />
               </Link>
             </section>
@@ -137,84 +177,157 @@ export default function BriefingPage() {
           {/* ──────────────────────  CENTRE FEED  ───────────────────── */}
           <main className="space-y-10">
             {/* Overnight */}
-            <section>
+            <section id="overnight">
               <div className="mb-4 flex items-baseline justify-between">
                 <div>
                   <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
-                    Overnight · 148 autonomous actions
+                    {t('overnightLabel', {
+                      count: briefing?.overnight.totalAutonomousActions ?? 0,
+                    })}
                   </p>
                   <h2 className="mt-1 font-display text-2xl font-medium tracking-tight">
-                    What Mwikila did while you slept
+                    {t('overnightTitle')}
                   </h2>
                 </div>
                 <Link
                   href="/audit-trail"
                   className="flex items-center gap-1 text-xs font-medium text-neutral-500 transition-colors hover:text-foreground"
                 >
-                  Full audit trail
+                  {t('fullAuditTrail')}
                   <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
 
-              <ol className="space-y-1.5">
-                {OVERNIGHT_ITEMS.map((it, i) => (
-                  <OvernightRow key={i} {...it} />
-                ))}
-              </ol>
+              {briefingQuery.isLoading ? (
+                <OvernightSkeletons />
+              ) : (briefing?.overnight.notableActions.length ?? 0) === 0 ? (
+                <EmptyBlock
+                  message={
+                    isDegraded ? t('degradedListMessage') : t('emptyOvernight')
+                  }
+                />
+              ) : (
+                <ol className="space-y-1.5">
+                  {briefing!.overnight.notableActions.map((it) => (
+                    <OvernightRow key={it.actionId} action={it} />
+                  ))}
+                </ol>
+              )}
             </section>
 
             {/* Pending decisions */}
-            <section>
+            <section id="pending">
               <div className="mb-4 flex items-baseline justify-between">
                 <div>
                   <p className="font-mono text-[0.68rem] uppercase tracking-widest text-warning">
-                    Pending · 3 decisions
+                    {t('pendingLabel', {
+                      count: briefing?.pendingApprovals.count ?? 0,
+                    })}
                   </p>
                   <h2 className="mt-1 font-display text-2xl font-medium tracking-tight">
-                    These need your approval
+                    {t('pendingTitle')}
                   </h2>
                 </div>
               </div>
 
-              <ul className="space-y-4">
-                {PENDING_DECISIONS.map((it) => (
-                  <DecisionCard
-                    key={it.id}
-                    item={it}
-                    state={decisions[it.id] ?? 'idle'}
-                    onDecide={decide}
-                  />
-                ))}
-              </ul>
+              {briefingQuery.isLoading ? (
+                <DecisionSkeletons />
+              ) : (briefing?.pendingApprovals.items.length ?? 0) === 0 ? (
+                <EmptyBlock
+                  message={
+                    isDegraded ? t('degradedListMessage') : t('emptyPending')
+                  }
+                />
+              ) : (
+                <ul className="space-y-4">
+                  {briefing!.pendingApprovals.items.map((it) => (
+                    <DecisionCard
+                      key={it.approvalId}
+                      item={it}
+                      state={decisions[it.approvalId] ?? 'idle'}
+                      onDecide={decide}
+                      labels={{
+                        approve: t('approve'),
+                        decline: t('decline'),
+                        ask: t('askMwikila'),
+                        escalate: t('escalate'),
+                        approved: t('approvedLogged'),
+                        declined: t('declinedLogged'),
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Escalations */}
+            <section id="escalations">
+              <div className="mb-4 flex items-baseline justify-between">
+                <div>
+                  <p className="font-mono text-[0.68rem] uppercase tracking-widest text-warning">
+                    {t('escalationsLabel', {
+                      count: briefing?.escalations.count ?? 0,
+                    })}
+                  </p>
+                  <h2 className="mt-1 font-display text-2xl font-medium tracking-tight">
+                    {t('escalationsTitle')}
+                  </h2>
+                </div>
+              </div>
+              {briefingQuery.isLoading ? (
+                <OvernightSkeletons />
+              ) : (briefing?.escalations.items.length ?? 0) === 0 ? (
+                <EmptyBlock
+                  message={
+                    isDegraded
+                      ? t('degradedListMessage')
+                      : t('emptyEscalations')
+                  }
+                />
+              ) : (
+                <ol className="space-y-1.5">
+                  {briefing!.escalations.items.map((e) => (
+                    <EscalationRow key={e.exceptionId} item={e} />
+                  ))}
+                </ol>
+              )}
             </section>
           </main>
 
           {/* ──────────────────────  RIGHT RAIL  ───────────────────── */}
           <aside className="space-y-6">
-            {/* Tenant sentiment strip — scrubbable chart */}
-            <SentimentCard />
+            <SentimentCard
+              briefing={briefing}
+              title={t('sentimentTitle')}
+              subtitle={t('sentimentSubtitle')}
+              ariaLabel={t('sentimentAria')}
+            />
 
-            {/* Upcoming week */}
+            {/* Recommendations */}
             <section className="rounded-lg border border-border bg-surface p-4">
               <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-                This week
+                {t('recommendationsTitle')}
               </h2>
-              <ul className="mt-4 space-y-3">
-                {[
-                  { day: 'Today',    label: '3 approvals · 1 renewal meeting' },
-                  { day: 'Tue',      label: '12 rent auto-debits · tribunal review' },
-                  { day: 'Wed',      label: 'Q2 board deck ready by 09:00' },
-                  { day: 'Thu',      label: 'Vendor rotation — 2 candidates shortlisted' },
-                  { day: 'Fri',      label: 'Portfolio MTD report auto-drafted' },
-                ].map((it, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <span className="mt-0.5 font-mono text-[0.65rem] uppercase tracking-widest text-signal-500 w-10 shrink-0">
-                      {it.day}
-                    </span>
-                    <span className="text-foreground">{it.label}</span>
-                  </li>
-                ))}
-              </ul>
+              {briefingQuery.isLoading ? (
+                <div className="mt-3 h-12 animate-pulse rounded bg-border" />
+              ) : (briefing?.recommendations.length ?? 0) === 0 ? (
+                <p className="mt-3 text-sm text-neutral-500">
+                  {isDegraded
+                    ? t('degradedListMessage')
+                    : t('emptyRecommendations')}
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {briefing!.recommendations.slice(0, 4).map((r) => (
+                    <li key={r.topic} className="text-sm">
+                      <p className="font-medium text-foreground">{r.topic}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
+                        {r.summary}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             {/* Ask Mwikila */}
@@ -222,19 +335,20 @@ export default function BriefingPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-signal-500" />
                 <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
-                  Ask Mwikila
+                  {t('askMwikilaTitle')}
                 </h2>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Try:&nbsp;
-                <span className="italic text-neutral-500">
-                  &quot;Who is 30+ days late with no payment plan?&quot;
-                </span>
+                {t.rich('askMwikilaTry', {
+                  italic: (chunks) => (
+                    <span className="italic text-neutral-500">{chunks}</span>
+                  ),
+                })}
               </p>
               <div className="mt-3">
                 <input
                   type="text"
-                  placeholder="Ask anything about your portfolio…"
+                  placeholder={t('askPlaceholder')}
                   className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
@@ -246,141 +360,282 @@ export default function BriefingPage() {
   );
 }
 
-/* ──────────────────────────────  Types  ────────────────────────────── */
+/* ─────────────────────────  Helpers  ─────────────────────────── */
 
-interface OvernightItem {
-  readonly domain: string;
-  readonly action: string;
-  readonly count: number;
-  readonly time: string;
-  readonly href?: string;
+function formatTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '';
+  }
 }
 
-interface PendingDecision {
-  readonly id: string;
-  readonly domain: string;
-  readonly title: string;
-  readonly body: string;
-  readonly ask: string;
-  readonly confidence: number;
-  readonly recommendation: 'approve' | 'decline' | 'investigate';
+function formatDateBadge(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+  } catch {
+    return '';
+  }
 }
-
-/* ─────────────────────────  Data fixtures  ─────────────────────────── */
-
-const OVERNIGHT_ITEMS: readonly OvernightItem[] = [
-  { domain: 'Finance',        action: 'Sent 47 rent reminders (5-day cohort)',           count: 47, time: '22:04' },
-  { domain: 'Maintenance',    action: 'Dispatched 12 work orders to 4 trusted vendors',  count: 12, time: '22:37' },
-  { domain: 'Compliance',     action: 'Drafted 8 renewal notices for legal review',      count: 8,  time: '01:12' },
-  { domain: 'Communications', action: 'Replied to 23 tenant WhatsApp threads',           count: 23, time: '03:45' },
-  { domain: 'Leasing',        action: 'Approved 6 same-terms renewals within policy',    count: 6,  time: '04:18' },
-  { domain: 'Procurement',    action: 'Ran quarterly vendor rotation analysis',          count: 1,  time: '05:02' },
-  { domain: 'Finance',        action: 'Processed 38 auto-debits, 2 retries queued',      count: 38, time: '05:40' },
-  { domain: 'Risk',           action: 'Recomputed 14 credit ratings on payment events',  count: 14, time: '06:18' },
-  { domain: 'Compliance',     action: 'Checked Gas Safety cadence across 104 units',     count: 104,time: '06:42' },
-];
-
-const PENDING_DECISIONS: readonly PendingDecision[] = [
-  {
-    id: 'dec-01',
-    domain: 'Finance',
-    title: 'Rent waiver · Flat 3B, Westlands',
-    body: 'Tenant requested a 30% waiver citing a medical emergency. Payment history: clean 22 months. Waiver exceeds your ₦250k auto-approve cap and your discretion threshold for single-month concessions.',
-    ask: 'Approve ₦82,500 waiver this month?',
-    confidence: 0.74,
-    recommendation: 'approve',
-  },
-  {
-    id: 'dec-02',
-    domain: 'Legal',
-    title: 'Eviction notice · Bahari Towers 12F',
-    body: '47 days late. Two WhatsApp attempts unanswered. Statutory Section-8 notice can be drafted. Mwikila never auto-sends legal notices — this always requires your eyes.',
-    ask: 'Draft Section 8 notice for your review?',
-    confidence: 0.91,
-    recommendation: 'investigate',
-  },
-  {
-    id: 'dec-03',
-    domain: 'Procurement',
-    title: 'Vendor payout · Mwangi Plumbing · ₦340,000',
-    body: 'Work completed Thursday. Photos verified, tenant signed off on completion. Vendor invoice matches quoted scope. Amount exceeds your ₦250k auto-approve cap.',
-    ask: 'Release payment now?',
-    confidence: 0.96,
-    recommendation: 'approve',
-  },
-];
 
 /* ────────────────────────  Presentation kit  ───────────────────────── */
+
+interface KpiListProps {
+  readonly briefing: BriefingDocument | null;
+  readonly totalActionsLabel: string;
+  readonly escalationsLabel: string;
+  readonly noiLabel: string;
+  readonly sentimentLabel: string;
+  readonly collectionsLabel: string;
+  readonly occupancyLabel: string;
+}
+
+function KpiList(props: KpiListProps) {
+  const k = props.briefing?.kpiDeltas;
+  return (
+    <>
+      <StatRow
+        label={props.totalActionsLabel}
+        value={String(props.briefing?.overnight.totalAutonomousActions ?? 0)}
+        delta={null}
+      />
+      <StatRow
+        label={props.escalationsLabel}
+        value={String(props.briefing?.escalations.count ?? 0)}
+        delta={null}
+      />
+      <StatRow
+        label={props.noiLabel}
+        value={
+          k ? formatNumber(k.noi.value) : '—'
+        }
+        delta={k ? formatDelta(k.noi) : null}
+      />
+      <StatRow
+        label={props.sentimentLabel}
+        value={k ? formatPercent(k.tenantSatisfaction.value) : '—'}
+        delta={k ? formatDelta(k.tenantSatisfaction) : null}
+      />
+      <StatRow
+        label={props.collectionsLabel}
+        value={k ? formatPercent(k.collectionsRate.value) : '—'}
+        delta={k ? formatDelta(k.collectionsRate) : null}
+      />
+      <StatRow
+        label={props.occupancyLabel}
+        value={k ? formatPercent(k.occupancyPct.value) : '—'}
+        delta={k ? formatDelta(k.occupancyPct) : null}
+      />
+    </>
+  );
+}
+
+function KpiSkeletons() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-live="polite">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="border-l border-border pl-3">
+          <div className="h-2 w-20 animate-pulse rounded bg-border" />
+          <div className="mt-2 h-5 w-16 animate-pulse rounded bg-border" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatNumber(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toFixed(0);
+}
+
+function formatPercent(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  return `${n.toFixed(1)}%`;
+}
+
+function formatDelta(d: KpiDelta | KpiDelta30d): {
+  readonly text: string;
+  readonly trend: 'up' | 'down' | 'flat';
+} {
+  const v = 'delta7d' in d ? d.delta7d : d.delta30d;
+  const trend: 'up' | 'down' | 'flat' =
+    v > 0.001 ? 'up' : v < -0.001 ? 'down' : 'flat';
+  const text =
+    trend === 'flat' ? '0.0' : (v > 0 ? '+' : '') + v.toFixed(2);
+  return { text, trend };
+}
 
 function StatRow({
   label,
   value,
   delta,
-  trend,
 }: {
   readonly label: string;
   readonly value: string;
-  readonly delta: string;
-  readonly trend: 'up' | 'down' | 'flat';
+  readonly delta: { readonly text: string; readonly trend: 'up' | 'down' | 'flat' } | null;
 }) {
-  const chipClass =
-    trend === 'up'
-      ? 'bg-success-subtle text-success'
-      : trend === 'down'
-      ? 'bg-danger-subtle text-danger'
-      : 'bg-neutral-100 text-neutral-500';
+  const chipClass = !delta
+    ? 'bg-neutral-100 text-neutral-500'
+    : delta.trend === 'up'
+    ? 'bg-success-subtle text-success'
+    : delta.trend === 'down'
+    ? 'bg-danger-subtle text-danger'
+    : 'bg-neutral-100 text-neutral-500';
   return (
     <div className="border-l border-border pl-3">
-      <dt className="font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">{label}</dt>
+      <dt className="font-mono text-[0.65rem] uppercase tracking-widest text-neutral-500">
+        {label}
+      </dt>
       <dd className="mt-1 flex items-baseline justify-between">
-        <span className="font-display text-xl font-medium tracking-tight tabular-nums">{value}</span>
-        <span className={`rounded-full px-1.5 py-0.5 font-mono text-[0.62rem] ${chipClass}`}>
-          {delta}
+        <span className="font-display text-xl font-medium tracking-tight tabular-nums">
+          {value}
         </span>
+        {delta ? (
+          <span
+            className={`rounded-full px-1.5 py-0.5 font-mono text-[0.62rem] ${chipClass}`}
+          >
+            {delta.text}
+          </span>
+        ) : null}
       </dd>
     </div>
   );
 }
 
-function OvernightRow({ domain, action, count, time }: OvernightItem) {
+function OvernightRow({
+  action,
+}: {
+  readonly action: NotableAutonomousAction;
+}) {
   return (
     <li className="group flex items-center gap-4 rounded-lg border border-transparent p-3 transition-colors duration-fast hover:border-border hover:bg-surface-raised">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-signal-500/10 font-mono text-xs font-semibold text-signal-500 tabular-nums">
-        {count}
+        {Math.round(action.confidence * 100)}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">{domain}</span>
-          <span className="font-mono text-[0.68rem] text-neutral-500">· {time}</span>
+          <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+            {action.domain}
+          </span>
         </div>
-        <p className="mt-0.5 text-sm text-foreground">{action}</p>
+        <p className="mt-0.5 text-sm text-foreground">{action.summary}</p>
       </div>
       <ArrowUpRight className="h-4 w-4 text-neutral-400 opacity-0 transition-opacity duration-fast group-hover:opacity-100" />
     </li>
   );
 }
 
+function EscalationRow({ item }: { readonly item: EscalationItem }) {
+  const priorityClass =
+    item.priority === 'P1'
+      ? 'text-danger'
+      : item.priority === 'P2'
+      ? 'text-warning'
+      : 'text-neutral-500';
+  return (
+    <li className="group flex items-start gap-4 rounded-lg border border-transparent p-3 transition-colors duration-fast hover:border-border hover:bg-surface-raised">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/10 font-mono text-xs font-semibold tabular-nums ${priorityClass}`}
+      >
+        {item.priority}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
+            {item.domain}
+          </span>
+        </div>
+        <p className="mt-0.5 text-sm text-foreground">{item.summary}</p>
+      </div>
+    </li>
+  );
+}
+
+function EmptyBlock({ message }: { readonly message: string }) {
+  return (
+    <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-8 text-sm text-neutral-500">
+      {message}
+    </p>
+  );
+}
+
+function OvernightSkeletons() {
+  return (
+    <ol className="space-y-1.5" aria-busy="true" aria-live="polite">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <li
+          key={i}
+          className="flex items-center gap-4 rounded-lg border border-transparent p-3"
+        >
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-signal-500/10" />
+          <div className="flex-1 space-y-2">
+            <div className="h-2 w-20 animate-pulse rounded bg-border" />
+            <div className="h-3 w-3/4 animate-pulse rounded bg-border" />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function DecisionSkeletons() {
+  return (
+    <ul className="space-y-4" aria-busy="true" aria-live="polite">
+      {[0, 1].map((i) => (
+        <li
+          key={i}
+          className="rounded-xl border border-border bg-surface p-5 space-y-3"
+        >
+          <div className="h-2 w-24 animate-pulse rounded bg-border" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-border" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-border" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-border" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+interface DecisionCardLabels {
+  readonly approve: string;
+  readonly decline: string;
+  readonly ask: string;
+  readonly escalate: string;
+  readonly approved: string;
+  readonly declined: string;
+}
+
 function DecisionCard({
   item,
   state,
   onDecide,
+  labels,
 }: {
-  readonly item: PendingDecision;
+  readonly item: PendingApprovalItem;
   readonly state: DecisionState;
   readonly onDecide: (id: string, state: Exclude<DecisionState, 'idle'>) => void;
+  readonly labels: DecisionCardLabels;
 }) {
-  const recColor =
-    item.recommendation === 'approve'
-      ? 'text-success'
-      : item.recommendation === 'decline'
+  const urgencyColor =
+    item.urgency === 'high'
       ? 'text-danger'
-      : 'text-warning';
-  const recLabel =
-    item.recommendation === 'approve'
-      ? 'Mwikila recommends approve'
-      : item.recommendation === 'decline'
-      ? 'Mwikila recommends decline'
-      : 'Mwikila recommends a closer look';
+      : item.urgency === 'medium'
+      ? 'text-warning'
+      : 'text-neutral-500';
 
   return (
     <li
@@ -397,23 +652,22 @@ function DecisionCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-              {item.domain}
+              {item.kind}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-signal-500/10 px-2 py-0.5 font-mono text-[0.62rem] font-medium text-signal-500">
-              <Sparkles className="h-2.5 w-2.5" />
-              {Math.round(item.confidence * 100)}% confident
-            </span>
-            <span className={`font-mono text-[0.62rem] uppercase tracking-widest ${recColor}`}>
-              · {recLabel}
+            <span
+              className={`font-mono text-[0.62rem] uppercase tracking-widest ${urgencyColor}`}
+            >
+              · {item.urgency}
             </span>
           </div>
-          <h3 className="mt-1.5 text-base font-semibold text-foreground">{item.title}</h3>
-          <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-neutral-500">{item.body}</p>
-          <p className="mt-3 text-sm font-medium text-foreground">{item.ask}</p>
+          <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-foreground">
+            {item.summary}
+          </p>
         </div>
         <button
           className="rounded-md p-2 text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
           aria-label="More options"
+          type="button"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
@@ -423,33 +677,41 @@ function DecisionCard({
         {state === 'idle' && (
           <>
             <button
-              onClick={() => onDecide(item.id, 'approved')}
+              type="button"
+              onClick={() => onDecide(item.approvalId, 'approved')}
               className="inline-flex items-center gap-1.5 rounded-md bg-signal-500 px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-fast ease-out hover:bg-signal-400 hover:shadow-md active:scale-[0.98]"
             >
-              <Check className="h-3.5 w-3.5" /> Approve
+              <Check className="h-3.5 w-3.5" /> {labels.approve}
             </button>
             <button
-              onClick={() => onDecide(item.id, 'declined')}
+              type="button"
+              onClick={() => onDecide(item.approvalId, 'declined')}
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition-colors duration-fast hover:bg-surface-raised"
             >
-              <X className="h-3.5 w-3.5" /> Decline
+              <X className="h-3.5 w-3.5" /> {labels.decline}
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground">
-              <MessageSquare className="h-3.5 w-3.5" /> Ask Mwikila
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> {labels.ask}
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground">
-              <AlertTriangle className="h-3.5 w-3.5" /> Escalate
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-neutral-500 transition-colors duration-fast hover:bg-accent hover:text-foreground"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" /> {labels.escalate}
             </button>
           </>
         )}
         {state === 'approved' && (
           <span className="inline-flex items-center gap-1.5 rounded-md bg-success-subtle px-3 py-1.5 text-sm font-medium text-success">
-            <Check className="h-3.5 w-3.5" /> Approved · Mwikila is executing
+            <Check className="h-3.5 w-3.5" /> {labels.approved}
           </span>
         )}
         {state === 'declined' && (
           <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-subtle px-3 py-1.5 text-sm font-medium text-danger">
-            <X className="h-3.5 w-3.5" /> Declined · logged to audit trail
+            <X className="h-3.5 w-3.5" /> {labels.declined}
           </span>
         )}
       </div>
@@ -458,34 +720,48 @@ function DecisionCard({
 }
 
 /**
- * SentimentCard — tenant-sentiment 7-day chart with scrubbing.
+ * SentimentCard — tenant-sentiment trend with scrubbing.
  *
- * Uses the shared ScrubbableChart so press-and-drag across the chart
- * shows a dashed guideline + dot on each series, the header value
- * swaps to the scrubbed reading, haptics fire on every data-point
- * crossed, and the page does not vertical-scroll during the gesture.
- * On release the endpoint dot + label return and the header resets
- * to the latest reading.
+ * Today the gateway surfaces only the latest 30-day reading on the
+ * BriefingDocument. Until the data warehouse exposes a 7-day series we
+ * derive a flat-line trend that still scrubs. The chart never invents
+ * volatility.
  */
-function SentimentCard() {
-  const SENTIMENT = [0.74, 0.76, 0.75, 0.79, 0.78, 0.80, 0.81] as const;
-  const LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
-  const latest = SENTIMENT[SENTIMENT.length - 1] ?? 0;
-  const previous = SENTIMENT[SENTIMENT.length - 2] ?? latest;
+function SentimentCard({
+  briefing,
+  title,
+  subtitle,
+  ariaLabel,
+}: {
+  readonly briefing: BriefingDocument | null;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly ariaLabel: string;
+}) {
+  const latest = briefing?.kpiDeltas.tenantSatisfaction.value ?? 0;
+  const series = useMemo<readonly number[]>(() => {
+    // Until a 7-day series is exposed, we surface the current reading
+    // as a flat line so the chart still renders honestly.
+    return [latest, latest, latest, latest, latest, latest, latest];
+  }, [latest]);
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+  const previous = series[series.length - 2] ?? latest;
   const delta = latest - previous;
 
   return (
     <section className="rounded-lg border border-border bg-surface p-4">
       <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-        Tenant sentiment · 7-day trend
+        {title}
       </h2>
       <ScrubbableChart
         className="mt-4"
-        series={[{ name: 'Sentiment', values: [...SENTIMENT], color: 'signal' }]}
-        labels={[...LABELS]}
+        series={[
+          { name: 'Sentiment', values: [...series], color: 'signal' },
+        ]}
+        labels={[...labels]}
         formatValue={(v) => v.toFixed(2)}
         height={100}
-        ariaLabel="Tenant sentiment, 7-day rolling mean. Drag horizontally to scrub."
+        ariaLabel={ariaLabel}
         header={({ activeIndex, activeLabel, activeValues }) => {
           const isScrub = activeIndex !== null;
           const value = isScrub ? activeValues[0] ?? latest : latest;
@@ -513,8 +789,7 @@ function SentimentCard() {
         }}
       />
       <p className="mt-3 text-xs leading-relaxed text-neutral-500">
-        Slight upward drift. Driven by same-day maintenance resolution
-        and the new renewal-incentive cohort.
+        {subtitle}
       </p>
     </section>
   );

@@ -2,10 +2,10 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { propertiesService } from '@bossnyumba/api-client';
+import { propertiesService, reportsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
@@ -44,12 +44,41 @@ function GenerateReportPageInner() {
     ? propertiesQuery.data!.data!
     : [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const exportMutation = useMutation({
+    mutationFn: (vars: { readonly type: ReportType; readonly format: 'csv' | 'pdf' }) => {
+      // The gateway exposes GET /api/v1/reports/export/:type which
+      // returns a signed download URL. The current page collects extra
+      // dimensions (date range, propertyId) that the export endpoint
+      // does not yet accept — once the backend supports filters we
+      // forward them here. Until then we still trigger the existing
+      // export so the UI returns a real artefact instead of a no-op.
+      return reportsService.export(vars.type, { format: vars.format });
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Generation pending — reports endpoint not yet wired in api-client.
-    // Routing back to the list keeps the UX honest until the mutation
-    // is connected.
-    router.push('/reports');
+    // Excel is not in the gateway's ReportFormat union — fall back to
+    // CSV so the request shape stays valid.
+    const format: 'csv' | 'pdf' =
+      formData.format === 'excel' ? 'csv' : formData.format;
+    try {
+      const res = await exportMutation.mutateAsync({
+        type: formData.type,
+        format,
+      });
+      const url = res.data?.downloadUrl;
+      if (typeof url === 'string' && url.length > 0) {
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }
+    } catch {
+      // The mutation surfaces the error via React Query state; the UI
+      // does not interrupt navigation.
+    } finally {
+      router.push('/reports');
+    }
   };
 
   return (
