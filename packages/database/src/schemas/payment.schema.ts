@@ -238,6 +238,22 @@ export const payments = pgTable(
     methodIdx: index('payments_method_idx').on(table.paymentMethod),
     providerTxIdx: uniqueIndex('payments_provider_tx_idx').on(table.provider, table.providerTransactionId),
     completedAtIdx: index('payments_completed_at_idx').on(table.completedAt),
+    // Wave-4 D9: monthly-close adapters scan payments by
+    // (tenant_id, completed_at) within a period window with
+    // status='completed'. The composite handles the period range
+    // efficiently without intersecting with payments_status_idx.
+    tenantCompletedAtIdx: index('payments_tenant_completed_at_idx').on(
+      table.tenantId,
+      table.completedAt,
+    ),
+    // Wave-4 D9: predictive-interventions aggregates per-customer
+    // payment totals over the trailing 6 months filtered by
+    // (tenant_id, created_at >= cutoff). Composite makes the range
+    // scan + GROUP BY customer_id index-only friendly.
+    tenantCreatedAtIdx: index('payments_tenant_created_at_idx').on(
+      table.tenantId,
+      table.createdAt,
+    ),
   })
 );
 
@@ -730,6 +746,15 @@ export const ownerStatements = pgTable(
     ownerIdx: index('owner_statements_owner_idx').on(table.ownerId),
     periodIdx: index('owner_statements_period_idx').on(table.periodStart, table.periodEnd),
     statusIdx: index('owner_statements_status_idx').on(table.status),
+    // Wave-4 D9: pdf-renderer drains drafts via
+    // (tenant_id, status='draft', period_start = ?). The composite
+    // gives the picker an index-only path, avoiding a bitmap-AND
+    // between the tenant and status indexes.
+    tenantStatusPeriodIdx: index('owner_statements_tenant_status_period_idx').on(
+      table.tenantId,
+      table.status,
+      table.periodStart,
+    ),
   })
 );
 

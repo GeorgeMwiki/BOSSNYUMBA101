@@ -91,6 +91,16 @@ export const eventOutbox = pgTable(
     priorityStatusIdx: index('event_outbox_priority_status_idx').on(table.priority, table.status),
     correlationIdx: index('event_outbox_correlation_idx').on(table.correlationId),
     lockIdx: index('event_outbox_lock_idx').on(table.lockedBy, table.lockExpiresAt),
+    // Wave-4 D9: payouts-worker (and any future per-event-type worker)
+    // picks rows via WHERE event_type = ? AND status = 'pending'
+    // ORDER BY created_at. The picker is the worker's hot loop —
+    // a composite (event_type, status, created_at) lets it index-walk
+    // a tiny slice instead of intersecting eventTypeIdx with statusIdx.
+    eventTypeStatusCreatedIdx: index('event_outbox_event_type_status_created_idx').on(
+      table.eventType,
+      table.status,
+      table.createdAt,
+    ),
   })
 );
 

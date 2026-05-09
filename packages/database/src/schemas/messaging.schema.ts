@@ -217,6 +217,17 @@ export const notificationDispatchLog = pgTable(
       table.idempotencyKey
     ),
     correlationIdx: index('notification_dispatch_log_correlation_idx').on(table.correlationId),
+    // Wave-4 D9: dispatcher-worker claims pending rows with
+    // WHERE delivery_status = 'pending' (+ optional tenant scope)
+    // ORDER BY created_at ASC ... FOR UPDATE SKIP LOCKED.
+    // A composite (tenant_id, delivery_status, created_at) lets the
+    // SKIP LOCKED scan walk a single sorted slice instead of doing a
+    // bitmap heap scan + sort — meaningful at backlog scale.
+    tenantStatusCreatedIdx: index('notification_dispatch_log_tenant_status_created_idx').on(
+      table.tenantId,
+      table.deliveryStatus,
+      table.createdAt
+    ),
   })
 );
 

@@ -136,6 +136,14 @@ export const properties = pgTable(
     statusIdx: index('properties_status_idx').on(table.status),
     typeIdx: index('properties_type_idx').on(table.type),
     cityIdx: index('properties_city_idx').on(table.city),
+    // Wave-4 D9: monthly-close statement and disbursement adapters
+    // resolve owner -> property via (tenant_id, owner_id). The
+    // single-column ownerIdx alone forces the planner to AND with
+    // tenantIdx; the composite is a one-walk lookup.
+    tenantOwnerIdx: index('properties_tenant_owner_idx').on(
+      table.tenantId,
+      table.ownerId,
+    ),
   })
 );
 
