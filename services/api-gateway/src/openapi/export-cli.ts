@@ -215,7 +215,9 @@ async function main(): Promise<void> {
     mountedRouters: routers,
   });
 
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- outputPath is a CLI-arg-derived path scoped to the build dir, validated by the caller; no untrusted input reaches the fs.
   await mkdir(dirname(outputPath), { recursive: true });
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- same: outputPath is a build artifact path, not user-influenced at runtime.
   await writeFile(outputPath, JSON.stringify(spec, null, 2) + '\n', 'utf8');
 
   const pathCount = Object.keys((spec as { paths?: Record<string, unknown> }).paths ?? {}).length;
