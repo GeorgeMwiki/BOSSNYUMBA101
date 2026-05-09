@@ -20,6 +20,11 @@
  */
 import { randomUUID } from 'crypto';
 
+import {
+  createConfiguredEmailProviderFromEnv,
+  type CompositeEnvDeps,
+} from './email-providers/composite';
+
 export type EmailProviderInput = {
   readonly tenantId: string;
   readonly recipientAddress: string;
@@ -69,6 +74,21 @@ export function createStubEmailProvider(): EmailProvider {
       };
     },
   };
+}
+
+/**
+ * Composition-time factory. Tries env-driven SendGrid/SES first,
+ * falls back to the stub when neither is configured. Keeps the
+ * dispatcher composition single-line:
+ *
+ *   emailProvider: createEmailProviderFromEnv(),
+ */
+export function createEmailProviderFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  deps: CompositeEnvDeps = {},
+): EmailProvider {
+  const real = createConfiguredEmailProviderFromEnv(env, deps);
+  return real ?? createStubEmailProvider();
 }
 
 /**

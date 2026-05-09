@@ -5,16 +5,21 @@
  * not a concrete rail. Swap the stub for a real adapter at
  * composition time.
  *
- * Real providers TODO (regional priority for TZ/KE/UG):
- *   - Africa's Talking `africastalking.SMS.send` (KE/UG/TZ pan-Africa)
- *   - Twilio `client.messages.create` (global SMS + WhatsApp)
+ * Real adapters live under `./sms-providers/`:
+ *   - twilio.ts          (global SMS + WhatsApp)
+ *   - africastalking.ts  (pan-Africa SMS, no WhatsApp)
+ *   - composite.ts       (env-driven router across the two)
+ *
+ * Future rails (placeholder):
  *   - Beem Africa (TZ-first)
  *   - Infobip / MessageBird
  *
- * The stub signals `not_configured` so the worker handles failure
- * uniformly with the email port.
+ * Composition resolves the provider in this priority order:
+ *   1. Composite (any of Twilio / AT configured via env)
+ *   2. Stub (`provider_not_configured`)
  */
 import { randomUUID } from 'crypto';
+import { createCompositeSmsProviderFromEnv } from './sms-providers/composite';
 
 export type SmsProviderInput = {
   readonly tenantId: string;
@@ -65,6 +70,19 @@ export function createStubSmsProvider(): SmsProvider {
       };
     },
   };
+}
+
+/**
+ * Resolve the production SMS provider:
+ *   - Composite (Twilio / Africa's Talking) if any env-configured.
+ *   - Stub otherwise (so the worker logs `provider_not_configured`
+ *     and rows can be retried once a rail is wired).
+ */
+export function resolveSmsProviderFromEnv(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): SmsProvider {
+  const composite = createCompositeSmsProviderFromEnv(env);
+  return composite ?? createStubSmsProvider();
 }
 
 export function createInMemorySmsProvider(): SmsProvider & {
