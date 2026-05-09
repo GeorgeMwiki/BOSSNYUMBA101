@@ -39,15 +39,23 @@ import {
   X,
 } from 'lucide-react';
 import { Logomark, ScrubbableChart } from '@bossnyumba/design-system';
-import {
-  headBriefingService,
-  type BriefingDocument,
-  type EscalationItem,
-  type KpiDelta,
-  type KpiDelta30d,
-  type NotableAutonomousAction,
-  type PendingApprovalItem,
-} from '@bossnyumba/api-client';
+import { headBriefingService } from '@bossnyumba/api-client';
+
+/**
+ * Briefing types derived via `Awaited<ReturnType<...>>` — sidesteps
+ * tsup's barrel namespace/type drift (TS2709) on `@bossnyumba/api-client`
+ * by reading the shape directly from the service factory.
+ */
+type BriefingResponse = NonNullable<
+  Awaited<ReturnType<typeof headBriefingService.getMyBriefing>>['data']
+>;
+type BriefingDocument = BriefingResponse;
+type KpiDelta = BriefingDocument['kpiDeltas']['occupancyPct'];
+type KpiDelta30d = BriefingDocument['kpiDeltas']['noi'];
+type NotableAutonomousAction =
+  BriefingDocument['overnight']['notableActions'][number];
+type EscalationItem = BriefingDocument['escalations']['items'][number];
+type PendingApprovalItem = BriefingDocument['pendingApprovals']['items'][number];
 
 type DecisionState = 'idle' | 'approved' | 'declined';
 

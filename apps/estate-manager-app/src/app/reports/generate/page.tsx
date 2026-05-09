@@ -63,11 +63,11 @@ function GenerateReportPageInner() {
     const format: 'csv' | 'pdf' =
       formData.format === 'excel' ? 'csv' : formData.format;
     try {
-      const res = await exportMutation.mutateAsync({
+      const res = (await exportMutation.mutateAsync({
         type: formData.type,
         format,
-      });
-      const url = res.data?.downloadUrl;
+      })) as { data?: { downloadUrl?: string } } | undefined;
+      const url = res?.data?.downloadUrl;
       if (typeof url === 'string' && url.length > 0) {
         if (typeof window !== 'undefined') {
           window.open(url, '_blank', 'noopener,noreferrer');

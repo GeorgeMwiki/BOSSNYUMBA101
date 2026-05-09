@@ -32,12 +32,19 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
-import {
-  headBriefingService,
-  type BriefingDocument,
-  type EscalationItem,
-  type NotableAutonomousAction,
-} from '@bossnyumba/api-client';
+import { headBriefingService } from '@bossnyumba/api-client';
+
+/**
+ * Briefing types derived via `Awaited<ReturnType<...>>` — sidesteps
+ * tsup's barrel namespace/type drift (TS2709) on
+ * `@bossnyumba/api-client`.
+ */
+type BriefingDocument = NonNullable<
+  Awaited<ReturnType<typeof headBriefingService.getMyBriefing>>['data']
+>;
+type NotableAutonomousAction =
+  BriefingDocument['overnight']['notableActions'][number];
+type EscalationItem = BriefingDocument['escalations']['items'][number];
 
 /* ──────────────────────────────  Types  ────────────────────────────── */
 
