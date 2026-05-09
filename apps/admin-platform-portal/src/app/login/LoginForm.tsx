@@ -91,7 +91,9 @@ export function LoginForm() {
         </div>
 
         {state.phase === 'error' && state.error ? (
-          <div className="text-xs text-danger">{state.error}</div>
+          <div role="alert" aria-live="assertive" className="text-xs text-danger">
+            {state.error}
+          </div>
         ) : null}
 
         <button

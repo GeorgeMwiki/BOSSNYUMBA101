@@ -7,6 +7,8 @@
     "skipToMain": "Skip to main content",
     "closeModal": "Close dialog",
     "removePhoto": "Remove photo",
+    "addPhoto": "Add photo",
+    "removeMaterial": "Remove material",
     "attachmentPreview": "Attachment preview",
     "signaturePreview": "Signature preview"
   },
