@@ -94,10 +94,10 @@ function makeFormatter(code: string): (amount: number) => string {
 async function resolveFromServer(signal: AbortSignal): Promise<string | null> {
   if (!hasApiClient()) return null;
   try {
-    const response = await getApiClient().get<{ currency?: string }>(
+    const response = (await getApiClient().get(
       '/preferences/currency',
       { signal },
-    );
+    )) as { data?: { currency?: string } } | undefined;
     const code = response?.data?.currency;
     if (typeof code !== 'string' || code.trim().length === 0) return null;
     return code.trim().toUpperCase();

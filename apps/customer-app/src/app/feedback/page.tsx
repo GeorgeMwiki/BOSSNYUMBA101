@@ -4,8 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Send } from 'lucide-react';
-import { feedbackService, type FeedbackType } from '@bossnyumba/api-client';
+import { feedbackService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+
+/**
+ * Local FeedbackType union — inlined to sidestep tsup's barrel
+ * namespace/type drift (TS2709). Mirrors the api-client's
+ * `services/feedback.ts` `FeedbackType` literal.
+ */
+type FeedbackType = 'COMPLAINT' | 'SUGGESTION' | 'PRAISE' | 'GENERAL';
 
 const TYPE_TO_API: Record<string, FeedbackType> = {
   suggestion: 'SUGGESTION',

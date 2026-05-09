@@ -74,7 +74,7 @@ jobs:
       # Build internal packages first so package-barrel `dist/` exports
       # exist (vitest + tsc resolve via the `import` condition).
       - name: Build internal packages
-        run: pnpm -r --filter='./packages/*' build || true
+        run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
 
       - name: Lint
         run: pnpm lint

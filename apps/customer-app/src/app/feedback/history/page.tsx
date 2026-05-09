@@ -4,8 +4,26 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { MessageSquare, ChevronRight, Loader2 } from 'lucide-react';
-import { feedbackService, type Feedback } from '@bossnyumba/api-client';
+import { feedbackService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+
+/**
+ * Local Feedback shape — inlined to sidestep tsup's barrel
+ * namespace/type drift (TS2709). Mirrors the structurally-relevant
+ * subset of the api-client's `services/feedback.ts` `Feedback`
+ * interface.
+ */
+type FeedbackType = 'COMPLAINT' | 'SUGGESTION' | 'PRAISE' | 'GENERAL';
+type FeedbackStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+interface Feedback {
+  readonly id: string;
+  readonly type: FeedbackType;
+  readonly status: FeedbackStatus;
+  readonly subject?: string;
+  readonly message?: string;
+  readonly description?: string;
+  readonly createdAt: string;
+}
 
 const TYPE_LABEL_KEY: Record<Feedback['type'], string> = {
   COMPLAINT: 'typeComplaint',

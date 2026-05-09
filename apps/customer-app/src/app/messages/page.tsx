@@ -73,8 +73,8 @@ function adaptConversation(input: unknown): ConversationView | null {
   const lastMessageAt =
     typeof obj.updatedAt === 'string'
       ? obj.updatedAt
-      : typeof (obj as RawConversationRow).updated_at === 'string'
-        ? (obj as RawConversationRow).updated_at ?? null
+      : typeof (obj as unknown as RawConversationRow).updated_at === 'string'
+        ? (obj as unknown as RawConversationRow).updated_at ?? null
         : null;
 
   const unreadCount =
@@ -96,7 +96,7 @@ function adaptConversation(input: unknown): ConversationView | null {
     }
   }
   if (!counterpartRole) {
-    const entityType = (obj as RawConversationRow).entity_type;
+    const entityType = (obj as unknown as RawConversationRow).entity_type;
     if (typeof entityType === 'string') counterpartRole = entityType;
   }
 

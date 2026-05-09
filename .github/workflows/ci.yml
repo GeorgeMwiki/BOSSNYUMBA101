@@ -72,7 +72,7 @@ jobs:
       # exist (some apps/packages import via the `import` condition,
       # which requires `dist/` per package.json `exports`).
       - name: Build internal packages
-        run: pnpm -r --filter='./packages/*' build || true
+        run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
 
       - name: Run TypeScript type check
         run: pnpm typecheck
@@ -110,7 +110,7 @@ jobs:
       # exist (vitest resolves package imports via the `import`
       # condition, which requires `dist/`).
       - name: Build internal packages
-        run: pnpm -r --filter='./packages/*' build || true
+        run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
 
       - name: Run unit tests (${{ matrix.workspace }})
         run: pnpm -r --filter="./${{ matrix.workspace }}/*" test
