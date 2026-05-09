@@ -118,8 +118,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Security audit
-        run: pnpm audit --audit-level=high
+      - name: Security audit (allowlist-aware)
+        run: node scripts/audit-with-allowlist.mjs
 
   # ============================================
   # Size Check
