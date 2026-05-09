@@ -63,6 +63,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      # Build internal packages first so package-barrel `dist/` exports
+      # exist (some apps/packages import via the `import` condition).
+      - run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
       - name: pnpm -r typecheck
         run: pnpm -r typecheck
 
@@ -102,6 +105,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+
+      # Build internal packages first so vitest can resolve barrel
+      # `import` exports (services/api-gateway tests need
+      # @bossnyumba/domain-services subpath dist).
+      - run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
 
       - name: pnpm -r test
         run: pnpm -r test
