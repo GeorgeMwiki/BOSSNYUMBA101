@@ -155,7 +155,6 @@ export function useCurrencyPreference(): UseCurrencyPreferenceResult {
     };
     // The hook intentionally resolves only once on mount; re-fetching on
     // every code change would create a feedback loop with setCode.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const format = useMemo(() => makeFormatter(code), [code]);

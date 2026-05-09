@@ -30,9 +30,13 @@ function makeDbWith(client: FakePostgresJsClient | undefined): DatabaseClient {
 }
 
 describe('withSlowQueryLogging', () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  // Type widened from `ReturnType<typeof vi.spyOn>` to bypass a vitest
+  // type-drift between MockInstance generic-arg counts (1.x → narrow,
+  // newer → wide). The runtime behaviour is unchanged; the spy still
+  // captures every console.warn call.
+  let warnSpy: ReturnType<typeof vi.spyOn> | (ReturnType<typeof vi.fn> & { mockRestore(): void });
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined) as never;
   });
   afterEach(() => {
     warnSpy.mockRestore();
