@@ -47,7 +47,7 @@ export async function recordAiUsage(
       correlationId: context.correlationId,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error(
       '[ai-native/phl] failed to record usage',
       err instanceof Error ? err.message : err,

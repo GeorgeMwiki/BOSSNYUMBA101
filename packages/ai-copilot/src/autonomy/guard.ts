@@ -282,7 +282,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
         confidenceReasoning = score.reasoning;
       } catch (err) {
         // Scorer is advisory — never block on its failure.
-        // eslint-disable-next-line no-console
+         
         console.error(
           'autonomy-guard: confidence scorer failed',
           err instanceof Error ? err.message : String(err),
@@ -445,7 +445,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
         } catch (err) {
           // Consume failure must never roll back the mutation — the
           // audit trail already records the attempt. Surface via reason.
-          // eslint-disable-next-line no-console
+           
           console.error(
             'autonomy-guard: grant consume failed',
             err instanceof Error ? err.message : String(err),
@@ -503,7 +503,7 @@ export function withAutonomyGuard(deps: WithAutonomyGuardDeps): AutonomyGuardFn 
         });
         queuedApprovalId = queued ?? null;
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error(
           'autonomy-guard: onApprovalRequired sink failed',
           err instanceof Error ? err.message : String(err),

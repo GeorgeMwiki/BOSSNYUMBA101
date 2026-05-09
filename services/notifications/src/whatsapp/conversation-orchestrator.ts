@@ -441,7 +441,7 @@ export class ConversationOrchestrator {
     }
 
     // Parse date (supports DD/MM/YYYY, DD-MM-YYYY, etc.)
-    const datePattern = /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/;
+    const datePattern = /(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/;
     const match = text.match(datePattern);
 
     if (!match) {
@@ -547,7 +547,7 @@ export class ConversationOrchestrator {
     }
 
     const phone = phoneMatch[0];
-    const name = text.replace(phone, '').replace(/[,\-]/g, '').trim() || 'Emergency Contact';
+    const name = text.replace(phone, '').replace(/[,-]/g, '').trim() || 'Emergency Contact';
 
     // Update context
     if (session.context.onboarding) {

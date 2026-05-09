@@ -168,7 +168,7 @@ export function createOutcomeCapture(deps: OutcomeCaptureDeps): OutcomeCapture {
         });
       } catch (err) {
         // Capture is fire-and-forget from the bus's perspective.
-        // eslint-disable-next-line no-console
+         
         console.error('outcome-capture: failed to record', err);
       }
     });
