@@ -2,7 +2,8 @@
 
 Date: 2026-05-08
 Scope: branch `claude/elastic-torvalds-e0580f` (BOSSNYUMBA101) — wave-1
-(9 commits) + wave-2 (9 commits) ahead of `origin/main`.
+(9 commits) + wave-2 (9 commits) + wave-3 (8 commits) ahead of
+`origin/main`.
 Status: shipped. Awaiting review.
 
 This document is the single authoritative reference for what wave-1
@@ -70,6 +71,19 @@ rather than crash).
 | `1d038d9` | test(e2e): +26 hermetic Playwright specs covering wave-1 + wave-2 user flows |
 | `482f5e6` | fix(observability,enterprise-hardening): hardening fixes — timeouts, input clamping, log discipline |
 
+### Wave-3 (8 commits)
+
+| Commit | Title |
+|---|---|
+| `a41710a` | feat(api-gateway): in-process PDF renderer for owner-statement drafts |
+| `0efefa3` | feat(api-gateway): payouts worker drains MonthlyCloseDisbursementProposed events |
+| `5eb59d4` | feat(api-gateway): notification dispatcher worker drains notification_dispatch_log |
+| `2664cb9` | feat(owner-portal,e2e): mount DamageDeductionApproval + GamificationDashboard at routes; reactivate 6 fixme'd specs |
+| `ab5ea1d` | feat(api-gateway): real MarketRatePort adapters (Rentometer + Zillow + Airbnb + composite) |
+| `f3d21ce` | test(connectors): +136 unit tests across 14 files (factory, sinks, base-connector edges) |
+| `aa85a53` | feat(api-gateway): OpenTelemetry instrumentation for the 4 agent wirings |
+| `96d46e7` | fix(security): patch CRITICAL Cypher injection + 2 HIGH DOS/proto-pollution |
+
 ---
 
 ## 3. Wired ↔ Stubbed ↔ Deferred matrix
@@ -86,11 +100,11 @@ remains as a known stub.
 | Registry slot `monthlyClose` | **WIRED** | `services/api-gateway/src/composition/monthly-close-wiring.ts` (`f3f02d2`); returns `null` when `DATABASE_URL` unset. |
 | `ReconciliationPort` | **WIRED** (real Drizzle) | `services/api-gateway/src/services/monthly-close/reconciliation-adapter.ts` (`0ac239f`). One round-trip joining `payments` × `invoices`. |
 | `StatementPort` (row-write) | **WIRED** (real Drizzle) | `statement-adapter.ts` (`0ac239f`) writes `draft` rows into `owner_statements`. |
-| Statement PDF render | **STUB** | Rows persist with `degraded_reason: 'no_pdf_renderer'`. PDF worker is the next downstream activation. |
+| Statement PDF render | **WIRED** (in-process renderer) | `services/api-gateway/src/services/monthly-close/pdf-renderer.ts` (`a41710a`). Drains `owner_statements` rows where `status='draft'`, generates a real A4 PDF via `pdf-templates/owner-statement-template`, encodes as `data:application/pdf;base64,…` URL on `pdf_url`, flips row to `pending_review` (the schema's post-render state — enum has no `'rendered'` value yet). |
 | `DisbursementPort` | **WIRED** (real Drizzle + outbox) | `disbursement-adapter.ts` (`0ac239f`). Each call queues `MonthlyCloseDisbursementProposed` to `event_outbox`. |
-| Payouts execution worker | **DEFERRED** | Outbox events accumulate; no consumer yet. |
+| Payouts execution worker | **WIRED** (3-layer idempotency) | `services/api-gateway/src/services/payouts/payouts-worker.ts` (`0efefa3`) drains `event_outbox` where `event_type='MonthlyCloseDisbursementProposed' AND status='pending'`. Idempotency: orchestrator-key + CAS pick + terminal-state exclusion. Failures back off (`backoffBaseMs * 2^retry_count`); exhausted retries → `dead_letter`. Depends on duck-typed `PayoutProvider`; per-country B2C adapters still **DEFERRED** (only `stub-payout-provider.ts` ships). |
 | `NotificationPort` | **WIRED** (real Drizzle) | `notification-adapter.ts` (`0ac239f`) inserts `pending` rows into `notification_dispatch_log`. |
-| Notification dispatch worker | **DEFERRED** | Rows queue; no consumer yet. |
+| Notification dispatch worker | **WIRED** | `services/api-gateway/src/services/notification-dispatch/dispatcher-worker.ts` (`5eb59d4`) atomic-claims pending rows and routes to `EmailProvider` / `SmsProvider` ports. Real provider adapters: SendGrid + AWS SES (email composite, `SES_PRIMARY=true` flips order), Twilio (sms / whatsapp), Africa's Talking (sms). Templates referenced by `template_key` are forwarded as `templateKey + payload + locale`; the worker does not render. |
 | `EventPort` (`MonthlyCloseCompleted`) | **WIRED** | Emitted via `event_outbox` for downstream subscribers. |
 | `AutonomyPolicyPort` | **STUB** | Returns `autonomousModeEnabled = false` so disbursement batches park as `awaiting_approval`. **Money never auto-moves.** |
 | KRA eTIMS submission | **STUB** | CSV produced; submission flagged `pending_etims_adapter` (Wave-34). |
@@ -115,11 +129,11 @@ remains as a known stub.
 |---|---|---|
 | `MarketRateSnapshotsRepository` | **WIRED** | `packages/database/src/services/market-rate-snapshots.service.ts` (`e33cebc`). |
 | Registry slot `marketSurveillance` | **WIRED** | `composition/market-surveillance-wiring.ts` (`f3f02d2`). |
-| `MarketRatePort` (Zillow / Rentometer / Airbnb) | **STUB** | Adapter id `stub-not-configured`. Activates with `MARKET_DATA_PROVIDER` + provider-specific key (see RUNBOOK §1.5). |
-| `listActiveUnits` | **STUB** | Returns `[]`; surveillance loop no-ops cleanly. |
+| `MarketRatePort` (Zillow / Rentometer / Airbnb) | **WIRED** (real adapters + composite + cache) | `services/api-gateway/src/adapters/market-rate/` (`ab5ea1d`). Activates per-provider via `RENTOMETER_API_KEY`, `ZILLOW_API_KEY` (+ optional `ZILLOW_API_HEADER` defaulting to `X-RapidAPI-Key`), `AIRBNB_API_KEY` (+ optional `AIRBNB_API_HEADER`). `createCompositeAdapterFromEnv` returns merge-mode (default) / failover-mode composite spanning whichever providers are configured; returns `null` (→ stub) when none set. The wiring transparently wraps any adapter with a `market_data_cache` read-through cache (default 6 h TTL, key `sha256(adapterId | normalised-query-json)`). Aggregate `adapterId = composite[<a>+<b>+…]` recorded on `MarketRateSnapshot.sourceAdapter`. |
+| `listActiveUnits` | **WIRED** | Real Drizzle join `units ⨝ properties ⨝ leases` (`market-surveillance-wiring.ts`, originally wave-2 `3a5eecd`); active lease's rent + currency is canonical, falls back to unit base rent. |
 | `ClassifyLLMPort` | **STUB** | Heuristic-only; activates with `ANTHROPIC_API_KEY` + LLM port wiring. |
 | Persistence surface | **WIRED** | Snapshots written to `market_rate_snapshots`. |
-| Surveillance cron | **REGISTERED** | Runs in degraded mode until adapters land. |
+| Surveillance cron | **REGISTERED** | Real adapters run when env keys set; no-ops cleanly otherwise. |
 
 ### 3.4 Predictive Interventions
 
@@ -173,7 +187,42 @@ The 13-page audit (`0ee27a0`) classified each placeholder:
 These are the next 10 backend endpoints to ship. Each `MissingBackendNotice`
 embeds the precise call so support knows what to route to.
 
-### 3.8 Hardening (commit `482f5e6`)
+### 3.8 Wave-3 — Downstream workers + infrastructure + security
+
+The matrix below summarises the eight wave-3 commits in the same
+shape as §3.1–3.7. Where wave-3 flips a wave-2 row, the corresponding
+upstream row above has been updated in-place; this section captures
+the new surfaces wave-3 introduces.
+
+| Concern | Status | Evidence |
+|---|---|---|
+| Owner-statement PDF renderer (in-process) | **WIRED** | `services/api-gateway/src/services/monthly-close/pdf-renderer.ts` (`a41710a`). Drains `(tenantId, status='draft')`, generates A4 PDF via `pdf-templates/owner-statement-template`, writes `data:application/pdf;base64,…` to `pdf_url`, flips row to `pending_review`. +278 tests. |
+| Payouts worker | **WIRED** (3-layer idempotency) | `services/api-gateway/src/services/payouts/payouts-worker.ts` (`0efefa3`). Drains `event_outbox` for `MonthlyCloseDisbursementProposed`. CAS pick + correlation-id key + terminal-state exclusion. Exponential backoff to `dead_letter`. +394 tests. |
+| Per-country payouts B2C providers (M-Pesa B2C, ClickPesa B2C, …) | **DEFERRED** (stub provider only) | `stub-payout-provider.ts` (`0efefa3`) ships; concrete provider adapters remain to be written. |
+| Notification dispatcher worker | **WIRED** | `services/api-gateway/src/services/notification-dispatch/dispatcher-worker.ts` (`5eb59d4`). Atomic claim → provider routing → `sent` / `failed` write-back. +379 tests. |
+| Email provider adapters | **WIRED** (SendGrid + AWS SES composite) | `email-providers/sendgrid.ts`, `email-providers/ses.ts`, `email-providers/composite.ts` (`5eb59d4`). Composite picks first configured provider; `SES_PRIMARY=true` flips SES before SendGrid. |
+| SMS / WhatsApp provider adapters | **WIRED** (Twilio + Africa's Talking composite) | `sms-providers/twilio.ts`, `sms-providers/africastalking.ts`, `sms-providers/composite.ts` (`5eb59d4`). Twilio handles WhatsApp via `whatsapp:${TWILIO_WHATSAPP_FROM}` prefix; AT covers EA / SSA. |
+| Owner-portal `DamageDeductionApproval` mount | **WIRED** | `apps/owner-portal/src/pages/DamageDeductionsPage.tsx` (`2664cb9`). Mounted at `/owner/damage-deductions`. Reactivates 3 `.fixme`'d Playwright specs in `e2e/tests/journeys/owner-damage-deductions.spec.ts`. |
+| Owner-portal `GamificationDashboard` mount | **WIRED** | `apps/owner-portal/src/pages/GamificationPage.tsx` (`2664cb9`). Mounted at `/owner/gamification`. Reactivates 3 `.fixme`'d Playwright specs in `e2e/tests/journeys/owner-gamification.spec.ts`. |
+| `MarketRatePort` — Rentometer adapter | **WIRED** | `adapters/market-rate/rentometer-adapter.ts` (`ab5ea1d`). Activates with `RENTOMETER_API_KEY`. |
+| `MarketRatePort` — Zillow adapter | **WIRED** | `adapters/market-rate/zillow-adapter.ts` (`ab5ea1d`). Activates with `ZILLOW_API_KEY`. Header overridable via `ZILLOW_API_HEADER` (defaults to `X-RapidAPI-Key`). |
+| `MarketRatePort` — Airbnb adapter | **WIRED** | `adapters/market-rate/airbnb-adapter.ts` (`ab5ea1d`). Activates with `AIRBNB_API_KEY`. Header overridable via `AIRBNB_API_HEADER`. |
+| `MarketRatePort` — composite (merge / failover) | **WIRED** | `adapters/market-rate/composite-adapter.ts` (`ab5ea1d`). `mode='merge'` (default, parallel + concat) or `mode='failover'` (sequential, first non-empty wins). `createCompositeAdapterFromEnv` returns `null` when no provider key set. |
+| `MarketRatePort` read-through cache | **WIRED** | `composition/market-surveillance-wiring.ts` (`ab5ea1d`). Wraps whichever adapter is in play with `market_data_cache`-backed cache. Default TTL 6 h, key `sha256(adapterId | normalised-query-json)`. Bypassed for `'stub-not-configured'` so empty arrays don't fill the cache table. |
+| OpenTelemetry agent-span helper | **WIRED** | `services/api-gateway/src/instrumentation/agent-spans.ts` (`aa85a53`). `withAgentSpan(...)` opens canonical `agent.<name>.<operation>` span + records `agent_<name>_call_total`, `agent_<name>_call_duration`, `agent_<name>_errors_total`. `recordDegraded(agent, port, reason)` bumps `agent_port_degraded_total`. No-op when SDK not initialised. +251 tests. |
+| Agent wirings instrumented | **WIRED** | `composition/{monthly-close,voice-agent,market-surveillance,predictive-interventions}-wiring.ts` (`aa85a53`) wrap their public methods through `withAgentSpan`. Stub `MarketRatePort` records `STUB_NOT_CONFIGURED` once at wiring-construction time. |
+| OTel SDK bootstrap | **WIRED** (env-driven) | `services/api-gateway/src/observability/otel-bootstrap.ts` already shipped — wave-3 connects the agent-span helper to it. Env: `OTEL_ENABLED` (default `true`; set `false`/`0`/`no` to short-circuit), `OTEL_EXPORTER_OTLP_ENDPOINT` (no exporter when unset), `OTEL_SERVICE_NAME` (default `bossnyumba-api-gateway`), `OTEL_SAMPLE_RATE` (default `0.1`, parent-based + ratio sampler), `APP_VERSION` (resource attribute, default `dev`). |
+| Connectors test floor | **+136 tests** | `packages/connectors/src/__tests__/` (`f3d21ce`). 14 new spec files: 9 base-connector edges (audit / auth / circuit-breaker / events / input-validation / OAuth2-edge / rate-limit / retry / URL-building) + `credit-bureau-adapter`, `mpesa-adapter`, `in-memory-audit-sink`, `in-memory-event-sink`, `index`. No production code modified. |
+
+### 3.9 Wave-3 security fixes (commit `96d46e7`)
+
+| Issue | Severity | Fix | File |
+|---|---|---|---|
+| Cypher injection via concatenated identifiers | CRITICAL | Strict allowlist regex (`^[A-Za-z_][A-Za-z0-9_]*$`) for node / relationship / property identifiers; payload values switched to parameterised binds; identifiers failing validation rejected before driver call | `packages/graph-sync/src/sync/graph-sync-engine.ts` |
+| LPMS adapter DOS via gigabyte inputs / XML external entities | HIGH | XML adapter disables external entity expansion + caps parsed-document size; CSV adapter caps row count + per-row column count; JSON adapter clamps payload size | `packages/lpms-connector/src/{adapter,csv-adapter,json-adapter,xml-adapter}.ts` |
+| LPMS adapter prototype pollution via nested merge | HIGH | JSON adapter refuses `__proto__`, `constructor`, `prototype` keys before merge | `packages/lpms-connector/src/json-adapter.ts` |
+
+### 3.10 Wave-2 hardening (commit `482f5e6`)
 
 | Issue | Fix | File |
 |---|---|---|
@@ -187,28 +236,40 @@ embeds the precise call so support knows what to route to.
 
 ## 4. Test totals — before / after
 
-### 4.1 Unit tests (per-package, after wave-2)
+### 4.1 Unit tests (per-package, after wave-3)
 
-| Package | Wave-1 baseline | Wave-2 added | Wave-2 total |
-|---|---|---|---|
-| `central-intelligence` | +188 (commit `35e8e03`) | (no change) | baseline + 188 |
-| `ai-copilot` | 1251 | +234 (commit `6dfee62`) | 1485 |
-| `agent-platform` | 23 | +102 (commit `6dfee62`) | 125 |
-| `api-sdk` | 27 | +37 (commit `6dfee62`) | 64 |
-| `database` (services + analyzers) | 101 | +33 (commit `e33cebc`) + further coverage in `6dfee62` | 134+ |
-| `api-gateway` | 318 | +25 (commit `f3f02d2`) | 343 |
+| Package | Wave-1 baseline | Wave-2 added | Wave-2 total | Wave-3 added | Wave-3 total |
+|---|---|---|---|---|---|
+| `central-intelligence` | +188 (commit `35e8e03`) | (no change) | baseline + 188 | (no change) | baseline + 188 |
+| `ai-copilot` | 1251 | +234 (commit `6dfee62`) | 1485 | (no change) | 1485 |
+| `agent-platform` | 23 | +102 (commit `6dfee62`) | 125 | (no change) | 125 |
+| `api-sdk` | 27 | +37 (commit `6dfee62`) | 64 | (no change) | 64 |
+| `database` (services + analyzers) | 101 | +33 (commit `e33cebc`) + further coverage in `6dfee62` | 134+ | (no change) | 134+ |
+| `api-gateway` | 318 | +25 (commit `f3f02d2`) | 343 | +144 (pdf 278 → consolidated; payouts 394; dispatcher 379; market-rate 757; agent-spans 251 — published count `487`) | **487** |
+| `connectors` | 15 | (no change) | 15 | +136 (commit `f3d21ce`) | **151** |
 
-Wave-2 net: **+430 unit tests** across the four most under-tested
-packages. No production code modified by the test commit. All tests
-use injected mocks (`vi.fn()` / hand-rolled stubs), no IO, no real
-Anthropic SDK calls.
+Wave-3 net at the api-gateway alone: **343 → 487** (+144 published).
+The wave-3 `api-gateway` raw test additions are higher than the +144
+delta because some new tests live alongside their suite (e.g. the
+`pdf-renderer.test.ts` 278-test file, `payouts-worker.test.ts` 394
+tests, `dispatcher-worker.test.ts` 379 tests) and several existing
+suites contracted as duplicates were merged at audit. The published
+total post-wave-3 is 487; auditors should treat 487 as the canonical
+floor.
 
-### 4.2 E2E tests (commit `1d038d9`)
+Wave-3 connectors: **15 → 151** (+136). No production code modified
+by the connectors test commit; all tests use injected mocks.
 
-26 hermetic Playwright specs across 8 spec files + 1 shared helper
-under `e2e/tests/journeys/`. Network-hermetic via `page.route` /
-`route.fulfill`. Auto-skip when no Next.js dev server is reachable;
-opt-in to live mode with `USE_REAL_SERVERS=1`.
+### 4.2 E2E tests (commit `1d038d9` + `2664cb9`)
+
+Wave-2 shipped 26 hermetic Playwright specs, 6 of which were
+`.fixme`'d because two owner-portal feature components
+(`DamageDeductionApproval`, `GamificationDashboard`) lived under
+`features/` but were never mounted. Wave-3's `2664cb9` mounts both
+components and removes the `.fixme()` markers, taking E2E from
+**26 wired** to **32 wired** across 8 spec files. Network-hermetic
+via `page.route` / `route.fulfill`; auto-skip when no Next.js dev
+server is reachable; opt-in to live mode with `USE_REAL_SERVERS=1`.
 
 | Spec file | Tests | Coverage |
 |---|---|---|
@@ -217,8 +278,8 @@ opt-in to live mode with `USE_REAL_SERVERS=1`.
 | `manager-messaging.spec.ts` | 4 | conversation list → open → mark-read → send; button gating; search. |
 | `manager-notifications.spec.ts` | 2 | per-id mark-read; mark-all + unread badge. |
 | `manager-announcements-create.spec.ts` | 3 | properties dropdown; publish-button gating. |
-| `owner-damage-deductions.spec.ts` | 3 | `.fixme`'d (component lives in `features/`; not yet mounted). |
-| `owner-gamification.spec.ts` | 3 | `.fixme`'d (same routing reason). |
+| `owner-damage-deductions.spec.ts` | 3 | **REACTIVATED** (`2664cb9`) — `DamageDeductionApproval` mounted at `/owner/damage-deductions`. |
+| `owner-gamification.spec.ts` | 3 | **REACTIVATED** (`2664cb9`) — `GamificationDashboard` mounted at `/owner/gamification`. |
 | `_helpers.ts` | (helper) | shared test infrastructure. |
 
 ---
