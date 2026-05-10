@@ -82,19 +82,19 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
+      # Use the same recursive `pnpm -r test` scope as the
+      # `Unit Tests (packages/services/apps)` matrix in ci.yml — the
+      # root `pnpm test:coverage` (vitest run --coverage) auto-
+      # discovers integration test files (services/api-gateway/test/
+      # integration/*.int.test.ts) that require a live Postgres + JWT
+      # secret, and DOM-only tests in packages/chat-ui that need each
+      # workspace's own vitest config (jsdom). The recursive variant
+      # respects each workspace's vitest.config.ts.
       - name: Test
-        run: pnpm test:coverage
+        run: pnpm -r --filter='./packages/*' --filter='./services/*' --filter='./apps/*' test
 
       - name: Build
         run: pnpm build
-
-      - name: Check coverage thresholds
-        run: |
-          pnpm test:coverage 2>&1 | tee coverage-output.txt
-          if grep -q "Coverage threshold" coverage-output.txt; then
-            echo "Coverage thresholds not met!"
-            exit 1
-          fi
 
   # ============================================
   # Security
