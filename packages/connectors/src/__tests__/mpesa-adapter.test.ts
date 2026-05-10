@@ -65,7 +65,9 @@ describe('createMpesaAdapter — factory', () => {
     });
 
     const url = fetchMock.mock.calls[0]?.[0] as string;
-    expect(url.startsWith('https://daraja.test')).toBe(true);
+    // Use parsed-URL host equality (not prefix match) so the assertion
+    // can't be satisfied by a misleading host like `https://daraja.testattacker.com/...`.
+    expect(new URL(url).host).toBe('daraja.test');
   });
 
   it('exposes the underlying connector health', () => {
