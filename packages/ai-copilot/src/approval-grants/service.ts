@@ -373,7 +373,7 @@ export class ApprovalGrantService {
       await this.deps.eventPublisher.publish(event);
     } catch (err) {
       // Event publish must never break grant operations.
-      // eslint-disable-next-line no-console
+       
       console.error(
         'ApprovalGrantService: event publish failed',
         err instanceof Error ? err.message : String(err),

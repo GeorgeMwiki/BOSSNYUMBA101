@@ -24,6 +24,7 @@ export interface HandoffDecision {
 
 const EXPLICIT_INTENT_PATTERNS: readonly RegExp[] = [
   /\bsign\s*me\s*up\b/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- alternation groups have no unbounded quantifiers; no catastrophic-backtracking risk. `safe-regex` flags nested non-capturing alternations as a false positive.
   /\b(?:i\s+want\s+to|i\s+would\s+like\s+to|lets|let's|let\s+us)\s+(?:sign\s*up|start|get\s*started|create\s+(?:an\s+)?account)\b/i,
   /\bready\s+to\s+(?:sign\s*up|start|get\s*started)\b/i,
   /\bcreate\s+(?:my|an)\s+account\b/i,

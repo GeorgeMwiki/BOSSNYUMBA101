@@ -21,6 +21,7 @@ import {
 } from './types.js';
 import {
   LpmsParseError,
+  LPMS_MAX_INPUT_BYTES,
   type LpmsAdapter,
   type LpmsIngestionContext,
   type LpmsIngestionError,
@@ -236,6 +237,12 @@ export class LpmsJsonAdapter
 
     let raw: unknown;
     if (typeof input === 'string') {
+      if (input.length > LPMS_MAX_INPUT_BYTES) {
+        throw new LpmsParseError(
+          'json',
+          `input exceeds ${LPMS_MAX_INPUT_BYTES} bytes; chunk the export`,
+        );
+      }
       try {
         raw = JSON.parse(input);
       } catch (e) {

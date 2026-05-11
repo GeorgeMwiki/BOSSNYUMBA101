@@ -136,3 +136,62 @@ Target ≥80% statement coverage for the kernel subpackage.
 - Real-time WebSocket — orthogonal infra concern.
 - Real Zillow/Airbnb adapters — already stubbed; closing those is a
   data-integration phase, not a kernel concern.
+
+## Adjacent work shipped (not kernel parity, but unblocks the agent layer)
+
+These are NOT items from the LITFIN-parity gap list; they are the
+AI-native agent persistence + gateway wirings the kernel sits next to.
+Logged here so reviewers do not re-open the same gap on the agent side.
+
+- [x] `packages/database/src/schemas/` — typed Drizzle mirrors for
+  legacy migrations 0099 / 0103 / 0106 / 0110 (`voice-turns`,
+  `tenant-predictions` + `predictive_intervention_opportunities`,
+  `market-rate-snapshots`, `monthly-close-runs` +
+  `monthly_close_run_steps`). Commit `ea93ed6`.
+- [x] `packages/database/src/services/` — Drizzle services on top of
+  the four schemas (voice-turns, market-rate-snapshots,
+  tenant-predictions, monthly-close-runs). Duck-typed at the boundary;
+  no compile-time dep on `@bossnyumba/ai-copilot`. Commit `e33cebc`.
+- [x] `services/api-gateway/src/composition/` — four agent wirings
+  (`monthly-close-wiring.ts`, `voice-agent-wiring.ts`,
+  `market-surveillance-wiring.ts`,
+  `predictive-interventions-wiring.ts`) plus the matching
+  `ServiceRegistry` slots (`monthlyClose`, `voiceAgent`,
+  `marketSurveillance`, `predictiveInterventions`). Each returns
+  `null` when `DATABASE_URL` is unset, preserving the degraded-mode
+  contract. Commit `f3f02d2`.
+- [x] **Real Drizzle period-bulk adapters for the Monthly Close
+  Orchestrator.** The four port stubs (Reconciliation / Statement /
+  Disbursement / Notification) have been replaced with tenant-scoped
+  Drizzle adapters under
+  `services/api-gateway/src/services/monthly-close/`. Disbursements
+  queue `MonthlyCloseDisbursementProposed` to `event_outbox`;
+  notifications insert into `notification_dispatch_log`. Statement
+  PDF rendering remains a follow-up worker (rows persist with
+  `degraded_reason: 'no_pdf_renderer'`). Commit `0ac239f`.
+- [x] **BrainKernel constructed at the api-gateway composition root.**
+  `services/api-gateway/src/composition/brain-kernel-wiring.ts` (203
+  lines) constructs the central-intelligence kernel against the
+  budget-guarded Anthropic client + the in-memory `cot-reservoir`,
+  `brain-cache`, and `sensor-failover` adapters. Voice-agent wiring
+  now flips from the polite `VOICE_BRAIN_NOT_CONFIGURED` stub to the
+  real kernel-think path when `ANTHROPIC_API_KEY` is set. Commit
+  `eb21991`.
+- [x] **Customer-app currency hook + KES-literal cleanup.**
+  `apps/customer-app/src/lib/hooks/useCurrencyPreference.ts` resolves
+  the user → tenant → platform-default chain via api-client.
+  Hardcoded `'KES'` removed from 8 customer-app files. `/messages`
+  page wired to `messagingService.list` + `send`. Commit `464f139`.
+- [x] **Estate-manager home + briefing pages wired to head-briefing
+  router.** New `packages/api-client/src/services/head-briefing.ts`
+  with typed `getMyBriefing()` / `getMyBriefingMarkdown()` /
+  `getMyBriefingVoiceNarration()`. Estate-manager home + briefing
+  pages render all six `BriefingDocument` sections live. Commit
+  `0796887`.
+
+Stubs still open (data-integration / external-adapter phase):
+concrete Reconciliation / Statement / Disbursement port adapters for
+the Monthly Close Orchestrator, Anthropic-backed `VoiceBrainPort` for
+the voice agent, real `MarketRatePort` adapter (Zillow / Rentometer),
+and the occupancy / leases `listActive*` adapters for both
+surveillance and predictive interventions.

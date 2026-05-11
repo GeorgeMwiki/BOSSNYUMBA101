@@ -2,13 +2,28 @@
 
 import { useTranslations } from 'next-intl';
 import { CreditCard, Wrench, FileText, CheckCircle } from 'lucide-react';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
-const activities = [
+interface ActivityItem {
+  readonly id: string;
+  readonly type: string;
+  readonly title: string;
+  readonly description: string;
+  readonly amount?: number;
+  readonly amountSuffix?: string;
+  readonly time: string;
+  readonly icon: typeof CreditCard;
+  readonly iconColor: string;
+}
+
+const activities: ReadonlyArray<ActivityItem> = [
   {
     id: '1',
     type: 'payment',
     title: 'Rent Payment Received',
-    description: 'KES 45,000 paid via M-Pesa',
+    description: 'paid via M-Pesa',
+    amount: 45000,
+    amountSuffix: 'paid via M-Pesa',
     time: '2 days ago',
     icon: CreditCard,
     iconColor: 'text-success-600 bg-success-50',
@@ -44,12 +59,17 @@ const activities = [
 
 export function RecentActivity() {
   const t = useTranslations('recentActivity');
+  const { format: formatCurrency } = useCurrencyPreference();
   return (
     <section>
       <h2 className="text-sm font-medium text-gray-500 mb-3">{t('heading')}</h2>
       <div className="card divide-y divide-gray-100">
         {activities.map((activity) => {
           const Icon = activity.icon;
+          const description =
+            typeof activity.amount === 'number'
+              ? `${formatCurrency(activity.amount)} ${activity.amountSuffix ?? ''}`.trim()
+              : activity.description;
           return (
             <div key={activity.id} className="flex items-start gap-3 p-4">
               <div className={`p-2 rounded-lg ${activity.iconColor}`}>
@@ -58,7 +78,7 @@ export function RecentActivity() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm">{activity.title}</div>
                 <div className="text-sm text-gray-500 truncate">
-                  {activity.description}
+                  {description}
                 </div>
               </div>
               <div className="text-xs text-gray-400 whitespace-nowrap">

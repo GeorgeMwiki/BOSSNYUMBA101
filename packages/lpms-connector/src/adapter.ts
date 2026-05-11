@@ -75,6 +75,14 @@ export interface LpmsAdapter<TInput = string, TOptions = unknown> {
 }
 
 /**
+ * Maximum input bytes accepted by any adapter. LPMS exports are typically
+ * KB-MB, never GB. This bound stops a hostile or malformed file from
+ * exhausting memory in the parser. Operators with legitimately huge
+ * exports should chunk the file and run the migration in batches.
+ */
+export const LPMS_MAX_INPUT_BYTES = 50 * 1024 * 1024; // 50 MiB
+
+/**
  * Thrown when the entire input is structurally broken (e.g. invalid
  * JSON, malformed XML). Row-level problems are reported via `errors[]`
  * instead — this exception is reserved for "we couldn't even start".

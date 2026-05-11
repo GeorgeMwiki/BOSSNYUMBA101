@@ -683,8 +683,14 @@ app.post('/documents/:id/sign', async (c) => {
 // invitation pipeline is still in design (a co-owner becomes a USER row
 // with role=OWNER scoped to the same `propertyAccess` set as the inviter).
 // Returning an empty array keeps the page renderable until that lands.
-// TODO(api-gateway): join `users` ⨝ `user_property_access` filtered to
-// rows where the inviter shares any `propertyAccess[*]`.
+// TODO(api-gateway, OWNER-BFF-001): join `users` ⨝ `user_property_access`
+//   filtered to rows where the inviter shares any `propertyAccess[*]`.
+//   Concrete next-step:
+//     1. Add `repos.userPropertyAccess.findCoOwners(tenantId, propertyIds)`
+//        in @bossnyumba/database.
+//     2. Build `propertyIds = await getOwnerScope(auth, repos)`.
+//     3. Return the intersected user list with role filter
+//        `role IN ('OWNER','CO_OWNER')`.
 // ----------------------------------------------------------------------------
 app.get('/co-owners', (c) => {
   return c.json({ success: true, data: [] });
@@ -988,8 +994,16 @@ app.post('/invitations/co-owner', async (c) => {
     expiresAt,
   });
 
-  // TODO(api-gateway): persist to `invitations` table + enqueue
-  // email-delivery job once the invitation domain service lands.
+  // TODO(api-gateway, OWNER-BFF-002): persist to `invitations` table +
+  //   enqueue email-delivery job once the invitation domain service
+  //   lands. Concrete next-step:
+  //     1. Add `invitations` migration ({ id, tenantId, email, role,
+  //        propertyAccess, invitedBy, expiresAt, status, token }).
+  //     2. Add InvitationService.create(...) in @bossnyumba/domain-services
+  //        that writes the row + enqueues a `notification.email.dispatch`
+  //        job onto the outbox.
+  //     3. Replace the `signInvitationToken` shortcut with the service
+  //        call; keep the same response shape so the FE stays stable.
   return c.json({
     success: true,
     data: {

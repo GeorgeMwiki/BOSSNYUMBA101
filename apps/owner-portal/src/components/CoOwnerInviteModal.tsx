@@ -106,20 +106,24 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
         </div>
         {step === 'form' ? (
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && (
+              <div role="alert" aria-live="assertive" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstNameRequired')}</label>
-                <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                <label htmlFor="co-owner-first-name" className="block text-sm font-medium text-gray-700 mb-1">{t('firstNameRequired')}</label>
+                <input id="co-owner-first-name" type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastNameRequired')}</label>
-                <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                <label htmlFor="co-owner-last-name" className="block text-sm font-medium text-gray-700 mb-1">{t('lastNameRequired')}</label>
+                <input id="co-owner-last-name" type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1"><Mail className="h-4 w-4 inline mr-1" />{t('emailRequired')}</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="coowner@example.com" required />
+              <label htmlFor="co-owner-email" className="block text-sm font-medium text-gray-700 mb-1"><Mail className="h-4 w-4 inline mr-1" aria-hidden="true" />{t('emailRequired')}</label>
+              <input id="co-owner-email" type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="coowner@example.com" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2"><Shield className="h-4 w-4 inline mr-1" />{t('roleRequired')}</label>
@@ -150,8 +154,8 @@ export function CoOwnerInviteModal({ isOpen, onClose, onSuccess }: CoOwnerInvite
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('personalMessage')}</label>
-              <textarea name="message" value={formData.message} onChange={handleChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={t('messagePlaceholder')} />
+              <label htmlFor="co-owner-message" className="block text-sm font-medium text-gray-700 mb-1">{t('personalMessage')}</label>
+              <textarea id="co-owner-message" name="message" value={formData.message} onChange={handleChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={t('messagePlaceholder')} />
             </div>
             <div className="flex gap-3 pt-4">
               <button type="button" onClick={handleClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">{t('cancel')}</button>

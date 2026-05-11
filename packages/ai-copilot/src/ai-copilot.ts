@@ -226,7 +226,7 @@ export class AICopilot {
               'success'
             )
             .catch((err: unknown) => {
-              // eslint-disable-next-line no-console
+               
               console.error(
                 'AICopilot.governance.logCopilotInvocation failed',
                 {
@@ -253,7 +253,7 @@ export class AICopilot {
             id: 'prediction-engine',
           })
           .catch((err: unknown) => {
-            // eslint-disable-next-line no-console
+             
             console.error('AICopilot.governance.logPrediction failed', {
               tenantId: prediction.tenant.tenantId,
               err: err instanceof Error ? err.message : String(err),
@@ -483,7 +483,7 @@ export class AICopilot {
         actor,
         'success'
       ).catch((err: unknown) => {
-        // eslint-disable-next-line no-console
+         
         console.error('AICopilot.executeGraphTool governance log failed', {
           toolName,
           tenantId: tenant.tenantId,

@@ -69,3 +69,23 @@ Master index of every document in `Docs/`, organized by category.
 | [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) | Pre-deployment checklist and known integration notes |
 | [OPERATIONAL_SLA.md](./OPERATIONAL_SLA.md) | SLAs, escalation paths |
 | [KPIS_AND_SLOS.md](./KPIS_AND_SLOS.md) | Key KPIs and service-level objectives |
+
+## AI-native agents (composition + persistence)
+
+The four AI-native agents currently wired into the api-gateway
+composition root. Each is exposed as an optional `ServiceRegistry`
+slot, persists state through a Drizzle service in
+`packages/database/src/services/`, and degrades to a 503 envelope when
+`DATABASE_URL` is unset.
+
+| Agent | Registry slot | Wiring file | Persistence | Phase doc |
+|-------|---------------|-------------|-------------|-----------|
+| Monthly Close Orchestrator | `monthlyClose` | `services/api-gateway/src/composition/monthly-close-wiring.ts` | `monthly_close_runs` + `monthly_close_run_steps` (migration `0099`) | [PHASES_FINDINGS/phA2-monthly-close.md](./PHASES_FINDINGS/phA2-monthly-close.md) |
+| Voice Agent (Mr. Mwikila) | `voiceAgent` | `services/api-gateway/src/composition/voice-agent-wiring.ts` | `voice_turns` (migration `0110`) | [PHASES_FINDINGS/phL-ai-deeper.md](./PHASES_FINDINGS/phL-ai-deeper.md) |
+| Market-Rate Surveillance | `marketSurveillance` | `services/api-gateway/src/composition/market-surveillance-wiring.ts` | `market_rate_snapshots` (migration `0103`) | [PHASES_FINDINGS/phG-ai-native.md](./PHASES_FINDINGS/phG-ai-native.md) |
+| Predictive Interventions | `predictiveInterventions` | `services/api-gateway/src/composition/predictive-interventions-wiring.ts` | `tenant_predictions` + `predictive_intervention_opportunities` (migration `0106`) | [PHASES_FINDINGS/phG-ai-native.md](./PHASES_FINDINGS/phG-ai-native.md) |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) §"AI-native agent wirings" for
+the wired-vs-stubbed matrix and `.planning/RUNBOOK.md` §6.3 for
+operational guidance (env-var gates for real adapters, run-state
+inspection queries, manual monthly-close trigger).

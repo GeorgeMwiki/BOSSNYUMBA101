@@ -39,12 +39,16 @@ export const SurveyApprovalsQueue: React.FC = () => {
     setLoading(true);
     setLoadError(null);
     try {
-      // TODO: wire GET /owner/conditional-surveys?status=pending
-      const res = await api.get?.<ReadonlyArray<ConditionalSurvey>>(
+      const res = await api.get<ReadonlyArray<ConditionalSurvey>>(
         '/owner/conditional-surveys?status=pending'
       );
       if (!signal?.aborted) {
-        setItems(res?.data ?? []);
+        if (!res.success) {
+          setLoadError(res.error?.message ?? 'Failed to load survey queue');
+          setLoading(false);
+          return;
+        }
+        setItems(res.data ?? []);
         setLoading(false);
       }
     } catch (err) {
@@ -65,8 +69,11 @@ export const SurveyApprovalsQueue: React.FC = () => {
     setActError(null);
     setPending({ id, decision });
     try {
-      // TODO: wire POST /owner/conditional-surveys/:id/:decision
-      await api.post?.(`/owner/conditional-surveys/${id}/${decision}`, {});
+      const res = await api.post(`/owner/conditional-surveys/${id}/${decision}`, {});
+      if (!res.success) {
+        setActError(res.error?.message ?? `Failed to ${decision} survey`);
+        return;
+      }
       setItems((prev) => prev.filter((x) => x.id !== id));
     } catch (err) {
       setActError(err instanceof Error ? err.message : `Failed to ${decision} survey`);

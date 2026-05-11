@@ -339,7 +339,14 @@
     "pastSubmissions": "Maoni ya awali",
     "emptyTitle": "Bado hakuna maoni",
     "emptyBody": "Maoni yako yatakayowasilishwa yataonekana hapa",
-    "emptyCta": "Wasilisha maoni"
+    "emptyCta": "Wasilisha maoni",
+    "loading": "Inapakia maoni yako…",
+    "errorLoad": "Imeshindwa kupakia maoni yako.",
+    "retry": "Jaribu tena",
+    "statusOpen": "Wazi",
+    "statusInProgress": "Inashughulikiwa",
+    "statusResolved": "Imetatuliwa",
+    "statusClosed": "Imefungwa"
   },
   "requestFeedback": {
     "title": "Kadiria Huduma",
@@ -528,11 +535,18 @@
     "rateService": "Kadiria Huduma",
     "downloadDocument": "Pakua hati"
   },
+  "notificationsList": {
+    "loading": "Inapakia…",
+    "errorLoad": "Imeshindwa kupakia arifa.",
+    "retry": "Jaribu tena",
+    "empty": "Hakuna arifa mpya."
+  },
   "messagesList": {
     "loading": "Inapakia ujumbe…",
     "errorLoad": "Imeshindwa kupakia ujumbe.",
     "empty": "Bado hakuna ujumbe.",
-    "retry": "Jaribu tena"
+    "retry": "Jaribu tena",
+    "untitled": "Mazungumzo"
   },
   "feedbackPage": {
     "title": "Wasilisha Maoni",
@@ -552,7 +566,8 @@
     "messageLabel": "Maoni yako",
     "messagePlaceholder": "Shiriki mapendekezo yako au ripoti suala...",
     "submitting": "Inawasilisha...",
-    "submit": "Wasilisha Maoni"
+    "submit": "Wasilisha Maoni",
+    "errorSubmit": "Imeshindwa kuwasilisha maoni. Tafadhali jaribu tena."
   },
   "propertyRules": {
     "title": "Kanuni za Mali",
@@ -861,10 +876,22 @@
     "submitting": "Inawasilisha...",
     "submitFeedback": "Wasilisha Maoni",
     "category": {
-      "quality": { "label": "Ubora wa Kazi", "description": "Je, tatizo lilirekebishwa vizuri?" },
-      "timeliness": { "label": "Wakati", "description": "Je, huduma ilikamilika kwa wakati?" },
-      "communication": { "label": "Mawasiliano", "description": "Je, ulipata taarifa?" },
-      "professionalism": { "label": "Utaalamu", "description": "Je, fundi alikuwa na adabu?" }
+      "quality": {
+        "label": "Ubora wa Kazi",
+        "description": "Je, tatizo lilirekebishwa vizuri?"
+      },
+      "timeliness": {
+        "label": "Wakati",
+        "description": "Je, huduma ilikamilika kwa wakati?"
+      },
+      "communication": {
+        "label": "Mawasiliano",
+        "description": "Je, ulipata taarifa?"
+      },
+      "professionalism": {
+        "label": "Utaalamu",
+        "description": "Je, fundi alikuwa na adabu?"
+      }
     },
     "tag": {
       "professional": "Mtaalamu",

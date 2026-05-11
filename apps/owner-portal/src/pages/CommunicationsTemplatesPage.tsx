@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
 /**
  * CommunicationsTemplatesPage — placeholder until the templates API
@@ -7,14 +7,14 @@ import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPag
  * (rent reminder, payment confirmation, welcome tenant…) with fixed
  * usage counts and 2024/2025 timestamps. That was sample data, not
  * live state. Reintroduce the searchable list once the gateway exposes
- * `GET /owner/messaging/templates`.
+ * `GET /api/v1/owner/messaging/templates`.
  */
 export default function CommunicationsTemplatesPage() {
   const tr = useTranslations('templatesPage');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={tr('title')}
-      feature={tr('subtitle')}
+      endpoint="GET /api/v1/owner/messaging/templates"
       description={tr('subtitle')}
     />
   );

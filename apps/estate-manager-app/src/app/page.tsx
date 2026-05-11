@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Estate manager root — the Head of Estates' post-login home.
  *
@@ -6,13 +8,18 @@
  * plus a compact snapshot of what Mwikila did overnight and what needs
  * the head's eyes.
  *
- * Data note: every count / feed entry below is static demo data for
- * now. Wire to TanStack Query (head-briefing.router, autonomy-guard)
- * in a follow-up — this file deliberately does zero fetching so the
- * landing experience renders instantly on first paint.
+ * Data flow: a single TanStack Query against `headBriefingService.
+ * getMyBriefing()` resolves the BriefingDocument the gateway composes
+ * from autonomy / approvals / exception inbox / KPI sources. The
+ * gateway returns 503 HEAD_BRIEFING_UNAVAILABLE when the composer is
+ * not wired (degraded mode); we surface that as an honest empty state
+ * with a retry affordance instead of a runtime crash.
  */
 
+import { useMemo } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -25,13 +32,24 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
+import { headBriefingService } from '@bossnyumba/api-client';
 
-/* ──────────────────────────────  Demo data  ────────────────────────────── */
-// TODO(data): Replace with TanStack Query against head-briefing router.
-const OPERATOR_NAME = 'George';
-const OVERNIGHT_ACTIONS = 148;
+/**
+ * Briefing types derived via `Awaited<ReturnType<...>>` — sidesteps
+ * tsup's barrel namespace/type drift (TS2709) on
+ * `@bossnyumba/api-client`.
+ */
+type BriefingDocument = NonNullable<
+  Awaited<ReturnType<typeof headBriefingService.getMyBriefing>>['data']
+>;
+type NotableAutonomousAction =
+  BriefingDocument['overnight']['notableActions'][number];
+type EscalationItem = BriefingDocument['escalations']['items'][number];
+
+/* ──────────────────────────────  Types  ────────────────────────────── */
 
 interface ActionTile {
+  readonly key: string;
   readonly label: string;
   readonly count: number;
   readonly href: string;
@@ -39,87 +57,68 @@ interface ActionTile {
   readonly Icon: typeof AlertTriangle;
 }
 
-const ACTION_TILES: readonly ActionTile[] = [
-  {
-    label: 'Pending decisions',
-    count: 3,
-    href: '/briefing#pending',
-    tone: 'signal',
-    Icon: Sparkles,
-  },
-  {
-    label: 'Escalations',
-    count: 1,
-    href: '/briefing#escalations',
-    tone: 'warning',
-    Icon: AlertTriangle,
-  },
-  {
-    label: 'Auto-renewals',
-    count: 6,
-    href: '/leases?filter=auto-renewal',
-    tone: 'success',
-    Icon: RefreshCw,
-  },
-  {
-    label: 'Flagged for review',
-    count: 2,
-    href: '/briefing#flagged',
-    tone: 'neutral',
-    Icon: FileSearch,
-  },
-];
-
 interface AutonomousAction {
+  readonly id: string;
   readonly domain: string;
   readonly time: string;
   readonly body: string;
 }
 
-const RECENT_ACTIONS: readonly AutonomousAction[] = [
-  {
-    domain: 'Finance',
-    time: '06:42',
-    body: 'Mwikila reconciled 38 auto-debits and queued 2 retries for today.',
-  },
-  {
-    domain: 'Maintenance',
-    time: '05:18',
-    body: 'Mwikila dispatched 12 work orders to 4 trusted vendors overnight.',
-  },
-  {
-    domain: 'Leasing',
-    time: '04:18',
-    body: 'Mwikila approved 6 same-terms renewals within your policy envelope.',
-  },
-  {
-    domain: 'Communications',
-    time: '03:45',
-    body: 'Mwikila replied to 23 tenant WhatsApp threads and logged 4 for your read-through.',
-  },
-];
-
 /* ──────────────────────────────  Page  ────────────────────────────── */
 
 export default function ManagerHomePage() {
+  const t = useTranslations('homePage');
+
+  const briefingQuery = useQuery({
+    queryKey: ['head-briefing', 'home'],
+    queryFn: () => headBriefingService.getMyBriefing(),
+    retry: 1,
+    staleTime: 60_000,
+  });
+
+  const briefing: BriefingDocument | null = briefingQuery.data?.success
+    ? briefingQuery.data.data
+    : null;
+
+  const tiles = useMemo<ReadonlyArray<ActionTile>>(
+    () => buildActionTiles(briefing, t),
+    [briefing, t],
+  );
+
+  const recentActions = useMemo<ReadonlyArray<AutonomousAction>>(
+    () => buildRecentActions(briefing, t),
+    [briefing, t],
+  );
+
+  const overnightTotal = briefing?.overnight.totalAutonomousActions ?? 0;
+  const pendingCount = briefing?.pendingApprovals.count ?? 0;
+  const isDegraded =
+    briefingQuery.isError ||
+    (briefingQuery.isSuccess && briefingQuery.data?.success === false);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 sm:py-12">
         {/* Good-morning greeting */}
         <header className="max-w-2xl">
           <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
-            Monday · 22 April
+            {formatDateBadge(briefing?.generatedAt)}
           </p>
           <h1 className="mt-2 font-display text-4xl font-medium leading-tight tracking-tight sm:text-5xl">
-            Good morning, {OPERATOR_NAME}.
+            {t('greeting')}
           </h1>
           <p className="mt-3 text-base leading-relaxed text-neutral-500 sm:text-lg">
-            Mwikila handled{' '}
-            <span className="tabular-nums text-foreground">
-              {OVERNIGHT_ACTIONS}
-            </span>{' '}
-            actions overnight.{' '}
-            <span className="text-foreground">3 decisions need you.</span>
+            {briefingQuery.isLoading
+              ? t('loading')
+              : isDegraded
+              ? t('degradedSubtitle')
+              : t.rich('overnightSummary', {
+                  count: overnightTotal,
+                  pending: pendingCount,
+                  strong: (chunks) => (
+                    <span className="tabular-nums text-foreground">{chunks}</span>
+                  ),
+                })}
           </p>
         </header>
 
@@ -127,25 +126,24 @@ export default function ManagerHomePage() {
         <Link
           href="/briefing"
           className="group mt-8 flex flex-col items-start gap-5 rounded-2xl border border-signal-500/30 bg-signal-500/[0.04] p-6 transition-all duration-base ease-out hover:border-signal-500/60 hover:bg-signal-500/[0.07] sm:flex-row sm:items-center sm:gap-6 sm:p-8"
-          aria-label="Open morning briefing"
+          aria-label={t('openBriefingAria')}
         >
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-signal-500/10 ring-1 ring-signal-500/20 sm:h-16 sm:w-16">
             <Logomark size={36} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-mono text-[0.68rem] uppercase tracking-widest text-signal-500">
-              7am briefing · ready
+              {t('briefingReady')}
             </p>
             <h2 className="mt-1.5 font-display text-2xl font-medium leading-tight tracking-tight sm:text-3xl">
-              Open your morning briefing
+              {t('briefingHeroTitle')}
             </h2>
             <p className="mt-2 max-w-prose text-sm leading-relaxed text-neutral-500 sm:text-base">
-              Overnight actions, the three decisions waiting on you, portfolio
-              health, and tenant sentiment — in a 60-second read.
+              {briefing?.headline ?? t('briefingHeroFallback')}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 self-start rounded-md bg-signal-500 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fast ease-out group-hover:translate-x-0.5 sm:self-center">
-            Continue
+            {t('continue')}
             <ArrowUpRight className="h-4 w-4" />
           </div>
         </Link>
@@ -153,11 +151,11 @@ export default function ManagerHomePage() {
         {/* Action tiles */}
         <section className="mt-10">
           <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-            Needs your attention
+            {t('needsAttention')}
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            {ACTION_TILES.map((tile) => (
-              <ActionTileCard key={tile.label} tile={tile} />
+            {tiles.map((tile) => (
+              <ActionTileCard key={tile.key} tile={tile} />
             ))}
           </div>
         </section>
@@ -165,23 +163,22 @@ export default function ManagerHomePage() {
         {/* Relationship explorer discovery tile */}
         <section className="mt-10">
           <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-            Explore
+            {t('explore')}
           </h2>
           <Link
             href="/graph"
             className="group mt-4 flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-all duration-fast ease-out hover:border-border-strong hover:bg-surface-raised sm:p-5"
-            aria-label="Open relationship explorer"
+            aria-label={t('relationshipExplorerAria')}
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-signal-500/10 ring-1 ring-signal-500/20">
               <Network className="h-5 w-5 text-signal-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-display text-lg font-medium leading-tight tracking-tight">
-                Relationship explorer
+                {t('relationshipExplorerTitle')}
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-neutral-500 sm:text-sm">
-                Visual, searchable graph of units, tenants, vendors, incidents
-                and their 1–2 hop neighbourhoods.
+                {t('relationshipExplorerSubtitle')}
               </p>
             </div>
             <ArrowUpRight className="h-4 w-4 shrink-0 text-neutral-500 transition-colors group-hover:text-foreground" />
@@ -194,48 +191,54 @@ export default function ManagerHomePage() {
           <div>
             <div className="flex items-baseline justify-between">
               <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-                Latest autonomous actions
+                {t('latestActions')}
               </h2>
               <Link
                 href="/briefing#overnight"
                 className="flex items-center gap-1 text-xs font-medium text-neutral-500 transition-colors duration-fast hover:text-foreground"
               >
-                All 148
+                {t('viewAll', { count: overnightTotal })}
                 <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
-            <ol className="mt-4 space-y-1.5">
-              {RECENT_ACTIONS.map((action, i) => (
-                <ActionRow key={i} action={action} />
-              ))}
-            </ol>
+            {briefingQuery.isLoading ? (
+              <ActionRowSkeletons />
+            ) : recentActions.length === 0 ? (
+              <p className="mt-4 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-sm text-neutral-500">
+                {isDegraded ? t('degradedListMessage') : t('emptyOvernight')}
+              </p>
+            ) : (
+              <ol className="mt-4 space-y-1.5">
+                {recentActions.map((action) => (
+                  <ActionRow key={action.id} action={action} />
+                ))}
+              </ol>
+            )}
           </div>
 
           {/* Autonomy level */}
           <aside>
             <h2 className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
-              Autonomy
+              {t('autonomy')}
             </h2>
             <div className="mt-4 rounded-xl border border-border bg-surface-raised p-5">
               <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-signal-500" />
                 <span className="inline-flex items-center rounded-full bg-signal-500/10 px-2 py-0.5 font-mono text-[0.65rem] font-semibold uppercase tracking-widest text-signal-500 tabular-nums">
-                  Level L3
+                  {t('autonomyLevelBadge')}
                 </span>
               </div>
               <p className="mt-3 font-display text-2xl font-medium leading-tight tracking-tight">
-                Act on most
+                {t('autonomyHeadline')}
               </p>
               <p className="mt-2 text-sm leading-relaxed text-neutral-500">
-                Mwikila runs the portfolio. You see exceptions only.{' '}
-                <span className="tabular-nums text-foreground">7</span> red-line
-                actions still require your approval.
+                {t('autonomySubtitle', { redlines: pendingCount })}
               </p>
               <Link
                 href="/autonomy"
                 className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-signal-500 transition-colors duration-fast hover:text-signal-400"
               >
-                Tune policy
+                {t('tunePolicy')}
                 <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
@@ -247,17 +250,145 @@ export default function ManagerHomePage() {
           <div className="flex items-center gap-2.5">
             <Logomark size={20} />
             <span className="font-mono text-[0.72rem] text-neutral-500">
-              Today · Nairobi · <span className="tabular-nums">07:04</span>
+              {t('footerToday', { time: formatTime(briefing?.generatedAt) })}
             </span>
           </div>
           <div className="flex items-center gap-2 font-mono text-[0.68rem] text-neutral-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            <span>All systems operational</span>
+            <span
+              className={
+                'h-1.5 w-1.5 rounded-full ' +
+                (isDegraded ? 'bg-warning' : 'bg-success')
+              }
+            />
+            <span>{isDegraded ? t('systemsDegraded') : t('systemsOk')}</span>
           </div>
         </footer>
       </div>
     </div>
   );
+}
+
+/* ────────────────────────  Derivation helpers  ────────────────────── */
+
+function buildActionTiles(
+  briefing: BriefingDocument | null,
+  t: ReturnType<typeof useTranslations>,
+): ReadonlyArray<ActionTile> {
+  const pending = briefing?.pendingApprovals.count ?? 0;
+  const escalations = briefing?.escalations.count ?? 0;
+  const autoRenewals = briefing?.overnight.byDomain.leasing ?? 0;
+  const flagged =
+    briefing?.escalations.byPriority.P3 ??
+    briefing?.recommendations.length ??
+    0;
+
+  return [
+    {
+      key: 'pending',
+      label: t('tilePending'),
+      count: pending,
+      href: '/briefing#pending',
+      tone: 'signal',
+      Icon: Sparkles,
+    },
+    {
+      key: 'escalations',
+      label: t('tileEscalations'),
+      count: escalations,
+      href: '/briefing#escalations',
+      tone: 'warning',
+      Icon: AlertTriangle,
+    },
+    {
+      key: 'auto-renewals',
+      label: t('tileAutoRenewals'),
+      count: autoRenewals,
+      href: '/leases?filter=auto-renewal',
+      tone: 'success',
+      Icon: RefreshCw,
+    },
+    {
+      key: 'flagged',
+      label: t('tileFlagged'),
+      count: flagged,
+      href: '/briefing#flagged',
+      tone: 'neutral',
+      Icon: FileSearch,
+    },
+  ];
+}
+
+function buildRecentActions(
+  briefing: BriefingDocument | null,
+  t: ReturnType<typeof useTranslations>,
+): ReadonlyArray<AutonomousAction> {
+  if (!briefing) return [];
+  // Combine notable autonomous actions with the top escalations so the
+  // landing feed reflects "what Mwikila did" + "what bubbled up".
+  const fromNotable: ReadonlyArray<AutonomousAction> =
+    briefing.overnight.notableActions.map((a: NotableAutonomousAction) => ({
+      id: a.actionId,
+      domain: domainLabel(a.domain, t),
+      time: '',
+      body: a.summary,
+    }));
+  const fromEscalations: ReadonlyArray<AutonomousAction> =
+    briefing.escalations.items.map((e: EscalationItem) => ({
+      id: e.exceptionId,
+      domain: e.domain,
+      time: '',
+      body: e.summary,
+    }));
+  return [...fromNotable, ...fromEscalations].slice(0, 6);
+}
+
+function formatDateBadge(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+  } catch {
+    return '';
+  }
+}
+
+function formatTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '';
+  }
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s[0].toUpperCase() + s.slice(1);
+}
+
+/**
+ * Translate an AutonomyDomain key to a localised label. next-intl
+ * throws on missing keys, so we wrap each lookup in a guard and fall
+ * back to a Title-Cased version of the raw key.
+ */
+function domainLabel(
+  key: string,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  try {
+    return t(`domain.${key}`);
+  } catch {
+    return capitalize(key.replace(/_/g, ' '));
+  }
 }
 
 /* ────────────────────────  Presentation kit  ──────────────────────── */
@@ -302,15 +433,36 @@ function ActionRow({ action }: { readonly action: AutonomousAction }) {
           <span className="font-mono text-[0.68rem] uppercase tracking-widest text-neutral-500">
             {action.domain}
           </span>
-          <span className="font-mono text-[0.68rem] text-neutral-500">
-            <Clock className="mr-1 inline h-2.5 w-2.5" />
-            <span className="tabular-nums">{action.time}</span>
-          </span>
+          {action.time ? (
+            <span className="font-mono text-[0.68rem] text-neutral-500">
+              <Clock className="mr-1 inline h-2.5 w-2.5" />
+              <span className="tabular-nums">{action.time}</span>
+            </span>
+          ) : null}
         </div>
         <p className="mt-0.5 text-sm leading-relaxed text-foreground">
           {action.body}
         </p>
       </div>
     </li>
+  );
+}
+
+function ActionRowSkeletons() {
+  return (
+    <ol className="mt-4 space-y-1.5" aria-busy="true" aria-live="polite">
+      {[0, 1, 2, 3].map((i) => (
+        <li
+          key={i}
+          className="flex items-start gap-4 rounded-lg border border-transparent p-3"
+        >
+          <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-signal-500/10" />
+          <div className="flex-1 space-y-2">
+            <div className="h-2 w-24 animate-pulse rounded bg-border" />
+            <div className="h-3 w-3/4 animate-pulse rounded bg-border" />
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

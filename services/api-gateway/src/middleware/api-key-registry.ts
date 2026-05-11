@@ -1,3 +1,4 @@
+/* eslint-disable no-secrets/no-secrets -- doc-comment example illustrates the env-var syntax; the literal hashes are placeholders, not real keys. */
 /**
  * API key registry — hashed lookup with per-key tenant/role/scopes binding.
  * Replaces the legacy SUPER_ADMIN-by-any-key pattern from C-1.
@@ -5,6 +6,7 @@
  * Key format in env: API_KEY_REGISTRY=keyHash:tenantId:role:scopes,...
  * Example: API_KEY_REGISTRY=abc123hash:demo:ESTATE_MANAGER:read_property read_lease,def456hash:nhc:SUPER_ADMIN:*
  */
+/* eslint-enable no-secrets/no-secrets */
 
 import { createHash, timingSafeEqual } from 'node:crypto';
 // UserRole alias — avoids circular package import

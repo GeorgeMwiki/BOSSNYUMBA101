@@ -1,12 +1,21 @@
 import { useTranslations } from 'next-intl';
-import { LiveDataRequiredPage } from '../components/migrated/LiveDataRequiredPage';
+import { MissingBackendNotice } from '../components/MissingBackendNotice';
 
+/**
+ * UserRolesPage — placeholder until the role-management endpoints land.
+ *
+ * Required gateway routes:
+ *   GET    /api/v1/admin/roles
+ *   POST   /api/v1/admin/roles
+ *   PATCH  /api/v1/admin/roles/:id
+ *   DELETE /api/v1/admin/roles/:id
+ */
 export function UserRolesPage() {
   const t = useTranslations('pages');
   return (
-    <LiveDataRequiredPage
+    <MissingBackendNotice
       title={t('userRolesTitleLabel')}
-      feature={t('userRolesFeature')}
+      endpoint="GET /api/v1/admin/roles"
       description={t('userRolesDescription')}
     />
   );

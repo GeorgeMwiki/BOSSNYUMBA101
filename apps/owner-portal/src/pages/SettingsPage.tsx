@@ -206,23 +206,24 @@ export function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
-                  <input type="text" defaultValue={user?.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label htmlFor="settings-first-name" className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
+                  <input id="settings-first-name" type="text" defaultValue={user?.firstName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
-                  <input type="text" defaultValue={user?.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label htmlFor="settings-last-name" className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
+                  <input id="settings-last-name" type="text" defaultValue={user?.lastName} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
-                <input type="email" defaultValue={user?.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label htmlFor="settings-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
+                <input id="settings-email" type="email" defaultValue={user?.email} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
+                <label htmlFor="settings-phone" className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
                 <input
+                  id="settings-phone"
                   type="tel"
                   defaultValue={(user as { phone?: string } | null)?.phone ?? ''}
                   placeholder={t('phonePlaceholder')}
@@ -231,8 +232,8 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('organization')}</label>
-                <input type="text" defaultValue={tenant?.name} disabled className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500" />
+                <label htmlFor="settings-org" className="block text-sm font-medium text-gray-700 mb-1">{t('organization')}</label>
+                <input id="settings-org" type="text" defaultValue={tenant?.name} disabled className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500" />
               </div>
 
               <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
@@ -283,16 +284,16 @@ export function SettingsPage() {
                 <h3 className="font-medium text-gray-900 mb-4">{t('changePassword')}</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('currentPassword')}</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label htmlFor="settings-current-password" className="block text-sm font-medium text-gray-700 mb-1">{t('currentPassword')}</label>
+                    <input id="settings-current-password" type="password" autoComplete="current-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label htmlFor="settings-new-password" className="block text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
+                    <input id="settings-new-password" type="password" autoComplete="new-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmNewPassword')}</label>
-                    <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label htmlFor="settings-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{t('confirmNewPassword')}</label>
+                    <input id="settings-confirm-password" type="password" autoComplete="new-password" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                     {t('updatePassword')}
@@ -478,36 +479,50 @@ export function SettingsPage() {
 
       {/* Invite User Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-user-title"
+        >
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowInviteModal(false)} />
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowInviteModal(false)}
+              aria-hidden="true"
+            />
             <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">{t('inviteUser')}</h3>
-                <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X className="h-5 w-5 text-gray-500" />
+                <h3 id="invite-user-title" className="text-lg font-semibold text-gray-900">{t('inviteUser')}</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  aria-label={t('cancel')}
+                  className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <X className="h-5 w-5 text-gray-500" aria-hidden="true" />
                 </button>
               </div>
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
-                    <input type="text" value={inviteForm.firstName} onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label htmlFor="invite-first-name" className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
+                    <input id="invite-first-name" type="text" value={inviteForm.firstName} onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
-                    <input type="text" value={inviteForm.lastName} onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label htmlFor="invite-last-name" className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
+                    <input id="invite-last-name" type="text" value={inviteForm.lastName} onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
-                  <input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label htmlFor="invite-email" className="block text-sm font-medium text-gray-700 mb-1">{t('emailAddress')}</label>
+                  <input id="invite-email" type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('colRole')}</label>
-                  <select value={inviteForm.role} onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <label htmlFor="invite-role" className="block text-sm font-medium text-gray-700 mb-1">{t('colRole')}</label>
+                  <select id="invite-role" value={inviteForm.role} onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="VIEWER">{t('roleViewer')}</option>
                     <option value="CO_OWNER">{t('roleCoOwner')}</option>
                   </select>

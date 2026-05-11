@@ -1,17 +1,100 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Bell, Mail, MessageSquare, Globe, DollarSign } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import {
+  CURRENCY_STORAGE_KEY,
+  FALLBACK_CURRENCY,
+} from '@/lib/hooks/useCurrencyPreference';
+
+const NOTIFICATIONS_STORAGE_KEY = 'customer_notification_prefs_v1';
+const LOCALE_COOKIE = 'NEXT_LOCALE';
+const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+interface NotificationPrefs {
+  readonly push: boolean;
+  readonly email: boolean;
+  readonly sms: boolean;
+}
+
+const DEFAULT_PREFS: NotificationPrefs = {
+  push: true,
+  email: true,
+  sms: false,
+};
+
+function readPrefs(): NotificationPrefs {
+  if (typeof window === 'undefined') return DEFAULT_PREFS;
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    if (!raw) return DEFAULT_PREFS;
+    const parsed = JSON.parse(raw) as Partial<NotificationPrefs>;
+    return {
+      push: typeof parsed.push === 'boolean' ? parsed.push : DEFAULT_PREFS.push,
+      email: typeof parsed.email === 'boolean' ? parsed.email : DEFAULT_PREFS.email,
+      sms: typeof parsed.sms === 'boolean' ? parsed.sms : DEFAULT_PREFS.sms,
+    };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+function writePrefs(prefs: NotificationPrefs): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // localStorage may be disabled — silently ignore.
+  }
+}
+
+function readCurrency(): string {
+  if (typeof window === 'undefined') return FALLBACK_CURRENCY;
+  try {
+    return window.localStorage.getItem(CURRENCY_STORAGE_KEY) ?? FALLBACK_CURRENCY;
+  } catch {
+    return FALLBACK_CURRENCY;
+  }
+}
 
 export default function SettingsPage() {
   const t = useTranslations('settingsPage');
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [language, setLanguage] = useState('en');
-  const [currency, setCurrency] = useState('KES');
+  const activeLocale = useLocale();
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
+  const [language, setLanguage] = useState<string>(activeLocale);
+  const [currency, setCurrency] = useState<string>(FALLBACK_CURRENCY);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setPrefs(readPrefs());
+    setCurrency(readCurrency());
+  }, []);
+
+  function updatePrefs(next: NotificationPrefs): void {
+    setPrefs(next);
+    writePrefs(next);
+  }
+
+  function handleLanguageChange(next: string): void {
+    setLanguage(next);
+    if (next === activeLocale) return;
+    document.cookie = `${LOCALE_COOKIE}=${next}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
+    startTransition(() => {
+      window.location.reload();
+    });
+  }
+
+  function handleCurrencyChange(next: string): void {
+    setCurrency(next);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(CURRENCY_STORAGE_KEY, next);
+    } catch {
+      // localStorage may be disabled — silently ignore.
+    }
+  }
 
   const languages = [
     { value: 'en', label: t('english') },
@@ -49,15 +132,15 @@ export default function SettingsPage() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={pushEnabled}
-                onClick={() => setPushEnabled(!pushEnabled)}
+                aria-checked={prefs.push}
+                onClick={() => updatePrefs({ ...prefs, push: !prefs.push })}
                 className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  pushEnabled ? 'bg-primary-500' : 'bg-gray-200'
+                  prefs.push ? 'bg-primary-500' : 'bg-gray-200'
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
-                    pushEnabled ? 'translate-x-5' : 'translate-x-1'
+                    prefs.push ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -77,15 +160,15 @@ export default function SettingsPage() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={emailEnabled}
-                onClick={() => setEmailEnabled(!emailEnabled)}
+                aria-checked={prefs.email}
+                onClick={() => updatePrefs({ ...prefs, email: !prefs.email })}
                 className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  emailEnabled ? 'bg-primary-500' : 'bg-gray-200'
+                  prefs.email ? 'bg-primary-500' : 'bg-gray-200'
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
-                    emailEnabled ? 'translate-x-5' : 'translate-x-1'
+                    prefs.email ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -105,15 +188,15 @@ export default function SettingsPage() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={smsEnabled}
-                onClick={() => setSmsEnabled(!smsEnabled)}
+                aria-checked={prefs.sms}
+                onClick={() => updatePrefs({ ...prefs, sms: !prefs.sms })}
                 className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  smsEnabled ? 'bg-primary-500' : 'bg-gray-200'
+                  prefs.sms ? 'bg-primary-500' : 'bg-gray-200'
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
-                    smsEnabled ? 'translate-x-5' : 'translate-x-1'
+                    prefs.sms ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -138,7 +221,7 @@ export default function SettingsPage() {
                 <select
                   id="language"
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
                   className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {languages.map((opt) => (
@@ -169,7 +252,7 @@ export default function SettingsPage() {
                 <select
                   id="currency"
                   value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
                   className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {currencies.map((opt) => (

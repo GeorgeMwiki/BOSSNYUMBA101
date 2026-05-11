@@ -121,9 +121,9 @@ describe('deep-health handler', () => {
 
   const fakeRes = () => {
     let code: number | undefined;
-    let headers: Record<string, string> = {};
+    const headers: Record<string, string> = {};
     let body: unknown;
-    return {
+    const resObj = {
       status: (c: number) => { code = c; return resObj; },
       json: (b: unknown) => { body = b; return resObj; },
       setHeader: (k: string, v: string) => { headers[k] = v; return resObj; },
@@ -131,9 +131,7 @@ describe('deep-health handler', () => {
       get headers() { return headers; },
       get body() { return body as Record<string, unknown>; },
     };
-    // Not actually used because of the early return above — keep TS happy.
-    const resObj = undefined as unknown as ReturnType<typeof createRes>;
-    function createRes() { return resObj; }
+    return resObj;
   };
 
   it('refuses non-admin in production', async () => {

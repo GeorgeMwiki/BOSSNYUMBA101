@@ -46,7 +46,9 @@ const ROLE_KEYWORDS: readonly RoleKeywords[] = [
     role: 'owner',
     weight: 1.0,
     keywords: [
+      // eslint-disable-next-line security/detect-unsafe-regex -- bounded alternation, no catastrophic backtracking; safe-regex false positive on nested non-capturing groups.
       /\bown\s+(?:a\s+)?(?:property|units?|block|plot|apartment|houses?)\b/i,
+      // eslint-disable-next-line security/detect-unsafe-regex -- same: bounded alternation; no quantifier on alternation groups.
       /\bi\s+am\s+(?:an?\s+)?(?:landlord|owner|investor)\b/i,
       /\bmy\s+(?:rental|property|building|estate|portfolio|units?)\b/i,
       /\blandlord\b/i,
@@ -58,6 +60,7 @@ const ROLE_KEYWORDS: readonly RoleKeywords[] = [
     role: 'tenant',
     weight: 1.0,
     keywords: [
+      // eslint-disable-next-line security/detect-unsafe-regex -- bounded alternation; safe-regex false positive on nested non-capturing groups with no quantifier.
       /\bi\s+(?:am\s+)?(?:a\s+)?tenant\b/i,
       /\bi\s+(?:rent|live\s+in)\b/i,
       /\bmy\s+(?:landlord|rent|apartment|house)\b/i,
@@ -104,6 +107,7 @@ const ROUTE_KEYWORDS: ReadonlyArray<{ re: RegExp; route: SuggestedRoute }> = [
   { re: /\bprice|pricing|cost|plan|tier|subscription|how\s+much\b/i, route: 'pricing_advisor' },
   { re: /\bdemo|try|play|sandbox|test\s+drive\b/i, route: 'sandbox_demo' },
   { re: /\bwaitlist|not\s+ready|maybe\s+later|later\b/i, route: 'waitlist_signup' },
+  // eslint-disable-next-line security/detect-unsafe-regex -- bounded alternation; safe-regex false positive on `(?:a\s+)?` inside larger alternation.
   { re: /\btalk\s+to\s+(?:a\s+)?human|call\s+me|sales|book\s+a\s+call\b/i, route: 'human_handoff' },
 ];
 

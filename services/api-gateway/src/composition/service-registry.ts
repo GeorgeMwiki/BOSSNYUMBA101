@@ -192,6 +192,23 @@ import {
   type ClassroomService,
 } from './classroom-wiring.js';
 import {
+  createMonthlyCloseWiring,
+  type MonthlyCloseWiring,
+} from './monthly-close-wiring.js';
+import {
+  createVoiceAgentWiring,
+  type VoiceAgentWiring,
+} from './voice-agent-wiring.js';
+import { createBrainKernelWiring } from './brain-kernel-wiring.js';
+import {
+  createMarketSurveillanceWiring,
+  type MarketSurveillanceWiring,
+} from './market-surveillance-wiring.js';
+import {
+  createPredictiveInterventionsWiring,
+  type PredictiveInterventionsWiring,
+} from './predictive-interventions-wiring.js';
+import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
   createTrainingAssignmentService,
@@ -525,6 +542,31 @@ export interface ServiceRegistry {
     readonly repo: PostgresFarRepository | null;
   };
 
+  /** Monthly close orchestrator (Wave 28 PhA2) — Drizzle-backed
+   *  RunStorePort + stub external ports (reconciliation, statements,
+   *  disbursement, notification, event, autonomy). The orchestrator
+   *  is constructable today and persists run/step state to Postgres;
+   *  concrete external-port adapters land in follow-ups. */
+  readonly monthlyClose: MonthlyCloseWiring | null;
+
+  /** Voice agent — Drizzle-backed VoiceTurnRepository + degraded brain
+   *  stub. STT / TTS / customer-resolver are null (the agent supports
+   *  null on all three). Production deployment of those adapters is
+   *  a follow-up; the agent is operable in degraded mode today. */
+  readonly voiceAgent: VoiceAgentWiring | null;
+
+  /** Market-rate surveillance agent — Drizzle-backed snapshot
+   *  persistence + stub MarketRatePort. `listActiveUnits` returns []
+   *  until the units adapter lands (the surveillance loop no-ops
+   *  cleanly). */
+  readonly marketSurveillance: MarketSurveillanceWiring | null;
+
+  /** Predictive interventions agent — Drizzle-backed prediction +
+   *  opportunity persistence. `listActiveTenants` returns [] until the
+   *  occupancy/leases adapter lands. LLM port is undefined so the agent
+   *  runs in heuristic-baseline mode. */
+  readonly predictiveInterventions: PredictiveInterventionsWiring | null;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -817,6 +859,12 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Wave 26 Z3 — move-out + approvals wiring.
     moveOut: { service: null },
     approvals: { service: null },
+    // Drizzle-backed agent wirings — null in degraded mode (DATABASE_URL
+    // unset). Each consumer router/scheduler tolerates the null slot.
+    monthlyClose: null,
+    voiceAgent: null,
+    marketSurveillance: null,
+    predictiveInterventions: null,
     eventBus,
     db: null,
     isLive: false,
@@ -1429,6 +1477,36 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         eventBus,
       ),
     },
+    // Drizzle-backed agent wirings — schemas + storage adapters shipped
+    // in commits ea93ed6 / e33cebc; orchestrator + agents constructed
+    // here against those adapters. External ports (LLM, MarketRate,
+    // STT/TTS, reconciliation/statements/disbursement) are stub
+    // adapters today so the registry is operable end-to-end without
+    // external creds — concrete adapters land in follow-ups.
+    monthlyClose: createMonthlyCloseWiring({
+      db,
+      eventBus,
+      autonomyRepository: new PostgresAutonomyPolicyRepository(db),
+    }),
+    // Central-intelligence `BrainKernel` is constructed once per
+    // gateway boot. When no Anthropic key is configured the wiring
+    // returns null and the voice agent transparently falls back to
+    // its degraded `VOICE_BRAIN_NOT_CONFIGURED` stub. When the kernel
+    // is composed, every voice turn round-trips through the
+    // disciplined 13-step pipeline (cache → inviolable → tier →
+    // memory → cohort → persona → sensor failover → normalize →
+    // judge → drift → policy → confidence → provenance).
+    voiceAgent: (() => {
+      const brainKernel = createBrainKernelWiring({
+        buildBudgetGuardedAnthropicClient,
+      });
+      return createVoiceAgentWiring({
+        db,
+        ...(brainKernel ? { kernelThink: brainKernel.think } : {}),
+      });
+    })(),
+    marketSurveillance: createMarketSurveillanceWiring({ db }),
+    predictiveInterventions: createPredictiveInterventionsWiring({ db }),
     eventBus,
     db,
     isLive: true,

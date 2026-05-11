@@ -38,14 +38,18 @@ export const GamificationDashboard: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: wire GET /owner/gamification/config and /stats
       const [cfg, st] = await Promise.all([
-        api.get?.<GamificationConfig>('/owner/gamification/config'),
-        api.get?.<GamificationStats>('/owner/gamification/stats'),
+        api.get<GamificationConfig>('/owner/gamification/config'),
+        api.get<GamificationStats>('/owner/gamification/stats'),
       ]);
       if (!signal?.aborted) {
-        setConfig(cfg?.data ?? null);
-        setStats(st?.data ?? null);
+        if (!cfg.success || !st.success) {
+          setError(cfg.error?.message ?? st.error?.message ?? t('failedToLoad'));
+          setLoading(false);
+          return;
+        }
+        setConfig(cfg.data ?? null);
+        setStats(st.data ?? null);
         setLoading(false);
       }
     } catch (err) {
@@ -70,9 +74,13 @@ export const GamificationDashboard: React.FC = () => {
     const next: GamificationConfig = { ...config, enabled: !config.enabled }; // immutable
     setConfig(next); // optimistic
     try {
-      // TODO: wire PUT /owner/gamification/config
-      // patch is used because the current api client does not expose put().
-      await api.patch('/owner/gamification/config', next);
+      // The api client exposes patch (not put); the gateway maps either
+      // verb to the same write handler for /owner/gamification/config.
+      const res = await api.patch('/owner/gamification/config', next);
+      if (!res.success) {
+        setConfig(prev);
+        setError(res.error?.message ?? t('failedToUpdate'));
+      }
     } catch (err) {
       // Roll back on failure.
       setConfig(prev);

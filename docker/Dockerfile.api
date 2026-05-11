@@ -44,7 +44,11 @@ COPY packages ./packages
 COPY services ./services
 
 # Build api-gateway and every workspace package it depends on.
-RUN pnpm --filter=@bossnyumba/api-gateway... build
+# `--workspace-concurrency=1` serialises the topological build so that
+# transitive `dist/` artifacts (e.g. @bossnyumba/forecasting) exist
+# before downstream packages (@bossnyumba/ai-copilot) run their `tsc`
+# and import them via `node_modules` symlinks.
+RUN pnpm --filter=@bossnyumba/api-gateway... --workspace-concurrency=1 build
 
 # NOTE: production-only pruning (`pnpm deploy --prod`) is intentionally not
 # performed here — in a pnpm workspace with `workspace:*` symlinks, deploy

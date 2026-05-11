@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 import {
   ChevronRight,
   ChevronLeft,
@@ -55,10 +56,13 @@ const STEPS: StepInfo[] = [
   },
 ];
 
+const SAMPLE_MONTHLY_RENT = 40000;
+
 export default function OnboardingPage() {
   const t = useTranslations('onboarding');
   const tA11y = useTranslations('a11y');
   const router = useRouter();
+  const { format: formatCurrency } = useCurrencyPreference();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -485,7 +489,7 @@ export default function OnboardingPage() {
               <div className="space-y-2 text-sm text-gray-600 border-t border-gray-100 pt-4">
                 <div className="flex justify-between">
                   <span>{t('monthlyRent')}</span>
-                  <span className="font-medium text-gray-900">KES 40,000</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(SAMPLE_MONTHLY_RENT)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{t('startDate')}</span>

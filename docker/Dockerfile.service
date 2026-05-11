@@ -64,7 +64,7 @@ COPY packages ./packages
 COPY services ./services
 
 # Build target package + its workspace deps.
-RUN pnpm --filter="${PACKAGE_NAME}..." build
+RUN pnpm --filter="${PACKAGE_NAME}..." --workspace-concurrency=1 build
 
 # -----------------------------------------------------------------------------
 # Stage 3: Production Runner

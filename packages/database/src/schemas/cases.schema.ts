@@ -188,6 +188,15 @@ export const cases = pgTable(
     statusIdx: index('cases_status_idx').on(table.status),
     assignedToIdx: index('cases_assigned_to_idx').on(table.assignedTo),
     resolutionDueAtIdx: index('cases_resolution_due_at_idx').on(table.resolutionDueAt),
+    // Wave-4 D9: predictive-interventions disputes-90d aggregation
+    // filters on (tenant_id, case_type IN (...), created_at >= cutoff)
+    // and groups by customer_id. The composite supports the range +
+    // type filter without a separate sort.
+    tenantTypeCreatedIdx: index('cases_tenant_type_created_idx').on(
+      table.tenantId,
+      table.caseType,
+      table.createdAt,
+    ),
   })
 );
 

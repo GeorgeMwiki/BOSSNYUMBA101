@@ -57,6 +57,24 @@ export interface RelationshipSyncPayload {
 
 // ─── Sync Engine ─────────────────────────────────────────────────────────────
 
+/**
+ * SECURITY: Cypher does not parameterise labels or relationship types, so they
+ * MUST be interpolated into the query string. To prevent Cypher injection via
+ * a malicious upstream `event.entityType` (or any caller-supplied label/type)
+ * we hard-restrict identifiers to a safe alphanumeric shape before
+ * interpolating. Anything else throws before the query runs.
+ */
+const SAFE_IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
+function assertSafeIdent(value: string, kind: 'label' | 'relationship type'): string {
+  if (typeof value !== 'string' || !SAFE_IDENT_RE.test(value)) {
+    throw new Error(
+      `graph-sync: invalid ${kind} "${String(value)}" — must match ${SAFE_IDENT_RE.source}`,
+    );
+  }
+  return value;
+}
+
 export class GraphSyncEngine {
   constructor(private client: Neo4jClient) {}
 
@@ -64,8 +82,9 @@ export class GraphSyncEngine {
    * Upsert a single node (idempotent via MERGE)
    */
   async upsertNode(payload: NodeSyncPayload): Promise<void> {
+    const label = assertSafeIdent(payload.label, 'label');
     const cypher = `
-      MERGE (n:${payload.label} {_tenantId: $tenantId, _id: $id})
+      MERGE (n:${label} {_tenantId: $tenantId, _id: $id})
       SET n += $properties,
           n._syncedAt = datetime(),
           n._sourceTable = $sourceTable
@@ -75,7 +94,7 @@ export class GraphSyncEngine {
       tenantId: payload.tenantId,
       id: payload.id,
       properties: sanitizeProperties(payload.properties),
-      sourceTable: payload.label.toLowerCase() + 's',
+      sourceTable: label.toLowerCase() + 's',
     });
   }
 
@@ -84,10 +103,11 @@ export class GraphSyncEngine {
    */
   async batchUpsertNodes(label: string, nodes: NodeSyncPayload[]): Promise<number> {
     if (nodes.length === 0) return 0;
+    const safeLabel = assertSafeIdent(label, 'label');
 
     const cypher = `
       UNWIND $nodes AS node
-      MERGE (n:${label} {_tenantId: node.tenantId, _id: node.id})
+      MERGE (n:${safeLabel} {_tenantId: node.tenantId, _id: node.id})
       SET n += node.properties,
           n._syncedAt = datetime(),
           n._sourceTable = $sourceTable
@@ -101,7 +121,7 @@ export class GraphSyncEngine {
 
     await this.client.writeQuery(cypher, {
       nodes: nodeData,
-      sourceTable: label.toLowerCase() + 's',
+      sourceTable: safeLabel.toLowerCase() + 's',
     });
 
     return nodes.length;
@@ -111,10 +131,13 @@ export class GraphSyncEngine {
    * Upsert a relationship (idempotent via MERGE)
    */
   async upsertRelationship(payload: RelationshipSyncPayload): Promise<void> {
+    const fromLabel = assertSafeIdent(payload.fromLabel, 'label');
+    const toLabel = assertSafeIdent(payload.toLabel, 'label');
+    const relType = assertSafeIdent(payload.type, 'relationship type');
     const cypher = `
-      MATCH (a:${payload.fromLabel} {_tenantId: $tenantId, _id: $fromId})
-      MATCH (b:${payload.toLabel} {_tenantId: $tenantId, _id: $toId})
-      MERGE (a)-[r:${payload.type}]->(b)
+      MATCH (a:${fromLabel} {_tenantId: $tenantId, _id: $fromId})
+      MATCH (b:${toLabel} {_tenantId: $tenantId, _id: $toId})
+      MERGE (a)-[r:${relType}]->(b)
       SET r += $properties,
           r._syncedAt = datetime()
     `;
@@ -137,12 +160,15 @@ export class GraphSyncEngine {
     relationships: RelationshipSyncPayload[]
   ): Promise<number> {
     if (relationships.length === 0) return 0;
+    const safeFrom = assertSafeIdent(fromLabel, 'label');
+    const safeTo = assertSafeIdent(toLabel, 'label');
+    const safeRel = assertSafeIdent(relType, 'relationship type');
 
     const cypher = `
       UNWIND $rels AS rel
-      MATCH (a:${fromLabel} {_tenantId: rel.tenantId, _id: rel.fromId})
-      MATCH (b:${toLabel} {_tenantId: rel.tenantId, _id: rel.toId})
-      MERGE (a)-[r:${relType}]->(b)
+      MATCH (a:${safeFrom} {_tenantId: rel.tenantId, _id: rel.fromId})
+      MATCH (b:${safeTo} {_tenantId: rel.tenantId, _id: rel.toId})
+      MERGE (a)-[r:${safeRel}]->(b)
       SET r += rel.properties,
           r._syncedAt = datetime()
     `;
@@ -162,8 +188,9 @@ export class GraphSyncEngine {
    * Remove a node and all its relationships (soft delete sync)
    */
   async removeNode(label: string, tenantId: string, id: string): Promise<void> {
+    const safeLabel = assertSafeIdent(label, 'label');
     const cypher = `
-      MATCH (n:${label} {_tenantId: $tenantId, _id: $id})
+      MATCH (n:${safeLabel} {_tenantId: $tenantId, _id: $id})
       DETACH DELETE n
     `;
 
@@ -181,10 +208,13 @@ export class GraphSyncEngine {
     relType: string,
     tenantId: string
   ): Promise<void> {
+    const safeFrom = assertSafeIdent(fromLabel, 'label');
+    const safeTo = assertSafeIdent(toLabel, 'label');
+    const safeRel = assertSafeIdent(relType, 'relationship type');
     const cypher = `
-      MATCH (a:${fromLabel} {_tenantId: $tenantId, _id: $fromId})
-            -[r:${relType}]->
-            (b:${toLabel} {_tenantId: $tenantId, _id: $toId})
+      MATCH (a:${safeFrom} {_tenantId: $tenantId, _id: $fromId})
+            -[r:${safeRel}]->
+            (b:${safeTo} {_tenantId: $tenantId, _id: $toId})
       DELETE r
     `;
 

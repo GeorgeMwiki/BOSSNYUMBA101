@@ -13,10 +13,26 @@ import { z } from 'zod';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
+export const DEFAULT_DEV_PASSWORD = 'bossnyumba_graph_dev';
+export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
+  'localhost',
+  '127.0.0.1',
+  '::1',
+  '[::1]',
+]);
+export const BOLT_SCHEMES: ReadonlySet<string> = new Set([
+  'bolt:',
+  'bolt+s:',
+  'bolt+ssc:',
+  'neo4j:',
+  'neo4j+s:',
+  'neo4j+ssc:',
+]);
+
 export const Neo4jConfigSchema = z.object({
   uri: z.string().default('bolt://localhost:7687'),
   username: z.string().default('neo4j'),
-  password: z.string().default('bossnyumba_graph_dev'),
+  password: z.string().default(DEFAULT_DEV_PASSWORD),
   database: z.string().default('neo4j'),
   maxConnectionPoolSize: z.number().default(50),
   connectionAcquisitionTimeoutMs: z.number().default(30000),
@@ -27,6 +43,44 @@ export const Neo4jConfigSchema = z.object({
 
 export type Neo4jConfig = z.infer<typeof Neo4jConfigSchema>;
 
+/**
+ * Returns true when the given URI targets a loopback address (safe for
+ * default development credentials). Falls back to "remote" semantics for
+ * any URI we cannot parse — fail-closed.
+ */
+export function isLoopbackNeo4jUri(uri: string): boolean {
+  try {
+    const parsed = new URL(uri);
+    if (!BOLT_SCHEMES.has(parsed.protocol)) {
+      // Non-bolt scheme: treat as remote so we still require explicit creds.
+      return false;
+    }
+    const host = parsed.hostname.toLowerCase();
+    return LOOPBACK_HOSTS.has(host);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Enforces that a remote Neo4j endpoint never relies on the built-in
+ * development password. Throws NEO4J_PASSWORD_REQUIRED otherwise.
+ */
+export function assertRemoteNeo4jHasPassword(config: Neo4jConfig): void {
+  if (isLoopbackNeo4jUri(config.uri)) {
+    return;
+  }
+  const trimmed = config.password?.trim() ?? '';
+  if (trimmed.length === 0 || trimmed === DEFAULT_DEV_PASSWORD) {
+    const err = new Error(
+      'NEO4J_PASSWORD_REQUIRED: Non-loopback Neo4j URI requires an explicit ' +
+        'NEO4J_PASSWORD that is not the default development credential.'
+    );
+    (err as Error & { code?: string }).code = 'NEO4J_PASSWORD_REQUIRED';
+    throw err;
+  }
+}
+
 // ─── Client Class ────────────────────────────────────────────────────────────
 
 export class Neo4jClient {
@@ -36,6 +90,7 @@ export class Neo4jClient {
 
   constructor(config: Partial<Neo4jConfig> = {}) {
     this.config = Neo4jConfigSchema.parse(config);
+    assertRemoteNeo4jHasPassword(this.config);
 
     this.driver = neo4j.driver(
       this.config.uri,
@@ -202,15 +257,14 @@ let defaultClient: Neo4jClient | null = null;
 
 /**
  * Create a Neo4j client from environment variables or explicit config.
- * In production, NEO4J_URI and NEO4J_PASSWORD must be set (no hardcoded defaults).
+ * In production, NEO4J_URI must be set. In ALL environments, any non-loopback
+ * URI must supply NEO4J_PASSWORD that is not the default dev credential
+ * (enforced inside the Neo4jClient constructor).
  */
 export function createNeo4jClient(config?: Partial<Neo4jConfig>): Neo4jClient {
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.NEO4J_URI?.trim()) {
       throw new Error('NEO4J_URI is required in production');
-    }
-    if (!process.env.NEO4J_PASSWORD) {
-      throw new Error('NEO4J_PASSWORD is required in production');
     }
   }
   const envConfig: Partial<Neo4jConfig> = {};

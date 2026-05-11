@@ -206,15 +206,41 @@ Typechecks clean:
   `result_json`. Actual submission lands in Wave-34 when the KRA
   eTIMS adapter is wired. Marker: `TODO(WAVE-34): KRA eTIMS adapter`
   in `orchestrator-service.ts`.
-- **Registry slot not plumbed.** The router looks up
+- **Registry slot now plumbed.** The router looks up
   `services.monthlyClose?.orchestrator` off the `services` Hono
-  context key. Wiring that slot onto `ServiceRegistry` is fenced
-  to another agent (instructions: *"DO NOT touch:
-  service-registry.ts, service-context.middleware.ts"*). Until then
-  the router degrades to 503 `MONTHLY_CLOSE_UNAVAILABLE` and the
-  cron task reports `insightsEmitted: 0`. The orchestrator class,
-  tests, ports, router, and migration are all ready to go the
-  instant the registry slot lands.
+  context key. As of commit `f3f02d2` the
+  `services/api-gateway/src/composition/monthly-close-wiring.ts`
+  factory constructs the `MonthlyCloseOrchestrator` against the
+  Drizzle-backed `RunStorePort` (commit `e33cebc`,
+  `packages/database/src/services/monthly-close-runs.service.ts`)
+  and the slot is wired onto `ServiceRegistry.monthlyClose`. The
+  router still returns 503 `MONTHLY_CLOSE_UNAVAILABLE` when
+  `DATABASE_URL` is unset (the wiring returns `null` to preserve
+  the degraded-mode contract), but the orchestrator now persists run
+  + step state to Postgres in normal operation.
+- **Reconciliation / Statement / Disbursement / Notification ports
+  now backed by real Drizzle period-bulk adapters** (commit `0ac239f`).
+  Files under `services/api-gateway/src/services/monthly-close/`:
+  - `reconciliation-adapter.ts` aggregates `payments` joined with
+    `invoices` for the closing window in one round-trip, returning
+    `{ reconciled, unmatched, grossRentMinor, currency }`.
+  - `statement-adapter.ts` walks owners with active leases in the
+    period, computes per-owner gross, writes `draft` rows into
+    `owner_statements`. PDF rendering stays a follow-up worker —
+    rows persist with `degraded_reason: 'no_pdf_renderer'`.
+  - `disbursement-adapter.ts` computes per-owner breakdown from
+    `payments → leases → properties`; records every
+    `executeDisbursement` call into `event_outbox` as
+    `MonthlyCloseDisbursementProposed` for the eventual payouts
+    worker.
+  - `notification-adapter.ts` inserts one row per (owner, statement)
+    into `notification_dispatch_log` with `status='pending'`.
+  Each adapter is tenant-scoped and never crashes the orchestrator —
+  errors degrade to logged warnings + safe-default returns. The
+  remaining stub is `AutonomyPolicyPort` (still defaults
+  `autonomousModeEnabled = false` so disbursement batches park as
+  `awaiting_approval` — money never auto-moves until the concrete
+  autonomy adapter lands).
 - **Disbursement destination is pass-through.** The orchestrator
   reads `destination` from the existing `DisbursementService`
   breakdown. If the owner has no registered bank account, that

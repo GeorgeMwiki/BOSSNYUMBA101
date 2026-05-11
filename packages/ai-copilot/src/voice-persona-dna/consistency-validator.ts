@@ -250,6 +250,7 @@ function codeSwitchScore(
   }
   const tokens = output.split(/\s+/u).filter(Boolean);
   const nonLatin = tokens.filter((t) =>
+    // eslint-disable-next-line no-misleading-character-class -- intentional: codepoint-range detection for non-Latin scripts (Cyrillic, Arabic, Devanagari, Hiragana/Katakana, CJK, Hangul). The rule's grapheme-cluster heuristic does not apply to script-detection.
     /[\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/u.test(
       t,
     ),

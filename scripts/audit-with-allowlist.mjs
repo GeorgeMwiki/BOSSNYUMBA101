@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+/**
+ * Wrapper around `pnpm audit --json` that allows a documented allowlist
+ * of accepted-risk advisories. Exits 0 only when EVERY high+ advisory
+ * is in the allowlist; otherwise exits 1 with a structured failure
+ * report so operators can see exactly which advisory needs action.
+ *
+ * Usage: node scripts/audit-with-allowlist.mjs
+ *
+ * The allowlist below covers two categories:
+ *   1. Unfixable: the upstream patched version does not exist on npm
+ *      (e.g. lodash >=4.18.0 — latest published is 4.17.21).
+ *   2. Major-version breaking change deferred to its own PR
+ *      (e.g. drizzle-orm 0.36 → 0.45).
+ *
+ * Each entry includes `reason`, `tracked_in`, and `next_review` so the
+ * accept-decision is auditable. The CI fails fast if a NEW advisory
+ * appears outside the allowlist.
+ */
+
+import { execSync } from 'node:child_process';
+
+const ALLOWLIST = [
+  {
+    package: 'lodash',
+    severity: ['high', 'moderate'],
+    fix: '>=4.18.0',
+    reason:
+      'lodash patched version >=4.18.0 does not exist on npm (latest is 4.17.21). The vulnerabilities are in `_.template` (code injection) and `_.unset` array-path (prototype pollution). Codebase audit confirmed no `_.template` calls accept untrusted input. Migration to lodash-es or per-function imports is tracked separately.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (lodash migration)',
+    next_review: '2026-Q3',
+  },
+  {
+    package: 'drizzle-orm',
+    severity: ['high'],
+    fix: '>=0.45.2',
+    reason:
+      'drizzle-orm 0.36 → 0.45 is a major version upgrade with breaking schema-builder changes (override pinned at 0.36.4 for the wave-1 schemas). The SQL-injection-via-improperly-escaped-identifiers fix only applies when callers pass tenant-controlled identifier strings into raw SQL — codebase audit confirmed all our calls use Drizzle\'s typed builders, not raw identifier interpolation.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (drizzle-orm 0.45 migration)',
+    next_review: '2026-Q2',
+  },
+];
+
+function isAllowlisted(advisory) {
+  for (const entry of ALLOWLIST) {
+    if (
+      advisory.module_name === entry.package &&
+      entry.severity.includes(advisory.severity) &&
+      (advisory.patched_versions === entry.fix ||
+        (advisory.fixed_in || '') === entry.fix)
+    ) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+let auditOutput;
+try {
+  auditOutput = execSync('pnpm audit --json', {
+    encoding: 'utf-8',
+    maxBuffer: 50 * 1024 * 1024,
+  });
+} catch (err) {
+  // pnpm audit exits non-zero when there are advisories — that's
+  // expected. We parse stdout regardless.
+  auditOutput = err.stdout?.toString() || '';
+}
+
+let data;
+try {
+  data = JSON.parse(auditOutput);
+} catch {
+  console.error('Failed to parse pnpm audit output as JSON');
+  console.error(auditOutput.slice(0, 500));
+  process.exit(2);
+}
+
+const advisories = Object.values(data.advisories ?? {});
+const counts = data.metadata?.vulnerabilities ?? {};
+const totalBlocking = (counts.high ?? 0) + (counts.critical ?? 0);
+
+console.log('## pnpm audit summary');
+console.log(JSON.stringify(counts, null, 2));
+console.log();
+
+const seen = new Set();
+const blocking = [];
+const accepted = [];
+for (const adv of advisories) {
+  const sev = adv.severity;
+  if (sev !== 'high' && sev !== 'critical') continue;
+  const key = `${adv.module_name}|${sev}|${adv.patched_versions || adv.fixed_in || ''}`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  const allowed = isAllowlisted(adv);
+  if (allowed) accepted.push({ adv, entry: allowed });
+  else blocking.push(adv);
+}
+
+if (accepted.length > 0) {
+  console.log('## Accepted (allowlisted) high+ advisories');
+  for (const { adv, entry } of accepted) {
+    console.log(
+      `  - ${adv.severity.toUpperCase()} ${adv.module_name} (fix ${entry.fix}): ${entry.reason.slice(0, 100)}…`,
+    );
+    console.log(`    Tracked in: ${entry.tracked_in}`);
+    console.log(`    Next review: ${entry.next_review}`);
+  }
+  console.log();
+}
+
+if (blocking.length > 0) {
+  console.log('## ❌ BLOCKING high+ advisories (not in allowlist)');
+  for (const adv of blocking) {
+    console.log(
+      `  - ${adv.severity.toUpperCase()} ${adv.module_name}: ${adv.title}`,
+    );
+    console.log(
+      `    Vulnerable: ${adv.vulnerable_versions}  → fix: ${adv.patched_versions || adv.fixed_in}`,
+    );
+    console.log(`    Advisory: ${adv.url || adv.references || ''}`);
+  }
+  process.exit(1);
+}
+
+console.log(
+  `✅ All high+ advisories are allowlisted (${accepted.length} accepted, 0 blocking).`,
+);
+console.log(
+  `   Moderate: ${counts.moderate ?? 0}, Low: ${counts.low ?? 0} — informational.`,
+);
+process.exit(0);

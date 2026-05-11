@@ -25,6 +25,7 @@ import {
 } from './types.js';
 import {
   LpmsParseError,
+  LPMS_MAX_INPUT_BYTES,
   type LpmsAdapter,
   type LpmsIngestionContext,
   type LpmsIngestionError,
@@ -278,6 +279,20 @@ export class LpmsCsvAdapter
   ): LpmsIngestionResult {
     if (!ctx || !ctx.tenantId) {
       throw new LpmsParseError('csv', 'tenantId is required');
+    }
+    // SECURITY: bound total CSV bytes across all five files. A hostile
+    // upload should not be able to allocate gigabytes via this path.
+    const totalBytes =
+      (input.properties?.length ?? 0) +
+      (input.units?.length ?? 0) +
+      (input.customers?.length ?? 0) +
+      (input.leases?.length ?? 0) +
+      (input.payments?.length ?? 0);
+    if (totalBytes > LPMS_MAX_INPUT_BYTES) {
+      throw new LpmsParseError(
+        'csv',
+        `combined input exceeds ${LPMS_MAX_INPUT_BYTES} bytes; chunk the export`,
+      );
     }
     const map = options?.columnMap ?? DEFAULT_CSV_COLUMN_MAP;
     const errors: LpmsIngestionError[] = [];

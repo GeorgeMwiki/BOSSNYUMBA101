@@ -31,6 +31,7 @@ export function WebhookDLQClient() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<DlqEntry | null>(null);
   const [replaying, setReplaying] = useState<string | null>(null);
+  const [inspectingId, setInspectingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +49,7 @@ export function WebhookDLQClient() {
 
   async function replay(entry: DlqEntry): Promise<void> {
     setReplaying(entry.id);
+    setError(null);
     const res = await api.post(
       `/webhooks/dead-letters/${encodeURIComponent(entry.id)}/replay`,
       {},
@@ -58,10 +60,14 @@ export function WebhookDLQClient() {
   }
 
   async function inspect(entry: DlqEntry): Promise<void> {
+    setInspectingId(entry.id);
+    setError(null);
     const res = await api.get<DlqEntry>(
       `/webhooks/dead-letters/${encodeURIComponent(entry.id)}`,
     );
+    setInspectingId(null);
     if (res.success && res.data) setSelected(res.data);
+    else setError(res.error ?? 'Failed to load delivery detail');
   }
 
   return (
@@ -122,8 +128,12 @@ export function WebhookDLQClient() {
                     <button
                       type="button"
                       onClick={() => void inspect(e)}
-                      className="text-xs text-neutral-300 hover:underline"
+                      disabled={inspectingId === e.id}
+                      className="inline-flex items-center gap-1 text-xs text-neutral-300 hover:underline disabled:opacity-50"
                     >
+                      {inspectingId === e.id && (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      )}
                       Inspect
                     </button>
                     {!e.replayedAt && (

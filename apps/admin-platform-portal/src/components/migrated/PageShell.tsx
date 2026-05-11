@@ -25,7 +25,7 @@ export async function PageShell({
   return (
     <div className="flex min-h-screen">
       <StaffNav />
-      <main className="flex-1 p-10">
+      <main id="main-content" tabIndex={-1} className="flex-1 p-10">
         <header className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-3xl font-display text-foreground mb-2">{title}</h1>

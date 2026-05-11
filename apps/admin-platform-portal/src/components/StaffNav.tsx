@@ -92,7 +92,7 @@ export async function StaffNav() {
   const budget = sessionPresent ? await fetchBudget(cookieHeader) : null;
 
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-surface-sunken min-h-screen flex flex-col">
+    <aside className="w-64 shrink-0 border-r border-border bg-surface-sunken min-h-screen flex flex-col" aria-label="HQ navigation">
       <div className="p-6 border-b border-border flex items-center gap-3">
         <Logomark size={32} variant="premium" />
         <div className="flex flex-col">
@@ -101,10 +101,13 @@ export async function StaffNav() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4 space-y-5">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-5" aria-label="Primary">
         {NAV_GROUPS.map((group) => (
-          <div key={group.heading} className="space-y-1">
-            <div className="px-3 text-[0.62rem] uppercase tracking-widest text-neutral-500 mb-1">
+          <div key={group.heading} className="space-y-1" role="group" aria-labelledby={`nav-group-${group.heading.replace(/\s+/g, '-').toLowerCase()}`}>
+            <div
+              id={`nav-group-${group.heading.replace(/\s+/g, '-').toLowerCase()}`}
+              className="px-3 text-[0.62rem] uppercase tracking-widest text-neutral-500 mb-1"
+            >
               {group.heading}
             </div>
             {group.items.map((item) => (

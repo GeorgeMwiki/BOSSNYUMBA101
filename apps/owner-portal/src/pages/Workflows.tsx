@@ -98,14 +98,14 @@ export default function WorkflowsPage(): JSX.Element {
       </header>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+        <div role="alert" aria-live="assertive" className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-500 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
+        <div role="status" aria-live="polite" className="text-sm text-gray-500 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {t('loading')}
         </div>
       ) : (
         <section className="grid gap-3 md:grid-cols-2">

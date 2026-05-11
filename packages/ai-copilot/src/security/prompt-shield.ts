@@ -138,7 +138,9 @@ function analyseStructure(msg: string): StructuralSignals {
   const latinIntent = /\b(ignore|forget|override|system|admin)\b/i.test(msg);
   const multiLanguageEvasion = nonLatin && latinIntent && msg.length > 200;
   const contextStuffing = msg.length > 10_000;
+  // eslint-disable-next-line no-misleading-character-class -- intentional: detect zero-width invisibility characters used in prompt-injection attacks. The lint rule warns about grapheme-cluster intent; here we WANT the codepoint set.
   const zeroWidth = /[\u200B\u200C\u200D\uFEFF]/.test(msg);
+  // eslint-disable-next-line no-control-regex -- intentional: \x00 null-byte injection detection.
   const nullByte = /\x00/.test(msg);
   const newlineFlood = (msg.match(/\n/g) ?? []).length > 50;
   return {
@@ -160,7 +162,9 @@ function maxThreat(a: ThreatLevel, b: ThreatLevel): ThreatLevel {
 
 function sanitise(msg: string): string {
   let out = msg;
+  // eslint-disable-next-line no-misleading-character-class -- intentional: scrub zero-width prompt-injection characters from input.
   out = out.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+  // eslint-disable-next-line no-control-regex -- intentional: scrub null-byte injection.
   out = out.replace(/\x00/g, '');
   out = out.replace(/<\|im_start\|>/gi, '[removed]');
   out = out.replace(/<\|im_end\|>/gi, '[removed]');

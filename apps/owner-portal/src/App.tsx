@@ -14,6 +14,8 @@ import { FinancialPage } from './pages/FinancialPage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
+import { DamageDeductionsPage } from './pages/DamageDeductionsPage';
+import { GamificationPage } from './pages/GamificationPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -163,6 +165,8 @@ function App() {
                   <Route path="/documents" element={<DocumentsPage />} />
                   <Route path="/documents/e-signature" element={<ESignaturePage />} />
                   <Route path="/approvals" element={<ApprovalsPage />} />
+                  <Route path="/damage-deductions" element={<DamageDeductionsPage />} />
+                  <Route path="/gamification" element={<GamificationPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/settings" element={<SettingsPage />} />

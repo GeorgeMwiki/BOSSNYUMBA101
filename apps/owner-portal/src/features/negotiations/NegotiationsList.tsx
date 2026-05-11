@@ -40,10 +40,14 @@ export const NegotiationsList: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: wire GET /owner/negotiations endpoint.
-      const res = await api.get?.<ReadonlyArray<Negotiation>>('/owner/negotiations');
+      const res = await api.get<ReadonlyArray<Negotiation>>('/owner/negotiations');
       if (!signal?.aborted) {
-        setItems(res?.data ?? []);
+        if (!res.success) {
+          setError(res.error?.message ?? 'Failed to load');
+          setLoading(false);
+          return;
+        }
+        setItems(res.data ?? []);
         setLoading(false);
       }
     } catch (err) {
@@ -64,8 +68,11 @@ export const NegotiationsList: React.FC = () => {
     setActError(null);
     setPending({ id, action });
     try {
-      // TODO: wire POST /owner/negotiations/:id/:action
-      await api.post?.(`/owner/negotiations/${id}/${action}`, {});
+      const res = await api.post(`/owner/negotiations/${id}/${action}`, {});
+      if (!res.success) {
+        setActError(res.error?.message ?? `Failed to ${action} negotiation`);
+        return;
+      }
       // Immutable removal of resolved row.
       setItems((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {

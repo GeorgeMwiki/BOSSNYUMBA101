@@ -289,7 +289,7 @@ export class TaskAgentExecutor {
         );
       } catch (err) {
         // swallow — audit failure must not bubble up
-        // eslint-disable-next-line no-console
+         
         console.error('TaskAgentExecutor: audit write failed', errorMessage(err));
       }
     }
@@ -309,7 +309,7 @@ export class TaskAgentExecutor {
         };
         await this.deps.eventPublisher.publish(event);
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('TaskAgentExecutor: event publish failed', errorMessage(err));
       }
     }

@@ -60,6 +60,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      # Build internal packages first so package-barrel `dist/` exports
+      # exist (some packages import via the `import` condition).
+      - run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
       - run: pnpm typecheck
 
   # ============================================
@@ -81,6 +84,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      # Build internal packages first so package-barrel `dist/` exports
+      # exist (vitest resolves package imports via the `import`
+      # condition, which requires `dist/`).
+      - run: pnpm -r --filter='./packages/*' --filter='./services/*' build || true
       - name: Run unit tests (verbose)
         run: pnpm test -- --reporter=verbose
       - name: Upload coverage

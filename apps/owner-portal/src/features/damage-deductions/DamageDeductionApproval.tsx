@@ -41,12 +41,16 @@ export const DamageDeductionApproval: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: wire GET /owner/damage-deductions?status=pending_owner
-      const res = await api.get?.<ReadonlyArray<DamageDeduction>>(
+      const res = await api.get<ReadonlyArray<DamageDeduction>>(
         '/owner/damage-deductions?status=pending_owner'
       );
       if (!signal?.aborted) {
-        setItems(res?.data ?? []);
+        if (!res.success) {
+          setError(res.error?.message ?? 'Load failed');
+          setLoading(false);
+          return;
+        }
+        setItems(res.data ?? []);
         setLoading(false);
       }
     } catch (err) {
@@ -67,8 +71,11 @@ export const DamageDeductionApproval: React.FC = () => {
     setActError(null);
     setPending({ id, decision });
     try {
-      // TODO: wire POST /owner/damage-deductions/:id/:decision
-      await api.post?.(`/owner/damage-deductions/${id}/${decision}`, {});
+      const res = await api.post(`/owner/damage-deductions/${id}/${decision}`, {});
+      if (!res.success) {
+        setActError(res.error?.message ?? `Failed to ${decision} deduction`);
+        return;
+      }
       setItems((prev) => prev.filter((x) => x.id !== id)); // immutable
     } catch (err) {
       setActError(err instanceof Error ? err.message : `Failed to ${decision} deduction`);

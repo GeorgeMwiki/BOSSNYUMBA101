@@ -148,7 +148,7 @@ async function safeFetch<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   } catch (err) {
     // Do not let a single source knock out the whole briefing — log and
     // degrade. The head sees an empty section instead of a 5xx.
-    // eslint-disable-next-line no-console
+     
     console.error(
       'head-briefing: source fetch failed — using empty fallback:',
       err instanceof Error ? err.message : String(err),

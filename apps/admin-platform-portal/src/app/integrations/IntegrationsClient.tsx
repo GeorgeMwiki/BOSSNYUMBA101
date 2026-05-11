@@ -35,6 +35,9 @@ export function IntegrationsClient() {
   const [revocations, setRevocations] = useState<readonly Revocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
   const [form, setForm] = useState({
     agentId: '',
     scopes: 'read:property,read:lease',
@@ -43,6 +46,7 @@ export function IntegrationsClient() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const [list, revs] = await Promise.all([
       api.get<readonly Certification[]>('/agent-certifications'),
       api.get<readonly Revocation[]>('/agent-certifications/revocations'),
@@ -63,12 +67,15 @@ export function IntegrationsClient() {
       .map((s) => s.trim())
       .filter(Boolean);
     if (!form.agentId || scopes.length === 0) return;
+    setIssuing(true);
+    setError(null);
     const validForMs = Number(form.days) * 24 * 60 * 60 * 1000;
     const res = await api.post('/agent-certifications', {
       agentId: form.agentId,
       scopes,
       validForMs,
     });
+    setIssuing(false);
     if (res.success) {
       setForm({ agentId: '', scopes: 'read:property,read:lease', days: '90' });
       void load();
@@ -77,14 +84,20 @@ export function IntegrationsClient() {
     }
   }
 
-  async function revoke(cert: Certification): Promise<void> {
-    const reason = window.prompt('Revocation reason') ?? '';
-    if (!reason) return;
+  async function confirmRevoke(): Promise<void> {
+    if (!revokingId || !revokeReason.trim()) return;
+    setError(null);
     const res = await api.delete(
-      `/agent-certifications/${encodeURIComponent(cert.id)}`,
+      `/agent-certifications/${encodeURIComponent(revokingId)}`,
+      { reason: revokeReason.trim() },
     );
-    if (res.success) void load();
-    else setError(res.error ?? 'Failed to revoke');
+    if (res.success) {
+      setRevokingId(null);
+      setRevokeReason('');
+      void load();
+    } else {
+      setError(res.error ?? 'Failed to revoke');
+    }
   }
 
   return (
@@ -139,10 +152,11 @@ export function IntegrationsClient() {
         <button
           type="button"
           onClick={() => void issue()}
-          disabled={!form.agentId}
-          className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          disabled={!form.agentId || issuing}
+          className="inline-flex items-center gap-2 rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          Issue
+          {issuing && <Loader2 className="h-3 w-3 animate-spin" />}
+          {issuing ? 'Issuing…' : 'Issue'}
         </button>
       </section>
 
@@ -177,7 +191,10 @@ export function IntegrationsClient() {
                 {!c.revokedAt && (
                   <button
                     type="button"
-                    onClick={() => void revoke(c)}
+                    onClick={() => {
+                      setRevokingId(c.id);
+                      setRevokeReason('');
+                    }}
                     className="inline-flex items-center gap-1 text-xs text-rose-400 hover:underline"
                   >
                     <Trash2 className="h-3 w-3" /> Revoke
@@ -188,6 +205,51 @@ export function IntegrationsClient() {
           </ul>
         )}
       </section>
+
+      {revokingId && (
+        <section
+          role="alertdialog"
+          aria-labelledby="revoke-cert-title"
+          className="platform-card max-w-xl space-y-3 border-rose-500/30"
+        >
+          <h3 id="revoke-cert-title" className="font-display text-foreground">
+            Revoke certification
+          </h3>
+          <p className="text-xs text-neutral-400">
+            Provide a reason — recorded in the revocation history.
+          </p>
+          <label className="block text-sm">
+            <span className="text-neutral-300">Reason</span>
+            <input
+              type="text"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              autoFocus
+              className="mt-1 w-full rounded border border-border bg-surface-sunken px-3 py-2 text-sm text-foreground"
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void confirmRevoke()}
+              disabled={!revokeReason.trim()}
+              className="rounded bg-rose-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+            >
+              Confirm revoke
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRevokingId(null);
+                setRevokeReason('');
+              }}
+              className="rounded border border-border px-3 py-1 text-xs text-neutral-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </section>
+      )}
 
       {revocations.length > 0 && (
         <section className="platform-card">

@@ -339,7 +339,14 @@
     "pastSubmissions": "Past submissions",
     "emptyTitle": "No feedback yet",
     "emptyBody": "Your feedback submissions will appear here",
-    "emptyCta": "Submit feedback"
+    "emptyCta": "Submit feedback",
+    "loading": "Loading your feedback…",
+    "errorLoad": "Could not load your feedback.",
+    "retry": "Retry",
+    "statusOpen": "Open",
+    "statusInProgress": "In progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed"
   },
   "requestFeedback": {
     "title": "Rate Service",
@@ -528,11 +535,18 @@
     "rateService": "Rate Service",
     "downloadDocument": "Download document"
   },
+  "notificationsList": {
+    "loading": "Loading…",
+    "errorLoad": "Failed to load notifications",
+    "retry": "Retry",
+    "empty": "You are all caught up."
+  },
   "messagesList": {
     "loading": "Loading messages…",
     "errorLoad": "Failed to load messages.",
     "empty": "No messages yet.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "untitled": "Conversation"
   },
   "feedbackPage": {
     "title": "Submit Feedback",
@@ -552,7 +566,8 @@
     "messageLabel": "Your feedback",
     "messagePlaceholder": "Share your suggestions or report an issue...",
     "submitting": "Submitting...",
-    "submit": "Submit Feedback"
+    "submit": "Submit Feedback",
+    "errorSubmit": "Could not submit feedback. Please try again."
   },
   "propertyRules": {
     "title": "Property Rules",
@@ -861,10 +876,22 @@
     "submitting": "Submitting...",
     "submitFeedback": "Submit Feedback",
     "category": {
-      "quality": { "label": "Work Quality", "description": "Was the issue properly fixed?" },
-      "timeliness": { "label": "Timeliness", "description": "Was the service completed on time?" },
-      "communication": { "label": "Communication", "description": "Were you kept informed?" },
-      "professionalism": { "label": "Professionalism", "description": "Was the technician courteous?" }
+      "quality": {
+        "label": "Work Quality",
+        "description": "Was the issue properly fixed?"
+      },
+      "timeliness": {
+        "label": "Timeliness",
+        "description": "Was the service completed on time?"
+      },
+      "communication": {
+        "label": "Communication",
+        "description": "Were you kept informed?"
+      },
+      "professionalism": {
+        "label": "Professionalism",
+        "description": "Was the technician courteous?"
+      }
     },
     "tag": {
       "professional": "Professional",

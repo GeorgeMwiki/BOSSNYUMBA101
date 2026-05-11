@@ -76,6 +76,7 @@ function normalizePriority(s: string): 'emergency' | 'high' | 'medium' | 'low' {
 
 export default function WorkOrderDetail() {
   const t = useTranslations('workOrderDetail');
+  const tA11y = useTranslations('a11y');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -643,13 +644,23 @@ export default function WorkOrderDetail() {
 
       {/* ── Completion Modal ────────────────────────────────────────── */}
       {showCompletionModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="completion-modal-title"
+        >
           <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{t('completeWorkOrder')}</h3>
-                <button onClick={() => setShowCompletionModal(false)} className="p-2 text-gray-400">
-                  <X className="w-5 h-5" />
+                <h3 id="completion-modal-title" className="text-lg font-semibold">{t('completeWorkOrder')}</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCompletionModal(false)}
+                  aria-label={tA11y('closeModal')}
+                  className="p-2 text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                >
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -660,25 +671,53 @@ export default function WorkOrderDetail() {
                 <div className="flex gap-2 flex-wrap">
                   {beforePhotos.map((_, index) => (
                     <div key={index} className="relative">
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" /></div>
-                      <button onClick={() => removePhoto('before', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" aria-hidden="true" /></div>
+                      <button
+                        type="button"
+                        onClick={() => removePhoto('before', index)}
+                        aria-label={tA11y('removePhoto')}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white focus:outline-none focus:ring-2 focus:ring-danger-500"
+                      >
+                        <X className="w-3 h-3" aria-hidden="true" />
+                      </button>
                     </div>
                   ))}
-                  <button onClick={() => addPhoto('before')} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"><Plus className="w-6 h-6" /></button>
+                  <button
+                    type="button"
+                    onClick={() => addPhoto('before')}
+                    aria-label={tA11y('addPhoto')}
+                    className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <Plus className="w-6 h-6" aria-hidden="true" />
+                  </button>
                 </div>
               </div>
               <div>
-                <label className="label">{t('afterPhotos')} <span className="text-danger-500">*</span></label>
+                <label className="label">{t('afterPhotos')} <span className="text-danger-500" aria-hidden="true">*</span></label>
                 <div className="flex gap-2 flex-wrap">
                   {afterPhotos.map((_, index) => (
                     <div key={index} className="relative">
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" /></div>
-                      <button onClick={() => removePhoto('after', index)} className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white"><X className="w-3 h-3" /></button>
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center"><Camera className="w-6 h-6 text-gray-400" aria-hidden="true" /></div>
+                      <button
+                        type="button"
+                        onClick={() => removePhoto('after', index)}
+                        aria-label={tA11y('removePhoto')}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 rounded-full flex items-center justify-center text-white focus:outline-none focus:ring-2 focus:ring-danger-500"
+                      >
+                        <X className="w-3 h-3" aria-hidden="true" />
+                      </button>
                     </div>
                   ))}
-                  <button onClick={() => addPhoto('after')} className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500"><Plus className="w-6 h-6" /></button>
+                  <button
+                    type="button"
+                    onClick={() => addPhoto('after')}
+                    aria-label={tA11y('addPhoto')}
+                    className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary-500 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <Plus className="w-6 h-6" aria-hidden="true" />
+                  </button>
                 </div>
-                {afterPhotos.length === 0 && <p className="text-xs text-danger-500 mt-1">{t('afterPhotoRequired')}</p>}
+                {afterPhotos.length === 0 && <p className="text-xs text-danger-500 mt-1" role="alert">{t('afterPhotoRequired')}</p>}
               </div>
               <div>
                 <label className="label">{t('workCompletedNotes')} <span className="text-danger-500">*</span></label>
@@ -692,15 +731,22 @@ export default function WorkOrderDetail() {
                       <div><span className="font-medium">{material.name}</span><span className="text-sm text-gray-500 ml-2">x{material.quantity}</span></div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">KES {(material.cost * material.quantity).toLocaleString()}</span>
-                        <button onClick={() => removeMaterial(material.id)} className="text-danger-500 p-1"><X className="w-4 h-4" /></button>
+                        <button
+                          type="button"
+                          onClick={() => removeMaterial(material.id)}
+                          aria-label={tA11y('removeMaterial')}
+                          className="text-danger-500 p-1 focus:outline-none focus:ring-2 focus:ring-danger-500 rounded"
+                        >
+                          <X className="w-4 h-4" aria-hidden="true" />
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
-                  <input type="text" className="input col-span-2" placeholder={t('materialName')} value={newMaterial.name} onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })} />
-                  <input type="number" className="input" placeholder={t('qty')} min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value) || 1 })} />
-                  <input type="number" className="input" placeholder={t('cost')} min="0" value={newMaterial.cost || ''} onChange={(e) => setNewMaterial({ ...newMaterial, cost: parseFloat(e.target.value) || 0 })} />
+                  <input type="text" aria-label={t('materialName')} className="input col-span-2" placeholder={t('materialName')} value={newMaterial.name} onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })} />
+                  <input type="number" aria-label={t('qty')} className="input" placeholder={t('qty')} min="1" value={newMaterial.quantity} onChange={(e) => setNewMaterial({ ...newMaterial, quantity: parseInt(e.target.value) || 1 })} />
+                  <input type="number" aria-label={t('cost')} className="input" placeholder={t('cost')} min="0" value={newMaterial.cost || ''} onChange={(e) => setNewMaterial({ ...newMaterial, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <button onClick={addMaterial} disabled={!newMaterial.name.trim()} className="btn-secondary w-full mt-2 text-sm disabled:opacity-50"><Plus className="w-4 h-4 mr-1" /> {t('addMaterial')}</button>
                 {materials.length > 0 && (
@@ -714,11 +760,11 @@ export default function WorkOrderDetail() {
                 <label className="label flex items-center gap-2"><Clock className="w-4 h-4" /> {t('laborTime')}</label>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <input type="number" className="input" placeholder={t('hours')} min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value) || 0)} />
+                    <input type="number" aria-label={t('hours')} className="input" placeholder={t('hours')} min="0" value={laborHours || ''} onChange={(e) => setLaborHours(parseInt(e.target.value) || 0)} />
                     <span className="text-xs text-gray-500 mt-1">{t('hours')}</span>
                   </div>
                   <div className="flex-1">
-                    <input type="number" className="input" placeholder={t('minutes')} min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value) || 0)} />
+                    <input type="number" aria-label={t('minutes')} className="input" placeholder={t('minutes')} min="0" max="59" value={laborMinutes || ''} onChange={(e) => setLaborMinutes(parseInt(e.target.value) || 0)} />
                     <span className="text-xs text-gray-500 mt-1">{t('minutes')}</span>
                   </div>
                 </div>
@@ -743,15 +789,27 @@ export default function WorkOrderDetail() {
 
       {/* ── Sign-off Modal ──────────────────────────────────────────── */}
       {showSignOffModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="signoff-modal-title"
+        >
           <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
+              <h3 id="signoff-modal-title" className="text-lg font-semibold">
                 {signOffStep === 'technician' && t('signOffTechnician')}
                 {signOffStep === 'tenant' && t('signOffTenant')}
                 {signOffStep === 'manager' && t('signOffManager')}
               </h3>
-              <button onClick={() => setShowSignOffModal(false)} className="p-2 text-gray-400"><X className="w-5 h-5" /></button>
+              <button
+                type="button"
+                onClick={() => setShowSignOffModal(false)}
+                aria-label={tA11y('closeModal')}
+                className="p-2 text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
             </div>
             <div className="flex justify-center gap-2">
               <div className={`w-3 h-3 rounded-full ${signOffStep === 'technician' ? 'bg-primary-500' : 'bg-success-500'}`} />

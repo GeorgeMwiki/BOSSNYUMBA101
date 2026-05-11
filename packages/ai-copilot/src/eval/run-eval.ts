@@ -77,7 +77,7 @@ async function main() {
       },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('eval-runner crashed during scenario execution:', err);
     process.exit(2);
   }
@@ -99,10 +99,10 @@ async function main() {
     )
   );
   if (crashed.length > 0) {
-    // eslint-disable-next-line no-console
+     
     console.error(`${crashed.length} scenario(s) crashed:`);
     for (const c of crashed) {
-      // eslint-disable-next-line no-console
+       
       console.error(`  ✗ ${c.scenarioId}`);
     }
     process.exit(1);
@@ -115,7 +115,7 @@ async function main() {
 }
 
 void main().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error('eval-runner fatal:', err);
   process.exit(2);
 });

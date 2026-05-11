@@ -193,6 +193,17 @@ import { customerAppRouter } from './routes/bff/customer-app';
 import { ownerPortalRouter } from './routes/bff/owner-portal';
 import { estateManagerAppRouter } from './routes/bff/estate-manager-app';
 import { adminPortalRouter } from './routes/bff/admin-portal';
+// Wave-4 D6 — owner-portal MissingBackendNotice skeletons. Each router
+// answers a precise endpoint declared by a placeholder page in
+// commit 0ee27a0 with `200 OK + X-Backend-Status: degraded` so the FE
+// stops 404'ing while the backing services are still in design.
+import { analyticsExportsRouter } from './routes/owner/analytics-exports.router';
+import { analyticsGrowthRouter } from './routes/owner/analytics-growth.router';
+import { analyticsUsageRouter } from './routes/owner/analytics-usage.router';
+import { billingRouter } from './routes/owner/billing.router';
+import { ownerMessagingRouter } from './routes/owner/owner-messaging.router';
+import { supportRouter } from './routes/owner/support.router';
+import { adminUsersRouter } from './routes/owner/admin-users.router';
 import { buildServices, type ServiceRegistry } from './composition/service-registry';
 import { getDb } from './composition/db-client';
 import { createServiceContextMiddleware } from './composition/service-context.middleware';
@@ -772,6 +783,17 @@ api.route(
 // for the TODO marker pointing at the followup work.
 api.route('/analytics', analyticsRouter);
 api.route('/portfolio', portfolioRouter);
+// Wave-4 D6 — owner-portal placeholder-page skeletons. Each line
+// answers an endpoint declared by a `MissingBackendNotice` page in
+// owner-portal (commit 0ee27a0). All return `{ data: [] }` with
+// `X-Backend-Status: degraded` and a concrete next-step in `meta`.
+api.route('/analytics/exports', analyticsExportsRouter);
+api.route('/analytics/growth', analyticsGrowthRouter);
+api.route('/analytics/usage', analyticsUsageRouter);
+api.route('/billing', billingRouter);
+api.route('/owner/messaging', ownerMessagingRouter);
+api.route('/support', supportRouter);
+api.route('/admin', adminUsersRouter);
 // Unit subdivision + components — Manager-app dependency. Hono mounts
 // path-param prefixes correctly: `:id` is parsed and exposed via
 // `c.req.param('id')` inside the sub-router.

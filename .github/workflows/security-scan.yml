@@ -32,8 +32,8 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - name: Run pnpm audit (high+)
-        run: pnpm audit --audit-level=high
+      - name: Run pnpm audit with allowlist
+        run: node scripts/audit-with-allowlist.mjs
 
   secret-scan:
     name: Secret Scan (gitleaks)

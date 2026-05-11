@@ -119,7 +119,7 @@ export function withBudgetGuard(
             correlationId: ctx.correlationId,
           });
         } catch (err) {
-          // eslint-disable-next-line no-console
+           
           console.error(
             'withBudgetGuard: failed to record usage',
             err instanceof Error ? err.message : err,

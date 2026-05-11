@@ -34,13 +34,17 @@ function apiBase(): string {
 
 export default function NotificationsPage() {
   const t = useTranslations('pageHeaders');
+  const tList = useTranslations('notificationsList');
   const [items, setItems] = useState<readonly NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let active = true;
     async function load(): Promise<void> {
+      setLoading(true);
+      setError(null);
       try {
         const token =
           typeof window !== 'undefined'
@@ -56,15 +60,13 @@ export default function NotificationsPage() {
         };
         if (!active) return;
         if (!res.ok || !body.success) {
-          setError(body.error?.message ?? 'Failed to load notifications');
+          setError(body.error?.message ?? tList('errorLoad'));
         } else {
           setItems(body.data ?? []);
         }
       } catch (err) {
         if (!active) return;
-        setError(
-          err instanceof Error ? err.message : 'Failed to load notifications',
-        );
+        setError(err instanceof Error ? err.message : tList('errorLoad'));
       } finally {
         if (active) setLoading(false);
       }
@@ -73,7 +75,7 @@ export default function NotificationsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadToken, tList]);
 
   return (
     <>
@@ -81,20 +83,30 @@ export default function NotificationsPage() {
       <div className="px-4 py-4 pb-24 space-y-3">
         {loading && (
           <p className="text-sm text-gray-400 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> {tList('loading')}
           </p>
         )}
 
         {error && (
-          <div className="rounded-lg bg-red-900/30 border border-red-500/40 text-red-200 p-3 text-sm">
-            {error}
+          <div
+            role="alert"
+            className="rounded-lg bg-red-900/30 border border-red-500/40 text-red-200 p-3 text-sm flex items-center justify-between gap-3"
+          >
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => setReloadToken((value) => value + 1)}
+              className="rounded border border-red-400/60 px-3 py-1 text-xs hover:bg-red-500/20"
+            >
+              {tList('retry')}
+            </button>
           </div>
         )}
 
         {!loading && !error && items.length === 0 && (
           <div className="rounded-lg bg-gray-800 border border-gray-700 p-5 text-sm text-gray-400 flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            You are all caught up.
+            {tList('empty')}
           </div>
         )}
 

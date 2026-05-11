@@ -218,3 +218,53 @@ export {
   type AutonomyStakes,
   type PgAutonomyPolicyService,
 } from './autonomy-policy.service.js';
+
+// Voice-turn log (migration 0110) — Drizzle-backed adapter for the
+// voice-agent's `VoiceTurnRepository` shape. Duck-typed so the database
+// package does not compile-time-depend on `@bossnyumba/ai-copilot`.
+export {
+  createVoiceTurnsService,
+  type VoiceToolCallShape,
+  type VoiceTurnRowShape,
+  type VoiceTurnsService,
+} from './voice-turns.service.js';
+
+// Market-rate snapshots (migration 0103) — Drizzle-backed adapter for
+// the market-surveillance agent's snapshot persistence. `listActiveUnits`
+// is composed elsewhere from the occupancy/units repository.
+export {
+  createMarketRateSnapshotsService,
+  type DriftFlag,
+  type ListRecentArgs as MarketRateListRecentArgs,
+  type MarketRateSnapshotShape,
+  type MarketRateSnapshotsService,
+} from './market-rate-snapshots.service.js';
+
+// Tenant predictions + intervention opportunities (migration 0106) —
+// Drizzle-backed adapter for the predictive-interventions agent.
+// `listActiveTenants` is composed elsewhere from occupancy/lease repos.
+export {
+  createTenantPredictionsService,
+  type InterventionOpportunityShape,
+  type InterventionStatus,
+  type PredictionHorizonDays,
+  type TenantPredictionShape,
+  type TenantPredictionsService,
+} from './tenant-predictions.service.js';
+
+// Monthly close runs + steps (migration 0099 — Wave 28 PhA2) —
+// Drizzle-backed adapter for the MonthlyCloseOrchestrator's RunStorePort.
+// (tenantId, period_year, period_month) uniqueness is enforced at the
+// schema layer; recordStep idempotency on (run_id, step_name).
+export {
+  createMonthlyCloseRunsService,
+  type CreateRunArgs as MonthlyCloseCreateRunArgs,
+  type Decision as MonthlyCloseDecision,
+  type MonthlyCloseRunsService,
+  type RecordStepArgs as MonthlyCloseRecordStepArgs,
+  type RunPatch as MonthlyCloseRunPatch,
+  type RunStateShape as MonthlyCloseRunStateShape,
+  type RunStatus as MonthlyCloseRunStatus,
+  type StepRecordShape as MonthlyCloseStepRecordShape,
+  type Trigger as MonthlyCloseTrigger,
+} from './monthly-close-runs.service.js';

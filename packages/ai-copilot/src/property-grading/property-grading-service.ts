@@ -204,7 +204,7 @@ export class PropertyGradingService {
       // Sequential by design — bulk grading runs on a worker, avoids
       // stampeding downstream queries. Parallelise at the caller level
       // if the tenant is extremely large.
-      // eslint-disable-next-line no-await-in-loop
+       
       outcomes.push(await this.gradeProperty(tenantId, propertyId));
     }
     return outcomes;
