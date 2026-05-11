@@ -38,7 +38,7 @@
     "@sentry/node": "^10.49.0",
     "pino": "^8.17.0",
     "posthog-node": "^5.29.2",
-    "uuid": "^9.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
