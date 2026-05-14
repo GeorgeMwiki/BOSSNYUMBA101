@@ -24,6 +24,7 @@ import {
   useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
+import { FeedbackThumbs, type FeedbackVerdict } from '@/components/FeedbackThumbs';
 
 const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
 
@@ -157,6 +158,30 @@ export function JarvisConsole(): JSX.Element {
     setPendingImages((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  // Per-turn feedback handler. Posts to the gateway feedback endpoint —
+  // server-side wiring for the customer-app proxy route is intentionally
+  // out of scope here (tracked in the K2 parity gap D follow-up). When
+  // the proxy isn't mounted yet the POST 404s, the FeedbackThumbs
+  // component surfaces the error in its toast, and the buttons restore.
+  const handleFeedback = useCallback(
+    async (turnId: string, verdict: FeedbackVerdict, reason?: string): Promise<void> => {
+      const response = await fetch('/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          turnId,
+          threadId,
+          signal: verdict === 'up' ? 'thumbs-up' : 'thumbs-down',
+          correctionText: reason ?? null,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Feedback failed (${response.status})`);
+      }
+    },
+    [threadId],
+  );
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     const text = draft.trim();
@@ -268,6 +293,14 @@ export function JarvisConsole(): JSX.Element {
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {t.role === 'assistant' ? (
+                  <FeedbackThumbs
+                    turnId={t.id}
+                    onFeedback={(verdict, reason) =>
+                      handleFeedback(t.id, verdict, reason)
+                    }
+                  />
                 ) : null}
               </div>
             );
