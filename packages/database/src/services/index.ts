@@ -206,6 +206,22 @@ export {
   type KernelActionAuditService,
 } from './kernel-action-audit.service.js';
 
+// Sovereign action ledger (migration 0129) — hash-chained agency-side
+// audit ledger of EXECUTED sovereign-tier actions. Append-only +
+// tamper-evident; verifyLedgerChain re-derives every row's hash.
+// Closes LITFIN parity Gap C in .planning/parity-litfin/07-agency.md.
+export {
+  createSovereignActionLedgerService,
+  computeRowHash as computeSovereignLedgerRowHash,
+  hashPayload as hashSovereignLedgerPayload,
+  GENESIS_HASH as SOVEREIGN_LEDGER_GENESIS_HASH,
+  type SovereignActionLedgerService,
+  type SovereignLedgerAppendArgs,
+  type SovereignLedgerAppendResult,
+  type SovereignLedgerRow,
+  type SovereignLedgerVerifyResult,
+} from './sovereign-action-ledger.service.js';
+
 // Per-tenant autonomy policy reader (migration 0080 — autonomy_policies).
 // Adapts to the kernel-agency `AutonomyPolicyPort` shape; falls back to
 // default-allow-low-stakes whenever the row is missing, autonomous mode
@@ -268,3 +284,20 @@ export {
   type StepRecordShape as MonthlyCloseStepRecordShape,
   type Trigger as MonthlyCloseTrigger,
 } from './monthly-close-runs.service.js';
+
+// Sensor routing control plane (migration 0126, LITFIN-parity Wave K) —
+// Drizzle-backed adapter for the multi-LLM router. Records every sensor
+// attempt to `sensor_call_log` with the outcome enum so dashboards can
+// split availability / cost / refusal failure modes; debits the matching
+// period envelope in `tenant_budget_envelopes`. `selectSensorChain`
+// returns the builtin (task, tenant-tier) → ordered chain — stays
+// read-only by default so wiring into the live router is a follow-up.
+export {
+  createSensorRoutingService,
+  type SensorRoutingService,
+  type RecordSensorCallArgs,
+  type BudgetStatus,
+  type SensorChainVerdict,
+  type SensorChoice,
+  type TenantTier,
+} from './sensor-routing.service.js';

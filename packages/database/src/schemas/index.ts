@@ -263,6 +263,14 @@ export * from './kernel-feedback.schema.js';
 export * from './kernel-goals.schema.js';
 export * from './kernel-action-audit.schema.js';
 
+// Sovereign action ledger (migration 0129) — hash-chained tamper-
+// evident record of EXECUTED sovereign-tier actions (tenant eviction
+// proposed, owner payout executed, KRA MRI filed, GePG control number
+// revoked, ...). Closes LITFIN parity Gap C in 07-agency.md. Per-
+// tenant chain rooted at GENESIS_HASH; this_hash = sha256(prev_hash
+// || tenant_id || action_type || payload_hash || executed_at_iso).
+export * from './sovereign-action-ledger.schema.js';
+
 // Legacy migration coverage — Drizzle mirrors for tables that existed
 // only in raw SQL. Closes the type-safety gap so consumers don't
 // hand-roll raw SQL against these tables.
@@ -285,3 +293,12 @@ export * from './tenant-predictions.schema.js';
 // voice-mediated turns owned by Agent PhL (voice-first tenant/owner
 // agent). Detects ANY language (never hardcoded en/sw).
 export * from './voice-turns.schema.js';
+
+// Sensor routing control plane (migration 0126) — LITFIN-parity tables
+// that let an admin shift the brain's per-task sensor chain or throttle
+// a tenant's monthly USD ceiling without a deploy. `sensor_call_log` is
+// the append-only telemetry stream (one row per attempt with outcome,
+// tokens, microdollar cost); `tenant_budget_envelopes` is the
+// period-bound ceiling that the log debits.
+export * from './sensor-call-log.schema.js';
+export * from './tenant-budget-envelopes.schema.js';

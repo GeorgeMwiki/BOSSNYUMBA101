@@ -97,11 +97,15 @@ describe('createSensorRouter', () => {
     await expect(router.call(ARGS, ['vision'])).rejects.toBeInstanceOf(SensorFailoverError);
   });
 
-  it('marks failed sensor unhealthy until cooldown elapses', async () => {
+  it('marks failed sensor unhealthy after breaker trips and cooldown elapses', async () => {
     let now = 1_000;
     const router = createSensorRouter({
       sensors: [failing('flaky', { priority: 1 }), ok('stable', { priority: 5 })],
       coolDownMs: 1000,
+      // 1-strike breaker preserves the pre-Wave-K aggressive-trip behaviour
+      // for this baseline test; the dedicated 3-strike test below exercises
+      // the LITFIN-parity default.
+      breakerThreshold: 1,
       clock: () => now,
     });
     await router.call(ARGS, ['fast']); // trips cool-down on flaky
@@ -115,6 +119,7 @@ describe('createSensorRouter', () => {
     const router = createSensorRouter({
       sensors: [failing('flaky', { priority: 1 }), ok('stable', { priority: 5 })],
       coolDownMs: 1000,
+      breakerThreshold: 1,
       clock: () => now,
     });
     await router.call(ARGS, ['fast']); // mark flaky as down
@@ -128,6 +133,7 @@ describe('createSensorRouter', () => {
     const router = createSensorRouter({
       sensors: [failing('flaky', { priority: 1 }), ok('stable', { priority: 5 })],
       coolDownMs: 10_000,
+      breakerThreshold: 1,
       clock: () => now,
     });
     await router.call(ARGS, ['fast']);
