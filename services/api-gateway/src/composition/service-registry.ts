@@ -209,6 +209,10 @@ import {
   type PredictiveInterventionsWiring,
 } from './predictive-interventions-wiring.js';
 import {
+  createWakeLoopCronSupervisor,
+  type WakeLoopCronSupervisor,
+} from './wake-loop-cron.js';
+import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
   createTrainingAssignmentService,
@@ -567,6 +571,13 @@ export interface ServiceRegistry {
    *  runs in heuristic-baseline mode. */
   readonly predictiveInterventions: PredictiveInterventionsWiring | null;
 
+  /** Wake-loop cron supervisor (K7 parity-litfin Gap H). Periodically
+   *  invokes `runWakeCycle` across every active tenant so the kernel's
+   *  ambient brain detectors (arrears/lease-expiry/vacancy) actually
+   *  fire on schedule. Null in degraded mode. Constructed but inert
+   *  until `start()` is called from the gateway boot sequence. */
+  readonly wakeLoopCron: WakeLoopCronSupervisor | null;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -865,6 +876,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     voiceAgent: null,
     marketSurveillance: null,
     predictiveInterventions: null,
+    // K7 parity-litfin Gap H — wake-loop cron is null in degraded mode
+    // (no DB means no tenants to iterate, no read ports to bind).
+    wakeLoopCron: null,
     eventBus,
     db: null,
     isLive: false,
@@ -1507,6 +1521,19 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     })(),
     marketSurveillance: createMarketSurveillanceWiring({ db }),
     predictiveInterventions: createPredictiveInterventionsWiring({ db }),
+    // K7 parity-litfin Gap H — wake-loop cron supervisor. Inert until
+    // `start()` is called in the gateway boot sequence; ticks the
+    // kernel agency `runWakeCycle` every WAKE_LOOP_INTERVAL_MS (default
+    // 15 minutes) under a cluster-wide pg advisory lock so replicas
+    // never overlap.
+    wakeLoopCron: createWakeLoopCronSupervisor({
+      db,
+      logger: {
+        info: (obj, msg) => console.info('wake-loop-cron:', msg ?? '', obj),
+        warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
+        error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
+      },
+    }),
     eventBus,
     db,
     isLive: true,

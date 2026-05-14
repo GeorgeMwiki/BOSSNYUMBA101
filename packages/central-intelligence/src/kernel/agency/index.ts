@@ -46,3 +46,27 @@ export {
   type VacancyReadPort,
   type VacancyRow,
 } from './initiative/real-detectors.js';
+
+// Stall detector (K7 parity-litfin Gap G) — pure detector that scans
+// `active` goals where the latest step activity exceeds a per-category
+// stall threshold and emits self-heal proposals (continue/block/
+// abandon). Storage- and side-effect-agnostic; the gateway composition
+// root wires `eventSink.emit` to the in-process event bus + routes the
+// chosen proposal through the existing four-eye approval flow.
+export {
+  categoriseGoal,
+  lastActivityAt,
+  runStallDetection,
+  thresholdFor,
+  type StallAuditEntryShape,
+  type StallAuditReader,
+  type StallCategory,
+  type StallDetectorDeps,
+  type StallDetectorRunArgs,
+  type StallDetectorRunOutcome,
+  type StallEventSink,
+  type StallProposal,
+  type StallProposalKind,
+  type StallThresholds,
+  type StalledGoalReport,
+} from './stall-detector.js';
