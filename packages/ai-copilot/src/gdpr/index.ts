@@ -1,0 +1,32 @@
+/**
+ * @bossnyumba/ai-copilot / gdpr — Data-Subject Access Request compiler.
+ *
+ * Closes parity-gap G3 (BOSS RTBF lacked a data-export path). Sits beside
+ * `services/domain-services/src/compliance/gdpr-service.ts` (which handles
+ * the pseudonymisation / RTBF execution side); the compiler covers
+ * GDPR Art. 20 portability + Tanzania PDPA s.27 access right.
+ *
+ * Surface stays minimal — one entrypoint (`compileDsar`) plus the port
+ * types so the composition root can wire concrete data sources.
+ */
+
+export {
+  compileDsar,
+  createEmptyDsarDataSource,
+  createNoopClassificationLookup,
+  DSAR_BUNDLE_SCHEMA_VERSION,
+  DSAR_TABLE_NAMES,
+} from './dsar-compiler.js';
+
+export type {
+  ClassificationLevel as DsarClassificationLevel,
+  ClassificationLookup as DsarClassificationLookup,
+  FieldClassificationLite as DsarFieldClassificationLite,
+  CompileDsarOptions,
+  CompileDsarRequest,
+  DsarBundle,
+  DsarBundleSchemaVersion,
+  DsarDataSource,
+  DsarRow,
+  DsarTableName,
+} from './types.js';
