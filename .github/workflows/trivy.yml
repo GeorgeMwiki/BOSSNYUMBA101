@@ -50,7 +50,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Trivy filesystem scan (vuln only — fail-on-finding)
+      # SARIF mode — informational, feeds the GitHub Security tab.
+      # We don't gate on this step: Trivy's SARIF output mode reports
+      # every vuln regardless of `.trivyignore` (the ignore file only
+      # filters the table-formatted printer). The table-format step
+      # below is the authoritative gate.
+      - name: Trivy filesystem scan (SARIF → Security tab)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
@@ -59,16 +64,9 @@ jobs:
           output: trivy-fs.sarif
           severity: ${{ env.TRIVY_SEVERITY }}
           ignore-unfixed: true
-          # Scope to vulnerability scanning only. The .trivyignore file
-          # covers the vuln-CVE surface that mirrors
-          # `audit-with-allowlist.mjs`. Misconfig + secret findings
-          # surface via the informational table-summary step below
-          # (exit-code: 0) so they're visible without blocking the PR
-          # on a category that doesn't honour the CVE-shaped allowlist.
           scanners: vuln
           trivyignores: ./.trivyignore
-          # Fail on any HIGH+ vuln finding that is not allowlisted.
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload SARIF (security tab)
         if: always()
@@ -78,8 +76,10 @@ jobs:
           category: trivy-fs
         continue-on-error: true
 
-      - name: Trivy filesystem scan (table summary)
-        if: always()
+      # Table mode — BLOCKING. The table formatter respects
+      # `.trivyignore`, so HIGH+ vulns that are not allowlisted will
+      # fail the job here.
+      - name: Trivy filesystem scan (table — fail-on-finding)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
@@ -87,8 +87,9 @@ jobs:
           format: table
           severity: ${{ env.TRIVY_SEVERITY }}
           ignore-unfixed: true
+          scanners: vuln
           trivyignores: ./.trivyignore
-          exit-code: '0' # informational repeat — never fails the job
+          exit-code: '1'
 
   trivy-image:
     name: Trivy — container image scan
