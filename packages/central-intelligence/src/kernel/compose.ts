@@ -109,7 +109,11 @@ export interface ComposeSovereignConfig {
    * Custom judge override. When omitted and `anthropicClient` is
    * provided, compose wires a Haiku-backed judge automatically.
    */
-  readonly judge?: (text: string) => Promise<{ score: number }>;
+  readonly judge?: (text: string) => Promise<{
+    readonly score: number;
+    readonly reasonText?: string;
+    readonly suggestedFix?: string;
+  }>;
   /**
    * Set false to disable the auto-Haiku judge even when the
    * Anthropic client is present (e.g. cost-sensitive surfaces).
