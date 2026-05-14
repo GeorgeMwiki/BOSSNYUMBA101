@@ -301,3 +301,43 @@ export {
   type SensorChoice,
   type TenantTier,
 } from './sensor-routing.service.js';
+
+// Approval policy (migration 0128, K5 parity) — declarative four-eye policy
+// table for sovereign-tier kernel tools. Per-tenant rows override the
+// platform-default row; both fall back to the kernel baseline. Carries
+// role-group quorum, max-stale-minutes, recall-window, and re-auth
+// requirements. Adapts to the kernel's `ApprovalPolicyPort` shape; the
+// kernel's `four-eye-approval.ts` hands `resolve()` to the gate so each
+// proposed action loads its declarative policy at propose-time.
+export {
+  createApprovalPolicyService,
+  defaultBaseline as defaultApprovalPolicyBaseline,
+  type ApprovalPolicyResolveArgs,
+  type ApprovalPolicyService,
+  type ApprovalPolicyUpsertArgs,
+  type ResolvedApprovalPolicy,
+} from './approval-policy.service.js';
+
+// Privacy-budget composer (migration 0130, parity K6.2) — unified
+// (ε, δ) refusal gate that sums per-tenant + platform DP spend over a
+// 30-day rolling window. Closes parity-gap G2 (alternating-surface
+// attack against the two independent ledgers). Hard caps: platform
+// (5.0, 1e-5), pro (10.0, 1e-5), enterprise (50.0, 1e-5). The default
+// repository is in-memory; production composition roots wire a
+// Drizzle-backed adapter against privacy_budget_ledger.
+export {
+  createPrivacyBudgetComposerService,
+  InMemoryPrivacyBudgetRepository as InMemoryPrivacyBudgetComposerRepository,
+  PrivacyBudgetExceededError,
+  PRIVACY_BUDGET_TIER_CAPS,
+  PRIVACY_BUDGET_WINDOW_DAYS,
+  type BudgetAvailability,
+  type CheckBudgetArgs,
+  type PrivacyBudgetComposerConfig,
+  type PrivacyBudgetComposerService,
+  type PrivacyBudgetRepository as PrivacyBudgetComposerRepository,
+  type PrivacyBudgetTier,
+  type PrivacyBudgetWindow,
+  type RecordSpendArgs,
+  type RemainingBudget,
+} from './privacy-budget-composer.service.js';

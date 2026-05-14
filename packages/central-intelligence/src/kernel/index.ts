@@ -57,8 +57,13 @@ export {
 } from './public-inviolable.js';
 export {
   runPolicyGate,
+  isWithinBusinessHoursEAT,
+  DEFAULT_COST_CEILINGS,
   type PolicyGateInput,
   type PolicyGateOutput,
+  type PolicyGateRequestContext,
+  type PolicyGateDecisionContext,
+  type PolicyGateTier,
 } from './policy-gate.js';
 export {
   checkSelfAwareness,
@@ -189,13 +194,20 @@ export {
 export {
   createApprovalGate,
   createInMemoryApprovalStore,
+  buildApprovalPolicy,
+  DEFAULT_APPROVAL_POLICY,
   type ApprovalGate,
   type ApprovalGateDeps,
+  type ApprovalPolicy,
+  type ApprovalPolicyResolver,
   type ApprovalRecord,
+  type ApprovalRoleGroup,
   type ApprovalSignature,
   type ApprovalStatus,
   type ApprovalStore,
+  type ProposeArgs,
   type ProposedAction,
+  type SignArgs,
 } from './four-eye-approval.js';
 export {
   createBriefingComposer,

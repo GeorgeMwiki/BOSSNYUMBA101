@@ -302,3 +302,10 @@ export * from './voice-turns.schema.js';
 // period-bound ceiling that the log debits.
 export * from './sensor-call-log.schema.js';
 export * from './tenant-budget-envelopes.schema.js';
+
+// Per-tenant privacy-budget ledger (migration 0130, parity K6.2) —
+// closes parity-gap G2 by tracking the (ε, δ) spend of each tenant's
+// DP-aggregator calls over a 30-day rolling window. Sits BESIDE the
+// singleton `platform_privacy_budget` so PrivacyBudgetComposerService
+// can refuse cross-surface overspend.
+export * from './privacy-budget-ledger.schema.js';
