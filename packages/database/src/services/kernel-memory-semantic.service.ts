@@ -4,15 +4,25 @@
  * Drizzle-backed adapter for the `kernel_memory_semantic` table
  * (migration 0121). Operations:
  *
- *   - upsertFact(args) : insert-or-update by (tenant, user, key) with
- *                        evidence_count bump + last_seen_at refresh.
- *   - lookup(args)     : fetch a single fact by (tenant, user, key).
- *                        Returns null when no row.
- *   - search(args)     : list facts for a (tenant, user) pair, optional
- *                        prefix-match on `key`, ranked by last_seen_at
- *                        DESC. Bounded by `limit` (default 25).
- *   - decay(args)      : multiplicative confidence decay across all
- *                        facts in a tenant. For the nightly cycle.
+ *   - upsertFact(args)        : insert-or-update by (tenant, user, key)
+ *                               with evidence_count bump + last_seen_at
+ *                               refresh. Accepts an optional embedding
+ *                               (1536-dim, added in migration 0125).
+ *   - lookup(args)            : fetch a single fact by (tenant, user,
+ *                               key). Returns null when no row.
+ *   - search(args)            : list facts for a (tenant, user) pair,
+ *                               optional prefix-match on `key`, ranked
+ *                               by last_seen_at DESC. Bounded by
+ *                               `limit` (default 25).
+ *   - searchByEmbedding(args) : query-conditioned retrieval —
+ *                               pgvector `<=>` cosine distance against
+ *                               the caller's query embedding. NULL
+ *                               embeddings are filtered out. Returns
+ *                               the top-K facts ranked by similarity.
+ *                               Migration 0125 + LITFIN parity gap C.
+ *   - decay(args)             : multiplicative confidence decay across
+ *                               all facts in a tenant. For the nightly
+ *                               cycle.
  *
  * Hard DB failures degrade to no-ops / null / [] — the kernel never
  * crashes because the semantic store is unreachable.
@@ -48,6 +58,13 @@ export interface UpsertFactArgs {
   readonly confidence: number;
   readonly sourceTurnId?: string | null;
   readonly source?: SemanticSource;
+  /**
+   * Optional 1536-dim embedding (text-embedding-3-small). When
+   * provided, persisted into the pgvector column for query-conditioned
+   * retrieval via `searchByEmbedding`. Wrong dimensionality is dropped
+   * (logged) so an out-of-spec embedding never corrupts the table.
+   */
+  readonly embedding?: ReadonlyArray<number>;
 }
 
 export interface LookupArgs {
@@ -63,6 +80,25 @@ export interface SearchArgs {
   readonly limit?: number;
 }
 
+export interface SearchByEmbeddingArgs {
+  readonly tenantId: string | null;
+  readonly userId?: string | null;
+  /** 1536-dim query embedding (text-embedding-3-small). */
+  readonly embedding: ReadonlyArray<number>;
+  readonly limit?: number;
+  /**
+   * Maximum cosine distance (0 = identical, 2 = opposite). Facts with
+   * `<=> embedding > maxDistance` are filtered out. Default 1.0 — i.e.
+   * "anything closer than orthogonal." Tighten for higher precision.
+   */
+  readonly maxDistance?: number;
+}
+
+export interface SemanticFactWithSimilarity extends SemanticFact {
+  /** Cosine distance (0 = identical). Lower is better. */
+  readonly distance: number;
+}
+
 export interface DecayArgs {
   readonly tenantId: string | null;
   /** Multiplicative factor per day; e.g. 0.99 = 1% daily decay. */
@@ -73,11 +109,17 @@ export interface SemanticMemoryService {
   upsertFact(args: UpsertFactArgs): Promise<void>;
   lookup(args: LookupArgs): Promise<SemanticFact | null>;
   search(args: SearchArgs): Promise<ReadonlyArray<SemanticFact>>;
+  searchByEmbedding(
+    args: SearchByEmbeddingArgs,
+  ): Promise<ReadonlyArray<SemanticFactWithSimilarity>>;
   decay(args: DecayArgs): Promise<number>;
 }
 
 const KEY_MAX_LEN = 200;
 const DEFAULT_SEARCH_LIMIT = 25;
+const DEFAULT_EMBEDDING_SEARCH_LIMIT = 8;
+const EMBEDDING_DIMS = 1536;
+const DEFAULT_MAX_DISTANCE = 1.0;
 
 export function createSemanticMemoryService(
   db: DatabaseClient,
@@ -90,34 +132,42 @@ export function createSemanticMemoryService(
         const confidence = clamp01(args.confidence);
         const userId = args.userId ?? null;
         const source: SemanticSource = args.source ?? 'extracted';
+        const embedding = sanitizeEmbedding(args.embedding);
+
+        const insertValues: Record<string, unknown> = {
+          id: randomUUID(),
+          tenantId: args.tenantId,
+          userId,
+          key,
+          value: args.value as never,
+          confidence,
+          sourceTurnId: args.sourceTurnId ?? null,
+          evidenceCount: 1,
+          source,
+        };
+        const updateSet: Record<string, unknown> = {
+          value: args.value as never,
+          confidence,
+          sourceTurnId: args.sourceTurnId ?? null,
+          evidenceCount: sql`${kernelMemorySemantic.evidenceCount} + 1`,
+          lastSeenAt: new Date(),
+          source,
+        };
+        if (embedding) {
+          insertValues.embedding = embedding as never;
+          updateSet.embedding = embedding as never;
+        }
 
         await db
           .insert(kernelMemorySemantic)
-          .values({
-            id: randomUUID(),
-            tenantId: args.tenantId,
-            userId,
-            key,
-            value: args.value as never,
-            confidence,
-            sourceTurnId: args.sourceTurnId ?? null,
-            evidenceCount: 1,
-            source,
-          } as never)
+          .values(insertValues as never)
           .onConflictDoUpdate({
             target: [
               kernelMemorySemantic.tenantId,
               kernelMemorySemantic.userId,
               kernelMemorySemantic.key,
             ],
-            set: {
-              value: args.value as never,
-              confidence,
-              sourceTurnId: args.sourceTurnId ?? null,
-              evidenceCount: sql`${kernelMemorySemantic.evidenceCount} + 1`,
-              lastSeenAt: new Date(),
-              source,
-            } as never,
+            set: updateSet as never,
           });
       } catch (error) {
         console.error('kernel-memory-semantic.upsertFact failed:', error);
@@ -182,6 +232,59 @@ export function createSemanticMemoryService(
       }
     },
 
+    async searchByEmbedding(args) {
+      try {
+        const cleaned = sanitizeEmbedding(args.embedding);
+        if (!cleaned) return [];
+        const limit = clampLimit(
+          args.limit,
+          DEFAULT_EMBEDDING_SEARCH_LIMIT,
+        );
+        const maxDistance = clampDistance(
+          args.maxDistance,
+          DEFAULT_MAX_DISTANCE,
+        );
+        const queryLiteral = `[${cleaned.join(',')}]`;
+
+        const conds: SQL<unknown>[] = [];
+        if (args.tenantId)
+          conds.push(eq(kernelMemorySemantic.tenantId, args.tenantId));
+        if (args.userId === null) {
+          conds.push(isNull(kernelMemorySemantic.userId));
+        } else if (args.userId !== undefined) {
+          conds.push(eq(kernelMemorySemantic.userId, args.userId));
+        }
+        // Exclude NULL embeddings — pgvector distance against NULL is
+        // undefined and would surface as NaN.
+        conds.push(sql`${kernelMemorySemantic.embedding} IS NOT NULL`);
+
+        const distanceExpr = sql<number>`${kernelMemorySemantic.embedding} <=> ${queryLiteral}::vector`;
+
+        const rows = (await db
+          .select({
+            ...SELECT_COLS,
+            distance: distanceExpr,
+          })
+          .from(kernelMemorySemantic)
+          .where(conds.length > 0 ? and(...conds) : undefined)
+          .orderBy(distanceExpr)
+          .limit(limit)) as ReadonlyArray<SemanticRow & { distance: number }>;
+
+        return (rows ?? [])
+          .filter((r) => Number.isFinite(r.distance) && r.distance <= maxDistance)
+          .map((r) => ({
+            ...rowToFact(r),
+            distance: Number(r.distance),
+          }));
+      } catch (error) {
+        console.error(
+          'kernel-memory-semantic.searchByEmbedding failed:',
+          error,
+        );
+        return [];
+      }
+    },
+
     async decay(args) {
       try {
         const factor = Number(args.decayPerDay);
@@ -241,6 +344,50 @@ function clampLimit(input: number | undefined, fallback: number): number {
     return fallback;
   }
   return Math.min(Math.floor(input), 1000);
+}
+
+/**
+ * pgvector cosine distance is in [0, 2]. We clamp callers' inputs to
+ * that range and fall back to the default when the input is malformed.
+ */
+function clampDistance(input: number | undefined, fallback: number): number {
+  if (typeof input !== 'number' || !Number.isFinite(input)) return fallback;
+  if (input < 0) return 0;
+  if (input > 2) return 2;
+  return input;
+}
+
+/**
+ * Validate an optional caller-supplied embedding before it touches the
+ * pgvector column. Out-of-spec embeddings (wrong dimensionality, NaN /
+ * ±Infinity entries) are dropped — we log and return `undefined` so the
+ * caller's `upsertFact` proceeds without an embedding rather than
+ * corrupting the table. A successful pass returns a frozen,
+ * `number[]`-typed copy.
+ */
+function sanitizeEmbedding(
+  raw: ReadonlyArray<number> | undefined,
+): number[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  if (raw.length !== EMBEDDING_DIMS) {
+    console.warn(
+      `kernel-memory-semantic: dropping embedding — expected ${EMBEDDING_DIMS} dims, got ${raw.length}`,
+    );
+    return undefined;
+  }
+  const cleaned: number[] = new Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) {
+    const n = Number(raw[i]);
+    if (!Number.isFinite(n)) {
+      console.warn(
+        `kernel-memory-semantic: dropping embedding — non-finite value at index ${i}`,
+      );
+      return undefined;
+    }
+    cleaned[i] = n;
+  }
+  return cleaned;
 }
 
 interface SemanticRow {
