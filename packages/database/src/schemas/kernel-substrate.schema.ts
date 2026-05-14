@@ -68,7 +68,17 @@ export const kernelCotReservoir = pgTable(
     tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
     threadId: text('thread_id').notNull(),
     stakes: kernelStakesEnum('stakes').notNull(),
+    /**
+     * PII-scrubbed thought text. The raw thought is sanitised before
+     * persistence (phone/email/NIDA/KRA PIN/M-Pesa pattern set) and the
+     * untouched prompt/response are addressable only via the hashes
+     * below. Mirrors LITFIN `cot-recorder.ts:35-78`.
+     */
     thoughtText: text('thought_text').notNull(),
+    /** SHA-256 of the pre-scrub thought text (hex). */
+    promptHash: text('prompt_hash'),
+    /** SHA-256 of the sanitised text persisted in `thoughtText` (hex). */
+    responseHash: text('response_hash'),
     capturedAt: timestamp('captured_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
