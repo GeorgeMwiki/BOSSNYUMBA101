@@ -214,6 +214,23 @@ export type {
 export { initAnalytics, getAnalytics, trackEvent } from './analytics.js';
 
 // ============================================================================
+// Security — secrets derivation / dual-key verify (rotation support)
+// ============================================================================
+
+export type {
+  HmacAlgorithm,
+  SecretPair,
+} from './security/secrets-derivation.js';
+
+export {
+  sign,
+  verify,
+  verifyWithRotation,
+  resolveSecretPair,
+  verifyWithEnvRotation,
+} from './security/secrets-derivation.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 

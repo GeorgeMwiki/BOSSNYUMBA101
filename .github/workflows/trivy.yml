@@ -1,0 +1,141 @@
+# =============================================================================
+# Trivy — filesystem + container-image vulnerability scan
+# =============================================================================
+# Two complementary jobs:
+#   1. trivy-fs        scans the checked-out source tree for vulnerable
+#                      package manifests, misconfigurations, secrets,
+#                      and licence issues.
+#   2. trivy-image     builds the api-gateway Docker image and scans it
+#                      for CVEs in the base layer + node_modules.
+#
+# Failure model:
+#   - HIGH+ severity in EITHER scan blocks the workflow.
+#   - Documented & allowlisted findings (e.g. an unfixed upstream CVE
+#     that does not apply to our usage) are tracked in
+#     `.trivyignore` with a `reason:` and `next_review:` comment, the
+#     same shape as `scripts/audit-with-allowlist.mjs`.
+#
+# Source pattern: LITFIN's `security.yml` Trivy job.
+# Closure direction: BOSSNYUMBA had no container/fs vuln scan.
+# =============================================================================
+
+name: Trivy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 5 * * *' # daily 05:00 UTC — catch newly disclosed CVEs
+  workflow_dispatch:
+
+concurrency:
+  group: trivy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write # for SARIF upload
+
+env:
+  TRIVY_SEVERITY: 'HIGH,CRITICAL'
+
+jobs:
+  trivy-fs:
+    name: Trivy — filesystem scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan (vuln + misconfig + secret)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          # Honour .trivyignore at repo root for documented exceptions
+          # (mirrors the audit-with-allowlist pattern).
+          trivyignores: ./.trivyignore
+          # Fail on any HIGH+ finding that is not allowlisted.
+          exit-code: '1'
+
+      - name: Upload SARIF (security tab)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+        continue-on-error: true
+
+      - name: Trivy filesystem scan (table summary)
+        if: always()
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          trivyignores: ./.trivyignore
+          exit-code: '0' # informational repeat — never fails the job
+
+  trivy-image:
+    name: Trivy — container image scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only run on push/release/dispatch — PR runs use trivy-fs which
+    # covers the same dependencies without the docker-build cost.
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build api-gateway image (load locally, no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          load: true
+          push: false
+          tags: bossnyumba/api-gateway:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy image scan (CVE + secret in layers)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: bossnyumba/api-gateway:scan
+          format: sarif
+          output: trivy-image.sarif
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          trivyignores: ./.trivyignore
+          exit-code: '1'
+
+      - name: Upload SARIF (security tab)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+        continue-on-error: true
+
+      - name: Trivy image scan (table summary)
+        if: always()
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: bossnyumba/api-gateway:scan
+          format: table
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          trivyignores: ./.trivyignore
+          exit-code: '0' # informational repeat

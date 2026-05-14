@@ -1,0 +1,19 @@
+# =============================================================================
+# Trivy allowlist — documented accept-risk findings
+# =============================================================================
+# Each entry MUST include: CVE id, package, reason, tracked_in, next_review.
+# Mirror the shape of scripts/audit-with-allowlist.mjs so the security
+# review picks both files up together.
+#
+# Format: one CVE id per line; trailing `#` comment captures the rationale.
+# Trivy reads only the first whitespace-delimited token, so the comment
+# is human-only and does not affect filtering.
+# =============================================================================
+
+# (No allowlisted CVEs at this time.)
+# Example shape, kept for reference — remove the leading `#` to activate:
+#
+# CVE-2024-00000 # package=example, severity=HIGH
+#   reason:       upstream patch broke our usage; we don't call the affected API
+#   tracked_in:   Docs/DEP_HYGIENE.md (example-cve-tracking)
+#   next_review:  2026-Q3
