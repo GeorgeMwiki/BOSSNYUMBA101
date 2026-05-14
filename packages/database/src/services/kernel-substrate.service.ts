@@ -33,7 +33,16 @@ export interface CotSampleShape {
   readonly thoughtId: string;
   readonly threadId: string;
   readonly stakes: 'low' | 'medium' | 'high' | 'critical';
+  /** PII-scrubbed thought text safe to persist. */
   readonly thoughtText: string;
+  /**
+   * SHA-256 (hex) of the original, pre-scrub thought. Optional for
+   * back-compat with callers that have not yet upgraded to the
+   * Wave-K scrubbing CoT reservoir.
+   */
+  readonly promptHash?: string;
+  /** SHA-256 (hex) of the sanitised text actually stored. */
+  readonly responseHash?: string;
   readonly capturedAt: string;
 }
 
@@ -104,6 +113,8 @@ export function createKernelSubstrateService(
             threadId: sample.threadId,
             stakes: sample.stakes,
             thoughtText: sample.thoughtText,
+            promptHash: sample.promptHash ?? null,
+            responseHash: sample.responseHash ?? null,
             capturedAt: new Date(sample.capturedAt),
           } as never)
           .onConflictDoNothing();

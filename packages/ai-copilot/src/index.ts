@@ -628,3 +628,15 @@ export * as ArrearsLadderOrchestrator from './orchestrators/arrears-ladder/index
 export * as MoveOutOrchestrator from './orchestrators/move-out/index.js';
 export * as TenderToContractOrchestrator from './orchestrators/tender-to-contract/index.js';
 
+// ============================================
+// Parity K6.2 — GDPR Art. 20 / PDPA s.27 DSAR compiler. Closes parity-gap G3
+// (BOSS lacked a data-export path beside `gdpr-service.executeDeletion`). The
+// compiler assembles a single JSON bundle of every personal-data row for one
+// subject across the property-management surfaces (customers, leases,
+// payments, communications, voice turns, owner statements, maintenance
+// tickets, KRA MRI filings, GePG transactions, CoT reservoir). Per-field
+// classifications are layered through a `ClassificationLookup` port wired
+// in the composition root to the database package's classification registry.
+// ============================================
+export * from './gdpr/index.js';
+

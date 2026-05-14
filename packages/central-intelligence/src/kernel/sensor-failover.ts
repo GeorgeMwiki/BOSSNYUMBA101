@@ -1,25 +1,68 @@
 /**
- * Sensor failover — multi-provider routing with health tracking.
+ * Sensor failover — multi-provider routing with rolling-window health
+ * + 3-strike circuit breaker.
  *
- * Sensors are ranked by `priority` (lower wins) and capabilities
- * needed for the current call (vision, thinking, fast, batch). The
- * failover:
+ * LITFIN-parity surface (`.planning/parity-litfin/04-sensors-routing.md`
+ * section 3): the brain is sensor-agnostic, but when a sensor misfires
+ * (5xx, timeout, rate-limit, malformed response) the kernel must fail
+ * over to the next-ready sensor without surfacing the error to the
+ * caller. Tone may shift slightly; intelligence does not.
  *
- *   1. Picks the highest-priority healthy sensor that satisfies
- *      capability requirements.
- *   2. On failure, marks the sensor unhealthy for `coolDownMs` and
- *      retries on the next-best sensor.
- *   3. If all sensors fail, throws SensorFailoverError.
+ * Health is tracked per sensor with a 60 s rolling sliding window:
  *
- * Pure orchestrator. The Sensor implementations are injected by the
- * composition root.
+ *   - successes / failures observed in the last 60 s
+ *   - consecutive-failure counter
+ *   - breaker state machine — 'closed' (normal) → 'open' (cooling)
+ *     → 'half-open' (one probe allowed) → 'closed' (recovered)
+ *
+ * Breaker tuning:
+ *   - 3 consecutive failures open the breaker (one bad flap doesn't
+ *     trip the circuit)
+ *   - 60 s cooldown puts the breaker into half-open and lets one probe
+ *     attempt through (success closes it; another failure re-opens)
+ *
+ * The router walks sensors by priority + success-rate. Capability
+ * filtering (vision / thinking / fast / batch) prunes the list before
+ * health does, so a vision request never falls back to a text-only sensor.
+ *
+ * Pure orchestrator. Sensor implementations are injected by the
+ * composition root; the router never imports a provider SDK.
  */
 
 import type { Sensor, SensorCallArgs, SensorCallResult } from './kernel-types.js';
 
+// ─────────────────────────────────────────────────────────────────────
+// Tunables
+// ─────────────────────────────────────────────────────────────────────
+
+const DEFAULT_HEALTH_WINDOW_MS = 60_000;
+const DEFAULT_BREAKER_THRESHOLD = 3;
+const DEFAULT_COOLDOWN_MS = 30_000;
+
+export type SensorOutcome = 'ok' | 'fail';
+export type BreakerState = 'closed' | 'open' | 'half-open';
+
+export interface SensorHealthSnapshot {
+  readonly id: string;
+  readonly successCount: number;
+  readonly failureCount: number;
+  readonly consecutiveFailures: number;
+  readonly breakerState: BreakerState;
+  /** Wall-clock ms when the breaker last opened. 0 when never opened. */
+  readonly openedAt: number;
+  /** Remaining cooldown in ms (0 when breaker closed / half-open). */
+  readonly cooldownRemainingMs: number;
+  /** successes / (successes + failures); 1 when no data yet. */
+  readonly successRate: number;
+}
+
 export class SensorFailoverError extends Error {
-  constructor(public readonly attempts: ReadonlyArray<{ sensorId: string; error: string }>) {
-    super(`all sensors failed: ${attempts.map((a) => `${a.sensorId}=${a.error}`).join('; ')}`);
+  constructor(
+    public readonly attempts: ReadonlyArray<{ sensorId: string; error: string }>,
+  ) {
+    super(
+      `all sensors failed: ${attempts.map((a) => `${a.sensorId}=${a.error}`).join('; ')}`,
+    );
     this.name = 'SensorFailoverError';
   }
 }
@@ -27,46 +70,224 @@ export class SensorFailoverError extends Error {
 export interface SensorFailoverDeps {
   readonly sensors: ReadonlyArray<Sensor>;
   readonly coolDownMs?: number;
+  readonly healthWindowMs?: number;
+  readonly breakerThreshold?: number;
   readonly clock?: () => number;
 }
 
 export interface SensorRouter {
-  call(args: SensorCallArgs, required: ReadonlyArray<Sensor['capabilities'][number]>): Promise<SensorCallResult>;
-  health(): ReadonlyArray<{ id: string; healthy: boolean; lastFailureAt: number | null }>;
+  /**
+   * Call the next-ready sensor that satisfies the required capabilities.
+   * `preferred` pins one sensor to the front of the order (e.g. user
+   * preference); ignored when the preferred sensor's breaker is open
+   * AND alternatives are available.
+   */
+  call(
+    args: SensorCallArgs,
+    required: ReadonlyArray<Sensor['capabilities'][number]>,
+    options?: { readonly preferred?: string },
+  ): Promise<SensorCallResult>;
+  /**
+   * Public health snapshot — 5+ fields per sensor that an ops dashboard
+   * can render directly. Computed against the rolling window so it
+   * never returns stale data.
+   */
+  snapshotHealth(): ReadonlyArray<SensorHealthSnapshot>;
+  /**
+   * Backwards-compatible thin health summary (id / healthy / lastFailureAt).
+   * `healthy` is `false` only when the breaker is `open`.
+   */
+  health(): ReadonlyArray<{
+    id: string;
+    healthy: boolean;
+    lastFailureAt: number | null;
+  }>;
+  /** Wipe every sensor's health record. Test helper + ops escape hatch. */
   resetAll(): void;
 }
 
-export function createSensorRouter(deps: SensorFailoverDeps): SensorRouter {
-  const coolDownMs = deps.coolDownMs ?? 30_000;
-  const clock = deps.clock ?? Date.now;
-  const unhealthy = new Map<string, number>(); // sensorId → lastFailureAt
+interface HealthState {
+  successes: number[];
+  failures: number[];
+  consecutiveFailures: number;
+  breakerState: BreakerState;
+  openedAt: number;
+  lastFailureAt: number | null;
+}
 
-  function eligible(req: ReadonlyArray<Sensor['capabilities'][number]>): Sensor[] {
-    const now = clock();
-    return [...deps.sensors]
-      .filter((s) => req.every((cap) => s.capabilities.includes(cap)))
-      .filter((s) => {
-        const at = unhealthy.get(s.id);
-        return at === undefined || now - at >= coolDownMs;
-      })
-      .sort((a, b) => a.priority - b.priority);
+export function createSensorRouter(deps: SensorFailoverDeps): SensorRouter {
+  const coolDownMs = deps.coolDownMs ?? DEFAULT_COOLDOWN_MS;
+  const windowMs = deps.healthWindowMs ?? DEFAULT_HEALTH_WINDOW_MS;
+  const breakerThreshold = deps.breakerThreshold ?? DEFAULT_BREAKER_THRESHOLD;
+  const clock = deps.clock ?? Date.now;
+  const state = new Map<string, HealthState>();
+
+  function ensure(id: string): HealthState {
+    let h = state.get(id);
+    if (!h) {
+      h = {
+        successes: [],
+        failures: [],
+        consecutiveFailures: 0,
+        breakerState: 'closed',
+        openedAt: 0,
+        lastFailureAt: null,
+      };
+      state.set(id, h);
+    }
+    return h;
+  }
+
+  function trim(buf: number[], now: number): void {
+    const cutoff = now - windowMs;
+    while (buf.length > 0 && buf[0] < cutoff) buf.shift();
+  }
+
+  /**
+   * Advance the breaker FSM based on the wall clock — `open` may have
+   * cooled down enough to move to `half-open`. Called on every read so
+   * snapshots stay current without a background timer.
+   */
+  function adjustBreaker(h: HealthState, now: number): void {
+    if (h.breakerState === 'open' && now - h.openedAt >= coolDownMs) {
+      h.breakerState = 'half-open';
+    }
+  }
+
+  function recordOutcome(id: string, outcome: SensorOutcome, now: number): void {
+    const h = ensure(id);
+    trim(h.successes, now);
+    trim(h.failures, now);
+    if (outcome === 'ok') {
+      h.successes.push(now);
+      h.consecutiveFailures = 0;
+      // Any success closes the breaker — half-open probe succeeded.
+      h.breakerState = 'closed';
+      h.openedAt = 0;
+    } else {
+      h.failures.push(now);
+      h.lastFailureAt = now;
+      h.consecutiveFailures += 1;
+      if (h.breakerState === 'half-open') {
+        // Half-open probe failed → re-open the breaker.
+        h.breakerState = 'open';
+        h.openedAt = now;
+      } else if (
+        h.consecutiveFailures >= breakerThreshold &&
+        h.breakerState === 'closed'
+      ) {
+        h.breakerState = 'open';
+        h.openedAt = now;
+      }
+    }
+  }
+
+  function buildSnapshot(id: string, now: number): SensorHealthSnapshot {
+    const h = state.get(id);
+    if (!h) {
+      return {
+        id,
+        successCount: 0,
+        failureCount: 0,
+        consecutiveFailures: 0,
+        breakerState: 'closed',
+        openedAt: 0,
+        cooldownRemainingMs: 0,
+        successRate: 1,
+      };
+    }
+    trim(h.successes, now);
+    trim(h.failures, now);
+    adjustBreaker(h, now);
+    const total = h.successes.length + h.failures.length;
+    const successRate = total === 0 ? 1 : h.successes.length / total;
+    const cooldownRemainingMs =
+      h.breakerState === 'open'
+        ? Math.max(0, h.openedAt + coolDownMs - now)
+        : 0;
+    return {
+      id,
+      successCount: h.successes.length,
+      failureCount: h.failures.length,
+      consecutiveFailures: h.consecutiveFailures,
+      breakerState: h.breakerState,
+      openedAt: h.openedAt,
+      cooldownRemainingMs,
+      successRate,
+    };
+  }
+
+  /** Filter + order sensors for an attempt. */
+  function pickOrder(
+    required: ReadonlyArray<Sensor['capabilities'][number]>,
+    preferred: string | undefined,
+    now: number,
+  ): { eligible: ReadonlyArray<Sensor>; lastResort: ReadonlyArray<Sensor> } {
+    const capable = deps.sensors.filter((s) =>
+      required.every((cap) => s.capabilities.includes(cap)),
+    );
+    // Update each capable sensor's breaker FSM so half-open probes
+    // become eligible even though the snapshot was last read minutes
+    // ago.
+    for (const s of capable) {
+      const h = state.get(s.id);
+      if (h) adjustBreaker(h, now);
+    }
+
+    const ready: Sensor[] = [];
+    const cooldown: Sensor[] = [];
+    for (const s of capable) {
+      const h = state.get(s.id);
+      if (!h || h.breakerState !== 'open') ready.push(s);
+      else cooldown.push(s);
+    }
+
+    const rateOf = (s: Sensor): number => buildSnapshot(s.id, now).successRate;
+    const score = (a: Sensor, b: Sensor): number => {
+      if (preferred && a.id === preferred && b.id !== preferred) return -1;
+      if (preferred && b.id === preferred && a.id !== preferred) return 1;
+      // Lower priority wins.
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      // Then prefer higher success rate.
+      const rateDelta = rateOf(b) - rateOf(a);
+      if (Math.abs(rateDelta) > 1e-6) return rateDelta;
+      return 0;
+    };
+
+    return {
+      eligible: ready.sort(score),
+      // If every sensor is cooled down, return them anyway — degraded
+      // mode beats silent refusal.
+      lastResort: cooldown.sort(score),
+    };
   }
 
   return {
-    async call(args, required) {
-      const candidates = eligible(required);
-      if (candidates.length === 0) {
+    async call(args, required, options) {
+      const now = clock();
+      const { eligible, lastResort } = pickOrder(
+        required,
+        options?.preferred,
+        now,
+      );
+      const order =
+        eligible.length > 0 ? eligible : (lastResort as ReadonlyArray<Sensor>);
+      if (order.length === 0) {
         throw new SensorFailoverError([
-          { sensorId: '__none__', error: `no sensor satisfies capabilities=${required.join(',')}` },
+          {
+            sensorId: '__none__',
+            error: `no sensor satisfies capabilities=${required.join(',')}`,
+          },
         ]);
       }
       const attempts: Array<{ sensorId: string; error: string }> = [];
-      for (const sensor of candidates) {
+      for (const sensor of order) {
         try {
           const out = await sensor.call(args);
+          recordOutcome(sensor.id, 'ok', clock());
           return out;
         } catch (err) {
-          unhealthy.set(sensor.id, clock());
+          recordOutcome(sensor.id, 'fail', clock());
           attempts.push({
             sensorId: sensor.id,
             error: err instanceof Error ? err.message : String(err),
@@ -75,16 +296,26 @@ export function createSensorRouter(deps: SensorFailoverDeps): SensorRouter {
       }
       throw new SensorFailoverError(attempts);
     },
+
+    snapshotHealth() {
+      const now = clock();
+      return deps.sensors.map((s) => buildSnapshot(s.id, now));
+    },
+
     health() {
       const now = clock();
       return deps.sensors.map((s) => {
-        const at = unhealthy.get(s.id) ?? null;
-        const healthy = at === null || now - at >= coolDownMs;
-        return { id: s.id, healthy, lastFailureAt: at };
+        const snap = buildSnapshot(s.id, now);
+        return {
+          id: s.id,
+          healthy: snap.breakerState !== 'open',
+          lastFailureAt: state.get(s.id)?.lastFailureAt ?? null,
+        };
       });
     },
+
     resetAll() {
-      unhealthy.clear();
+      state.clear();
     },
   };
 }

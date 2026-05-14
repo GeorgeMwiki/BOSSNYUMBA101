@@ -307,7 +307,16 @@ export interface CotSample {
   readonly thoughtId: string;
   readonly threadId: string;
   readonly stakes: ThoughtRequest['stakes'];
+  /** PII-scrubbed thought text safe to persist. */
   readonly thoughtText: string;
+  /**
+   * SHA-256 (hex) of the original, pre-scrub thought text. Lets a
+   * regulator confirm that two thoughts on the same thread had the
+   * same prompt without needing the raw bytes.
+   */
+  readonly promptHash?: string;
+  /** SHA-256 (hex) of the sanitised text actually stored in thoughtText. */
+  readonly responseHash?: string;
   readonly capturedAt: string;
 }
 

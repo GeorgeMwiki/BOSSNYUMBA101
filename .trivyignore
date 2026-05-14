@@ -1,0 +1,41 @@
+# =============================================================================
+# Trivy allowlist — documented accept-risk findings
+# =============================================================================
+# Each entry MUST include: CVE id, package, reason, tracked_in, next_review.
+# Mirror the shape of scripts/audit-with-allowlist.mjs so the security
+# review picks both files up together.
+#
+# Format: one CVE id per line; trailing `#` comment captures the rationale.
+# Trivy reads only the first whitespace-delimited token, so the comment
+# is human-only and does not affect filtering.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Allowlisted CVEs — these mirror entries in scripts/audit-with-allowlist.mjs.
+# When that file is updated, this one must be too (and vice-versa).
+# -----------------------------------------------------------------------------
+
+CVE-2026-44902 # package=@opentelemetry/auto-instrumentations-node, severity=HIGH
+#   also covers @opentelemetry/sdk-node — same advisory (GHSA-q7rr-3cgh-j5r3)
+#   reason:       Prometheus exporter process crash via malformed HTTP request.
+#                 The vulnerable /metrics endpoint is cluster-internal only
+#                 (Grafana scraper behind ingress-level auth) — not reachable
+#                 from the public network.
+#   tracked_in:   Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)
+#   next_review:  2026-Q3
+
+CVE-2026-39356 # package=drizzle-orm, severity=HIGH
+#   reason:       SQL injection via improperly escaped identifier strings —
+#                 only reachable when callers pass tenant-controlled
+#                 identifier strings into raw SQL. Codebase audit confirmed
+#                 all our calls use Drizzle's typed builders.
+#   tracked_in:   Docs/DEP_HYGIENE.md (drizzle-orm 0.45 migration)
+#   next_review:  2026-Q2
+
+CVE-2026-4800 # package=lodash, severity=HIGH
+#   reason:       Arbitrary code execution via `_.template` accepting
+#                 untrusted input. Codebase audit confirmed no `_.template`
+#                 calls accept tenant-controlled input. The patched
+#                 version >=4.18.0 does not exist on npm (latest is 4.17.21).
+#   tracked_in:   Docs/DEP_HYGIENE.md (lodash migration)
+#   next_review:  2026-Q3

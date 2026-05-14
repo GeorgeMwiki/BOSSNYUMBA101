@@ -57,41 +57,107 @@ export {
 } from './public-inviolable.js';
 export {
   runPolicyGate,
+  isWithinBusinessHoursEAT,
+  DEFAULT_COST_CEILINGS,
   type PolicyGateInput,
   type PolicyGateOutput,
+  type PolicyGateRequestContext,
+  type PolicyGateDecisionContext,
+  type PolicyGateTier,
 } from './policy-gate.js';
 export {
   checkSelfAwareness,
+  renderModuleInventoryBlock,
+  describeCapabilities,
+  groupByCategory,
+  BRAIN_MODULES,
   type SelfAwarenessInput,
   type SelfAwarenessOutput,
+  type BrainModule,
+  type BrainModuleCategory,
 } from './self-awareness.js';
 export {
   inferMindState,
   renderMindStateDirective,
+  renderMindStateDirectiveWithProfile,
+  createAffectiveAccumulator,
+  AFFECTIVE_DEFAULT,
   type MindState,
   type Urgency,
   type Expertise,
   type Mode,
+  type AffectiveState,
+  type AffectiveProfile,
+  type AffectiveObservation,
+  type AffectiveAccumulator,
 } from './theory-of-mind.js';
 export {
   assessCognitiveLoad,
   renderLoadDirective,
+  renderLoadDirectiveWithProfile,
+  createCognitiveLoadAccumulator,
   type CognitiveLoadInput,
   type CognitiveLoadOutput,
+  type CognitiveLoadAccumulator,
+  type CognitiveLoadAccumulatorProfile,
+  type AccumulatorObservation,
 } from './cognitive-load.js';
+export {
+  BOSSNYUMBA_PERSONA,
+  renderSituatedAddress,
+  renderPersonaPrelude,
+  isBrandReservedName,
+  preservesBrandName,
+  type SituatedAddressArgs,
+} from './persona.js';
+export {
+  detectDrift,
+  extractDistinctiveTokens,
+  jaccardOverlap,
+  DEFAULT_DRIFT_THRESHOLD,
+  type DriftDetectorInput,
+  type DriftVerdict,
+} from './drift-detector.js';
+export {
+  BOSSNYUMBA_REFERENCE_PERSONA,
+  PERSONA_VECTOR_DIMS,
+  probePersonaVector,
+  perDimDrift,
+  aggregateL2,
+  worstDim,
+  type PersonaVector,
+  type PersonaVectorDim,
+  type PersonaVectorProbeInput,
+} from './persona-drift/vectors.js';
+export {
+  assessPersonaDrift,
+  emitPersonaDriftIfBreached,
+  DEFAULT_PER_DIM_THRESHOLD,
+  DEFAULT_AGGREGATE_THRESHOLD,
+  type DriftAlertVerdict,
+  type AssessDriftInput,
+  type EmitDriftEventInput,
+} from './persona-drift/alert.js';
 export { scoreConfidence, type ConfidenceInput } from './confidence.js';
 export { normalize, type NormaliserOutput } from './normalizer.js';
 export {
   createBrainCache,
   thoughtCacheKey,
+  cacheKeyForRequest,
+  classifyIntent,
+  DEFAULT_INTENT_TTL_MS,
   type BrainCache,
   type BrainCacheDeps,
+  type CacheIntent,
 } from './brain-cache.js';
 export {
   createSensorRouter,
   SensorFailoverError,
   type SensorRouter,
   type SensorFailoverDeps,
+  type SensorHealthSnapshot,
+  type BreakerState,
+  type SensorOutcome,
 } from './sensor-failover.js';
 export {
   createCotReservoir,
@@ -110,8 +176,13 @@ export {
 } from './cohort-signal.js';
 export {
   gradeProperty,
+  evaluatePropertyGrade,
   renderGradeBriefing,
   type PropertyGrade,
+  type PropertyGradeSnapshot,
+  type PropertyGradeInputs,
+  type AxisEvaluation,
+  type GradeAxisKey,
   type GradeBand,
   type GradeInputs,
 } from './continuous-grading.js';
@@ -123,13 +194,20 @@ export {
 export {
   createApprovalGate,
   createInMemoryApprovalStore,
+  buildApprovalPolicy,
+  DEFAULT_APPROVAL_POLICY,
   type ApprovalGate,
   type ApprovalGateDeps,
+  type ApprovalPolicy,
+  type ApprovalPolicyResolver,
   type ApprovalRecord,
+  type ApprovalRoleGroup,
   type ApprovalSignature,
   type ApprovalStatus,
   type ApprovalStore,
+  type ProposeArgs,
   type ProposedAction,
+  type SignArgs,
 } from './four-eye-approval.js';
 export {
   createBriefingComposer,
@@ -159,7 +237,9 @@ export {
 export {
   createAnthropicJudge,
   type AnthropicJudgeConfig,
+  type JudgeVerdict,
 } from './sensors/anthropic-judge.js';
+export { scrubCotText } from './cot-reservoir.js';
 export {
   createDpCohortSource,
   type DpAggregator,
@@ -197,6 +277,33 @@ export {
   type PersonaBrandingOverride,
   type PersonaBrandingResolver,
 } from './branding.js';
+export {
+  createEnvKillswitchPort,
+  resolveKillswitch,
+  renderKillswitchRefusalText,
+  type KillswitchLevel,
+  type KillswitchPort,
+  type KillswitchReasonCode,
+  type KillswitchState,
+} from './killswitch.js';
+export {
+  resolveUncertaintyPolicy,
+  type PropertyManagementEntity,
+  type UncertaintyAction,
+  type UncertaintyDecision,
+  type UncertaintyPolicyInput,
+} from './uncertainty-policy.js';
+export {
+  createDecisionTraceRecorder,
+  createInMemoryDecisionTraceStore,
+  type CreateDecisionTraceRecorderArgs,
+  type DecisionTrace,
+  type DecisionTraceRecorder,
+  type DecisionTraceStore,
+  type DecisionTraceWriter,
+  type KernelStepName,
+  type KernelStepRecord,
+} from './decision-trace.js';
 
 // LITFIN-style four-tier memory hierarchy ports — episodic, semantic,
 // procedural, reflective. Adapters live in `@bossnyumba/database`; the

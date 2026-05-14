@@ -69,6 +69,20 @@ import { type SensorRouter, createSensorRouter } from './sensor-failover.js';
 import type { CotReservoir } from './cot-reservoir.js';
 import { buildCohortMixin, type CohortSource } from './cohort-signal.js';
 import type { DebateOutcome } from './debate/debate-types.js';
+import {
+  resolveKillswitch,
+  renderKillswitchRefusalText,
+  type KillswitchPort,
+} from './killswitch.js';
+import {
+  resolveUncertaintyPolicy,
+  type UncertaintyDecision,
+} from './uncertainty-policy.js';
+import type {
+  DecisionTraceRecorder,
+  DecisionTraceWriter,
+  KernelStepName,
+} from './decision-trace.js';
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -83,7 +97,11 @@ export interface BrainKernelDeps {
     ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>
   >;
   readonly recentTurnCounter?: (threadId: string) => Promise<number>;
-  readonly judge?: (text: string) => Promise<{ score: number }>;
+  readonly judge?: (text: string) => Promise<{
+    readonly score: number;
+    readonly reasonText?: string;
+    readonly suggestedFix?: string;
+  }>;
   readonly clock?: () => Date;
   readonly rng?: () => number;
   /**
@@ -138,6 +156,35 @@ export interface BrainKernelDeps {
    * full executor + wake-loop live above the kernel.
    */
   readonly agency?: AgencyKernelPort;
+  /**
+   * Optional administrative killswitch. When wired, the kernel runs a
+   * Step 0 short-circuit BEFORE any sensor / memory / cohort work:
+   *   - HALT (platform or tenant): immediate refusal, no LLM call.
+   *   - DEGRADED: currently logged via the trace recorder; the call
+   *               still proceeds.
+   * Tenant-scoped state takes precedence over platform state. See
+   *   `killswitch.ts` for the operational reason codes.
+   */
+  readonly killswitch?: KillswitchPort;
+  /**
+   * Optional decision-trace recorder. When wired, the kernel emits a
+   * structured trace of every step the request passed through (step
+   * name, duration_ms, summary, errors). Persisted via the store the
+   * recorder was constructed with; failures are swallowed so the
+   * trace side-channel never breaks the main turn.
+   */
+  readonly traceRecorder?: DecisionTraceRecorder;
+  /**
+   * Uncertainty-policy switch. Default: `'off'`. When `'on'`, step
+   * 11a (uncertainty-policy) runs after confidence scoring and may
+   * caveat / ask-back / escalate the reply based on confidence and
+   * stakes. Kept opt-in because the heuristic confidence scorer is
+   * permissive — naive sensor outputs ("High-stakes answer.") can
+   * register zero groundedness against the property-management
+   * vocabulary detector (KES/lease/rent/...). Callers that wire a
+   * judge + grounding-facts together should turn this on.
+   */
+  readonly uncertaintyPolicy?: 'off' | 'on';
 }
 
 export interface BrainKernel {
@@ -171,14 +218,109 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const startedAt = clock().getTime();
       const thoughtId = randomUUID();
       const cacheKey = thoughtCacheKey(req);
+      const memTenantIdEarly =
+        req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+
+      // Decision-trace writer — null when no recorder is wired. We use
+      // a mutable handle so each `traceStep(...)` call can replace it
+      // with the next immutable writer state without leaking knowledge
+      // of the recorder out of the request closure.
+      let trace: DecisionTraceWriter | null = deps.traceRecorder
+        ? deps.traceRecorder.begin({
+            thoughtId,
+            tenantId: memTenantIdEarly,
+            threadId: req.threadId,
+          })
+        : null;
+      const traceStep = (
+        step: KernelStepName,
+        startMs: number,
+        summary: string,
+        error?: Error | unknown,
+      ): void => {
+        if (!trace) return;
+        const durationMs = Math.max(0, clock().getTime() - startMs);
+        const errMsg = error instanceof Error
+          ? error.message
+          : error
+            ? String(error)
+            : undefined;
+        trace = trace.step({
+          step,
+          durationMs,
+          summary,
+          ...(errMsg ? { error: errMsg } : {}),
+        });
+      };
+      const finaliseTrace = (
+        outcome: 'answer' | 'softened' | 'refusal',
+        refusalGate?:
+          | 'inviolable'
+          | 'policy'
+          | 'drift'
+          | 'killswitch'
+          | 'uncertainty',
+      ): void => {
+        if (!trace) return;
+        void trace
+          .finalize({ outcome, ...(refusalGate ? { refusalGate } : {}) })
+          .catch(() => undefined);
+      };
+
+      // 0) killswitch — administrative HALT short-circuit. Runs before
+      //    cache, memory, sensor, anything. Per-tenant state wins over
+      //    platform state. DEGRADED is non-fatal (logged via trace).
+      if (deps.killswitch) {
+        const ksStart = clock().getTime();
+        const ks = resolveKillswitch(deps.killswitch, memTenantIdEarly);
+        if (ks.level === 'halt') {
+          traceStep(
+            'killswitch',
+            ksStart,
+            `HALT reason=${ks.reasonCode}${ks.note ? ` note=${ks.note}` : ''}`,
+          );
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason: renderKillswitchRefusalText(ks),
+            gate: 'inviolable',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          finaliseTrace('refusal', 'killswitch');
+          return decision;
+        }
+        traceStep(
+          'killswitch',
+          ksStart,
+          `level=${ks.level} reason=${ks.reasonCode}`,
+        );
+      }
 
       // 1) brain-side cache
+      const cacheStart = clock().getTime();
       const cached = cache.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        traceStep('cache', cacheStart, 'hit');
+        finaliseTrace(cached.kind);
+        return cached;
+      }
+      traceStep('cache', cacheStart, 'miss');
 
       // 2) inviolable
+      const invStart = clock().getTime();
       const inviolable = checkInviolable(req);
       if (inviolable.status === 'block') {
+        traceStep(
+          'inviolable',
+          invStart,
+          `block category=${inviolable.category ?? 'unknown'}`,
+        );
         const decision = makeRefusal({
           thoughtId,
           req,
@@ -190,8 +332,10 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         if (deps.provenanceSink) {
           void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
         }
+        finaliseTrace('refusal', 'inviolable');
         return decision;
       }
+      traceStep('inviolable', invStart, 'pass');
 
       // 2b) public-tier inviolable (marketing surface only).
       // The unauthenticated marketing surface gets a stricter input
@@ -200,11 +344,17 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       // and system-prompt extraction attempts all hard-refuse here
       // BEFORE any sensor budget is spent.
       if (req.surface === 'marketing') {
+        const pubStart = clock().getTime();
         const publicVerdict = checkPublicInviolable({
           userMessage: req.userMessage,
           ipHash: req.ipHash ?? '',
         });
         if (publicVerdict.status === 'block') {
+          traceStep(
+            'public-inviolable',
+            pubStart,
+            `block category=${publicVerdict.category ?? 'unknown'}`,
+          );
           const decision = makeRefusal({
             thoughtId,
             req,
@@ -218,13 +368,17 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           if (deps.provenanceSink) {
             void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
           }
+          finaliseTrace('refusal', 'inviolable');
           return decision;
         }
+        traceStep('public-inviolable', pubStart, 'pass');
       }
 
       // 3) tier compatibility
+      const tierStart = clock().getTime();
       const tierCheck = isTierCompatibleWithScope(req.tier, req.scope);
       if (!tierCheck.ok) {
+        traceStep('tier-compat', tierStart, `refuse reason=${tierCheck.reason}`);
         const decision = makeRefusal({
           thoughtId,
           req,
@@ -236,8 +390,10 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         if (deps.provenanceSink) {
           void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
         }
+        finaliseTrace('refusal', 'inviolable');
         return decision;
       }
+      traceStep('tier-compat', tierStart, 'pass');
 
       // 4) memory recall
       const priorTurns = deps.priorTurnsLoader
@@ -351,6 +507,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       let sensorResult: SensorCallResult;
       let debateRoundsCompleted: number | undefined;
       let debateConverged: boolean | undefined;
+      const sensorStart = clock().getTime();
       if (debateEligible && deps.debate) {
         const debateStart = clock().getTime();
         try {
@@ -378,7 +535,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
             modelId: '__debate__',
             sensorId: '__debate__',
           };
-        } catch {
+          traceStep(
+            'debate',
+            debateStart,
+            `rounds=${debateRoundsCompleted} converged=${debateConverged}`,
+          );
+        } catch (e) {
+          traceStep('debate', debateStart, 'failed; falling back to single-shot', e);
           // On debate failure, fall back to the single-shot path.
           sensorResult = await router.call(
             {
@@ -390,6 +553,11 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
               ...(req.attachments ? { attachments: req.attachments } : {}),
             },
             required,
+          );
+          traceStep(
+            'sensor-call',
+            sensorStart,
+            `sensor=${sensorResult.sensorId} model=${sensorResult.modelId}`,
           );
         }
       } else {
@@ -404,16 +572,75 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           },
           required,
         );
+        traceStep(
+          'sensor-call',
+          sensorStart,
+          `sensor=${sensorResult.sensorId} model=${sensorResult.modelId}`,
+        );
       }
 
       // 8) normalize
-      const normalised = normalize(sensorResult.text);
+      const normStart = clock().getTime();
+      let normalised = normalize(sensorResult.text);
+      traceStep('normalize', normStart, `chars=${normalised.text.length}`);
 
-      // 9) judge (when high-stakes)
+      // 9) judge (when high-stakes) + Wave-K regen-on-low-score.
+      //    When the judge returns < 0.5 AND stakes are at least 'medium',
+      //    bake the judge feedback into the system prompt and re-call the
+      //    sensor ONCE (no infinite loop). Mirrors LITFIN
+      //    brain-kernel.ts:1190-1240. K1 owns step 0 (killswitch) and
+      //    step 11a (uncertainty); this patch lives strictly at step 9.
+      const judgeStart = clock().getTime();
       const judgeRequested = req.requireJudge === true || req.stakes === 'critical';
-      const judgeOut = judgeRequested && deps.judge
+      let judgeOut: {
+        readonly score: number;
+        readonly reasonText?: string;
+        readonly suggestedFix?: string;
+      } | null = judgeRequested && deps.judge
         ? await deps.judge(normalised.text)
         : null;
+      let regenAttempted = false;
+      if (
+        judgeOut &&
+        judgeOut.score < 0.5 &&
+        (req.stakes === 'medium' || req.stakes === 'high' || req.stakes === 'critical') &&
+        deps.judge
+      ) {
+        regenAttempted = true;
+        const fix = (judgeOut.suggestedFix ?? '').trim() ||
+          (judgeOut.reasonText ?? '').trim() ||
+          'Improve grounding, hedge uncited numbers, and match the property-ops voice.';
+        const regenSystem = `${system}\n\nA self-review judge flagged the previous draft (score=${judgeOut.score.toFixed(2)}). Apply this fix EXACTLY ONCE and re-answer: ${fix}`;
+        try {
+          const regenResult = await router.call(
+            {
+              system: regenSystem,
+              userMessage: req.userMessage,
+              priorTurns,
+              extendedThinking: wantsThinking,
+              stakes: req.stakes,
+              ...(req.attachments ? { attachments: req.attachments } : {}),
+            },
+            required,
+          );
+          sensorResult = regenResult;
+          normalised = normalize(regenResult.text);
+          // Re-judge the regenerated draft so confidence + provenance
+          // reflect the post-fix score, not the original.
+          judgeOut = await deps.judge(normalised.text);
+        } catch {
+          // Regen failure: keep the original sensorResult + judgeOut.
+        }
+      }
+      if (judgeRequested) {
+        traceStep(
+          'judge',
+          judgeStart,
+          judgeOut
+            ? `score=${judgeOut.score}${regenAttempted ? ' regen=1' : ''}`
+            : 'requested-no-judge-wired',
+        );
+      }
 
       // (Tool / citation extraction is the agent-loop's job; for the
       //  non-streaming path the citations array is empty unless the
@@ -422,6 +649,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const artifacts: ReadonlyArray<Artifact> = extractArtifactsFromUiBlock(normalised.uiBlock);
 
       // 10) self-awareness drift
+      const driftStart = clock().getTime();
       const capturedAt = clock().toISOString();
       const sa = checkSelfAwareness({
         persona,
@@ -434,6 +662,11 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       if (sa.events.length > 0 && deps.driftSink) {
         for (const ev of sa.events) await deps.driftSink.record(ev);
       }
+      traceStep(
+        'drift-check',
+        driftStart,
+        `verdict=${sa.verdict.status} events=${sa.events.length}`,
+      );
       if (sa.verdict.status === 'block') {
         const decision = makeRefusal({
           thoughtId,
@@ -446,16 +679,20 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         if (deps.provenanceSink) {
           void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
         }
+        finaliseTrace('refusal', 'drift');
         return decision;
       }
 
       // 11) policy gate
+      const policyStart = clock().getTime();
       const policy = runPolicyGate({
         text: normalised.text,
         hasCitations: citations.length > 0,
       });
+      traceStep('policy-gate', policyStart, `verdict=${policy.verdict.status}`);
 
       // 12) confidence
+      const confStart = clock().getTime();
       const confidence = scoreConfidence({
         outputText: policy.redactedText,
         citationCount: citations.length,
@@ -463,8 +700,54 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         judgeScore: judgeOut?.score ?? null,
         rerolledOutputText: null,
       });
+      traceStep(
+        'confidence',
+        confStart,
+        `overall=${confidence.overall.toFixed(2)} g=${confidence.groundedness.toFixed(2)} s=${confidence.stability.toFixed(2)} r=${confidence.review.toFixed(2)} n=${confidence.numericalConsistency.toFixed(2)}`,
+      );
+
+      // 11a) uncertainty policy — pure function over the confidence
+      //      vector. May caveat the text, force ask-back, or escalate
+      //      to a refusal for LOW_CONFIDENCE_HIGH_STAKES. Opt-in via
+      //      `deps.uncertaintyPolicy === 'on'`; off by default so the
+      //      kernel's existing test contracts (synthetic short replies
+      //      with no citations) keep passing.
+      let uncertainty: UncertaintyDecision | null = null;
+      if (deps.uncertaintyPolicy === 'on') {
+        const uncStart = clock().getTime();
+        uncertainty = resolveUncertaintyPolicy({
+          confidence,
+          stakes: req.stakes,
+          outputText: policy.redactedText,
+        });
+        traceStep(
+          'uncertainty-policy',
+          uncStart,
+          `action=${uncertainty.action} weakest=${uncertainty.weakestComponent}` +
+            (uncertainty.affectedEntities.length > 0
+              ? ` entities=${uncertainty.affectedEntities.join(',')}`
+              : ''),
+        );
+        if (uncertainty.action === 'escalate') {
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason: uncertainty.escalationReason || 'LOW_CONFIDENCE_HIGH_STAKES',
+            gate: 'policy',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink.record(decision.provenance).catch(() => undefined);
+          }
+          finaliseTrace('refusal', 'uncertainty');
+          return decision;
+        }
+      }
+      const finalText = uncertainty?.text || policy.redactedText;
 
       // 13) provenance + cache + CoT capture
+      const provStart = clock().getTime();
       const provenance: ProvenanceRecord = {
         thoughtId,
         threadId: req.threadId,
@@ -472,7 +755,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         tier: req.tier,
         stakes: req.stakes,
         inputHash: sha(req.userMessage),
-        outputHash: sha(policy.redactedText),
+        outputHash: sha(finalText),
         toolCallSummaries: sensorResult.toolCalls.map((tc) => ({
           toolName: tc.toolName,
           latencyMs: 0,
@@ -510,7 +793,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
       const decision: BrainDecision = pickDecisionShape({
         gates,
-        text: policy.redactedText,
+        text: finalText,
         citations,
         artifacts,
         confidence,
@@ -533,6 +816,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         userMessage: req.userMessage,
         agentText: pickAgentTraceText(decision),
       });
+      traceStep('provenance-write', provStart, `outcome=${decision.kind}`);
+      finaliseTrace(decision.kind);
       void rng;
       return decision;
     },
@@ -571,6 +856,38 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const persona = applyBrandingOverride(baseSurfacePersona, branding);
 
       yield personaStartEvent(persona);
+
+      // 0) killswitch — administrative HALT short-circuit. Streaming
+      //    callers see turn_start + done(refusal) with no deltas; this
+      //    mirrors the non-stream path's "no sensor budget spent"
+      //    invariant.
+      if (deps.killswitch) {
+        const streamTenantId =
+          req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+        const ks = resolveKillswitch(deps.killswitch, streamTenantId);
+        if (ks.level === 'halt') {
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason: renderKillswitchRefusalText(ks),
+            gate: 'inviolable',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          yield {
+            kind: 'gate_verdict',
+            gate: 'inviolable',
+            verdict: { status: 'block', reason: ks.reasonCode },
+          };
+          yield { kind: 'done', decision };
+          return;
+        }
+      }
 
       // 1) brain-side cache. On hit, replay as a single delta + done.
       const cached = cache.get(cacheKey);
@@ -848,6 +1165,45 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         rerolledOutputText: null,
       });
 
+      // 11a) uncertainty policy — applies AFTER deltas are streamed.
+      //      Opt-in via `deps.uncertaintyPolicy === 'on'`. For
+      //      caveat/ask-back the wrapped text lands in the final
+      //      decision so non-streaming consumers see the caveat; the
+      //      streaming consumer has already seen raw deltas. For
+      //      escalate the final decision is a refusal and consumers
+      //      see a gate_verdict + done(refusal) event.
+      let uncertainty: UncertaintyDecision | null = null;
+      if (deps.uncertaintyPolicy === 'on') {
+        uncertainty = resolveUncertaintyPolicy({
+          confidence,
+          stakes: req.stakes,
+          outputText: policy.redactedText,
+        });
+        if (uncertainty.action === 'escalate') {
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason: uncertainty.escalationReason || 'LOW_CONFIDENCE_HIGH_STAKES',
+            gate: 'policy',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          yield {
+            kind: 'gate_verdict',
+            gate: 'policy',
+            verdict: { status: 'block', reason: 'LOW_CONFIDENCE_HIGH_STAKES' },
+          };
+          yield { kind: 'done', decision };
+          return;
+        }
+      }
+      const finalText = uncertainty?.text || policy.redactedText;
+
       // 13) provenance + cache + CoT capture
       const provenance: ProvenanceRecord = {
         thoughtId,
@@ -856,7 +1212,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         tier: req.tier,
         stakes: req.stakes,
         inputHash: sha(req.userMessage),
-        outputHash: sha(policy.redactedText),
+        outputHash: sha(finalText),
         toolCallSummaries: toolCalls.map((tc) => ({
           toolName: tc.toolName,
           latencyMs: 0,
@@ -890,7 +1246,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
       const decision: BrainDecision = pickDecisionShape({
         gates,
-        text: policy.redactedText,
+        text: finalText,
         citations,
         artifacts,
         confidence,

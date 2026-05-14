@@ -15,6 +15,18 @@
  * with a partial-index pair (because Postgres treats NULLs as distinct
  * inside UNIQUE INDEX), so upserts can safely "on conflict" bump
  * evidence_count + last_seen_at + value.
+ *
+ * Query-conditioned retrieval (LITFIN parity — gap C in
+ * `.planning/parity-litfin/02-memory-learning.md`):
+ *   - `embedding` is an OPTIONAL pgvector column (1536 dims, matching
+ *     OpenAI `text-embedding-3-small`) populated by the consolidation
+ *     cycle when an embedding port is available. Drizzle has no native
+ *     pgvector type, so we model it as `jsonb` here purely for shape;
+ *     the underlying Postgres column is `VECTOR(1536)` (migration 0125)
+ *     and the read path in `kernel-memory-semantic.service.ts` uses
+ *     `<=>` cosine distance through raw SQL — Drizzle's column type is
+ *     a stand-in that lets us SELECT / null-check the value at the ORM
+ *     level without colliding with the pgvector extension's type.
  */
 
 import {
@@ -27,8 +39,39 @@ import {
   index,
   uniqueIndex,
   pgEnum,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { tenants } from './tenant.schema.js';
+
+/**
+ * pgvector custom type — Drizzle has no built-in vector support, but
+ * `customType` lets us declare the SQL column as `vector(N)` and round-
+ * trip the value through TS as a `number[]`. The TS payload is the
+ * Postgres text form of the vector (`[0.1,0.2,...]`) which pgvector
+ * parses on both directions.
+ */
+const vector = customType<{
+  data: number[];
+  driverData: string;
+  config: { dimensions: number };
+}>({
+  dataType(config) {
+    const dims = config?.dimensions ?? 1536;
+    return `vector(${dims})`;
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(',')}]`;
+  },
+  fromDriver(value: string): number[] {
+    if (!value || typeof value !== 'string') return [];
+    const trimmed = value.replace(/^\[/, '').replace(/\]$/, '');
+    if (!trimmed) return [];
+    return trimmed
+      .split(',')
+      .map((n) => Number(n))
+      .filter((n) => Number.isFinite(n));
+  },
+});
 
 export const kernelMemorySemanticSourceEnum = pgEnum(
   'kernel_memory_semantic_source',
@@ -59,6 +102,14 @@ export const kernelMemorySemantic = pgTable(
     source: kernelMemorySemanticSourceEnum('source')
       .notNull()
       .default('extracted'),
+    /**
+     * Optional embedding (text-embedding-3-small, 1536 dims) used by
+     * `searchByEmbedding` for cosine-similarity retrieval. NULL when
+     * the fact was written before the embedding migration or when the
+     * consolidation cycle ran without an embedding port. The read path
+     * filters NULLs out so missing embeddings degrade gracefully.
+     */
+    embedding: vector('embedding', { dimensions: 1536 }),
   },
   (t) => ({
     tenantUserKeyUserIdx: uniqueIndex(

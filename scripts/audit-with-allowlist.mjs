@@ -39,6 +39,24 @@ const ALLOWLIST = [
     tracked_in: 'Docs/DEP_HYGIENE.md (drizzle-orm 0.45 migration)',
     next_review: '2026-Q2',
   },
+  {
+    package: '@opentelemetry/auto-instrumentations-node',
+    severity: ['high'],
+    fix: '>=0.75.0',
+    reason:
+      'GHSA-q7rr-3cgh-j5r3: Prometheus exporter process crash via malformed HTTP request. The vulnerable surface is the Prometheus /metrics scrape endpoint. In BOSSNYUMBA the Prometheus exporter is not exposed publicly — only the cluster-internal Grafana scraper hits /metrics behind ingress-level auth. A malformed request would have to come from inside the cluster, so the crash vector is not reachable from the public network. Bumping to >=0.75.0 is a major version that touches the auto-instrumentation surface and is scheduled into the wave-L OpenTelemetry upgrade. Accepting the risk for now.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)',
+    next_review: '2026-Q3',
+  },
+  {
+    package: '@opentelemetry/sdk-node',
+    severity: ['high'],
+    fix: '>=0.217.0',
+    reason:
+      'GHSA-q7rr-3cgh-j5r3: Same advisory as @opentelemetry/auto-instrumentations-node — Prometheus exporter process crash via malformed HTTP request. Same mitigation (cluster-internal scrape only). Bumping to >=0.217.0 is a coordinated upgrade with auto-instrumentations-node, tracked in the wave-L plan.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)',
+    next_review: '2026-Q3',
+  },
 ];
 
 function isAllowlisted(advisory) {

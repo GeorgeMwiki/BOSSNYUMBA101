@@ -1,28 +1,87 @@
 /**
- * Policy gate — deterministic OUTPUT validation. Runs after the
- * sensor returns and before the kernel commits the answer. Three
- * concerns, in order:
+ * Policy gate — deterministic OUTPUT validation + per-request context
+ * checks. Runs after the sensor returns and before the kernel commits
+ * the answer. Six concerns, in order:
  *
- *   1. PII redaction — phone / national-id / email leakage that the
+ *   1. Tenant-isolation context check — when a `request.tenantId` is
+ *      supplied alongside a `decision.tenantId`, the two MUST match.
+ *      Stops the kernel from emitting an answer claimed under one
+ *      tenant scope that was actually produced inside a different
+ *      tenant's context.
+ *
+ *   2. Scope-match context check — when the action being executed
+ *      declares a set of required scopes, every one of them must be
+ *      present in the caller's granted-scope set. (Defence-in-depth
+ *      complement to the prompt-shield + autonomy-policy.)
+ *
+ *   3. Cost-ceiling context check — per-call USD-ceiling per tier:
+ *      free=$0.05, pro=$0.25, enterprise=$2.50 (configurable via
+ *      `costCeilings`). If `request.estimatedCostUsd` exceeds the
+ *      caller's tier ceiling, the gate refuses BEFORE we render the
+ *      output to disk. Sovereign actions are exempted (they go through
+ *      the four-eye gate which carries its own cost authority).
+ *
+ *   4. Off-hours sensitive-action context check — refuses sovereign-
+ *      tier (`stakes: 'critical'`) actions outside Tanzania business
+ *      hours (08:00–18:00 EAT, Mon–Fri) unless the caller has supplied
+ *      `afterHoursOverride: true`. Property management example: an
+ *      eviction proposal at 23:30 on a Sunday almost never reflects a
+ *      sober decision.
+ *
+ *   5. PII redaction — phone / national-id / email leakage that the
  *      sensor accidentally reproduced from a tool result.
- *   2. Numerical claim hedging — un-cited absolute numbers ("rent
- *      collection is 92.3%") get softened to a range or a hedge.
- *   3. Regulatory-tone hedging — eviction / termination language gets
- *      a mandatory pointer to the documented arrears ladder.
+ *
+ *   6. Numerical claim hedging + regulatory hedge — un-cited absolute
+ *      numbers and eviction/lockout language get softened.
+ *
+ * The new context checks (1)–(4) only fire when `input.request` is
+ * supplied. Existing callers that pass `{ text, hasCitations }` see
+ * the original output-only behaviour unchanged.
  *
  * The gate is a pure function. It returns an outcome describing what
  * was done so the kernel can decide whether the result is "pass",
- * "soften", or "block". Heavy redaction work delegates to existing
- * pii-scrubber semantics (re-implemented here with a small kernel-
- * scoped pattern set so this package stays free of cross-package
- * runtime imports).
+ * "soften", or "block".
  */
 
 import type { GateVerdict } from './kernel-types.js';
 
+// ─────────────────────────────────────────────────────────────────────
+// New context types for the K5 parity checks
+// ─────────────────────────────────────────────────────────────────────
+
+export type PolicyGateTier = 'free' | 'pro' | 'enterprise' | 'sovereign';
+
+export interface PolicyGateRequestContext {
+  /** Tenant scope the caller claims to be operating inside. */
+  readonly tenantId?: string;
+  /** Caller's granted scopes (action.read, payouts.write, etc.). */
+  readonly grantedScopes?: ReadonlyArray<string>;
+  /** Subscription tier — drives the cost ceiling. */
+  readonly tier?: PolicyGateTier;
+  /** USD cost the kernel estimates for this turn. */
+  readonly estimatedCostUsd?: number;
+  /** Stakes for this turn — drives the off-hours gate. */
+  readonly stakes?: 'low' | 'medium' | 'high' | 'critical';
+  /** When TRUE the caller explicitly accepts the off-hours risk. */
+  readonly afterHoursOverride?: boolean;
+  /** Optional override clock for the off-hours check; defaults to now. */
+  readonly now?: Date;
+}
+
+export interface PolicyGateDecisionContext {
+  /** Tenant scope the produced output is actually grounded in. */
+  readonly tenantId?: string;
+  /** Scopes the action requires to execute. */
+  readonly requiredScopes?: ReadonlyArray<string>;
+}
+
 export interface PolicyGateInput {
   readonly text: string;
   readonly hasCitations: boolean;
+  readonly request?: PolicyGateRequestContext;
+  readonly decision?: PolicyGateDecisionContext;
+  /** Operator-tunable per-tier ceilings (USD per call). */
+  readonly costCeilings?: Partial<Record<PolicyGateTier, number>>;
 }
 
 export interface PolicyGateOutput {
@@ -30,6 +89,10 @@ export interface PolicyGateOutput {
   readonly redactedText: string;
   readonly mutations: ReadonlyArray<string>;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Output PII / regulatory patterns (unchanged)
+// ─────────────────────────────────────────────────────────────────────
 
 const PII_PATTERNS: ReadonlyArray<{ kind: string; re: RegExp; replace: string }> = [
   { kind: 'phone-tz',  re: /\+?255[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}/g, replace: '[redacted-phone]' },
@@ -49,7 +112,115 @@ const REGULATORY_TRIGGERS: ReadonlyArray<RegExp> = [
   /\blockout\b/i,
 ];
 
+// ─────────────────────────────────────────────────────────────────────
+// Tier cost ceilings (USD per call)
+// ─────────────────────────────────────────────────────────────────────
+
+export const DEFAULT_COST_CEILINGS: Readonly<Record<PolicyGateTier, number>> =
+  Object.freeze({
+    free: 0.05,
+    pro: 0.25,
+    enterprise: 2.5,
+    sovereign: Number.POSITIVE_INFINITY,
+  });
+
+// ─────────────────────────────────────────────────────────────────────
+// Business-hours window (Tanzania — EAT, UTC+3)
+// ─────────────────────────────────────────────────────────────────────
+
+const BUSINESS_HOURS_TZ_OFFSET_MINUTES = 180; // EAT = UTC+3
+const BUSINESS_HOUR_START = 8;  // 08:00 EAT
+const BUSINESS_HOUR_END = 18;   // 18:00 EAT exclusive
+// 1=Mon … 5=Fri (EAT)
+const BUSINESS_WEEKDAYS: ReadonlyArray<number> = [1, 2, 3, 4, 5];
+
+function isWithinBusinessHoursEAT(now: Date): boolean {
+  const eatMs = now.getTime() + BUSINESS_HOURS_TZ_OFFSET_MINUTES * 60_000;
+  const eat = new Date(eatMs);
+  const dayUTC = eat.getUTCDay(); // 0=Sun .. 6=Sat
+  const hourUTC = eat.getUTCHours();
+  if (!BUSINESS_WEEKDAYS.includes(dayUTC)) return false;
+  return hourUTC >= BUSINESS_HOUR_START && hourUTC < BUSINESS_HOUR_END;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Block helper
+// ─────────────────────────────────────────────────────────────────────
+
+function blockedOutput(reason: string, mutation: string): PolicyGateOutput {
+  return {
+    verdict: { status: 'block', reason },
+    redactedText: '',
+    mutations: [mutation],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────────────
+
 export function runPolicyGate(input: PolicyGateInput): PolicyGateOutput {
+  const request = input.request;
+  const decision = input.decision;
+
+  // 1) Tenant-isolation context check.
+  if (
+    request?.tenantId &&
+    decision?.tenantId &&
+    request.tenantId !== decision.tenantId
+  ) {
+    return blockedOutput(
+      `tenant-isolation violation: request.tenantId="${request.tenantId}" but decision.tenantId="${decision.tenantId}"`,
+      'blocked:tenant-isolation',
+    );
+  }
+
+  // 2) Scope-match context check.
+  if (decision?.requiredScopes && decision.requiredScopes.length > 0) {
+    const granted = new Set(request?.grantedScopes ?? []);
+    const missing = decision.requiredScopes.filter((s) => !granted.has(s));
+    if (missing.length > 0) {
+      return blockedOutput(
+        `missing required scope(s): ${missing.join(', ')}`,
+        'blocked:scope-mismatch',
+      );
+    }
+  }
+
+  // 3) Cost-ceiling context check (sovereign tier is exempted — its budget
+  //    is governed by the four-eye gate, not by this gate).
+  if (
+    request?.tier &&
+    request.tier !== 'sovereign' &&
+    typeof request.estimatedCostUsd === 'number' &&
+    Number.isFinite(request.estimatedCostUsd) &&
+    request.estimatedCostUsd >= 0
+  ) {
+    const ceilings = { ...DEFAULT_COST_CEILINGS, ...(input.costCeilings ?? {}) };
+    const ceiling = ceilings[request.tier];
+    if (typeof ceiling === 'number' && request.estimatedCostUsd > ceiling) {
+      return blockedOutput(
+        `cost-ceiling exceeded: estimated $${request.estimatedCostUsd.toFixed(4)} > tier "${request.tier}" ceiling $${ceiling.toFixed(2)}`,
+        'blocked:cost-ceiling',
+      );
+    }
+  }
+
+  // 4) Off-hours sovereign-action context check.
+  if (
+    request?.stakes === 'critical' &&
+    request.afterHoursOverride !== true
+  ) {
+    const now = request.now ?? new Date();
+    if (!isWithinBusinessHoursEAT(now)) {
+      return blockedOutput(
+        'sovereign-tier action refused outside Tanzania business hours (08:00–18:00 EAT weekdays); supply afterHoursOverride=true to proceed',
+        'blocked:off-hours-sovereign',
+      );
+    }
+  }
+
+  // ─── Output-side checks (unchanged) ────────────────────────────────
   let text = input.text;
   const mutations: string[] = [];
 
@@ -102,3 +273,6 @@ export function runPolicyGate(input: PolicyGateInput): PolicyGateOutput {
 
   return { verdict, redactedText: text, mutations };
 }
+
+/** Exported for diagnostics + tests; do not mutate. */
+export { isWithinBusinessHoursEAT };

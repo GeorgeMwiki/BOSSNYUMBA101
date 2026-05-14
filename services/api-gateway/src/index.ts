@@ -118,6 +118,8 @@ import orgAwarenessRouter from './routes/org-awareness.router';
 import creditRatingRouter from './routes/credit-rating.router';
 // Property Grading — Mr. Mwikila's A–F report card system (migration 0088)
 import propertyGradingRouter from './routes/property-grading.router';
+// Wave-K parity-litfin — LITFIN mission-eval dashboard parity surface.
+import parityCapabilityDashboardRouter from './routes/parity-capability-dashboard.router';
 // AI-Native suite — Agent PhG: 8 capabilities that leverage LLMs at scale.
 import aiNativeRouter from './routes/ai-native.router';
 // Wave 26 — Agent Z2: expose four repos that had tests but no HTTP surface.
@@ -707,6 +709,9 @@ api.route('/org', orgAwarenessRouter);
 api.route('/credit-rating', creditRatingRouter);
 // Property Grading — Mr. Mwikila's A–F report card system
 api.route('/property-grading', propertyGradingRouter);
+// Wave-K parity-litfin — LITFIN mission-eval dashboard parity surface
+// (aggregates over kernel_provenance + kernel_cot_reservoir).
+api.route('/parity/capability', parityCapabilityDashboardRouter);
 // AI-Native suite — Agent PhG: sentiment, market surveillance, multimodal,
 // polyglot support, predictive interventions, policy simulator, NL query.
 api.route('/ai-native', aiNativeRouter);
