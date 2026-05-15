@@ -30,6 +30,8 @@ interface Row {
   steps: ReadonlyArray<Record<string, unknown>>;
   stepsTotal: number;
   stepsDone: number;
+  stallReason: string | null;
+  stalledAt: Date | null;
 }
 
 interface CapturedFilter {
@@ -57,6 +59,16 @@ vi.mock('drizzle-orm', async (importOriginal) => {
     },
     desc: (col: unknown) => ({ _op: 'desc', column: col }),
     and: (...args: unknown[]) => ({ _op: 'and', args }),
+    sql: Object.assign(
+      (strings: TemplateStringsArray, ...values: unknown[]) => ({
+        _op: 'sql',
+        strings,
+        values,
+      }),
+      {
+        raw: (s: string) => ({ _op: 'sql-raw', value: s }),
+      },
+    ),
   };
 });
 
@@ -76,14 +88,48 @@ function makeStubDb(initial: ReadonlyArray<Row> = []): {
     return out;
   }
 
-  function makeSelectChain(): unknown {
-    const chain: Record<string, unknown> = {
+  function makeSelectChain(projection?: Record<string, unknown>): unknown {
+    const chain: {
+      from: () => unknown;
+      where: () => unknown;
+      orderBy: () => unknown;
+      limit: () => unknown;
+      groupBy: (...cols: unknown[]) => unknown;
+      then: (resolve: (rows: unknown) => unknown) => unknown;
+      _groupBy: ReadonlyArray<unknown> | null;
+    } = {
+      _groupBy: null,
       from: () => chain,
       where: () => chain,
       orderBy: () => chain,
       limit: () => chain,
+      groupBy: (...cols: unknown[]) => {
+        chain._groupBy = cols;
+        return chain;
+      },
       then: (resolve: (rows: unknown) => unknown) => {
-        let out = applyFilter(state.rows);
+        const rows = applyFilter(state.rows);
+        // Projection path → group-by aggregation for the
+        // listStallScanTargets call site.
+        if (projection && chain._groupBy && chain._groupBy.length > 0) {
+          const groups = new Map<string, { tenantId: string; userId: string; goalCount: number }>();
+          for (const r of rows) {
+            const key = `${r.tenantId}::${r.userId}`;
+            const existing = groups.get(key);
+            if (existing) {
+              groups.set(key, { ...existing, goalCount: existing.goalCount + 1 });
+            } else {
+              groups.set(key, {
+                tenantId: r.tenantId,
+                userId: r.userId,
+                goalCount: 1,
+              });
+            }
+          }
+          captured.current = {};
+          return resolve([...groups.values()]);
+        }
+        const out = [...rows];
         out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         captured.current = {};
         return resolve(out);
@@ -110,6 +156,8 @@ function makeStubDb(initial: ReadonlyArray<Row> = []): {
           steps: (v.steps ?? []) as ReadonlyArray<Record<string, unknown>>,
           stepsTotal: Number(v.stepsTotal ?? 0),
           stepsDone: Number(v.stepsDone ?? 0),
+          stallReason: (v.stallReason ?? null) as string | null,
+          stalledAt: (v.stalledAt ?? null) as Date | null,
         });
         return chain;
       },
@@ -139,6 +187,12 @@ function makeStubDb(initial: ReadonlyArray<Row> = []): {
           if (set.updatedAt !== undefined) {
             row.updatedAt = set.updatedAt as Date;
           }
+          if (set.stallReason !== undefined) {
+            row.stallReason = set.stallReason as string | null;
+          }
+          if (set.stalledAt !== undefined) {
+            row.stalledAt = set.stalledAt as Date | null;
+          }
         }
         captured.current = {};
         return resolve(undefined);
@@ -148,7 +202,8 @@ function makeStubDb(initial: ReadonlyArray<Row> = []): {
   }
 
   const db: Record<string, unknown> = {
-    select: () => makeSelectChain(),
+    select: (projection?: Record<string, unknown>) =>
+      makeSelectChain(projection),
     insert: () => makeInsertChain(),
     update: () => makeUpdateChain(),
   };
@@ -315,6 +370,122 @@ describe('createKernelGoalsService', () => {
     const rows = await svc.list({ tenantId: 't', userId: 'u' });
     expect(rows.map((r) => r.title)).toEqual(['newer', 'older']);
   });
+
+  // ───────────────────────────────────────────────────────────────────
+  // Stall-detection adapter — wake-loop port surface
+  // ───────────────────────────────────────────────────────────────────
+
+  it('listStallScanTargets() filters to a single tenant', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't_a', userId: 'u1', status: 'active' }),
+      makeRow({ id: 'g2', tenantId: 't_a', userId: 'u2', status: 'active' }),
+      makeRow({ id: 'g3', tenantId: 't_b', userId: 'u9', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    const out = await svc.listStallScanTargets('t_a');
+    const tenants = new Set(out.map((r) => r.tenantId));
+    expect(tenants.size).toBe(1);
+    expect(tenants.has('t_a')).toBe(true);
+    expect(out.find((r) => r.userId === 'u9')).toBeUndefined();
+  });
+
+  it('listStallScanTargets() scans all tenants when tenantId omitted', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't_a', userId: 'u1', status: 'active' }),
+      makeRow({ id: 'g2', tenantId: 't_b', userId: 'u2', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    const out = await svc.listStallScanTargets();
+    const tenants = new Set(out.map((r) => r.tenantId));
+    expect(tenants.size).toBe(2);
+    expect(tenants.has('t_a')).toBe(true);
+    expect(tenants.has('t_b')).toBe(true);
+  });
+
+  it('listStallScanTargets() excludes non-active goals', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't', userId: 'u_active', status: 'active' }),
+      makeRow({ id: 'g2', tenantId: 't', userId: 'u_paused', status: 'paused' }),
+      makeRow({ id: 'g3', tenantId: 't', userId: 'u_done', status: 'completed' }),
+      makeRow({ id: 'g4', tenantId: 't', userId: 'u_stalled', status: 'stalled' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    const out = await svc.listStallScanTargets('t');
+    const userIds = new Set(out.map((r) => r.userId));
+    expect(userIds.has('u_active')).toBe(true);
+    expect(userIds.has('u_paused')).toBe(false);
+    expect(userIds.has('u_done')).toBe(false);
+    expect(userIds.has('u_stalled')).toBe(false);
+  });
+
+  it('listStallScanTargets() groups by (tenant, user) and counts goals', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't', userId: 'u1', status: 'active' }),
+      makeRow({ id: 'g2', tenantId: 't', userId: 'u1', status: 'active' }),
+      makeRow({ id: 'g3', tenantId: 't', userId: 'u1', status: 'active' }),
+      makeRow({ id: 'g4', tenantId: 't', userId: 'u2', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    const out = await svc.listStallScanTargets('t');
+    // Two groupings: u1 (3 goals), u2 (1 goal).
+    expect(out).toHaveLength(2);
+    const u1 = out.find((r) => r.userId === 'u1');
+    const u2 = out.find((r) => r.userId === 'u2');
+    expect(u1?.goalCount).toBe(3);
+    expect(u2?.goalCount).toBe(1);
+  });
+
+  it('listStallScanTargets() returns [] on DB failure (degraded path)', async () => {
+    const failingDb: Record<string, unknown> = {
+      select: () => {
+        throw new Error('boom');
+      },
+    };
+    const svc = createKernelGoalsService(failingDb as unknown as DatabaseClient);
+    const out = await svc.listStallScanTargets('t');
+    expect(out).toEqual([]);
+  });
+
+  it('markStalled() flips status to stalled and stamps reason/timestamp', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't', userId: 'u', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    await svc.markStalled('g1', 'no progress for 7 days (rent-collection)');
+
+    const row = stub.rows[0]!;
+    expect(row.status).toBe('stalled');
+    expect(row.stallReason).toBe('no progress for 7 days (rent-collection)');
+    expect(row.stalledAt).not.toBeNull();
+  });
+
+  it('markStalled() is a no-op when the goal id is unknown', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't', userId: 'u', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+
+    await svc.markStalled('g_nonexistent', 'whatever');
+    // The single existing row must not have been mutated.
+    const row = stub.rows[0]!;
+    expect(row.status).toBe('active');
+    expect(row.stallReason).toBeNull();
+    expect(row.stalledAt).toBeNull();
+  });
+
+  it('markStalled() ignores empty/blank goalId without throwing', async () => {
+    const stub = makeStubDb([
+      makeRow({ id: 'g1', tenantId: 't', userId: 'u', status: 'active' }),
+    ]);
+    const svc = createKernelGoalsService(stub.client);
+    await expect(svc.markStalled('', 'noop')).resolves.toBeUndefined();
+    expect(stub.rows[0]?.status).toBe('active');
+  });
 });
 
 function makeRow(over: Partial<Row>): Row {
@@ -333,6 +504,8 @@ function makeRow(over: Partial<Row>): Row {
     steps: [],
     stepsTotal: 0,
     stepsDone: 0,
+    stallReason: null,
+    stalledAt: null,
     ...over,
   };
 }

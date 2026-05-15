@@ -41,6 +41,12 @@ export const kernelGoals = pgTable(
     steps: jsonb('steps').notNull().default([]),
     stepsTotal: integer('steps_total').notNull().default(0),
     stepsDone: integer('steps_done').notNull().default(0),
+    /** Wake-loop stall hint — short reason captured at the moment the
+     *  stall-detection sweep flagged the goal. Migration 0131. */
+    stallReason: text('stall_reason'),
+    /** Timestamp of the most recent transition to status = 'stalled'.
+     *  Migration 0131. */
+    stalledAt: timestamp('stalled_at', { withTimezone: true }),
   },
   (t) => ({
     tenantUserStatusIdx: index('idx_kernel_goals_tenant_user_status').on(
@@ -50,5 +56,6 @@ export const kernelGoals = pgTable(
       t.createdAt.desc(),
     ),
     threadIdx: index('idx_kernel_goals_thread').on(t.threadId),
+    stalledAtIdx: index('idx_kernel_goals_stalled_at').on(t.stalledAt),
   }),
 );

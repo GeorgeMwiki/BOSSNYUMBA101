@@ -54,9 +54,12 @@ import {
   createDecisionTraceRecorder,
   createEnvKillswitchPort,
   createInMemoryDecisionTraceStore,
+  createNullEmbedder,
+  createOpenAiEmbedder,
   registerSeedBrainTools,
   type BrainToolRegistry,
   type DecisionTraceRecorder,
+  type EmbedderPort,
   type KillswitchPort,
   type SeedBrainToolDeps,
 } from '@bossnyumba/central-intelligence';
@@ -210,6 +213,13 @@ export interface BrainKernelWiring {
    * when no DB-backed service was wired.
    */
   readonly sensorRoutingService: SensorRoutingServicePort | null;
+  /**
+   * Embedder the kernel was composed with. When an OpenAI key was
+   * present at boot this is a `createOpenAiEmbedder` instance;
+   * otherwise it is `createNullEmbedder()` (always-rejects sentinel
+   * the kernel catches and falls back to key-based recall).
+   */
+  readonly embedder: EmbedderPort;
 }
 
 /**
@@ -325,6 +335,13 @@ export function createBrainKernelWiring(
   // contracts in this and consuming wirings.
   const uncertaintyPolicy = resolveUncertaintyPolicyMode(envSource);
 
+  // Wave-K Tier-3 follow-up — resolve the text embedder port. The
+  // kernel's memory-recall step prefers `searchByEmbedding` when an
+  // embedder is wired; failures collapse to the legacy key-based
+  // search inside the kernel. We always thread a port (null-embedder
+  // fallback) so the kernel branch is uniform.
+  const embedder = resolveEmbedder(envSource, deps.logger);
+
   let kernel: BrainKernel;
   try {
     const composeArgs: Parameters<typeof composeSovereign>[0] = {
@@ -335,6 +352,7 @@ export function createBrainKernelWiring(
       traceRecorder: decisionTraceRecorder,
       uncertaintyPolicy,
       toolRegistry,
+      embedder,
     };
     if (deps.approvalPolicyResolver) {
       // Structural duck-cast: the database service's
@@ -367,6 +385,7 @@ export function createBrainKernelWiring(
         autoHaikuJudge: true,
         uncertaintyPolicy,
         killswitch: killswitch.readPlatform().level,
+        embedder: embedder.modelId,
       },
       'brain-kernel: composed (real-brain path active)',
     );
@@ -382,5 +401,46 @@ export function createBrainKernelWiring(
     toolRegistry,
     uncertaintyPolicy,
     sensorRoutingService: deps.sensorRoutingService ?? null,
+    embedder,
   };
+}
+
+/**
+ * Resolve the kernel's text-embedder port. Reads
+ * `OPENAI_EMBEDDING_API_KEY` first (operators can split embedding +
+ * generation keys), falling back to `OPENAI_API_KEY`. When neither is
+ * set we thread the always-rejects `createNullEmbedder()` so the
+ * kernel's memory-recall step has a uniform port and its `try/catch`
+ * collapses to the legacy key-based search path.
+ *
+ * Defensive: if `createOpenAiEmbedder` itself throws at construction
+ * (e.g. a future regression that requires more config) we log a
+ * warning and fall back to the null embedder rather than killing the
+ * gateway boot.
+ */
+function resolveEmbedder(
+  envSource: Readonly<Record<string, string | undefined>>,
+  logger: BrainKernelWiringDeps['logger'],
+): EmbedderPort {
+  const apiKey =
+    (envSource['OPENAI_EMBEDDING_API_KEY']?.trim() ||
+      envSource['OPENAI_API_KEY']?.trim()) ??
+    '';
+  if (!apiKey) {
+    return createNullEmbedder();
+  }
+  try {
+    return createOpenAiEmbedder({ apiKey });
+  } catch (err) {
+    if (logger?.warn) {
+      logger.warn(
+        {
+          wiring: 'brain-kernel',
+          error: err instanceof Error ? err.message : String(err),
+        },
+        'brain-kernel: embedder construction failed; using null embedder',
+      );
+    }
+    return createNullEmbedder();
+  }
 }
