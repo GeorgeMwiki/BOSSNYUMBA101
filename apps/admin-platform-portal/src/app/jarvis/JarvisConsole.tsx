@@ -16,6 +16,14 @@ import {
   useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
+// C3-COORD: AdaptiveRenderer rendering for TOOL_RESULT.uiPart
+// AdaptiveRenderer dispatches AgUiUiPart payloads (chart-vega,
+// data-table, timeline, kpi-grid, prefill-form, approval, workflow,
+// map, calendar, file-preview) to the right primitive. Wired below
+// in the message stack — once C1 lands the AG-UI client hook the
+// `(t as any).uiParts` cast becomes a typed read.
+import { AdaptiveRenderer } from '@/lib/genui';
+import type { AgUiUiPart } from '@/lib/genui';
 
 const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
 
@@ -200,8 +208,17 @@ export function JarvisConsole(): JSX.Element {
             // streaming turn carries `finalDecision`; the single-shot
             // turn carries `decision`. Coalesce so the renderer stays
             // mode-agnostic.
-            const tt = t as { decision?: any; finalDecision?: any } & typeof t;
+            const tt = t as {
+              decision?: any;
+              finalDecision?: any;
+              // C3-COORD: AdaptiveRenderer rendering for TOOL_RESULT.uiPart
+              // C1 populates `uiParts` from AG-UI `tool-output-available`
+              // events whose payload is an AgUiUiPart. Cast until the
+              // canonical turn type ships from chat-ui.
+              uiParts?: ReadonlyArray<AgUiUiPart>;
+            } & typeof t;
             const decision = tt.finalDecision ?? tt.decision;
+            const uiParts: ReadonlyArray<AgUiUiPart> = tt.uiParts ?? [];
             return (
               <div
                 key={t.id}
@@ -212,6 +229,18 @@ export function JarvisConsole(): JSX.Element {
                 }
               >
                 <div className="whitespace-pre-wrap">{t.text}</div>
+                {t.role === 'assistant' && uiParts.length > 0 ? (
+                  // C3-COORD: AdaptiveRenderer rendering for TOOL_RESULT.uiPart
+                  // Render each typed UiPart through the AdaptiveRenderer.
+                  // Each primitive Zod-validates its own payload at the
+                  // render boundary; chart-vega additionally ajv-checks
+                  // the spec before handing it to react-vega.
+                  <div className="mt-2 flex flex-col gap-2">
+                    {uiParts.map((part, idx) => (
+                      <AdaptiveRenderer key={`${t.id}-uip-${idx}`} uiPart={part} />
+                    ))}
+                  </div>
+                ) : null}
                 {t.role === 'assistant' && decision?.confidence ? (
                   <div className="mt-1 text-xs text-muted-foreground">
                     confidence {(decision.confidence.overall * 100).toFixed(0)}%
