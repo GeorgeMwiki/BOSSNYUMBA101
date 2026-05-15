@@ -96,7 +96,14 @@ WORKDIR /app
 # Next.js standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/static ./apps/${APP_NAME}/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/public ./apps/${APP_NAME}/public 2>/dev/null || true
+# NOTE: previous version had `COPY ... 2>/dev/null || true` which is
+# invalid Dockerfile syntax (shell redirection doesn't work in
+# directives — `2>/dev/null` got treated as a literal source path).
+# customer-app has a `public/` directory committed (icons, manifest.json,
+# sw.js for PWA), so the COPY succeeds. If a future app lacks public/,
+# add an empty placeholder file there instead of bringing shell logic
+# back into the directive.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/public ./apps/${APP_NAME}/public
 
 USER nextjs
 
