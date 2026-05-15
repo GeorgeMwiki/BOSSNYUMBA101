@@ -45,6 +45,14 @@ export default defineConfig({
         find: /^@bossnyumba\/ai-copilot$/,
         replacement: path.resolve(__dirname, '../../packages/ai-copilot/src/index.ts'),
       },
+      // Central-Command Phase A — AG-UI emitter / types live in
+      // packages/central-intelligence/src and must resolve from source
+      // for tests to see the latest streaming surface without a
+      // `pnpm build` round-trip. `$` anchor preserves subpath imports.
+      {
+        find: /^@bossnyumba\/central-intelligence$/,
+        replacement: path.resolve(__dirname, '../../packages/central-intelligence/src/index.ts'),
+      },
     ],
   },
   test: {
