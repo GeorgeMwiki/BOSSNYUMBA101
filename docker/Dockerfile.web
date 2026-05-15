@@ -51,6 +51,12 @@ COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/services ./services
 COPY --from=deps /app/apps ./apps
 
+# customer-app → @bossnyumba/api-sdk's build script reads
+# `Docs/api/openapi.generated.json` to emit typed fetch helpers.
+# That file isn't in any package's node_modules — it's tracked in the
+# repo at `Docs/api/`. Copy it explicitly so api-sdk's generate runs.
+COPY Docs/api ./Docs/api
+
 # Build the target app + every workspace package it transitively
 # depends on. The per-package node_modules symlinks (preserved by the
 # COPY --from=deps above) make pnpm's topological order sufficient.
