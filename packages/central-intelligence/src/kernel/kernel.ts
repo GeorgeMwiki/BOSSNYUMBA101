@@ -1,8 +1,10 @@
 /**
  * Brain kernel — the disciplined cognitive layer.
  *
- * One entry point: `think(req)`. It traverses the 13-step pipeline:
+ * One entry point: `think(req)`. It traverses the 14-step pipeline
+ * (steps 0 → 13 plus 11a):
  *
+ *   0.  Killswitch — administrative HALT short-circuit (K1)
  *   1.  Brain-side cache check
  *   2.  Inviolable refusal gate
  *   3.  Awareness-scope/tier compatibility check
@@ -11,9 +13,12 @@
  *   6.  Identity preamble + theory-of-mind + cognitive-load directives
  *   7.  Sensor selection + call (with failover)
  *   8.  Output normalization (preamble strip, ui_block extract)
- *   9.  Self-review judge pass (when stakes ≥ high or requireJudge)
+ *   9.  Self-review judge pass + regen-on-low-score (when stakes ≥ high
+ *       or requireJudge; K8 added the regen pass when judge score < 0.5)
  *   10. Self-awareness drift detection
  *   11. Policy gate (PII / numerical / regulatory)
+ *   11a. Uncertainty policy — caveat / ask-back / escalate when the
+ *        decision lacks the grounding to stand on its own (K1)
  *   12. Confidence scoring
  *   13. Provenance recording + cache write + CoT capture
  *
@@ -824,7 +829,7 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
     /**
      * Token-level streaming counterpart to `think`. Mirrors the same
-     * 13-step pipeline:
+     * 14-step pipeline (steps 0 → 13 plus 11a):
      *   - pre-sensor steps run synchronously (no deltas yet)
      *   - on pre-sensor refusal, yields turn_start + done(refusal)
      *   - on cache hit, yields turn_start, the cached text in one

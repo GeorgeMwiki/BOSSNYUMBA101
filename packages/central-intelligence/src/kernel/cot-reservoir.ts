@@ -67,7 +67,12 @@ interface PiiPattern {
 const COT_PII_PATTERNS: ReadonlyArray<PiiPattern> = [
   { kind: 'phone-tz',   re: /\+?255[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}/g, replace: '[redacted-phone]' },
   { kind: 'phone-ke',   re: /\+?254[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}/g, replace: '[redacted-phone]' },
-  { kind: 'phone-gen',  re: /\b0[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,    replace: '[redacted-phone]' },
+  // Formatted local mobile shape — REQUIRES a consistent separator
+  // (e.g. `0712 345 678` or `0712-345-678`). Un-formatted 10-digit
+  // strings (invoice numbers, internal IDs) no longer false-positive
+  // here; bare-phone strings still get scrubbed via the cue-word
+  // path below.
+  { kind: 'phone-gen',  re: /\b0[67]\d{2}([\s-])\d{3}\1\d{3}\b/g,       replace: '[redacted-phone]' },
   { kind: 'email',      re: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi,  replace: '[redacted-email]' },
   { kind: 'nida-tz',    re: /\b\d{8}-\d{5}-\d{5}-\d{2}\b/g,             replace: '[redacted-nida]' },
   { kind: 'kra-pin',    re: /\b[A-Z]\d{9}[A-Z]\b/g,                     replace: '[redacted-kra-pin]' },
@@ -77,6 +82,18 @@ const COT_PII_PATTERNS: ReadonlyArray<PiiPattern> = [
   // M-Pesa till/paybill numbers — 5-7 digits typically prefixed by
   // "till", "paybill", or "M-Pesa".
   { kind: 'mpesa-till', re: /\b(?:till|paybill|M[-\s]?Pesa)[\s#:.-]*\d{5,7}\b/gi, replace: '[redacted-mpesa]' },
+  // Cue-anchored bare 10-digit local mobile — only scrub when a phone
+  // cue word ("phone", "tel", "call", "reach", "whatsapp", "mpesa",
+  // "sms", "mobile", "cell") sits immediately before the number
+  // (within ~30 chars of separator/punctuation). This restores
+  // coverage for `phone: 0712345678` while keeping `INV-0712345678`
+  // and bare invoice numbers intact. The cue word is consumed in the
+  // match (same convention as `mpesa-till`).
+  {
+    kind: 'phone-cue',
+    re: /\b(?:phone|tel(?:ephone)?|call|reach|whatsapp|mpesa|sms|mobile|cell(?:phone)?)[\s#:.\-]{0,30}0[67]\d{8}\b/gi,
+    replace: '[redacted-phone]',
+  },
 ];
 
 /**

@@ -44,3 +44,7 @@ export {
   type CreditScoreReport,
   type FetchScoreInput,
 } from './adapters/credit-bureau-adapter.js';
+
+export * from './registry.js';
+export * from './orchestrator.js';
+export * from './health-scheduler.js';

@@ -90,4 +90,22 @@ export {
   type McpSdkServerLike,
   type McpSdkToolResponse,
   type McpSdkResourceResponse,
+  type McpSdkPromptResponse,
 } from './bossnyumba-mcp-server.js';
+
+// Prompts — MCP `prompts/list` + `prompts/get` capability
+export {
+  BOSSNYUMBA_PROMPTS,
+  CANONICAL_PROMPT_NAMES,
+  findPromptDefinition,
+  getPrompt,
+  listPrompts,
+  type McpPromptArgument,
+  type McpPromptDefinition,
+  type McpPromptGetResult,
+  type McpPromptListEntry,
+  type McpPromptListResult,
+  type McpPromptMessage,
+  type McpPromptOutcome,
+  type McpPromptRole,
+} from './prompts.js';

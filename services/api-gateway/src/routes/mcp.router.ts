@@ -23,6 +23,7 @@ import type {
   BossnyumbaMcpServer,
   McpAuthContext,
 } from '@bossnyumba/mcp-server';
+import { getPrompt, listPrompts } from '@bossnyumba/mcp-server';
 import { generateAgentCard } from '@bossnyumba/agent-platform';
 
 interface JsonRpcRequest {
@@ -227,6 +228,46 @@ app.post('/', async (c: any) => {
             { uri, mimeType: 'application/json', text },
           ],
         });
+        break;
+      }
+      case 'prompts/list': {
+        // Tier-and-scope filtered — callers only see prompts they can
+        // actually invoke. Mirrors LITFIN's MCP `prompts/list` semantics
+        // and matches the `prompts: {}` capability advertised in
+        // `initialize` above.
+        const result = listPrompts(context);
+        response = rpcOk(body.id, result);
+        break;
+      }
+      case 'prompts/get': {
+        const name = (body.params?.name ?? '') as string;
+        const rawArgs = (body.params?.arguments ?? {}) as Record<
+          string,
+          unknown
+        >;
+        // Coerce arg values to strings — `getPrompt` renders into text
+        // and treats missing / empty values as absent.
+        const args: Record<string, string> = {};
+        for (const [k, v] of Object.entries(rawArgs)) {
+          args[k] = typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v);
+        }
+        const outcome = getPrompt(name, args, context);
+        if (outcome.ok === true) {
+          response = rpcOk(body.id, outcome.result);
+        } else {
+          // Map discriminated-union errorCodes onto JSON-RPC error codes:
+          //   PROMPT_NOT_FOUND      → -32601 (method not found)
+          //   TIER_INSUFFICIENT     → -32602 (invalid params — caller's
+          //                                   tier does not satisfy
+          //                                   the prompt's policy)
+          //   SCOPE_INSUFFICIENT    → -32602 (invalid params)
+          //   ARGUMENT_MISSING      → -32602 (invalid params)
+          const rpcCode =
+            outcome.errorCode === 'PROMPT_NOT_FOUND' ? -32601 : -32602;
+          response = rpcError(body.id, rpcCode, outcome.error, {
+            errorCode: outcome.errorCode,
+          });
+        }
         break;
       }
       default:
