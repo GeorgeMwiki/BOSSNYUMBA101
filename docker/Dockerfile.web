@@ -38,21 +38,23 @@ RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
 
+# Pull the FULL deps-stage tree forward — not just root node_modules.
+# Per-package node_modules contain the workspace symlinks that `tsc`
+# needs to resolve cross-package imports. See Dockerfile.api for the
+# full rationale on this fix.
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
 COPY --from=deps /app/pnpm-lock.yaml ./
 COPY --from=deps /app/pnpm-workspace.yaml ./
 COPY tsconfig.base.json tsconfig.json ./
-COPY packages ./packages
-COPY services ./services
-COPY apps ./apps
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/services ./services
+COPY --from=deps /app/apps ./apps
 
-# Build every workspace package in topological order, then build the
-# target app. See Dockerfile.api for the full rationale on why we use
-# `-r` instead of `--filter <pkg>...` — same pnpm 8.15 quirk applies
-# here since customer-app transitively depends on @bossnyumba/ai-copilot
-# which depends on @bossnyumba/forecasting.
-RUN pnpm -r --workspace-concurrency=1 build
+# Build the target app + every workspace package it transitively
+# depends on. The per-package node_modules symlinks (preserved by the
+# COPY --from=deps above) make pnpm's topological order sufficient.
+RUN pnpm --filter=@bossnyumba/${APP_NAME}... --workspace-concurrency=1 build
 
 # =============================================================================
 # Stage 3a: Vite (SPA) - Nginx serves static files

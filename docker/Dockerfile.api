@@ -35,27 +35,28 @@ RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
 
+# Pull the FULL deps-stage tree forward — not just root node_modules.
+#
+# pnpm install populates per-package node_modules with the workspace
+# symlinks (e.g. packages/ai-copilot/node_modules/@bossnyumba/forecasting
+# → ../../../forecasting). The previous Dockerfile only copied the root
+# node_modules, leaving each package's local node_modules empty —
+# `tsc` then could not resolve cross-workspace imports because the
+# symlinks were missing. Copying packages/ + services/ from the deps
+# stage (instead of from the build context) preserves those symlinks.
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
 COPY --from=deps /app/pnpm-lock.yaml ./
 COPY --from=deps /app/pnpm-workspace.yaml ./
 COPY tsconfig.base.json tsconfig.json ./
-COPY packages ./packages
-COPY services ./services
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/services ./services
 
-# Build EVERY workspace package in topological order.
-#
-# Why `-r` (recursive over all packages) instead of `--filter <pkg>...`:
-# pnpm 8.15's `--filter <pkg>... --workspace-concurrency=1` is documented
-# to honour topological order, but in practice with the api-gateway
-# dep chain we observe `@bossnyumba/ai-copilot`'s `tsc` failing to
-# resolve `@bossnyumba/forecasting`'s `dist/index.d.ts` even when the
-# log shows forecasting completed earlier in the same step. Building
-# everything `-r` removes the filter logic from the equation entirely
-# and guarantees the workspace is fully built before any consumer runs.
-# It costs a few extra package builds (we only need ~20 of 34) but the
-# extra ~30s is far cheaper than another red CI cycle.
-RUN pnpm -r --workspace-concurrency=1 build
+# Build api-gateway and every workspace package it transitively
+# depends on. With the per-package node_modules symlinks now present,
+# pnpm's topological order is enough to satisfy the cross-package tsc
+# imports (the previous "topo bug" was actually missing symlinks).
+RUN pnpm --filter=@bossnyumba/api-gateway... --workspace-concurrency=1 build
 
 # NOTE: production-only pruning (`pnpm deploy --prod`) is intentionally not
 # performed here — in a pnpm workspace with `workspace:*` symlinks, deploy
