@@ -32,6 +32,8 @@ import type {
   DsarTableName,
   DsarRow,
   DsarClassificationLookup,
+  DsarRtbfExecutor,
+  RtbfExecutionReport,
 } from '@bossnyumba/ai-copilot';
 
 interface EventCapture {
@@ -79,6 +81,7 @@ function mount(opts: {
   dataSource?: DsarDataSource;
   classifications?: DsarClassificationLookup;
   bus?: { publish: (envelope: unknown) => Promise<void> };
+  rtbfExecutor?: DsarRtbfExecutor | null;
 } = {}): Hono {
   const app = new Hono();
   app.use('*', async (c, next) => {
@@ -86,11 +89,48 @@ function mount(opts: {
       dsarDataSource: opts.dataSource,
       dsarClassifications: opts.classifications,
       eventBus: opts.bus,
+      dsarRtbfExecutor: opts.rtbfExecutor,
     } as never);
     await next();
   });
   app.route('/dsar', createDsarRouter());
   return app;
+}
+
+function stubRtbfExecutor(opts: {
+  readonly tablesProcessed?: ReadonlyArray<{
+    table: string;
+    action: 'anonymized' | 'hard-deleted' | 'retained' | 'skipped';
+    rowsAffected: number;
+  }>;
+  readonly totalRowsAffected?: number;
+  readonly throwOn?: 'execute';
+} = {}): DsarRtbfExecutor & { calls: { args: unknown }[] } {
+  const calls: { args: unknown }[] = [];
+  return {
+    calls,
+    async executeRtbf(args): Promise<RtbfExecutionReport> {
+      calls.push({ args });
+      if (opts.throwOn === 'execute') {
+        throw new Error('boom');
+      }
+      return Object.freeze({
+        subjectId: args.subjectId,
+        subjectKind: 'customerId',
+        executedAt: new Date('2026-05-15T10:00:00Z').toISOString(),
+        requestedBy: args.requestedBy,
+        dryRun: args.dryRun === true,
+        tablesProcessed: Object.freeze(
+          (opts.tablesProcessed ?? [
+            { table: 'customers', action: 'anonymized', rowsAffected: 1 },
+            { table: 'messages', action: 'hard-deleted', rowsAffected: 2 },
+          ]).map((t) => Object.freeze({ ...t })),
+        ) as unknown as RtbfExecutionReport['tablesProcessed'],
+        partialErrors: Object.freeze([]),
+        totalRowsAffected: opts.totalRowsAffected ?? 3,
+      }) as RtbfExecutionReport;
+    },
+  } as DsarRtbfExecutor & { calls: { args: unknown }[] };
 }
 
 function bearer(role: UserRole, userId = 'usr-admin'): string {
@@ -221,30 +261,120 @@ describe('dsar.router', () => {
     expect(body.error.retryAfter).toBeGreaterThan(0);
   });
 
-  it('RTBF stub returns accepted + scheduledAt (admin only)', async () => {
+  it('RTBF without an executor returns 503 RTBF_EXECUTOR_UNAVAILABLE', async () => {
     const captured: EventCapture[] = [];
     const app = mount({ bus: captureBus(captured) });
     const res = await app.request('/dsar/cus_1/rtbf', {
       method: 'POST',
       headers: { Authorization: bearer(UserRole.SUPER_ADMIN) },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as {
-      data: { accepted: boolean; scheduledAt: string; subjectId: string };
+      error: { code: string; message: string };
     };
-    expect(body.data.accepted).toBe(true);
-    expect(body.data.subjectId).toBe('cus_1');
-    expect(new Date(body.data.scheduledAt).getTime()).toBeGreaterThan(Date.now());
+    expect(body.error.code).toBe('RTBF_EXECUTOR_UNAVAILABLE');
+    // Audit row still fires so legal sees the attempt.
     expect(captured.some((e) => e.type === 'dsar.rtbf')).toBe(true);
   });
 
-  it('RTBF is forbidden for non-admin', async () => {
-    const app = mount({});
+  it('RTBF SUPER_ADMIN dry-run returns 200 with full report and no mutations', async () => {
+    const captured: EventCapture[] = [];
+    const exec = stubRtbfExecutor();
+    const app = mount({ bus: captureBus(captured), rtbfExecutor: exec });
+    const res = await app.request('/dsar/cus_1/rtbf?dryRun=true', {
+      method: 'POST',
+      headers: { Authorization: bearer(UserRole.SUPER_ADMIN) },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      success: boolean;
+      data: RtbfExecutionReport;
+    };
+    expect(body.success).toBe(true);
+    expect(body.data.dryRun).toBe(true);
+    expect(body.data.subjectId).toBe('cus_1');
+    expect(body.data.tablesProcessed.length).toBeGreaterThan(0);
+    // Executor was invoked with dryRun=true.
+    expect(exec.calls.length).toBe(1);
+    const callArgs = exec.calls[0].args as { dryRun: boolean };
+    expect(callArgs.dryRun).toBe(true);
+  });
+
+  it('RTBF ADMIN real run returns 200 and emits dsar.rtbf.executed audit event', async () => {
+    const captured: EventCapture[] = [];
+    const exec = stubRtbfExecutor({
+      tablesProcessed: [
+        { table: 'customers', action: 'anonymized', rowsAffected: 1 },
+        { table: 'messages', action: 'hard-deleted', rowsAffected: 3 },
+        { table: 'audit_events', action: 'retained', rowsAffected: 5 },
+      ],
+      totalRowsAffected: 9,
+    });
+    const app = mount({ bus: captureBus(captured), rtbfExecutor: exec });
+    const res = await app.request('/dsar/cus_1/rtbf', {
+      method: 'POST',
+      headers: { Authorization: bearer(UserRole.ADMIN) },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: RtbfExecutionReport };
+    expect(body.data.totalRowsAffected).toBe(9);
+    const audit = captured.find((e) => e.type === 'dsar.rtbf.executed');
+    expect(audit).toBeDefined();
+    const p = audit!.payload as {
+      subjectId: string;
+      totalRowsAffected: number;
+      tableActions: Array<{ table: string; action: string }>;
+    };
+    expect(p.subjectId).toBe('cus_1');
+    expect(p.totalRowsAffected).toBe(9);
+    expect(p.tableActions.length).toBe(3);
+  });
+
+  it('RTBF is forbidden for RESIDENT (non-admin)', async () => {
+    const exec = stubRtbfExecutor();
+    const app = mount({ rtbfExecutor: exec });
     const res = await app.request('/dsar/cus_1/rtbf', {
       method: 'POST',
       headers: { Authorization: bearer(UserRole.RESIDENT) },
     });
     expect(res.status).toBe(403);
+    // Executor MUST NOT be called for forbidden roles.
+    expect(exec.calls.length).toBe(0);
+  });
+
+  it('RTBF is forbidden for TENANT_ADMIN (platform-level review required)', async () => {
+    const exec = stubRtbfExecutor();
+    const app = mount({ rtbfExecutor: exec });
+    const res = await app.request('/dsar/cus_1/rtbf', {
+      method: 'POST',
+      headers: { Authorization: bearer(UserRole.TENANT_ADMIN) },
+    });
+    expect(res.status).toBe(403);
+    expect(exec.calls.length).toBe(0);
+  });
+
+  it('RTBF with malformed subjectId returns 400', async () => {
+    const exec = stubRtbfExecutor();
+    const app = mount({ rtbfExecutor: exec });
+    // Hono's path matching treats an empty segment as no match — to
+    // simulate a malformed body request we send a whitespace-only id
+    // (the router trims and rejects).
+    const res = await app.request('/dsar/%20/rtbf', {
+      method: 'POST',
+      headers: { Authorization: bearer(UserRole.SUPER_ADMIN) },
+    });
+    expect(res.status).toBe(400);
+    expect(exec.calls.length).toBe(0);
+  });
+
+  it('RTBF executor errors propagate as 500 DSAR_RTBF_FAILED', async () => {
+    const exec = stubRtbfExecutor({ throwOn: 'execute' });
+    const app = mount({ rtbfExecutor: exec });
+    const res = await app.request('/dsar/cus_1/rtbf', {
+      method: 'POST',
+      headers: { Authorization: bearer(UserRole.SUPER_ADMIN) },
+    });
+    expect(res.status).toBe(500);
   });
 
   it('export without auth is 401', async () => {

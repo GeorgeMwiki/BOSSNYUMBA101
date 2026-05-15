@@ -141,8 +141,10 @@ import { PostgresCreditRatingRepository } from './credit-rating-repository.js';
 import {
   createDsarDataSourceDrizzle,
   createDatabaseClassificationLookup,
+  createDsarRtbfExecutor,
   type DsarDataSource,
   type DsarClassificationLookup,
+  type DsarRtbfExecutor,
 } from '@bossnyumba/ai-copilot';
 // Wave-K W-Data — unified privacy-budget composer (G2 closure) and the
 // per-column classification registry. Both reachable via the main
@@ -157,6 +159,7 @@ import {
 import {
   classify as classifyDbColumn,
   createApprovalPolicyService,
+  createKernelGoalsService,
   createPrivacyBudgetComposerService,
   createSensorRoutingService,
 } from '@bossnyumba/database';
@@ -411,6 +414,10 @@ export interface ServiceRegistry {
    *  registry, no DB needed). */
   readonly dsarDataSource: DsarDataSource | null;
   readonly dsarClassifications: DsarClassificationLookup;
+  /** Wave-K Final Zero — DSAR RTBF executor (GDPR Art.17 / PDPA s.31).
+   *  Null in degraded mode; the dsar router returns 503
+   *  RTBF_EXECUTOR_UNAVAILABLE when the slot is unwired. */
+  readonly dsarRtbfExecutor: DsarRtbfExecutor | null;
 
   /** Wave-K W-Data — unified privacy-budget composer (G2 closure).
    *  Always wired (in-memory adapter in degraded mode, Drizzle adapter
@@ -870,6 +877,10 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // full port contract — fine for single-replica dev / DB-down.
     dsarDataSource: null,
     dsarClassifications: createDatabaseClassificationLookup(classifyDbColumn),
+    // RTBF executor needs a real DB client — null in degraded mode so
+    // the dsar router returns 503 RTBF_EXECUTOR_UNAVAILABLE rather
+    // than silently no-op'ing the erasure (the prior stub bug).
+    dsarRtbfExecutor: null,
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
@@ -1430,6 +1441,13 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // in a follow-up once the schema migration lands.
     dsarDataSource: createDsarDataSourceDrizzle({ db: db as unknown as never }),
     dsarClassifications: createDatabaseClassificationLookup(classifyDbColumn),
+    // Wave-K Final Zero — RTBF executor wired against the same Drizzle
+    // client. Replaces the prior {accepted: true} stub in the rtbf
+    // handler. The executor walks every DSAR table inside a Drizzle
+    // transaction and applies the per-table policy.
+    dsarRtbfExecutor: createDsarRtbfExecutor({
+      db: db as unknown as never,
+    }),
     privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
@@ -1666,6 +1684,12 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
         error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
       },
+      // Wave-K Tier-3 follow-up — bind the Drizzle-backed kernel-goals
+      // service as the wake-loop's stall-scan repo. The service already
+      // exposes `listStallScanTargets` + `markStalled`; the wake-loop's
+      // port shape is structurally satisfied. When `db` is null the
+      // supervisor degrades safely on its own.
+      kernelGoalsRepo: createKernelGoalsService(db as never),
     }),
     // Wave-K Tier-3 — sovereign-ledger verify supervisor. Shares the
     // composition-root event bus so verdicts emit on the same channel
@@ -1695,6 +1719,47 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/* eslint-disable-next-line no-secrets/no-secrets */
+/**
+ * Env-driven kill-switch for the agency executor's sovereign-tier
+ * audit-write policy (W-FailClosed, wave-k-final-zero).
+ *
+ * - `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` -> fail-closed.
+ *   When the hash-chained sovereign action ledger cannot be written
+ *   on a sovereign-tier action (tenant eviction, owner payout, KRA
+ *   MRI, GePG control-number revocation, market-rate-band override,
+ *   inspection-as-major-damage), the executor flips the step
+ *   outcome to `failed` with reason `sovereign-audit-write-failed`.
+ *   The tool's external side-effects are NOT un-executed — a
+ *   compensating-action workflow (out of scope here; see TODOs in
+ *   the wave-K plan) must reconcile them.
+ * - Anything else (unset / `false` / `0` / `no` / `off` / empty) →
+ *   fail-open (legacy W-Agency behaviour: log-and-continue).
+ *
+ * Exported so the agency-executor composition root
+ * (`./sovereign.ts -> agencyKernel.createExecutor`) can read a
+ * single canonical value rather than re-parsing the env at every
+ * boot. The flag is read at composition time; restart required for
+ * a value change to take effect.
+ */
+export const SOVEREIGN_LEDGER_FAIL_CLOSED_ENV =
+  'SOVEREIGN_LEDGER_FAIL_CLOSED';
+
+export function readSovereignLedgerFailClosedFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const raw = env[SOVEREIGN_LEDGER_FAIL_CLOSED_ENV];
+  if (raw === undefined || raw === null) return false;
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === '') return false;
+  return (
+    trimmed === 'true' ||
+    trimmed === '1' ||
+    trimmed === 'yes' ||
+    trimmed === 'on'
+  );
+}
 
 function interpolatePositionalSql(
   sqlText: string,

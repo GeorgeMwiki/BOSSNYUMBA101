@@ -2,6 +2,7 @@ export {
   createExecutor,
   isSovereignTier,
   SOVEREIGN_TIER_ACTION_NAMES,
+  SOVEREIGN_AUDIT_WRITE_FAILED_REASON,
   type Executor,
   type ExecutorDeps,
   type ExecutorLogger,

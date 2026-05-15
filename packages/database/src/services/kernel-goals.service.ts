@@ -16,7 +16,7 @@
  *   - setStatus : logs + swallows
  */
 import { randomUUID } from 'crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { kernelGoals } from '../schemas/kernel-goals.schema.js';
 import type { DatabaseClient } from '../client.js';
 
@@ -25,7 +25,8 @@ export type GoalStatus =
   | 'paused'
   | 'blocked'
   | 'completed'
-  | 'abandoned';
+  | 'abandoned'
+  | 'stalled';
 
 export type GoalPriority = 'low' | 'medium' | 'high' | 'critical';
 
@@ -103,16 +104,58 @@ export interface GoalUpdateStepArgs {
   readonly errorMessage?: string;
 }
 
+/**
+ * Per-(tenant, user) summary row used by the wake-loop's stall-detection
+ * sweep. `goalCount` is the number of `active` goals the user owns; the
+ * wake-loop currently does not read it but operators / dashboards do.
+ *
+ * Mirrors the structural shape the wake-loop's `KernelGoalsRepoLike`
+ * port (services/api-gateway/.../wake-loop-cron.ts) expects — that port
+ * only requires `tenantId` and `userId` so the extra `goalCount` field
+ * is purely additive.
+ */
+export interface StallScanTarget {
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly goalCount: number;
+}
+
 export interface KernelGoalsService {
   open(args: GoalOpenArgs): Promise<{ id: string }>;
   list(args: GoalListArgs): Promise<ReadonlyArray<Goal>>;
   get(id: string): Promise<Goal | null>;
   updateStepStatus(args: GoalUpdateStepArgs): Promise<void>;
   setStatus(id: string, status: GoalStatus): Promise<void>;
+  /**
+   * Aggregate `status='active'` goals grouped by (tenant_id, user_id)
+   * so the wake-loop can sweep one user at a time without doing a
+   * full-table scan. Returns at most {@link MAX_STALL_SCAN_GROUPS}
+   * groups per call.
+   *
+   * When `tenantId` is provided the scan is bounded to that tenant —
+   * matches how the wake-loop calls in: one tenant per outer loop tick.
+   * Omit `tenantId` for cross-tenant ops sweeps.
+   *
+   * Hard failures degrade to an empty array so the wake-loop's outer
+   * try/catch never collapses on a transient DB hiccup.
+   */
+  listStallScanTargets(
+    tenantId?: string,
+  ): Promise<ReadonlyArray<StallScanTarget>>;
+  /**
+   * Mark a goal as stalled. Sets `status = 'stalled'`,
+   * `stall_reason = reason`, `stalled_at = NOW()`, and bumps
+   * `updated_at`. No-op when the goal id does not exist (Drizzle's
+   * UPDATE returns silently). Errors are logged + swallowed so the
+   * wake-loop never crashes on a per-goal failure.
+   */
+  markStalled(goalId: string, reason: string): Promise<void>;
 }
 
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
+const MAX_STALL_SCAN_GROUPS = 500;
+const MAX_STALL_REASON_LEN = 500;
 
 export function createKernelGoalsService(
   db: DatabaseClient,
@@ -255,6 +298,71 @@ export function createKernelGoalsService(
           .where(eq(kernelGoals.id, id));
       } catch (error) {
         console.error('kernel-goals.setStatus failed:', error);
+      }
+    },
+
+    async listStallScanTargets(tenantId) {
+      try {
+        if (tenantId !== undefined && !tenantId) return [];
+        // `status = 'active'` is the only valid state for stall-scan
+        // candidates — paused / blocked / completed / abandoned goals
+        // have already absorbed their own status transition. Group-by
+        // gives the wake-loop one row per (tenant, user) so it can run
+        // the stall detector once per user instead of once per goal.
+        const filter = tenantId
+          ? and(
+              eq(kernelGoals.status, 'active'),
+              eq(kernelGoals.tenantId, tenantId),
+            )
+          : eq(kernelGoals.status, 'active');
+        const rows = (await db
+          .select({
+            tenantId: kernelGoals.tenantId,
+            userId: kernelGoals.userId,
+            goalCount: sql<number>`COUNT(*)::int`,
+          })
+          .from(kernelGoals)
+          .where(filter)
+          .groupBy(kernelGoals.tenantId, kernelGoals.userId)
+          .limit(MAX_STALL_SCAN_GROUPS)) as ReadonlyArray<{
+          tenantId: string;
+          userId: string;
+          goalCount: number | string | null;
+        }>;
+        return (rows ?? [])
+          .filter((r) => r && typeof r.tenantId === 'string' && typeof r.userId === 'string')
+          .map((r) => ({
+            tenantId: r.tenantId,
+            userId: r.userId,
+            goalCount:
+              typeof r.goalCount === 'number'
+                ? r.goalCount
+                : typeof r.goalCount === 'string'
+                  ? Number.parseInt(r.goalCount, 10) || 0
+                  : 0,
+          }));
+      } catch (error) {
+        console.error('kernel-goals.listStallScanTargets failed:', error);
+        return [];
+      }
+    },
+
+    async markStalled(goalId, reason) {
+      try {
+        if (!goalId) return;
+        const now = new Date();
+        const safeReason = (reason ?? '').slice(0, MAX_STALL_REASON_LEN);
+        await db
+          .update(kernelGoals)
+          .set({
+            status: 'stalled',
+            stallReason: safeReason,
+            stalledAt: now,
+            updatedAt: now,
+          } as never)
+          .where(eq(kernelGoals.id, goalId));
+      } catch (error) {
+        console.error('kernel-goals.markStalled failed:', error);
       }
     },
   };

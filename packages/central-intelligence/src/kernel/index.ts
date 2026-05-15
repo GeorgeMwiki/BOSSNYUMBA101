@@ -192,6 +192,13 @@ export {
   type BrainKernelDeps,
 } from './kernel.js';
 export {
+  createOpenAiEmbedder,
+  createNullEmbedder,
+  EMBEDDER_NOT_CONFIGURED_ERROR,
+  type EmbedderPort,
+  type OpenAiEmbedderConfig,
+} from './embedder.js';
+export {
   createApprovalGate,
   createInMemoryApprovalStore,
   buildApprovalPolicy,

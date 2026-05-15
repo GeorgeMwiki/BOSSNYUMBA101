@@ -22,10 +22,22 @@
  * `SOVEREIGN_TIER_ACTION_NAMES` (a deny-list of irreversible / high-
  * regulatory-impact actions: tenant eviction, owner payout, KRA
  * filings, GePG control-number revocations, market-rate-band overrides,
- * inspection major-damage flags). Ledger write failure is logged but
- * NEVER thrown — we don't want a logging error to roll back a tool that
- * already succeeded. TODO: revisit this policy if/when an external
- * regulator requires fail-closed semantics.
+ * inspection major-damage flags).
+ *
+ * Ledger-write policy (W-FailClosed, wave-k-final-zero):
+ *   - Default (`sovereignLedgerFailClosed === false` or unset):
+ *     "fail-open" — ledger errors are logged and swallowed. The tool's
+ *     apparent outcome is preserved (back-compat with W-Agency).
+ *   - Fail-closed (`sovereignLedgerFailClosed === true`): when the
+ *     sovereign-tier audit row cannot be written, the executor flips
+ *     the step's outcome to `failed` with `reason:
+ *     sovereign-audit-write-failed`. The tool's side-effects cannot
+ *     be un-executed (e.g. an external API call has already gone out),
+ *     so the failure here signals downstream callers that a manual
+ *     reconciliation (compensating-action workflow) is required.
+ *     Regulators demand fail-closed for tenant eviction, owner payout,
+ *     KRA MRI, GePG, market-rate overrides, and inspection major-
+ *     damage flags — the hash-chained audit row is non-negotiable.
  */
 import type { ApprovalGate } from '../../four-eye-approval.js';
 import type {
@@ -62,11 +74,20 @@ export interface SovereignActionLedgerPort {
 
 /** Minimal observability hook the executor uses when the sovereign
  *  ledger write fails. Mirrors the wake-loop logger shape (info/warn/
- *  error) so the same composition-root logger can be threaded in. */
+ *  error) so the same composition-root logger can be threaded in.
+ *  `fatal` is reserved for fail-closed sovereign-audit-write failures
+ *  where manual reconciliation is required; callers that do not
+ *  surface a fatal level fall back to `error`. */
 export interface ExecutorLogger {
   error?(obj: Record<string, unknown>, msg?: string): void;
   warn?(obj: Record<string, unknown>, msg?: string): void;
+  fatal?(obj: Record<string, unknown>, msg?: string): void;
 }
+
+/** Reason emitted on the executor outcome when fail-closed mode is on
+ *  and the sovereign-tier audit row could not be appended. */
+export const SOVEREIGN_AUDIT_WRITE_FAILED_REASON =
+  'sovereign-audit-write-failed';
 
 /**
  * Deny-list of action names treated as sovereign-tier even when their
@@ -109,10 +130,29 @@ export interface ExecutorDeps {
   /**
    * Optional hash-chained ledger for sovereign-tier actions. When
    * present, every sovereign-tier tool invocation (success AND failure)
-   * is appended. Ledger write failures are logged via `logger` and
-   * swallowed — they never roll back a successful tool invocation.
+   * is appended. Ledger write failures are logged via `logger`; whether
+   * they roll back the apparent tool outcome depends on
+   * {@link sovereignLedgerFailClosed}.
    */
   readonly sovereignLedger?: SovereignActionLedgerPort;
+  /**
+   * Fail-closed policy switch for sovereign-tier ledger writes. Default
+   * `false` preserves the legacy log-and-continue (fail-open) behaviour.
+   *
+   * When `true`, a ledger-write failure on a sovereign-tier tool
+   * invocation flips the step's outcome to `failed` with reason
+   * {@link SOVEREIGN_AUDIT_WRITE_FAILED_REASON}. Side-effects already
+   * committed by the tool (external API calls) are NOT un-executed —
+   * the executor cannot do that — but downstream callers see a
+   * `failed` outcome and can dispatch a compensating-action workflow.
+   *
+   * Regulators require this for tenant eviction, owner payout, KRA
+   * MRI, GePG, market-rate overrides, and inspection-as-major-damage:
+   * the hash-chained audit row is non-negotiable, so an action that
+   * cannot be audited must be treated as failed even if the underlying
+   * call succeeded.
+   */
+  readonly sovereignLedgerFailClosed?: boolean;
   /** Optional structured logger used for ledger write failures. */
   readonly logger?: ExecutorLogger;
   readonly clock?: () => Date;
@@ -409,7 +449,12 @@ export function createExecutor(deps: ExecutorDeps): Executor {
             endedAt: clock().toISOString(),
             latencyMs: clock().getTime() - startedAt.getTime(),
           });
-          await safeSovereignLedger(deps, tool, {
+          // The step already failed; we still want a sovereign-audit
+          // row for the failure. In fail-closed mode a follow-on
+          // audit-write failure does NOT double-flip the outcome
+          // (already failed); it does, however, add a second
+          // failureMessage so operators can see the chain is broken.
+          const ledgerResult = await safeSovereignLedger(deps, tool, {
             tenantId: goal.tenantId,
             userId: goal.userId,
             input: step.toolPayload,
@@ -420,9 +465,21 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           });
           stepsFailed += 1;
           failureMessages.push(invokeError);
+          if (!ledgerResult.ok) {
+            failureMessages.push(ledgerResult.reason);
+          }
           bailed = true;
           continue;
         }
+        // Tool invocation succeeded — first record the success in both
+        // step state and the legacy audit-sink, then attempt the
+        // sovereign-tier ledger append. In fail-closed mode, if the
+        // ledger write fails we ROLL BACK the apparent success on the
+        // executor's outcome surface (we flip the step + outcome to
+        // `failed` with reason `sovereign-audit-write-failed`). We
+        // cannot un-execute the tool's external side-effects — that
+        // is the compensating-action workflow's job — but downstream
+        // callers must not proceed as if the action was clean.
         await safeUpdateStep(deps, {
           goalId: goal.id,
           stepId: step.id,
@@ -443,7 +500,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           endedAt: clock().toISOString(),
           latencyMs: clock().getTime() - startedAt.getTime(),
         });
-        await safeSovereignLedger(deps, tool, {
+        const ledgerResult = await safeSovereignLedger(deps, tool, {
           tenantId: goal.tenantId,
           userId: goal.userId,
           input: step.toolPayload,
@@ -452,6 +509,37 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           errorMessage: null,
           executedAt: clock(),
         });
+        if (!ledgerResult.ok) {
+          // Fail-closed roll-back. The legacy audit-sink already saw
+          // `done`; we now overwrite the step's status + outcome to
+          // `failed` and emit a second audit row recording the audit-
+          // write failure so the legacy auditor sees the flip.
+          await safeUpdateStep(deps, {
+            goalId: goal.id,
+            stepId: step.id,
+            status: 'failed',
+            outcome: ledgerResult.reason,
+            errorMessage: ledgerResult.reason,
+          });
+          await safeAudit(deps, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            goalId: goal.id,
+            stepId: step.id,
+            toolName: step.toolName,
+            decision: 'failed',
+            payloadHash: hashPayload(step.toolPayload),
+            outcome: null,
+            errorMessage: ledgerResult.reason,
+            startedAt: startedAt.toISOString(),
+            endedAt: clock().toISOString(),
+            latencyMs: clock().getTime() - startedAt.getTime(),
+          });
+          stepsFailed += 1;
+          failureMessages.push(ledgerResult.reason);
+          bailed = true;
+          continue;
+        }
         stepsSucceeded += 1;
       }
 
@@ -511,19 +599,34 @@ async function safeAudit(
   }
 }
 
+/** Discriminated result of a sovereign-ledger append attempt. The
+ *  executor uses this to decide whether to flip the apparent tool
+ *  outcome to `failed` in fail-closed mode. `ok: true` covers all the
+ *  non-blocking branches (non-sovereign tool, no ledger dep, write
+ *  succeeded, write failed but fail-open mode is on). */
+type SovereignLedgerResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: typeof SOVEREIGN_AUDIT_WRITE_FAILED_REASON };
+
 /**
  * Append a sovereign-tier execution to the hash-chained ledger.
  *
  * Guard rails:
  *   - no-op when `deps.sovereignLedger` is missing (kernel can run
  *     without the ledger bound — useful in tests and in dev runs).
+ *     Returns `{ok: true}` because no audit is possible and the missing
+ *     dep is a deliberate composition choice, not a regression we
+ *     should refuse to proceed past.
  *   - no-op for non-sovereign tools (see {@link isSovereignTier}).
- *   - ledger errors are logged but NEVER rethrown — sovereign-tier
- *     audit is non-negotiable BUT a logging failure must not roll back
- *     a tool execution that already succeeded. TODO: re-evaluate this
- *     policy once we have an external regulator demanding fail-closed
- *     semantics — a configurable `failClosed` flag would be the natural
- *     extension.
+ *     Returns `{ok: true}`.
+ *   - ledger errors: when `deps.sovereignLedgerFailClosed === true`
+ *     the error is logged via `logger.fatal` (falling back to
+ *     `logger.error`) and `{ok: false, reason:
+ *     'sovereign-audit-write-failed'}` is returned so the caller can
+ *     flip the step outcome. When `sovereignLedgerFailClosed` is unset
+ *     or false, the error is logged via `logger.error` and
+ *     `{ok: true}` is returned — preserving the legacy fail-open
+ *     contract (back-compat with W-Agency).
  */
 async function safeSovereignLedger(
   deps: ExecutorDeps,
@@ -537,9 +640,9 @@ async function safeSovereignLedger(
     readonly errorMessage: string | null;
     readonly executedAt: Date;
   },
-): Promise<void> {
-  if (!deps.sovereignLedger) return;
-  if (!isSovereignTier(tool)) return;
+): Promise<SovereignLedgerResult> {
+  if (!isSovereignTier(tool)) return { ok: true };
+  if (!deps.sovereignLedger) return { ok: true };
   const payload: Record<string, unknown> = {
     input: args.input ?? {},
     output: args.output ?? null,
@@ -555,23 +658,40 @@ async function safeSovereignLedger(
       approvers: [],
       executedAt: args.executedAt,
     });
+    return { ok: true };
   } catch (err) {
+    const failClosed = deps.sovereignLedgerFailClosed === true;
+    const logObj = {
+      err: err instanceof Error ? err.message : String(err),
+      tenantId: args.tenantId,
+      actionType: tool.name,
+      failClosed,
+    };
+    if (failClosed) {
+      const fatal = deps.logger?.fatal ?? deps.logger?.error ?? deps.logger?.warn;
+      if (fatal) {
+        fatal(
+          logObj,
+          'sovereign-tier audit write failed (fail-closed) — manual reconciliation required',
+        );
+      } else {
+        console.error(
+          'agency-executor: sovereign-ledger.appendLedgerEntry failed (fail-closed)',
+          err,
+        );
+      }
+      return { ok: false, reason: SOVEREIGN_AUDIT_WRITE_FAILED_REASON };
+    }
     const log = deps.logger?.error ?? deps.logger?.warn;
     if (log) {
-      log(
-        {
-          err: err instanceof Error ? err.message : String(err),
-          tenantId: args.tenantId,
-          actionType: tool.name,
-        },
-        'sovereign-ledger.appendLedgerEntry failed',
-      );
+      log(logObj, 'sovereign-ledger.appendLedgerEntry failed');
     } else {
       console.error(
         'agency-executor: sovereign-ledger.appendLedgerEntry failed',
         err,
       );
     }
+    return { ok: true };
   }
 }
 

@@ -41,6 +41,8 @@ import {
   type DsarBundle,
   type DsarDataSource,
   type DsarClassificationLookup,
+  type DsarRtbfExecutor,
+  type RtbfExecutionReport,
 } from '@bossnyumba/ai-copilot';
 import { authMiddleware } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
@@ -106,6 +108,25 @@ function isAdminRole(role: UserRole | undefined): boolean {
   return ADMIN_ROLES.has(role);
 }
 
+/**
+ * RTBF is more restrictive than export: TENANT_ADMIN can NOT trigger
+ * erasure. Only platform admins (SUPER_ADMIN / ADMIN) may invoke it.
+ * The legal reasoning — tenant admins might be the data controller
+ * but the platform is the data processor, and erasure of financial /
+ * audit records needs platform-level review. Subjects themselves
+ * CANNOT trigger their own RTBF (per legal-team guidance) — admins
+ * must approve.
+ */
+const RTBF_ADMIN_ROLES = new Set<UserRole>([
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+]);
+
+function isRtbfAdminRole(role: UserRole | undefined): boolean {
+  if (!role) return false;
+  return RTBF_ADMIN_ROLES.has(role);
+}
+
 function isSubjectSelf(
   auth: { userId?: string; tenantId?: string; email?: string },
   subjectId: string,
@@ -161,9 +182,16 @@ function resolveDeps(c: any): {
   };
 }
 
+function resolveRtbfExecutor(c: any): DsarRtbfExecutor | null {
+  const services = (c.get('services') ?? {}) as {
+    dsarRtbfExecutor?: DsarRtbfExecutor | null;
+  };
+  return services.dsarRtbfExecutor ?? null;
+}
+
 async function emitAudit(
   c: any,
-  eventType: 'dsar.export' | 'dsar.preview' | 'dsar.rtbf',
+  eventType: 'dsar.export' | 'dsar.preview' | 'dsar.rtbf' | 'dsar.rtbf.executed',
   payload: Record<string, unknown>,
 ): Promise<void> {
   try {
@@ -313,9 +341,21 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
   });
 
   // ───────────────────────────────────────────────────────────────────
-  // POST /:subjectId/rtbf — schedule right-to-be-forgotten (stub)
-  // Actual deletion is TIER-3 follow-up; this endpoint exists so legal
-  // can issue requests today. Admins only.
+  // POST /:subjectId/rtbf — execute right-to-be-forgotten
+  //
+  // Wave-K Final Zero: replaced the previous {accepted, scheduledAt}
+  // stub with a real call into `DsarRtbfExecutor`. The executor walks
+  // every DSAR table inside a Drizzle transaction and applies the
+  // per-table policy (ANONYMIZE / HARD_DELETE / RETAIN). Returns the
+  // full execution report so legal can verify exactly which rows were
+  // touched.
+  //
+  // Authorization: SUPER_ADMIN + ADMIN only. TENANT_ADMIN is excluded
+  // (platform-level review required for financial/audit retention).
+  // Subjects cannot trigger their own RTBF — must go through admin.
+  //
+  // Query params:
+  //   ?dryRun=true  — preview which rows WOULD be touched, no writes.
   // ───────────────────────────────────────────────────────────────────
   app.post('/:subjectId/rtbf', async (c: any) => {
     const subjectId = c.req.param('subjectId');
@@ -323,25 +363,71 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
       return badRequest(c, 'subjectId is required');
     }
     const auth = c.get('auth') ?? {};
-    if (!isAdminRole(auth.role)) return forbidden(c);
+    if (!isRtbfAdminRole(auth.role)) return forbidden(c);
 
-    const now = opts.now ? opts.now() : new Date();
-    const scheduledAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    await emitAudit(c, 'dsar.rtbf', {
-      subjectId,
-      requestedBy: auth.userId,
-      tenantId: auth.tenantId ?? 'unknown',
-      scheduledAt,
-    });
-    return c.json({
-      success: true,
-      data: {
-        accepted: true,
+    const dryRunQuery = c.req.query('dryRun');
+    const dryRun = dryRunQuery === 'true' || dryRunQuery === '1';
+
+    const executor = resolveRtbfExecutor(c);
+    const tenantId = auth.tenantId ?? 'unknown';
+
+    if (!executor) {
+      // Degraded mode — no DB-backed executor. Emit audit so legal can
+      // still see the request, but signal the unavailable state to
+      // the caller with 503 rather than the prior {accepted: true} lie.
+      await emitAudit(c, 'dsar.rtbf', {
         subjectId,
-        scheduledAt,
-        note: 'RTBF execution is scheduled; final pseudonymization runs via /api/v1/gdpr/delete-request/:id/execute (admin)',
-      },
-    });
+        requestedBy: auth.userId,
+        tenantId,
+        dryRun,
+        unavailable: true,
+      });
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'RTBF_EXECUTOR_UNAVAILABLE',
+            message:
+              'RTBF executor is not wired in this deployment; cannot perform erasure.',
+          },
+        },
+        503,
+      );
+    }
+
+    try {
+      const report: RtbfExecutionReport = await executor.executeRtbf({
+        subjectId,
+        subjectKind: 'auto',
+        requestedBy: auth.userId ?? 'unknown',
+        dryRun,
+      });
+
+      await emitAudit(c, 'dsar.rtbf.executed', {
+        subjectId,
+        requestedBy: auth.userId,
+        tenantId,
+        dryRun,
+        totalRowsAffected: report.totalRowsAffected,
+        partialErrorCount: report.partialErrors.length,
+        executedAt: report.executedAt,
+        // Snapshot the per-table action breakdown so the audit row is
+        // self-contained — auditors don't need a separate report fetch.
+        tableActions: report.tablesProcessed.map((t) => ({
+          table: t.table,
+          action: t.action,
+          rowsAffected: t.rowsAffected,
+        })),
+      });
+
+      return c.json({ success: true, data: report });
+    } catch (err: any) {
+      return routeCatch(c, err, {
+        code: 'DSAR_RTBF_FAILED',
+        status: 500,
+        fallback: 'Failed to execute RTBF request',
+      });
+    }
   });
 
   return app;

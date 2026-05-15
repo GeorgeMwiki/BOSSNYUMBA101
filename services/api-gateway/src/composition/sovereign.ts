@@ -86,6 +86,7 @@ import {
 // `packages/database/src/services/kernel-grounding.service.ts`.
 type SovereignRole = 'tenant' | 'manager' | 'owner' | 'org-admin' | 'sovereign';
 import { getDb } from './db-client';
+import { readSovereignLedgerFailClosedFromEnv } from './service-registry';
 import { wrapAnthropicWithCircuitBreaker } from './anthropic-circuit-breaker';
 import {
   createBoundActionToolDeps,
@@ -323,6 +324,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       tools: toolRegistry,
       auditSink,
       autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+      sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
       goals: goalsService,
@@ -395,6 +397,7 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       tools: toolRegistry,
       auditSink,
       autonomyPolicy: realAutonomyPolicy,
+      sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
       goals: goalsService,

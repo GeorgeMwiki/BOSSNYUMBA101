@@ -46,3 +46,25 @@ export type {
   DsarDrizzleClient,
   SqlTemplateFn,
 } from './dsar-data-source-drizzle.js';
+
+// Wave-K Final Zero — RTBF executor (GDPR Art. 17 / PDPA s.31). The
+// composition root wires this against the live Drizzle client and the
+// dsar router calls `executeRtbf` on every POST /:subjectId/rtbf.
+export {
+  createDsarRtbfExecutor,
+  RTBF_POLICY,
+} from './dsar-rtbf-executor.js';
+
+export type {
+  CreateDsarRtbfExecutorOptions,
+  DsarRtbfExecutor,
+  ExecuteRtbfArgs,
+  RtbfAction,
+  RtbfDrizzleClient,
+  RtbfExecutionReport,
+  RtbfPartialError,
+  RtbfPolicyEntry,
+  RtbfSqlTemplateFn,
+  RtbfTableActionResult,
+  RtbfTableReport,
+} from './dsar-rtbf-executor.js';
