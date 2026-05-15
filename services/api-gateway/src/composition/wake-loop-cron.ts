@@ -51,6 +51,7 @@ import {
   createBoundActionToolDeps,
   createBoundWakeReadDeps,
 } from './agency-port-bindings.js';
+import { readSovereignLedgerFailClosedFromEnv } from './service-registry.js';
 
 type StallDetectorRunArgs = agencyKernel.StallDetectorRunArgs;
 type StallDetectorRunOutcome = agencyKernel.StallDetectorRunOutcome;
@@ -328,6 +329,7 @@ export function createWakeLoopCronSupervisor(
             tools: toolRegistry,
             auditSink,
             autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+            sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
           });
           const boundWakeReadDeps = createBoundWakeReadDeps(db as never);
           const triggers = agencyKernel.createRealWakeTriggers({
