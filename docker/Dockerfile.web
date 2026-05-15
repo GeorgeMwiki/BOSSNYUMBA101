@@ -47,17 +47,12 @@ COPY packages ./packages
 COPY services ./services
 COPY apps ./apps
 
-# Pre-build workspace leaf packages so their `dist/` is on disk before
-# any downstream `tsc` runs. Mirrors Dockerfile.api's pre-build step —
-# customer-app transitively depends on @bossnyumba/ai-copilot which
-# imports type definitions from @bossnyumba/forecasting via
-# `types: "./dist/index.d.ts"`. See Dockerfile.api comment for the
-# full rationale.
-RUN pnpm --filter=@bossnyumba/forecasting --filter=@bossnyumba/domain-models build
-
-# Build the target app + every workspace package it transitively
-# depends on, serialised so downstream tsc can see upstream dist.
-RUN pnpm --filter=@bossnyumba/${APP_NAME}... --workspace-concurrency=1 build
+# Build every workspace package in topological order, then build the
+# target app. See Dockerfile.api for the full rationale on why we use
+# `-r` instead of `--filter <pkg>...` — same pnpm 8.15 quirk applies
+# here since customer-app transitively depends on @bossnyumba/ai-copilot
+# which depends on @bossnyumba/forecasting.
+RUN pnpm -r --workspace-concurrency=1 build
 
 # =============================================================================
 # Stage 3a: Vite (SPA) - Nginx serves static files
