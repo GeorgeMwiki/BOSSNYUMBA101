@@ -135,6 +135,32 @@ import {
   type CreditRatingService,
 } from '@bossnyumba/ai-copilot';
 import { PostgresCreditRatingRepository } from './credit-rating-repository.js';
+// Wave-K W-Data — DSAR (Art.20/PDPA s.27) Drizzle-backed data source +
+// classification lookup. Bound here so the dsar router can pull a real
+// per-tenant data source out of the service registry.
+import {
+  createDsarDataSourceDrizzle,
+  createDatabaseClassificationLookup,
+  type DsarDataSource,
+  type DsarClassificationLookup,
+} from '@bossnyumba/ai-copilot';
+// Wave-K W-Data — unified privacy-budget composer (G2 closure) and the
+// per-column classification registry. Both reachable via the main
+// `@bossnyumba/database` barrel. The graph-privacy dp-aggregator
+// delegates budget reads/writes through the composer when wired; the
+// legacy in-process PlatformBudgetLedger is the back-compat fallback.
+//
+// `PrivacyBudgetComposerService` is re-exported through the database
+// barrel which produces TS2709 (namespace-as-type widening); derive the
+// type from the factory return value instead — same pattern as the
+// `DatabaseClient` alias above.
+import {
+  classify as classifyDbColumn,
+  createApprovalPolicyService,
+  createPrivacyBudgetComposerService,
+  createSensorRoutingService,
+} from '@bossnyumba/database';
+type PrivacyBudgetComposerService = ReturnType<typeof createPrivacyBudgetComposerService>;
 import {
   createArrearsService,
   type ArrearsService,
@@ -199,7 +225,10 @@ import {
   createVoiceAgentWiring,
   type VoiceAgentWiring,
 } from './voice-agent-wiring.js';
-import { createBrainKernelWiring } from './brain-kernel-wiring.js';
+import {
+  createBrainKernelWiring,
+  type BrainKernelWiring as BrainKernelWiringSlot,
+} from './brain-kernel-wiring.js';
 import {
   createMarketSurveillanceWiring,
   type MarketSurveillanceWiring,
@@ -212,6 +241,10 @@ import {
   createWakeLoopCronSupervisor,
   type WakeLoopCronSupervisor,
 } from './wake-loop-cron.js';
+import {
+  createSovereignLedgerVerifyCronSupervisor,
+  type SovereignLedgerVerifyCronSupervisor,
+} from './sovereign-ledger-verify-cron.js';
 import {
   createParityCapabilityDashboard,
   type ParityCapabilityDashboardService,
@@ -371,6 +404,21 @@ export interface ServiceRegistry {
   readonly gdpr: GdprService | null;
   readonly aiCostLedger: CostLedger | null;
 
+  /** Wave-K W-Data — DSAR (Art.20/PDPA s.27) port wiring. The data
+   *  source is null in degraded mode; the dsar router falls back to
+   *  the compiler's empty-data-source so the bundle still shapes
+   *  cleanly. The classification lookup is always wired (in-process
+   *  registry, no DB needed). */
+  readonly dsarDataSource: DsarDataSource | null;
+  readonly dsarClassifications: DsarClassificationLookup;
+
+  /** Wave-K W-Data — unified privacy-budget composer (G2 closure).
+   *  Always wired (in-memory adapter in degraded mode, Drizzle adapter
+   *  when ready). The graph-privacy dp-aggregator delegates budget
+   *  reads/writes through this composer; the legacy in-process
+   *  PlatformBudgetLedger is the back-compat fallback. */
+  readonly privacyBudgetComposer: PrivacyBudgetComposerService;
+
   /**
    * Wave 26 Agent Z4 — multi-LLM router built from env keys. Null when no
    * Anthropic key is configured (the gateway still boots, the brain routes
@@ -489,6 +537,21 @@ export interface ServiceRegistry {
     readonly auditReader: ConversationAuditReader | null;
     /** Recorder injected into the agent loop. */
     readonly auditRecorder: ConversationAuditRecorder | null;
+    /**
+     * Wave-K T1 — brain-kernel wiring. Null when no Anthropic key is
+     * configured (the voice agent falls back to the degraded stub).
+     * When present, exposes the `BrainKernel` itself plus the env-
+     * backed killswitch port, the decision-trace recorder, the seeded
+     * tool registry, and the resolved uncertainty-policy mode so
+     * downstream routers / admin endpoints can read them without
+     * re-instantiating.
+     *
+     * Decision-trace recorder is exposed here (not via a dedicated
+     * admin route in this wave) so future ops UIs can pull recent
+     * traces with `recorder.getRecentTraces(tenantId, limit)`. The
+     * admin route lands in a follow-up owned by W-Ops.
+     */
+    readonly brainKernel: BrainKernelWiringSlot | null;
   };
 
   /** Wave 29 — Forecasting (TGN + conformal prediction intervals).
@@ -581,6 +644,12 @@ export interface ServiceRegistry {
    *  fire on schedule. Null in degraded mode. Constructed but inert
    *  until `start()` is called from the gateway boot sequence. */
   readonly wakeLoopCron: WakeLoopCronSupervisor | null;
+
+  /** Sovereign-ledger verify cron (Wave-K Tier-3). Periodically walks
+   *  the sovereign action-ledger chain for every active tenant and
+   *  emits `sovereign-ledger.verified` / `sovereign-ledger.tampered`
+   *  on the shared bus. Null in degraded mode. Inert until `start()`. */
+  readonly sovereignLedgerVerifyCron: SovereignLedgerVerifyCronSupervisor | null;
 
   /** Parity capability dashboard (Wave-K parity-litfin Gap C). Aggregates
    *  `kernel_provenance` + `kernel_cot_reservoir` rows into the per-
@@ -794,6 +863,14 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     featureFlags: null,
     gdpr: null,
     aiCostLedger: null,
+    // Wave-K W-Data — DSAR data source is null in degraded mode (no
+    // DB to read from). The classification lookup is always wired
+    // because it is an in-process frozen registry. The budget
+    // composer falls back to an in-memory adapter that satisfies the
+    // full port contract — fine for single-replica dev / DB-down.
+    dsarDataSource: null,
+    dsarClassifications: createDatabaseClassificationLookup(classifyDbColumn),
+    privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter: null,
     buildBudgetGuardedAnthropicClient: null,
     arrears: {
@@ -859,6 +936,11 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
           sink,
           modelVersion: 'degraded',
         }),
+        // Wave-K T1 — no Anthropic key wired in degraded mode, so the
+        // brain-kernel slot is null. Downstream consumers (voice agent
+        // and future ops endpoints) fall back to their existing
+        // degraded paths.
+        brainKernel: null,
       };
     })(),
     propertyGrading: null,
@@ -889,6 +971,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // K7 parity-litfin Gap H — wake-loop cron is null in degraded mode
     // (no DB means no tenants to iterate, no read ports to bind).
     wakeLoopCron: null,
+    // Wave-K Tier-3 — sovereign-ledger verify cron is null in degraded
+    // mode (no DB → no chain rows to walk).
+    sovereignLedgerVerifyCron: null,
     // Wave-K parity-litfin Gap C — null in degraded mode; the router
     // surfaces a zeroed-but-shaped payload so mission-eval keeps loading.
     parityCapabilityDashboard: null,
@@ -1337,6 +1422,15 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     featureFlags: featureFlagsService,
     gdpr: gdprService,
     aiCostLedger,
+    // Wave-K W-Data — DSAR data source wired against the live Drizzle
+    // client. The classification lookup is the same in-process registry
+    // used by the scrubber middleware so RESTRICTED fields are tagged
+    // consistently across log scrubbing + export annotations. Budget
+    // composer is the in-memory adapter; swap to the Drizzle adapter
+    // in a follow-up once the schema migration lands.
+    dsarDataSource: createDsarDataSourceDrizzle({ db: db as unknown as never }),
+    dsarClassifications: createDatabaseClassificationLookup(classifyDbColumn),
+    privacyBudgetComposer: createPrivacyBudgetComposerService(),
     llmRouter,
     buildBudgetGuardedAnthropicClient,
     arrears: {
@@ -1418,14 +1512,40 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         sink,
         modelVersion: 'live-pending-llm',
       });
+      // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
+      // always-on decision-trace recorder, seeded tool registry, and
+      // env-flagged uncertainty policy. Null when no Anthropic key
+      // is configured — downstream wirings fall back to their
+      // existing degraded paths transparently. On the LIVE path we
+      // also thread the DB-backed approval-policy resolver + sensor-
+      // routing service so the kernel's four-eye gate consults real
+      // per-action policies and sensor adapters can later record per-
+      // call telemetry to `sensor_call_log`.
+      const brainKernel = createBrainKernelWiring({
+        buildBudgetGuardedAnthropicClient,
+        approvalPolicyResolver: createApprovalPolicyService(db),
+        sensorRoutingService: createSensorRoutingService(db),
+      });
       const llmUrl = process.env.CI_LLM_URL?.trim();
       if (!llmUrl) {
-        return { agent: null, memory, auditReader: reader, auditRecorder };
+        return {
+          agent: null,
+          memory,
+          auditReader: reader,
+          auditRecorder,
+          brainKernel,
+        };
       }
       // Adapter not shipped in-tree — the gateway consumes it over
       // HTTP from a dedicated service. Slot stays null until the
       // adapter lands; router keeps returning 503 cleanly.
-      return { agent: null, memory, auditReader: reader, auditRecorder };
+      return {
+        agent: null,
+        memory,
+        auditReader: reader,
+        auditRecorder,
+        brainKernel,
+      };
     })(),
     // Property grading — Mr. Mwikila's A–F report card system.
     // Adapters live in domain-services (Postgres wiring); the service
@@ -1545,6 +1665,21 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         info: (obj, msg) => console.info('wake-loop-cron:', msg ?? '', obj),
         warn: (obj, msg) => console.warn('wake-loop-cron:', msg ?? '', obj),
         error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
+      },
+    }),
+    // Wave-K Tier-3 — sovereign-ledger verify supervisor. Shares the
+    // composition-root event bus so verdicts emit on the same channel
+    // as the rest of the platform's observability events.
+    sovereignLedgerVerifyCron: createSovereignLedgerVerifyCronSupervisor({
+      db,
+      eventBus,
+      logger: {
+        info: (obj, msg) =>
+          console.info('sovereign-ledger-verify-cron:', msg ?? '', obj),
+        warn: (obj, msg) =>
+          console.warn('sovereign-ledger-verify-cron:', msg ?? '', obj),
+        error: (obj, msg) =>
+          console.error('sovereign-ledger-verify-cron:', msg ?? '', obj),
       },
     }),
     // Wave-K parity-litfin Gap C — capability dashboard wired against the

@@ -3,28 +3,49 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@bossnyumba/domain-models': path.resolve(
-        __dirname,
-        '../../packages/domain-models/src/index.ts'
-      ),
-      '@bossnyumba/payments-ledger-service/arrears': path.resolve(
-        __dirname,
-        '../payments-ledger/src/arrears/index.ts'
-      ),
-      '@bossnyumba/ai-copilot/services/migration/parsers/parse-upload': path.resolve(
-        __dirname,
-        '../../packages/ai-copilot/src/services/migration/parsers/parse-upload.ts'
-      ),
-      '@bossnyumba/domain-services/gamification': path.resolve(
-        __dirname,
-        '../domain-services/src/gamification/index.ts'
-      ),
-      '@bossnyumba/payments/providers/gepg': path.resolve(
-        __dirname,
-        '../payments/src/providers/gepg/index.ts'
-      ),
-    },
+    // Array form lets us mix exact-match regex aliases (so subpath
+    // imports like `@bossnyumba/ai-copilot/ai-native` are NOT
+    // intercepted) with prefix-match string aliases.
+    alias: [
+      {
+        find: '@bossnyumba/domain-models',
+        replacement: path.resolve(__dirname, '../../packages/domain-models/src/index.ts'),
+      },
+      {
+        find: '@bossnyumba/payments-ledger-service/arrears',
+        replacement: path.resolve(__dirname, '../payments-ledger/src/arrears/index.ts'),
+      },
+      {
+        find: '@bossnyumba/ai-copilot/services/migration/parsers/parse-upload',
+        replacement: path.resolve(
+          __dirname,
+          '../../packages/ai-copilot/src/services/migration/parsers/parse-upload.ts',
+        ),
+      },
+      {
+        find: '@bossnyumba/domain-services/gamification',
+        replacement: path.resolve(__dirname, '../domain-services/src/gamification/index.ts'),
+      },
+      {
+        find: '@bossnyumba/payments/providers/gepg',
+        replacement: path.resolve(__dirname, '../payments/src/providers/gepg/index.ts'),
+      },
+      // Wave-K W-Data — exact-match aliases for the top-level barrels
+      // of database + ai-copilot. Tests need the latest `classify`,
+      // `listClassifications`, `createPrivacyBudgetComposerService`,
+      // and `compileDsar` exports without a `pnpm build` round-trip.
+      // The regex `$` anchors keep subpath imports
+      // (`@bossnyumba/ai-copilot/ai-native`, `@bossnyumba/database/schemas`)
+      // routing through package.json exports.
+      {
+        find: /^@bossnyumba\/database$/,
+        replacement: path.resolve(__dirname, '../../packages/database/src/index.ts'),
+      },
+      {
+        find: /^@bossnyumba\/ai-copilot$/,
+        replacement: path.resolve(__dirname, '../../packages/ai-copilot/src/index.ts'),
+      },
+    ],
   },
   test: {
     globals: true,

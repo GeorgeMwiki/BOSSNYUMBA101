@@ -18,6 +18,23 @@
  * This file contains business logic only; adapters for the ports
  * (Postgres ledger, Memgraph tenant source, crypto-PRNG noise) live
  * in separate files and are wired at the composition root.
+ *
+ * Wave-K W-Data — unified budget composer (G2 closure)
+ * ─────────────────────────────────────────────────────
+ * Historically the aggregator drove its own `PlatformBudgetLedger`.
+ * That ledger was independent of the per-tenant
+ * `PrivacyBudgetLedger` consumed by `cross-tenant-query.ts`, so an
+ * attacker who alternated between the two could compound effective ε
+ * past either ledger's cap without either noticing. The unified
+ * `PrivacyBudgetComposerService` (K6.2) lives in
+ * `@bossnyumba/database/services/privacy-budget-composer.service.ts`
+ * and gates BOTH sides.
+ *
+ * `DpAggregatorDeps.budgetComposer` is the migration path. When
+ * provided, the aggregator routes ALL budget read/write through the
+ * composer (instead of `PlatformBudgetLedger`). When absent we fall
+ * back to `PlatformBudgetLedger` for back-compat — callers that
+ * haven't migrated keep working untouched.
  */
 
 import type {
@@ -32,9 +49,52 @@ import type {
 } from '../types.js';
 import { PrivacyBudgetExhaustedError } from '../types.js';
 
+/**
+ * Narrow shape of the K6.2 `PrivacyBudgetComposerService`. Declared
+ * structurally so this package does NOT depend on
+ * `@bossnyumba/database` (would create a cycle — database imports
+ * graph-privacy types via the analytics surface). The composition
+ * root passes a concrete impl that satisfies this shape.
+ */
+export interface PrivacyBudgetComposerLike {
+  checkBudgetAvailable(args: {
+    readonly tenantId: string;
+    readonly tier: 'platform' | 'pro' | 'enterprise';
+    readonly requestedEpsilon: number;
+    readonly requestedDelta: number;
+  }): Promise<{
+    readonly ok: boolean;
+    readonly reason: string | null;
+    readonly remainingEpsilon: number;
+    readonly remainingDelta: number;
+  }>;
+  recordSpend(args: {
+    readonly tenantId: string;
+    readonly tier: 'platform' | 'pro' | 'enterprise';
+    readonly epsilon: number;
+    readonly delta: number;
+    readonly queryId: string;
+  }): Promise<unknown>;
+}
+
 export interface DpAggregatorDeps {
   readonly tenantSource: TenantAggregateSource;
+  /**
+   * Legacy in-process ledger. Always required so callers that haven't
+   * migrated to the composer keep working. When `budgetComposer` is
+   * also present the composer wins and this slot becomes the audit
+   * trail / fallback.
+   */
   readonly ledger: PlatformBudgetLedger;
+  /**
+   * Unified privacy-budget composer (K6.2). When provided, the
+   * aggregator routes budget reads + spend records through the
+   * composer instead of the legacy ledger. The legacy `ledger` slot
+   * is still required because the composer doesn't expose the
+   * `snapshot()` surface some operators rely on for dashboarding;
+   * mixing the two is intentional during the migration window.
+   */
+  readonly budgetComposer?: PrivacyBudgetComposerLike;
   readonly noise: NoiseSource;
   readonly clock?: () => Date;
 }
@@ -72,18 +132,57 @@ export function createDpAggregator(deps: DpAggregatorDeps): DpAggregator {
 
       // 2. Reserve privacy budget BEFORE reading any tenant values.
       //    If the reserve fails, we've leaked no information.
+      //
+      //    Wave-K W-Data: when a unified `budgetComposer` is wired,
+      //    route through it (G2 closure — the platform AND per-tenant
+      //    sides debit the same ledger). When absent, fall back to
+      //    the legacy in-process ledger so unmigrated callers don't
+      //    break.
       const delta = query.mechanism.kind === 'gaussian' ? query.mechanism.delta : 0;
       try {
-        await deps.ledger.reserve({
-          epsilon: query.mechanism.epsilon,
-          delta,
-        });
+        if (deps.budgetComposer) {
+          const check = await deps.budgetComposer.checkBudgetAvailable({
+            tenantId: 'platform',
+            tier: 'platform',
+            requestedEpsilon: query.mechanism.epsilon,
+            requestedDelta: delta,
+          });
+          if (!check.ok) {
+            return {
+              kind: 'refused',
+              reason: 'platform_budget_exhausted',
+              detail: `composer refused: ${check.reason ?? 'unknown'} (remaining ε=${check.remainingEpsilon})`,
+            };
+          }
+          await deps.budgetComposer.recordSpend({
+            tenantId: 'platform',
+            tier: 'platform',
+            epsilon: query.mechanism.epsilon,
+            delta,
+            queryId: `${query.statistic}_${now().getTime()}_${Math.random().toString(36).slice(2, 8)}`,
+          });
+        } else {
+          await deps.ledger.reserve({
+            epsilon: query.mechanism.epsilon,
+            delta,
+          });
+        }
       } catch (err) {
         if (err instanceof PrivacyBudgetExhaustedError) {
           return {
             kind: 'refused',
             reason: 'platform_budget_exhausted',
             detail: err.message,
+          };
+        }
+        // PrivacyBudgetExceededError from the composer surfaces here
+        // with a different name; convert to the same refusal shape.
+        const e = err as { name?: string; message?: string };
+        if (e?.name === 'PrivacyBudgetExceededError') {
+          return {
+            kind: 'refused',
+            reason: 'platform_budget_exhausted',
+            detail: e.message ?? 'composer refused',
           };
         }
         throw err;

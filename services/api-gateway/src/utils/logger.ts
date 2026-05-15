@@ -74,15 +74,41 @@ function formatEntry(entry: LogEntry): string {
   return output;
 }
 
+// Wave-K W-Data — lazy-import the classification scrubber so the logger
+// stays importable in environments where the security registry isn't on
+// the path (tests that mock the database barrel). The scrubber is a
+// pure function; the lazy resolution + cache means we pay the import
+// cost once.
+let cachedScrubFn: ((payload: unknown) => unknown) | null = null;
+function scrubMeta(meta: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!meta) return meta;
+  if (!cachedScrubFn) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('../middleware/classification-scrubber');
+      cachedScrubFn = typeof mod.scrubPayload === 'function'
+        ? (mod.scrubPayload as (p: unknown) => unknown)
+        : ((p: unknown) => p);
+    } catch {
+      cachedScrubFn = (p: unknown) => p;
+    }
+  }
+  const scrubbed = cachedScrubFn(meta);
+  return (scrubbed && typeof scrubbed === 'object' && !Array.isArray(scrubbed))
+    ? (scrubbed as Record<string, unknown>)
+    : meta;
+}
+
 function log(level: LogLevel, service: string, message: string, meta?: Record<string, unknown>): void {
   if (!shouldLog(level)) return;
 
+  const safeMeta = scrubMeta(meta);
   const entry: LogEntry = {
     level,
     timestamp: new Date().toISOString(),
     service,
     message,
-    ...meta,
+    ...safeMeta,
   };
 
   const output = formatEntry(entry);
