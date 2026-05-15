@@ -35,6 +35,7 @@ import {
   createApprovalGate,
   createInMemoryApprovalStore,
   type ApprovalGate,
+  type ApprovalPolicyResolver,
   type ApprovalStore,
 } from './four-eye-approval.js';
 import { createBriefingComposer } from './briefing.js';
@@ -55,6 +56,18 @@ import type {
 } from './kernel-types.js';
 import type { CohortSource } from './cohort-signal.js';
 import { createAnthropicJudge } from './sensors/anthropic-judge.js';
+import type { KillswitchPort } from './killswitch.js';
+import type { DecisionTraceRecorder } from './decision-trace.js';
+import {
+  createAffectiveAccumulator,
+  type AffectiveAccumulator,
+} from './theory-of-mind.js';
+import {
+  createCognitiveLoadAccumulator,
+  type CognitiveLoadAccumulator,
+} from './cognitive-load.js';
+import type { BrainToolRegistry } from './tool-spec.js';
+import type { TextEmbedder } from './kernel-types.js';
 
 export interface SubstrateSinks {
   readonly cot: CotReservoirSink;
@@ -122,6 +135,65 @@ export interface ComposeSovereignConfig {
   readonly autoHaikuJudge?: boolean;
   readonly clock?: () => Date;
   readonly rng?: () => number;
+  /**
+   * Optional administrative killswitch. When wired, the kernel runs a
+   * Step 0 short-circuit before any sensor / memory / cohort work. The
+   * api-gateway composition root constructs an env-backed port via
+   * `createEnvKillswitchPort(process.env)`.
+   */
+  readonly killswitch?: KillswitchPort;
+  /**
+   * Optional decision-trace recorder. When wired, every `think()` call
+   * captures the ordered step breadcrumb (durations, summaries, errors)
+   * for ops audit. Failures are swallowed.
+   */
+  readonly traceRecorder?: DecisionTraceRecorder;
+  /**
+   * Uncertainty-policy switch. Default: `'off'` for back-compat. When
+   * `'on'`, step 11a runs after confidence scoring and may caveat /
+   * ask-back / escalate based on confidence and stakes. The api-
+   * gateway wiring resolves this from the `BOSSNYUMBA_UNCERTAINTY_POLICY`
+   * env var.
+   */
+  readonly uncertaintyPolicy?: 'off' | 'on';
+  /**
+   * Optional resolver for per-action role-group approval policies.
+   * Passed through to `createApprovalGate` so high-stakes write
+   * actions (eviction.propose, owner_payout.disburse, etc.) consult
+   * a DB-backed policy table at propose-time instead of the legacy
+   * "any 2 distinct admins" default.
+   */
+  readonly approvalPolicyResolver?: ApprovalPolicyResolver;
+  /**
+   * Optional per-(tenant, user) cognitive-load accumulator. When
+   * supplied, the kernel observes each turn's per-turn score against
+   * the accumulator and renders a cross-turn directive
+   * (`renderLoadDirectiveWithProfile`) instead of the per-turn one.
+   * Defaults to a fresh in-memory accumulator when omitted.
+   */
+  readonly cognitiveLoadAccumulator?: CognitiveLoadAccumulator;
+  /**
+   * Optional per-(tenant, user) affective (theory-of-mind)
+   * accumulator. When supplied, the kernel observes each turn's
+   * per-turn MindState against the accumulator and renders a
+   * cross-turn behavioural directive
+   * (`renderMindStateDirectiveWithProfile`). Defaults to a fresh
+   * in-memory accumulator when omitted.
+   */
+  readonly affectiveAccumulator?: AffectiveAccumulator;
+  /**
+   * Optional brain-tool registry. When supplied and the kernel
+   * decides to invoke one of the 5 PM seed tools, the registry runs
+   * the deterministic executor and the kernel mixes the result into
+   * the prompt context for the next sensor call.
+   */
+  readonly toolRegistry?: BrainToolRegistry;
+  /**
+   * Optional text embedder. When wired, the memory-recall step
+   * produces a query embedding from the user message (when the
+   * caller did not supply one) and prefers `searchByEmbedding`.
+   */
+  readonly embedder?: TextEmbedder;
 }
 
 export interface SovereignBrain {
@@ -186,12 +258,30 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.memory)            (kernelDeps as any).memory = config.memory;
   if (config.feedback)          (kernelDeps as any).feedback = config.feedback;
   if (config.agency)            (kernelDeps as any).agency = config.agency;
+  if (config.killswitch)        (kernelDeps as any).killswitch = config.killswitch;
+  if (config.traceRecorder)     (kernelDeps as any).traceRecorder = config.traceRecorder;
+  if (config.uncertaintyPolicy) (kernelDeps as any).uncertaintyPolicy = config.uncertaintyPolicy;
+  if (config.toolRegistry)      (kernelDeps as any).toolRegistry = config.toolRegistry;
+  if (config.embedder)          (kernelDeps as any).embedder = config.embedder;
+  // Cognitive-load + affective accumulators are always wired so the
+  // kernel can render cross-turn directives. Callers that pass their
+  // own instance (e.g. tests asserting cross-call state) win;
+  // otherwise we mint a fresh in-memory accumulator per kernel.
+  (kernelDeps as any).cognitiveLoadAccumulator =
+    config.cognitiveLoadAccumulator ?? createCognitiveLoadAccumulator();
+  (kernelDeps as any).affectiveAccumulator =
+    config.affectiveAccumulator ?? createAffectiveAccumulator();
   const kernel = createBrainKernel(kernelDeps);
 
-  const approvals = createApprovalGate({
+  const approvalGateDeps: Parameters<typeof createApprovalGate>[0] = {
     store: config.approvalStore ?? createInMemoryApprovalStore(),
     clock,
-  });
+  };
+  if (config.approvalPolicyResolver) {
+    (approvalGateDeps as { policyResolver?: ApprovalPolicyResolver }).policyResolver =
+      config.approvalPolicyResolver;
+  }
+  const approvals = createApprovalGate(approvalGateDeps);
 
   const briefing = createBriefingComposer({ kernel });
 

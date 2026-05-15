@@ -108,6 +108,49 @@ export interface ThoughtRequest {
    * Authenticated surfaces leave this `undefined`.
    */
   readonly ipHash?: string;
+  /**
+   * Optional caller-supplied embedding vector for the current
+   * `userMessage`. When present (or when the kernel's optional
+   * `embedder` port produces one), the memory-recall step prefers
+   * `memory.semantic.searchByEmbedding(...)` over the legacy key-based
+   * `search(...)` so retrieval can return semantically-near facts
+   * rather than prefix-matched keys. Dimensionality is producer-side
+   * (OpenAI text-embedding-3-small = 1536); the kernel does not
+   * validate dimensionality here — the adapter does.
+   */
+  readonly embedding?: ReadonlyArray<number>;
+  /**
+   * Optional caller-supplied cost estimate for this turn in USD.
+   * Threaded into the policy-gate request context so the cost-ceiling
+   * check (K5.2) can fire BEFORE the kernel commits the answer.
+   */
+  readonly estimatedCostUsd?: number;
+  /**
+   * Optional caller-supplied granted-scope set. Threaded into the
+   * policy-gate request context so the scope-match check (K5.2) can
+   * compare against the action's `requiredScopes`. Defence-in-depth
+   * complement to the prompt-shield + autonomy-policy.
+   */
+  readonly grantedScopes?: ReadonlyArray<string>;
+  /**
+   * Optional override flag accepting off-hours risk explicitly. When
+   * absent the policy gate's off-hours check refuses sovereign-tier
+   * (`stakes: 'critical'`) actions outside EAT business hours.
+   */
+  readonly afterHoursOverride?: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Text embedder port — optional dependency for the memory-recall step.
+// Composition roots that wire a real OpenAI / Voyage / local embedder
+// pass this in; the kernel uses it to produce a query embedding from
+// the user message when the caller did not supply one. The kernel
+// never blocks on the embedder — failures collapse to the legacy
+// key-based search path so retrieval still works.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface TextEmbedder {
+  embed(text: string): Promise<ReadonlyArray<number>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────

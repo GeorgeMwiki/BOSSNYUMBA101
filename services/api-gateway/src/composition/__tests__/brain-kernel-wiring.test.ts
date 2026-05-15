@@ -199,6 +199,163 @@ describe('createBrainKernelWiring', () => {
     expect(decision.provenance).toBeDefined();
   });
 
+  it('exposes decisionTraceRecorder, killswitch, toolRegistry, uncertaintyPolicy on the wiring slot', () => {
+    const fake = createFakeFactory();
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+    });
+    expect(wiring).not.toBeNull();
+    expect(wiring!.decisionTraceRecorder).toBeDefined();
+    expect(typeof wiring!.decisionTraceRecorder.begin).toBe('function');
+    expect(typeof wiring!.decisionTraceRecorder.getRecentTraces).toBe('function');
+    expect(wiring!.killswitch).toBeDefined();
+    expect(typeof wiring!.killswitch.readPlatform).toBe('function');
+    expect(typeof wiring!.killswitch.readTenant).toBe('function');
+    expect(wiring!.toolRegistry).toBeDefined();
+    expect(typeof wiring!.toolRegistry.runTool).toBe('function');
+    // Default env (no flag) → uncertainty policy off.
+    expect(wiring!.uncertaintyPolicy).toBe('off');
+  });
+
+  it('env-driven killswitch HALT short-circuits think() into a refusal', async () => {
+    const fake = createFakeFactory({
+      responseText: 'This response would be returned if the killswitch was live.',
+    });
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      envSource: {
+        KILLSWITCH_STATE: 'halt',
+        KILLSWITCH_REASON: 'COMPLIANCE_HOLD_CBK',
+      },
+    });
+    expect(wiring).not.toBeNull();
+    const decision = await wiring!.think({
+      threadId: 'kill-thread-1',
+      userMessage: 'Anything at all.',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        roles: ['tenant'],
+        personaId: 'voice-agent-default',
+      },
+      tier: 'tenant',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+    expect(decision.kind).toBe('refusal');
+    // No sensor call should have happened — the killswitch fires before
+    // memory recall / sensor selection.
+    expect(fake.messageRequests).toHaveLength(0);
+  });
+
+  it('tenant-scoped killswitch HALT overrides a live platform state', async () => {
+    const fake = createFakeFactory();
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      envSource: {
+        // Platform live, but tenant-1 is held.
+        KILLSWITCH_TENANT_tenant_held: 'halt',
+        KILLSWITCH_TENANT_tenant_held_REASON: 'TENANT_DATA_LEAK_SUSPECTED',
+      },
+    });
+    expect(wiring).not.toBeNull();
+    // tenant-held → refusal
+    const heldDecision = await wiring!.think({
+      threadId: 'kill-thread-2',
+      userMessage: 'Anything at all.',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant_held',
+        actorUserId: 'user-held',
+        roles: ['tenant'],
+        personaId: 'voice-agent-default',
+      },
+      tier: 'tenant',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+    expect(heldDecision.kind).toBe('refusal');
+    expect(fake.messageRequests).toHaveLength(0);
+
+    // tenant-other → normal answer (sensor IS called).
+    const otherDecision = await wiring!.think({
+      threadId: 'kill-thread-3',
+      userMessage: 'Different tenant, same time.',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant_other',
+        actorUserId: 'user-other',
+        roles: ['tenant'],
+        personaId: 'voice-agent-default',
+      },
+      tier: 'tenant',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+    expect(otherDecision.kind).not.toBe('refusal');
+    expect(fake.messageRequests.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('decision-trace recorder writes a trace for each think() call', async () => {
+    const fake = createFakeFactory({
+      responseText: 'Trace-recording success path.',
+    });
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+    });
+    expect(wiring).not.toBeNull();
+
+    await wiring!.think({
+      threadId: 'trace-thread-1',
+      userMessage: 'Anything to trace.',
+      scope: {
+        kind: 'tenant',
+        tenantId: 'tenant-trace',
+        actorUserId: 'user-trace',
+        roles: ['tenant'],
+        personaId: 'voice-agent-default',
+      },
+      tier: 'tenant',
+      stakes: 'low',
+      surface: 'tenant-app',
+    });
+
+    // Give the trace recorder's fire-and-forget finalize a tick to flush.
+    await new Promise((resolve) => setImmediate(resolve));
+    const recent = await wiring!.decisionTraceRecorder.getRecentTraces(
+      'tenant-trace',
+      10,
+    );
+    expect(recent.length).toBeGreaterThanOrEqual(1);
+    const trace = recent[0]!;
+    expect(trace.tenantId).toBe('tenant-trace');
+    expect(trace.threadId).toBe('trace-thread-1');
+    expect(trace.steps.length).toBeGreaterThan(2);
+  });
+
+  it('uncertaintyPolicy flips to "on" when env var is set', () => {
+    const fake = createFakeFactory();
+    const wiring = createBrainKernelWiring({
+      buildBudgetGuardedAnthropicClient: fake.factory,
+      envSource: { BOSSNYUMBA_UNCERTAINTY_POLICY: 'on' },
+    });
+    expect(wiring).not.toBeNull();
+    expect(wiring!.uncertaintyPolicy).toBe('on');
+  });
+
+  it('uncertaintyPolicy stays "off" for any unrecognised env value', () => {
+    const fake = createFakeFactory();
+    for (const raw of ['off', 'true', '1', '', 'maybe']) {
+      const wiring = createBrainKernelWiring({
+        buildBudgetGuardedAnthropicClient: fake.factory,
+        envSource: { BOSSNYUMBA_UNCERTAINTY_POLICY: raw },
+      });
+      expect(wiring).not.toBeNull();
+      expect(wiring!.uncertaintyPolicy).toBe('off');
+    }
+  });
+
   it('does not propagate kernel-side sensor errors past the wiring', async () => {
     // SDK that throws on every call. The kernel's failover router
     // walks the chain (opus → sonnet → haiku) and ultimately surfaces

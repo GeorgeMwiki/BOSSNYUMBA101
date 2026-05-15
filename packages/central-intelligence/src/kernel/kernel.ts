@@ -45,12 +45,14 @@ import type {
   Sensor,
   SensorCallArgs,
   SensorCallResult,
+  TextEmbedder,
   ThoughtRequest,
 } from './kernel-types.js';
 import type { Goal } from './agency/index.js';
 import type {
   ReflectiveDigest,
   SemanticFact,
+  SemanticMemoryPort,
 } from './memory/types.js';
 import type {
   FeedbackEntry,
@@ -63,10 +65,29 @@ import { applyBrandingOverride, type PersonaBrandingResolver } from './branding.
 import { isTierCompatibleWithScope, locusPhrase } from './awareness-scopes.js';
 import { checkInviolable } from './inviolable.js';
 import { checkPublicInviolable } from './public-inviolable.js';
-import { runPolicyGate } from './policy-gate.js';
+import {
+  runPolicyGate,
+  type PolicyGateRequestContext,
+  type PolicyGateTier,
+} from './policy-gate.js';
 import { checkSelfAwareness } from './self-awareness.js';
-import { inferMindState, renderMindStateDirective } from './theory-of-mind.js';
-import { assessCognitiveLoad, renderLoadDirective } from './cognitive-load.js';
+import {
+  inferMindState,
+  renderMindStateDirective,
+  renderMindStateDirectiveWithProfile,
+  type AffectiveAccumulator,
+} from './theory-of-mind.js';
+import {
+  assessCognitiveLoad,
+  renderLoadDirective,
+  renderLoadDirectiveWithProfile,
+  type CognitiveLoadAccumulator,
+} from './cognitive-load.js';
+import {
+  renderPersonaPrelude,
+  type SituatedAddressArgs,
+} from './persona.js';
+import { renderModuleInventoryBlock } from './self-awareness.js';
 import { scoreConfidence } from './confidence.js';
 import { normalize } from './normalizer.js';
 import { type BrainCache, thoughtCacheKey, createBrainCache } from './brain-cache.js';
@@ -74,6 +95,7 @@ import { type SensorRouter, createSensorRouter } from './sensor-failover.js';
 import type { CotReservoir } from './cot-reservoir.js';
 import { buildCohortMixin, type CohortSource } from './cohort-signal.js';
 import type { DebateOutcome } from './debate/debate-types.js';
+import type { BrainToolRegistry, BrainToolOutcome } from './tool-spec.js';
 import {
   resolveKillswitch,
   renderKillswitchRefusalText,
@@ -190,6 +212,37 @@ export interface BrainKernelDeps {
    * judge + grounding-facts together should turn this on.
    */
   readonly uncertaintyPolicy?: 'off' | 'on';
+  /**
+   * Optional per-(tenant, user) cognitive-load accumulator. When
+   * wired, the kernel observes each turn's per-turn score against
+   * the accumulator and renders a cross-turn load directive
+   * (`renderLoadDirectiveWithProfile`) — the running profile carries
+   * "your last 4 turns showed escalating load" hints into the next
+   * sensor call.
+   */
+  readonly cognitiveLoadAccumulator?: CognitiveLoadAccumulator;
+  /**
+   * Optional per-(tenant, user) affective accumulator. When wired,
+   * the kernel observes each turn's MindState against the accumulator
+   * and renders a cross-turn behavioural directive
+   * (`renderMindStateDirectiveWithProfile`).
+   */
+  readonly affectiveAccumulator?: AffectiveAccumulator;
+  /**
+   * Optional brain-tool registry. When wired and the kernel routes a
+   * tool dispatch (sensor returned a `tool_use` block), the registry
+   * resolves a 5-PM-seed tool deterministically and the kernel mixes
+   * the result back into the prompt context.
+   */
+  readonly toolRegistry?: BrainToolRegistry;
+  /**
+   * Optional text embedder. When wired, the memory-recall step
+   * produces a query embedding from the user message when the
+   * caller did not supply `request.embedding`, and prefers
+   * `searchByEmbedding(...)` over the legacy key-based `search(...)`.
+   * Failures collapse to the legacy path so retrieval still works.
+   */
+  readonly embedder?: TextEmbedder;
 }
 
 export interface BrainKernel {
@@ -407,11 +460,20 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
       // 4b) hierarchical memory recall — semantic facts + the latest
       // reflective digest. Both ports are optional; failures are
-      // swallowed so the side-channel never breaks the turn.
+      // swallowed so the side-channel never breaks the turn. When the
+      // request carries an embedding (or the optional embedder port
+      // produces one), prefer `searchByEmbedding(...)` over the legacy
+      // key-based `search(...)`.
       const memTenantId =
         req.scope.kind === 'tenant' ? req.scope.tenantId : null;
       const memUserId = req.scope.actorUserId;
-      const semanticFacts = await loadSemanticFacts(deps.memory, memTenantId, memUserId);
+      const queryEmbedding = await resolveQueryEmbedding(req, deps.embedder);
+      const semanticFacts = await loadSemanticFacts(
+        deps.memory,
+        memTenantId,
+        memUserId,
+        queryEmbedding,
+      );
       const reflectiveDigest = await loadReflectiveDigest(deps.memory, memTenantId, memUserId);
 
       // 4c) online-learning feedback recall — the user's last
@@ -459,19 +521,57 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         : null;
       const persona = applyBrandingOverride(baseSurfacePersona, branding);
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
+
+      // K3 — platform-voice anchor + situated address. Sits BEFORE the
+      // per-surface identity preamble so the cache-eligible block hits
+      // first; the legacy preamble + module inventory layer on top.
+      const personaPrelude = renderPersonaPrelude(
+        buildSituatedAddressArgs(req, clock),
+      );
+      const moduleInventory = renderModuleInventoryBlock();
+
+      // ToM accumulator — observe + render with cross-turn profile if
+      // wired. Falls back to per-turn directive when the accumulator is
+      // missing or the (tenant, user) tuple is incomplete.
       const mindState = inferMindState(req.userMessage);
+      const affectiveProfile = observeAffective(
+        deps.affectiveAccumulator,
+        memTenantIdEarly,
+        memUserId,
+        mindState,
+        clock,
+      );
+      const mindDirective = affectiveProfile
+        ? renderMindStateDirectiveWithProfile(mindState, affectiveProfile)
+        : renderMindStateDirective(mindState);
+
       const recentTurns = deps.recentTurnCounter ? await deps.recentTurnCounter(req.threadId) : 0;
       const loadOut = assessCognitiveLoad({
         userMessage: req.userMessage,
         recentTurnCount: recentTurns,
       });
+      const loadProfile = observeCognitiveLoad(
+        deps.cognitiveLoadAccumulator,
+        memTenantIdEarly,
+        memUserId,
+        loadOut,
+        clock,
+      );
+      const loadDirective = loadProfile
+        ? renderLoadDirectiveWithProfile(loadOut, loadProfile)
+        : renderLoadDirective(loadOut);
+
       const system = [
+        personaPrelude,
+        '',
         identity,
+        '',
+        moduleInventory,
         '',
         `Locus: ${locusPhrase(req.tier, req.scope)}.`,
         '',
-        `Behavioural directive: ${renderMindStateDirective(mindState)}`,
-        `Verbosity directive: ${renderLoadDirective(loadOut)}`,
+        `Behavioural directive: ${mindDirective}`,
+        `Verbosity directive: ${loadDirective}`,
         '',
         renderSemanticMemoryFragment(semanticFacts),
         '',
@@ -584,6 +684,26 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         );
       }
 
+      // 7b) tool dispatch — when the sensor emitted a `tool_use` call
+      // matching a seed PM tool AND a registry is wired, resolve it
+      // deterministically. The result is recorded on the trace so ops
+      // can audit which deterministic resolution backed which sensor
+      // suggestion. The kernel does NOT loop sensor↔tool here — the
+      // streaming agent-loop owns that.
+      const toolDispatchResults = await dispatchKernelTools(
+        deps.toolRegistry,
+        sensorResult.toolCalls.map((tc) => ({
+          toolName: tc.toolName,
+          input: tc.input,
+        })),
+      );
+      if (toolDispatchResults.length > 0) {
+        const summary = toolDispatchResults
+          .map((r) => `${r.toolName}=${r.outcome.kind}`)
+          .join(',');
+        traceStep('sensor-call', sensorStart, `tool-dispatch ${summary}`);
+      }
+
       // 8) normalize
       const normStart = clock().getTime();
       let normalised = normalize(sensorResult.text);
@@ -688,11 +808,15 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         return decision;
       }
 
-      // 11) policy gate
+      // 11) policy gate — supply the K5.2 request context so the new
+      //     tenant-isolation / scope-match / cost-ceiling / off-hours
+      //     checks can fire when the caller threaded the relevant
+      //     fields through `ThoughtRequest`.
       const policyStart = clock().getTime();
       const policy = runPolicyGate({
         text: normalised.text,
         hasCitations: citations.length > 0,
+        request: buildPolicyGateRequestContext(req, clock),
       });
       traceStep('policy-gate', policyStart, `verdict=${policy.verdict.status}`);
 
@@ -962,7 +1086,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const memTenantId =
         req.scope.kind === 'tenant' ? req.scope.tenantId : null;
       const memUserId = req.scope.actorUserId;
-      const semanticFacts = await loadSemanticFacts(deps.memory, memTenantId, memUserId);
+      const streamQueryEmbedding = await resolveQueryEmbedding(req, deps.embedder);
+      const semanticFacts = await loadSemanticFacts(
+        deps.memory,
+        memTenantId,
+        memUserId,
+        streamQueryEmbedding,
+      );
       const reflectiveDigest = await loadReflectiveDigest(deps.memory, memTenantId, memUserId);
 
       // 4c) online-learning feedback recall.
@@ -993,19 +1123,53 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
 
       // 6) identity + ToM + cognitive-load
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
+
+      // K3 — platform-voice anchor + situated address (cache-eligible
+      // prefix) + per-surface identity + module-inventory block.
+      const personaPrelude = renderPersonaPrelude(
+        buildSituatedAddressArgs(req, clock),
+      );
+      const moduleInventory = renderModuleInventoryBlock();
+
       const mindState = inferMindState(req.userMessage);
+      const affectiveProfile = observeAffective(
+        deps.affectiveAccumulator,
+        memTenantId,
+        memUserId,
+        mindState,
+        clock,
+      );
+      const mindDirective = affectiveProfile
+        ? renderMindStateDirectiveWithProfile(mindState, affectiveProfile)
+        : renderMindStateDirective(mindState);
+
       const recentTurns = deps.recentTurnCounter ? await deps.recentTurnCounter(req.threadId) : 0;
       const loadOut = assessCognitiveLoad({
         userMessage: req.userMessage,
         recentTurnCount: recentTurns,
       });
+      const loadProfile = observeCognitiveLoad(
+        deps.cognitiveLoadAccumulator,
+        memTenantId,
+        memUserId,
+        loadOut,
+        clock,
+      );
+      const loadDirective = loadProfile
+        ? renderLoadDirectiveWithProfile(loadOut, loadProfile)
+        : renderLoadDirective(loadOut);
+
       const system = [
+        personaPrelude,
+        '',
         identity,
+        '',
+        moduleInventory,
         '',
         `Locus: ${locusPhrase(req.tier, req.scope)}.`,
         '',
-        `Behavioural directive: ${renderMindStateDirective(mindState)}`,
-        `Verbosity directive: ${renderLoadDirective(loadOut)}`,
+        `Behavioural directive: ${mindDirective}`,
+        `Verbosity directive: ${loadDirective}`,
         '',
         renderSemanticMemoryFragment(semanticFacts),
         '',
@@ -1144,10 +1308,11 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         return;
       }
 
-      // 11) policy gate
+      // 11) policy gate — supply request context (see non-stream path).
       const policy = runPolicyGate({
         text: normalised.text,
         hasCitations: citations.length > 0,
+        request: buildPolicyGateRequestContext(req, clock),
       });
       if (policy.verdict.status === 'soften' || policy.verdict.status === 'block') {
         yield { kind: 'gate_verdict', gate: 'policy', verdict: policy.verdict };
@@ -1448,22 +1613,77 @@ function renderGroundingFragment(facts: ReadonlyArray<GroundingFact>): string {
 // ─────────────────────────────────────────────────────────────────────
 
 const MEMORY_SEMANTIC_LIMIT = 10;
+const MEMORY_SEMANTIC_EMBEDDING_LIMIT = 8;
+const MEMORY_SEMANTIC_EMBEDDING_MAX_DISTANCE = 0.7;
 const MEMORY_EPISODIC_SUMMARY_MAX = 500;
 
 async function loadSemanticFacts(
   memory: MemoryHierarchy | undefined,
   tenantId: string | null,
   userId: string,
+  queryEmbedding: ReadonlyArray<number> | null,
 ): Promise<ReadonlyArray<SemanticFact>> {
   if (!memory?.semantic || !userId) return [];
+
+  // Embedding-based retrieval is preferred when (a) the caller (or the
+  // embedder port) produced a query vector AND (b) the adapter
+  // implements `searchByEmbedding`. We fall back to legacy key-based
+  // search on any error so a misconfigured pgvector backend doesn't
+  // starve the prompt.
+  const semantic: SemanticMemoryPort = memory.semantic;
+  if (
+    queryEmbedding &&
+    queryEmbedding.length > 0 &&
+    typeof semantic.searchByEmbedding === 'function'
+  ) {
+    try {
+      const hits = await semantic.searchByEmbedding({
+        tenantId,
+        userId,
+        embedding: queryEmbedding,
+        limit: MEMORY_SEMANTIC_EMBEDDING_LIMIT,
+        maxDistance: MEMORY_SEMANTIC_EMBEDDING_MAX_DISTANCE,
+      });
+      // `SemanticFactWithSimilarity extends SemanticFact` — the kernel
+      // only consumes the base shape downstream.
+      return hits;
+    } catch {
+      // Fall through to legacy key-based search.
+    }
+  }
+
   try {
-    return await memory.semantic.search({
+    return await semantic.search({
       tenantId,
       userId,
       limit: MEMORY_SEMANTIC_LIMIT,
     });
   } catch {
     return [];
+  }
+}
+
+/**
+ * Resolve a query embedding for the current request. Order of
+ * preference:
+ *   1. `req.embedding` — caller-supplied (e.g. UI passes the embedding
+ *      it already computed for the message bubble).
+ *   2. `deps.embedder.embed(req.userMessage)` — kernel-side fallback
+ *      when a real OpenAI/Voyage embedder is wired in compose.
+ * Returns null when neither is available; the kernel then drops back
+ * to the legacy key-based search path.
+ */
+async function resolveQueryEmbedding(
+  req: ThoughtRequest,
+  embedder: TextEmbedder | undefined,
+): Promise<ReadonlyArray<number> | null> {
+  if (req.embedding && req.embedding.length > 0) return req.embedding;
+  if (!embedder || !req.userMessage) return null;
+  try {
+    const vec = await embedder.embed(req.userMessage);
+    return vec && vec.length > 0 ? vec : null;
+  } catch {
+    return null;
   }
 }
 
@@ -1723,4 +1943,154 @@ function formatGroundingValue(f: GroundingFact): string {
     case 'days':          return `${f.value.toFixed(1)} days`;
     default:              return String(f.value);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// K3 — persona prelude / situated address builder. The kernel calls
+// `renderPersonaPrelude(...)` with whatever fields it can derive from
+// the `ThoughtRequest`. The cache-eligible BOSSNYUMBA_PERSONA block
+// rides every call; the situated-address block changes per request.
+// ─────────────────────────────────────────────────────────────────────
+
+function buildSituatedAddressArgs(
+  req: ThoughtRequest,
+  clock: () => Date,
+): SituatedAddressArgs {
+  const args: SituatedAddressArgs = {
+    surface: req.surface,
+    scope: req.scope,
+    tier: req.tier,
+    nowMs: clock().getTime(),
+  };
+  return args;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// K3 — cognitive-load + ToM accumulator observers. Run per turn so
+// the renderers can mix the cross-turn profile into the directive.
+// Failures collapse to null so the per-turn renderers stay the
+// fall-back. The (tenantId, userId) tuple must be non-empty — the
+// accumulator stores are keyed on `${tenantId}:${userId}`.
+// ─────────────────────────────────────────────────────────────────────
+
+function observeCognitiveLoad(
+  acc: CognitiveLoadAccumulator | undefined,
+  tenantId: string | null,
+  userId: string,
+  loadOut: ReturnType<typeof assessCognitiveLoad>,
+  clock: () => Date,
+): ReturnType<CognitiveLoadAccumulator['read']> | null {
+  if (!acc || !tenantId || !userId) return null;
+  try {
+    return acc.observe(tenantId, userId, {
+      perTurnScore: loadOut.score,
+      capturedAt: clock().toISOString(),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function observeAffective(
+  acc: AffectiveAccumulator | undefined,
+  tenantId: string | null,
+  userId: string,
+  mindState: ReturnType<typeof inferMindState>,
+  clock: () => Date,
+): ReturnType<AffectiveAccumulator['read']> | null {
+  if (!acc || !tenantId || !userId) return null;
+  try {
+    return acc.observe(tenantId, userId, {
+      mindState,
+      capturedAt: clock().toISOString(),
+    });
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// K5.2 — policy-gate request-context builder. The four new context
+// checks (tenant-isolation, scope-match, cost-ceiling, off-hours
+// sovereign) only fire when the kernel threads a populated context
+// through. We derive every field from `ThoughtRequest`; absent fields
+// collapse the corresponding check to a no-op so back-compat is
+// preserved for callers that pre-date K5.2.
+// ─────────────────────────────────────────────────────────────────────
+
+function buildPolicyGateRequestContext(
+  req: ThoughtRequest,
+  clock: () => Date,
+): PolicyGateRequestContext {
+  const ctx: {
+    tenantId?: string;
+    grantedScopes?: ReadonlyArray<string>;
+    tier?: PolicyGateTier;
+    estimatedCostUsd?: number;
+    stakes?: 'low' | 'medium' | 'high' | 'critical';
+    afterHoursOverride?: boolean;
+    now: Date;
+  } = { now: clock() };
+  if (req.scope.kind === 'tenant') ctx.tenantId = req.scope.tenantId;
+  if (req.grantedScopes && req.grantedScopes.length > 0) {
+    ctx.grantedScopes = req.grantedScopes;
+  }
+  // Best-effort tier mapping: AwarenessTier and PolicyGateTier are
+  // distinct dimensions but the latter is only consulted for the
+  // cost-ceiling check. Default `enterprise` for authenticated tenant
+  // scopes; `sovereign` for platform scope; `free` for marketing.
+  if (req.surface === 'marketing') {
+    ctx.tier = 'free';
+  } else if (req.scope.kind === 'platform') {
+    ctx.tier = 'sovereign';
+  } else {
+    ctx.tier = 'enterprise';
+  }
+  if (typeof req.estimatedCostUsd === 'number') {
+    ctx.estimatedCostUsd = req.estimatedCostUsd;
+  }
+  ctx.stakes = req.stakes;
+  if (req.afterHoursOverride) ctx.afterHoursOverride = true;
+  return ctx;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// K9 — tool dispatch. The kernel surfaces a small "did the sensor
+// emit a tool_use call we can resolve deterministically?" check. When
+// `deps.toolRegistry` is wired and the sensor produced a tool call
+// matching one of the seed PM tools, the kernel calls
+// `registry.runTool(name, input)` and surfaces the result so the
+// caller can mix it back into the next sensor turn / final answer.
+//
+// We deliberately do NOT loop sensor ↔ tool here — the streaming
+// agent-loop owns that. The kernel records whether a deterministic
+// resolution occurred so the decision-trace can reference it.
+// ─────────────────────────────────────────────────────────────────────
+
+interface DispatchedToolRecord {
+  readonly toolName: string;
+  readonly outcome: BrainToolOutcome<unknown>;
+}
+
+export async function dispatchKernelTools(
+  registry: BrainToolRegistry | undefined,
+  toolCalls: ReadonlyArray<{ readonly toolName: string; readonly input: unknown }>,
+): Promise<ReadonlyArray<DispatchedToolRecord>> {
+  if (!registry || toolCalls.length === 0) return [];
+  const results: DispatchedToolRecord[] = [];
+  for (const call of toolCalls) {
+    try {
+      const outcome = await registry.runTool(call.toolName, call.input);
+      results.push({ toolName: call.toolName, outcome });
+    } catch (err) {
+      results.push({
+        toolName: call.toolName,
+        outcome: {
+          kind: 'executor-failed',
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
+    }
+  }
+  return results;
 }

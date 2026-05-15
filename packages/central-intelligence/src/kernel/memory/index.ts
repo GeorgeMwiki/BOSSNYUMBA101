@@ -27,9 +27,11 @@ export type {
   ReflectiveTopicCount,
   SemanticDecayArgs,
   SemanticFact,
+  SemanticFactWithSimilarity,
   SemanticLookupArgs,
   SemanticMemoryPort,
   SemanticSearchArgs,
+  SemanticSearchByEmbeddingArgs,
   SemanticSource,
   SemanticUpsertArgs,
 } from './types.js';
