@@ -52,6 +52,47 @@ import {
   createBoundWakeReadDeps,
 } from './agency-port-bindings.js';
 
+type StallDetectorRunArgs = agencyKernel.StallDetectorRunArgs;
+type StallDetectorRunOutcome = agencyKernel.StallDetectorRunOutcome;
+type StalledGoalReport = agencyKernel.StalledGoalReport;
+type StallDetectorDeps = agencyKernel.StallDetectorDeps;
+
+/**
+ * Stall-detection function ref shape — the wake-loop accepts an
+ * override so tests can swap a recording stub without spinning up the
+ * full kernel agency module. Default = `agencyKernel.runStallDetection`.
+ */
+export type StallDetectorFn = (
+  args: StallDetectorRunArgs,
+  deps: StallDetectorDeps,
+) => Promise<StallDetectorRunOutcome>;
+
+/**
+ * Minimal repo shape the wake-loop uses to discover (tenantId, userId)
+ * pairs whose `active` goals should be scanned for stalls. The real
+ * Drizzle implementation lives in `@bossnyumba/database`; the wake-loop
+ * accepts an override so tests can inject a deterministic stub. The
+ * `markStalled` method is OPTIONAL — when present the wake-loop will
+ * call it after emitting the observability event; when absent, the
+ * event is still emitted (degraded mode).
+ */
+export interface KernelGoalsRepoLike {
+  listStallScanTargets(
+    tenantId: string,
+  ): Promise<ReadonlyArray<{ tenantId: string; userId: string }>>;
+  markStalled?(goalId: string, reason: string): Promise<void>;
+}
+
+/**
+ * Observability hook for stall events. The default implementation logs
+ * via `deps.logger.warn`; tests inject a recording sink. Mirrors the
+ * existing kernel `StallEventSink` shape so the same emitter can wire
+ * the in-process event bus later without re-plumbing this module.
+ */
+export interface WakeStallObservabilitySink {
+  emit(payload: StalledGoalReport): void | Promise<void>;
+}
+
 /**
  * Stable cluster-wide lock id (BIGINT). Picked from sha256("bossnyumba-
  * wake-loop") sliced into the safe BIGINT range. Constant — every
@@ -85,6 +126,29 @@ export interface WakeLoopCronDeps {
   readonly intervalMs?: number;
   /** Override the active-tenant discovery (tests). */
   readonly listActiveTenantIds?: () => Promise<ReadonlyArray<string>>;
+  /**
+   * Override the stall-detection function (tests). Defaults to
+   * `agencyKernel.runStallDetection`. Direct function ref is fine —
+   * the supervisor never mutates it.
+   */
+  readonly stallDetector?: StallDetectorFn;
+  /**
+   * Override the kernel-goals repo used for stall-scan target
+   * discovery (tests). The real composition wires this from the
+   * Drizzle-backed services in `@bossnyumba/database`.
+   *
+   * When this dep is absent the wake-loop SKIPS stall detection for
+   * the tick — the supervisor never crashes because of a missing
+   * stall infrastructure dep.
+   */
+  readonly kernelGoalsRepo?: KernelGoalsRepoLike;
+  /**
+   * Observability sink for `goal_stalled` events. Defaults to a
+   * warn-logger fallback that funnels every stalled-goal report
+   * through `logger.warn` with a stable `event: 'agency.goal-stalled'`
+   * tag so dashboards can filter on it.
+   */
+  readonly stallEventSink?: WakeStallObservabilitySink;
 }
 
 export interface WakeLoopCronSupervisor {
@@ -102,6 +166,13 @@ export interface WakeLoopCronTickResult {
   readonly goalsExecuted: number;
   readonly perTrigger: Record<string, number>;
   readonly skippedReason: 'lock-held' | 'no-db' | 'no-tenants' | null;
+  /**
+   * Number of `goal_stalled` reports emitted across all tenants in
+   * this tick. Surfaces in the supervisor's structured log alongside
+   * `goalsOpened` / `goalsExecuted` so operators can spot a runaway
+   * stall storm without grepping for every event.
+   */
+  readonly goalsStalled: number;
 }
 
 function resolveIntervalMs(override?: number): number {
@@ -169,7 +240,7 @@ export function createWakeLoopCronSupervisor(
   let inflight = false;
 
   async function tick(): Promise<WakeLoopCronTickResult | null> {
-    if (inflight) return { tenantsProcessed: 0, goalsOpened: 0, goalsExecuted: 0, perTrigger: {}, skippedReason: 'lock-held' };
+    if (inflight) return { tenantsProcessed: 0, goalsOpened: 0, goalsExecuted: 0, perTrigger: {}, skippedReason: 'lock-held', goalsStalled: 0 };
     inflight = true;
     try {
       if (!deps.db) {
@@ -183,6 +254,7 @@ export function createWakeLoopCronSupervisor(
           goalsExecuted: 0,
           perTrigger: {},
           skippedReason: 'no-db',
+          goalsStalled: 0,
         };
       }
       const db = deps.db as DrizzleLikeClient;
@@ -198,6 +270,7 @@ export function createWakeLoopCronSupervisor(
           goalsExecuted: 0,
           perTrigger: {},
           skippedReason: 'lock-held',
+          goalsStalled: 0,
         };
       }
       try {
@@ -215,48 +288,190 @@ export function createWakeLoopCronSupervisor(
             goalsExecuted: 0,
             perTrigger: {},
             skippedReason: 'no-tenants',
+            goalsStalled: 0,
           };
         }
+
+        // The kernel-goals service is reused by BOTH the wake-cycle
+        // (executor) and the stall detector (read-only goal list). Build
+        // it up front so a failure inside the wake-cycle's tool / trigger
+        // wiring does NOT prevent the stall-detection sweep from running.
+        const goals = createKernelGoalsService(db as never);
 
         // Build wake-loop deps from the same composition-root bindings
         // the sovereign brain uses. We construct fresh instances per
         // tick because the bindings are cheap (factories over the
         // shared Drizzle client) and we want every cycle to see the
-        // latest registry state without stale closures.
-        const goals = createKernelGoalsService(db as never);
-        const auditSink = createKernelActionAuditService(db as never);
-        const toolRegistry = agencyKernel.createActionToolRegistry();
-        for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
-          toolRegistry.register(stub);
+        // latest registry state without stale closures. The whole setup
+        // sits in a try/catch so a bind-time failure (missing service,
+        // schema drift, fake-db in tests) degrades to a zeroed-out
+        // wake-cycle outcome rather than skipping the stall sweep.
+        let outcome: { goalsOpened: number; goalsExecuted: number; perTrigger: Record<string, number> } = {
+          goalsOpened: 0,
+          goalsExecuted: 0,
+          perTrigger: {},
+        };
+        try {
+          const auditSink = createKernelActionAuditService(db as never);
+          const toolRegistry = agencyKernel.createActionToolRegistry();
+          for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
+            toolRegistry.register(stub);
+          }
+          const boundActionToolDeps = createBoundActionToolDeps(db as never);
+          for (const realTool of agencyKernel.createRealActionTools(
+            boundActionToolDeps,
+          )) {
+            toolRegistry.register(realTool);
+          }
+          const executor = agencyKernel.createExecutor({
+            goals,
+            tools: toolRegistry,
+            auditSink,
+            autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+          });
+          const boundWakeReadDeps = createBoundWakeReadDeps(db as never);
+          const triggers = agencyKernel.createRealWakeTriggers({
+            arrears: boundWakeReadDeps.arrearsRead,
+            leases: boundWakeReadDeps.leaseRead,
+            vacancy: boundWakeReadDeps.vacancyRead,
+          });
+          outcome = await agencyKernel.runWakeCycle(
+            { tenantIds },
+            { goals, executor, triggers },
+          );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          const errLog = deps.logger.error ?? deps.logger.warn;
+          errLog({ err: msg }, 'wake-loop-cron: wake-cycle setup/run failed');
         }
-        const boundActionToolDeps = createBoundActionToolDeps(db as never);
-        for (const realTool of agencyKernel.createRealActionTools(
-          boundActionToolDeps,
-        )) {
-          toolRegistry.register(realTool);
-        }
-        const executor = agencyKernel.createExecutor({
-          goals,
-          tools: toolRegistry,
-          auditSink,
-          autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
-        });
-        const boundWakeReadDeps = createBoundWakeReadDeps(db as never);
-        const triggers = agencyKernel.createRealWakeTriggers({
-          arrears: boundWakeReadDeps.arrearsRead,
-          leases: boundWakeReadDeps.leaseRead,
-          vacancy: boundWakeReadDeps.vacancyRead,
-        });
 
-        const outcome = await agencyKernel.runWakeCycle(
-          { tenantIds },
-          { goals, executor, triggers },
-        );
+        // -----------------------------------------------------------------
+        // Stall detection — K7 wave-K wiring. Sweep active goals
+        // per (tenantId, userId) and emit `agency.goal-stalled` for any
+        // goal whose last step activity is older than its category
+        // threshold. The whole block is wrapped in try/catch so any
+        // stall infrastructure failure (DB hiccup, repo not bound,
+        // detector regression) never crashes the wake-loop's primary
+        // duty of executing detectors + goals.
+        // -----------------------------------------------------------------
+        let goalsStalled = 0;
+        try {
+          const detector =
+            deps.stallDetector ?? agencyKernel.runStallDetection;
+          const repo = deps.kernelGoalsRepo ?? null;
+          if (repo) {
+            const stallSink = deps.stallEventSink ?? null;
+            for (const tenantId of tenantIds) {
+              let targets: ReadonlyArray<{
+                tenantId: string;
+                userId: string;
+              }> = [];
+              try {
+                targets = await repo.listStallScanTargets(tenantId);
+              } catch (error) {
+                const msg =
+                  error instanceof Error ? error.message : String(error);
+                const errLog = deps.logger.error ?? deps.logger.warn;
+                errLog(
+                  { err: msg, tenantId },
+                  'wake-loop-cron: stall-scan target lookup failed',
+                );
+                continue;
+              }
+              for (const { userId } of targets) {
+                let stallOutcome: StallDetectorRunOutcome | null = null;
+                try {
+                  stallOutcome = await detector(
+                    { tenantId, userId },
+                    { goals },
+                  );
+                } catch (error) {
+                  const msg =
+                    error instanceof Error ? error.message : String(error);
+                  const errLog = deps.logger.error ?? deps.logger.warn;
+                  errLog(
+                    { err: msg, tenantId, userId },
+                    'wake-loop-cron: stall detector failed',
+                  );
+                  continue;
+                }
+                for (const report of stallOutcome.stalled) {
+                  goalsStalled += 1;
+                  // Emit observability event — operators key dashboards
+                  // off the `event` tag.
+                  try {
+                    if (stallSink) {
+                      await stallSink.emit(report);
+                    } else {
+                      deps.logger.warn(
+                        {
+                          event: 'agency.goal-stalled',
+                          tenantId: report.tenantId,
+                          goalId: report.goalId,
+                          category: report.category,
+                          threshold: report.threshold,
+                          days: report.daysSinceLastActivity,
+                        },
+                        'wake-loop-cron: goal stalled',
+                      );
+                    }
+                  } catch (error) {
+                    const msg =
+                      error instanceof Error
+                        ? error.message
+                        : String(error);
+                    const errLog =
+                      deps.logger.error ?? deps.logger.warn;
+                    errLog(
+                      { err: msg, goalId: report.goalId },
+                      'wake-loop-cron: stall event emit failed',
+                    );
+                  }
+                  // Optional repo-side status bump — degraded path when
+                  // the repo doesn't yet support `markStalled`.
+                  if (typeof repo.markStalled === 'function') {
+                    const reasonProposal =
+                      report.proposals.find((p) => p.kind === 'block') ??
+                      report.proposals[0];
+                    const reason =
+                      reasonProposal?.reason ??
+                      `stalled ${report.daysSinceLastActivity}d (${report.category})`;
+                    try {
+                      await repo.markStalled(report.goalId, reason);
+                    } catch (error) {
+                      const msg =
+                        error instanceof Error
+                          ? error.message
+                          : String(error);
+                      const errLog =
+                        deps.logger.error ?? deps.logger.warn;
+                      errLog(
+                        { err: msg, goalId: report.goalId },
+                        'wake-loop-cron: markStalled failed',
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Outer catch — pure belt-and-braces. The inner try/catch
+          // blocks above already isolate every external call; this
+          // guards against a synchronous throw before any of those
+          // entered (e.g. a future regression that throws while
+          // resolving the detector ref).
+          const msg = error instanceof Error ? error.message : String(error);
+          const errLog = deps.logger.error ?? deps.logger.warn;
+          errLog({ err: msg }, 'wake-loop-cron: stall detection block failed');
+        }
+
         deps.logger.info(
           {
             tenants: tenantIds.length,
             goalsOpened: outcome.goalsOpened,
             goalsExecuted: outcome.goalsExecuted,
+            goalsStalled,
             perTrigger: outcome.perTrigger,
           },
           'wake-loop-cron: cycle complete',
@@ -267,6 +482,7 @@ export function createWakeLoopCronSupervisor(
           goalsExecuted: outcome.goalsExecuted,
           perTrigger: { ...outcome.perTrigger },
           skippedReason: null,
+          goalsStalled,
         };
       } finally {
         await releaseAdvisoryLock(db);

@@ -13,6 +13,19 @@
  * Every transition is audited via the injected sink. The audit sink is
  * a side-channel: failures are logged and swallowed so the executor
  * remains the source of truth for step state.
+ *
+ * Sovereign-tier ledger (K7 wave-K wiring): in addition to the legacy
+ * `auditSink`, sovereign-tier tool invocations are written to the new
+ * hash-chained sovereign action ledger via the optional
+ * `sovereignLedger` port. A tool is considered sovereign-tier when
+ * EITHER its `stakes === 'critical'` OR its `name` is in
+ * `SOVEREIGN_TIER_ACTION_NAMES` (a deny-list of irreversible / high-
+ * regulatory-impact actions: tenant eviction, owner payout, KRA
+ * filings, GePG control-number revocations, market-rate-band overrides,
+ * inspection major-damage flags). Ledger write failure is logged but
+ * NEVER thrown — we don't want a logging error to roll back a tool that
+ * already succeeded. TODO: revisit this policy if/when an external
+ * regulator requires fail-closed semantics.
  */
 import type { ApprovalGate } from '../../four-eye-approval.js';
 import type {
@@ -29,12 +42,79 @@ import type {
 } from '../action-tools/types.js';
 import type { Goal, GoalsPort, GoalStep } from '../goals/types.js';
 
+/**
+ * Minimal port shape the executor needs from the sovereign action
+ * ledger. The Drizzle-backed adapter lives in `@bossnyumba/database`
+ * (`createSovereignActionLedgerService`); kernel callers depend only on
+ * the structural surface defined here so the kernel package keeps zero
+ * runtime imports of the database package.
+ */
+export interface SovereignActionLedgerPort {
+  appendLedgerEntry(args: {
+    readonly tenantId: string;
+    readonly actionType: string;
+    readonly payloadJson: Record<string, unknown>;
+    readonly proposer: string;
+    readonly approvers: ReadonlyArray<string>;
+    readonly executedAt: Date;
+  }): Promise<unknown>;
+}
+
+/** Minimal observability hook the executor uses when the sovereign
+ *  ledger write fails. Mirrors the wake-loop logger shape (info/warn/
+ *  error) so the same composition-root logger can be threaded in. */
+export interface ExecutorLogger {
+  error?(obj: Record<string, unknown>, msg?: string): void;
+  warn?(obj: Record<string, unknown>, msg?: string): void;
+}
+
+/**
+ * Deny-list of action names treated as sovereign-tier even when their
+ * `stakes` discriminator says otherwise. These are irreversible /
+ * regulator-touching actions — every invocation MUST be recorded in
+ * the hash-chained sovereign ledger so an external audit can reconstruct
+ * the chain after the fact.
+ */
+export const SOVEREIGN_TIER_ACTION_NAMES: ReadonlyArray<string> = [
+  'tenant-eviction-proposed',
+  'owner-payout-executed',
+  'kra-mri-filed',
+  'gepg-control-number-revoked',
+  'market-rate-band-overridden',
+  'inspection-flagged-as-major-damage',
+];
+
+/**
+ * A tool is considered sovereign-tier when either:
+ *   1. its `stakes` value is `'critical'` (the in-tree discriminator), OR
+ *   2. its `name` appears in {@link SOVEREIGN_TIER_ACTION_NAMES} (the
+ *      deny-list for irreversible regulator-touching actions whose
+ *      stakes have not yet been re-graded to critical).
+ *
+ * The deny-list is a deliberate redundancy — it lets the ledger pick up
+ * sovereign actions even if a future contributor introduces a new tool
+ * with the wrong stakes classification.
+ */
+export function isSovereignTier(tool: Pick<ActionToolDef, 'name' | 'stakes'>): boolean {
+  if (tool.stakes === 'critical') return true;
+  return SOVEREIGN_TIER_ACTION_NAMES.includes(tool.name);
+}
+
 export interface ExecutorDeps {
   readonly goals: GoalsPort;
   readonly tools: ActionToolRegistry;
   readonly approvalGate?: ApprovalGate;
   readonly autonomyPolicy?: AutonomyPolicyPort;
   readonly auditSink: ActionAuditSink;
+  /**
+   * Optional hash-chained ledger for sovereign-tier actions. When
+   * present, every sovereign-tier tool invocation (success AND failure)
+   * is appended. Ledger write failures are logged via `logger` and
+   * swallowed — they never roll back a successful tool invocation.
+   */
+  readonly sovereignLedger?: SovereignActionLedgerPort;
+  /** Optional structured logger used for ledger write failures. */
+  readonly logger?: ExecutorLogger;
   readonly clock?: () => Date;
 }
 
@@ -293,6 +373,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
         // Autonomous branch — invoke the tool.
         let invokeError: string | null = null;
         let outcomeText: string | null = null;
+        let invokeOutput: unknown = null;
         try {
           const result = await invokeTool(tool, step.toolPayload, {
             tenantId: goal.tenantId,
@@ -300,6 +381,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           });
           if (result.ok) {
             outcomeText = stringifyOutput(result.output);
+            invokeOutput = result.output;
           } else {
             invokeError = result.message;
           }
@@ -327,6 +409,15 @@ export function createExecutor(deps: ExecutorDeps): Executor {
             endedAt: clock().toISOString(),
             latencyMs: clock().getTime() - startedAt.getTime(),
           });
+          await safeSovereignLedger(deps, tool, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            input: step.toolPayload,
+            output: null,
+            outcome: 'failure',
+            errorMessage: invokeError,
+            executedAt: clock(),
+          });
           stepsFailed += 1;
           failureMessages.push(invokeError);
           bailed = true;
@@ -351,6 +442,15 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           startedAt: startedAt.toISOString(),
           endedAt: clock().toISOString(),
           latencyMs: clock().getTime() - startedAt.getTime(),
+        });
+        await safeSovereignLedger(deps, tool, {
+          tenantId: goal.tenantId,
+          userId: goal.userId,
+          input: step.toolPayload,
+          output: invokeOutput,
+          outcome: 'success',
+          errorMessage: null,
+          executedAt: clock(),
         });
         stepsSucceeded += 1;
       }
@@ -408,6 +508,70 @@ async function safeAudit(
     await deps.auditSink.record(entry);
   } catch (err) {
     console.error('agency-executor: audit-sink failed', err);
+  }
+}
+
+/**
+ * Append a sovereign-tier execution to the hash-chained ledger.
+ *
+ * Guard rails:
+ *   - no-op when `deps.sovereignLedger` is missing (kernel can run
+ *     without the ledger bound — useful in tests and in dev runs).
+ *   - no-op for non-sovereign tools (see {@link isSovereignTier}).
+ *   - ledger errors are logged but NEVER rethrown — sovereign-tier
+ *     audit is non-negotiable BUT a logging failure must not roll back
+ *     a tool execution that already succeeded. TODO: re-evaluate this
+ *     policy once we have an external regulator demanding fail-closed
+ *     semantics — a configurable `failClosed` flag would be the natural
+ *     extension.
+ */
+async function safeSovereignLedger(
+  deps: ExecutorDeps,
+  tool: ActionToolDef,
+  args: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly input: Record<string, unknown> | null;
+    readonly output: unknown;
+    readonly outcome: 'success' | 'failure';
+    readonly errorMessage: string | null;
+    readonly executedAt: Date;
+  },
+): Promise<void> {
+  if (!deps.sovereignLedger) return;
+  if (!isSovereignTier(tool)) return;
+  const payload: Record<string, unknown> = {
+    input: args.input ?? {},
+    output: args.output ?? null,
+    outcome: args.outcome,
+  };
+  if (args.errorMessage) payload.error = args.errorMessage;
+  try {
+    await deps.sovereignLedger.appendLedgerEntry({
+      tenantId: args.tenantId,
+      actionType: tool.name,
+      payloadJson: payload,
+      proposer: args.userId,
+      approvers: [],
+      executedAt: args.executedAt,
+    });
+  } catch (err) {
+    const log = deps.logger?.error ?? deps.logger?.warn;
+    if (log) {
+      log(
+        {
+          err: err instanceof Error ? err.message : String(err),
+          tenantId: args.tenantId,
+          actionType: tool.name,
+        },
+        'sovereign-ledger.appendLedgerEntry failed',
+      );
+    } else {
+      console.error(
+        'agency-executor: sovereign-ledger.appendLedgerEntry failed',
+        err,
+      );
+    }
   }
 }
 
