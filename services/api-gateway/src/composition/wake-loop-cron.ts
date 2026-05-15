@@ -150,6 +150,16 @@ export interface WakeLoopCronDeps {
    * tag so dashboards can filter on it.
    */
   readonly stallEventSink?: WakeStallObservabilitySink;
+  /**
+   * C6 Phase A — HQ-tier wake-trigger dependencies. When unwired
+   * (default), the HQ triggers are still registered with the wake-
+   * loop but each detector returns an empty array (so the trigger
+   * count stays accurate without firing goals). Composition roots
+   * wire `subscriptionChurn` / `aiCostOverrun` / `webhookDlqDepth`
+   * / `personaDriftBreach` sub-deps as their backing services come
+   * online.
+   */
+  readonly hqWakeTriggerDeps?: agencyKernel.HqWakeTriggerDeps;
 }
 
 export interface WakeLoopCronSupervisor {
@@ -332,11 +342,22 @@ export function createWakeLoopCronSupervisor(
             sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
           });
           const boundWakeReadDeps = createBoundWakeReadDeps(db as never);
-          const triggers = agencyKernel.createRealWakeTriggers({
+          const tenantTriggers = agencyKernel.createRealWakeTriggers({
             arrears: boundWakeReadDeps.arrearsRead,
             leases: boundWakeReadDeps.leaseRead,
             vacancy: boundWakeReadDeps.vacancyRead,
           });
+          // C6 Phase A — HQ-tier wake triggers (subscription-churn,
+          // ai-cost-overrun, webhook-dlq-depth, persona-drift-breach).
+          // The HQ trigger deps may be partially-wired or fully unwired
+          // when their dependent services haven't shipped yet — each
+          // trigger no-ops (returns []) when its read port is missing,
+          // so registering them unconditionally is safe.
+          const hqTriggerDeps =
+            (deps as { hqWakeTriggerDeps?: agencyKernel.HqWakeTriggerDeps })
+              .hqWakeTriggerDeps ?? {};
+          const hqTriggers = agencyKernel.createHqWakeTriggers(hqTriggerDeps);
+          const triggers = [...tenantTriggers, ...hqTriggers];
           outcome = await agencyKernel.runWakeCycle(
             { tenantIds },
             { goals, executor, triggers },
