@@ -37,6 +37,7 @@ export type KernelStepName =
   | 'debate'
   | 'normalize'
   | 'judge'
+  | 'self-rag'
   | 'drift-check'
   | 'policy-gate'
   | 'confidence'
