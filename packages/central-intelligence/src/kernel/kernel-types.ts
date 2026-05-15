@@ -478,3 +478,38 @@ export interface AgencyKernelPort {
 }
 
 export type _AgencyKernelPortMarker = AgencyKernelPort;
+
+// ─────────────────────────────────────────────────────────────────────
+// Behavior-signal source — Central Command Phase A (C4 Brain Skin).
+//
+// When wired, the kernel's step 4 (memory recall) reads recent
+// derived behaviour signals (engagement.high / frustration.detected /
+// task.completed-without-AI / dwell.deep) from the sensorium-event-log
+// aggregator and mixes them into the system prompt as the brain's
+// mind-state inference channel. The full aggregator lives in
+// `@bossnyumba/ai-copilot/ambient-brain` and is duck-typed here so
+// the central-intelligence package stays dep-free.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface BehaviorSignalShape {
+  readonly kind: string;
+  readonly route: string;
+  readonly capturedAt: string;
+  readonly evidence?: Readonly<Record<string, number>>;
+}
+
+export interface BehaviorSignalSourcePort {
+  signalsForUser(args: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly windowMinutes?: number;
+  }): Promise<ReadonlyArray<BehaviorSignalShape>>;
+  signalsForSession(args: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly sessionId: string;
+    readonly windowMinutes?: number;
+  }): Promise<ReadonlyArray<BehaviorSignalShape>>;
+}
+
+export type _BehaviorSignalSourcePortMarker = BehaviorSignalSourcePort;

@@ -110,6 +110,24 @@ import type {
   DecisionTraceWriter,
   KernelStepName,
 } from './decision-trace.js';
+// C5 (Progressive Intelligence) coordination zone — additive ports.
+// These wire the per-turn Self-RAG critic, the Voyager skill retriever,
+// and the Reflexion read-at-start / write-at-end loop. All three are
+// optional; the kernel runs unchanged when none are supplied.
+import { runSelfRag, type SelfRagJudge, type SelfRagVerdict } from './self-rag/self-rag.js';
+import type { SkillEntry, SkillRetriever } from './skill-library/skill-retriever.js';
+import type {
+  ReflexionEntry,
+  ReflexionRetriever,
+} from './reflexion/reflexion-retriever.js';
+import type {
+  ReflexionOutcome,
+  ReflexionWriterPort,
+} from './reflexion/reflexion-writer.js';
+import {
+  isExplicitSessionTerminator,
+  recordReflection,
+} from './reflexion/reflexion-writer.js';
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -243,6 +261,48 @@ export interface BrainKernelDeps {
    * Failures collapse to the legacy path so retrieval still works.
    */
   readonly embedder?: TextEmbedder;
+  // ── C5 (Progressive Intelligence) coordination zone ─────────────────
+  /**
+   * Optional Voyager-style skill retriever. When wired, the kernel
+   * fetches the top-K learned skills for the current intent at step 6
+   * (system-prompt composition) and injects them as an addendum
+   * ("**Available learned skills:** …"). Failures collapse to no-op.
+   */
+  readonly skillRetriever?: SkillRetriever;
+  /**
+   * Optional Reflexion retriever. When wired, the kernel reads the
+   * last N reflections for (tenant, user) at step 4 (memory recall)
+   * and injects them into the system prompt at session start.
+   */
+  readonly reflexionRetriever?: ReflexionRetriever;
+  /**
+   * Optional Reflexion writer. When wired, the kernel checks each
+   * inbound turn for an explicit session-terminator ("bye", "/end",
+   * "thanks that's all") and records a verbal reflection at the end
+   * of the turn. Idle-end detection is the caller's responsibility.
+   */
+  readonly reflexionWriter?: ReflexionWriterPort;
+  /**
+   * Optional Self-RAG critic. When wired, the kernel runs IsREL /
+   * IsSUP / IsUSE reflection tokens after the sensor result is
+   * normalised. When the critic blocks (IsSUP=low|unknown on a
+   * financial / contractual claim), the kernel refuses the turn
+   * with `gate: 'policy'` and reason
+   * `'self-rag/insufficient-support'`.
+   */
+  readonly selfRagJudge?: SelfRagJudge;
+  // ── C4 (Sensorium / Brain Skin) coordination zone ───────────────────
+  /**
+   * Optional behaviour-signal source — Central Command Phase A (C4).
+   * When wired, the kernel reads recent derived mind-state signals
+   * from the sensorium-event-log aggregator (engagement.high /
+   * frustration.detected / task.completed-without-AI / dwell.deep)
+   * and mixes them into the system prompt. The production adapter
+   * lives in `@bossnyumba/ai-copilot/ambient-brain` and reads the
+   * Drizzle-backed `sensorium_event_log` table. Side-channel —
+   * failures collapse to no-op.
+   */
+  readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
 }
 
 export interface BrainKernel {
@@ -493,6 +553,29 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         memUserId,
       );
 
+      // 4e) C5 — Reflexion retrieval. Reads the last N reflections for
+      // (tenant, user) so the kernel can inject them as a system-prompt
+      // addendum at session start. Side-channel — the retriever owns
+      // the failure path (returns [] on error).
+      const reflexionEntries: ReadonlyArray<ReflexionEntry> =
+        deps.reflexionRetriever && memTenantId && memUserId
+          ? await deps.reflexionRetriever.retrieve({
+              tenantId: memTenantId,
+              userId: memUserId,
+            })
+          : [];
+
+      // 4f) C5 — Voyager skill retrieval. Fetches the top-K learned
+      // skills matching the current user intent. The retriever owns
+      // the embedder call internally; we just hand it the user
+      // message + tenant scope.
+      const learnedSkills: ReadonlyArray<SkillEntry> = deps.skillRetriever
+        ? await deps.skillRetriever.retrieve({
+            tenantId: memTenantId,
+            userMessage: req.userMessage,
+          })
+        : [];
+
       // 5) cohort signal
       const cohortMix = deps.cohort
         ? await buildCohortMixin({ source: deps.cohort, tier: req.tier, userMessage: req.userMessage })
@@ -561,6 +644,15 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         ? renderLoadDirectiveWithProfile(loadOut, loadProfile)
         : renderLoadDirective(loadOut);
 
+      // C5 — render skill + reflexion addenda (both empty when no
+      // ports wired; `.filter(Boolean)` below drops empty strings).
+      const learnedSkillsFragment = deps.skillRetriever
+        ? deps.skillRetriever.renderPromptFragment(learnedSkills)
+        : '';
+      const reflexionFragment = deps.reflexionRetriever
+        ? deps.reflexionRetriever.renderPromptFragment(reflexionEntries)
+        : '';
+
       const system = [
         personaPrelude,
         '',
@@ -577,11 +669,15 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         '',
         renderReflectiveDigestFragment(reflectiveDigest),
         '',
+        reflexionFragment,
+        '',
         renderFeedbackFragment(feedbackRecent),
         '',
         renderActiveGoalsFragment(activeGoals),
         '',
         renderGroundingFragment(groundingFacts),
+        '',
+        learnedSkillsFragment,
         '',
         cohortMix.promptFragment,
       ]
@@ -808,6 +904,66 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         return decision;
       }
 
+      // 10b) C5 — Self-RAG critique. Runs IsREL / IsSUP / IsUSE
+      // reflection tokens on the normalised text. When the critic
+      // blocks (IsSUP=low|unknown on a financial / contractual claim),
+      // refuse the turn with `gate: 'policy'` and reason
+      // `'self-rag/insufficient-support'`. The critic is the same
+      // shape as the legacy judge port; failures collapse to
+      // 'unknown' tokens and never block by themselves.
+      let selfRagVerdict: SelfRagVerdict | null = null;
+      if (deps.selfRagJudge) {
+        const sragStart = clock().getTime();
+        selfRagVerdict = await runSelfRag({
+          userMessage: req.userMessage,
+          responseText: normalised.text,
+          retrievedContext: collectSelfRagContext(
+            semanticFacts,
+            reflectiveDigest,
+            groundingFacts,
+          ),
+          judge: deps.selfRagJudge,
+        });
+        traceStep(
+          'self-rag',
+          sragStart,
+          `rel=${selfRagVerdict.isRel} sup=${selfRagVerdict.isSup} use=${selfRagVerdict.isUse}${selfRagVerdict.blocked ? ' blocked=1' : ''}`,
+        );
+        if (selfRagVerdict.blocked) {
+          const decision = makeRefusal({
+            thoughtId,
+            req,
+            reason:
+              selfRagVerdict.blockedReason ?? 'self-rag/insufficient-support',
+            gate: 'policy',
+            startedAt,
+            clockNow: clock(),
+          });
+          if (deps.provenanceSink) {
+            void deps.provenanceSink
+              .record(decision.provenance)
+              .catch(() => undefined);
+          }
+          // C5 — even on refusal we may want to record a reflexion if
+          // the user explicitly ended the session. The flag is checked
+          // again on the success path below; doing it here too keeps
+          // the failure branch symmetric.
+          await maybeWriteReflexion({
+            deps,
+            req,
+            tenantId: memTenantId,
+            userId: memUserId,
+            outcome: 'failure',
+            negativeNotes: [
+              selfRagVerdict.blockedReason ?? 'Self-RAG blocked the response',
+            ],
+            groundedFacts: semanticFacts.map((f) => `${f.key}=${asValueString(f.value)}`),
+          });
+          finaliseTrace('refusal', 'policy');
+          return decision;
+        }
+      }
+
       // 11) policy gate — supply the K5.2 request context so the new
       //     tenant-isolation / scope-match / cost-ceiling / off-hours
       //     checks can fire when the caller threaded the relevant
@@ -946,6 +1102,30 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         agentText: pickAgentTraceText(decision),
       });
       traceStep('provenance-write', provStart, `outcome=${decision.kind}`);
+
+      // C5 — Reflexion write-at-end. Records a verbal reflection when
+      // the inbound message is an explicit session terminator (idle-
+      // end detection is the caller's responsibility). Outcome
+      // inferred from the decision shape + Self-RAG verdict.
+      {
+        const negativeNotes =
+          selfRagVerdict && selfRagVerdict.isSup !== 'high'
+            ? [`Self-RAG SUP=${selfRagVerdict.isSup}: ${selfRagVerdict.rationale}`]
+            : undefined;
+        const groundedFacts = semanticFacts
+          .slice(0, 5)
+          .map((f) => `${f.key}=${asValueString(f.value)}`);
+        await maybeWriteReflexion({
+          deps,
+          req,
+          tenantId: memTenantId,
+          userId: memUserId,
+          outcome: inferReflexionOutcome(decision, selfRagVerdict),
+          ...(negativeNotes ? { negativeNotes } : {}),
+          ...(groundedFacts.length > 0 ? { groundedFacts } : {}),
+        });
+      }
+
       finaliseTrace(decision.kind);
       void rng;
       return decision;
@@ -2093,4 +2273,93 @@ export async function dispatchKernelTools(
     }
   }
   return results;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// C5 — Progressive Intelligence helpers.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Collect a small "retrieved context" bundle for the Self-RAG critic.
+ * The critic needs SOMETHING to compare the response against — without
+ * any context every claim looks unsupported. We hand it the top
+ * semantic facts + reflective digest summary + grounding facts; that's
+ * the same bundle the kernel injected into the system prompt.
+ */
+function collectSelfRagContext(
+  semanticFacts: ReadonlyArray<SemanticFact>,
+  reflectiveDigest: ReflectiveDigest | null,
+  groundingFacts: ReadonlyArray<GroundingFact>,
+): ReadonlyArray<string> {
+  const out: string[] = [];
+  for (const f of semanticFacts.slice(0, 5)) {
+    out.push(`fact: ${f.key} = ${asValueString(f.value)}`);
+  }
+  if (reflectiveDigest?.summary) {
+    out.push(`digest: ${String(reflectiveDigest.summary).slice(0, 400)}`);
+  }
+  for (const g of groundingFacts.slice(0, 5)) {
+    out.push(`grounding: ${g.label} = ${String(g.value)} (${g.source})`);
+  }
+  return out;
+}
+
+function asValueString(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try {
+    return JSON.stringify(v).slice(0, 200);
+  } catch {
+    return '';
+  }
+}
+
+interface MaybeWriteReflexionArgs {
+  readonly deps: BrainKernelDeps;
+  readonly req: ThoughtRequest;
+  readonly tenantId: string | null;
+  readonly userId: string | null;
+  readonly outcome: ReflexionOutcome;
+  readonly negativeNotes?: ReadonlyArray<string>;
+  readonly groundedFacts?: ReadonlyArray<string>;
+}
+
+/**
+ * Conditionally write a Reflexion row. Runs only when:
+ *   - `deps.reflexionWriter` is wired, AND
+ *   - both tenantId + userId are present, AND
+ *   - the inbound message is an explicit session terminator.
+ *
+ * Idle-end detection is out of scope here — the caller (api-gateway
+ * session manager) decides when an idle session has ended and emits
+ * the reflexion through a separate code path.
+ */
+async function maybeWriteReflexion(args: MaybeWriteReflexionArgs): Promise<void> {
+  const writer = args.deps.reflexionWriter;
+  if (!writer) return;
+  if (!args.tenantId || !args.userId) return;
+  if (!isExplicitSessionTerminator(args.req.userMessage)) return;
+  await recordReflection(writer, {
+    tenantId: args.tenantId,
+    userId: args.userId,
+    sessionId: args.req.threadId,
+    userMessage: args.req.userMessage,
+    outcome: args.outcome,
+    ...(args.negativeNotes ? { negativeNotes: args.negativeNotes } : {}),
+    ...(args.groundedFacts ? { groundedFacts: args.groundedFacts } : {}),
+  });
+}
+
+function inferReflexionOutcome(
+  decision: BrainDecision,
+  selfRag: SelfRagVerdict | null,
+): ReflexionOutcome {
+  if (decision.kind === 'refusal') return 'failure';
+  if (decision.kind === 'softened') return 'mixed';
+  if (selfRag) {
+    if (selfRag.isSup === 'low' || selfRag.isUse === 'low') return 'mixed';
+    if (selfRag.isRel === 'low') return 'mixed';
+  }
+  return 'success';
 }

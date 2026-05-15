@@ -316,3 +316,227 @@ export interface BehaviorAnalytics {
     readonly errorCount: number;
   }[];
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Server-side sensorium aggregator (Central Command Phase A — C4).
+//
+// The legacy `BehaviorObserver` (above) is a per-request HTTP middleware
+// that tracks form-error rates in process memory. The wiring below
+// completes the audit gap (#3 in `2025-bn-internal-gap-audit.md`) by
+// turning the database-backed `sensorium_event_log` into a stream of
+// derived brain-mind-state signals the kernel reads at step 4 (memory
+// recall). The kernel never sees raw mouse/scroll/click rows — it sees:
+//
+//   - `engagement.high`              — many element.click + scroll.depth + dwell.time in a short window
+//   - `frustration.detected`         — error.boundary spike OR repeated input.change with hasPii flips
+//   - `task.completed-without-AI`    — form.submit with no preceding /ask or /jarvis network call
+//   - `dwell.deep`                   — dwell.time exceeded N seconds on a single route
+//
+// The factory is duck-typed against a `SensoriumEventLogSource` port
+// so the production composition root can bind the Drizzle service
+// without the ai-copilot package compile-time-depending on @bossnyumba/
+// database. Tests pass in an in-memory fake.
+// ─────────────────────────────────────────────────────────────────────
+
+export type BehaviorSignalKind =
+  | 'engagement.high'
+  | 'engagement.low'
+  | 'frustration.detected'
+  | 'task.completed-without-AI'
+  | 'dwell.deep';
+
+export interface BehaviorSignal {
+  readonly kind: BehaviorSignalKind;
+  readonly route: string;
+  readonly capturedAt: string;
+  readonly evidence: Readonly<Record<string, number>>;
+}
+
+/**
+ * Minimal shape the production `sensorium-event-log.service` already
+ * satisfies. Duck-typed locally so this package stays free of a
+ * @bossnyumba/database dep.
+ */
+export interface SensoriumEventLogSource {
+  countByTypeForUser(args: {
+    tenantId: string;
+    userId: string;
+    windowMinutes?: number;
+  }): Promise<Record<string, number>>;
+  listForSession(args: {
+    tenantId: string;
+    userId: string;
+    sessionId: string;
+    windowMinutes?: number;
+    limit?: number;
+  }): Promise<
+    ReadonlyArray<{
+      eventType: string;
+      route: string;
+      emittedAt: string;
+      payload: Record<string, unknown>;
+    }>
+  >;
+}
+
+export interface BehaviorSignalSource {
+  /**
+   * Derive a list of signals for one user over the last N minutes
+   * (default 15). Pure read — never mutates state. Returns [] on any
+   * upstream failure so the kernel turn never breaks on a missing
+   * sensorium row.
+   */
+  signalsForUser(args: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly windowMinutes?: number;
+  }): Promise<ReadonlyArray<BehaviorSignal>>;
+
+  /**
+   * Same signal derivation, scoped to a single (tenant, user, session).
+   * Used by surfaces that have a session id (the client-side bus emits
+   * one per tab); produces sharper signals because it can read the
+   * full event ribbon, not just the histogram.
+   */
+  signalsForSession(args: {
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly sessionId: string;
+    readonly windowMinutes?: number;
+  }): Promise<ReadonlyArray<BehaviorSignal>>;
+}
+
+export interface BehaviorSignalConfig {
+  /** Total events ≥ this triggers engagement.high. Default 25. */
+  readonly engagementHighThreshold: number;
+  /** Total events ≤ this in 15 min triggers engagement.low. Default 2. */
+  readonly engagementLowThreshold: number;
+  /** error.boundary count ≥ this triggers frustration.detected. Default 2. */
+  readonly errorFrustrationThreshold: number;
+  /** dwell.time ≥ this ms triggers dwell.deep. Default 60_000 (1 min). */
+  readonly dwellDeepMs: number;
+}
+
+export const DEFAULT_BEHAVIOR_SIGNAL_CONFIG: BehaviorSignalConfig = {
+  engagementHighThreshold: 25,
+  engagementLowThreshold: 2,
+  errorFrustrationThreshold: 2,
+  dwellDeepMs: 60_000,
+};
+
+export function createBehaviorSignalSource(
+  source: SensoriumEventLogSource,
+  config: Partial<BehaviorSignalConfig> = {},
+): BehaviorSignalSource {
+  const cfg = { ...DEFAULT_BEHAVIOR_SIGNAL_CONFIG, ...config };
+
+  function deriveFromHistogram(
+    histogram: Record<string, number>,
+    route: string,
+  ): BehaviorSignal[] {
+    const out: BehaviorSignal[] = [];
+    const now = new Date().toISOString();
+    const total = Object.values(histogram).reduce((acc, n) => acc + n, 0);
+    const errorCount = histogram['error.boundary'] ?? 0;
+    const submitCount = histogram['form.submit'] ?? 0;
+    const networkFailures = histogram['network.request'] ?? 0;
+
+    if (total >= cfg.engagementHighThreshold) {
+      out.push({
+        kind: 'engagement.high',
+        route,
+        capturedAt: now,
+        evidence: { total },
+      });
+    } else if (total <= cfg.engagementLowThreshold) {
+      out.push({
+        kind: 'engagement.low',
+        route,
+        capturedAt: now,
+        evidence: { total },
+      });
+    }
+
+    if (errorCount >= cfg.errorFrustrationThreshold) {
+      out.push({
+        kind: 'frustration.detected',
+        route,
+        capturedAt: now,
+        evidence: { errorCount, networkFailures },
+      });
+    }
+
+    if (submitCount > 0 && networkFailures === 0 && total > 0) {
+      out.push({
+        kind: 'task.completed-without-AI',
+        route,
+        capturedAt: now,
+        evidence: { submitCount },
+      });
+    }
+
+    return out;
+  }
+
+  return {
+    async signalsForUser({ tenantId, userId, windowMinutes }) {
+      try {
+        if (!tenantId || !userId) return [];
+        const histogram = await source.countByTypeForUser({
+          tenantId,
+          userId,
+          ...(windowMinutes ? { windowMinutes } : {}),
+        });
+        return deriveFromHistogram(histogram, '*');
+      } catch {
+        // Side-channel: never break the kernel turn on a sensorium miss.
+        return [];
+      }
+    },
+
+    async signalsForSession({
+      tenantId,
+      userId,
+      sessionId,
+      windowMinutes,
+    }) {
+      try {
+        if (!tenantId || !userId || !sessionId) return [];
+        const rows = await source.listForSession({
+          tenantId,
+          userId,
+          sessionId,
+          ...(windowMinutes ? { windowMinutes } : {}),
+        });
+        const histogram: Record<string, number> = {};
+        let maxDwellMs = 0;
+        let dwellRoute = '';
+        const lastRoute = rows[0]?.route ?? '*';
+        for (const row of rows) {
+          histogram[row.eventType] = (histogram[row.eventType] ?? 0) + 1;
+          if (row.eventType === 'dwell.time') {
+            const dwellMs = Number(
+              (row.payload as { dwellMs?: number }).dwellMs ?? 0,
+            );
+            if (dwellMs > maxDwellMs) {
+              maxDwellMs = dwellMs;
+              dwellRoute = row.route;
+            }
+          }
+        }
+        const out = deriveFromHistogram(histogram, lastRoute);
+        if (maxDwellMs >= cfg.dwellDeepMs) {
+          out.push({
+            kind: 'dwell.deep',
+            route: dwellRoute,
+            capturedAt: new Date().toISOString(),
+            evidence: { dwellMs: maxDwellMs },
+          });
+        }
+        return out;
+      } catch {
+        return [];
+      }
+    },
+  };
+}

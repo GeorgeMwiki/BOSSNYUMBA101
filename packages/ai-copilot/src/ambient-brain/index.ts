@@ -18,7 +18,14 @@ export {
 } from './ai-presence-manager.js';
 export {
   BehaviorObserver,
+  createBehaviorSignalSource,
+  DEFAULT_BEHAVIOR_SIGNAL_CONFIG,
   type BehaviorAnalytics,
+  type BehaviorSignal,
+  type BehaviorSignalConfig,
+  type BehaviorSignalKind,
+  type BehaviorSignalSource,
+  type SensoriumEventLogSource,
 } from './behavior-observer.js';
 export {
   ProactiveInterventionEngine,

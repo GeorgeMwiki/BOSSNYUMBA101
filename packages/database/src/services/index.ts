@@ -341,3 +341,75 @@ export {
   type RecordSpendArgs,
   type RemainingBudget,
 } from './privacy-budget-composer.service.js';
+
+// Voyager skill registry (migration 0133 — C5 Phase A). Adapter for the
+// kernel's `SkillRetrieverPort` (in `@bossnyumba/central-intelligence`).
+// Production composition wires this; tests pass in-memory fakes.
+export {
+  createSkillRegistryService,
+  type ListByTenantArgs as SkillListByTenantArgs,
+  type RecordOutcomeArgs as SkillRecordOutcomeArgs,
+  type SearchByEmbeddingArgs as SkillSearchByEmbeddingArgs,
+  type SkillRegistryService,
+  type SkillRow,
+  type SkillRowWithSimilarity,
+  type SkillStatus,
+  type UpsertSkillArgs as SkillUpsertArgs,
+} from './skill-registry.service.js';
+
+// Reflexion buffer (migration 0134 — C5 Phase A). Adapter for the
+// kernel's `ReflexionBufferPort`. Reads the last N reflections at
+// session start, writes one row at session end.
+export {
+  createReflexionBufferService,
+  type RecallReflexionsArgs,
+  type RecordReflexionArgs,
+  type ReflexionBufferService,
+  type ReflexionEntry,
+  type ReflexionOutcome,
+} from './reflexion-buffer.service.js';
+
+// Implicit feedback signals (migration 0135 — C5 Phase A). Adapter for
+// the sensorium's downstream signal store. Joined to traces by
+// `(trace_id, agent_action_id, tenant_id, user_id, surface, role)`.
+export {
+  createImplicitFeedbackSignalsService,
+  type ImplicitFeedbackRollup,
+  type ImplicitFeedbackSignalsService,
+  type ImplicitSignal,
+  type ImplicitSignalType,
+  type ListByTraceArgs as ImplicitFeedbackListByTraceArgs,
+  type ListForUserArgs as ImplicitFeedbackListForUserArgs,
+  type RecordSignalArgs as ImplicitFeedbackRecordArgs,
+  type RollupForTenantArgs as ImplicitFeedbackRollupArgs,
+} from './implicit-feedback-signals.service.js';
+
+// Sensorium event log (migration 0132 — C4 Phase A, Central Command).
+// Drizzle-backed append-only store for the 14-event sensory taxonomy
+// emitted by the client-side sensory bus in admin-platform-portal.
+// The server-side `BehaviorObserver` (packages/ai-copilot) aggregates
+// rolling-window event histograms here into signals the brain consumes
+// at memory-recall time.
+export {
+  createSensoriumEventLogService,
+  type CountByTypeArgs as SensoriumCountByTypeArgs,
+  type ListForSessionArgs as SensoriumListForSessionArgs,
+  type SensoriumEventInput,
+  type SensoriumEventLogService,
+  type SensoriumEventRow,
+} from './sensorium-event-log.service.js';
+
+// Agency run checkpoints (migration 0136, C6 Phase A — Central Command).
+// Durable substrate for the agency executor. The durable runner (api-
+// gateway composition) writes one checkpoint row per (run_id, step_index)
+// so retries + crash-recovery + operator-resumable goals work without a
+// third-party orchestrator. Phase A in-tree implementation; Phase B may
+// promote to a real Inngest dashboard.
+export {
+  createAgencyRunCheckpointsService,
+  type AgencyCheckpointRow,
+  type AgencyCheckpointState,
+  type AgencyRunCheckpointsService,
+  type ListStuckRunningArgs as AgencyCheckpointListStuckArgs,
+  type RecordPendingArgs as AgencyCheckpointRecordPendingArgs,
+} from './agency-run-checkpoints.service.js';

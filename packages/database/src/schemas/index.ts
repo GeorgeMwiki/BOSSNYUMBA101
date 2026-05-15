@@ -309,3 +309,38 @@ export * from './tenant-budget-envelopes.schema.js';
 // singleton `platform_privacy_budget` so PrivacyBudgetComposerService
 // can refuse cross-surface overspend.
 export * from './privacy-budget-ledger.schema.js';
+
+// Voyager skill registry (migration 0133, C5 Phase A) — procedural
+// memory store of named callable skills promoted from successful trace
+// clusters during the nightly consolidation pass. Retrieved at kernel
+// step 6 (system-prompt composition) via cosine similarity against
+// the user-intent embedding.
+export * from './skill-registry.schema.js';
+
+// Reflexion buffer (migration 0134, C5 Phase A) — per-(tenant, user)
+// verbal reflections written at session end, read at session start.
+// Pure prompt-layer memory; never touches model weights.
+export * from './reflexion-buffer.schema.js';
+
+// Implicit feedback signals (migration 0135, C5 Phase A) — the >99% of
+// feedback that's NOT a thumbs (copy, re-prompt, edit-resubmit,
+// override, abandonment, time-to-resolution). Joined to traces via
+// the (trace_id, agent_action_id, tenant_id, user_id, surface, role)
+// tuple; consolidation worker stage 03-reflect clusters successes vs.
+// failures separately.
+export * from './implicit-feedback-signals.schema.js';
+
+// Sensorium event log (migration 0132, C4 Phase A — Central Command).
+// Append-only log of filtered client-side sensory events from the
+// 14-event taxonomy. Powers the server-side BehaviorObserver aggregator
+// and the brain's mind-state inference (engagement.high, frustration.
+// detected, task.completed-without-AI). PII-redacted at the client;
+// mouse-move + input values never persisted.
+export * from './sensorium-event-log.schema.js';
+
+// Agency run checkpoints (migration 0136, C6 Phase A — Central Command).
+// Durable substrate for the agency executor. One row per (run_id,
+// step_index) with state machine pending → running → success | failure
+// | paused. Powers retry + crash-recovery + operator-resumable goals.
+// Phase A in-tree implementation of the Inngest AgentKit pattern.
+export * from './agency-run-checkpoints.schema.js';

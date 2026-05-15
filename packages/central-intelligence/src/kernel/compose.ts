@@ -194,6 +194,41 @@ export interface ComposeSovereignConfig {
    * caller did not supply one) and prefers `searchByEmbedding`.
    */
   readonly embedder?: TextEmbedder;
+  // ── C5 (Progressive Intelligence) coordination zone ────────────────
+  /**
+   * Optional Voyager-style skill retriever. Wired by the api-gateway
+   * composition root from the Drizzle-backed `skill_registry` table.
+   */
+  readonly skillRetriever?: import('./skill-library/skill-retriever.js').SkillRetriever;
+  /**
+   * Optional Reflexion retriever (read-at-session-start). Wired by the
+   * api-gateway composition root from the Drizzle-backed
+   * `reflexion_buffer` table.
+   */
+  readonly reflexionRetriever?: import('./reflexion/reflexion-retriever.js').ReflexionRetriever;
+  /**
+   * Optional Reflexion writer (write-at-session-end). Same composition
+   * source as the retriever.
+   */
+  readonly reflexionWriter?: import('./reflexion/reflexion-writer.js').ReflexionWriterPort;
+  /**
+   * Optional Self-RAG critic. When wired, the kernel runs IsREL /
+   * IsSUP / IsUSE reflection tokens after the sensor result is
+   * normalised. Same shape as the legacy judge port.
+   */
+  readonly selfRagJudge?: import('./self-rag/self-rag.js').SelfRagJudge;
+  // ── C4 (Sensorium / Brain Skin) coordination zone ──────────────────
+  /**
+   * Optional behaviour-signal source. When wired (production: by the
+   * api-gateway composition root, backed by the Drizzle sensorium-
+   * event-log service via `createBehaviorSignalSource(...)` in
+   * `@bossnyumba/ai-copilot`), step 4 (memory recall) reads recent
+   * derived signals (`engagement.high`, `frustration.detected`,
+   * `task.completed-without-AI`, `dwell.deep`) and mixes them into
+   * the system prompt as the brain's mind-state inference channel.
+   * Failures are swallowed — the brain-skin is a side-channel.
+   */
+  readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
 }
 
 export interface SovereignBrain {
@@ -263,6 +298,13 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.uncertaintyPolicy) (kernelDeps as any).uncertaintyPolicy = config.uncertaintyPolicy;
   if (config.toolRegistry)      (kernelDeps as any).toolRegistry = config.toolRegistry;
   if (config.embedder)          (kernelDeps as any).embedder = config.embedder;
+  // C5 — Progressive Intelligence.
+  if (config.skillRetriever)    (kernelDeps as any).skillRetriever = config.skillRetriever;
+  if (config.reflexionRetriever) (kernelDeps as any).reflexionRetriever = config.reflexionRetriever;
+  if (config.reflexionWriter)   (kernelDeps as any).reflexionWriter = config.reflexionWriter;
+  if (config.selfRagJudge)      (kernelDeps as any).selfRagJudge = config.selfRagJudge;
+  // C4 — Sensorium / Brain Skin.
+  if (config.behaviorSignalSource) (kernelDeps as any).behaviorSignalSource = config.behaviorSignalSource;
   // Cognitive-load + affective accumulators are always wired so the
   // kernel can render cross-turn directives. Callers that pass their
   // own instance (e.g. tests asserting cross-call state) win;
