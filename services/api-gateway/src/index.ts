@@ -94,6 +94,14 @@ import aiCostsRouter from './routes/ai-costs.router';
 // Wave 12 — metrics / observability snapshot
 import { metricsRouter } from './routes/metrics.router';
 import { createMetricsMiddleware } from './observability/metrics-middleware';
+// Central Command Phase A C4 — Sensorium / Brain Skin event ingestion.
+// Receives batched 14-event sensory payloads from the client-side bus.
+import sensoriumRouter from './routes/sensorium.router';
+// Central Command Phase A C6 — Cross-portal SSE fan-out subscriber.
+// Every authenticated user opens this to receive announcements /
+// notifications / state-mutations / wake-trigger events from the
+// brain. Tenant-scoped via JWT (NEVER via query/body).
+import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.router';
 // Wave 12 — MCP server + agent platform
 import mcpRouter, { agentCardRouter } from './routes/mcp.router';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
@@ -134,6 +142,10 @@ import approvalsRouter from './routes/approvals.router';
 // Wave 27 PhA1 — Vacancy-to-Lease orchestrator (migration 0098)
 import vacancyPipelineRouter from './routes/vacancy-pipeline.router';
 import adminJarvisRouter from './routes/admin-jarvis.router';
+// Central-Command AG-UI wire — POST /admin/jarvis/stream returns SSE-framed
+// AG-UI Protocol events. Replaces the 503 stub at
+// `apps/admin-platform-portal/.../intelligence/thread/[id]/message/route.ts`.
+import adminJarvisStreamRouter from './routes/admin-jarvis-stream.router';
 import {
   tenantJarvisRouter,
   ownerJarvisRouter,
@@ -685,6 +697,14 @@ api.route('/dsar', createDsarRouter());
 api.route('/ai-costs', aiCostsRouter);
 // Wave 12 — metrics snapshot for SystemHealth page
 api.route('/metrics', metricsRouter);
+// Central Command Phase A C4 — Sensorium / Brain Skin. POST /sensorium/events
+// receives batched sensory payloads from the client-side 14-event bus.
+api.route('/sensorium', sensoriumRouter);
+// Central Command Phase A C6 — Cross-portal SSE fan-out. GET
+// /cross-portal/subscribe streams brain-driven announcements +
+// notifications + state-mutations + wake-triggers to ANY logged-in
+// user, scoped to their JWT tenantId.
+api.route('/cross-portal', crossPortalSubscribeRouter);
 // Wave 12 — MCP server mounted for Claude Desktop, GPT, Cursor, partner agents
 api.route('/mcp', mcpRouter);
 // A2A Agent Card — expose under /api/v1/.well-known/agent.json (the standard
@@ -750,6 +770,10 @@ api.use('/platform/jarvis/*', tenantBudget.handler);
 api.route('/customer/jarvis', tenantJarvisRouter);
 api.route('/owner/jarvis', ownerJarvisRouter);
 api.route('/manager/jarvis', managerJarvisRouter);
+// Central-Command AG-UI SSE wire — mounted BEFORE the parent
+// admin-jarvis router so the more-specific path wins lookup order.
+// Replaces the 503 stub at the Next.js admin-platform-portal route.
+api.route('/admin/jarvis/stream', adminJarvisStreamRouter);
 api.route('/admin/jarvis', adminJarvisRouter);          // agency admin (Nyumba Mind — Agency Brain)
 api.route('/platform/jarvis', platformHqJarvisRouter);  // BossNyumba HQ (Nyumba Mind sovereign)
 // Platform overview KPI aggregator — read-only, platform-tier auth, used

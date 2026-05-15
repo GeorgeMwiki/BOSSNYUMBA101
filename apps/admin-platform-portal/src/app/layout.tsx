@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { SensoriumProvider } from '@/lib/sensorium/SensoriumProvider';
 
 export const metadata: Metadata = {
   title: 'BossNyumba HQ',
@@ -26,7 +27,13 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        {children}
+        {/* Central Command Phase A — C4 Sensorium / Brain Skin.
+            Wires the 14-event sensory bus to every page in the portal so
+            the brain (Mr. Mwikila) senses what the operator is doing in
+            real time. Side-channel only — never blocks render. */}
+        <SensoriumProvider surface="admin-platform-portal">
+          {children}
+        </SensoriumProvider>
       </body>
     </html>
   );

@@ -478,3 +478,85 @@ export * as introspection from './introspection/index.js';
  * loop runs above the kernel and is scheduled by the api-gateway.
  */
 export * as agency from './agency/index.js';
+
+/**
+ * AG-UI Protocol — brain-↔UI streaming wire. Typed event surface +
+ * SSE emitter + kernel-stream → AG-UI adapter. The api-gateway and
+ * Next.js admin portal share this contract so generative-UI primitives
+ * (charts, forms, KPI grids, etc.) render against a stable type tree.
+ */
+export {
+  createAgUiEmitter,
+  pumpKernelToAgUi,
+  uuidv7,
+  agUiSseHeaders,
+  type AgUiEmitterHandle,
+  type AgUiEmitterDeps,
+  type AgUiOtelSpanRecorder,
+  type KernelLikeEvent,
+  type KernelToAgUiAdapterDeps,
+} from './streaming/ag-ui-emitter.js';
+export {
+  validateAgUiEvent,
+  isAgUiEventType,
+  isTerminalAgUiEvent,
+  AG_UI_EVENT_TYPES,
+  AG_UI_TERMINAL_EVENT_TYPES,
+  AG_UI_UI_PART_KINDS,
+  type AgUiEvent,
+  type AgUiEventType,
+  type AgUiTerminalEventType,
+  type AgUiUiPart,
+  type AgUiUiPartKind,
+  type AgUiUsage,
+  type JsonPatch,
+  type JsonPatchOp,
+  type ColumnDef,
+  type KpiTile,
+  type JsonSchema,
+  type WorkflowStep,
+  type TimelineEvent,
+  type MapMarker,
+  type CalendarEvent,
+} from './streaming/ag-ui-types.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// HQ-tier tool vocabulary (Central Command — gap-closer for C2).
+//
+// 12 `platform.*` BrainTools the admin chat can invoke to actually RUN
+// the company through conversation. Surface includes:
+//   - 5 read tools  (list_tenants, list_users, system_health,
+//                    list_recent_traces, read_feature_flag)
+//   - 4 mutate tools (create_tenant, create_user, set_feature_flag,
+//                    run_consolidation_tick)
+//   - 1 destroy tool (set_killswitch)
+//   - 1 billing tool (adjust_invoice)
+//   - 1 external-comm tool (send_announcement)
+//
+// `seedHqBrainTools(registry, deps)` registers all 12 on the existing
+// `BrainToolRegistry`. Composition root in `services/api-gateway`
+// wires concrete adapters via `createHqToolRegistry`.
+// ─────────────────────────────────────────────────────────────────────
+
+export {
+  RISK_TIERS_ORDERED,
+  SOVEREIGN_LEDGER_TIERS,
+  assertHqToolSpecValid,
+  callerCanReachTenant,
+  callerHasAllScopes,
+  callerHasAnyScope,
+  compareRiskTier,
+  isSovereignTier,
+  requiresCostCeiling,
+  scopeMatches,
+  type HqCallerScopes,
+  type HqOtelSpanRecorder,
+  type HqRefusalReasonCode,
+  type HqSovereignLedgerSink,
+  type HqToolContext,
+  type HqToolExecutionResult,
+  type HqToolSpec,
+  type RiskTier,
+} from './risk-tier.js';
+
+export * as hqTools from './tool-spec/hq-tools/index.js';

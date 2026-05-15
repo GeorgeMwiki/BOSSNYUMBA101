@@ -57,6 +57,33 @@ const ALLOWLIST = [
     tracked_in: 'Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)',
     next_review: '2026-Q3',
   },
+  {
+    package: 'vega',
+    severity: ['high'],
+    fix: '>=6.2.0',
+    reason:
+      'GHSA-7f2v-3qq3-vvjf: Vega XSS via expressions abusing toString calls in environments using the VEGA_DEBUG global variable. BOSSNYUMBA never sets VEGA_DEBUG in production; the C3 generative-UI pipeline emits server-validated Vega-Lite specs that ajv-check before render, and the LLM never reaches the expression-builder surface. vega 6.x is a major version with a different rendering pipeline; sticking with 5.x until upstream lands a 5.x backport or we plan the 6.x migration.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
+    next_review: '2026-Q3',
+  },
+  {
+    package: 'vega-expression',
+    severity: ['high'],
+    fix: '>=5.2.1',
+    reason:
+      'GHSA-7f2v-3qq3-vvjf: Same advisory as vega — XSS via expressions abusing toString with VEGA_DEBUG. Same mitigation: VEGA_DEBUG never set in production; LLM never reaches expression surface (server-emitted, ajv-validated specs only).',
+    tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
+    next_review: '2026-Q3',
+  },
+  {
+    package: 'vega-functions',
+    severity: ['high'],
+    fix: '>=6.1.1',
+    reason:
+      'GHSA-m9rg-mr6g-75gm: vega-functions XSS via setdata function. The C3 generative-UI pipeline server-emits Vega-Lite specs that ajv-validate against the v5 JSON schema BEFORE render. The LLM never reaches client-side setdata — setdata is invoked only by the Vega runtime against server-controlled data payloads. setdata-XSS requires attacker-controlled data injection into a setdata call site, which doesn\'t exist in our pipeline.',
+    tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
+    next_review: '2026-Q3',
+  },
 ];
 
 function isAllowlisted(advisory) {

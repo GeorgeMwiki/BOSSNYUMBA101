@@ -70,3 +70,30 @@ export {
   type StallThresholds,
   type StalledGoalReport,
 } from './stall-detector.js';
+
+// HQ-tier wake triggers (C6 Phase A — Central Command). Four detectors
+// that complement the existing tenant-scope triggers with platform-HQ
+// scope signals: subscription churn, AI cost overrun, webhook DLQ
+// depth, and persona-drift breach. Read-port-typed so the kernel
+// package keeps zero runtime database imports.
+export {
+  createHqWakeTriggers,
+  createSubscriptionChurnTrigger,
+  createAiCostOverrunTrigger,
+  createWebhookDlqDepthTrigger,
+  createPersonaDriftBreachTrigger,
+  HQ_WAKE_TRIGGER_IDS,
+  type HqWakeTriggerDeps,
+  type SubscriptionChurnReadPort,
+  type SubscriptionChurnRow,
+  type SubscriptionChurnTriggerDeps,
+  type AiCostOverrunReadPort,
+  type AiCostOverrunTriggerDeps,
+  type BudgetEnvelopeRow,
+  type DlqDepthRow,
+  type WebhookDlqDepthReadPort,
+  type WebhookDlqDepthTriggerDeps,
+  type PersonaDriftAggregateRow,
+  type PersonaDriftBreachTriggerDeps,
+  type PersonaDriftReadPort,
+} from './wake-triggers/hq/index.js';

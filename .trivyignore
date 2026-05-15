@@ -39,3 +39,29 @@ CVE-2026-4800 # package=lodash, severity=HIGH
 #                 version >=4.18.0 does not exist on npm (latest is 4.17.21).
 #   tracked_in:   Docs/DEP_HYGIENE.md (lodash migration)
 #   next_review:  2026-Q3
+
+CVE-2025-59840 # package=vega + vega-expression, severity=HIGH
+#   GHSA-7f2v-3qq3-vvjf
+#   reason:       Vega XSS via expressions abusing toString calls in
+#                 environments using the VEGA_DEBUG global variable.
+#                 BOSSNYUMBA never sets VEGA_DEBUG in production; C3
+#                 generative-UI pipeline server-emits Vega-Lite specs
+#                 that ajv-check against the v5 JSON schema BEFORE
+#                 render. LLM never reaches the expression-builder
+#                 surface. vega 6.x is a major version with a different
+#                 rendering pipeline; sticking with 5.x until upstream
+#                 lands a 5.x backport or we plan the 6.x migration.
+#   tracked_in:   Docs/DEP_HYGIENE.md (vega 6.x migration)
+#   next_review:  2026-Q3
+
+CVE-2025-66648 # package=vega-functions, severity=HIGH
+#   GHSA-m9rg-mr6g-75gm
+#   reason:       vega-functions XSS via setdata function. setdata-XSS
+#                 requires attacker-controlled data injection into a
+#                 setdata call site, which doesn't exist in our pipeline.
+#                 C3 server emits + ajv-validates Vega-Lite specs; LLM
+#                 never reaches client-side setdata; setdata is invoked
+#                 only by the Vega runtime against server-controlled
+#                 data payloads.
+#   tracked_in:   Docs/DEP_HYGIENE.md (vega 6.x migration)
+#   next_review:  2026-Q3
