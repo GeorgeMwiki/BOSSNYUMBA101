@@ -58,6 +58,7 @@ import {
   createOpenAiEmbedder,
   registerSeedBrainTools,
   type BrainToolRegistry,
+  type BrainToolSpec,
   type DecisionTraceRecorder,
   type EmbedderPort,
   type KillswitchPort,
@@ -171,6 +172,22 @@ export interface BrainKernelWiringDeps {
    * follow-up.
    */
   readonly sensorRoutingService?: SensorRoutingServicePort;
+  /**
+   * Optional HQ-tier tool registry — when wired, the wiring merges
+   * its 12 `platform.*` BrainTools into the kernel's tool registry
+   * alongside the 5 PM seed tools (K9). The Central Command admin
+   * chat can then invoke them through the same disciplined pipeline
+   * (Zod gates, audit-trail, four-eye approval for sovereign tiers).
+   *
+   * Typed as `unknown` so this file does not pick up a hard dependency
+   * on the HQ-tool composition file's structural exports — the merge
+   * loop only relies on the `.list()` + `.register()` shape of a
+   * BrainToolRegistry.
+   */
+  readonly hqToolRegistry?: {
+    readonly registry: BrainToolRegistry;
+    readonly toolNames: ReadonlyArray<`platform.${string}`>;
+  };
 }
 
 /**
@@ -326,6 +343,42 @@ export function createBrainKernelWiring(
           error: err instanceof Error ? err.message : String(err),
         },
         'brain-kernel: tool-registry seed failed; continuing with empty registry',
+      );
+    }
+  }
+
+  // C2 — merge the HQ-tier tool registry (12 `platform.*` tools) into
+  // the kernel's tool registry. The HQ composition root already
+  // registered each tool on a separate registry; here we re-register
+  // each adapted spec on the kernel's registry so the kernel's tool-
+  // execution loop sees them as a single catalog.
+  if (deps.hqToolRegistry) {
+    let mergedCount = 0;
+    for (const spec of deps.hqToolRegistry.registry.list()) {
+      try {
+        toolRegistry.register(spec as BrainToolSpec);
+        mergedCount += 1;
+      } catch (err) {
+        if (deps.logger?.warn) {
+          deps.logger.warn(
+            {
+              wiring: 'brain-kernel',
+              tool: spec.name,
+              error: err instanceof Error ? err.message : String(err),
+            },
+            'brain-kernel: failed to merge HQ tool into kernel registry',
+          );
+        }
+      }
+    }
+    if (deps.logger?.info) {
+      deps.logger.info(
+        {
+          wiring: 'brain-kernel',
+          hqTools: mergedCount,
+          hqToolNames: deps.hqToolRegistry.toolNames,
+        },
+        'brain-kernel: HQ tools merged into registry',
       );
     }
   }
