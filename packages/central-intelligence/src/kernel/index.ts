@@ -305,6 +305,51 @@ export {
   type KernelStepRecord,
 } from './decision-trace.js';
 
+/**
+ * BrainToolSpec registry — kernel-side deterministic tool layer
+ * (Zod-validated, tier-gated, audit-logged). Distinct from the
+ * SaaS-billing `McpTier` in `@bossnyumba/mcp-server`; this is the
+ * INTERNAL-cost tier the brain reasons about. See `tool-spec.ts` for
+ * the seed catalog of 5 property-management tools.
+ */
+export {
+  createBrainToolRegistry,
+  createInMemoryBrainToolAuditSink,
+  registerSeedBrainTools,
+  computeKraMri,
+  triageMaintenanceTicket,
+  LookupTenantArrearsInputSchema,
+  LookupTenantArrearsOutputSchema,
+  ComputeKraMriInputSchema,
+  ComputeKraMriOutputSchema,
+  CheckComplianceCertificateInputSchema,
+  CheckComplianceCertificateOutputSchema,
+  GetMarketRateBandInputSchema,
+  GetMarketRateBandOutputSchema,
+  TriageMaintenanceTicketInputSchema,
+  TriageMaintenanceTicketOutputSchema,
+  SEED_BRAIN_TOOL_NAMES,
+  type BrainToolTier,
+  type BrainToolSpec,
+  type BrainToolAuditRow,
+  type BrainToolAuditSink,
+  type BrainToolOutcome,
+  type BrainToolRegistry,
+  type BrainToolRegistryDeps,
+  type InMemoryBrainToolAuditSink,
+  type LookupTenantArrearsInput,
+  type LookupTenantArrearsOutput,
+  type ComputeKraMriInput,
+  type ComputeKraMriOutput,
+  type CheckComplianceCertificateInput,
+  type CheckComplianceCertificateOutput,
+  type GetMarketRateBandInput,
+  type GetMarketRateBandOutput,
+  type TriageMaintenanceTicketInput,
+  type TriageMaintenanceTicketOutput,
+  type SeedBrainToolDeps,
+} from './tool-spec.js';
+
 // LITFIN-style four-tier memory hierarchy ports — episodic, semantic,
 // procedural, reflective. Adapters live in `@bossnyumba/database`; the
 // composition root binds them to the kernel via BrainKernelDeps.memory

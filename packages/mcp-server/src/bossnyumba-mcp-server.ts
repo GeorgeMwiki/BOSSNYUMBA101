@@ -49,6 +49,12 @@ import {
   resolveTemplateResource,
   type ResourceResolvers,
 } from './mcp-resources.js';
+import {
+  BOSSNYUMBA_PROMPTS,
+  getPrompt as getPromptOutcome,
+  type McpPromptArgument,
+  type McpPromptMessage,
+} from './prompts.js';
 
 // ============================================================================
 // Handler registry shape
@@ -264,6 +270,23 @@ export interface McpSdkServerLike {
     options: Record<string, unknown>,
     handler: () => Promise<McpSdkResourceResponse>,
   ): void;
+  /**
+   * Optional — only present on SDK versions that ship the `prompts`
+   * capability. The attachment helper feature-detects this method
+   * before registering so older SDK builds still work.
+   */
+  prompt?(
+    name: string,
+    description: string,
+    args: ReadonlyArray<McpPromptArgument>,
+    handler: (args: Record<string, unknown>) => Promise<McpSdkPromptResponse>,
+  ): void;
+}
+
+export interface McpSdkPromptResponse {
+  readonly description: string;
+  readonly messages: ReadonlyArray<McpPromptMessage>;
+  readonly isError?: boolean;
 }
 
 export interface McpSdkToolResponse {
@@ -354,6 +377,47 @@ export function attachToMcpSdkServer(
         };
       },
     );
+  }
+
+  // Register prompts when the SDK exposes the `prompts` registration
+  // method. Older SDK builds (pre-2024-11-05) lacked this surface, so
+  // we feature-detect rather than require it. JSON-RPC clients reach
+  // prompts via the gateway's `prompts/list` + `prompts/get` arms
+  // regardless of SDK support.
+  if (typeof sdkServer.prompt === 'function') {
+    for (const promptDef of BOSSNYUMBA_PROMPTS) {
+      sdkServer.prompt(
+        promptDef.name,
+        promptDef.description,
+        promptDef.arguments,
+        async (rawArgs) => {
+          const context = resolveContext();
+          // Coerce arg values to strings — the renderer expects text
+          // and treats missing / empty values as absent.
+          const args: Record<string, string> = {};
+          for (const [k, v] of Object.entries(rawArgs ?? {})) {
+            args[k] = typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v);
+          }
+          const outcome = getPromptOutcome(promptDef.name, args, context);
+          if (outcome.ok === true) {
+            return {
+              description: outcome.result.description,
+              messages: outcome.result.messages,
+            };
+          }
+          return {
+            description: outcome.error,
+            messages: [
+              {
+                role: 'system',
+                content: { type: 'text', text: `${outcome.errorCode}: ${outcome.error}` },
+              },
+            ],
+            isError: true,
+          };
+        },
+      );
+    }
   }
 }
 

@@ -2,7 +2,16 @@
 
 **Scope.** This runbook covers HMAC-root and signing-key rotation for BOSSNYUMBA:
 `AUDIT_HMAC_KEY`, `WEBHOOK_SIGNING_KEY`, `JWT_PEPPER`, `GEPG_SIGNING_KEY`,
-`SESSION_SIGNING_KEY`, plus any future symmetric secret used by the platform.
+`SESSION_SIGNING_KEY`, `SESSION_HASH_SECRET` (audit hash chain root, consumed by
+`packages/ai-copilot/src/security/audit-hash-chain.ts`), plus any future
+symmetric secret used by the platform.
+
+> **`SESSION_HASH_SECRET` is required on deploy.** Without it the audit hash
+> chain silently falls back to unkeyed SHA-256, which is forge-able by anyone
+> with database write access. The gateway `validateEnv()` enforces presence in
+> production (`NODE_ENV=production`). Rotate via the dual-key procedure below:
+> set `SESSION_HASH_SECRET_PREV=<old>` and `SESSION_HASH_SECRET=<new>` for the
+> 24h soak, then drop `_PREV`.
 
 It does **not** cover asymmetric key pairs (TLS / mTLS / RSA-signed JWTs) —
 those follow a cert-manager controlled rotation handled separately.

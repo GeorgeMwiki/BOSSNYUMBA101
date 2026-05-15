@@ -18,12 +18,15 @@
  * already exist in `packages/central-intelligence/__tests__/eval/
  * scenarios.ts` so this is a UI-side filter, not a new tag set.
  *
- * SUPER_ADMIN / ADMIN / TENANT_ADMIN only.
+ * Read endpoints: SUPER_ADMIN / ADMIN / TENANT_ADMIN.
+ * POST /dashboard/runs/:thoughtId/judge: SUPER_ADMIN / ADMIN only (sovereign,
+ * cost-bearing — also rate-limited + audit-emitted, see endpoint comment).
  */
 
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
+import { customRateLimit } from '../middleware/rate-limiter';
 import { UserRole } from '../types/user-role';
 import { safeInternalError } from '../utils/safe-error';
 
@@ -222,10 +225,32 @@ parityCapabilityDashboardRouter.get('/dashboard/runs/:thoughtId', async (c: AnyC
 
 // ─────────────────────────────────────────────────────────────────────
 // POST /dashboard/runs/:thoughtId/judge — re-judge a captured run.
+//
+// Re-judge is sovereign and cost-bearing (re-runs the LLM-judge against a
+// captured CoT). The router-level guard allows TENANT_ADMIN for read traffic,
+// but rejudge is restricted to platform-level admins only (SUPER_ADMIN /
+// ADMIN). A per-endpoint token-bucket rate-limit caps abuse: 5 calls per
+// 10 minutes per (tenant + user) key. Each invocation also fires through
+// the audit-trail recorder (`parity.rejudge`) so the action is permanently
+// recorded in the hash-chain.
 // ─────────────────────────────────────────────────────────────────────
+
+const rejudgeRateLimit = customRateLimit({
+  // 5 calls per 600 s window. Burst of 1 over the budget is acceptable —
+  // anything beyond returns 429.
+  maxRequests: 5,
+  windowSizeSeconds: 600,
+  keyGenerator: (c) => {
+    const auth = c.get('auth') as { tenantId?: string; userId?: string } | undefined;
+    return `parity:rejudge:${auth?.tenantId ?? 'unknown'}:${auth?.userId ?? 'unknown'}`;
+  },
+});
 
 parityCapabilityDashboardRouter.post(
   '/dashboard/runs/:thoughtId/judge',
+  // Override the router-level role gate — re-judge is platform-admin only.
+  requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  rejudgeRateLimit,
   async (c: AnyCtx) => {
     const services = getServices(c);
     const dashboard = services.parityCapabilityDashboard;
@@ -242,6 +267,39 @@ parityCapabilityDashboardRouter.post(
       const verdict = await dashboard.rejudge(auth.tenantId, thoughtId, {
         draftOverride: parsed.data.draft,
       });
+      // Best-effort audit-trail emission. The recorder shape mirrors
+      // audit-trail.router.ts:152 — degraded gateways without an auditTrail
+      // service slot simply skip the emission so the rejudge still returns.
+      try {
+        const auditPipeline = services.auditTrail;
+        if (auditPipeline?.recorder?.record) {
+          await auditPipeline.recorder.record({
+            tenantId: auth.tenantId,
+            actor: {
+              kind: 'human_action',
+              id: auth.userId ?? null,
+              display: null,
+            },
+            actionKind: 'parity.rejudge',
+            actionCategory: 'compliance',
+            subject: {
+              entityType: 'parity.thought',
+              entityId: thoughtId,
+              resourceUri: null,
+            },
+            ai: {
+              attachments: {
+                requestedBy: auth.userId ?? null,
+                draftOverride: parsed.data.draft ? true : false,
+              },
+            },
+          });
+        }
+      } catch {
+        // Audit emission must never fail the action — rejudge is the primary
+        // contract here. The audit chain has its own verify path that will
+        // surface a missing entry on next consistency check.
+      }
       return c.json({ success: true, data: verdict }, 201);
     } catch (e) {
       return internalError(c, e);

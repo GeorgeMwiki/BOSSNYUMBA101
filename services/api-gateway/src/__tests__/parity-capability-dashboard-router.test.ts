@@ -16,12 +16,12 @@ import jwt from 'jsonwebtoken';
 import { parityCapabilityDashboardRouter } from '../routes/parity-capability-dashboard.router';
 import { getJwtSecret } from '../config/jwt';
 
-function mintJwt(): string {
+function mintJwt(role: 'TENANT_ADMIN' | 'ADMIN' | 'SUPER_ADMIN' = 'TENANT_ADMIN'): string {
   return jwt.sign(
     {
       userId: 'usr_eval',
       tenantId: 'tn_eval',
-      role: 'TENANT_ADMIN',
+      role,
       permissions: ['*'],
       propertyAccess: ['*'],
     },
@@ -138,7 +138,7 @@ describe('parity-capability-dashboard router', () => {
     expect(res.status).toBe(404);
   });
 
-  it('POST /dashboard/runs/:id/judge calls the rejudge service', async () => {
+  it('POST /dashboard/runs/:id/judge calls the rejudge service for platform admins', async () => {
     const rejudge = vi.fn(async () => ({
       thoughtId: 't1',
       threadId: 'th1',
@@ -160,13 +160,64 @@ describe('parity-capability-dashboard router', () => {
     const res = await app.request('/parity/capability/dashboard/runs/t1/judge', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${mintJwt()}`,
+        Authorization: `Bearer ${mintJwt('ADMIN')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(201);
     expect(rejudge).toHaveBeenCalledWith('tn_eval', 't1', { draftOverride: undefined });
+  });
+
+  it('POST /dashboard/runs/:id/judge rejects TENANT_ADMIN (platform-admin only)', async () => {
+    const rejudge = vi.fn(async () => ({}));
+    const app = buildApp({
+      parityCapabilityDashboard: {
+        getRollup: vi.fn(),
+        listRuns: vi.fn(),
+        getRun: vi.fn(),
+        rejudge,
+      },
+    });
+    const res = await app.request('/parity/capability/dashboard/runs/t1/judge', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${mintJwt('TENANT_ADMIN')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(403);
+    expect(rejudge).not.toHaveBeenCalled();
+  });
+
+  it('POST /dashboard/runs/:id/judge emits an audit-trail entry when the recorder is wired', async () => {
+    const rejudge = vi.fn(async () => ({ thoughtId: 't9' }));
+    const record = vi.fn(async () => ({ id: 'aud_1' }));
+    const app = buildApp({
+      parityCapabilityDashboard: {
+        getRollup: vi.fn(),
+        listRuns: vi.fn(),
+        getRun: vi.fn(),
+        rejudge,
+      },
+      auditTrail: { recorder: { record } },
+    });
+    const res = await app.request('/parity/capability/dashboard/runs/t9/judge', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${mintJwt('SUPER_ADMIN')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ draft: 'override-cot' }),
+    });
+    expect(res.status).toBe(201);
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tn_eval',
+      actionKind: 'parity.rejudge',
+      subject: expect.objectContaining({ entityType: 'parity.thought', entityId: 't9' }),
+    }));
   });
 
   it('rejects unauthenticated requests', async () => {

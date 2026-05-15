@@ -58,6 +58,7 @@ describe('validate-env', () => {
     const { warnings } = validateEnv({
       ...VALID_BASE,
       NODE_ENV: 'production',
+      SESSION_HASH_SECRET: 'a'.repeat(48),
     } as never);
     expect(warnings.length).toBeGreaterThanOrEqual(1);
     expect(warnings.some((w) => w.includes('SENTRY_DSN'))).toBe(true);
@@ -73,8 +74,37 @@ describe('validate-env', () => {
       ALLOWED_ORIGINS: 'https://bossnyumba.com',
       APP_VERSION: '1.0.0',
       GIT_SHA: 'deadbeef',
+      SESSION_HASH_SECRET: 'a'.repeat(48),
     } as never);
     expect(warnings.some((w) => w.includes('JWT_SECRET'))).toBe(true);
+  });
+
+  it('throws when SESSION_HASH_SECRET is missing in production', () => {
+    expect(() =>
+      validateEnv({
+        ...VALID_BASE,
+        NODE_ENV: 'production',
+      } as never)
+    ).toThrow(/SESSION_HASH_SECRET/);
+  });
+
+  it('rejects a too-short SESSION_HASH_SECRET when provided', () => {
+    expect(() =>
+      validateEnv({
+        ...VALID_BASE,
+        SESSION_HASH_SECRET: 'too-short',
+      } as never)
+    ).toThrow(/SESSION_HASH_SECRET/);
+  });
+
+  it('accepts a valid SESSION_HASH_SECRET + optional _PREV', () => {
+    const { env } = validateEnv({
+      ...VALID_BASE,
+      SESSION_HASH_SECRET: 'a'.repeat(48),
+      SESSION_HASH_SECRET_PREV: 'b'.repeat(48),
+    } as never);
+    expect(env.SESSION_HASH_SECRET).toBe('a'.repeat(48));
+    expect(env.SESSION_HASH_SECRET_PREV).toBe('b'.repeat(48));
   });
 
   it('warns when dev env points at a non-localhost DB', () => {
