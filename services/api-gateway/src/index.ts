@@ -89,6 +89,7 @@ import lpmsRouter from './routes/lpms.router';
 // Wave 9 enterprise polish routers
 import featureFlagsRouter from './routes/feature-flags.router';
 import gdprRouter from './routes/gdpr.router';
+import { createDsarRouter } from './routes/dsar.router';
 import aiCostsRouter from './routes/ai-costs.router';
 // Wave 12 — metrics / observability snapshot
 import { metricsRouter } from './routes/metrics.router';
@@ -147,6 +148,9 @@ import taskAgentsRouter from './routes/task-agents.router';
 import tenantBrandingRouter from './routes/tenant-branding.router';
 // Wave 27 Agent C — Audit Trail v2 (cryptographically-verifiable append-only log)
 import auditTrailRouter from './routes/audit-trail.router';
+// Wave-K Tier-3 — Sovereign action-ledger admin surface (tail + verify).
+// Wraps @bossnyumba/database's sovereign-action-ledger service; SUPER_ADMIN+ADMIN only.
+import sovereignLedgerRouter from './routes/sovereign-ledger.router';
 // Wave 27 Agent F — Risk-recompute dispatcher manual-trigger surface.
 import { createRiskRecomputeRouter } from './routes/risk-recompute.router';
 // Wave 28 — Head briefing cohesive morning screen (JSON / markdown / voice).
@@ -677,6 +681,7 @@ api.route('/lpms', lpmsRouter);
 // Wave 9 — feature flags, GDPR right-to-be-forgotten, AI cost ledger.
 api.route('/feature-flags', featureFlagsRouter);
 api.route('/gdpr', gdprRouter);
+api.route('/dsar', createDsarRouter());
 api.route('/ai-costs', aiCostsRouter);
 // Wave 12 — metrics snapshot for SystemHealth page
 api.route('/metrics', metricsRouter);
@@ -756,6 +761,8 @@ api.route('/task-agents', taskAgentsRouter);
 api.route('/tenant-branding', tenantBrandingRouter);
 // Wave 27 Agent C — Audit Trail v2 (record / verify / bundle / entries)
 api.route('/audit-trail', auditTrailRouter);
+// Wave-K Tier-3 — Sovereign action-ledger admin (tail + verify).
+api.route('/admin/sovereign-ledger', sovereignLedgerRouter);
 // Wave 28 — Head briefing (cohesive morning screen)
 api.route('/head/briefing', headBriefingRouter);
 // Wave 28 — Junior-AI factory (team-lead self-service provisioning)
@@ -1068,6 +1075,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: wake-loop cron stop failed');
   }
+  try {
+    serviceRegistry.sovereignLedgerVerifyCron?.stop();
+    logger.info('shutdown: sovereign-ledger verify cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: sovereign-ledger verify cron stop failed');
+  }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
   // await the drain completion.
@@ -1143,6 +1156,10 @@ if (require.main === module) {
   // so the brain wakes on cadence even when no CronJob is installed.
   // Degraded-mode (no DB) is internally a no-op; safe to call unconditionally.
   serviceRegistry.wakeLoopCron?.start();
+  // Wave-K Tier-3 — sovereign-ledger verify supervisor. Walks the
+  // hash-chain on cadence (default 1h) and emits verified/tampered
+  // events on the shared bus. Degraded-mode (no DB) is a no-op.
+  serviceRegistry.sovereignLedgerVerifyCron?.start();
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

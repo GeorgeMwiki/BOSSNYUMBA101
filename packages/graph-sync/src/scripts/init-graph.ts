@@ -32,9 +32,11 @@ async function main() {
 
   // Apply constraints and indexes
   console.log('Applying constraints and indexes...');
-  const session = client.writeSession();
   try {
-    const result = await applyConstraintsAndIndexes(session);
+    // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+    // Pass the Neo4jClient directly so every DDL statement routes through
+    // `runSchemaQuery` (explicit tenant-bypass) instead of a bare session.
+    const result = await applyConstraintsAndIndexes(client);
 
     console.log('');
     console.log('Results:');
@@ -53,7 +55,6 @@ async function main() {
     console.log('');
     console.log('Graph initialization complete.');
   } finally {
-    await session.close();
     await client.close();
   }
 }

@@ -61,6 +61,21 @@ export function pastDate(days: number): string {
 }
 
 // ============================================================================
+// STABLE IDS — match e2e/fixtures/seed.sql, used by specs that need to
+// reference specific records without first having to read them back from the
+// API. Keep these IN SYNC with seed.sql.
+// ============================================================================
+
+export const testIds = {
+  tenantId: 'tnt_e2e_0001',
+  customerUserId: 'usr_e2e_customer_0001',
+  adminUserId: 'usr_e2e_admin_0001',
+  propertyId: 'prp_e2e_0001',
+  unitId: 'unt_e2e_0001',
+  leaseId: 'lse_e2e_0001',
+} as const;
+
+// ============================================================================
 // TEST USERS — use E2E_TEST_* env when set (live demo / production runs)
 // ============================================================================
 

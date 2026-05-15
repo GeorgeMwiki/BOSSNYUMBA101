@@ -187,12 +187,21 @@ describe('kernel — step-7 debate detour wiring', () => {
       },
     };
     const kernel = createBrainKernel({ sensors: [sensor], debate });
-    const decision = await kernel.think(makeRequest({ stakes: 'critical' }));
+    // NOTE: this test exercises the debate-fallback wiring, not the
+    // sovereign-tier authorization gate. K5.2 policy-gate's
+    // off-hours-sovereign check now correctly refuses `stakes: 'critical'`
+    // outside EAT business hours (08:00–18:00 weekdays) — orthogonal to
+    // what we're testing here. Use `'high'` so we still trigger debate
+    // (shouldDebate fires on high OR critical) without crossing the
+    // sovereign-authorization line.
+    const decision = await kernel.think(makeRequest({ stakes: 'high' }));
     if (decision.kind === 'answer' || decision.kind === 'softened') {
       // Sensor id should be the regular sensor, not __debate__.
       expect(decision.provenance.sensorId).toBe('claude-secondary');
     } else {
-      throw new Error('expected the kernel to recover via fallback');
+      throw new Error(
+        `expected the kernel to recover via fallback, got kind=${decision.kind}`,
+      );
     }
   });
 });

@@ -13,6 +13,14 @@
 import type { Context } from 'hono';
 import type { NextFunction, Request, Response } from 'express';
 import type pino from 'pino';
+// Wave-K W-Data — scrub RESTRICTED / CONFIDENTIAL field values from
+// error envelopes BEFORE they leave the gateway. The data-classification
+// registry has zero call sites today; without this gate, an
+// `error.details` payload from a Drizzle constraint violation would
+// leak raw `customers.phone` / `payments.mpesa_phone` straight to the
+// client. Routes that NEED raw values (DSAR export) set
+// `c.set('skipScrub', true)`.
+import { scrubIfNotOptedOut } from './classification-scrubber';
 
 export interface ErrorEnvelopeBody {
   error: {
@@ -82,6 +90,8 @@ export function createHonoErrorHandler(logger: pino.Logger) {
   return (err: Error, c: Context) => {
     const requestId = c.get('requestId') as string | undefined;
     const { status, body } = buildEnvelope(err, requestId);
+    const skipScrub = c.get('skipScrub') as boolean | undefined;
+    const scrubbed = scrubIfNotOptedOut(body, skipScrub) as ErrorEnvelopeBody;
     logger.error(
       {
         err: err instanceof Error ? { message: err.message, stack: err.stack } : err,
@@ -90,7 +100,7 @@ export function createHonoErrorHandler(logger: pino.Logger) {
       },
       'hono error envelope'
     );
-    return c.json(body, status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500);
+    return c.json(scrubbed, status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500);
   };
 }
 
@@ -102,6 +112,8 @@ export function createExpressErrorHandler(logger: pino.Logger) {
   return (err: Error, req: Request, res: Response, _next: NextFunction): void => {
     const requestId = (req as Request & { requestId?: string }).requestId;
     const { status, body } = buildEnvelope(err, requestId);
+    // Express doesn't carry the Hono `skipScrub` flag; default to scrub.
+    const scrubbed = scrubIfNotOptedOut(body, false) as ErrorEnvelopeBody;
     logger.error(
       {
         err: err instanceof Error ? { message: err.message, stack: err.stack } : err,
@@ -110,6 +122,6 @@ export function createExpressErrorHandler(logger: pino.Logger) {
       },
       'express error envelope'
     );
-    res.status(status).json(body);
+    res.status(status).json(scrubbed);
   };
 }

@@ -111,6 +111,29 @@ export interface SemanticSearchArgs {
   readonly limit?: number;
 }
 
+export interface SemanticSearchByEmbeddingArgs {
+  readonly tenantId: string | null;
+  readonly userId?: string | null;
+  /**
+   * Caller-produced query embedding. Producer-side dimensionality
+   * (OpenAI text-embedding-3-small = 1536). Adapters validate.
+   */
+  readonly embedding: ReadonlyArray<number>;
+  /** Maximum number of facts to return. Default 8. */
+  readonly limit?: number;
+  /**
+   * Maximum cosine distance (0 = identical, 2 = opposite). Facts
+   * with `<=> embedding > maxDistance` are filtered out. Default 1.0
+   * for parity with the database service.
+   */
+  readonly maxDistance?: number;
+}
+
+export interface SemanticFactWithSimilarity extends SemanticFact {
+  /** Cosine distance (0 = identical). Lower is better. */
+  readonly distance: number;
+}
+
 export interface SemanticDecayArgs {
   readonly tenantId: string | null;
   readonly decayPerDay: number;
@@ -120,6 +143,15 @@ export interface SemanticMemoryPort {
   upsertFact(args: SemanticUpsertArgs): Promise<void>;
   lookup(args: SemanticLookupArgs): Promise<SemanticFact | null>;
   search(args: SemanticSearchArgs): Promise<ReadonlyArray<SemanticFact>>;
+  /**
+   * Optional embedding-based retrieval. Adapters that have a
+   * pgvector / FAISS / Pinecone backend implement this; in-memory
+   * fakes may omit it. Callers must guard with `typeof port.searchByEmbedding === 'function'`
+   * before invoking.
+   */
+  searchByEmbedding?(
+    args: SemanticSearchByEmbeddingArgs,
+  ): Promise<ReadonlyArray<SemanticFactWithSimilarity>>;
   decay(args: SemanticDecayArgs): Promise<number>;
 }
 

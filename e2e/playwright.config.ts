@@ -2,10 +2,27 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * BOSSNYUMBA Platform E2E Configuration
- * Uses env: OWNER_PORTAL_URL, ADMIN_PORTAL_URL, CUSTOMER_APP_URL, ESTATE_MANAGER_URL.
- * For live demo, set these and optionally E2E_TEST_* (see e2e/.env.example), or source e2e/.env before running.
+ *
+ * Real-backend mode (default — production-faithful, used by CI):
+ *   - Start the stack with `docker compose -f docker-compose.e2e.yml up -d --wait`
+ *     (or `pnpm test:e2e:local`) which boots postgres + api-gateway + customer-app.
+ *   - Specs hit the real api-gateway. `page.route()` mocks of internal endpoints
+ *     are FORBIDDEN — they hid the FeedbackThumbs 👍/👎 schema mismatch the
+ *     wave-K audit caught. Third-party connectors (M-Pesa STK) MAY be mocked at
+ *     the network level, but the api-gateway itself never is.
+ *
+ * Legacy stub-server mode (opt-in only):
+ *   - Set `E2E_USE_STUB=1` to boot the lightweight HTML stub on ports 3000-3003.
+ *     Specs that use `page.route()` still pass, but THIS PATH CAN HIDE BUGS.
+ *     Reserved for local iteration on UI selectors, never the default.
+ *
+ * Environment overrides (CI / staging): OWNER_PORTAL_URL, ADMIN_PORTAL_URL,
+ * CUSTOMER_APP_URL, ESTATE_MANAGER_URL, API_GATEWAY_URL, E2E_TEST_* creds.
  * @see https://playwright.dev/docs/test-configuration
  */
+
+const USE_STUB = process.env.E2E_USE_STUB === '1';
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -17,15 +34,15 @@ export default defineConfig({
     ['list'],
     ...(process.env.CI ? [['github'] as const] : []),
   ],
-  
+
   /* Global timeout for each test */
   timeout: 60000,
-  
+
   /* Expect timeout */
   expect: {
     timeout: 10000,
   },
-  
+
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:3003',
     trace: 'on-first-retry',
@@ -33,91 +50,102 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 10000,
     navigationTimeout: 15000,
-    
+
     /* Viewport size */
     viewport: { width: 1280, height: 720 },
-    
+
     /* Ignore HTTPS errors */
     ignoreHTTPSErrors: true,
-    
+
     /* Locale and timezone */
     locale: 'en-KE',
     timezoneId: 'Africa/Nairobi',
   },
-  
-  /* Configure projects for different portals */
+
+  /*
+   * Project scoping.
+   *
+   *   - Each project pins `testMatch` to its own subdirectory under tests/ so
+   *     `--project=customer-app` no longer accidentally runs admin-portal or
+   *     estate-manager specs (the wave-K audit found control-tower.spec.ts
+   *     timing out under the customer-app project because it had no testMatch).
+   *
+   *   - The default `testDir: './tests'` plus per-project `testMatch` means a
+   *     run with no project filter still discovers every spec; a run with
+   *     `--project=customer-app` enumerates ONLY customer-app/**.
+   */
   projects: [
     /* Setup project for authentication state */
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
     },
-    
+
     /* Estate Manager Portal */
     {
       name: 'estate-manager',
+      testMatch: 'estate-manager-app/**/*.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.ESTATE_MANAGER_URL ?? 'http://localhost:3003',
       },
-      // dependencies: ['setup'],
     },
-    
+
     /* Customer Mobile App / PWA */
     {
       name: 'customer-app',
+      testMatch: 'customer-app/**/*.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
       },
     },
-    
+
     /* Customer App - Mobile viewport */
     {
       name: 'customer-app-mobile',
+      testMatch: 'customer-app/**/*.spec.ts',
       use: {
         ...devices['iPhone 13'],
         baseURL: process.env.CUSTOMER_APP_URL ?? 'http://localhost:3002',
       },
     },
-    
+
     /* Owner Portal */
     {
       name: 'owner-portal',
+      testMatch: 'owner-portal/**/*.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
       },
     },
-    
+
     /* Admin Portal (Internal) */
     {
       name: 'admin-portal',
+      testMatch: 'admin-portal/**/*.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3001',
       },
     },
   ],
-  
+
   /*
    * Local dev servers.
    *
-   * The real Next.js dev servers for the four portals compile slowly and
-   * sometimes produce transient middleware-manifest failures, which makes
-   * them unsuitable for hermetic critical-flows runs. Instead, by default
-   * we boot a tiny Node HTTP stub (e2e/stub-server/stub.mjs) on each port
-   * that serves just enough HTML for the spec selectors and assertions.
+   * Real-backend mode (default): `webServer` is undefined — the operator runs
+   * `docker compose -f docker-compose.e2e.yml up -d --wait` BEFORE
+   * `pnpm test:e2e`. That way the api-gateway, customer-app, and postgres all
+   * boot from the production-faithful Dockerfiles, real auth/feedback/payment
+   * flows execute, and specs cannot accidentally mock internal endpoints.
    *
-   * All API traffic is mocked via `page.route()` inside the specs, so the
-   * stub is only responsible for the origin HTML.
-   *
-   * Override by setting USE_REAL_SERVERS=1 and running the pnpm dev filters
-   * yourself, or by pointing the *_URL env vars at a staging deployment.
+   * Stub-server mode (`E2E_USE_STUB=1`): boot the legacy node HTML stubs for
+   * fast local iteration. Kept for backwards compat — DO NOT USE IN CI.
    */
-  webServer: process.env.USE_REAL_SERVERS
-    ? undefined
-    : [
+  webServer: USE_STUB
+    ? [
         {
           command: 'PORT=3002 node stub-server/stub.mjs',
           url: 'http://localhost:3002/__stub_ready',
@@ -142,5 +170,6 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           timeout: 15000,
         },
-      ],
+      ]
+    : undefined,
 });

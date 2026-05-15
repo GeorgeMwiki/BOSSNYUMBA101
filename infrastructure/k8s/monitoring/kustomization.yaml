@@ -4,3 +4,5 @@ kind: Kustomization
 resources:
   - prometheus-config.yaml
   - grafana-deployment.yaml
+  # Wave-K Tier-3 W-Ops — Grafana dashboards + provisioning ConfigMaps.
+  - grafana-dashboards-configmap.yaml

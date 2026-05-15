@@ -30,3 +30,19 @@ export type {
   DsarRow,
   DsarTableName,
 } from './types.js';
+
+// Drizzle-backed implementation of the `DsarDataSource` port. The
+// composition root passes a Drizzle client + the database `classify`
+// function and wires both into the compiler.
+export {
+  createDsarDataSourceDrizzle,
+  createDatabaseClassificationLookup,
+  DSAR_TABLE_BINDINGS,
+} from './dsar-data-source-drizzle.js';
+
+export type {
+  CreateDsarDataSourceDrizzleOptions,
+  DatabaseClassifyFn,
+  DsarDrizzleClient,
+  SqlTemplateFn,
+} from './dsar-data-source-drizzle.js';

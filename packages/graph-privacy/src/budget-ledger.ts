@@ -1,6 +1,21 @@
 /**
  * In-process privacy-budget ledger with basic sequential composition.
  *
+ * @deprecated Wave-K W-Data — use `PrivacyBudgetComposerService` from
+ *   `@bossnyumba/database/services/privacy-budget-composer.service`
+ *   instead. The composer is the SINGLE gate that meters both the
+ *   platform-wide cohort budget (this ledger) and the per-tenant
+ *   budget (`PrivacyBudgetLedger` in `@bossnyumba/ai-copilot/dp-memory`).
+ *   Without unified accounting an attacker who alternated between
+ *   cross-tenant queries and platform cohort queries could compound
+ *   effective ε past either ledger's cap without either noticing.
+ *
+ *   Migration: pass `budgetComposer` into `createDpAggregator` and the
+ *   aggregator routes all reserve/recordSpend through the composer.
+ *   This ledger remains as the back-compat fallback for callers that
+ *   haven't migrated and as a local audit shadow for callers that
+ *   still rely on the `snapshot()` surface.
+ *
  * Every Reserve call atomically debits against the configured total.
  * When the budget would go below zero, the Reserve throws and nothing
  * is debited — critical for the invariant "reserve before read" in

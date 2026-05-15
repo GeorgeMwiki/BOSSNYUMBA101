@@ -75,6 +75,31 @@ function assertSafeIdent(value: string, kind: 'label' | 'relationship type'): st
   return value;
 }
 
+/**
+ * Asserts every payload in a batch shares the same non-empty `tenantId`
+ * and returns it. Throws before any Cypher reaches Neo4j when callers
+ * smuggle a foreign row into the batch — a class of bug that the
+ * tenant-scoped Cypher gate could not catch on its own (the gate runs
+ * per query, not per row).
+ */
+function assertHomogenousTenant(tenantIds: ReadonlyArray<string>, caller: string): string {
+  if (tenantIds.length === 0) {
+    throw new Error(`graph-sync.${caller}: empty batch — caller should short-circuit`);
+  }
+  const first = tenantIds[0];
+  if (typeof first !== 'string' || first.trim().length === 0) {
+    throw new Error(`graph-sync.${caller}: tenantId is required and must be a non-empty string`);
+  }
+  for (let i = 1; i < tenantIds.length; i++) {
+    if (tenantIds[i] !== first) {
+      throw new Error(
+        `graph-sync.${caller}: heterogeneous tenantId batch (${first} vs ${tenantIds[i]}) — refusing to risk cross-tenant write`,
+      );
+    }
+  }
+  return first;
+}
+
 export class GraphSyncEngine {
   constructor(private client: Neo4jClient) {}
 
@@ -99,15 +124,24 @@ export class GraphSyncEngine {
   }
 
   /**
-   * Batch upsert nodes (high throughput via UNWIND)
+   * Batch upsert nodes (high throughput via UNWIND).
+   *
+   * TENANT ISOLATION: every payload MUST share the same `tenantId`. We
+   * enforce that here (no silent cross-tenant batches) and embed the
+   * top-level `$tenantId` in the Cypher so the tenant-scope guard fires
+   * and the per-row `node.tenantId` is hard-pinned to it via a `WITH`
+   * filter — defence in depth against a caller smuggling a foreign row
+   * into the batch.
    */
   async batchUpsertNodes(label: string, nodes: NodeSyncPayload[]): Promise<number> {
     if (nodes.length === 0) return 0;
     const safeLabel = assertSafeIdent(label, 'label');
+    const tenantId = assertHomogenousTenant(nodes.map(n => n.tenantId), 'batchUpsertNodes');
 
     const cypher = `
       UNWIND $nodes AS node
-      MERGE (n:${safeLabel} {_tenantId: node.tenantId, _id: node.id})
+      WITH node WHERE node.tenantId = $tenantId
+      MERGE (n:${safeLabel} {_tenantId: $tenantId, _id: node.id})
       SET n += node.properties,
           n._syncedAt = datetime(),
           n._sourceTable = $sourceTable
@@ -120,6 +154,7 @@ export class GraphSyncEngine {
     }));
 
     await this.client.writeQuery(cypher, {
+      tenantId,
       nodes: nodeData,
       sourceTable: safeLabel.toLowerCase() + 's',
     });
@@ -151,7 +186,13 @@ export class GraphSyncEngine {
   }
 
   /**
-   * Batch upsert relationships (high throughput via UNWIND)
+   * Batch upsert relationships (high throughput via UNWIND).
+   *
+   * TENANT ISOLATION: every payload MUST share the same `tenantId`. We
+   * enforce that here, embed the top-level `$tenantId` in the Cypher so
+   * the tenant-scope guard fires, and filter out any row whose
+   * per-record `tenantId` doesn't match — defence in depth against
+   * cross-tenant smuggling.
    */
   async batchUpsertRelationships(
     fromLabel: string,
@@ -163,11 +204,16 @@ export class GraphSyncEngine {
     const safeFrom = assertSafeIdent(fromLabel, 'label');
     const safeTo = assertSafeIdent(toLabel, 'label');
     const safeRel = assertSafeIdent(relType, 'relationship type');
+    const tenantId = assertHomogenousTenant(
+      relationships.map(r => r.tenantId),
+      'batchUpsertRelationships',
+    );
 
     const cypher = `
       UNWIND $rels AS rel
-      MATCH (a:${safeFrom} {_tenantId: rel.tenantId, _id: rel.fromId})
-      MATCH (b:${safeTo} {_tenantId: rel.tenantId, _id: rel.toId})
+      WITH rel WHERE rel.tenantId = $tenantId
+      MATCH (a:${safeFrom} {_tenantId: $tenantId, _id: rel.fromId})
+      MATCH (b:${safeTo} {_tenantId: $tenantId, _id: rel.toId})
       MERGE (a)-[r:${safeRel}]->(b)
       SET r += rel.properties,
           r._syncedAt = datetime()
@@ -180,7 +226,7 @@ export class GraphSyncEngine {
       properties: sanitizeProperties(r.properties ?? {}),
     }));
 
-    await this.client.writeQuery(cypher, { rels: relData });
+    await this.client.writeQuery(cypher, { tenantId, rels: relData });
     return relationships.length;
   }
 

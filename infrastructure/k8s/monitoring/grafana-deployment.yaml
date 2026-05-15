@@ -50,6 +50,16 @@ spec:
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
+            # Wave-K Tier-3 W-Ops — provisioning manifest tells Grafana
+            # which folder to scan for auto-loaded dashboards.
+            - name: dashboards-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            # The dashboard JSONs themselves — mounted at the path the
+            # provisioning manifest above declares (.options.path).
+            - name: dashboards-json
+              mountPath: /etc/grafana/provisioning/dashboards/json
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /api/health
@@ -65,6 +75,13 @@ spec:
       volumes:
         - name: grafana-storage
           emptyDir: {}
+        # Wave-K Tier-3 W-Ops — Grafana dashboard auto-import.
+        - name: dashboards-provisioning
+          configMap:
+            name: grafana-dashboards-provisioning
+        - name: dashboards-json
+          configMap:
+            name: grafana-dashboards
 ---
 apiVersion: v1
 kind: Service

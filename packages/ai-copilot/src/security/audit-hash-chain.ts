@@ -21,6 +21,11 @@
  */
 
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
+// Wave-K Tier-3 — defer key-rotation verification to the canonical
+// `verifyWithRotation` primitive from @bossnyumba/observability. The
+// local rowHashMatches() helper retained below now delegates so the
+// rotation contract has a single source of truth across the platform.
+import { verifyWithRotation } from '@bossnyumba/observability';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +59,24 @@ export interface ChainVerificationResult {
   readonly entriesChecked: number;
   readonly brokenAt?: number;
   readonly error?: string;
+  /**
+   * Breakdown of which signing key validated each row, during a
+   * rotation-overlap soak window. Counts every row whose HMAC was
+   * recomputed (recomputeHash=true) — verifyRandomSample uses sampling
+   * so its breakdown reflects sampled entries only.
+   *
+   *   current  — signed under the active secret
+   *   previous — signed under the previous secret (drainage candidate)
+   *   legacy   — chain pre-dates HMAC rotation (no secrets configured)
+   *
+   * Operators monitor `previous` over the 24h soak: it should trend to
+   * zero before the previous key is removed.
+   */
+  readonly roleBreakdown?: {
+    readonly current: number;
+    readonly previous: number;
+    readonly legacy: number;
+  };
 }
 
 export interface RandomSampleVerificationResult extends ChainVerificationResult {
@@ -191,14 +214,34 @@ function validateNonEmpty(value: string | undefined, field: string): void {
 }
 
 /**
- * Recompute the expected row hash and compare against the persisted one.
- * Accepts EITHER the active or previous secret for rotation-overlap reads.
- * When no secrets are configured, falls back to legacy SHA-256.
+ * Result of verifying a single row against the rotation pair. Carries the
+ * role of the secret that validated so the verifier can attribute reads
+ * during a key-rotation soak window:
+ *
+ *   'current'  — entry was signed under the active secret
+ *   'previous' — entry was signed under the previous secret (rotation overlap)
+ *   'legacy'   — both secrets are unset and SHA-256 fallback validated
+ *   null       — neither key matched (tamper)
  */
-function rowHashMatches(
+type RowHashRole = 'current' | 'previous' | 'legacy' | null;
+
+/**
+ * Recompute the expected row hash and compare against the persisted one.
+ *
+ * When BOTH active + previous secrets are present, delegates to
+ * `verifyWithRotation` from @bossnyumba/observability so the rotation
+ * contract has a single source of truth platform-wide. When only one
+ * key is set we fall through to a single-key compare; when neither
+ * is configured we fall back to plain SHA-256 for legacy chains.
+ *
+ * Returns the role attribution so the caller can surface drainage
+ * progress during a 24h soak (e.g. operators count `role='previous'`
+ * row-checks and confirm the count is dropping over the window).
+ */
+function rowHashRole(
   entry: HashedAuditEntry,
   secrets: ResolvedSecrets,
-): boolean {
+): RowHashRole {
   const inputs = {
     sequenceId: entry.sequenceId,
     prevHash: entry.prevHash,
@@ -208,16 +251,57 @@ function rowHashMatches(
     payload: entry.payload,
     timestamp: entry.createdAt,
   };
+
+  // No HMAC secrets configured → legacy SHA-256 path. Preserves
+  // bootstrap / dev compatibility for chains seeded before rotation
+  // was introduced.
   if (!secrets.active && !secrets.previous) {
-    return digestEquals(entry.thisHash, hashAuditPayload(inputs, null));
+    if (digestEquals(entry.thisHash, hashAuditPayload(inputs, null))) {
+      return 'legacy';
+    }
+    return null;
   }
-  if (secrets.active && digestEquals(entry.thisHash, hashAuditPayload(inputs, secrets.active))) {
-    return true;
+
+  // Rotation soak — both keys present. Defer to the canonical
+  // observability primitive so the rotation contract stays consistent
+  // across audit chain, webhook signing, JWT pepper, etc.
+  if (secrets.active && secrets.previous) {
+    const canonical = canonicalRow(inputs);
+    // verifyWithRotation re-derives the HMAC for each candidate key in
+    // constant time and returns which one matched.
+    return verifyWithRotation(
+      secrets.active,
+      secrets.previous,
+      canonical,
+      entry.thisHash,
+      'sha256',
+    );
   }
-  if (secrets.previous && digestEquals(entry.thisHash, hashAuditPayload(inputs, secrets.previous))) {
-    return true;
+
+  // Only one key set — current OR previous, not both. Fast path: a
+  // single HMAC compare. Role is mapped to whichever key is present.
+  const onlyKey = (secrets.active ?? secrets.previous) as string;
+  const role: 'current' | 'previous' = secrets.active ? 'current' : 'previous';
+  if (digestEquals(entry.thisHash, hashAuditPayload(inputs, onlyKey))) {
+    return role;
   }
-  return false;
+  return null;
+}
+
+/**
+ * Boolean shorthand — preserved as the existing call-site contract.
+ * The verifier paths now consult `rowHashRole` directly so they can
+ * populate the role breakdown; this wrapper stays for any external
+ * test that imports it via internal module-scope tooling.
+ *
+ * @internal — not exported from the package barrel.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function rowHashMatches(
+  entry: HashedAuditEntry,
+  secrets: ResolvedSecrets,
+): boolean {
+  return rowHashRole(entry, secrets) !== null;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +388,20 @@ interface VerifierState {
   expectedSeq: number; // next sequenceId we expect (1 for genesis row)
   expectedPrev: string; // expected prevHash for the next row
   entriesChecked: number;
+  /** Per-key counters for the rotation soak window. */
+  roleBreakdown: { current: number; previous: number; legacy: number };
+}
+
+function makeVerifierState(initial: {
+  expectedSeq: number;
+  expectedPrev: string;
+}): VerifierState {
+  return {
+    expectedSeq: initial.expectedSeq,
+    expectedPrev: initial.expectedPrev,
+    entriesChecked: 0,
+    roleBreakdown: { current: 0, previous: 0, legacy: 0 },
+  };
 }
 
 function verifyEntry(
@@ -328,13 +426,17 @@ function verifyEntry(
       error: `prevHash mismatch at ${entry.sequenceId}`,
     };
   }
-  if (options.recomputeHash && !rowHashMatches(entry, secrets)) {
-    return {
-      valid: false,
-      entriesChecked: state.entriesChecked + 1,
-      brokenAt: entry.sequenceId,
-      error: `payload mutated at sequence ${entry.sequenceId}`,
-    };
+  if (options.recomputeHash) {
+    const role = rowHashRole(entry, secrets);
+    if (role === null) {
+      return {
+        valid: false,
+        entriesChecked: state.entriesChecked + 1,
+        brokenAt: entry.sequenceId,
+        error: `payload mutated at sequence ${entry.sequenceId}`,
+      };
+    }
+    state.roleBreakdown[role] += 1;
   }
   state.expectedSeq = entry.sequenceId + 1;
   state.expectedPrev = entry.thisHash;
@@ -355,11 +457,10 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
   ): Promise<ChainVerificationResult> => {
     validateNonEmpty(tenantId, 'tenantId');
     const secrets = resolveSecrets(deps.secret);
-    const state: VerifierState = {
+    const state = makeVerifierState({
       expectedSeq: 1,
       expectedPrev: GENESIS_PREV_HASH,
-      entriesChecked: 0,
-    };
+    });
     for await (const batch of streamEntries(deps.repo, tenantId, batchSize)) {
       for (const entry of batch) {
         const failure = verifyEntry(state, entry, secrets, {
@@ -368,7 +469,11 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
         if (failure) return failure;
       }
     }
-    return { valid: true, entriesChecked: state.entriesChecked };
+    return {
+      valid: true,
+      entriesChecked: state.entriesChecked,
+      roleBreakdown: { ...state.roleBreakdown },
+    };
   };
 
   return {
@@ -440,18 +545,21 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
       const anchorSeq =
         startIdx === 0 ? 1 : all[startIdx - 1].sequenceId + 1;
 
-      const state: VerifierState = {
+      const state = makeVerifierState({
         expectedSeq: anchorSeq,
         expectedPrev: anchorPrev,
-        entriesChecked: 0,
-      };
+      });
       for (let i = startIdx; i < all.length; i++) {
         const failure = verifyEntry(state, all[i], secrets, {
           recomputeHash: true,
         });
         if (failure) return failure;
       }
-      return { valid: true, entriesChecked: state.entriesChecked };
+      return {
+        valid: true,
+        entriesChecked: state.entriesChecked,
+        roleBreakdown: { ...state.roleBreakdown },
+      };
     },
 
     async verifyRandomSample(tenantId, p) {
@@ -460,11 +568,10 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
         throw new Error('audit-hash-chain: verifyRandomSample(p) requires 0 < p ≤ 1');
       }
       const secrets = resolveSecrets(deps.secret);
-      const state: VerifierState = {
+      const state = makeVerifierState({
         expectedSeq: 1,
         expectedPrev: GENESIS_PREV_HASH,
-        entriesChecked: 0,
-      };
+      });
       let entriesSampled = 0;
       for await (const batch of streamEntries(deps.repo, tenantId, batchSize)) {
         for (const entry of batch) {
@@ -482,6 +589,7 @@ export function createAuditHashChain(deps: AuditHashChainDeps): AuditHashChain {
         valid: true,
         entriesChecked: state.entriesChecked,
         entriesSampled,
+        roleBreakdown: { ...state.roleBreakdown },
       };
     },
 

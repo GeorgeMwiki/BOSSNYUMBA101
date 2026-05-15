@@ -1,0 +1,134 @@
+# =============================================================================
+# BOSSNYUMBA — End-to-End test stack
+# =============================================================================
+# Spins up the SAME images CI ships (api-gateway from docker/Dockerfile.api,
+# customer-app from docker/Dockerfile.web) plus a hermetic postgres seeded by
+# e2e/fixtures/seed-runner.ts. Playwright specs then exercise the real flow
+# instead of mocking /api/v1/* via `page.route()`, which is what hid the
+# FeedbackThumbs 👍/👎 schema mismatch the wave-K audit caught.
+#
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up -d --wait
+#   pnpm tsx e2e/fixtures/seed-runner.ts
+#   pnpm test:e2e --project=customer-app
+#   docker compose -f docker-compose.e2e.yml down -v
+#
+# The api-gateway and customer-app images are NOT changed here — they build
+# from the existing PR #55 Dockerfiles. Only the wiring is local.
+# =============================================================================
+
+services:
+  postgres:
+    # pgvector extends postgres:15-alpine with the `vector` extension required
+    # by document-intelligence's embedding columns (the schema migrations call
+    # `CREATE EXTENSION IF NOT EXISTS vector` so a stock postgres image fails).
+    image: pgvector/pgvector:pg15
+    container_name: bossnyumba-e2e-postgres
+    environment:
+      POSTGRES_USER: bossnyumba
+      POSTGRES_PASSWORD: bossnyumba_e2e
+      POSTGRES_DB: bossnyumba_e2e
+    ports:
+      - "55432:5432"
+    tmpfs:
+      # Volatile data — every CI run starts clean, no persistence between runs.
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bossnyumba -d bossnyumba_e2e"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: bossnyumba-e2e-api
+    environment:
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_e2e@postgres:5432/bossnyumba_e2e
+      # Disable Neo4j/Redis dependencies in test mode — the routes we exercise
+      # in customer-app E2E (auth, feedback, maintenance, payments, documents,
+      # messaging) all work against postgres only. Tests that need redis/neo4j
+      # live under tests/real-llm/ and are NOT in customer-app project scope.
+      DISABLE_NEO4J: "true"
+      DISABLE_REDIS: "true"
+      # Test-only signing secret — never used in prod, hard-coded so seed
+      # fixtures can mint deterministic JWTs without a key-rotation dance.
+      JWT_SECRET: e2e-test-secret-do-not-use-in-prod
+      # M-Pesa connector stub URL — payments.spec.ts swaps STK-push at the
+      # NETWORK level (page.route on daraja.safaricom.co.ke) NOT the api-gw.
+      MPESA_BASE_URL: http://localhost:9999/mock-mpesa
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:4000/healthz",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  customer-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        APP_NAME: customer-app
+        APP_PATH: apps/customer-app
+      target: nextjs
+    container_name: bossnyumba-e2e-customer-app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Point the SSR fetch at the api-gateway over the compose network. The
+      # browser hits the gateway via the published 4000 port so the
+      # NEXT_PUBLIC_* var must use localhost (browser-resolvable), not the
+      # internal hostname.
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      INTERNAL_API_URL: http://api-gateway:4000/api/v1
+    ports:
+      - "3002:3000"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/api/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # Optional: mailhog for email-flow assertions. The customer-app E2E specs
+  # under wave-K scope (communication / documents / maintenance / onboarding /
+  # payments) don't currently assert on email content, but mailhog is cheap
+  # and unblocks future move-out-notice and renewal-acceptance email checks.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: bossnyumba-e2e-mailhog
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # HTTP UI / API
+
+networks:
+  default:
+    name: bossnyumba-e2e-network

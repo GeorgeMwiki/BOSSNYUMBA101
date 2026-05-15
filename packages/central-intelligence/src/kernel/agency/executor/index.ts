@@ -1,8 +1,12 @@
 export {
   createExecutor,
+  isSovereignTier,
+  SOVEREIGN_TIER_ACTION_NAMES,
   type Executor,
   type ExecutorDeps,
+  type ExecutorLogger,
   type ExecutorOutcome,
+  type SovereignActionLedgerPort,
 } from './executor.js';
 export {
   hashPayload,
