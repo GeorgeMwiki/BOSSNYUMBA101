@@ -1,0 +1,288 @@
+/**
+ * 8-stage sleep-time consolidation orchestrator (C5 Phase A).
+ *
+ * Replaces the legacy single-stub flow with a real cascade:
+ *
+ *   01-ingest        traces + implicit + explicit feedback
+ *   02-cluster       group by intent / failure mode
+ *   03-reflect       Haiku critic writes 1-paragraph reflection
+ *   04-promote       success → skill_registry; failure → prompt-patch
+ *   05-decay         existing memory-decay hook
+ *   06-consolidate   Zep-style community merge (Phase B will wire)
+ *   07-re-embed      bulk re-embed with current model version (Phase B)
+ *   08-publish       emit brain.delta + Langfuse summary
+ *
+ * On error in any stage: log + continue. The worker NEVER crashes on
+ * its own — the supervisor loop catches anything that escapes here.
+ *
+ * The orchestrator owns the OTel `consolidation.stage.N` spans (when
+ * an OTel tracer is wired); each stage emits its own structured log
+ * line so an operator can verify the cascade without OTel either.
+ */
+
+import { runIngestStage, type IngestSources } from './stages/01-ingest.js';
+import { runClusterStage } from './stages/02-cluster.js';
+import {
+  runReflectStage,
+  createStubCritic,
+} from './stages/03-reflect.js';
+import { runPromoteStage } from './stages/04-promote.js';
+import { runDecayStage } from './stages/05-decay.js';
+import {
+  runConsolidateStage,
+  type EntityConsolidatorPort,
+} from './stages/06-consolidate.js';
+import {
+  runReEmbedStage,
+  type ReEmbedPort,
+} from './stages/07-re-embed.js';
+import { runPublishStage } from './stages/08-publish.js';
+import type {
+  BrainDelta,
+  BrainDeltaPublisher,
+  ConsolidationEmbedder,
+  ReflectionCritic,
+  SemanticDecayPort,
+  SkillRegistryPort,
+  StageLogger,
+  TraceCluster,
+} from './stages/types.js';
+
+export interface ConsolidationOrchestratorDeps {
+  readonly sources: IngestSources;
+  readonly logger: StageLogger;
+  readonly skillRegistry?: SkillRegistryPort;
+  readonly embedder?: ConsolidationEmbedder;
+  readonly critic?: ReflectionCritic;
+  readonly semanticDecay?: SemanticDecayPort;
+  readonly entityConsolidator?: EntityConsolidatorPort;
+  readonly reEmbedder?: ReEmbedPort;
+  readonly publisher?: BrainDeltaPublisher;
+  readonly windowMs?: number;
+  readonly decayPerDay?: number;
+  readonly now?: () => Date;
+  /**
+   * Optional override of the entire cluster step. When supplied
+   * (composition root wires a real embedding-based clusterer), the
+   * orchestrator forwards it through.
+   */
+  readonly clusterer?: (bundle: ReturnType<typeof noop>) => Promise<
+    ReadonlyArray<TraceCluster>
+  >;
+}
+
+// Hidden helper so the optional override type compiles without an
+// import cycle on `IngestBundle`. The real type is in stages/types.ts.
+function noop(): unknown {
+  return undefined;
+}
+
+export interface ConsolidationTickResult {
+  readonly delta: BrainDelta;
+  readonly clustersInspected: number;
+  readonly errors: ReadonlyArray<string>;
+}
+
+export async function runConsolidationOrchestrator(
+  deps: ConsolidationOrchestratorDeps,
+): Promise<ConsolidationTickResult> {
+  const logger = deps.logger;
+  const errors: string[] = [];
+
+  // STAGE 01 — ingest
+  const bundle = await safeStage(
+    logger,
+    '01-ingest',
+    () =>
+      runIngestStage({
+        sources: deps.sources,
+        logger,
+        ...(deps.now ? { now: deps.now } : {}),
+        ...(deps.windowMs !== undefined ? { windowMs: deps.windowMs } : {}),
+      }),
+    {
+      windowStart: new Date(0).toISOString(),
+      windowEnd: new Date(0).toISOString(),
+      traces: [],
+      implicitSignals: [],
+      explicitFeedback: [],
+    },
+    errors,
+  );
+
+  // STAGE 02 — cluster
+  const clusters = await safeStage(
+    logger,
+    '02-cluster',
+    () =>
+      runClusterStage({
+        bundle: bundle as never,
+        logger,
+        ...(deps.clusterer
+          ? { clusterer: deps.clusterer as never }
+          : {}),
+      }),
+    [] as ReadonlyArray<TraceCluster>,
+    errors,
+  );
+
+  // STAGE 03 — reflect
+  const reflections = await safeStage(
+    logger,
+    '03-reflect',
+    () =>
+      runReflectStage({
+        clusters,
+        critic: deps.critic ?? createStubCritic(),
+        logger,
+      }),
+    [],
+    errors,
+  );
+
+  // STAGE 04 — promote
+  const promote = await safeStage(
+    logger,
+    '04-promote',
+    () =>
+      runPromoteStage({
+        clusters,
+        reflections,
+        logger,
+        ...(deps.skillRegistry ? { skillRegistry: deps.skillRegistry } : {}),
+        ...(deps.embedder ? { embedder: deps.embedder } : {}),
+      }),
+    { decisions: [], skillsPromoted: 0, promptPatches: 0 },
+    errors,
+  );
+
+  // Tenants touched in this batch (for decay / consolidate / re-embed).
+  const tenantIds = uniqueTenants(clusters.map((c) => c.tenantId));
+
+  // STAGE 05 — decay
+  const decay = await safeStage(
+    logger,
+    '05-decay',
+    () =>
+      runDecayStage({
+        tenantIds,
+        logger,
+        ...(deps.semanticDecay ? { semantic: deps.semanticDecay } : {}),
+        ...(deps.decayPerDay !== undefined
+          ? { decayPerDay: deps.decayPerDay }
+          : {}),
+      }),
+    { factsDecayed: 0, perTenant: {} },
+    errors,
+  );
+
+  // STAGE 06 — consolidate
+  const consolidate = await safeStage(
+    logger,
+    '06-consolidate',
+    () =>
+      runConsolidateStage({
+        tenantIds,
+        logger,
+        ...(deps.entityConsolidator
+          ? { consolidator: deps.entityConsolidator }
+          : {}),
+      }),
+    { entitiesMerged: 0, perTenant: {} },
+    errors,
+  );
+
+  // STAGE 07 — re-embed
+  const reembed = await safeStage(
+    logger,
+    '07-re-embed',
+    () =>
+      runReEmbedStage({
+        tenantIds,
+        logger,
+        ...(deps.reEmbedder ? { reEmbedder: deps.reEmbedder } : {}),
+      }),
+    { factsReEmbedded: 0, perTenant: {} },
+    errors,
+  );
+
+  // STAGE 08 — publish
+  const delta = await safeStage(
+    logger,
+    '08-publish',
+    () =>
+      runPublishStage({
+        logger,
+        ...(deps.publisher ? { publisher: deps.publisher } : {}),
+        windowStart: (bundle as { windowStart: string }).windowStart,
+        windowEnd: (bundle as { windowEnd: string }).windowEnd,
+        skillsPromoted: promote.skillsPromoted,
+        promptPatches: promote.promptPatches,
+        factsDecayed: decay.factsDecayed,
+        entitiesMerged: consolidate.entitiesMerged,
+        factsReEmbedded: reembed.factsReEmbedded,
+        clustersInspected: clusters.length,
+      }),
+    {
+      tickId: 'tick_aborted',
+      windowStart: new Date(0).toISOString(),
+      windowEnd: new Date(0).toISOString(),
+      skillsPromoted: 0,
+      promptPatches: 0,
+      factsDecayed: 0,
+      entitiesMerged: 0,
+      factsReEmbedded: 0,
+      clustersInspected: 0,
+    } satisfies BrainDelta,
+    errors,
+  );
+
+  return {
+    delta,
+    clustersInspected: clusters.length,
+    errors,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────
+
+async function safeStage<T>(
+  logger: StageLogger,
+  stage: string,
+  fn: () => Promise<T>,
+  fallback: T,
+  errors: string[],
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    const msg = asMessage(error);
+    logger.warn(
+      { stage, err: msg },
+      `stage ${stage} threw — falling through with fallback`,
+    );
+    errors.push(`${stage}:${msg}`);
+    return fallback;
+  }
+}
+
+function uniqueTenants(
+  ids: ReadonlyArray<string | null>,
+): ReadonlyArray<string | null> {
+  const seen = new Set<string>();
+  const out: Array<string | null> = [];
+  for (const id of ids) {
+    const k = id ?? '__null__';
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+function asMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
