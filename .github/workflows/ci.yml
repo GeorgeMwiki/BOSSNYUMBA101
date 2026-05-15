@@ -228,7 +228,11 @@ jobs:
           NODE_ENV: test
 
       - name: Run E2E tests
-        run: pnpm test:e2e -- --project=customer-app
+        # pnpm 8+ does NOT strip the `--` separator the way npm/yarn do;
+        # it passes the literal `--` as an arg to the script, which
+        # playwright then treats as a positional test-filter that
+        # matches no files → "No tests found." Pass project flag directly.
+        run: pnpm test:e2e --project=customer-app
         env:
           CUSTOMER_APP_URL: http://localhost:3002
 
