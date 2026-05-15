@@ -13,12 +13,17 @@
 
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { CustomerAppPage } from '../../page-objects';
 import { loginAsCustomer } from '../../fixtures/auth';
 import { futureDate, randomString } from '../../fixtures/test-data';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// NOTE: avoid `import.meta.url` + `fileURLToPath` here. Playwright's TS
+// loader runs .ts specs in a CJS-shaped sandbox (the monorepo's root
+// package.json does not declare `"type": "module"`), so `import.meta`
+// trips `ReferenceError: require is not defined` at parse time. Build
+// fixture paths relative to cwd instead — Playwright always runs from
+// the repo root.
+const E2E_FIXTURES_DIR = path.join(process.cwd(), 'e2e', 'fixtures');
 
 test.describe('Customer App Documents & Lease (real backend)', () => {
   let customerApp: CustomerAppPage;
@@ -187,7 +192,7 @@ test.describe('Customer App Documents & Lease (real backend)', () => {
 
       // 1x1 pixel PNG payload — keeps the suite hermetic and avoids
       // shipping binary fixtures in the repo.
-      const tinyPngPath = path.join(__dirname, '..', '..', 'fixtures', 'tiny.png');
+      const tinyPngPath = path.join(E2E_FIXTURES_DIR, 'tiny.png');
       // Write the file at runtime so we don't need a binary fixture checked in.
       const { writeFileSync, existsSync } = await import('node:fs');
       if (!existsSync(tinyPngPath)) {

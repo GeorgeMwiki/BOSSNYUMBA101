@@ -216,7 +216,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Start E2E stack (postgres + api-gateway + customer-app)
+      - name: Start E2E stack (postgres + api-gateway + all 4 portal apps)
+        # docker-compose.e2e.yml now boots customer-app + admin-platform-portal
+        # + owner-portal + estate-manager-app alongside api-gateway, so every
+        # Playwright project below has its real backend & frontend ready. One
+        # `up --wait` (with healthchecks) blocks until the stack is green.
         run: docker compose -f docker-compose.e2e.yml up -d --wait
 
       - name: Seed test data
@@ -227,10 +231,17 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run E2E (customer-app project, real backend)
-        run: pnpm test:e2e --project=customer-app
+      - name: Run E2E (all portal projects, real backend, parallel)
+        # No `--project` filter — Playwright's per-project `testMatch` keeps
+        # specs scoped to their portal, and its built-in worker pool runs
+        # projects in parallel within this one job. A matrix would re-build
+        # the docker stack 4x; keeping it in one job is the least diff.
+        run: pnpm test:e2e
         env:
           CUSTOMER_APP_URL: http://localhost:3002
+          ADMIN_PORTAL_URL: http://localhost:3001
+          OWNER_PORTAL_URL: http://localhost:3000
+          ESTATE_MANAGER_URL: http://localhost:3003
           API_GATEWAY_URL: http://localhost:4000
           # Do NOT set E2E_USE_STUB — default real-backend mode is the whole point.
 

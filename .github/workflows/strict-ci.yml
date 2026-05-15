@@ -150,7 +150,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - name: Start E2E stack (postgres + api-gateway + customer-app)
+      - name: Start E2E stack (postgres + api-gateway + all 4 portal apps)
         run: docker compose -f docker-compose.e2e.yml up -d --wait
       - name: Seed test data
         run: pnpm tsx e2e/fixtures/seed-runner.ts
@@ -158,11 +158,17 @@ jobs:
           DATABASE_URL: postgresql://bossnyumba:bossnyumba_e2e@localhost:55432/bossnyumba_e2e
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
-      - name: Run Playwright (real backend)
-        run: pnpm test:e2e --project=customer-app
+      - name: Run Playwright (all portal projects, real backend)
+        # No `--project` filter — every project runs against its real portal
+        # in one shot, Playwright handles parallelism internally. A matrix
+        # would rebuild the same docker stack 4x for no gain.
+        run: pnpm test:e2e
         env:
           CI: 'true'
           CUSTOMER_APP_URL: http://localhost:3002
+          ADMIN_PORTAL_URL: http://localhost:3001
+          OWNER_PORTAL_URL: http://localhost:3000
+          ESTATE_MANAGER_URL: http://localhost:3003
           API_GATEWAY_URL: http://localhost:4000
       - name: Capture stack logs on failure
         if: failure()
