@@ -32,6 +32,10 @@ Thumbs.db
 *.log
 npm-debug.log*
 Docs/
+# api-sdk's `generate` script reads Docs/api/openapi.generated.json
+# at build time. The Dockerfile.web COPYs Docs/api/ explicitly so the
+# api-sdk build can succeed in the customer-app dep chain.
+!Docs/api/
 *.md
 !README.md
 .github/
