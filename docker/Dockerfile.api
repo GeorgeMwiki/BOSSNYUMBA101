@@ -43,11 +43,21 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
 COPY services ./services
 
-# Build api-gateway and every workspace package it depends on.
-# `--workspace-concurrency=1` serialises the topological build so that
-# transitive `dist/` artifacts (e.g. @bossnyumba/forecasting) exist
-# before downstream packages (@bossnyumba/ai-copilot) run their `tsc`
-# and import them via `node_modules` symlinks.
+# Build leaf packages with no inter-workspace deps FIRST so their
+# `dist/` artifacts exist when consuming packages run their `tsc` and
+# resolve the symlinks via `types: "./dist/index.d.ts"`.
+#
+# Why this step exists: pnpm 8.15's `--filter <pkg>... --workspace-concurrency=1`
+# is documented to honour topological order, but in practice with the
+# api-gateway dep chain it has been observed to start
+# `@bossnyumba/ai-copilot`'s `tsc` before `@bossnyumba/forecasting`'s
+# `dist/index.d.ts` lands, producing TS2307 "Cannot find module
+# '@bossnyumba/forecasting'". Explicitly pre-building the leaf packages
+# guarantees their `dist/` exists before the broader filtered build
+# runs, regardless of pnpm version quirks.
+RUN pnpm --filter=@bossnyumba/forecasting --filter=@bossnyumba/domain-models build
+
+# Now build api-gateway and every workspace package it depends on.
 RUN pnpm --filter=@bossnyumba/api-gateway... --workspace-concurrency=1 build
 
 # NOTE: production-only pruning (`pnpm deploy --prod`) is intentionally not
