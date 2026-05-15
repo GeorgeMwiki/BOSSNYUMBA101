@@ -1062,6 +1062,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: cases SLA stop failed');
   }
+  try {
+    serviceRegistry.wakeLoopCron?.stop();
+    logger.info('shutdown: wake-loop cron stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: wake-loop cron stop failed');
+  }
 
   // Step 4 — close the HTTP server. Wrapped in a promise so we can
   // await the drain completion.
@@ -1131,6 +1137,12 @@ if (require.main === module) {
   // Wave 26 — start the Cases SLA supervisor alongside the other
   // background workers. Skipped in tests + when disabled by env.
   casesSlaSupervisor.start();
+  // K7 parity-litfin Gap H — wake-loop cron. Until this start() call the
+  // supervisor was inert: the brain only woke when an out-of-band k8s
+  // CronJob fired. In-process start arms an advisory-lock-guarded interval
+  // so the brain wakes on cadence even when no CronJob is installed.
+  // Degraded-mode (no DB) is internally a no-op; safe to call unconditionally.
+  serviceRegistry.wakeLoopCron?.start();
 
   // Start the outbox drainer + register domain-event subscribers. The
   // outbox publishes events into the in-process bus; the subscribers

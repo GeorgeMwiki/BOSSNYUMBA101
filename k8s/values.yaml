@@ -173,6 +173,13 @@ secrets:
     REDIS_PASSWORD: "CHANGE_ME"
     NEO4J_PASSWORD: "CHANGE_ME"
     JWT_SECRET: "CHANGE_ME"
+    # Audit hash-chain HMAC root — packages/ai-copilot/src/security/audit-hash-chain.ts.
+    # REQUIRED in production. Without it the chain degrades to unkeyed SHA-256
+    # (forge-able by anyone with DB write access). Generate: openssl rand -base64 48.
+    # `_PREV` slot is consumed during the 24h rotation soak window — see
+    # Docs/SECRETS_ROTATION.md.
+    SESSION_HASH_SECRET: "CHANGE_ME"
+    SESSION_HASH_SECRET_PREV: ""
     ANTHROPIC_API_KEY: ""
     OPENAI_API_KEY: ""
     ELEVENLABS_API_KEY: ""

@@ -117,6 +117,19 @@ const OptionalSchema = z.object({
   AGENT_CERT_SIGNING_SECRET: z.string().optional(),
   WEBHOOK_DEFAULT_HMAC_SECRET: z.string().optional(),
 
+  // Audit-hash-chain HMAC root (packages/ai-copilot/src/security/audit-hash-chain.ts).
+  // When unset the chain degrades to unkeyed SHA-256 which is forge-able by anyone
+  // with DB write access. REQUIRED in production. `_PREV` is an optional rotation
+  // overlap slot consumed during the 24h soak window (see Docs/SECRETS_ROTATION.md).
+  SESSION_HASH_SECRET: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(32, 'SESSION_HASH_SECRET must be at least 32 chars').optional(),
+  ),
+  SESSION_HASH_SECRET_PREV: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(32, 'SESSION_HASH_SECRET_PREV must be at least 32 chars').optional(),
+  ),
+
   // Inter-service
   API_URL: z.string().url().optional(),
   NOTIFICATIONS_SERVICE_URL: z.string().url().optional(),
@@ -177,6 +190,17 @@ export function validateEnv(source: NodeJS.ProcessEnv = process.env): ValidatedE
     if (env.JWT_SECRET.length < 64) {
       warnings.push(
         'JWT_SECRET is less than 64 chars in production — consider rotating to a 64+ char random secret.'
+      );
+    }
+    // Audit-hash-chain HMAC root — REQUIRED in production. The chain silently
+    // degrades to unkeyed SHA-256 when unset (forge-able with DB write access).
+    if (!env.SESSION_HASH_SECRET) {
+      throw new Error(
+        'Environment validation failed — gateway cannot boot.\n' +
+          '  - SESSION_HASH_SECRET: required in production (≥ 32 chars). ' +
+          'Generate with `openssl rand -base64 48`. ' +
+          'Without it, the audit hash chain falls back to unsigned SHA-256.\n\n' +
+          'See Docs/SECRETS_ROTATION.md for rotation policy.'
       );
     }
   } else if (env.NODE_ENV === 'development' && !env.DATABASE_URL.includes('localhost')) {
