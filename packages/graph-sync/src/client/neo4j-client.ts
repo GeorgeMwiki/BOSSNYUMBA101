@@ -10,6 +10,11 @@
 
 import neo4j, { Driver, Session, ManagedTransaction } from 'neo4j-driver';
 import { z } from 'zod';
+import {
+  assertCypherReferencesTenantId,
+  TenantScopeViolation,
+  type TenantScopedParams,
+} from './tenant-scoped-cypher.js';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -59,6 +64,21 @@ export function isLoopbackNeo4jUri(uri: string): boolean {
     return LOOPBACK_HOSTS.has(host);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Runtime defence-in-depth check for `tenantId` in params. Mirrors the
+ * stricter helper inside `tenant-scoped-cypher.ts` but lives here so the
+ * `Neo4jClient.readQuery` / `writeQuery` data-plane methods don't depend
+ * on the wrapper module to enforce the gate.
+ */
+function assertTenantIdRuntime(params: Record<string, unknown>): void {
+  const tenantId = params.tenantId;
+  if (typeof tenantId !== 'string' || tenantId.trim().length === 0) {
+    throw new TenantScopeViolation(
+      'Neo4jClient: params.tenantId is required and must be a non-empty string',
+    );
   }
 }
 
@@ -165,16 +185,33 @@ export class Neo4jClient {
   }
 
   /**
-   * Execute a read query with automatic session management
+   * Execute a tenant-scoped read query with automatic session management.
+   *
+   * TENANT ISOLATION (type-level + runtime):
+   *   - `params` MUST satisfy `TenantScopedParams<P>` — i.e. carry a
+   *     non-empty `tenantId: string`. Forgetting it is a TypeScript
+   *     compile error.
+   *   - The Cypher MUST reference `$tenantId` at least once. The runtime
+   *     guard `assertCypherReferencesTenantId` throws
+   *     `TenantScopeViolation` BEFORE the driver opens a session, so a
+   *     malformed query never reaches Neo4j.
+   *
+   * For admin / schema-management queries that legitimately don't carry
+   * a tenant (e.g. CREATE CONSTRAINT, CREATE INDEX) use `runSchemaQuery`.
    */
-  async readQuery<T = Record<string, unknown>>(
+  async readQuery<
+    T = Record<string, unknown>,
+    P extends Record<string, unknown> = Record<string, unknown>,
+  >(
     cypher: string,
-    params: Record<string, unknown> = {},
+    params: TenantScopedParams<P>,
     database?: string
   ): Promise<T[]> {
+    assertCypherReferencesTenantId(cypher);
+    assertTenantIdRuntime(params);
     const session = this.readSession(database);
     try {
-      const result = await session.run(cypher, params);
+      const result = await session.run(cypher, params as Record<string, unknown>);
       return result.records.map((record: { toObject(): unknown }) => record.toObject() as T);
     } finally {
       await session.close();
@@ -182,16 +219,48 @@ export class Neo4jClient {
   }
 
   /**
-   * Execute a write query with automatic session management
+   * Execute a tenant-scoped write query with automatic session
+   * management. Same tenant-isolation rules as {@link readQuery}.
    */
-  async writeQuery<T = Record<string, unknown>>(
+  async writeQuery<
+    T = Record<string, unknown>,
+    P extends Record<string, unknown> = Record<string, unknown>,
+  >(
     cypher: string,
-    params: Record<string, unknown> = {},
+    params: TenantScopedParams<P>,
+    database?: string
+  ): Promise<T[]> {
+    assertCypherReferencesTenantId(cypher);
+    assertTenantIdRuntime(params);
+    const session = this.writeSession(database);
+    try {
+      const result = await session.run(cypher, params as Record<string, unknown>);
+      return result.records.map((record: { toObject(): unknown }) => record.toObject() as T);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Execute an admin-only schema-management query (CREATE CONSTRAINT,
+   * CREATE INDEX, DROP INDEX, SHOW INDEXES, etc.).
+   *
+   * SECURITY MODEL:
+   *   - Schema DDL is a global-namespace operation in Neo4j — it cannot
+   *     be tenant-scoped, by design.
+   *   - This method intentionally BYPASSES the `$tenantId` guard.
+   *   - DO NOT use this for data-plane reads/writes. Use `readQuery` /
+   *     `writeQuery` for anything that touches tenant nodes.
+   *   - Callers should be exclusively the schema bootstrap module
+   *     (`schema/constraints.ts`) and operator scripts.
+   */
+  async runSchemaQuery<T = Record<string, unknown>>(
+    cypher: string,
     database?: string
   ): Promise<T[]> {
     const session = this.writeSession(database);
     try {
-      const result = await session.run(cypher, params);
+      const result = await session.run(cypher);
       return result.records.map((record: { toObject(): unknown }) => record.toObject() as T);
     } finally {
       await session.close();

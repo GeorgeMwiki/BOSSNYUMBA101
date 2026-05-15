@@ -3,9 +3,19 @@
  *
  * Enforces data integrity and optimizes query performance.
  * Run once during graph initialization, idempotent (IF NOT EXISTS).
+ *
+ * TENANT-ISOLATION EXCEPTION:
+ *   The `CREATE CONSTRAINT`, `CREATE INDEX`, and `CREATE FULLTEXT INDEX`
+ *   statements in this module operate on the GLOBAL schema namespace of
+ *   the Neo4j database. They cannot — by design — carry a `$tenantId`
+ *   parameter the way data-plane queries must. Every call site below is
+ *   therefore routed through `Neo4jClient.runSchemaQuery`, which
+ *   intentionally bypasses the tenant gate. DO NOT copy this pattern
+ *   for any data-plane read/write.
  */
 
 import type { Session } from 'neo4j-driver';
+import type { Neo4jClient } from '../client/neo4j-client.js';
 
 /**
  * Uniqueness constraints.
@@ -163,16 +173,57 @@ const FULLTEXT_INDEXES: Array<{ name: string; labels: string[]; properties: stri
 ];
 
 /**
- * Apply all constraints and indexes to the Neo4j database.
- * Idempotent — safe to run multiple times.
+ * Result shape returned by every schema-apply path.
  */
-export async function applyConstraintsAndIndexes(session: Session): Promise<{
+export interface ApplyConstraintsResult {
   constraintsCreated: number;
   indexesCreated: number;
   fulltextIndexesCreated: number;
   errors: string[];
-}> {
-  const result = { constraintsCreated: 0, indexesCreated: 0, fulltextIndexesCreated: 0, errors: [] as string[] };
+}
+
+/**
+ * Minimal duck-typed interface for any client that can execute a raw
+ * (parameter-less) schema DDL statement. Both `Neo4jClient` (via
+ * `runSchemaQuery`) and a bare `Session` satisfy this — internally we
+ * adapt them through small shims so the loop body stays identical.
+ */
+interface SchemaRunner {
+  run(cypher: string): Promise<unknown>;
+}
+
+function adaptSession(session: Session): SchemaRunner {
+  // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+  return { run: (cypher: string) => session.run(cypher) };
+}
+
+function adaptClient(client: Neo4jClient): SchemaRunner {
+  // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+  return { run: (cypher: string) => client.runSchemaQuery(cypher) };
+}
+
+/**
+ * Apply all constraints and indexes to the Neo4j database.
+ * Idempotent — safe to run multiple times.
+ *
+ * Accepts either a {@link Neo4jClient} (preferred — routes through
+ * `runSchemaQuery` so the tenant-isolation bypass is explicit) or a raw
+ * `Session` (legacy back-compat for callers that still hold an open
+ * session). New call sites SHOULD pass the client.
+ */
+export async function applyConstraintsAndIndexes(
+  target: Neo4jClient | Session,
+): Promise<ApplyConstraintsResult> {
+  const runner: SchemaRunner = isNeo4jClient(target)
+    ? adaptClient(target)
+    : adaptSession(target);
+
+  const result: ApplyConstraintsResult = {
+    constraintsCreated: 0,
+    indexesCreated: 0,
+    fulltextIndexesCreated: 0,
+    errors: [],
+  };
 
   // Apply uniqueness constraints
   for (const { label, properties } of UNIQUENESS_CONSTRAINTS) {
@@ -181,7 +232,8 @@ export async function applyConstraintsAndIndexes(session: Session): Promise<{
     const cypher = `CREATE CONSTRAINT ${constraintName} IF NOT EXISTS FOR (n:${label}) REQUIRE (${propList}) IS UNIQUE`;
 
     try {
-      await session.run(cypher);
+      // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+      await runner.run(cypher);
       result.constraintsCreated++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -195,7 +247,8 @@ export async function applyConstraintsAndIndexes(session: Session): Promise<{
     const cypher = `CREATE INDEX ${name} IF NOT EXISTS FOR (n:${label}) ON (${propList})`;
 
     try {
-      await session.run(cypher);
+      // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+      await runner.run(cypher);
       result.indexesCreated++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -210,7 +263,8 @@ export async function applyConstraintsAndIndexes(session: Session): Promise<{
     const cypher = `CREATE FULLTEXT INDEX ${name} IF NOT EXISTS FOR (n:${labelList}) ON EACH [${propList.split(', ').map(p => `n.${p.replace(/`/g, '')}`).join(', ')}]`;
 
     try {
-      await session.run(cypher);
+      // SCHEMA-MGMT: admin-bootstrap, not tenant-scoped — DO NOT use for data-plane queries
+      await runner.run(cypher);
       result.fulltextIndexesCreated++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -219,6 +273,15 @@ export async function applyConstraintsAndIndexes(session: Session): Promise<{
   }
 
   return result;
+}
+
+/**
+ * Best-effort duck-type check that distinguishes a `Neo4jClient` from a
+ * `Session`. Both expose a `run` method but only the client exposes
+ * `runSchemaQuery` — that's the cheapest discriminator.
+ */
+function isNeo4jClient(target: Neo4jClient | Session): target is Neo4jClient {
+  return typeof (target as Neo4jClient).runSchemaQuery === 'function';
 }
 
 export { UNIQUENESS_CONSTRAINTS, PERFORMANCE_INDEXES, FULLTEXT_INDEXES };

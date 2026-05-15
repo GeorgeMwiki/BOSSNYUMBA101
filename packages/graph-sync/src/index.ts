@@ -20,6 +20,21 @@ export {
   closeDefaultNeo4jClient,
 } from './client/neo4j-client.js';
 
+// ─── Tenant-scoped Cypher helpers ────────────────────────────────────────────
+// Re-exported from the public barrel so consumers can import the
+// tenant-isolation primitives without reaching into deep paths.
+export {
+  assertCypherReferencesTenantId,
+  createTenantScopedCypher,
+  scopeNodePattern,
+  TenantScopeViolation,
+  type TenantScopedParams,
+  type TenantScopedCypherClient,
+  type TenantScopedCypherDeps,
+  type Neo4jReadClient,
+  type Neo4jWriteClient,
+} from './client/tenant-scoped-cypher.js';
+
 // ─── Schema ──────────────────────────────────────────────────────────────────
 export {
   ALL_NODE_LABELS,
@@ -59,6 +74,7 @@ export {
   UNIQUENESS_CONSTRAINTS,
   PERFORMANCE_INDEXES,
   FULLTEXT_INDEXES,
+  type ApplyConstraintsResult,
 } from './schema/constraints.js';
 
 // ─── Sync Engine ─────────────────────────────────────────────────────────────
