@@ -96,10 +96,164 @@ const COT_PII_PATTERNS: ReadonlyArray<PiiPattern> = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────────────
+// Extended PII patterns (Wave-K Tier-3 W-Ops) — gated behind
+// `BOSSNYUMBA_PII_EXTENDED=1`. The default-off posture preserves the
+// EAT-first baseline; operators flip the flag on when the surface
+// goes global. Each pattern lives in its own validator so we can
+// run a real check (e.g. Luhn for credit-cards, ISO-13616 for IBAN)
+// instead of a permissive regex that would flag too many false-
+// positives in property-management chat text.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Pure: passes/fails on the standard Luhn checksum. Mod-10 over the
+ * digits with the second-from-right doubled (and >9 reduced). 13-19
+ * digits is the published card-number length range (Visa, MasterCard,
+ * Amex, Discover, JCB, Diners, UnionPay).
+ */
+export function luhnValid(raw: string): boolean {
+  const digits = raw.replace(/[\s-]/g, '');
+  if (!/^\d{13,19}$/.test(digits)) return false;
+  let sum = 0;
+  let doub = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = digits.charCodeAt(i) - 48;
+    if (doub) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    doub = !doub;
+  }
+  return sum % 10 === 0;
+}
+
+/**
+ * Pure: passes the ISO-13616 mod-97 IBAN check. Length varies by
+ * country (15-34); we sanity-check the prefix is two letters + two
+ * digits + a valid mod-97 remainder of 1.
+ */
+export function ibanValid(raw: string): boolean {
+  const cleaned = raw.replace(/[\s-]/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(cleaned)) return false;
+  // Move first 4 chars to end and replace letters with 10..35.
+  const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
+  let remainder = 0;
+  for (const ch of rearranged) {
+    const code = ch.charCodeAt(0);
+    const val =
+      code >= 48 && code <= 57
+        ? code - 48
+        : code >= 65 && code <= 90
+          ? code - 55
+          : -1;
+    if (val < 0) return false;
+    // Letters expand to 2 decimal digits (10..35) so we must shift the
+    // running remainder by 100 (not 10) when consuming them. The
+    // single-digit path shifts by 10. Avoids BigInt for the standard
+    // string lengths.
+    if (val >= 10) {
+      remainder = (remainder * 100 + val) % 97;
+    } else {
+      remainder = (remainder * 10 + val) % 97;
+    }
+  }
+  return remainder === 1;
+}
+
+interface ExtendedPiiPattern extends PiiPattern {
+  /** Optional secondary check — regex match → validator filter. */
+  readonly validate?: (matched: string) => boolean;
+}
+
+const COT_PII_PATTERNS_EXTENDED: ReadonlyArray<ExtendedPiiPattern> = [
+  // Credit-card numbers — 13-19 digits with optional space/dash
+  // groupings. The regex is intentionally permissive (catch any 13-19
+  // digit run); the Luhn validator filters the noise. Numbers under
+  // 13 digits stay un-redacted because legitimate property numbers
+  // (lease IDs, invoice numbers) routinely sit in the 10-12 range.
+  {
+    kind: 'credit-card-luhn',
+    re: /\b(?:\d[\s-]?){12,18}\d\b/g,
+    replace: '[redacted-card]',
+    validate: luhnValid,
+  },
+  // IBAN — country-code (2 letters) + check-digits (2) + BBAN (up to
+  // 30 alphanum). The mod-97 validator filters away strings that
+  // happen to LOOK iban-shaped.
+  {
+    kind: 'iban',
+    re: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g,
+    replace: '[redacted-iban]',
+    validate: ibanValid,
+  },
+  // US SSN — `\d{3}-\d{2}-\d{4}`. Negative look-arounds skip the
+  // sentinel 000-/666-/9xx- prefixes the SSA never assigns and
+  // skip strings that are part of a longer digit run (zipcode-
+  // extension dashes).
+  {
+    kind: 'ssn-us',
+    re: /(?<!\d)(?!000-|666-|9\d{2}-)\d{3}-(?!00)\d{2}-(?!0000)\d{4}(?!\d)/g,
+    replace: '[redacted-ssn]',
+  },
+  // UK National Insurance — two letters, six digits, one letter.
+  // Excludes the never-issued prefixes (D, F, I, Q, U, V at any
+  // position; O at the second position). Practical heuristic only —
+  // a full HMRC validator would also exclude administrative
+  // sequences.
+  {
+    kind: 'ni-uk',
+    re: /\b[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]\b/g,
+    replace: '[redacted-ni]',
+  },
+  // GPS coordinates — `lat,lng` with both numbers in their valid
+  // ranges (lat ∈ [-90,90], lng ∈ [-180,180]). Decimal degrees only;
+  // DMS notation is left as a future extension.
+  //
+  // We match the regex permissively and let the `validate` callback
+  // enforce the range — easier to reason about than 4 alternations.
+  {
+    kind: 'gps-coords',
+    re: /(?<![\d.])-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?(?!\d)/g,
+    replace: '[redacted-gps]',
+    validate: (match: string) => {
+      // Split on the first comma; both halves must be parseable +
+      // within the latitude / longitude ranges.
+      const commaIdx = match.indexOf(',');
+      if (commaIdx <= 0) return false;
+      const lat = Number(match.slice(0, commaIdx).trim());
+      const lng = Number(match.slice(commaIdx + 1).trim());
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+      if (lat < -90 || lat > 90) return false;
+      if (lng < -180 || lng > 180) return false;
+      return true;
+    },
+  },
+];
+
+/**
+ * Whether the extended pattern set is enabled. Read on each call so a
+ * test can flip the env var inside its setup. The pattern array stays
+ * frozen at module load — only the gate is dynamic.
+ */
+export function extendedPiiEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const raw = env.BOSSNYUMBA_PII_EXTENDED?.trim();
+  if (!raw) return false;
+  return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'yes';
+}
+
 /**
  * Best-effort scrub of CoT thought text. Pure; idempotent. Returns
  * `{ sanitized, mutations }` so callers can log which categories fired
  * without needing to re-run the regexes.
+ *
+ * When the `BOSSNYUMBA_PII_EXTENDED` env var is truthy, the extended
+ * pattern set (credit-card with Luhn, IBAN with mod-97, US SSN, UK NI,
+ * GPS coords) runs after the EAT-focused baseline. Default off
+ * preserves the EAT-first posture.
  */
 export function scrubCotText(input: string): {
   readonly sanitized: string;
@@ -111,6 +265,27 @@ export function scrubCotText(input: string): {
     if (p.re.test(text)) {
       text = text.replace(p.re, p.replace);
       mutations.push(`scrubbed:${p.kind}`);
+    }
+  }
+  if (extendedPiiEnabled()) {
+    for (const p of COT_PII_PATTERNS_EXTENDED) {
+      if (p.validate) {
+        // Validator gating: only redact matches that pass the
+        // checksum / structural validator. Pure: a replace with a
+        // function callback keeps the regex stateless across calls.
+        let fired = false;
+        text = text.replace(p.re, (match) => {
+          if (p.validate!(match)) {
+            fired = true;
+            return p.replace;
+          }
+          return match;
+        });
+        if (fired) mutations.push(`scrubbed:${p.kind}`);
+      } else if (p.re.test(text)) {
+        text = text.replace(p.re, p.replace);
+        mutations.push(`scrubbed:${p.kind}`);
+      }
     }
   }
   return { sanitized: text, mutations };

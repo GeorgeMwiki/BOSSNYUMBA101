@@ -175,6 +175,30 @@ services:
       retries: 3
       start_period: 15s
 
+  # ---------------------------------------------------------------------------
+  # Consolidation worker — daily ingestion that pulls last-24h reservoir
+  # rows and writes one consolidated semantic fact per group. Reuses the
+  # api-gateway image so we don't have to maintain a separate build.
+  # Tick cadence defaults to 1h (in-process supervisor). For local dev the
+  # service comes up with the api-gateway and shares its database.
+  # ---------------------------------------------------------------------------
+  consolidation-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: bossnyumba-consolidation-worker
+    restart: unless-stopped
+    command:
+      - "node_modules/.bin/tsx"
+      - "services/consolidation-worker/src/index.ts"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://bossnyumba:bossnyumba_dev@postgres:5432/bossnyumba
+      CONSOLIDATION_INTERVAL_MS: 3600000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   estate-manager:
     build:
       context: .

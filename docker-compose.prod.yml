@@ -143,6 +143,41 @@ services:
           cpus: "1.0"
           memory: 1G
 
+  # ---------------------------------------------------------------------------
+  # Consolidation worker — daily ingestion that pulls last-24h reservoir
+  # rows and writes one consolidated semantic fact per group. Reuses the
+  # api-gateway image since the worker is tiny + the image already
+  # carries the workspace and tsx. CONSOLIDATION_INTERVAL_MS defaults to
+  # 1h here so the supervisor runs in-process; flip to 0 if you front
+  # this with the k8s/consolidation-worker-cron.yaml CronJob.
+  # ---------------------------------------------------------------------------
+  consolidation-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: bossnyumba-consolidation-worker
+    restart: unless-stopped
+    command:
+      - "node_modules/.bin/tsx"
+      - "services/consolidation-worker/src/index.ts"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bossnyumba}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bossnyumba}
+      CONSOLIDATION_INTERVAL_MS: ${CONSOLIDATION_INTERVAL_MS:-3600000}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
   estate-manager:
     environment:
       NODE_ENV: production
@@ -211,6 +246,36 @@ services:
         limits: { cpus: "0.5", memory: 256M }
 
   # -------------------------------------------------------------------------
+  # Grafana — dashboards + provisioning. Auto-imports every JSON under
+  # ./monitoring/grafana-dashboards/ via the same provisioning manifest
+  # that the k8s ConfigMap surfaces (`infrastructure/k8s/monitoring/
+  # grafana-dashboards-configmap.yaml`). Operators get a single source
+  # of truth for both deployment paths.
+  # -------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: bossnyumba-grafana
+    restart: unless-stopped
+    ports:
+      - "3009:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      # Wave-K Tier-3 W-Ops — bind the dashboard JSONs at the path the
+      # provisioning manifest (mounted just below) declares.
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards/json:ro
+      # Provisioning manifest — minimal inline copy so docker-compose
+      # users don't need to mount the k8s ConfigMap separately. Source
+      # of truth is the ConfigMap; keep them in sync.
+      - ./monitoring/grafana-provisioning:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+
+  # -------------------------------------------------------------------------
   # Fluent-bit log shipper (stub — target backend via FLUENT_BIT_OUTPUT)
   # Routes structured JSON logs from every container to CloudWatch/Loki/Elastic
   # -------------------------------------------------------------------------
@@ -241,3 +306,4 @@ volumes:
   neo4j_logs:
   nginx_acme:
   nginx_logs:
+  grafana_data:

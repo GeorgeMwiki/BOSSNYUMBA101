@@ -103,3 +103,149 @@ describe('audit-hash-chain', () => {
     expect(b[0].tenantId).toBe('t2');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wave-K Tier-3 — verifyWithRotation integration. The verifier now
+// delegates to @bossnyumba/observability's `verifyWithRotation` when
+// both active + previous secrets are present, and the result carries
+// a per-key roleBreakdown so operators can monitor the 24h soak.
+// ---------------------------------------------------------------------------
+
+import { createAuditHashChain as createChainImpl } from '../security/audit-hash-chain.js';
+
+describe('audit-hash-chain — verifyWithRotation integration', () => {
+  it('verify returns roleBreakdown with all rows under "current" when no rotation is in flight', async () => {
+    let clockMs = 1_700_000_000_000;
+    let seq = 0;
+    const repo = createInMemoryAuditChainRepo();
+    const chain = createChainImpl({
+      repo,
+      now: () => new Date(clockMs++),
+      idGenerator: () => `aud_${++seq}`,
+      secret: { active: 'active-key-aaaaaaaa', previous: 'previous-key-bbbb' },
+    });
+
+    await chain.append({ tenantId: 't1', turnId: 'a', action: 'x' });
+    await chain.append({ tenantId: 't1', turnId: 'b', action: 'y' });
+    await chain.append({ tenantId: 't1', turnId: 'c', action: 'z' });
+
+    const res = await chain.verifyChain('t1');
+    expect(res.valid).toBe(true);
+    expect(res.roleBreakdown).toEqual({
+      current: 3,
+      previous: 0,
+      legacy: 0,
+    });
+  });
+
+  it('verify recognises rows signed under the PREVIOUS secret during rotation', async () => {
+    let clockMs = 1_700_000_000_000;
+    let seq = 0;
+    const repo = createInMemoryAuditChainRepo();
+
+    // First, append 2 rows with secret K1 as ACTIVE (no previous yet).
+    const k1 = 'rotation-key-K1-aaaaaa';
+    const k2 = 'rotation-key-K2-bbbbbb';
+    const chainPreRotation = createChainImpl({
+      repo,
+      now: () => new Date(clockMs++),
+      idGenerator: () => `aud_${++seq}`,
+      secret: { active: k1 },
+    });
+    await chainPreRotation.append({
+      tenantId: 't1',
+      turnId: 'k1-row1',
+      action: 'pre',
+    });
+    await chainPreRotation.append({
+      tenantId: 't1',
+      turnId: 'k1-row2',
+      action: 'pre',
+    });
+
+    // Now rotate: K2 becomes ACTIVE, K1 becomes PREVIOUS. Append 1
+    // more row under K2.
+    const chainPostRotation = createChainImpl({
+      repo,
+      now: () => new Date(clockMs++),
+      idGenerator: () => `aud_${++seq}`,
+      secret: { active: k2, previous: k1 },
+    });
+    await chainPostRotation.append({
+      tenantId: 't1',
+      turnId: 'k2-row1',
+      action: 'post',
+    });
+
+    // Verify from the post-rotation chain — all three rows must
+    // validate, with 1 under 'current' (the K2 row) + 2 under
+    // 'previous' (the K1 rows, still valid during the soak).
+    const res = await chainPostRotation.verifyChain('t1');
+    expect(res.valid).toBe(true);
+    expect(res.entriesChecked).toBe(3);
+    expect(res.roleBreakdown).toEqual({
+      current: 1,
+      previous: 2,
+      legacy: 0,
+    });
+  });
+
+  it('verify rejects rows signed under a third key not in the rotation pair', async () => {
+    let clockMs = 1_700_000_000_000;
+    let seq = 0;
+    const repo = createInMemoryAuditChainRepo();
+    const k1 = 'key-K1-aaaaaaaaaa';
+    const k2 = 'key-K2-bbbbbbbbbb';
+    const k3 = 'rogue-K3-cccccccc';
+
+    // Seed a row under K3 — a tamper actor with write access but the
+    // wrong key.
+    const chainRogue = createChainImpl({
+      repo,
+      now: () => new Date(clockMs++),
+      idGenerator: () => `aud_${++seq}`,
+      secret: { active: k3 },
+    });
+    await chainRogue.append({
+      tenantId: 't1',
+      turnId: 'rogue',
+      action: 'rogue-write',
+    });
+
+    // Verify against the legitimate rotation pair (K1, K2). The K3
+    // row must NOT validate.
+    const chainLegit = createChainImpl({
+      repo,
+      now: () => new Date(clockMs++),
+      idGenerator: () => `aud_${++seq}`,
+      secret: { active: k1, previous: k2 },
+    });
+    const res = await chainLegit.verifyChain('t1');
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/mutated/i);
+  });
+
+  it('verify falls back to legacy SHA-256 when no secrets configured', async () => {
+    // Drop any inherited process env so the assertion is hermetic.
+    const prevActive = process.env.SESSION_HASH_SECRET;
+    const prevPrev = process.env.SESSION_HASH_SECRET_PREV;
+    delete process.env.SESSION_HASH_SECRET;
+    delete process.env.SESSION_HASH_SECRET_PREV;
+    try {
+      const { repo, chain } = createChain();
+      await chain.append({ tenantId: 't1', turnId: 'a', action: 'x' });
+      await chain.append({ tenantId: 't1', turnId: 'b', action: 'y' });
+      const res = await chain.verifyChain('t1');
+      expect(res.valid).toBe(true);
+      expect(res.roleBreakdown).toEqual({
+        current: 0,
+        previous: 0,
+        legacy: 2,
+      });
+      expect(repo.entries).toHaveLength(2);
+    } finally {
+      if (prevActive !== undefined) process.env.SESSION_HASH_SECRET = prevActive;
+      if (prevPrev !== undefined) process.env.SESSION_HASH_SECRET_PREV = prevPrev;
+    }
+  });
+});
