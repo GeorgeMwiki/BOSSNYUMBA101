@@ -38,7 +38,7 @@
     "react-leaflet": "^4.2.1",
     "react-pdf": "^9.1.0",
     "react-vega": "^7.6.0",
-    "vega": "^5.30.0",
+    "vega": "^6.2.0",
     "vega-embed": "^6.27.0",
     "vega-lite": "^5.20.0",
     "zod": "^3.25.76",
