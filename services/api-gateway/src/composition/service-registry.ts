@@ -1720,11 +1720,12 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/* eslint-disable-next-line no-secrets/no-secrets */
 /**
  * Env-driven kill-switch for the agency executor's sovereign-tier
  * audit-write policy (W-FailClosed, wave-k-final-zero).
  *
- * - `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` → fail-closed.
+ * - `SOVEREIGN_LEDGER_FAIL_CLOSED=true|1|yes|on` -> fail-closed.
  *   When the hash-chained sovereign action ledger cannot be written
  *   on a sovereign-tier action (tenant eviction, owner payout, KRA
  *   MRI, GePG control-number revocation, market-rate-band override,
