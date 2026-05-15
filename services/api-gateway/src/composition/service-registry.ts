@@ -213,6 +213,10 @@ import {
   type WakeLoopCronSupervisor,
 } from './wake-loop-cron.js';
 import {
+  createParityCapabilityDashboard,
+  type ParityCapabilityDashboardService,
+} from './parity-capability-dashboard.factory.js';
+import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
   createTrainingAssignmentService,
@@ -578,6 +582,12 @@ export interface ServiceRegistry {
    *  until `start()` is called from the gateway boot sequence. */
   readonly wakeLoopCron: WakeLoopCronSupervisor | null;
 
+  /** Parity capability dashboard (Wave-K parity-litfin Gap C). Aggregates
+   *  `kernel_provenance` + `kernel_cot_reservoir` rows into the per-
+   *  capability tiles the mission-eval UI renders. Null in degraded
+   *  mode — the router falls back to a zeroed payload. */
+  readonly parityCapabilityDashboard: ParityCapabilityDashboardService | null;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -879,6 +889,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // K7 parity-litfin Gap H — wake-loop cron is null in degraded mode
     // (no DB means no tenants to iterate, no read ports to bind).
     wakeLoopCron: null,
+    // Wave-K parity-litfin Gap C — null in degraded mode; the router
+    // surfaces a zeroed-but-shaped payload so mission-eval keeps loading.
+    parityCapabilityDashboard: null,
     eventBus,
     db: null,
     isLive: false,
@@ -1534,6 +1547,10 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         error: (obj, msg) => console.error('wake-loop-cron:', msg ?? '', obj),
       },
     }),
+    // Wave-K parity-litfin Gap C — capability dashboard wired against the
+    // kernel-substrate tables (`kernel_provenance`, `kernel_cot_reservoir`).
+    // Reads only; rejudge is a tier-3 stub that returns a queued verdict.
+    parityCapabilityDashboard: createParityCapabilityDashboard({ db }),
     eventBus,
     db,
     isLive: true,

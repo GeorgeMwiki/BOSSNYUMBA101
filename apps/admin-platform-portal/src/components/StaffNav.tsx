@@ -48,6 +48,7 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/webhook-dlq', label: 'Webhook DLQ' },
       { href: '/ai-costs', label: 'AI spend' },
       { href: '/feature-flags', label: 'Caller flags' },
+      { href: '/mission-eval', label: 'Mission eval' },
     ],
   },
   {

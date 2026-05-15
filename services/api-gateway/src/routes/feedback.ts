@@ -25,13 +25,50 @@ import {
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
-const submitFeedbackSchema = z.object({
+// Legacy feedback shape — long-form bug/feature/etc submissions captured
+// from staff/tenant surveys. Persists to `feedback_submissions`.
+const legacyFeedbackSchema = z.object({
   type: z.enum(['general', 'bug', 'feature', 'improvement']),
   subject: z.string().min(1).max(200),
   message: z.string().min(1).max(5000),
   rating: z.number().int().min(1).max(5).optional(),
   context: z.record(z.unknown()).optional(),
 });
+
+// Turn-feedback shape — Jarvis 👍 / 👎 click on a specific assistant turn.
+// `signal` accepts the short ('up'|'down') and verbose
+// ('thumbs-up'|'thumbs-down') forms because both ship in the field today
+// (the Jarvis console POSTs the verbose form, internal callers use the
+// short form). Normalised on the wire to the legacy schema's `type` so
+// downstream analytics stay uniform.
+const turnFeedbackSchema = z.object({
+  turnId: z.string().min(1).max(200),
+  threadId: z.string().min(1).max(200).nullable(),
+  signal: z.enum(['up', 'down', 'thumbs-up', 'thumbs-down']),
+  correctionText: z.string().max(5000).nullable().optional(),
+  context: z.record(z.unknown()).optional(),
+});
+
+// Union schema — the route accepts both shapes and dispatches by the
+// presence of `turnId`. We rely on Zod's discriminated-union-by-key
+// behaviour via a regular union (the two object shapes don't overlap on
+// any required key, so the parser picks the right branch).
+const submitFeedbackSchema = z.union([legacyFeedbackSchema, turnFeedbackSchema]);
+
+type LegacyFeedbackInput = z.infer<typeof legacyFeedbackSchema>;
+type TurnFeedbackInput = z.infer<typeof turnFeedbackSchema>;
+
+function isTurnFeedback(
+  body: LegacyFeedbackInput | TurnFeedbackInput,
+): body is TurnFeedbackInput {
+  return typeof (body as TurnFeedbackInput).turnId === 'string';
+}
+
+function normaliseSignal(
+  signal: TurnFeedbackInput['signal'],
+): 'up' | 'down' {
+  return signal === 'up' || signal === 'thumbs-up' ? 'up' : 'down';
+}
 
 const createComplaintSchema = z.object({
   subject: z.string().min(1).max(200),
@@ -73,9 +110,54 @@ app.post('/', zValidator('json', submitFeedbackSchema), async (c) => {
   const db = (c.get('services') ?? {}).db;
   if (!db) return dbUnavailable(c);
   const auth = c.get('auth');
-  const body = c.req.valid('json');
+  const body = c.req.valid('json') as LegacyFeedbackInput | TurnFeedbackInput;
   try {
     const id = newId('fbk');
+    if (isTurnFeedback(body)) {
+      // Turn-feedback path — Jarvis thumbs click on a specific assistant
+      // turn. Persisted into `feedback_submissions` with a stable
+      // `type: 'turn-thumbs'` discriminator so analytics can fan it out
+      // without a new table. The original turn/thread identifiers + raw
+      // signal + optional correction text are captured in `context` so
+      // the downstream rejudge/eval workflow can replay them.
+      // TODO(tier-2): split into a dedicated `turn_feedback` table with a
+      // foreign key to the kernel provenance row when the kernel-eval
+      // pipeline lands. For now we share the storage but keep the rows
+      // queryable via the `type` index.
+      const signal = normaliseSignal(body.signal);
+      await db.insert(feedbackSubmissions).values({
+        id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        type: 'turn-thumbs',
+        subject: `Jarvis turn ${signal === 'up' ? '👍' : '👎'}`,
+        message: body.correctionText ?? '',
+        rating: signal === 'up' ? 5 : 1,
+        context: {
+          ...(body.context ?? {}),
+          turnId: body.turnId,
+          threadId: body.threadId,
+          signal,
+          correctionText: body.correctionText ?? null,
+        },
+        status: 'submitted',
+      });
+      return c.json(
+        {
+          success: true,
+          data: {
+            id,
+            status: 'submitted',
+            turnId: body.turnId,
+            signal,
+            accepted: true,
+          },
+        },
+        201,
+      );
+    }
+
+    // Legacy path — long-form survey feedback.
     await db.insert(feedbackSubmissions).values({
       id,
       tenantId: auth.tenantId,
