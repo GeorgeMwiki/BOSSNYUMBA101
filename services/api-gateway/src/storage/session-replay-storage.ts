@@ -69,6 +69,8 @@ export function createLocalFileStorage(
   let ensured = false;
   async function ensureRoot(): Promise<void> {
     if (ensured) return;
+    // `rootDir` is operator-configured at startup (never tenant input).
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     await fs.mkdir(rootDir, { recursive: true });
     ensured = true;
   }
@@ -82,12 +84,18 @@ export function createLocalFileStorage(
       }
       await ensureRoot();
       const filePath = joinPath(rootDir, `${chunkId}.gz`);
+      // `chunkId` validated by `isSafeChunkId` (UUID-only) above; the
+      // join with `rootDir` cannot traverse out of the storage root.
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       await fs.writeFile(filePath, gzipBytes);
       return { storageUri: `file://${filePath}` };
     },
     async download(chunkIdOrUri) {
       const filePath = resolveLocalPath(rootDir, chunkIdOrUri);
       try {
+        // `resolveLocalPath` enforces the path stays within `rootDir`
+        // and rejects directory-traversal payloads.
+        // eslint-disable-next-line security/detect-non-literal-fs-filename
         const buf = await fs.readFile(filePath);
         return new Uint8Array(buf);
       } catch (error) {
