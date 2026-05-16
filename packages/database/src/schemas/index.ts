@@ -344,3 +344,41 @@ export * from './sensorium-event-log.schema.js';
 // | paused. Powers retry + crash-recovery + operator-resumable goals.
 // Phase A in-tree implementation of the Inngest AgentKit pattern.
 export * from './agency-run-checkpoints.schema.js';
+
+// Temporal entity graph (migration 0140, B4 Phase B — Central Command).
+// Zep / Graphiti-style bi-temporal knowledge graph. Three tables:
+// `temporal_entities` (typed nodes with valid_from/valid_to windows),
+// `temporal_relationships` (typed edges between entities, also with
+// their own validity windows), and `temporal_communities` (output of
+// nightly Louvain community detection — see
+// https://arxiv.org/abs/0803.0476). Rows are never deleted: the
+// consolidation worker writes a fresh row with a new validity window
+// when the world changes, and back-references the prior row via
+// `invalidated_at`. Powers "who was living in 4B in March?" queries.
+export * from './temporal-entity-graph.schema.js';
+
+// Platform feature flags (migration 0137, B1 Phase B — Central Command HQ).
+// Per-tenant JSONB key/value store backing platform.feature.flag.set /
+// platform.feature.flag.read HQ tools. Boolean or string values; prior
+// values snapshotted for rollback via the kill-switch / restore path.
+export * from './platform-feature-flags.schema.js';
+
+// Platform killswitch state (migration 0138, B1 Phase B — Central Command).
+// Tracks the global killswitch level (off / read-only / paused / locked)
+// plus prior-state snapshots for rollback. Mutations fan out across all
+// portals via the cross-portal-bus; reads stay local to the gateway.
+export * from './platform-killswitch-state.schema.js';
+
+// Platform announcements (migration 0139, B1 Phase B — Central Command).
+// HQ-issued platform-wide notifications with queue/dispatch state.
+// Status flow: draft → queued → dispatched → retracted. Audience
+// resolution + notification dispatch handled by injected ports
+// (recipient resolver + notification dispatcher in composition root).
+export * from './platform-announcements.schema.js';
+
+// Session replay chunks (migration 0142, B5 Phase B — Central Command).
+// Cold-store metadata for rrweb session-replay payloads (gzipped JSON in
+// S3-emulated local storage or AWS S3). UNIQUE(session_id, sequence_number)
+// enforces append-only idempotency. PII masked at the client BEFORE upload;
+// inputs (password / cc / NIDA / KRA / M-Pesa) never persist to cold store.
+export * from './session-replay-chunks.schema.js';

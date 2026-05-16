@@ -37,6 +37,7 @@ import {
   type ReEmbedPort,
 } from './stages/07-re-embed.js';
 import { runPublishStage } from './stages/08-publish.js';
+import { runWeeklyPromptCompileStage } from './stages/09-weekly-prompt-compile.js';
 import type {
   BrainDelta,
   BrainDeltaPublisher,
@@ -47,6 +48,11 @@ import type {
   StageLogger,
   TraceCluster,
 } from './stages/types.js';
+import {
+  createNoopTracer,
+  type StageSpanRunner,
+  type StageTracer,
+} from './observability/otel-tracer.js';
 
 export interface ConsolidationOrchestratorDeps {
   readonly sources: IngestSources;
@@ -69,6 +75,29 @@ export interface ConsolidationOrchestratorDeps {
   readonly clusterer?: (bundle: ReturnType<typeof noop>) => Promise<
     ReadonlyArray<TraceCluster>
   >;
+  /**
+   * Optional OTel tracer. When supplied, every stage runs inside a
+   * `consolidation.stage.N` active span and the whole tick is wrapped
+   * in `consolidation.tick`. Defaults to a no-op tracer.
+   */
+  readonly tracer?: StageTracer;
+  /**
+   * Optional weekday provider — orchestrator runs stage 09 (DSPy
+   * GEPA prompt recompile) only when `weekday === 0` (Sunday).
+   * Production injects `() => new Date().getUTCDay()`; tests pass a
+   * fixed function. Default: read `now().getUTCDay()` if `now` is
+   * supplied, else the real Date.
+   */
+  readonly weekday?: () => number;
+  /**
+   * Optional weekly stage hook — runs the DSPy GEPA prompt recompile
+   * stage when `weekday === 0`. Composition root wires the real GEPA
+   * optimiser; tests pass a stub. When omitted, the stage is a no-op.
+   */
+  readonly weeklyPromptCompiler?: () => Promise<{
+    readonly promptsCompiled: number;
+    readonly promotedCount: number;
+  }>;
 }
 
 // Hidden helper so the optional override type compiles without an
@@ -88,160 +117,193 @@ export async function runConsolidationOrchestrator(
 ): Promise<ConsolidationTickResult> {
   const logger = deps.logger;
   const errors: string[] = [];
+  const tracer = deps.tracer ?? createNoopTracer();
+  const tickId = `tick_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
 
-  // STAGE 01 — ingest
-  const bundle = await safeStage(
-    logger,
-    '01-ingest',
-    () =>
-      runIngestStage({
-        sources: deps.sources,
+  return tracer.startTick(tickId, async (runStage) => {
+    // STAGE 01 — ingest
+    const bundle = await safeStage(
+      logger,
+      runStage,
+      '01-ingest',
+      () =>
+        runIngestStage({
+          sources: deps.sources,
+          logger,
+          ...(deps.now ? { now: deps.now } : {}),
+          ...(deps.windowMs !== undefined ? { windowMs: deps.windowMs } : {}),
+        }),
+      {
+        windowStart: new Date(0).toISOString(),
+        windowEnd: new Date(0).toISOString(),
+        traces: [],
+        implicitSignals: [],
+        explicitFeedback: [],
+      },
+      errors,
+    );
+
+    // STAGE 02 — cluster
+    const clusters = await safeStage(
+      logger,
+      runStage,
+      '02-cluster',
+      () =>
+        runClusterStage({
+          bundle: bundle as never,
+          logger,
+          ...(deps.clusterer
+            ? { clusterer: deps.clusterer as never }
+            : {}),
+        }),
+      [] as ReadonlyArray<TraceCluster>,
+      errors,
+    );
+
+    // STAGE 03 — reflect
+    const reflections = await safeStage(
+      logger,
+      runStage,
+      '03-reflect',
+      () =>
+        runReflectStage({
+          clusters,
+          critic: deps.critic ?? createStubCritic(),
+          logger,
+        }),
+      [],
+      errors,
+    );
+
+    // STAGE 04 — promote
+    const promote = await safeStage(
+      logger,
+      runStage,
+      '04-promote',
+      () =>
+        runPromoteStage({
+          clusters,
+          reflections,
+          logger,
+          ...(deps.skillRegistry ? { skillRegistry: deps.skillRegistry } : {}),
+          ...(deps.embedder ? { embedder: deps.embedder } : {}),
+        }),
+      { decisions: [], skillsPromoted: 0, promptPatches: 0 },
+      errors,
+    );
+
+    // Tenants touched in this batch (for decay / consolidate / re-embed).
+    const tenantIds = uniqueTenants(clusters.map((c) => c.tenantId));
+
+    // STAGE 05 — decay
+    const decay = await safeStage(
+      logger,
+      runStage,
+      '05-decay',
+      () =>
+        runDecayStage({
+          tenantIds,
+          logger,
+          ...(deps.semanticDecay ? { semantic: deps.semanticDecay } : {}),
+          ...(deps.decayPerDay !== undefined
+            ? { decayPerDay: deps.decayPerDay }
+            : {}),
+        }),
+      { factsDecayed: 0, perTenant: {} },
+      errors,
+    );
+
+    // STAGE 06 — consolidate
+    const consolidate = await safeStage(
+      logger,
+      runStage,
+      '06-consolidate',
+      () =>
+        runConsolidateStage({
+          tenantIds,
+          logger,
+          ...(deps.entityConsolidator
+            ? { consolidator: deps.entityConsolidator }
+            : {}),
+        }),
+      { entitiesMerged: 0, perTenant: {} },
+      errors,
+    );
+
+    // STAGE 07 — re-embed
+    const reembed = await safeStage(
+      logger,
+      runStage,
+      '07-re-embed',
+      () =>
+        runReEmbedStage({
+          tenantIds,
+          logger,
+          ...(deps.reEmbedder ? { reEmbedder: deps.reEmbedder } : {}),
+        }),
+      { factsReEmbedded: 0, perTenant: {} },
+      errors,
+    );
+
+    // STAGE 08 — publish
+    const delta = await safeStage(
+      logger,
+      runStage,
+      '08-publish',
+      () =>
+        runPublishStage({
+          logger,
+          ...(deps.publisher ? { publisher: deps.publisher } : {}),
+          windowStart: (bundle as { windowStart: string }).windowStart,
+          windowEnd: (bundle as { windowEnd: string }).windowEnd,
+          skillsPromoted: promote.skillsPromoted,
+          promptPatches: promote.promptPatches,
+          factsDecayed: decay.factsDecayed,
+          entitiesMerged: consolidate.entitiesMerged,
+          factsReEmbedded: reembed.factsReEmbedded,
+          clustersInspected: clusters.length,
+        }),
+      {
+        tickId,
+        windowStart: new Date(0).toISOString(),
+        windowEnd: new Date(0).toISOString(),
+        skillsPromoted: 0,
+        promptPatches: 0,
+        factsDecayed: 0,
+        entitiesMerged: 0,
+        factsReEmbedded: 0,
+        clustersInspected: 0,
+      } satisfies BrainDelta,
+      errors,
+    );
+
+    // STAGE 09 — weekly DSPy GEPA prompt recompile (Sundays only).
+    // Out-of-band from the brain delta — the weekly result is a
+    // separate event the orchestrator emits via the logger.
+    const weekday =
+      deps.weekday?.() ??
+      (deps.now ? deps.now().getUTCDay() : new Date().getUTCDay());
+    if (weekday === 0 && deps.weeklyPromptCompiler) {
+      await safeStage(
         logger,
-        ...(deps.now ? { now: deps.now } : {}),
-        ...(deps.windowMs !== undefined ? { windowMs: deps.windowMs } : {}),
-      }),
-    {
-      windowStart: new Date(0).toISOString(),
-      windowEnd: new Date(0).toISOString(),
-      traces: [],
-      implicitSignals: [],
-      explicitFeedback: [],
-    },
-    errors,
-  );
+        runStage,
+        '09-weekly-prompt-compile',
+        () =>
+          runWeeklyPromptCompileStage({
+            logger,
+            compile: deps.weeklyPromptCompiler!,
+          }),
+        { promptsCompiled: 0, promotedCount: 0 },
+        errors,
+      );
+    }
 
-  // STAGE 02 — cluster
-  const clusters = await safeStage(
-    logger,
-    '02-cluster',
-    () =>
-      runClusterStage({
-        bundle: bundle as never,
-        logger,
-        ...(deps.clusterer
-          ? { clusterer: deps.clusterer as never }
-          : {}),
-      }),
-    [] as ReadonlyArray<TraceCluster>,
-    errors,
-  );
-
-  // STAGE 03 — reflect
-  const reflections = await safeStage(
-    logger,
-    '03-reflect',
-    () =>
-      runReflectStage({
-        clusters,
-        critic: deps.critic ?? createStubCritic(),
-        logger,
-      }),
-    [],
-    errors,
-  );
-
-  // STAGE 04 — promote
-  const promote = await safeStage(
-    logger,
-    '04-promote',
-    () =>
-      runPromoteStage({
-        clusters,
-        reflections,
-        logger,
-        ...(deps.skillRegistry ? { skillRegistry: deps.skillRegistry } : {}),
-        ...(deps.embedder ? { embedder: deps.embedder } : {}),
-      }),
-    { decisions: [], skillsPromoted: 0, promptPatches: 0 },
-    errors,
-  );
-
-  // Tenants touched in this batch (for decay / consolidate / re-embed).
-  const tenantIds = uniqueTenants(clusters.map((c) => c.tenantId));
-
-  // STAGE 05 — decay
-  const decay = await safeStage(
-    logger,
-    '05-decay',
-    () =>
-      runDecayStage({
-        tenantIds,
-        logger,
-        ...(deps.semanticDecay ? { semantic: deps.semanticDecay } : {}),
-        ...(deps.decayPerDay !== undefined
-          ? { decayPerDay: deps.decayPerDay }
-          : {}),
-      }),
-    { factsDecayed: 0, perTenant: {} },
-    errors,
-  );
-
-  // STAGE 06 — consolidate
-  const consolidate = await safeStage(
-    logger,
-    '06-consolidate',
-    () =>
-      runConsolidateStage({
-        tenantIds,
-        logger,
-        ...(deps.entityConsolidator
-          ? { consolidator: deps.entityConsolidator }
-          : {}),
-      }),
-    { entitiesMerged: 0, perTenant: {} },
-    errors,
-  );
-
-  // STAGE 07 — re-embed
-  const reembed = await safeStage(
-    logger,
-    '07-re-embed',
-    () =>
-      runReEmbedStage({
-        tenantIds,
-        logger,
-        ...(deps.reEmbedder ? { reEmbedder: deps.reEmbedder } : {}),
-      }),
-    { factsReEmbedded: 0, perTenant: {} },
-    errors,
-  );
-
-  // STAGE 08 — publish
-  const delta = await safeStage(
-    logger,
-    '08-publish',
-    () =>
-      runPublishStage({
-        logger,
-        ...(deps.publisher ? { publisher: deps.publisher } : {}),
-        windowStart: (bundle as { windowStart: string }).windowStart,
-        windowEnd: (bundle as { windowEnd: string }).windowEnd,
-        skillsPromoted: promote.skillsPromoted,
-        promptPatches: promote.promptPatches,
-        factsDecayed: decay.factsDecayed,
-        entitiesMerged: consolidate.entitiesMerged,
-        factsReEmbedded: reembed.factsReEmbedded,
-        clustersInspected: clusters.length,
-      }),
-    {
-      tickId: 'tick_aborted',
-      windowStart: new Date(0).toISOString(),
-      windowEnd: new Date(0).toISOString(),
-      skillsPromoted: 0,
-      promptPatches: 0,
-      factsDecayed: 0,
-      entitiesMerged: 0,
-      factsReEmbedded: 0,
-      clustersInspected: 0,
-    } satisfies BrainDelta,
-    errors,
-  );
-
-  return {
-    delta,
-    clustersInspected: clusters.length,
-    errors,
-  };
+    return {
+      delta,
+      clustersInspected: clusters.length,
+      errors,
+    };
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -250,13 +312,14 @@ export async function runConsolidationOrchestrator(
 
 async function safeStage<T>(
   logger: StageLogger,
+  runStage: StageSpanRunner,
   stage: string,
   fn: () => Promise<T>,
   fallback: T,
   errors: string[],
 ): Promise<T> {
   try {
-    return await fn();
+    return await runStage(stage, fn);
   } catch (error) {
     const msg = asMessage(error);
     logger.warn(

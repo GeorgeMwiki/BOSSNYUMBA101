@@ -1,17 +1,26 @@
 /**
  * Stage 07 — Re-embed.
  *
- * Re-embed promoted facts (and any with NULL embedding) using the
- * CURRENT embedding model version so retrieval stays consistent when
- * the embedder is upgraded. The full bulk-reembedder lives in
- * `@bossnyumba/database`; this stage just calls the port.
+ * B4 Phase B: real bulk re-embedder. Re-embeds rows in
+ * `kernel_memory_semantic` with the CURRENT embedding-model version so
+ * retrieval stays consistent when the embedder is upgraded.
  *
- * When no port is wired, the stage is a no-op — production keeps the
- * facts written by stage 04 (with their fresh embeddings) and a
- * separate batch job catches up the legacy rows.
+ * Wiring: this stage talks to a `ReEmbedPort` (duck-typed locally so
+ * the worker compiles without compile-time deps on `@bossnyumba/
+ * database`). The composition root wires the real port —
+ * `createSemanticBulkReEmbedService` — which:
  *
- * TODO (Phase B): wire the bulk re-embedder against `kernel_memory_
- * semantic` rows where `embedding IS NULL`.
+ *   - iterates the table in chunks of 100 rows
+ *   - skips rows whose `last_embedded_at` is newer than the model-
+ *     version cutoff (resumable on restart)
+ *   - stamps `last_embedded_at = NOW()` per successful row
+ *
+ * Hard cap: 500 rows / tenant / tick. The default cap can be raised
+ * via `perTenantLimit` on the orchestrator's deps when an operator
+ * forces a large-scale re-embed (model version bump).
+ *
+ * Per-tenant errors are absorbed; the cascade continues with the next
+ * tenant.
  */
 
 import type { ReEmbedReport, StageLogger } from './types.js';
@@ -20,6 +29,8 @@ export interface ReEmbedPort {
   reEmbedForTenant(args: {
     readonly tenantId: string | null;
     readonly limit: number;
+    /** Optional resume-cutoff; rows fresher than this are skipped. */
+    readonly modelCutoff?: Date | string;
   }): Promise<ReEmbedReport>;
 }
 
@@ -29,6 +40,12 @@ export interface ReEmbedArgs {
   readonly logger: StageLogger;
   /** Hard cap per tenant per tick. Default 500. */
   readonly perTenantLimit?: number;
+  /**
+   * The point in time the active embedding-model version went live.
+   * Rows whose `last_embedded_at` is at or after this timestamp are
+   * skipped. Default: never (epoch) — every row is eligible.
+   */
+  readonly modelCutoff?: Date | string;
 }
 
 const DEFAULT_LIMIT = 500;
@@ -46,7 +63,7 @@ export async function runReEmbedStage(
   if (!args.reEmbedder) {
     args.logger.info(
       { stage: '07-re-embed' },
-      're-embed stage skipped (Phase B will wire bulk re-embedder)',
+      're-embed stage skipped (no bulk re-embedder wired)',
     );
     return { factsReEmbedded: 0, perTenant };
   }
@@ -54,10 +71,15 @@ export async function runReEmbedStage(
   const unique = uniqueTenants(args.tenantIds);
   for (const tenantId of unique) {
     try {
-      const report = await args.reEmbedder.reEmbedForTenant({
-        tenantId,
-        limit,
-      });
+      const portArgs: {
+        tenantId: string | null;
+        limit: number;
+        modelCutoff?: Date | string;
+      } = { tenantId, limit };
+      if (args.modelCutoff !== undefined) {
+        portArgs.modelCutoff = args.modelCutoff;
+      }
+      const report = await args.reEmbedder.reEmbedForTenant(portArgs);
       const safeKey = tenantId ?? '__global__';
       perTenant[safeKey] = report;
       total += report.reEmbeddedCount;
