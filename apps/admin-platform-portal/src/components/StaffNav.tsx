@@ -49,6 +49,10 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/ai-costs', label: 'AI spend' },
       { href: '/feature-flags', label: 'Caller flags' },
       { href: '/mission-eval', label: 'Mission eval' },
+      // Central Command Phase B B5 — Session replay (rrweb cold store).
+      // Default lands on the recent-sessions index; an operator picks a
+      // session to drill into `/session-replay/<sessionId>`.
+      { href: '/session-replay', label: 'Session replay' },
     ],
   },
   {

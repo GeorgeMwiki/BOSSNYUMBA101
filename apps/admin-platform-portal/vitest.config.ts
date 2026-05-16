@@ -44,6 +44,10 @@ export default defineConfig({
       // Schema tests run without optional UI deps installed; component
       // smoke-tests opt in once react-vega / react-leaflet / etc. land.
       'src/lib/genui/__tests__/**/*.test.ts',
+      // Central-Command Phase B B5 — session-replay recorder + uploader
+      // + PII mask. rrweb itself is dynamically imported; tests inject
+      // their own factory so they pass without `pnpm install`.
+      'src/lib/session-replay/__tests__/**/*.test.ts',
     ],
     testTimeout: 10000,
   },

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SensoriumProvider } from '@/lib/sensorium/SensoriumProvider';
+import { SessionReplayProvider } from '@/components/SessionReplayProvider';
 
 export const metadata: Metadata = {
   title: 'BossNyumba HQ',
@@ -31,9 +32,14 @@ export default function RootLayout({
             Wires the 14-event sensory bus to every page in the portal so
             the brain (Mr. Mwikila) senses what the operator is doing in
             real time. Side-channel only — never blocks render. */}
-        <SensoriumProvider surface="admin-platform-portal">
-          {children}
-        </SensoriumProvider>
+        {/* Central Command Phase B — B5 Session Replay (rrweb cold store).
+            Held SEPARATELY from the sensorium taxonomy: mouse-move replay
+            at ≈20Hz lives here; it is NEVER fed into the LLM context. */}
+        <SessionReplayProvider surface="admin-platform-portal">
+          <SensoriumProvider surface="admin-platform-portal">
+            {children}
+          </SensoriumProvider>
+        </SessionReplayProvider>
       </body>
     </html>
   );

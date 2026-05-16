@@ -480,6 +480,28 @@ export * as introspection from './introspection/index.js';
 export * as agency from './agency/index.js';
 
 /**
+ * Counter-model — second-LLM sanity check on destroy-tier / billing-
+ * tier actions BEFORE the four-eye approval gate fires. Central Command
+ * Phase B (B5). See `.planning/research/central-command/2025-agentic-
+ * admin-patterns.md` §"Counter-model sanity check".
+ */
+export * as counterModel from './counter-model/index.js';
+
+// Named re-exports for callers that want the counter-model types
+// without the namespace import dance (the api-gateway composition
+// wiring needs `CounterModel` + `CounterModelLlmClient` at the type
+// site).
+export {
+  createCounterModelReview,
+  type CounterModel,
+  type CounterModelConfig,
+  type CounterModelLlmClient,
+  type CounterModelReviewArgs,
+  type CounterModelReviewOutcome,
+  type CounterModelVerdict,
+} from './counter-model/index.js';
+
+/**
  * AG-UI Protocol — brain-↔UI streaming wire. Typed event surface +
  * SSE emitter + kernel-stream → AG-UI adapter. The api-gateway and
  * Next.js admin portal share this contract so generative-UI primitives
