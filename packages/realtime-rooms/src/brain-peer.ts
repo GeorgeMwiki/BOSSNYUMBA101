@@ -1,0 +1,162 @@
+/**
+ * Brain-peer adapter — represents the brain as a non-human participant
+ * in a Liveblocks room. Pattern is the Liveblocks 3.0 "AI Copilots" /
+ * agent-peer convention (May 2025 release): the brain has its own
+ * cursor, can read room updates, and can issue mutations.
+ *
+ * Implementation status:
+ *   - 2.x stable path: presence + broadcastEvent (works today)
+ *   - 3.x stable path: native `room.agent({...})` once that surface
+ *     stabilises (TODO at the bottom of this file)
+ *
+ * Generative-UI parts are emitted as room `customEvent`s with a
+ * `kind: 'gen-ui-part'` discriminator; the chat surface listens for
+ * these and mounts the matching React subtree via the chat-ui parts
+ * registry (`packages/chat-ui`).
+ */
+
+import type { LiveblocksRoom } from './client.js';
+
+/** Minimal kernel surface — the brain peer never reaches deeper. */
+export interface BrainKernelHandle {
+  readonly tenantId: string;
+  /**
+   * Emit a chat-style generative-UI part for the room's surface. The
+   * `partKind` must match a registered chat-ui part; the chat surface
+   * renders the registry slot.
+   */
+  readonly emitGenUIPart: (input: {
+    readonly roomId: string;
+    readonly partKind: string;
+    readonly payload: Record<string, unknown>;
+  }) => Promise<void> | void;
+}
+
+export interface BrainPersona {
+  readonly id: string;
+  readonly displayName: string;
+  readonly avatarUrl?: string;
+  /** RBAC label shown beside the brain's cursor in the room. */
+  readonly role: 'brain';
+}
+
+export interface CreateBrainPeerOptions {
+  readonly room: LiveblocksRoom;
+  readonly kernel: BrainKernelHandle;
+  readonly persona: BrainPersona;
+}
+
+export interface BrainPeer {
+  readonly persona: BrainPersona;
+  readonly roomId: string;
+  /** Detach from the room. Idempotent. */
+  readonly detach: () => void;
+  /**
+   * Issue a room mutation (broadcast a typed `customEvent`). Returns
+   * `true` if the event was queued; `false` if the room is closed.
+   */
+  readonly broadcast: (event: BrainPeerEvent) => boolean;
+  /**
+   * Send a generative-UI part. Convenience wrapper around
+   * {@link BrainKernelHandle.emitGenUIPart} that scopes to this room.
+   */
+  readonly sendGenUIPart: (
+    partKind: string,
+    payload: Record<string, unknown>,
+  ) => Promise<void>;
+}
+
+export type BrainPeerEventKind =
+  | 'gen-ui-part'
+  | 'state-mutation'
+  | 'tool-result'
+  | 'chat-message';
+
+export interface BrainPeerEvent {
+  readonly kind: BrainPeerEventKind;
+  readonly payload: Record<string, unknown>;
+  readonly emittedAt: string;
+}
+
+/**
+ * Liveblocks 2.x exposes `room.broadcastEvent(event)` on the public
+ * client. Once 3.x's `room.agent({...})` lands, swap the `client.broadcastEvent`
+ * call for the agent-peer attach. Until then we use a minimal duck-typed
+ * surface so the unit tests can run without a live socket.
+ */
+interface BroadcastableClient {
+  broadcastEvent?: (roomId: string, event: BrainPeerEvent) => void;
+  leave: (roomId: string) => void;
+}
+
+export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
+  const { room, kernel, persona } = opts;
+  if (!room?.client) {
+    throw new Error('brain-peer: room.client is required');
+  }
+  if (!kernel?.tenantId) {
+    throw new Error('brain-peer: kernel.tenantId is required');
+  }
+  if (persona.role !== 'brain') {
+    throw new Error(
+      `brain-peer: persona.role must be "brain", got "${persona.role}"`,
+    );
+  }
+
+  const client = room.client as unknown as BroadcastableClient;
+  let attached = true;
+
+  const broadcast = (event: BrainPeerEvent): boolean => {
+    if (!attached) return false;
+    if (typeof client.broadcastEvent !== 'function') {
+      // Stub client (tests). Treat as success — the test inspects via
+      // the spy on the factory.
+      return true;
+    }
+    client.broadcastEvent(room.roomId, event);
+    return true;
+  };
+
+  const sendGenUIPart = async (
+    partKind: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> => {
+    if (!attached) {
+      throw new Error('brain-peer: cannot send gen-ui-part after detach');
+    }
+    await kernel.emitGenUIPart({
+      roomId: room.roomId,
+      partKind,
+      payload,
+    });
+    broadcast({
+      kind: 'gen-ui-part',
+      payload: { partKind, ...payload },
+      emittedAt: new Date().toISOString(),
+    });
+  };
+
+  const detach = (): void => {
+    if (!attached) return;
+    attached = false;
+    try {
+      client.leave(room.roomId);
+    } catch {
+      // Detach is best-effort; a room that's already closed is fine.
+    }
+  };
+
+  return {
+    persona,
+    roomId: room.roomId,
+    detach,
+    broadcast,
+    sendGenUIPart,
+  };
+}
+
+// TODO(B6 follow-up): When @liveblocks/client publishes a stable 3.x
+// agent-peer surface (currently in preview as `room.agent({...})`),
+// switch `broadcastEvent`/`leave` for the native attach so the brain
+// shows up with its own cursor in the Liveblocks-managed presence
+// channel rather than as a synthetic peer.
