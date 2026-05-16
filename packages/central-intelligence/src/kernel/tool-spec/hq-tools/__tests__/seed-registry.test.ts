@@ -169,8 +169,45 @@ function makeStubDeps(): SeedHqBrainToolsDeps {
         return;
       },
     },
+    evictionDispatcher: {
+      async start(args) {
+        return {
+          workflowId: `eviction-${args.leaseId}`,
+          runId: 'run-1',
+        };
+      },
+      async withdraw() {
+        return;
+      },
+    },
+    ownerPayoutDispatcher: {
+      async start(args) {
+        return {
+          workflowId: `owner-payout-${args.ownerId}-${args.periodEnd}`,
+          runId: 'run-1',
+        };
+      },
+      async refund() {
+        return;
+      },
+      async estimateUsdCents() {
+        return 100_00; // $100 — well under any ceiling
+      },
+    },
+    kraMriDispatcher: {
+      async start(args) {
+        return {
+          workflowId: `kra-mri-${args.tenantId}-${args.taxPeriodMonth}`,
+          runId: 'run-1',
+        };
+      },
+      async requestRetraction() {
+        return;
+      },
+    },
     maxAdjustmentUsdCents: 500_00,
     maxRecipientCount: 10_000,
+    maxPayoutUsdCents: 100_000_00, // $100k
     contextFactory: () => buildCtx({ otel }),
   };
 }
@@ -178,10 +215,10 @@ function makeStubDeps(): SeedHqBrainToolsDeps {
 describe('seedHqBrainTools', () => {
   let registry: BrainToolRegistry;
 
-  it('registers all 12 platform.* tools', () => {
+  it('registers all 15 platform.* tools', () => {
     registry = createBrainToolRegistry();
     const names = seedHqBrainTools(registry, makeStubDeps());
-    expect(names).toHaveLength(12);
+    expect(names).toHaveLength(15);
     for (const expected of HQ_TOOL_NAMES) {
       expect(registry.get(expected)).not.toBeNull();
     }
