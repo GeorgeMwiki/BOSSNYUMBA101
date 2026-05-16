@@ -413,3 +413,145 @@ export {
   type ListStuckRunningArgs as AgencyCheckpointListStuckArgs,
   type RecordPendingArgs as AgencyCheckpointRecordPendingArgs,
 } from './agency-run-checkpoints.service.js';
+
+// ─────────────────────────────────────────────────────────────────────
+// Central Command Phase B — HQ-tier platform.* tool adapters (B1).
+// One adapter per HQ port (12 tools total). Composition root wires
+// these onto `seedHqBrainTools` deps in the C2 hq-tool-registry.
+// Tier 1 (must-ship): tenants, users, feature-flags, killswitch.
+// Tier 2 (ship-if-time): heartbeat, decision-trace, consolidation,
+// invoice, announcement.
+// ─────────────────────────────────────────────────────────────────────
+
+export {
+  createPlatformTenantsService,
+  type PlatformTenantsService,
+  type ListTenantsArgs as PlatformTenantsListArgs,
+  type ListTenantsResult as PlatformTenantsListResult,
+  type ListTenantsRow as PlatformTenantsListRow,
+  type CreateTenantArgs as PlatformTenantsCreateArgs,
+  type CreateTenantResult as PlatformTenantsCreateResult,
+  type RollbackTenantArgs as PlatformTenantsRollbackArgs,
+} from './platform/tenants.platform.service.js';
+
+export {
+  createPlatformUsersService,
+  type PlatformUsersService,
+  type ListUsersArgs as PlatformUsersListArgs,
+  type ListUsersResult as PlatformUsersListResult,
+  type ListUsersRow as PlatformUsersListRow,
+  type CreateUserArgs as PlatformUsersCreateArgs,
+  type CreateUserResult as PlatformUsersCreateResult,
+  type HqUserRole as PlatformUsersHqRole,
+  type HqUserStatus as PlatformUsersHqStatus,
+} from './platform/users.platform.service.js';
+
+export {
+  createPlatformFeatureFlagsService,
+  type PlatformFeatureFlagsService,
+  type FeatureFlagValue as PlatformFeatureFlagValue,
+  type FeatureFlagsDeps as PlatformFeatureFlagsDeps,
+  type ReadFeatureFlagResult as PlatformReadFeatureFlagResult,
+  type SetFeatureFlagArgs as PlatformSetFeatureFlagArgs,
+  type SetFeatureFlagResult as PlatformSetFeatureFlagResult,
+  type RestoreFlagArgs as PlatformRestoreFlagArgs,
+} from './platform/feature-flags.service.js';
+
+export {
+  createPlatformKillswitchWriteService,
+  type PlatformKillswitchWriteService,
+  type KillswitchDeps as PlatformKillswitchDeps,
+  type KillswitchLevel as PlatformKillswitchLevel,
+  type KillswitchReasonCode as PlatformKillswitchReasonCode,
+  type WriteKillswitchArgs as PlatformWriteKillswitchArgs,
+  type SetKillswitchResult as PlatformSetKillswitchResult,
+  type RestoreKillswitchArgs as PlatformRestoreKillswitchArgs,
+} from './platform/killswitch-write.service.js';
+
+export {
+  createServiceHeartbeatService,
+  type ServiceHealthRow as PlatformServiceHealthRow,
+  type ServiceHealthState as PlatformServiceHealthState,
+  type ServiceHeartbeatDeps as PlatformServiceHeartbeatDeps,
+  type ServiceHeartbeatService as PlatformServiceHeartbeatService,
+} from './platform/service-heartbeat.service.js';
+
+export {
+  createDecisionTraceQueryService,
+  type DecisionTraceQueryArgs as PlatformDecisionTraceQueryArgs,
+  type DecisionTraceQueryService as PlatformDecisionTraceQueryService,
+  type DecisionTraceRecorderLike as PlatformDecisionTraceRecorderLike,
+  type DecisionTraceRow as PlatformDecisionTraceRow,
+} from './platform/decision-trace-query.service.js';
+
+export {
+  createConsolidationRunnerService,
+  type ConsolidationRunArgs as PlatformConsolidationRunArgs,
+  type ConsolidationRunnerService as PlatformConsolidationRunnerService,
+  type ConsolidationTickReport as PlatformConsolidationTickReport,
+  type ConsolidationWorkerLike as PlatformConsolidationWorkerLike,
+} from './platform/consolidation-runner.service.js';
+
+export {
+  createPlatformInvoiceAdjustmentService,
+  type AdjustmentResult as PlatformInvoiceAdjustmentResult,
+  type ApplyAdjustmentArgs as PlatformApplyInvoiceAdjustmentArgs,
+  type InvoiceAdjustmentCategory as PlatformInvoiceAdjustmentCategory,
+  type InvoiceSnapshot as PlatformInvoiceSnapshot,
+  type PlatformInvoiceAdjustmentService,
+  type ReverseAdjustmentArgs as PlatformReverseInvoiceAdjustmentArgs,
+} from './platform/invoice-adjustment.service.js';
+
+export {
+  createPlatformAnnouncementService,
+  type AnnouncementChannel as PlatformAnnouncementChannel,
+  type AnnouncementDeps as PlatformAnnouncementDeps,
+  type NotificationDispatcherLike as PlatformNotificationDispatcherLike,
+  type PlatformAnnouncementService,
+  type RecallAnnouncementArgs as PlatformRecallAnnouncementArgs,
+  type RecipientResolverLike as PlatformRecipientResolverLike,
+  type SendAnnouncementArgs as PlatformSendAnnouncementArgs,
+  type SendAnnouncementResult as PlatformSendAnnouncementResult,
+} from './platform/announcement.service.js';
+
+// Temporal entity graph (migration 0140, B4 Phase B — Central Command).
+// Zep / Graphiti-style bi-temporal knowledge graph plus Louvain
+// community detection (arxiv 0803.0476). Powers the consolidation
+// worker's stage 06 — merges duplicate entities, partitions the
+// tenant subgraph into communities, and back-references the
+// community_id on every entity + relationship for retrieval-time
+// summarisation.
+export {
+  createTemporalEntityGraphService,
+  type ConsolidateForTenantArgs as TemporalGraphConsolidateArgs,
+  type ConsolidateMergeReport as TemporalGraphConsolidateReport,
+  type InvalidateEntityArgs as TemporalGraphInvalidateEntityArgs,
+  type ListEntitiesArgs as TemporalGraphListEntitiesArgs,
+  type ListRelationshipsArgs as TemporalGraphListRelationshipsArgs,
+  type TemporalEntityGraphService,
+  type TemporalEntityRow,
+  type TemporalRelationshipRow,
+  type UpsertEntityArgs as TemporalGraphUpsertEntityArgs,
+  type UpsertRelationshipArgs as TemporalGraphUpsertRelationshipArgs,
+} from './temporal-entity-graph.service.js';
+export {
+  detectCommunitiesLouvain,
+  type LouvainEdge,
+  type LouvainInput,
+  type LouvainNode,
+  type LouvainPartition,
+} from './temporal-entity-graph.louvain.js';
+
+// Semantic bulk re-embedder (migration 0141, B4 Phase B — Central
+// Command). Powers the consolidation worker's stage 07 — iterates
+// `kernel_memory_semantic` in chunks, re-embeds rows whose
+// `last_embedded_at` is older than the active model version, and
+// stamps the column so a crash + restart resumes where the previous
+// run left off.
+export {
+  createSemanticBulkReEmbedService,
+  type BulkReEmbedder,
+  type ReEmbedForTenantArgs as SemanticBulkReEmbedArgs,
+  type ReEmbedReport as SemanticBulkReEmbedReport,
+  type SemanticBulkReEmbedService,
+} from './semantic-bulk-reembed.service.js';

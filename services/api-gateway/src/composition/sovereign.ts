@@ -71,7 +71,15 @@ import {
   createFeedbackService,
   createKernelGoalsService,
   createKernelActionAuditService,
+  createSensoriumEventLogService,
 } from '@bossnyumba/database';
+// Central Command Phase A C4 / Phase B B2 — Behaviour signal source.
+// Surfaces derived brain-mind-state signals (engagement.high,
+// frustration.detected, task.completed-without-AI, dwell.deep) into
+// step 4 of the kernel's 13-step pipeline. Bound to the Drizzle-backed
+// sensorium-event-log service so the kernel reads real user behaviour
+// instead of a static stub.
+import { createBehaviorSignalSource } from '@bossnyumba/ai-copilot/ambient-brain';
 import {
   createAirbnbMarketDataAdapter,
   createZillowMarketDataAdapter,
@@ -218,6 +226,14 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   let realWakeTriggers:
     | ReturnType<typeof agencyKernel.createRealWakeTriggers>
     | undefined;
+  // Behaviour-signal source (Central Command C4 / B2). Bound to the
+  // Drizzle-backed sensorium-event-log service so step 4 (memory
+  // recall) can mix derived brain-mind-state signals into the system
+  // prompt. Undefined when DB is unavailable — the kernel skips this
+  // channel cleanly when the port is missing.
+  let behaviorSignalSource:
+    | ReturnType<typeof createBehaviorSignalSource>
+    | undefined;
   if (db) {
     const svc = createKernelSubstrateService(db, { tenantId: scope.tenantId });
     substrateSinks = {
@@ -319,6 +335,23 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
       toolRegistry.register(stub);
     }
+    // ───── COORD ZONE (B5 → B2): counter-model sanity check ─────
+    // Central Command Phase B (B5) — when the wrapped Anthropic client
+    // is available, every sovereign-tier action gets a second-LLM
+    // sanity check (Haiku) BEFORE the four-eye approval gate fires.
+    //
+    // The `anthropic` const is loaded below at line ~424 (after
+    // `loadAnthropicClient`), so this early stub executor branch runs
+    // WITHOUT the counter-model dep. The `realAgencyExecutor` branch
+    // below (also a coord zone) is the one that takes the counter-
+    // model in production — by the time control reaches there the
+    // wrapped Anthropic client is already constructed.
+    //
+    // B2: when re-organising sovereign.ts boot order (e.g. moving the
+    // Anthropic load earlier so both executor branches share it), add
+    // ONE line to each `createExecutor` literal:
+    //   counterModel: createProductionCounterModel(anthropic),
+    //   ────────────────────────────────────────────────────────
     const agencyExecutor = agencyKernel.createExecutor({
       goals: goalsService,
       tools: toolRegistry,
@@ -392,6 +425,19 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     for (const realTool of agencyKernel.createRealActionTools(boundActionToolDeps)) {
       toolRegistry.register(realTool);
     }
+    // ───── COORD ZONE (B5 → B2): counter-model sanity check ─────
+    // Same wire-in as the early-stub executor above. The cleanest
+    // production fix is to (a) hoist `loadAnthropicClient()` above
+    // this block so the wrapped `anthropic` client is in scope here,
+    // then add the single line:
+    //   counterModel: createProductionCounterModel(anthropic),
+    //
+    // The kernel executor treats `counterModel` as optional — when it
+    // is null/undefined the legacy approval flow runs unchanged. The
+    // second-LLM check only fires on sovereign-tier tools (see
+    // `isSovereignTier` in the kernel), so the latency cost is bounded
+    // to that narrow surface.
+    //   ────────────────────────────────────────────────────────
     const realAgencyExecutor = agencyKernel.createExecutor({
       goals: goalsService,
       tools: toolRegistry,
@@ -414,6 +460,16 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
       leases: boundWakeReadDeps.leaseRead,
       vacancy: boundWakeReadDeps.vacancyRead,
     });
+
+    // Behaviour-signal source — derive brain-mind-state signals
+    // (engagement.high, frustration.detected, task.completed-without-AI,
+    // dwell.deep) from the live sensorium event ribbon. Kernel step 4
+    // reads these and mixes them into the system prompt so the brain
+    // can adapt to the user's current state. The factory duck-types
+    // against the Drizzle service so the ai-copilot package stays
+    // dep-free of @bossnyumba/database.
+    const sensoriumEventLogService = createSensoriumEventLogService(db);
+    behaviorSignalSource = createBehaviorSignalSource(sensoriumEventLogService);
   }
 
   // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
@@ -444,6 +500,13 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
   if (agencyPort) mutable.agency = agencyPort;
   if (realWakeTriggers && realWakeTriggers.length > 0) {
     mutable.realWakeTriggers = realWakeTriggers;
+  }
+  if (behaviorSignalSource) {
+    // The kernel's `BehaviorSignalSourcePort` is structurally duck-typed
+    // (see `kernel-types.ts#BehaviorSignalSourcePort`). The ai-copilot
+    // factory returns a richer `BehaviorSignalSource` that satisfies it;
+    // assign-by-key keeps the type-narrowing happy.
+    mutable.behaviorSignalSource = behaviorSignalSource;
   }
   // autoHaikuJudge defaults to true in compose; we leave it unset.
 

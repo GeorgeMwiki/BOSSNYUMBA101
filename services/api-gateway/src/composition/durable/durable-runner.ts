@@ -47,9 +47,14 @@
  *   - Real Inngest / Temporal swap-in.
  */
 
+import { randomUUID } from 'crypto';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { agency as agencyKernel } from '@bossnyumba/central-intelligence';
-import type { StepCheckpointStore } from './step-checkpoint-store.js';
+import type { StepCheckpointStore, AdvisoryLockDbClient } from './step-checkpoint-store.js';
+import {
+  AGENCY_RUN_EVENT,
+  type InngestClientLike,
+} from './inngest-client.js';
 
 // Re-aliased to keep call-sites tidy; the kernel exports these only
 // via the `agency` namespace (see central-intelligence/src/kernel/
@@ -99,6 +104,29 @@ export interface DurableRunnerDeps {
   readonly sleep?: (ms: number) => Promise<void>;
   /** Clock — defaults to Date.now. */
   readonly clock?: () => Date;
+  /**
+   * Optional postgres client for the advisory-lock-guarded recovery
+   * scan. When set, `recoverStuckRuns()` wraps the stuck-rows lookup in
+   * `BEGIN / pg_advisory_xact_lock(hashtext(ns)) / COMMIT` so multiple
+   * gateway replicas can't double-recover the same row. When unset,
+   * recovery falls back to a lock-free scan (single-replica deploys).
+   */
+  readonly db?: AdvisoryLockDbClient;
+  /**
+   * Namespace string for the recovery advisory lock. Defaults to
+   * `'agency-recovery'`. Override per-deploy when multiple runners
+   * share a database but should NOT contend for the same lock.
+   */
+  readonly recoveryLockNamespace?: string;
+  /**
+   * Optional Inngest client. When wired, `executeGoal()` becomes a
+   * thin dispatcher that emits `agency/run.requested` and returns an
+   * outcome with `pauseReason='dispatched-to-inngest'`. The actual
+   * agency execution runs on the Inngest worker (see
+   * `inngest-functions/agency-run.fn.ts`). On `send()` throw the
+   * runner falls back to inline execution so we never lose a run.
+   */
+  readonly inngest?: InngestClientLike;
 }
 
 export interface DurableRunArgs {
@@ -238,6 +266,9 @@ export function createDurableRunner(deps: DurableRunnerDeps): DurableRunner {
   const clock = deps.clock ?? (() => new Date());
   const checkpoints: StepCheckpointStore = deps.checkpoints;
   const executor: Executor = deps.executor;
+  const lockDb: AdvisoryLockDbClient | undefined = deps.db;
+  const recoveryLockNamespace = deps.recoveryLockNamespace ?? 'agency-recovery';
+  const inngest: InngestClientLike | undefined = deps.inngest;
 
   async function runStep(args: {
     readonly tenantId: string;
@@ -524,19 +555,63 @@ export function createDurableRunner(deps: DurableRunnerDeps): DurableRunner {
     };
   }
 
+  /**
+   * Inngest-routed executeGoal — when an Inngest client is wired, emit
+   * `agency/run.requested` and return a "dispatched" outcome. The actual
+   * agency execution happens on the Inngest worker. On `send()` throw we
+   * fall back to inline execution so no run is lost.
+   */
+  async function dispatchToInngest(
+    args: DurableRunArgs,
+    client: InngestClientLike,
+  ): Promise<DurableRunOutcome> {
+    const runId = args.runId ?? randomUUID();
+    try {
+      await client.send({
+        name: AGENCY_RUN_EVENT,
+        data: {
+          tenantId: args.tenantId,
+          goalId: args.goalId,
+          runId,
+        },
+        id: `${args.tenantId}::${runId}`,
+      });
+      return {
+        runId,
+        goalId: args.goalId,
+        tenantId: args.tenantId,
+        executorOutcome: null,
+        pausedCheckpoints: 0,
+        completed: false,
+        retries: 0,
+        pauseReason: 'dispatched-to-inngest',
+      };
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'durable-runner: inngest dispatch failed, falling back to inline execution',
+      );
+      return executeGoalInternal({ ...args, runId });
+    }
+  }
+
   return {
     async executeGoal(args) {
+      if (inngest) {
+        return dispatchToInngest(args, inngest);
+      }
       return executeGoalInternal(args);
     },
     async recoverStuckRuns() {
       const before = new Date(clock().getTime() - staleness);
       let stuck: ReadonlyArray<{ runId: string; tenantId: string; goalId: string }> = [];
-      try {
-        const rows = await checkpoints.stuckRunning({ olderThan: before });
-        // Dedupe to (runId, tenantId, goalId) — the runner re-invokes
-        // executeGoal once per stuck RUN, not per stuck checkpoint.
+      // Helper: dedupe to (runId, tenantId, goalId) — the runner re-invokes
+      // executeGoal once per stuck RUN, not per stuck checkpoint.
+      const dedupeStuck = (
+        rows: ReadonlyArray<{ tenantId: string; runId: string; goalId: string }>,
+      ): ReadonlyArray<{ runId: string; tenantId: string; goalId: string }> => {
         const seen = new Set<string>();
-        stuck = rows
+        return rows
           .filter((r) => {
             const key = `${r.tenantId}::${r.runId}`;
             if (seen.has(key)) return false;
@@ -548,12 +623,49 @@ export function createDurableRunner(deps: DurableRunnerDeps): DurableRunner {
             tenantId: r.tenantId,
             goalId: r.goalId,
           }));
-      } catch (err) {
-        logger.warn(
-          { err: err instanceof Error ? err.message : String(err) },
-          'durable-runner: recovery scan failed',
-        );
-        return [];
+      };
+      // Advisory-lock-guarded path: when a postgres client is wired, hold
+      // a transactional advisory lock on `hashtext(recoveryLockNamespace)`
+      // while we read stuck rows. Multiple gateway replicas serialise
+      // around this lock so we never double-recover a checkpoint. The
+      // lock auto-releases on COMMIT / ROLLBACK (transactional variant).
+      if (lockDb) {
+        try {
+          await lockDb.execute('BEGIN');
+          try {
+            await lockDb.execute(
+              `SELECT pg_advisory_xact_lock(hashtext('${recoveryLockNamespace.replace(/'/g, "''")}'))`,
+            );
+            const rows = await checkpoints.stuckRunning({ olderThan: before });
+            stuck = dedupeStuck(rows);
+            await lockDb.execute('COMMIT');
+          } catch (innerErr) {
+            try {
+              await lockDb.execute('ROLLBACK');
+            } catch {
+              // Ignore — original error takes precedence.
+            }
+            throw innerErr;
+          }
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            'durable-runner: recovery scan failed',
+          );
+          return [];
+        }
+      } else {
+        // Lock-free fallback for single-replica deploys / tests.
+        try {
+          const rows = await checkpoints.stuckRunning({ olderThan: before });
+          stuck = dedupeStuck(rows);
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            'durable-runner: recovery scan failed',
+          );
+          return [];
+        }
       }
       const recovered: DurableRunOutcome[] = [];
       for (const cand of stuck) {

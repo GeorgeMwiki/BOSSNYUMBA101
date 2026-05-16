@@ -85,3 +85,73 @@ export function createStepCheckpointStore(
     getById: (id) => svc.getById(id),
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Advisory-lock helpers (Central Command Phase B B3).
+//
+// Per-tenant multi-replica leader election via PostgreSQL transactional
+// advisory locks. The hash-text projection lets us hash an arbitrary
+// string key (tenant id) down to the int4 the lock API expects.
+//
+// Pattern (per tenant):
+//   BEGIN
+//   SELECT pg_try_advisory_xact_lock(hashtext($tenant))  → boolean
+//     if true  → run body, COMMIT  (lock auto-released)
+//     if false → ROLLBACK         (another replica holds it)
+//   on body throw → ROLLBACK  (re-raise after release)
+//
+// The transactional variant (`pg_advisory_xact_lock` / `_try_`) auto-
+// releases on COMMIT or ROLLBACK so we never leak a lock on crash.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Minimal db-client surface required by the advisory-lock helpers. Any
+ * drizzle/postgres-js client satisfies this shape; tests pass a recording
+ * stub. The single method must accept a SQL template or string and
+ * return `{ rows }`.
+ */
+export interface AdvisoryLockDbClient {
+  execute(query: unknown): Promise<{ rows: ReadonlyArray<Record<string, unknown>> }>;
+}
+
+/**
+ * Run `body` while holding a per-tenant transactional advisory lock.
+ * Returns the body's return value when the lock was acquired, or `null`
+ * when another replica already holds it (so the caller can skip cleanly).
+ *
+ * - Empty `tenantId` is rejected (programmer error — hashing the empty
+ *   string would let any caller stomp the same lock).
+ * - On body throw the transaction is ROLLBACK'd and the error re-raised.
+ */
+export async function withTenantAdvisoryLock<T>(
+  db: AdvisoryLockDbClient,
+  tenantId: string,
+  body: () => Promise<T>,
+): Promise<T | null> {
+  if (!tenantId || tenantId.trim().length === 0) {
+    throw new Error('withTenantAdvisoryLock: tenantId must be non-empty');
+  }
+  await db.execute('BEGIN');
+  try {
+    const lockResult = await db.execute(
+      `SELECT pg_try_advisory_xact_lock(hashtext('${tenantId.replace(/'/g, "''")}')) AS acquired`,
+    );
+    const acquired = Boolean(
+      (lockResult.rows[0] as { acquired?: boolean } | undefined)?.acquired,
+    );
+    if (!acquired) {
+      await db.execute('ROLLBACK');
+      return null;
+    }
+    const result = await body();
+    await db.execute('COMMIT');
+    return result;
+  } catch (err) {
+    try {
+      await db.execute('ROLLBACK');
+    } catch {
+      // Ignore — original error takes precedence.
+    }
+    throw err;
+  }
+}

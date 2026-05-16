@@ -102,6 +102,17 @@ import sensoriumRouter from './routes/sensorium.router';
 // notifications / state-mutations / wake-trigger events from the
 // brain. Tenant-scoped via JWT (NEVER via query/body).
 import crossPortalSubscribeRouter from './routes/cross-portal-subscribe.router';
+// Central Command Phase B B6 — Liveblocks 3.0 rooms auth (token mint).
+import liveblocksAuthRouter from './routes/liveblocks-auth.router';
+// Central Command Phase B B3 — Inngest durable-execution webhook. Receives
+// HMAC-signed Inngest function callbacks for the agency-run dispatcher.
+// 503 when `services.inngestRuntime` is unbound (Inngest dep not installed
+// or signing key absent).
+import inngestWebhookRouter from './routes/inngest-webhook.router';
+// Central Command Phase B B5 — session-replay cold store. Append-only
+// chunk ingest from rrweb + admin-gated viewer endpoints. PII masked
+// at the client BEFORE upload; gzipped payloads.
+import sessionReplayRouter from './routes/session-replay.router';
 // Wave 12 — MCP server + agent platform
 import mcpRouter, { agentCardRouter } from './routes/mcp.router';
 // Wave 11 — public marketing (Mr. Mwikila), workflows
@@ -705,6 +716,20 @@ api.route('/sensorium', sensoriumRouter);
 // notifications + state-mutations + wake-triggers to ANY logged-in
 // user, scoped to their JWT tenantId.
 api.route('/cross-portal', crossPortalSubscribeRouter);
+// Central Command Phase B B6 — Liveblocks 3.0 rooms auth. POST
+// /realtime/auth mints session tokens scoped to caller's tenantId.
+api.route('/realtime', liveblocksAuthRouter);
+// Central Command Phase B B3 — Inngest durable-execution webhook.
+// POST /inngest receives HMAC-SHA256-signed function callbacks from
+// Inngest cloud. 5-min replay window via timestamp tolerance;
+// in-memory idempotency dedupe by event.id. Returns 503 when
+// `services.inngestRuntime` is unbound (Inngest dep not installed
+// or `INNGEST_SIGNING_KEY` absent).
+api.route('/inngest', inngestWebhookRouter);
+// Central Command Phase B B5 — session-replay cold store.
+// POST /session-replay/chunks (auth, 5MB cap, dedup) +
+// admin-gated GET /session-replay/sessions and chunk readback.
+api.route('/session-replay', sessionReplayRouter);
 // Wave 12 — MCP server mounted for Claude Desktop, GPT, Cursor, partner agents
 api.route('/mcp', mcpRouter);
 // A2A Agent Card — expose under /api/v1/.well-known/agent.json (the standard
@@ -1100,6 +1125,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: wake-loop cron stop failed');
   }
   try {
+    serviceRegistry.idleSessionEmitter?.stop();
+    logger.info('shutdown: idle-session emitter stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: idle-session emitter stop failed');
+  }
+  try {
     serviceRegistry.sovereignLedgerVerifyCron?.stop();
     logger.info('shutdown: sovereign-ledger verify cron stopped');
   } catch (err) {
@@ -1180,6 +1211,11 @@ if (require.main === module) {
   // so the brain wakes on cadence even when no CronJob is installed.
   // Degraded-mode (no DB) is internally a no-op; safe to call unconditionally.
   serviceRegistry.wakeLoopCron?.start();
+  // Central Command Phase B B2 — idle-session emitter supervisor. Scans
+  // `sensorium_event_log` every minute and writes a reflexion-buffer entry
+  // for every (tenant, user, session) tuple that has gone idle ≥ 5 min.
+  // Null in degraded mode; `.start()` is a no-op there.
+  serviceRegistry.idleSessionEmitter?.start();
   // Wave-K Tier-3 — sovereign-ledger verify supervisor. Walks the
   // hash-chain on cadence (default 1h) and emits verified/tampered
   // events on the shared bus. Degraded-mode (no DB) is a no-op.

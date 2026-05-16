@@ -154,4 +154,52 @@ describe('runConsolidationOrchestrator', () => {
     });
     expect(out.delta.skillsPromoted).toBeGreaterThanOrEqual(1);
   });
+
+  it('runs stage 09 weekly prompt-compile on Sundays only', async () => {
+    const traces = manyTraces(3);
+    const sources = makeSources(traces, copySignals(traces));
+    const compile = vi.fn(async () => ({
+      promptsCompiled: 4,
+      promotedCount: 2,
+    }));
+    // Sunday
+    await runConsolidationOrchestrator({
+      sources,
+      logger: logger(),
+      weekday: () => 0,
+      weeklyPromptCompiler: compile,
+    });
+    expect(compile).toHaveBeenCalledOnce();
+
+    // Wednesday — should NOT call compile
+    compile.mockClear();
+    await runConsolidationOrchestrator({
+      sources,
+      logger: logger(),
+      weekday: () => 3,
+      weeklyPromptCompiler: compile,
+    });
+    expect(compile).not.toHaveBeenCalled();
+  });
+
+  it('forwards tracer through each stage', async () => {
+    const stageCalls: string[] = [];
+    const traces = manyTraces(2);
+    const sources = makeSources(traces, copySignals(traces));
+    await runConsolidationOrchestrator({
+      sources,
+      logger: logger(),
+      tracer: {
+        async startTick(_tickId, fn) {
+          return fn(async (stageId, stageFn) => {
+            stageCalls.push(stageId);
+            return stageFn();
+          });
+        },
+      },
+    });
+    // All 8 normal stages should have been invoked through the tracer
+    expect(stageCalls).toContain('01-ingest');
+    expect(stageCalls).toContain('08-publish');
+  });
 });

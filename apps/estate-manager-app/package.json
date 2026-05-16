@@ -23,10 +23,14 @@
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/graph-sync": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
+    "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "workspace:*",
     "@dnd-kit/core": "^6.1.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
+    "@liveblocks/client": "^2.0.0",
+    "@liveblocks/react": "^2.0.0",
+    "@liveblocks/yjs": "^2.0.0",
     "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.24.0",
     "lucide-react": "^0.460.0",
@@ -35,6 +39,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.72.1",
+    "yjs": "^13.6.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

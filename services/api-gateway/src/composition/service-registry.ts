@@ -252,6 +252,29 @@ import {
   createParityCapabilityDashboard,
   type ParityCapabilityDashboardService,
 } from './parity-capability-dashboard.factory.js';
+// Central Command Phase A C6 / Phase B B2 — cross-portal Redis pubsub bus.
+// Async factory: returns `Promise<CrossPortalBus>` because the Redis-backed
+// implementation lazy-imports `ioredis`. The registry holds the promise so
+// downstream consumers (SSE fan-out, HQ-tool broadcast hooks) `await` once.
+import {
+  createCrossPortalBus,
+  type CrossPortalBus,
+} from './cross-portal-bus.js';
+// Central Command Phase B B2 — idle-session emitter (Reflexion writer
+// daemon). Scans `sensorium_event_log` every minute and writes a
+// reflexion-buffer entry for every (tenant, user, session) tuple that
+// has gone idle ≥ 5 min. Constructed in live mode only (no DB → no
+// activity source → nothing to scan); inert until `.start()` from
+// `index.ts`.
+import {
+  createIdleSessionEmitter,
+  createSensoriumActiveSessionSource,
+  type IdleSessionEmitter,
+} from './idle-session-emitter.js';
+// Reflexion-buffer service satisfies the emitter's `ReflexionWriterPort`
+// shape. Drizzle-backed; lives behind a `null`-tolerant runtime check
+// inside the supervisor when the DB is unavailable.
+import { createReflexionBufferService } from '@bossnyumba/database';
 import {
   createTrainingAdminEndpoints,
   createTrainingGenerator,
@@ -664,6 +687,25 @@ export interface ServiceRegistry {
    *  mode — the router falls back to a zeroed payload. */
   readonly parityCapabilityDashboard: ParityCapabilityDashboardService | null;
 
+  /**
+   * Cross-portal pubsub bus (Central Command Phase A C6 / Phase B B2).
+   * One bus per gateway process. Per-tenant and global channels
+   * (see `cross-portal-bus.ts`). Held as a `Promise` because the
+   * Redis-backed implementation lazy-imports `ioredis`; `await` once
+   * at the consumer call site. Always wired (in-memory fallback when
+   * `REDIS_URL` is unset).
+   */
+  readonly crossPortalBus: Promise<CrossPortalBus>;
+
+  /**
+   * Idle-session emitter (Central Command Phase B B2). Periodic
+   * supervisor that writes a Reflexion buffer entry per idle
+   * (tenant, user, session) tuple discovered in the sensorium event
+   * log. Null in degraded mode (no DB → no activity source). Inert
+   * until `.start()` from `index.ts`.
+   */
+  readonly idleSessionEmitter: IdleSessionEmitter | null;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -988,6 +1030,17 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Wave-K parity-litfin Gap C — null in degraded mode; the router
     // surfaces a zeroed-but-shaped payload so mission-eval keeps loading.
     parityCapabilityDashboard: null,
+    // Central Command Phase A C6 / Phase B B2 — cross-portal bus is
+    // always wired. In degraded mode `REDIS_URL` is typically unset so
+    // the factory returns the in-memory bus; subscribers + publishers
+    // operate identically against either backend.
+    crossPortalBus: createCrossPortalBus({
+      redisUrl: process.env.REDIS_URL ?? null,
+    }),
+    // Idle-session emitter — needs DB-backed activity source + reflexion
+    // writer; both are null in degraded mode so the slot stays null and
+    // `index.ts` skips `.start()`.
+    idleSessionEmitter: null,
     eventBus,
     db: null,
     isLive: false,
@@ -1710,6 +1763,25 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // kernel-substrate tables (`kernel_provenance`, `kernel_cot_reservoir`).
     // Reads only; rejudge is a tier-3 stub that returns a queued verdict.
     parityCapabilityDashboard: createParityCapabilityDashboard({ db }),
+    // Central Command Phase A C6 / Phase B B2 — cross-portal bus. When
+    // `REDIS_URL` is set the factory wires the Redis pubsub backend (two
+    // ioredis connections — publisher + subscriber, per ioredis convention).
+    // Otherwise the factory degrades to the in-memory bus so dev / pilot
+    // continue to operate against the same `CrossPortalBus` surface.
+    crossPortalBus: createCrossPortalBus({
+      redisUrl: process.env.REDIS_URL ?? null,
+    }),
+    // Idle-session emitter — DB-backed activity source bound to the
+    // `sensorium_event_log` reader. Reflexion writes land on the
+    // Drizzle-backed reflexion-buffer service. Inert until `.start()`.
+    idleSessionEmitter: createIdleSessionEmitter({
+      source: createSensoriumActiveSessionSource(db),
+      reflexionWriter: createReflexionBufferService(db),
+      logger: {
+        info: (obj, msg) => console.info('idle-session-emitter:', msg ?? '', obj),
+        warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
+      },
+    }),
     eventBus,
     db,
     isLive: true,

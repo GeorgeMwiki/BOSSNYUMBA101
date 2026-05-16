@@ -41,6 +41,10 @@
  */
 import type { ApprovalGate } from '../../four-eye-approval.js';
 import type {
+  CounterModel,
+  CounterModelReviewOutcome,
+} from '../../counter-model/index.js';
+import type {
   ActionAuditDecision,
   ActionAuditEntry,
   ActionAuditSink,
@@ -153,6 +157,24 @@ export interface ExecutorDeps {
    * call succeeded.
    */
   readonly sovereignLedgerFailClosed?: boolean;
+  /**
+   * Optional second-LLM sanity-check on destroy-tier (sovereign-tier)
+   * actions. Central Command Phase B (B5).
+   *
+   * When provided, every sovereign-tier tool invocation runs through
+   * `counterModel.review(...)` BEFORE the four-eye approval gate fires.
+   * Outcomes:
+   *   - verdict `safe`   — proceed unchanged
+   *   - verdict `risky`  — proceed with the counter-model reason
+   *                        attached to the approval payload so the
+   *                        human approver sees the second opinion
+   *   - verdict `refuse` — abort the step with the counter-model
+   *                        reason; no approval row is created
+   *
+   * On any API error the counter-model returns `risky` (safer than
+   * failing-open). The executor consumes that contract verbatim.
+   */
+  readonly counterModel?: CounterModel;
   /** Optional structured logger used for ledger write failures. */
   readonly logger?: ExecutorLogger;
   readonly clock?: () => Date;
@@ -335,19 +357,109 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           }
         }
 
+        // Counter-model sanity check (Central Command Phase B — B5).
+        // For sovereign-tier (destroy / billing-tier irreversible)
+        // actions a second LLM reviews the proposal BEFORE the approval
+        // gate fires. A `refuse` verdict aborts the step. A `risky`
+        // verdict still proceeds, but the second opinion rides along on
+        // the approval payload so the human sees it. The reviewer is
+        // best-effort — when it is not wired the executor behaves
+        // exactly as before.
+        let counterModelOutcome: CounterModelReviewOutcome | null = null;
+        if (deps.counterModel && isSovereignTier(tool)) {
+          try {
+            counterModelOutcome = await deps.counterModel.review({
+              toolName: tool.name,
+              payload: step.toolPayload ?? {},
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              riskTier: 'destroy',
+            });
+          } catch (err) {
+            // The counter-model itself defaults to `risky` on API
+            // error; a thrown exception here would be a programmer
+            // error in the adapter. Log it but proceed as `risky`.
+            const reason = err instanceof Error ? err.message : String(err);
+            counterModelOutcome = {
+              verdict: 'risky',
+              reason: `counter-model adapter threw: ${reason}`,
+              confidence: 0,
+              modelId: 'unknown',
+              fallback: true,
+            };
+          }
+          if (counterModelOutcome.verdict === 'refuse') {
+            const message = `counter-model refused: ${counterModelOutcome.reason}`;
+            await safeUpdateStep(deps, {
+              goalId: goal.id,
+              stepId: step.id,
+              status: 'failed',
+              errorMessage: message,
+            });
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'failed',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: 'counter-model-refused',
+              errorMessage: message,
+              startedAt: startedAt.toISOString(),
+              endedAt: clock().toISOString(),
+              latencyMs: clock().getTime() - startedAt.getTime(),
+            });
+            // Sovereign-ledger record of the refusal — the audit chain
+            // must capture the counter-model's veto even though the
+            // tool itself never executed.
+            await safeSovereignLedger(deps, tool, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              input: step.toolPayload,
+              output: null,
+              outcome: 'failure',
+              errorMessage: message,
+              executedAt: clock(),
+            });
+            stepsFailed += 1;
+            failureMessages.push(message);
+            bailed = true;
+            continue;
+          }
+        }
+
         // Approval branch — propose, mark pending(awaiting-approval),
         // continue to next step.
         if (policyOutcome.requiresApproval && deps.approvalGate) {
           const approvalStake = approvalStakeFor(tool.stakes);
           let actionId = 'unknown';
           let approvalError: string | null = null;
+          // When the counter-model flagged the action as `risky`, bake
+          // the verdict + reason into the approval payload so the human
+          // approver sees the second opinion up-front. We add a
+          // namespaced key to keep the original payload intact.
+          const approvalPayload: Record<string, unknown> = {
+            ...((step.toolPayload ?? {}) as Record<string, unknown>),
+          };
+          if (
+            counterModelOutcome &&
+            counterModelOutcome.verdict === 'risky'
+          ) {
+            approvalPayload._counterModel = {
+              verdict: counterModelOutcome.verdict,
+              reason: counterModelOutcome.reason,
+              confidence: counterModelOutcome.confidence,
+              modelId: counterModelOutcome.modelId,
+            };
+          }
           try {
             const record = await deps.approvalGate.propose({
               proposerUserId: 'kernel-agency',
               thoughtId: step.id,
               summary: shortSummary(step, goal),
               toolName: tool.name,
-              payload: (step.toolPayload ?? {}) as Readonly<
+              payload: approvalPayload as Readonly<
                 Record<string, unknown>
               >,
               stakes: approvalStake,

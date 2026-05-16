@@ -6,6 +6,8 @@
  *   2. invoked once per unique tenant with default limit
  *   3. respects perTenantLimit override
  *   4. tenant failure does not stop others
+ *   5. forwards modelCutoff to the port
+ *   6. handles a global tenant (tenantId === null)
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -21,12 +23,26 @@ function makeLogger(): StageLogger {
 
 function makePort(opts: { failFor?: string } = {}): {
   port: ReEmbedPort;
-  calls: Array<{ tenantId: string | null; limit: number }>;
+  calls: Array<{
+    tenantId: string | null;
+    limit: number;
+    modelCutoff?: Date | string;
+  }>;
 } {
-  const calls: Array<{ tenantId: string | null; limit: number }> = [];
+  const calls: Array<{
+    tenantId: string | null;
+    limit: number;
+    modelCutoff?: Date | string;
+  }> = [];
   const port: ReEmbedPort = {
     async reEmbedForTenant(args) {
-      calls.push({ tenantId: args.tenantId, limit: args.limit });
+      const entry: {
+        tenantId: string | null;
+        limit: number;
+        modelCutoff?: Date | string;
+      } = { tenantId: args.tenantId, limit: args.limit };
+      if (args.modelCutoff !== undefined) entry.modelCutoff = args.modelCutoff;
+      calls.push(entry);
       if (opts.failFor !== undefined && args.tenantId === opts.failFor) {
         throw new Error('boom');
       }
@@ -80,5 +96,29 @@ describe('runReEmbedStage', () => {
       logger: makeLogger(),
     });
     expect(out.factsReEmbedded).toBe(7);
+  });
+
+  it('forwards modelCutoff to the port', async () => {
+    const { port, calls } = makePort();
+    const cutoff = new Date('2026-05-01T00:00:00Z');
+    await runReEmbedStage({
+      tenantIds: ['t-1'],
+      reEmbedder: port,
+      logger: makeLogger(),
+      modelCutoff: cutoff,
+    });
+    expect(calls[0]?.modelCutoff).toEqual(cutoff);
+  });
+
+  it('handles null tenantId (global pool) without crash', async () => {
+    const { port, calls } = makePort();
+    const out = await runReEmbedStage({
+      tenantIds: [null, 't-1'],
+      reEmbedder: port,
+      logger: makeLogger(),
+    });
+    expect(calls).toHaveLength(2);
+    expect(out.factsReEmbedded).toBe(14);
+    expect(out.perTenant.__global__).toBeDefined();
   });
 });

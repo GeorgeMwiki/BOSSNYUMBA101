@@ -1,19 +1,24 @@
 /**
  * Stage 06 — Consolidate.
  *
- * Zep-style community detection over the semantic-memory entity graph
- * to merge duplicate "Tenant John Mwangi" / "John M." entries. The
- * full graph-merge logic lives in `@bossnyumba/database` once the
- * temporal-KG layer ships (Phase B); for Phase A this stage is a
- * stub that wires the port shape so the orchestrator can run
- * end-to-end. The stub:
+ * B4 Phase B: real Zep/Graphiti-style community detection over the
+ * temporal entity graph. Per the architecture spec
+ * (`.planning/central-command/00-architecture.md`) the consolidation
+ * worker partitions tenant subgraphs into communities so the brain's
+ * retrieval layer can summarise at community granularity instead of
+ * row-by-row.
  *
- *   - asks the port (when supplied) to merge entities for each tenant
- *   - logs the result + emits the report
+ * The community-detection algorithm is Louvain modularity-maximisation:
  *
- * When no port is wired, returns zeroed counters.
+ *   V.D. Blondel, J.-L. Guillaume, R. Lambiotte, and E. Lefebvre.
+ *   "Fast unfolding of communities in large networks."
+ *   J. Stat. Mech. (2008) — https://arxiv.org/abs/0803.0476.
  *
- * TODO (Phase B): wire Zep/Graphiti community detection here.
+ * The real algorithm lives in `@bossnyumba/database`
+ * (`temporal-entity-graph.service.ts` + `.louvain.ts`); this stage is
+ * the thin orchestrator-facing port. When no consolidator port is
+ * wired (unit tests, local dev with missing DB), the stage degrades to
+ * a zero-impact no-op so the rest of the cascade keeps running.
  */
 
 import type {
@@ -46,18 +51,20 @@ export async function runConsolidateStage(
   if (!args.consolidator) {
     args.logger.info(
       { stage: '06-consolidate' },
-      'consolidate stage skipped (Phase B will wire Zep/Graphiti)',
+      'consolidate stage skipped (no temporal-graph port wired)',
     );
     return { entitiesMerged: 0, perTenant };
   }
   const unique = uniqueTenants(args.tenantIds);
   for (const tenantId of unique) {
+    // Cross-tenant consolidation is a privacy boundary — only operate
+    // on real tenant ids (null = global / cross-tenant pool).
+    if (tenantId === null) continue;
     try {
       const report = await args.consolidator.consolidateForTenant({
         tenantId,
       });
-      const safeKey = tenantId ?? '__global__';
-      perTenant[safeKey] = report;
+      perTenant[tenantId] = report;
       total += report.mergedEntities;
     } catch (error) {
       args.logger.warn(
@@ -74,7 +81,8 @@ export async function runConsolidateStage(
     {
       stage: '06-consolidate',
       entitiesMerged: total,
-      tenants: unique.length,
+      tenants: unique.filter((t) => t !== null).length,
+      algorithm: 'louvain',
     },
     'consolidate stage complete',
   );

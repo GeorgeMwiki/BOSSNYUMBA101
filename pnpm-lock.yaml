@@ -91,6 +91,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/realtime-rooms':
+        specifier: workspace:*
+        version: link:../../packages/realtime-rooms
       '@fullcalendar/daygrid':
         specifier: ^6.1.15
         version: 6.1.20(@fullcalendar/core@6.1.20)
@@ -100,6 +103,15 @@ importers:
       '@fullcalendar/timegrid':
         specifier: ^6.1.15
         version: 6.1.20(@fullcalendar/core@6.1.20)
+      '@liveblocks/client':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/react':
+        specifier: ^2.0.0
+        version: 2.24.4(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^2.0.0
+        version: 2.24.4(yjs@13.6.30)
       '@tanstack/react-form':
         specifier: ^1.0.0
         version: 1.32.0(react-dom@18.3.1)(react@18.3.1)
@@ -154,6 +166,9 @@ importers:
       vega-lite:
         specifier: ^5.20.0
         version: 5.23.0(vega@5.33.1)
+      yjs:
+        specifier: ^13.6.0
+        version: 13.6.30
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -246,12 +261,24 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/realtime-rooms':
+        specifier: workspace:*
+        version: link:../../packages/realtime-rooms
       '@bossnyumba/spotlight':
         specifier: workspace:*
         version: link:../../packages/spotlight
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.75.0)
+      '@liveblocks/client':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/react':
+        specifier: ^2.0.0
+        version: 2.24.4(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^2.0.0
+        version: 2.24.4(yjs@13.6.30)
       '@supabase/supabase-js':
         specifier: ^2.39.0
         version: 2.105.4
@@ -276,6 +303,9 @@ importers:
       react-hook-form:
         specifier: ^7.72.1
         version: 7.75.0(react@18.3.1)
+      yjs:
+        specifier: ^13.6.0
+        version: 13.6.30
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -334,6 +364,9 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/realtime-rooms':
+        specifier: workspace:*
+        version: link:../../packages/realtime-rooms
       '@bossnyumba/spotlight':
         specifier: workspace:*
         version: link:../../packages/spotlight
@@ -346,6 +379,15 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.75.0)
+      '@liveblocks/client':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/react':
+        specifier: ^2.0.0
+        version: 2.24.4(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^2.0.0
+        version: 2.24.4(yjs@13.6.30)
       '@supabase/supabase-js':
         specifier: ^2.39.0
         version: 2.105.4
@@ -370,6 +412,9 @@ importers:
       react-hook-form:
         specifier: ^7.72.1
         version: 7.75.0(react@18.3.1)
+      yjs:
+        specifier: ^13.6.0
+        version: 13.6.30
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -459,9 +504,21 @@ importers:
       '@bossnyumba/observability':
         specifier: workspace:^
         version: link:../../packages/observability
+      '@bossnyumba/realtime-rooms':
+        specifier: workspace:*
+        version: link:../../packages/realtime-rooms
       '@bossnyumba/spotlight':
         specifier: '*'
         version: link:../../packages/spotlight
+      '@liveblocks/client':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/react':
+        specifier: ^2.0.0
+        version: 2.24.4(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^2.0.0
+        version: 2.24.4(yjs@13.6.30)
       '@tanstack/react-query':
         specifier: ^5.24.0
         version: 5.100.9(react@18.3.1)
@@ -486,6 +543,9 @@ importers:
       recharts:
         specifier: ^2.10.4
         version: 2.15.4(react-dom@18.3.1)(react@18.3.1)
+      yjs:
+        specifier: ^13.6.0
+        version: 13.6.30
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -645,6 +705,25 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^1.2.0
+        version: 1.6.1(@types/node@20.19.40)(jsdom@24.1.3)
+
+  packages/browser-perception:
+    dependencies:
+      playwright:
+        specifier: ^1.40.0
+        version: 1.59.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.40
+      '@vitest/coverage-v8':
+        specifier: ^1.0.0
+        version: 1.6.1(vitest@1.6.1)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.40)(jsdom@24.1.3)
 
   packages/central-intelligence:
@@ -1185,6 +1264,37 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.40)(jsdom@24.1.3)
 
+  packages/realtime-rooms:
+    dependencies:
+      '@liveblocks/client':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/node':
+        specifier: ^2.0.0
+        version: 2.24.4
+      '@liveblocks/react':
+        specifier: ^2.0.0
+        version: 2.24.4(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^2.0.0
+        version: 2.24.4(yjs@13.6.30)
+      yjs:
+        specifier: ^13.6.0
+        version: 13.6.30
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.40
+      '@vitest/coverage-v8':
+        specifier: ^1.0.0
+        version: 1.6.1(vitest@1.6.1)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.40)(jsdom@24.1.3)
+
   packages/spotlight:
     dependencies:
       react:
@@ -1221,6 +1331,9 @@ importers:
       '@bossnyumba/authz-policy':
         specifier: workspace:*
         version: link:../../packages/authz-policy
+      '@bossnyumba/browser-perception':
+        specifier: workspace:*
+        version: link:../../packages/browser-perception
       '@bossnyumba/central-intelligence':
         specifier: workspace:*
         version: link:../../packages/central-intelligence
@@ -1266,6 +1379,9 @@ importers:
       '@bossnyumba/payments-service':
         specifier: workspace:*
         version: link:../payments
+      '@bossnyumba/realtime-rooms':
+        specifier: workspace:*
+        version: link:../../packages/realtime-rooms
       '@bossnyumba/spotlight':
         specifier: workspace:*
         version: link:../../packages/spotlight
@@ -1278,6 +1394,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.4.0
         version: 0.4.3(hono@4.12.18)(zod@3.25.76)
+      '@liveblocks/node':
+        specifier: ^2.0.0
+        version: 2.24.4
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
@@ -1338,6 +1457,9 @@ importers:
       pino-http:
         specifier: ^9.0.0
         version: 9.0.0
+      playwright:
+        specifier: ^1.40.0
+        version: 1.59.1
       postgres:
         specifier: ^3.4.3
         version: 3.4.9
@@ -4610,6 +4732,52 @@ packages:
 
   /@js-sdsl/ordered-map@4.4.2:
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
+    dev: false
+
+  /@liveblocks/client@2.24.4:
+    resolution: {integrity: sha512-jT6kpapuSWuQlg8m/r3N5R/i7XlQAG2UkeaQi1DkyCc2+U4PWgKNVVXVWUUKM+OcbG3yKoJJ93Pw4AZE0hHWDg==}
+    dependencies:
+      '@liveblocks/core': 2.24.4
+    dev: false
+
+  /@liveblocks/core@2.24.4:
+    resolution: {integrity: sha512-Os2Fs/RgggyrISpqHIefWo864auKIkpw48BG5fvPubcXkLU9i8wUcK5oczWEqJ0JvtyTfqREl/tkEhGf124DCw==}
+    dev: false
+
+  /@liveblocks/node@2.24.4:
+    resolution: {integrity: sha512-2dKJxZUXbtL26DsqT8NEF3GthDIpK5sbEsRYMv7rCdhZaXWPBTrWE4Dh2ZcE6eWAfYA+dSNZaQB8K7GenSKagg==}
+    dependencies:
+      '@liveblocks/core': 2.24.4
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
+  /@liveblocks/react@2.24.4(react@18.3.1):
+    resolution: {integrity: sha512-p6t7HVGkQ34MLtiDp2L1qXmae4MH8MyOTaJfP2USfimOrMp1vIKendxuIoaR71XvtShvhihkwvdHa3ogCmm+2A==}
+    peerDependencies:
+      react: ^18 || ^19 || ^19.0.0-rc
+    peerDependenciesMeta:
+      react:
+        optional: true
+    dependencies:
+      '@liveblocks/client': 2.24.4
+      '@liveblocks/core': 2.24.4
+      react: 18.3.1
+    dev: false
+
+  /@liveblocks/yjs@2.24.4(yjs@13.6.30):
+    resolution: {integrity: sha512-SFot0cULt42lznwMsE4ANLgDdSqicBES7lMQCJO2/Ljbg4Ex1FyRJMqOAUCOoFlp4EWHHI3hUUHezjh3zFmtmw==}
+    peerDependencies:
+      yjs: ^13.6.1
+    dependencies:
+      '@liveblocks/client': 2.24.4
+      '@liveblocks/core': 2.24.4
+      js-base64: 3.7.8
+      y-indexeddb: 9.0.12(yjs@13.6.30)
+      yjs: 13.6.30
     dev: false
 
   /@mapbox/node-pre-gyp@1.0.11:
@@ -8611,6 +8779,10 @@ packages:
     dependencies:
       color: 5.0.3
       text-hex: 1.0.0
+    dev: false
+
+  /@stablelib/base64@1.0.1:
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
     dev: false
 
   /@standard-schema/spec@1.1.0:
@@ -12636,6 +12808,10 @@ packages:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
     dev: true
 
+  /fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+    dev: false
+
   /fast-uri@3.1.2:
     resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
     dev: false
@@ -13782,6 +13958,10 @@ packages:
     engines: {node: '>=18'}
     dev: true
 
+  /isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+    dev: false
+
   /istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
     engines: {node: '>=8'}
@@ -14327,6 +14507,10 @@ packages:
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dev: false
 
+  /js-base64@3.7.8:
+    resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
+    dev: false
+
   /js-levenshtein@1.1.6:
     resolution: {integrity: sha512-X2BB11YZtrRqY4EnQcLX5Rh373zbK4alC1FW7D7MBhL2gtcC17cTnr6DmfHZeS0s2rTHjUTMMHfG7gO8SSdw+g==}
     engines: {node: '>=0.10.0'}
@@ -14541,6 +14725,14 @@ packages:
       prelude-ls: 1.2.1
       type-check: 0.4.0
     dev: true
+
+  /lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
+    dependencies:
+      isomorphic.js: 0.2.5
+    dev: false
 
   /lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
@@ -19102,6 +19294,16 @@ packages:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
 
+  /y-indexeddb@9.0.12(yjs@13.6.30):
+    resolution: {integrity: sha512-9oCFRSPPzBK7/w5vOkJBaVCQZKHXB/v6SIT+WYhnJxlEC61juqG0hBrAf+y3gmSMLFLwICNH9nQ53uscuse6Hg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.0.0
+    dependencies:
+      lib0: 0.2.117
+      yjs: 13.6.30
+    dev: false
+
   /y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -19143,6 +19345,13 @@ packages:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+
+  /yjs@13.6.30:
+    resolution: {integrity: sha512-vv/9h42eCMC81ZHDFswuu/MKzkl/vyq1BhaNGfHyOonwlG4CJbQF4oiBBJPvfdeCt/PlVDWh7Nov9D34YY09uQ==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    dependencies:
+      lib0: 0.2.117
+    dev: false
 
   /yn@3.1.1:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}

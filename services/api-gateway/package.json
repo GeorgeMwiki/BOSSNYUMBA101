@@ -26,6 +26,9 @@
     "@bossnyumba/agent-platform": "workspace:*",
     "@bossnyumba/ai-copilot": "workspace:*",
     "@bossnyumba/authz-policy": "workspace:*",
+    "@bossnyumba/browser-perception": "workspace:*",
+    "@bossnyumba/realtime-rooms": "workspace:*",
+    "@liveblocks/node": "^2.0.0",
     "@bossnyumba/central-intelligence": "workspace:*",
     "@bossnyumba/compliance-plugins": "workspace:*",
     "@bossnyumba/database": "workspace:*",
@@ -65,6 +68,7 @@
     "opossum": "^8.5.0",
     "pino": "^8.18.0",
     "pino-http": "^9.0.0",
+    "playwright": "^1.40.0",
     "postgres": "^3.4.3",
     "zod": "^3.22.0"
   },
