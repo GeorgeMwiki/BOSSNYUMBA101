@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * HQ-tool registry composition — wires the 12 `platform.*` BrainTools
  * onto a `BrainToolRegistry` at api-gateway boot.
@@ -64,11 +65,12 @@ interface PlatformConsolidationWorkerLike {
 }
 interface PlatformDecisionTraceRecorderLike {
   /** Mirrors `DecisionTraceRecorderLike` in
-   *  `packages/database/src/services/platform/decision-trace-query.service.ts`. */
-  getRecentTraces(args: {
-    tenantId?: string | null;
-    limit?: number;
-  }): ReadonlyArray<unknown> | Promise<ReadonlyArray<unknown>>;
+   *  `packages/database/src/services/platform/decision-trace-query.service.ts`.
+   *  Phase C C2 closure: the kernel's `DecisionTraceRecorder` exposes
+   *  `getRecentTraces(tenantId, limit)`; the composition root wraps
+   *  it into the no-arg `listRecent()` shape B1 expects (see
+   *  {@link createDecisionTraceRecorderAdapter} below). */
+  listRecent(): ReadonlyArray<unknown> | Promise<ReadonlyArray<unknown>>;
 }
 type PlatformKillswitchPublishEvent = (event: {
   readonly type: 'killswitch:changed';
@@ -83,9 +85,16 @@ interface PlatformKillswitchDeps {
 }
 interface PlatformNotificationDispatcherLike {
   dispatch(args: unknown): Promise<unknown>;
+  retract?(args: unknown): Promise<void>;
 }
 interface PlatformRecipientResolverLike {
-  countRecipients(args: unknown): Promise<number>;
+  /**
+   * Mirrors B1's `RecipientResolverLike.count` in
+   * `packages/database/src/services/platform/announcement.service.ts`.
+   * Phase C C2 closure: the composition root threads
+   * `createRecipientResolverAdapter(...)` into this slot.
+   */
+  count(args: unknown): Promise<number>;
 }
 interface PlatformAnnouncementDeps {
   readonly resolveActor: () => string;
@@ -139,7 +148,11 @@ export interface HqToolRegistryWiringDeps {
    */
   readonly hqDeps?: Omit<
     hqTools.SeedHqBrainToolsDeps,
-    'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+    | 'contextFactory'
+    | 'maxAdjustmentUsdCents'
+    | 'maxRecipientCount'
+    | 'maxPayoutUsdCents'
+    | 'extraHilPayoutUsdCents'
   >;
   /**
    * Optional Drizzle client — when supplied AND `hqDeps` is not
@@ -186,6 +199,29 @@ export interface HqToolRegistryWiringDeps {
   readonly maxAdjustmentUsdCents?: number;
   /** Hard recipient ceiling for `platform.send_announcement`. */
   readonly maxRecipientCount?: number;
+  /** Hard cost ceiling for `platform.payout_owner` (USD cents). */
+  readonly maxPayoutUsdCents?: number;
+  /**
+   * Threshold above which `platform.payout_owner` demands a 5-eye HIL
+   * approval — defaults to $10k (1_000_000 USD cents).
+   */
+  readonly extraHilPayoutUsdCents?: number;
+  /**
+   * Temporal-backed workflow dispatchers for the 3 new sovereign tools
+   * (`evict_tenant`, `payout_owner`, `file_kra_mri`). The composition
+   * root builds these via {@link createTemporalDispatcherFromEnv} in
+   * `./temporal-dispatcher-wiring.ts`; when omitted, the registry falls
+   * back to NOT_YET_WIRED stubs that throw a deterministic refusal.
+   */
+  readonly evictionDispatcher?:
+    | hqTools.SeedHqBrainToolsDeps['evictionDispatcher']
+    | null;
+  readonly ownerPayoutDispatcher?:
+    | hqTools.SeedHqBrainToolsDeps['ownerPayoutDispatcher']
+    | null;
+  readonly kraMriDispatcher?:
+    | hqTools.SeedHqBrainToolsDeps['kraMriDispatcher']
+    | null;
   /** Caller-identity resolver — required to bind scopes to each call. */
   readonly callerResolver: HqCallerResolver;
   /** Optional OTel span recorder — wired when @opentelemetry/api is. */
@@ -223,6 +259,8 @@ export interface HqToolRegistryWiring {
 
 const DEFAULT_MAX_ADJUSTMENT_USD_CENTS = 500_00; // $500 hard ceiling
 const DEFAULT_MAX_RECIPIENT_COUNT = 10_000;
+const DEFAULT_MAX_PAYOUT_USD_CENTS = 100_000_00; // $100k hard ceiling
+const DEFAULT_EXTRA_HIL_PAYOUT_USD_CENTS = 1_000_000; // $10k 5-eye trigger
 
 /**
  * Compose the HQ tool registry. Returns a fully-seeded
@@ -263,7 +301,11 @@ export function createHqToolRegistry(
   let hqDeps:
     | Omit<
         hqTools.SeedHqBrainToolsDeps,
-        'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+        | 'contextFactory'
+        | 'maxAdjustmentUsdCents'
+        | 'maxRecipientCount'
+        | 'maxPayoutUsdCents'
+        | 'extraHilPayoutUsdCents'
       >
     | null = null;
   let depsSource: 'explicit' | 'db' | 'stub' = 'stub';
@@ -294,6 +336,15 @@ export function createHqToolRegistry(
       ...(deps.heartbeatExtraProbes
         ? { heartbeatExtraProbes: deps.heartbeatExtraProbes }
         : {}),
+      ...(deps.evictionDispatcher
+        ? { evictionDispatcher: deps.evictionDispatcher }
+        : {}),
+      ...(deps.ownerPayoutDispatcher
+        ? { ownerPayoutDispatcher: deps.ownerPayoutDispatcher }
+        : {}),
+      ...(deps.kraMriDispatcher
+        ? { kraMriDispatcher: deps.kraMriDispatcher }
+        : {}),
     });
     depsSource = 'db';
   } else {
@@ -301,11 +352,33 @@ export function createHqToolRegistry(
     depsSource = 'stub';
   }
 
-  const seeded: hqTools.SeedHqBrainToolsDeps = {
+  // Allow `deps.<dispatcher>` to override whatever the chosen source
+  // produced. This lets the composition root inject the real Temporal-
+  // backed dispatchers regardless of whether the rest of the bundle
+  // came from explicit `hqDeps`, B1's Drizzle services, or the
+  // NOT_YET_WIRED stubs.
+  const mergedHqDeps = {
     ...hqDeps,
+    ...(deps.evictionDispatcher
+      ? { evictionDispatcher: deps.evictionDispatcher }
+      : {}),
+    ...(deps.ownerPayoutDispatcher
+      ? { ownerPayoutDispatcher: deps.ownerPayoutDispatcher }
+      : {}),
+    ...(deps.kraMriDispatcher
+      ? { kraMriDispatcher: deps.kraMriDispatcher }
+      : {}),
+  };
+
+  const seeded: hqTools.SeedHqBrainToolsDeps = {
+    ...mergedHqDeps,
     maxAdjustmentUsdCents:
       deps.maxAdjustmentUsdCents ?? DEFAULT_MAX_ADJUSTMENT_USD_CENTS,
     maxRecipientCount: deps.maxRecipientCount ?? DEFAULT_MAX_RECIPIENT_COUNT,
+    maxPayoutUsdCents:
+      deps.maxPayoutUsdCents ?? DEFAULT_MAX_PAYOUT_USD_CENTS,
+    extraHilPayoutUsdCents:
+      deps.extraHilPayoutUsdCents ?? DEFAULT_EXTRA_HIL_PAYOUT_USD_CENTS,
     contextFactory,
   };
 
@@ -341,6 +414,13 @@ export interface BuildHqDepsFromDbOptions {
   readonly announcementDispatcher?: PlatformAnnouncementDeps['dispatcher'];
   readonly announcementRecipientResolver?: PlatformAnnouncementDeps['recipientResolver'];
   readonly heartbeatExtraProbes?: PlatformServiceHeartbeatDeps['extraProbes'];
+  /**
+   * Temporal-backed workflow dispatcher adapters for the 3 sovereign
+   * tools. When omitted the bundle falls back to NOT_YET_WIRED stubs.
+   */
+  readonly evictionDispatcher?: hqTools.SeedHqBrainToolsDeps['evictionDispatcher'];
+  readonly ownerPayoutDispatcher?: hqTools.SeedHqBrainToolsDeps['ownerPayoutDispatcher'];
+  readonly kraMriDispatcher?: hqTools.SeedHqBrainToolsDeps['kraMriDispatcher'];
 }
 
 /**
@@ -360,7 +440,11 @@ export function buildHqDepsFromDb(
   options: BuildHqDepsFromDbOptions,
 ): Omit<
   hqTools.SeedHqBrainToolsDeps,
-  'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+  | 'contextFactory'
+  | 'maxAdjustmentUsdCents'
+  | 'maxRecipientCount'
+  | 'maxPayoutUsdCents'
+  | 'extraHilPayoutUsdCents'
 > {
   const resolveActor: () => string = () =>
     options.callerResolver.resolve().callerId;
@@ -406,6 +490,16 @@ export function buildHqDepsFromDb(
     ? createConsolidationRunnerService(options.consolidationWorker)
     : notYetWiredConsolidationRunner();
 
+  // Temporal-backed dispatchers. Fall back to deterministic NOT_YET_WIRED
+  // stubs when the composition root has not yet supplied real adapters
+  // (Phase C — `temporal-dispatcher-wiring.ts` provides them).
+  const evictionDispatcher =
+    options.evictionDispatcher ?? notYetWiredEvictionDispatcher();
+  const ownerPayoutDispatcher =
+    options.ownerPayoutDispatcher ?? notYetWiredOwnerPayoutDispatcher();
+  const kraMriDispatcher =
+    options.kraMriDispatcher ?? notYetWiredKraMriDispatcher();
+
   return {
     tenantsList: tenantsService,
     usersList: usersService,
@@ -419,6 +513,9 @@ export function buildHqDepsFromDb(
     killswitchWrite: killswitchService,
     invoices: invoiceService,
     announcements: announcementService,
+    evictionDispatcher,
+    ownerPayoutDispatcher,
+    kraMriDispatcher,
   };
 }
 
@@ -471,7 +568,11 @@ class NotYetWiredError extends Error {
 
 function buildNotYetWiredHqDeps(): Omit<
   hqTools.SeedHqBrainToolsDeps,
-  'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+  | 'contextFactory'
+  | 'maxAdjustmentUsdCents'
+  | 'maxRecipientCount'
+  | 'maxPayoutUsdCents'
+  | 'extraHilPayoutUsdCents'
 > {
   // Retained for unit tests that exercise the registry without a DB.
   // Production callers should pass `db` into `createHqToolRegistry` so
@@ -588,6 +689,221 @@ function buildNotYetWiredHqDeps(): Omit<
       async recall() {
         throw new NotYetWiredError('announcements.recall');
       },
+    },
+    evictionDispatcher: notYetWiredEvictionDispatcher(),
+    ownerPayoutDispatcher: notYetWiredOwnerPayoutDispatcher(),
+    kraMriDispatcher: notYetWiredKraMriDispatcher(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// NOT_YET_WIRED dispatcher stubs — used by both the legacy stub bundle
+// and the DB-backed bundle when the composition root has not threaded
+// real Temporal dispatchers in.
+// ─────────────────────────────────────────────────────────────────────
+
+function notYetWiredEvictionDispatcher(): hqTools.SeedHqBrainToolsDeps['evictionDispatcher'] {
+  return {
+    async start() {
+      throw new NotYetWiredError('evictionDispatcher');
+    },
+    async withdraw() {
+      throw new NotYetWiredError('evictionDispatcher.withdraw');
+    },
+  };
+}
+
+function notYetWiredOwnerPayoutDispatcher(): hqTools.SeedHqBrainToolsDeps['ownerPayoutDispatcher'] {
+  return {
+    async start() {
+      throw new NotYetWiredError('ownerPayoutDispatcher');
+    },
+    async refund() {
+      throw new NotYetWiredError('ownerPayoutDispatcher.refund');
+    },
+    async estimateUsdCents() {
+      throw new NotYetWiredError('ownerPayoutDispatcher.estimateUsdCents');
+    },
+  };
+}
+
+function notYetWiredKraMriDispatcher(): hqTools.SeedHqBrainToolsDeps['kraMriDispatcher'] {
+  return {
+    async start() {
+      throw new NotYetWiredError('kraMriDispatcher');
+    },
+    async requestRetraction() {
+      throw new NotYetWiredError('kraMriDispatcher.requestRetraction');
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase C C2 — adapter helpers that bridge kernel + worker port shapes
+// to B1's adapter port shapes. Each helper is exported so the
+// composition root and tests can wire them independently.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Bridges the kernel's `DecisionTraceRecorder` (which exposes
+ * `getRecentTraces(tenantId, limit)` returning rich `DecisionTrace`
+ * rows) onto B1's `DecisionTraceRecorderLike` shape (no-arg
+ * `listRecent()` returning rows the HQ tool can pass through).
+ *
+ * The bridge:
+ *   - Fetches up to 200 traces (B1's hard cap) across all tenants by
+ *     calling `getRecentTraces(null, 200)`. B1's
+ *     `createDecisionTraceQueryService` then applies caller-side
+ *     filtering (capability, scoreMin, tenantId, limit).
+ *   - Maps the kernel `DecisionTrace` shape onto B1's `DecisionTraceRow`
+ *     shape — `traceId` ← `thoughtId`, `capability` left null (the
+ *     kernel does not currently surface a per-trace capability label;
+ *     can be derived from the first step's `summary` in a follow-up),
+ *     `score` left null (no score on the kernel side yet), and
+ *     `stepCount` ← `steps.length`.
+ *   - Swallows + logs any error; on failure returns `[]` so the HQ
+ *     tool still shapes cleanly.
+ */
+export interface KernelDecisionTraceRecorderShape {
+  getRecentTraces(
+    tenantId: string | null,
+    limit: number,
+  ): Promise<
+    ReadonlyArray<{
+      readonly thoughtId: string;
+      readonly tenantId: string | null;
+      readonly threadId: string;
+      readonly startedAt: string;
+      readonly finishedAt: string;
+      readonly steps: ReadonlyArray<unknown>;
+    }>
+  >;
+}
+
+export function createDecisionTraceRecorderAdapter(deps: {
+  readonly recorder: KernelDecisionTraceRecorderShape;
+  readonly logger?: {
+    readonly warn?: (meta: Record<string, unknown>, msg: string) => void;
+  };
+}): PlatformDecisionTraceRecorderLike {
+  return {
+    async listRecent() {
+      try {
+        const raw = await deps.recorder.getRecentTraces(null, 200);
+        return (raw ?? []).map((trace) => ({
+          traceId: trace.thoughtId,
+          threadId: trace.threadId,
+          tenantId: trace.tenantId,
+          capability: null,
+          score: null,
+          stepCount: Array.isArray(trace.steps) ? trace.steps.length : 0,
+          startedAt: trace.startedAt,
+          finishedAt: trace.finishedAt,
+        }));
+      } catch (err) {
+        deps.logger?.warn?.(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            wiring: 'hq-tool-registry',
+          },
+          'decision-trace-adapter: kernel recorder threw — returning []',
+        );
+        return [];
+      }
+    },
+  };
+}
+
+/**
+ * Bridges the in-process consolidation runner (composition-root
+ * `runConsolidationForActiveTenants(db, anthropic, opts)`) onto B1's
+ * `ConsolidationWorkerLike` port. The HQ tool sends a `dryRun` flag and
+ * an optional `tenantId`; this adapter:
+ *   - Returns a synthesised `ConsolidationTickReport` per call. Hard
+ *     restrictions enforced by the upstream runner (Haiku + DB) mean
+ *     this adapter delegates the actual work and shapes the return.
+ *   - `rollbackSnapshot` is not yet supported by the in-process runner
+ *     (the existing API doesn't write snapshots); throws a clear error
+ *     until follow-up work threads the snapshot store. B1's adapter
+ *     catches and re-throws as `executor-failed`.
+ *
+ * The runner is injected as a function so tests + composition root can
+ * pick the in-process or HTTP path without coupling.
+ */
+export interface InProcessConsolidationRunner {
+  runForActiveTenants(args: {
+    readonly tenantId: string | null;
+    readonly dryRun: boolean;
+  }): Promise<{
+    readonly tenantsProcessed: number;
+    readonly factsUpserted: number;
+    readonly patternsRecorded: number;
+    readonly digestsWritten: number;
+    readonly expiredPurged: number;
+    readonly decayedFacts: number;
+    readonly errors: ReadonlyArray<string>;
+  }>;
+}
+
+export function createConsolidationWorkerAdapter(deps: {
+  readonly runner: InProcessConsolidationRunner;
+  readonly clock?: () => Date;
+  readonly logger?: {
+    readonly warn?: (meta: Record<string, unknown>, msg: string) => void;
+  };
+}): PlatformConsolidationWorkerLike {
+  const clock = deps.clock ?? (() => new Date());
+  return {
+    async runOnce(args) {
+      const startedAt = clock().toISOString();
+      try {
+        const summary = await deps.runner.runForActiveTenants({
+          tenantId: args.tenantId,
+          dryRun: args.dryRun,
+        });
+        const finishedAt = clock().toISOString();
+        return {
+          tickId: `tick_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
+          tenantId: args.tenantId,
+          applied: !args.dryRun,
+          startedAt,
+          finishedAt,
+          factsExtracted: summary.factsUpserted,
+          patternsDetected: summary.patternsRecorded,
+          digestsWritten: summary.digestsWritten,
+          decayedEntries: summary.decayedFacts,
+          snapshotId: null,
+        };
+      } catch (err) {
+        deps.logger?.warn?.(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            tenantId: args.tenantId,
+            wiring: 'hq-tool-registry',
+          },
+          'consolidation-worker-adapter: in-process runner failed',
+        );
+        throw err instanceof Error
+          ? err
+          : new Error('consolidation-worker-adapter: runner failed');
+      }
+    },
+    async rollbackSnapshot(snapshotId: string) {
+      // The in-process consolidation runner does not yet write
+      // snapshots. The HQ tool's rollback path is reserved for the
+      // future snapshot-capable worker; until then this surface
+      // throws a clear "not implemented" so the executor returns
+      // executor-failed rather than silently no-op-ing.
+      deps.logger?.warn?.(
+        {
+          snapshotId,
+          wiring: 'hq-tool-registry',
+        },
+        'consolidation-worker-adapter: rollbackSnapshot not yet wired',
+      );
+      throw new Error(
+        'consolidation rollback requires snapshot-capable worker (not yet wired)',
+      );
     },
   };
 }

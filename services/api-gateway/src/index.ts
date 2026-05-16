@@ -1131,6 +1131,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: idle-session emitter stop failed');
   }
   try {
+    serviceRegistry.sessionReplayRetention?.stop();
+    logger.info('shutdown: session-replay retention worker stopped');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'shutdown: session-replay retention stop failed');
+  }
+  try {
     serviceRegistry.sovereignLedgerVerifyCron?.stop();
     logger.info('shutdown: sovereign-ledger verify cron stopped');
   } catch (err) {
@@ -1216,6 +1222,11 @@ if (require.main === module) {
   // for every (tenant, user, session) tuple that has gone idle ≥ 5 min.
   // Null in degraded mode; `.start()` is a no-op there.
   serviceRegistry.idleSessionEmitter?.start();
+  // Central Command Phase C C4 — session-replay retention purge worker.
+  // Hourly tick deletes `session_replay_chunks` older than
+  // SESSION_REPLAY_RETENTION_DAYS (default 90) and best-effort purges
+  // the cold-store blobs. Null in degraded mode.
+  serviceRegistry.sessionReplayRetention?.start();
   // Wave-K Tier-3 — sovereign-ledger verify supervisor. Walks the
   // hash-chain on cadence (default 1h) and emits verified/tampered
   // events on the shared bus. Degraded-mode (no DB) is a no-op.
