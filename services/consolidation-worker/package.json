@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
-    "drizzle-orm": "^0.30.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

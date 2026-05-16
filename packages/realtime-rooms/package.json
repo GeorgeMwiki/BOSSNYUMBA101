@@ -24,10 +24,10 @@
   "author": "BOSSNYUMBA",
   "license": "MIT",
   "dependencies": {
-    "@liveblocks/client": "^2.0.0",
-    "@liveblocks/node": "^2.0.0",
-    "@liveblocks/react": "^2.0.0",
-    "@liveblocks/yjs": "^2.0.0",
+    "@liveblocks/client": "^3.19.1",
+    "@liveblocks/node": "^3.19.1",
+    "@liveblocks/react": "^3.19.1",
+    "@liveblocks/yjs": "^3.19.1",
     "yjs": "^13.6.0"
   },
   "devDependencies": {
