@@ -23,7 +23,12 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { createSemanticMemoryService } from '@bossnyumba/database';
+import {
+  createSemanticMemoryService,
+  createTemporalEntityGraphService,
+  createSemanticBulkReEmbedService,
+  type BulkReEmbedder,
+} from '@bossnyumba/database';
 import {
   createConsolidationLoop,
   createStubConsolidator,
@@ -32,6 +37,9 @@ import {
   type SemanticSink,
   type WorkerLogger,
 } from './consolidation.js';
+import type { EntityConsolidatorPort } from './stages/06-consolidate.js';
+import type { ReEmbedPort } from './stages/07-re-embed.js';
+import type { ConstitutionalCriticPort } from './stages/03-reflect.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Logger — tiny pino-shape that doesn't require pulling pino in.
@@ -150,6 +158,182 @@ function createSemanticAdapter(db: DrizzleLikeClient): SemanticSink {
       });
     },
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase C C1 — B4 service wires for the 8-stage orchestrator.
+//
+// Stages 03 (reflect), 06 (consolidate), and 07 (re-embed) each accept
+// an optional port supplied by the composition root. B4 shipped the
+// three real services; this module is the wire-point that constructs
+// each from a live Drizzle client and exposes them as a single deps
+// bundle for the orchestrator to consume.
+//
+// Lazy / null-safe by design:
+//   - When `db` is null (degraded mode / no DATABASE_URL), every port
+//     in the bundle is null. The orchestrator stages skip themselves
+//     cleanly (each stage's "no port wired" branch returns a zero-
+//     impact report).
+//   - The re-embed port additionally requires an embedder dep. When
+//     no embedder is supplied, that single port is null while the
+//     other two remain wired — partial degradation is supported.
+//   - The constitutional critic adapter is built off the central-
+//     intelligence kernel's factory. The kernel package barrel does
+//     NOT currently re-export `createConstitutionalCritic`, so the
+//     factory is loaded via dynamic import from the package dist (the
+//     same sibling-service pattern the legacy db-client load uses).
+//     When the dist is absent (e.g. unit tests with no install), the
+//     critic resolves to null and stage 03 runs without the verdict.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface OrchestratorB4Deps {
+  readonly entityConsolidator: EntityConsolidatorPort | null;
+  readonly reEmbedder: ReEmbedPort | null;
+  readonly constitutionalCritic: ConstitutionalCriticPort | null;
+}
+
+export interface OrchestratorB4DepsOptions {
+  /**
+   * Embedder for stage 07. When omitted, the re-embedder port is null
+   * and stage 07 becomes a no-op. Production wires a real OpenAI /
+   * Voyage / local-model embedder here.
+   */
+  readonly embedder?: BulkReEmbedder | null;
+  /**
+   * Anthropic-compatible client passed through to the constitutional
+   * critic. The critic itself falls back to a heuristic scorer when
+   * the client is omitted, so this is also optional.
+   */
+  readonly anthropicClient?: ConstitutionalCriticAnthropicClient | null;
+  /** Optional logger for the dynamic-import diagnostics. */
+  readonly logger?: WorkerLogger;
+}
+
+/**
+ * Minimal duck-type of the Anthropic messages client used by the
+ * constitutional critic. Mirrored locally so this module compiles
+ * without a compile-time dependency on `@anthropic-ai/sdk` or on the
+ * central-intelligence package.
+ */
+export interface ConstitutionalCriticAnthropicClient {
+  messages: {
+    create(args: {
+      model: string;
+      max_tokens: number;
+      system?: string;
+      messages: ReadonlyArray<{ role: string; content: string }>;
+    }): Promise<{
+      content: ReadonlyArray<{ type: string; text?: string }>;
+      model?: string;
+    }>;
+  };
+}
+
+/**
+ * Build the orchestrator's B4 port bundle from a live Drizzle client.
+ *
+ * Returns a fully-null bundle when `db` is null — the orchestrator
+ * stages skip themselves cleanly. Per-port nulls are independent: a
+ * caller that wires the temporal-graph port but omits the embedder
+ * gets stage 06 active and stage 07 skipped.
+ */
+export async function createOrchestratorB4Deps(
+  db: DrizzleLikeClient | null,
+  options: OrchestratorB4DepsOptions = {},
+): Promise<OrchestratorB4Deps> {
+  if (!db) {
+    return {
+      entityConsolidator: null,
+      reEmbedder: null,
+      constitutionalCritic: null,
+    };
+  }
+
+  const entityConsolidator = wrapEntityConsolidator(db);
+  const reEmbedder = options.embedder
+    ? wrapReEmbedder(db, options.embedder)
+    : null;
+  const constitutionalCritic = await loadConstitutionalCritic({
+    ...(options.anthropicClient ? { anthropicClient: options.anthropicClient } : {}),
+    ...(options.logger ? { logger: options.logger } : {}),
+  });
+
+  return {
+    entityConsolidator,
+    reEmbedder,
+    constitutionalCritic,
+  };
+}
+
+function wrapEntityConsolidator(
+  db: DrizzleLikeClient,
+): EntityConsolidatorPort {
+  const svc = createTemporalEntityGraphService(db as never);
+  return {
+    async consolidateForTenant(args) {
+      return svc.consolidateForTenant({ tenantId: args.tenantId });
+    },
+  };
+}
+
+function wrapReEmbedder(
+  db: DrizzleLikeClient,
+  embedder: BulkReEmbedder,
+): ReEmbedPort {
+  const svc = createSemanticBulkReEmbedService(db as never, embedder);
+  return {
+    async reEmbedForTenant(args) {
+      return svc.reEmbedForTenant({
+        tenantId: args.tenantId,
+        limit: args.limit,
+        ...(args.modelCutoff !== undefined ? { modelCutoff: args.modelCutoff } : {}),
+      });
+    },
+  };
+}
+
+/**
+ * Load `createConstitutionalCritic` via dynamic import. The kernel
+ * package barrel does NOT re-export this factory at the time of
+ * writing, so we reach into the dist directory directly. A missing
+ * dist (e.g. fresh checkout without a build) resolves cleanly to
+ * null and stage 03 runs without the verdict.
+ *
+ * Coordination zone (deferred): if a future PR adds
+ * `createConstitutionalCritic` to the central-intelligence barrel
+ * export, this helper can be replaced with a static
+ * `import { createConstitutionalCritic } from '@bossnyumba/central-intelligence'`
+ * line. The current dynamic import is a tactical compromise that
+ * avoids modifying packages outside the Phase C C1 scope.
+ */
+async function loadConstitutionalCritic(opts: {
+  anthropicClient?: ConstitutionalCriticAnthropicClient;
+  logger?: WorkerLogger;
+}): Promise<ConstitutionalCriticPort | null> {
+  try {
+    const mod = (await import(
+      '../../../packages/central-intelligence/dist/kernel/critics/constitutional-critic.js'
+    )) as {
+      createConstitutionalCritic?: (args?: {
+        anthropicClient?: ConstitutionalCriticAnthropicClient;
+      }) => ConstitutionalCriticPort;
+    };
+    if (typeof mod.createConstitutionalCritic !== 'function') {
+      return null;
+    }
+    return mod.createConstitutionalCritic(
+      opts.anthropicClient
+        ? { anthropicClient: opts.anthropicClient }
+        : undefined,
+    );
+  } catch (error) {
+    const log = opts.logger?.warn ?? (() => undefined);
+    log(
+      { err: asMessage(error) },
+      'consolidation-worker: constitutional critic load failed — stage 03 will run without verdict',
+    );
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────
