@@ -29,6 +29,81 @@ import {
   type HqSovereignLedgerSink,
   type HqToolContext,
 } from '@bossnyumba/central-intelligence';
+// Central Command Phase B B1 — Drizzle-backed platform.* service
+// adapters. Each factory satisfies one (or two) HQ tool port slots; this
+// file's `buildHqDepsFromDb` composes them into the full
+// SeedHqBrainToolsDeps bundle.
+import {
+  createPlatformAnnouncementService,
+  createPlatformFeatureFlagsService,
+  createPlatformInvoiceAdjustmentService,
+  createPlatformKillswitchWriteService,
+  createPlatformTenantsService,
+  createPlatformUsersService,
+  createConsolidationRunnerService,
+  createDecisionTraceQueryService,
+  createServiceHeartbeatService,
+  createDatabaseClient,
+} from '@bossnyumba/database';
+// `DatabaseClient` resolves as a namespace when pulled through the
+// package barrel under NodeNext (TS2709) — derive from the factory.
+// The other deps interfaces use the same dodge but `Parameters<typeof
+// fn>[N]` collapses to `{}` when the source-types path crosses the
+// package boundary under NodeNext + isolatedModules, so we mirror the
+// shapes locally instead. The kernel-side port surfaces (HQ tools) and
+// B1's adapters both expose these as flat interfaces — keeping a local
+// copy stays in lockstep with B1's exports.
+type DatabaseClient = ReturnType<typeof createDatabaseClient>;
+
+interface PlatformConsolidationWorkerLike {
+  runOnce(args: {
+    readonly tenantId: string | null;
+    readonly dryRun: boolean;
+  }): Promise<unknown>;
+  rollbackSnapshot(snapshotId: string): Promise<void>;
+}
+interface PlatformDecisionTraceRecorderLike {
+  /** Mirrors `DecisionTraceRecorderLike` in
+   *  `packages/database/src/services/platform/decision-trace-query.service.ts`. */
+  getRecentTraces(args: {
+    tenantId?: string | null;
+    limit?: number;
+  }): ReadonlyArray<unknown> | Promise<ReadonlyArray<unknown>>;
+}
+type PlatformKillswitchPublishEvent = (event: {
+  readonly type: 'killswitch:changed';
+  readonly scope: 'platform' | `tenant:${string}`;
+  readonly level: 'live' | 'degraded' | 'halt';
+  readonly reasonCode: string;
+  readonly setAt: string;
+}) => Promise<void> | void;
+interface PlatformKillswitchDeps {
+  readonly resolveActor: () => string;
+  readonly publishCrossPortalEvent?: PlatformKillswitchPublishEvent;
+}
+interface PlatformNotificationDispatcherLike {
+  dispatch(args: unknown): Promise<unknown>;
+}
+interface PlatformRecipientResolverLike {
+  countRecipients(args: unknown): Promise<number>;
+}
+interface PlatformAnnouncementDeps {
+  readonly resolveActor: () => string;
+  readonly dispatcher?: PlatformNotificationDispatcherLike;
+  readonly recipientResolver?: PlatformRecipientResolverLike;
+}
+interface PlatformServiceHealthRow {
+  readonly serviceName: string;
+  readonly state: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  readonly lastHeartbeatAt: string | null;
+  readonly latencyMsP95: number | null;
+  readonly notes: string | null;
+}
+interface PlatformServiceHeartbeatDeps {
+  readonly uptimeMs?: () => number;
+  readonly extraProbes?: ReadonlyArray<() => Promise<PlatformServiceHealthRow>>;
+  readonly dbProbeTimeoutMs?: number;
+}
 
 /**
  * Convenience alias — the `HqToolContextFactory` shape lives under the
@@ -57,11 +132,56 @@ export interface HqToolRegistryWiringDeps {
    * each port adapter from the database service-registry and threads
    * them through. When `null`, we fall back to NOT_YET_WIRED stubs so
    * the registry still boots.
+   *
+   * Prefer the `db` shortcut (below) when running against a live DB —
+   * `buildHqDepsFromDb(db, callerResolver)` composes the full bundle
+   * from B1's Drizzle services in one call.
    */
   readonly hqDeps?: Omit<
     hqTools.SeedHqBrainToolsDeps,
     'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
   >;
+  /**
+   * Optional Drizzle client — when supplied AND `hqDeps` is not
+   * supplied, the registry calls {@link buildHqDepsFromDb} to compose
+   * the full deps bundle from B1's `platform.*` adapters.
+   */
+  readonly db?: DatabaseClient | null;
+  /**
+   * Optional consolidation worker for `platform.run_consolidation_tick`.
+   * When omitted the consolidation port surfaces a "not yet wired"
+   * refusal — same as the legacy NotYetWiredError stub. The actual
+   * worker lives in `services/consolidation-worker`; the api-gateway
+   * either invokes it in-process or over HTTP via this port.
+   */
+  readonly consolidationWorker?: PlatformConsolidationWorkerLike | null;
+  /**
+   * Optional decision-trace recorder for `platform.list_recent_traces`.
+   * When omitted, B1's adapter returns `[]` so the HQ tool still shapes
+   * cleanly (no traces yet = empty list).
+   */
+  readonly decisionTraceRecorder?: PlatformDecisionTraceRecorderLike | null;
+  /**
+   * Optional cross-portal event publisher. When supplied, B1's
+   * killswitch adapter fires a `killswitch:changed` event every time
+   * the state is updated so all running brains pick up the new state
+   * immediately. The api-gateway wires this from
+   * `registry.crossPortalBus` (see `service-registry.ts`).
+   */
+  readonly publishCrossPortalEvent?: PlatformKillswitchDeps['publishCrossPortalEvent'];
+  /**
+   * Optional announcement-side dispatcher + recipient resolver. When
+   * omitted the row is queued only (no email/banner fan-out) and the
+   * recipient count defaults to 0.
+   */
+  readonly announcementDispatcher?: PlatformAnnouncementDeps['dispatcher'];
+  readonly announcementRecipientResolver?: PlatformAnnouncementDeps['recipientResolver'];
+  /**
+   * Optional extra heartbeat probes (redis, consolidation-worker,
+   * wake-loop). B1's adapter always synthesises `api-gateway` +
+   * `postgres-primary` rows; extras append after those.
+   */
+  readonly heartbeatExtraProbes?: PlatformServiceHeartbeatDeps['extraProbes'];
   /** Hard cost ceiling for `platform.adjust_invoice` (USD cents). */
   readonly maxAdjustmentUsdCents?: number;
   /** Hard recipient ceiling for `platform.send_announcement`. */
@@ -134,7 +254,52 @@ export function createHqToolRegistry(
     };
   };
 
-  const hqDeps = deps.hqDeps ?? buildNotYetWiredHqDeps();
+  // Resolve the concrete deps:
+  //   1. Explicit `hqDeps` wins (used by tests + advanced wiring).
+  //   2. Otherwise, when `db` is supplied, B1's Drizzle adapters are
+  //      composed via {@link buildHqDepsFromDb}.
+  //   3. Otherwise, fall back to NOT_YET_WIRED stubs (legacy degraded
+  //      path — keeps the registry bootable for unit tests).
+  let hqDeps:
+    | Omit<
+        hqTools.SeedHqBrainToolsDeps,
+        'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+      >
+    | null = null;
+  let depsSource: 'explicit' | 'db' | 'stub' = 'stub';
+  if (deps.hqDeps) {
+    hqDeps = deps.hqDeps;
+    depsSource = 'explicit';
+  } else if (deps.db) {
+    hqDeps = buildHqDepsFromDb(deps.db, {
+      callerResolver: deps.callerResolver,
+      ...(deps.consolidationWorker
+        ? { consolidationWorker: deps.consolidationWorker }
+        : {}),
+      ...(deps.decisionTraceRecorder
+        ? { decisionTraceRecorder: deps.decisionTraceRecorder }
+        : {}),
+      ...(deps.publishCrossPortalEvent
+        ? { publishCrossPortalEvent: deps.publishCrossPortalEvent }
+        : {}),
+      ...(deps.announcementDispatcher
+        ? { announcementDispatcher: deps.announcementDispatcher }
+        : {}),
+      ...(deps.announcementRecipientResolver
+        ? {
+            announcementRecipientResolver:
+              deps.announcementRecipientResolver,
+          }
+        : {}),
+      ...(deps.heartbeatExtraProbes
+        ? { heartbeatExtraProbes: deps.heartbeatExtraProbes }
+        : {}),
+    });
+    depsSource = 'db';
+  } else {
+    hqDeps = buildNotYetWiredHqDeps();
+    depsSource = 'stub';
+  }
 
   const seeded: hqTools.SeedHqBrainToolsDeps = {
     ...hqDeps,
@@ -151,13 +316,143 @@ export function createHqToolRegistry(
       {
         wiring: 'hq-tool-registry',
         toolCount: toolNames.length,
-        usingStubs: !deps.hqDeps,
+        depsSource,
+        usingStubs: depsSource === 'stub',
       },
       'hq-tool-registry: composed',
     );
   }
 
   return { registry, toolNames };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// buildHqDepsFromDb — compose the SeedHqBrainToolsDeps bundle from
+// B1's Drizzle-backed `platform.*` adapters.
+// ─────────────────────────────────────────────────────────────────────
+
+export interface BuildHqDepsFromDbOptions {
+  /** Required — used to source the caller id for write-side adapters
+   *  (killswitch.set_by, announcements.created_by, etc.). */
+  readonly callerResolver: HqCallerResolver;
+  readonly consolidationWorker?: PlatformConsolidationWorkerLike;
+  readonly decisionTraceRecorder?: PlatformDecisionTraceRecorderLike;
+  readonly publishCrossPortalEvent?: PlatformKillswitchDeps['publishCrossPortalEvent'];
+  readonly announcementDispatcher?: PlatformAnnouncementDeps['dispatcher'];
+  readonly announcementRecipientResolver?: PlatformAnnouncementDeps['recipientResolver'];
+  readonly heartbeatExtraProbes?: PlatformServiceHeartbeatDeps['extraProbes'];
+}
+
+/**
+ * Compose the full HQ deps bundle from B1's Drizzle services.
+ *
+ * Three notes on port re-use:
+ *   - `tenantsService` satisfies BOTH `tenantsList` (list_tenants) AND
+ *     `tenantsCreate` (create_tenant) — the underlying service exposes
+ *     the union of the two port surfaces.
+ *   - `usersService` satisfies BOTH `usersList` and `usersCreate`.
+ *   - Ports that B1 has not shipped yet (`tracesQuery` with no recorder,
+ *     `consolidation` with no worker) get a structurally-correct empty
+ *     adapter instead of throwing so the HQ tool still shapes cleanly.
+ */
+export function buildHqDepsFromDb(
+  db: DatabaseClient,
+  options: BuildHqDepsFromDbOptions,
+): Omit<
+  hqTools.SeedHqBrainToolsDeps,
+  'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
+> {
+  const resolveActor: () => string = () =>
+    options.callerResolver.resolve().callerId;
+
+  // Tenants service satisfies tenantsList + tenantsCreate.
+  const tenantsService = createPlatformTenantsService(db);
+  // Users service satisfies usersList + usersCreate (carries its own
+  // `tenantExists` so no cross-service plumbing needed).
+  const usersService = createPlatformUsersService(db);
+  const flagsService = createPlatformFeatureFlagsService(db, { resolveActor });
+  const killswitchService = createPlatformKillswitchWriteService(db, {
+    resolveActor,
+    ...(options.publishCrossPortalEvent
+      ? { publishCrossPortalEvent: options.publishCrossPortalEvent }
+      : {}),
+  });
+  const heartbeatService = createServiceHeartbeatService(
+    db,
+    options.heartbeatExtraProbes
+      ? { extraProbes: options.heartbeatExtraProbes }
+      : undefined,
+  );
+  const invoiceService = createPlatformInvoiceAdjustmentService(db, {
+    resolveActor,
+  });
+  const announcementService = createPlatformAnnouncementService(db, {
+    resolveActor,
+    ...(options.announcementDispatcher
+      ? { dispatcher: options.announcementDispatcher }
+      : {}),
+    ...(options.announcementRecipientResolver
+      ? { recipientResolver: options.announcementRecipientResolver }
+      : {}),
+  });
+
+  // Optional decision-trace recorder + consolidation worker. When
+  // omitted the adapter surfaces a clean empty / refusal — see
+  // `emptyDecisionTraceQuery` / `notYetWiredConsolidationRunner` below.
+  const tracesQuery = options.decisionTraceRecorder
+    ? createDecisionTraceQueryService(options.decisionTraceRecorder)
+    : emptyDecisionTraceQuery();
+  const consolidation = options.consolidationWorker
+    ? createConsolidationRunnerService(options.consolidationWorker)
+    : notYetWiredConsolidationRunner();
+
+  return {
+    tenantsList: tenantsService,
+    usersList: usersService,
+    heartbeats: heartbeatService,
+    tracesQuery,
+    flagsRead: flagsService,
+    tenantsCreate: tenantsService,
+    usersCreate: usersService,
+    flagsWrite: flagsService,
+    consolidation,
+    killswitchWrite: killswitchService,
+    invoices: invoiceService,
+    announcements: announcementService,
+  };
+}
+
+/**
+ * Structural placeholder for `tracesQuery` when no recorder is wired.
+ * Returns empty rows so the HQ tool still shapes cleanly.
+ */
+function emptyDecisionTraceQuery(): hqTools.SeedHqBrainToolsDeps['tracesQuery'] {
+  return {
+    async listRecent() {
+      return [];
+    },
+  };
+}
+
+/**
+ * Structural placeholder for `consolidation` when no worker is wired.
+ * `runTick` throws so the executor surfaces a clean executor-failure;
+ * `rollbackToSnapshot` also throws (no snapshot is reachable without a
+ * worker either).
+ */
+function notYetWiredConsolidationRunner(): hqTools.SeedHqBrainToolsDeps['consolidation'] {
+  return {
+    async runTick() {
+      throw new NotYetWiredError(
+        'consolidation.runTick (no consolidationWorker bound)',
+      );
+    },
+    async rollbackToSnapshot() {
+      throw new NotYetWiredError(
+        'consolidation.rollbackToSnapshot (no consolidationWorker bound)',
+      );
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -178,10 +473,13 @@ function buildNotYetWiredHqDeps(): Omit<
   hqTools.SeedHqBrainToolsDeps,
   'contextFactory' | 'maxAdjustmentUsdCents' | 'maxRecipientCount'
 > {
-  // TODO(C2-followup): replace each adapter with the real
-  // database-service-backed port. Pattern: import the relevant
-  // service from `@bossnyumba/database` via the api-gateway service
-  // registry and pass it in via `HqToolRegistryWiringDeps.hqDeps`.
+  // Retained for unit tests that exercise the registry without a DB.
+  // Production callers should pass `db` into `createHqToolRegistry` so
+  // {@link buildHqDepsFromDb} composes B1's Drizzle-backed adapters
+  // from `packages/database/src/services/platform/`. The kernel-side
+  // per-tool refusal layer translates every NotYetWiredError thrown
+  // here into a clean `executor-failed` reason so the admin chat sees
+  // a precise "subsystem not yet wired" message instead of a 500.
   return {
     tenantsList: {
       async listTenants() {
