@@ -31,7 +31,7 @@
     "@opentelemetry/instrumentation": "^0.45.0",
     "@opentelemetry/resources": "^1.18.0",
     "@opentelemetry/sdk-metrics": "^1.18.0",
-    "@opentelemetry/sdk-node": "^0.45.0",
+    "@opentelemetry/sdk-node": "^0.217.0",
     "@opentelemetry/sdk-trace-base": "^1.18.0",
     "@opentelemetry/sdk-trace-node": "^1.18.0",
     "@opentelemetry/semantic-conventions": "^1.18.0",
