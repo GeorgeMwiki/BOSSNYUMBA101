@@ -31,10 +31,10 @@ jobs:
       matrix:
         node-version: ['20', '22']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
@@ -53,9 +53,9 @@ jobs:
       matrix:
         node-version: ['20', '22']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
@@ -77,9 +77,9 @@ jobs:
       matrix:
         node-version: ['20', '22']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
@@ -92,7 +92,7 @@ jobs:
         run: pnpm test -- --reporter=verbose
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-node-${{ matrix.node-version }}
           path: |
@@ -111,9 +111,9 @@ jobs:
       matrix:
         node-version: ['20', '22']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
@@ -121,7 +121,7 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: strict-build-node-${{ matrix.node-version }}
           path: |
@@ -143,9 +143,9 @@ jobs:
     needs: build
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -175,7 +175,7 @@ jobs:
         run: docker compose -f docker-compose.e2e.yml logs > e2e-stack-logs.txt
       - name: Upload Playwright artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-strict
           path: |
