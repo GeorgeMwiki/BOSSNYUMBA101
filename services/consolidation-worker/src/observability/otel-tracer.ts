@@ -69,7 +69,12 @@ async function loadOtelApi(): Promise<OTelApi | null> {
     // Dynamic import — the bundler should NOT statically resolve this.
     // We use Function('return import(...)') to avoid bundler attempting
     // to resolve at build time; tsx + node will resolve at runtime if
-    // the package exists in node_modules.
+    // the package exists in node_modules. The `new Function` indirection
+    // is INTENTIONAL — `@opentelemetry/api` is an optional peer dep and
+    // a static `import()` would force every consumer to install it. Lint
+    // flags `new Function` as eval-equivalent; in this controlled site
+    // (no user input ever flows through `spec`) the dodge is safe.
+    // eslint-disable-next-line no-new-func
     const dynamicImport = new Function(
       'spec',
       'return import(spec)',
