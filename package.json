@@ -74,7 +74,8 @@
       "flatted": ">=3.4.2",
       "drizzle-orm": "0.36.4",
       "@types/react": "18.3.28",
-      "@types/react-dom": "18.3.0"
+      "@types/react-dom": "18.3.0",
+      "eslint": "8.57.1"
     },
     "peerDependencyRules": {
       "ignoreMissing": [
