@@ -6,6 +6,13 @@
  * Production wires a Haiku-backed critic at the composition root;
  * the default in-worker implementation produces a deterministic stub
  * so unit tests can verify the orchestrator wiring.
+ *
+ * B4 Phase B: optional Constitutional critic (RLAIF labelling). When
+ * the composition root wires a `constitutionalCritic`, each
+ * reflection is scored against the BOSSNYUMBA constitution (TZ Rental
+ * Act, GDPR / PDPA, currency-chain rules, inviolable IP). The verdict
+ * is logged alongside the reflection so the optimisation loop has a
+ * principled reference signal — even without humans labelling.
  */
 
 import type {
@@ -15,10 +22,36 @@ import type {
   TraceCluster,
 } from './types.js';
 
+/**
+ * Verdict shape the constitutional critic returns. Duck-typed locally
+ * so the worker has no compile-time dependency on
+ * `@bossnyumba/central-intelligence`.
+ */
+export interface ConstitutionalCriticPort {
+  score(reflection: {
+    clusterId: string;
+    tenantId: string | null;
+    text: string;
+    intentLabel: string;
+  }): Promise<{
+    clusterId: string;
+    overall: number;
+    passed: boolean;
+    scores: ReadonlyArray<{ ruleId: string; score: number; rationale: string }>;
+  }>;
+}
+
 export interface ReflectArgs {
   readonly clusters: ReadonlyArray<TraceCluster>;
   readonly critic?: ReflectionCritic;
   readonly logger: StageLogger;
+  /**
+   * Optional RLAIF constitutional critic. When supplied, each
+   * reflection is scored after the main critic produces it. The
+   * scoring runs in best-effort mode — a critic failure logs + skips
+   * without dropping the reflection.
+   */
+  readonly constitutionalCritic?: ConstitutionalCriticPort;
 }
 
 export async function runReflectStage(
@@ -26,10 +59,47 @@ export async function runReflectStage(
 ): Promise<ReadonlyArray<ReflectionResult>> {
   const critic = args.critic ?? createStubCritic();
   const out: ReflectionResult[] = [];
+  let constitutionalChecks = 0;
+  let constitutionalPasses = 0;
   for (const cluster of args.clusters) {
     try {
       const r = await critic.reflect(cluster);
       out.push(r);
+
+      // RLAIF — score against the constitution if a critic is wired.
+      if (args.constitutionalCritic) {
+        try {
+          const verdict = await args.constitutionalCritic.score({
+            clusterId: r.clusterId,
+            tenantId: r.tenantId,
+            text: r.text,
+            intentLabel: r.intentLabel,
+          });
+          constitutionalChecks += 1;
+          if (verdict.passed) constitutionalPasses += 1;
+          args.logger.info(
+            {
+              stage: '03-reflect',
+              clusterId: r.clusterId,
+              constitutionalOverall: verdict.overall,
+              constitutionalPassed: verdict.passed,
+              failingRules: verdict.scores
+                .filter((s) => s.score < 1)
+                .map((s) => s.ruleId),
+            },
+            'constitutional critic verdict',
+          );
+        } catch (error) {
+          args.logger.warn(
+            {
+              stage: '03-reflect',
+              clusterId: r.clusterId,
+              err: asMessage(error),
+            },
+            'constitutional critic threw — continuing without verdict',
+          );
+        }
+      }
     } catch (error) {
       args.logger.warn(
         {
@@ -46,6 +116,8 @@ export async function runReflectStage(
       stage: '03-reflect',
       clusters: args.clusters.length,
       reflections: out.length,
+      constitutionalChecks,
+      constitutionalPasses,
     },
     'reflect stage complete',
   );

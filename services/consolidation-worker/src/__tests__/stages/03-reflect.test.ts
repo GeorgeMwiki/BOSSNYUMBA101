@@ -119,3 +119,40 @@ describe('createStubCritic', () => {
     expect(a.text).toMatch(/failed/);
   });
 });
+
+describe('runReflectStage — constitutional critic (RLAIF)', () => {
+  it('invokes the constitutional critic for each reflection', async () => {
+    const scored: string[] = [];
+    const constitutionalCritic = {
+      async score(r: { clusterId: string }) {
+        scored.push(r.clusterId);
+        return {
+          clusterId: r.clusterId,
+          overall: 0.95,
+          passed: true,
+          scores: [],
+        };
+      },
+    };
+    await runReflectStage({
+      clusters: [makeCluster('c1'), makeCluster('c2')],
+      logger: makeLogger(),
+      constitutionalCritic,
+    });
+    expect(scored).toEqual(['c1', 'c2']);
+  });
+
+  it('survives a constitutional critic throw without dropping reflections', async () => {
+    const constitutionalCritic = {
+      async score() {
+        throw new Error('critic boom');
+      },
+    };
+    const out = await runReflectStage({
+      clusters: [makeCluster('c1')],
+      logger: makeLogger(),
+      constitutionalCritic,
+    });
+    expect(out).toHaveLength(1);
+  });
+});

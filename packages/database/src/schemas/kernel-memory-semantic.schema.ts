@@ -110,6 +110,12 @@ export const kernelMemorySemantic = pgTable(
      * filters NULLs out so missing embeddings degrade gracefully.
      */
     embedding: vector('embedding', { dimensions: 1536 }),
+    /**
+     * Resume marker for the bulk re-embedder (stage 07-re-embed).
+     * NULL = never re-embedded (highest priority).
+     * Migration 0141.
+     */
+    lastEmbeddedAt: timestamp('last_embedded_at', { withTimezone: true }),
   },
   (t) => ({
     tenantUserKeyUserIdx: uniqueIndex(
@@ -118,6 +124,10 @@ export const kernelMemorySemantic = pgTable(
     tenantTimeIdx: index('idx_kernel_mem_semantic_tenant_time').on(
       t.tenantId,
       t.lastSeenAt,
+    ),
+    lastEmbeddedIdx: index('idx_kernel_mem_semantic_last_embedded').on(
+      t.tenantId,
+      t.lastEmbeddedAt,
     ),
   }),
 );
