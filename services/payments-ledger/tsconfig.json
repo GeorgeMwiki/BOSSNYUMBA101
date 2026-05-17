@@ -19,13 +19,10 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "outDir": "./dist",
+    "rootDir": "./src",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@bossnyumba/domain-models": ["../../packages/domain-models/src"]
-    },
     "types": ["node"]
   },
   "include": ["src/**/*"],
