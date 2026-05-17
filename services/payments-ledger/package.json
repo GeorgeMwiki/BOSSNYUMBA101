@@ -7,16 +7,17 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/services/payments-ledger/src/index.d.ts",
-      "default": "./dist/services/payments-ledger/src/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./arrears": {
-      "types": "./dist/services/payments-ledger/src/arrears/index.d.ts",
-      "default": "./dist/services/payments-ledger/src/arrears/index.js"
+      "types": "./dist/arrears/index.d.ts",
+      "default": "./dist/arrears/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc 2>/dev/null || true",
     "dev": "ts-node-dev --respawn src/server.ts",
     "start": "node dist/server.js",
     "test": "vitest run --passWithNoTests",
