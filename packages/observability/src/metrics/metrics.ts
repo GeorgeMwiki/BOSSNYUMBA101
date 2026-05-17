@@ -10,12 +10,12 @@ import {
   PeriodicExportingMetricReader,
 } from '@opentelemetry/sdk-metrics';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-  SEMRESATTRS_SERVICE_NAME,
-  SEMRESATTRS_SERVICE_VERSION,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
+import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME } from '@opentelemetry/semantic-conventions/incubating';
 import {
   metrics,
   Counter,
@@ -43,10 +43,10 @@ export function initMetrics(config: TelemetryConfig): MeterProvider {
     return meterProvider;
   }
 
-  const resource = new Resource({
-    [SEMRESATTRS_SERVICE_NAME]: config.service.name,
-    [SEMRESATTRS_SERVICE_VERSION]: config.service.version,
-    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.service.environment,
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: config.service.name,
+    [ATTR_SERVICE_VERSION]: config.service.version,
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: config.service.environment,
   });
 
   const readers = [];
