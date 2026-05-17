@@ -1,5 +1,6 @@
 /**
- * Session replay landing page — Central Command Phase B (B5).
+ * Session replay landing page — Central Command Phase B (B5) +
+ * Phase C (C4 search + filter).
  *
  * Lists recent sessions for the tenant. Click-through navigates to
  * `/session-replay/<sessionId>` which renders the rrweb-player.
@@ -7,11 +8,13 @@
  * Admin-gated by the staff layout (SUPER_ADMIN + ADMIN). The gateway
  * also enforces the role gate at the API tier — defence-in-depth.
  *
- * TODO (Phase C): free-text + facet search across sessions.
+ * Phase C C4: the table is wrapped in a client-side filter shell that
+ * provides free-text search + facet filters (date / errors / duration).
+ * The deep link to `[sessionId]/page.tsx` is untouched.
  */
 
-import Link from 'next/link';
 import { PageShell } from '@/components/migrated/PageShell';
+import { SessionReplayList } from './_filters';
 
 interface RecentSession {
   readonly sessionId: string;
@@ -20,6 +23,8 @@ interface RecentSession {
   readonly firstCapturedAt: string;
   readonly lastCapturedAt: string;
   readonly chunkCount: number;
+  readonly errorEventCount?: number;
+  readonly tenantName?: string;
 }
 
 interface ApiEnvelope<T> {
@@ -80,47 +85,7 @@ export default async function SessionReplayLandingPage() {
           {error}
         </div>
       ) : null}
-      {sessions.length === 0 ? (
-        <div className="text-sm text-neutral-400">
-          No replay sessions recorded in the current window. Visit any
-          admin page — the recorder boots from the layout provider and
-          flushes a chunk every 30 seconds.
-        </div>
-      ) : (
-        <table className="w-full text-sm text-neutral-300 border-collapse">
-          <thead className="text-neutral-500 uppercase text-xs tracking-wider">
-            <tr>
-              <th className="text-left py-2 pr-3">Session</th>
-              <th className="text-left py-2 pr-3">User</th>
-              <th className="text-left py-2 pr-3">Surface</th>
-              <th className="text-left py-2 pr-3">First captured</th>
-              <th className="text-left py-2 pr-3">Last captured</th>
-              <th className="text-left py-2 pr-3">Chunks</th>
-              <th className="text-left py-2 pr-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((s) => (
-              <tr key={s.sessionId} className="border-t border-border">
-                <td className="py-2 pr-3 font-mono break-all">{s.sessionId}</td>
-                <td className="py-2 pr-3">{s.userId}</td>
-                <td className="py-2 pr-3">{s.surface}</td>
-                <td className="py-2 pr-3">{s.firstCapturedAt}</td>
-                <td className="py-2 pr-3">{s.lastCapturedAt}</td>
-                <td className="py-2 pr-3">{s.chunkCount}</td>
-                <td className="py-2 pr-3">
-                  <Link
-                    href={`/session-replay/${encodeURIComponent(s.sessionId)}`}
-                    className="text-signal-500 hover:underline"
-                  >
-                    Play →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <SessionReplayList sessions={sessions} />
     </PageShell>
   );
 }

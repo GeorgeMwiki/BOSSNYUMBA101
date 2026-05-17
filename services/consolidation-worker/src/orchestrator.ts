@@ -25,6 +25,7 @@ import { runClusterStage } from './stages/02-cluster.js';
 import {
   runReflectStage,
   createStubCritic,
+  type ConstitutionalCriticPort,
 } from './stages/03-reflect.js';
 import { runPromoteStage } from './stages/04-promote.js';
 import { runDecayStage } from './stages/05-decay.js';
@@ -63,6 +64,15 @@ export interface ConsolidationOrchestratorDeps {
   readonly semanticDecay?: SemanticDecayPort;
   readonly entityConsolidator?: EntityConsolidatorPort;
   readonly reEmbedder?: ReEmbedPort;
+  /**
+   * Optional RLAIF constitutional critic — B4 Phase B. When supplied,
+   * stage 03 (reflect) scores each cluster reflection against the
+   * BOSSNYUMBA constitution (TZ Rental Act, GDPR/PDPA, currency-chain,
+   * inviolable IP) so the optimisation loop has a principled label
+   * even without humans in the loop. When omitted, stage 03 still
+   * runs — it just skips the constitutional verdict.
+   */
+  readonly constitutionalCritic?: ConstitutionalCriticPort;
   readonly publisher?: BrainDeltaPublisher;
   readonly windowMs?: number;
   readonly decayPerDay?: number;
@@ -170,6 +180,9 @@ export async function runConsolidationOrchestrator(
           clusters,
           critic: deps.critic ?? createStubCritic(),
           logger,
+          ...(deps.constitutionalCritic
+            ? { constitutionalCritic: deps.constitutionalCritic }
+            : {}),
         }),
       [],
       errors,

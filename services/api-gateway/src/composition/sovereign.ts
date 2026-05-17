@@ -100,6 +100,11 @@ import {
   createBoundActionToolDeps,
   createBoundWakeReadDeps,
 } from './agency-port-bindings';
+// Central Command Phase C C1 — counter-model production wiring. The
+// factory returns null when the Anthropic client is null (degraded
+// mode); the executor treats `counterModel: null` as "skip the second-
+// LLM sanity check and fall through to the legacy approval flow".
+import { createProductionCounterModel } from './critics/counter-model-wiring.js';
 
 // ---------------------------------------------------------------------------
 // Anthropic SDK loader — optional. We only require the SDK when the
@@ -204,6 +209,26 @@ export function resetSovereignBrainCache(): void {
 
 async function build(scope: SovereignScope): Promise<SovereignBrain> {
   const db = getDb();
+
+  // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
+  // The raw client is wrapped in a process-wide circuit breaker so the
+  // sensor-failover layer sees a typed `AnthropicCircuitOpenError` and
+  // can fail-over to the next sensor instead of retrying every turn
+  // against an upstream that is already known to be down.
+  //
+  // Central Command Phase C C1 — hoisted ABOVE both `createExecutor`
+  // call sites so the counter-model adapter (built off the wrapped
+  // Anthropic client) is in scope for both the early-stub executor
+  // branch and the realAgencyExecutor branch. Previously this load
+  // lived after the agency block, which forced the COORD ZONE notes
+  // requesting a reorganisation pass — that pass is this commit.
+  const anthropicRaw = await loadAnthropicClient();
+  const anthropic = anthropicRaw
+    ? wrapAnthropicWithCircuitBreaker(anthropicRaw, {
+        failureThreshold: 5,
+        recoveryTimeoutMs: 30_000,
+      })
+    : null;
 
   // Substrate sinks — Drizzle-backed when DB is up; otherwise the
   // composeSovereign default (in-memory) is used.
@@ -335,28 +360,19 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     for (const stub of agencyKernel.DEFAULT_ACTION_TOOL_STUBS) {
       toolRegistry.register(stub);
     }
-    // ───── COORD ZONE (B5 → B2): counter-model sanity check ─────
-    // Central Command Phase B (B5) — when the wrapped Anthropic client
-    // is available, every sovereign-tier action gets a second-LLM
-    // sanity check (Haiku) BEFORE the four-eye approval gate fires.
-    //
-    // The `anthropic` const is loaded below at line ~424 (after
-    // `loadAnthropicClient`), so this early stub executor branch runs
-    // WITHOUT the counter-model dep. The `realAgencyExecutor` branch
-    // below (also a coord zone) is the one that takes the counter-
-    // model in production — by the time control reaches there the
-    // wrapped Anthropic client is already constructed.
-    //
-    // B2: when re-organising sovereign.ts boot order (e.g. moving the
-    // Anthropic load earlier so both executor branches share it), add
-    // ONE line to each `createExecutor` literal:
-    //   counterModel: createProductionCounterModel(anthropic),
-    //   ────────────────────────────────────────────────────────
+    // Central Command Phase C C1 — counter-model sanity check wired
+    // into both executor branches. When `anthropic` is null (no
+    // ANTHROPIC_API_KEY) the factory returns null and the executor
+    // skips the second-LLM check, falling through to the legacy
+    // approval flow. The check only fires on sovereign-tier tools
+    // (see `isSovereignTier` in the kernel), so its latency cost is
+    // bounded to that narrow surface.
     const agencyExecutor = agencyKernel.createExecutor({
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
       autonomyPolicy: agencyKernel.createDefaultAllowLowStakesPolicy(),
+      counterModel: createProductionCounterModel(anthropic),
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
@@ -425,24 +441,16 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     for (const realTool of agencyKernel.createRealActionTools(boundActionToolDeps)) {
       toolRegistry.register(realTool);
     }
-    // ───── COORD ZONE (B5 → B2): counter-model sanity check ─────
-    // Same wire-in as the early-stub executor above. The cleanest
-    // production fix is to (a) hoist `loadAnthropicClient()` above
-    // this block so the wrapped `anthropic` client is in scope here,
-    // then add the single line:
-    //   counterModel: createProductionCounterModel(anthropic),
-    //
-    // The kernel executor treats `counterModel` as optional — when it
-    // is null/undefined the legacy approval flow runs unchanged. The
-    // second-LLM check only fires on sovereign-tier tools (see
-    // `isSovereignTier` in the kernel), so the latency cost is bounded
-    // to that narrow surface.
-    //   ────────────────────────────────────────────────────────
+    // Central Command Phase C C1 — same counter-model wire-in as the
+    // early-stub executor above. The wrapped `anthropic` client was
+    // hoisted to the top of `build()` so it is in scope for BOTH
+    // executor branches; the factory itself is null-safe.
     const realAgencyExecutor = agencyKernel.createExecutor({
       goals: goalsService,
       tools: toolRegistry,
       auditSink,
       autonomyPolicy: realAutonomyPolicy,
+      counterModel: createProductionCounterModel(anthropic),
       sovereignLedgerFailClosed: readSovereignLedgerFailClosedFromEnv(),
     });
     agencyPort = {
@@ -472,19 +480,9 @@ async function build(scope: SovereignScope): Promise<SovereignBrain> {
     behaviorSignalSource = createBehaviorSignalSource(sensoriumEventLogService);
   }
 
-  // Sensors — Anthropic when key is set; otherwise a clearly-marked stub.
-  // The raw client is wrapped in a process-wide circuit breaker so the
-  // sensor-failover layer sees a typed `AnthropicCircuitOpenError` and
-  // can fail-over to the next sensor instead of retrying every turn
-  // against an upstream that is already known to be down.
-  const anthropicRaw = await loadAnthropicClient();
-  const anthropic = anthropicRaw
-    ? wrapAnthropicWithCircuitBreaker(anthropicRaw, {
-        failureThreshold: 5,
-        recoveryTimeoutMs: 30_000,
-      })
-    : null;
-
+  // The wrapped `anthropic` client was constructed at the top of
+  // `build()` (Phase C C1 hoist). Reuse it here for the sensor +
+  // mutable-state composition step.
   const mutable: Record<string, unknown> = {};
   if (anthropic) mutable.anthropicClient = anthropic;
   else mutable.extraSensors = [createStubSensor()];

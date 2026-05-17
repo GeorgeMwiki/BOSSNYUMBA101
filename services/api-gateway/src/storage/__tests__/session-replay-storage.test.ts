@@ -6,14 +6,17 @@
  *      a file:// URI; download reads it back.
  *   2. LocalFileStorage refuses unsafe chunkIds (path traversal).
  *   3. LocalFileStorage download throws on missing file (no retry).
- *   4. selectSessionReplayStorage falls back to local when AWS env is
- *      not set OR @aws-sdk/client-s3 is missing.
- *   5. createS3Storage throws when the SDK is not installed (current
- *      workspace state) — composition root catches this and falls
- *      back to local.
+ *   4. selectSessionReplayStorage chooses local when no AWS env set.
+ *   5. selectSessionReplayStorage chooses S3 when AWS_S3_BUCKET +
+ *      AWS_REGION are set; legacy S3_SESSION_REPLAY_BUCKET alias works.
+ *   6. createS3Storage rejects missing bucket / region.
+ *   7. Selection logger emits structured backend events.
+ *
+ * S3 send() behaviour is covered exhaustively in
+ * `session-replay-storage-s3.integration.test.ts`.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { join as joinPath } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -68,34 +71,114 @@ describe('createLocalFileStorage', () => {
     await expect(store.download('never-uploaded-id')).rejects.toThrow();
   });
 
-  it('reports kind=local', async () => {
+  it('reports kind=local', () => {
     const store = createLocalFileStorage({ rootDir: TEST_ROOT });
     expect(store.kind).toBe('local');
   });
 });
 
-describe('createS3Storage', () => {
-  it('throws when @aws-sdk/client-s3 is not installed', async () => {
-    await expect(
-      createS3Storage({ bucket: 'b', region: 'us-east-1' }),
-    ).rejects.toThrow();
+describe('createS3Storage (construction)', () => {
+  it('throws when bucket is missing', () => {
+    expect(() =>
+      createS3Storage({ bucket: '', region: 'us-east-1' }),
+    ).toThrow(/bucket/);
+  });
+
+  it('throws when region is missing', () => {
+    expect(() =>
+      createS3Storage({ bucket: 'my-bucket', region: '' }),
+    ).toThrow(/region/);
+  });
+
+  it('reports kind=s3 with an injected client', () => {
+    const store = createS3Storage({
+      bucket: 'my-bucket',
+      region: 'us-east-1',
+      client: { send: vi.fn() } as unknown as Parameters<
+        typeof createS3Storage
+      >[0]['client'],
+    });
+    expect(store.kind).toBe('s3');
+  });
+
+  it('constructs without `client` when a real region is provided', () => {
+    // Build path with real SDK; we never call send() so no AWS hit.
+    const store = createS3Storage({
+      bucket: 'my-bucket',
+      region: 'us-east-1',
+    });
+    expect(store.kind).toBe('s3');
+  });
+
+  it('honours endpoint override (MinIO / S3-compatible) at construction', () => {
+    const store = createS3Storage({
+      bucket: 'minio-bucket',
+      region: 'us-east-1',
+      endpoint: 'http://localhost:9000',
+    });
+    expect(store.kind).toBe('s3');
   });
 });
 
 describe('selectSessionReplayStorage', () => {
-  it('returns local FS when no AWS env is set', async () => {
-    const store = await selectSessionReplayStorage({
+  it('returns local FS when no AWS env is set', () => {
+    const store = selectSessionReplayStorage({
       SESSION_REPLAY_LOCAL_DIR: TEST_ROOT,
     });
     expect(store.kind).toBe('local');
   });
 
-  it('falls back to local FS when AWS env is set but SDK is missing', async () => {
-    const store = await selectSessionReplayStorage({
+  it('returns S3 when AWS_S3_BUCKET + AWS_REGION are set', () => {
+    const store = selectSessionReplayStorage({
       AWS_REGION: 'us-east-1',
-      S3_SESSION_REPLAY_BUCKET: 'no-such-bucket',
+      AWS_S3_BUCKET: 'replay-prod',
+    });
+    expect(store.kind).toBe('s3');
+  });
+
+  it('honours the legacy S3_SESSION_REPLAY_BUCKET alias', () => {
+    const store = selectSessionReplayStorage({
+      AWS_REGION: 'us-east-1',
+      S3_SESSION_REPLAY_BUCKET: 'replay-legacy',
+    });
+    expect(store.kind).toBe('s3');
+  });
+
+  it('falls back to local when AWS_S3_BUCKET is set without AWS_REGION', () => {
+    const store = selectSessionReplayStorage({
+      AWS_S3_BUCKET: 'replay-noregion',
       SESSION_REPLAY_LOCAL_DIR: TEST_ROOT,
     });
     expect(store.kind).toBe('local');
+  });
+
+  it('emits a structured "backend selected" log line', () => {
+    const logger = { info: vi.fn(), warn: vi.fn() };
+    selectSessionReplayStorage(
+      {
+        AWS_REGION: 'eu-west-1',
+        AWS_S3_BUCKET: 'replay-eu',
+        AWS_S3_PREFIX: 'replays/',
+      },
+      logger,
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      'storage backend selected',
+      expect.objectContaining({
+        backend: 's3',
+        bucket: 'replay-eu',
+        region: 'eu-west-1',
+        prefix: 'replays/',
+      }),
+    );
+  });
+
+  it('logs local backend selection when env is empty', () => {
+    const logger = { info: vi.fn(), warn: vi.fn() };
+    selectSessionReplayStorage({}, logger);
+    expect(logger.info).toHaveBeenCalledWith(
+      'storage backend selected',
+      expect.objectContaining({ backend: 'local' }),
+    );
   });
 });

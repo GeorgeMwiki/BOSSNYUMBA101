@@ -22,7 +22,7 @@ describe('createHqToolRegistry', () => {
       },
       clock: fixedClock(),
     });
-    expect(wiring.toolNames).toHaveLength(12);
+    expect(wiring.toolNames).toHaveLength(15);
     expect(wiring.registry.get('platform.list_tenants')).not.toBeNull();
     expect(wiring.registry.get('platform.set_killswitch')).not.toBeNull();
   });
@@ -102,7 +102,7 @@ describe('createHqToolRegistry', () => {
       maxRecipientCount: 5_000,
       clock: fixedClock(),
     });
-    expect(wiring.toolNames).toHaveLength(12);
+    expect(wiring.toolNames).toHaveLength(15);
   });
 });
 
@@ -195,7 +195,7 @@ describe('createHqToolRegistry — integration (real-deps threading)', () => {
       clock: fixedClock(),
       logger: { info },
     });
-    expect(wiring.toolNames).toHaveLength(12);
+    expect(wiring.toolNames).toHaveLength(15);
     expect(info).toHaveBeenCalledOnce();
     const [meta] = info.mock.calls[0] as [Record<string, unknown>, string];
     expect(meta.depsSource).toBe('stub');

@@ -260,6 +260,18 @@ import {
   createCrossPortalBus,
   type CrossPortalBus,
 } from './cross-portal-bus.js';
+// Central Command Phase C C2 — closes B1's `publishCrossPortalEvent` +
+// `dispatcher` + `recipientResolver` wiring TODOs.
+import {
+  createKillswitchFanoutPublisher,
+  type KillswitchFanoutPublisher,
+} from './cross-portal-killswitch-fanout.js';
+import {
+  createNotificationDispatcherAdapter,
+  createRecipientResolverAdapter,
+  type NotificationDispatcherLike,
+  type RecipientResolverLike,
+} from './notification-dispatcher-adapter.js';
 // Central Command Phase B B2 — idle-session emitter (Reflexion writer
 // daemon). Scans `sensorium_event_log` every minute and writes a
 // reflexion-buffer entry for every (tenant, user, session) tuple that
@@ -271,6 +283,16 @@ import {
   createSensoriumActiveSessionSource,
   type IdleSessionEmitter,
 } from './idle-session-emitter.js';
+// Central Command Phase C C4 — session-replay retention purge worker.
+// Periodic supervisor that deletes `session_replay_chunks` rows older
+// than `retentionDays` (default 90) and (best-effort) the corresponding
+// cold-store blobs. Constructed in live mode only; inert until
+// `.start()` from `index.ts`.
+import {
+  createSessionReplayRetention,
+  createDrizzlePurgeDb,
+  type SessionReplayRetention,
+} from './session-replay-retention.js';
 // Reflexion-buffer service satisfies the emitter's `ReflexionWriterPort`
 // shape. Drizzle-backed; lives behind a `null`-tolerant runtime check
 // inside the supervisor when the DB is unavailable.
@@ -706,6 +728,43 @@ export interface ServiceRegistry {
    */
   readonly idleSessionEmitter: IdleSessionEmitter | null;
 
+  /**
+   * Session-replay retention purge worker (Central Command Phase C C4).
+   * Periodic supervisor that deletes `session_replay_chunks` rows
+   * older than `retentionDays` days (default 90) and best-effort
+   * deletes the corresponding cold-store blobs. Null in degraded mode
+   * (no DB → nothing to purge). Inert until `.start()` from `index.ts`.
+   */
+  readonly sessionReplayRetention: SessionReplayRetention | null;
+
+  /**
+   * Central Command Phase C C2 — cross-portal killswitch fan-out
+   * publisher. Closes B1's `publishCrossPortalEvent` TODO on the
+   * `killswitch-write.service.ts` adapter so every state change is
+   * broadcast onto the global topic for live brain re-reads.
+   *
+   * Always wired (the cross-portal bus is always wired — in-memory in
+   * degraded mode, Redis-backed in live mode). The publisher itself
+   * is a closure; calling it before the bus resolves is safe.
+   */
+  readonly killswitchFanoutPublisher: KillswitchFanoutPublisher;
+
+  /**
+   * Central Command Phase C C2 — notification dispatcher adapter that
+   * bridges B1's `PlatformAnnouncementService.dispatcher` slot to the
+   * composition root's event bus + cross-portal bus. Always wired
+   * (uses only always-present surfaces).
+   */
+  readonly notificationDispatcherAdapter: NotificationDispatcherLike;
+
+  /**
+   * Central Command Phase C C2 — recipient resolver adapter that
+   * counts users matching an announcement audience. Null in degraded
+   * mode (needs DB); the announcement service tolerates null by
+   * stamping `recipientCount = 0` and proceeding.
+   */
+  readonly recipientResolverAdapter: RecipientResolverLike | null;
+
   /** Single shared in-process event bus. */
   readonly eventBus: EventBus;
 
@@ -894,6 +953,13 @@ function buildGraphQueryService(): GraphQueryService | null {
 }
 
 function degradedRegistry(eventBus: EventBus): ServiceRegistry {
+  // Single bus instance reused for the bus slot and the C2 fan-out /
+  // dispatcher adapters so all three converge on the same in-memory
+  // (or Redis, when REDIS_URL is set) backend. Constructed once at
+  // call time so each fresh degraded registry gets a fresh bus.
+  const degradedCrossPortalBus = createCrossPortalBus({
+    redisUrl: process.env.REDIS_URL ?? null,
+  });
   return {
     marketplace: { listing: null, enquiry: null, tender: null },
     negotiation: null,
@@ -1034,13 +1100,28 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // always wired. In degraded mode `REDIS_URL` is typically unset so
     // the factory returns the in-memory bus; subscribers + publishers
     // operate identically against either backend.
-    crossPortalBus: createCrossPortalBus({
-      redisUrl: process.env.REDIS_URL ?? null,
-    }),
+    crossPortalBus: degradedCrossPortalBus,
     // Idle-session emitter — needs DB-backed activity source + reflexion
     // writer; both are null in degraded mode so the slot stays null and
     // `index.ts` skips `.start()`.
     idleSessionEmitter: null,
+    // Session-replay retention — degraded mode has no DB so nothing
+    // to purge; `index.ts` skips `.start()`.
+    sessionReplayRetention: null,
+    // Central Command Phase C C2 — closes B1's killswitch fan-out +
+    // announcement-dispatch + recipient-resolver TODOs. The publisher
+    // and dispatcher are always wired (they bridge onto the always-
+    // present bus + event-bus surfaces). The resolver is null because
+    // it needs a DB to count active users; the announcement service
+    // tolerates a null resolver by stamping `recipientCount = 0`.
+    killswitchFanoutPublisher: createKillswitchFanoutPublisher({
+      crossPortalBus: degradedCrossPortalBus,
+    }),
+    notificationDispatcherAdapter: createNotificationDispatcherAdapter({
+      eventBus,
+      crossPortalBus: degradedCrossPortalBus,
+    }),
+    recipientResolverAdapter: null,
     eventBus,
     db: null,
     isLive: false,
@@ -1461,6 +1542,44 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     voice = createVoiceRouter({ providers, ledger: aiCostLedger });
   }
 
+  // Central Command Phase A C6 / Phase B B2 — single cross-portal bus
+  // instance reused across the registry. Captured here (before the
+  // return) so the C2 adapters (killswitch fan-out, announcement
+  // dispatcher) bind to the SAME bus instance the
+  // `registry.crossPortalBus` slot exposes.
+  const liveCrossPortalBus = createCrossPortalBus({
+    redisUrl: process.env.REDIS_URL ?? null,
+  });
+
+  // Central Command Phase C C2 — closes B1's wiring TODOs (#2 + #3 + #4).
+  // Each adapter is wired against the live cross-portal bus + the
+  // shared in-process event bus + the Drizzle client.
+  const killswitchFanoutPublisher = createKillswitchFanoutPublisher({
+    crossPortalBus: liveCrossPortalBus,
+    logger: {
+      info: (obj, msg) => console.info('killswitch-fanout:', msg ?? '', obj),
+      warn: (obj, msg) => console.warn('killswitch-fanout:', msg ?? '', obj),
+    },
+  });
+  const notificationDispatcherAdapter = createNotificationDispatcherAdapter({
+    db,
+    eventBus,
+    crossPortalBus: liveCrossPortalBus,
+    logger: {
+      info: (obj, msg) =>
+        console.info('announcement-dispatcher:', msg ?? '', obj),
+      warn: (obj, msg) =>
+        console.warn('announcement-dispatcher:', msg ?? '', obj),
+    },
+  });
+  const recipientResolverAdapter = createRecipientResolverAdapter({
+    db,
+    logger: {
+      warn: (obj, msg) =>
+        console.warn('recipient-resolver:', msg ?? '', obj),
+    },
+  });
+
   return {
     marketplace: {
       listing: listingService,
@@ -1768,9 +1887,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
     // ioredis connections — publisher + subscriber, per ioredis convention).
     // Otherwise the factory degrades to the in-memory bus so dev / pilot
     // continue to operate against the same `CrossPortalBus` surface.
-    crossPortalBus: createCrossPortalBus({
-      redisUrl: process.env.REDIS_URL ?? null,
-    }),
+    crossPortalBus: liveCrossPortalBus,
     // Idle-session emitter — DB-backed activity source bound to the
     // `sensorium_event_log` reader. Reflexion writes land on the
     // Drizzle-backed reflexion-buffer service. Inert until `.start()`.
@@ -1782,6 +1899,34 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
       },
     }),
+    // Central Command Phase C C4 — session-replay retention purge.
+    // Storage adapter slot is null at the registry level today (the
+    // production `SessionReplayStoragePort` has no `delete()` yet — a
+    // follow-up agent will wire it in). Worker degrades to DB-only
+    // purge with a single-line WARN per process.
+    sessionReplayRetention: createSessionReplayRetention({
+      db: createDrizzlePurgeDb(db),
+      storage: null,
+      retentionDays: Number(
+        process.env.SESSION_REPLAY_RETENTION_DAYS ?? '90',
+      ) || 90,
+      logger: {
+        info: (obj, msg) =>
+          console.info('session-replay-retention:', msg ?? '', obj),
+        warn: (obj, msg) =>
+          console.warn('session-replay-retention:', msg ?? '', obj),
+      },
+    }),
+    // Central Command Phase C C2 — B1 wiring closures. The fan-out
+    // publisher + dispatcher adapter bridge B1's optional `killswitch`
+    // and `announcement` ports onto the live cross-portal bus + event
+    // bus. The recipient resolver counts active users via Drizzle. All
+    // three are read by `buildHqDepsFromDb` (see `hq-tool-registry.ts`)
+    // so every `platform.set_killswitch` + `platform.send_announcement`
+    // tool call fans out automatically.
+    killswitchFanoutPublisher,
+    notificationDispatcherAdapter,
+    recipientResolverAdapter,
     eventBus,
     db,
     isLive: true,

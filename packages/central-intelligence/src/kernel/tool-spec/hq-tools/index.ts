@@ -82,6 +82,18 @@ import {
   createSendAnnouncementTool,
   type SendAnnouncementDeps,
 } from './platform.send_announcement.js';
+import {
+  createEvictTenantTool,
+  type EvictTenantDeps,
+} from './platform.evict_tenant.js';
+import {
+  createPayoutOwnerTool,
+  type PayoutOwnerDeps,
+} from './platform.payout_owner.js';
+import {
+  createFileKraMriTool,
+  type FileKraMriDeps,
+} from './platform.file_kra_mri.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Re-exports (full surface for every tool — Schemas, ports, types)
@@ -204,6 +216,34 @@ export {
   type SendAnnouncementInput,
   type SendAnnouncementOutput,
 } from './platform.send_announcement.js';
+export {
+  createEvictTenantTool,
+  EvictTenantInputSchema,
+  EvictTenantOutputSchema,
+  EvictTenantBreachKindSchema,
+  type EvictionWorkflowDispatcherPort,
+  type EvictTenantDeps,
+  type EvictTenantInput,
+  type EvictTenantOutput,
+} from './platform.evict_tenant.js';
+export {
+  createPayoutOwnerTool,
+  PayoutOwnerInputSchema,
+  PayoutOwnerOutputSchema,
+  type OwnerPayoutWorkflowDispatcherPort,
+  type PayoutOwnerDeps,
+  type PayoutOwnerInput,
+  type PayoutOwnerOutput,
+} from './platform.payout_owner.js';
+export {
+  createFileKraMriTool,
+  FileKraMriInputSchema,
+  FileKraMriOutputSchema,
+  type KraMriFilingWorkflowDispatcherPort,
+  type FileKraMriDeps,
+  type FileKraMriInput,
+  type FileKraMriOutput,
+} from './platform.file_kra_mri.js';
 export { refusal, withHqTelemetry } from './shared.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -223,6 +263,9 @@ export const HQ_TOOL_NAMES: ReadonlyArray<`platform.${string}`> = Object.freeze(
   'platform.set_killswitch',
   'platform.adjust_invoice',
   'platform.send_announcement',
+  'platform.evict_tenant',
+  'platform.payout_owner',
+  'platform.file_kra_mri',
 ]);
 
 export const HQ_TOOL_TIERS: Readonly<Record<string, RiskTier>> = Object.freeze({
@@ -238,6 +281,9 @@ export const HQ_TOOL_TIERS: Readonly<Record<string, RiskTier>> = Object.freeze({
   'platform.set_killswitch': 'destroy',
   'platform.adjust_invoice': 'billing',
   'platform.send_announcement': 'external-comm',
+  'platform.evict_tenant': 'destroy',
+  'platform.payout_owner': 'billing',
+  'platform.file_kra_mri': 'external-comm',
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -332,8 +378,14 @@ export interface SeedHqBrainToolsDeps {
   readonly killswitchWrite: SetKillswitchDeps['killswitch'];
   readonly invoices: AdjustInvoiceDeps['invoices'];
   readonly announcements: SendAnnouncementDeps['announcements'];
+  readonly evictionDispatcher: EvictTenantDeps['evictionDispatcher'];
+  readonly ownerPayoutDispatcher: PayoutOwnerDeps['ownerPayoutDispatcher'];
+  readonly kraMriDispatcher: FileKraMriDeps['kraMriDispatcher'];
   readonly maxAdjustmentUsdCents: number;
   readonly maxRecipientCount: number;
+  readonly maxPayoutUsdCents: number;
+  /** Threshold for extra-HIL (5-eye) approval on payouts. Default $10k. */
+  readonly extraHilPayoutUsdCents?: number;
   readonly contextFactory: HqToolContextFactory;
 }
 
@@ -369,6 +421,19 @@ export function seedHqBrainTools(
     createSendAnnouncementTool({
       announcements: deps.announcements,
       maxRecipientCount: deps.maxRecipientCount,
+    }) as HqToolSpec,
+    createEvictTenantTool({
+      evictionDispatcher: deps.evictionDispatcher,
+    }) as HqToolSpec,
+    createPayoutOwnerTool({
+      ownerPayoutDispatcher: deps.ownerPayoutDispatcher,
+      maxPayoutUsdCents: deps.maxPayoutUsdCents,
+      ...(deps.extraHilPayoutUsdCents !== undefined
+        ? { extraHilUsdCents: deps.extraHilPayoutUsdCents }
+        : {}),
+    }) as HqToolSpec,
+    createFileKraMriTool({
+      kraMriDispatcher: deps.kraMriDispatcher,
     }) as HqToolSpec,
   ];
 
