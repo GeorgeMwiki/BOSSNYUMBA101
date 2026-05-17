@@ -25,10 +25,16 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-  SemanticResourceAttributes,
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
+// `deployment.environment.name` lives in the incubating bundle in
+// semantic-conventions 1.41+. The legacy `deployment.environment`
+// resource attribute was deprecated alongside the SemanticResourceAttributes
+// enum and is no longer exported from the stable surface.
+import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME } from '@opentelemetry/semantic-conventions/incubating';
 import {
   ParentBasedSampler,
   TraceIdRatioBasedSampler,
@@ -110,10 +116,10 @@ export function bootstrapOTel(config: OTelBootstrapConfig = {}): OTelHandle {
     return noopHandle;
   }
 
-  const resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-    [SemanticResourceAttributes.SERVICE_VERSION]: serviceVersion,
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: environment,
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: serviceName,
+    [ATTR_SERVICE_VERSION]: serviceVersion,
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: environment,
   });
 
   const sampler = new ParentBasedSampler({

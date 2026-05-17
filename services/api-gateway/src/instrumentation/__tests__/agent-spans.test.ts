@@ -9,11 +9,11 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
   type ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import {
   MeterProvider,
   PeriodicExportingMetricReader,
@@ -32,7 +32,7 @@ import {
 } from '../agent-spans';
 
 let spanExporter: InMemorySpanExporter;
-let tracerProvider: BasicTracerProvider;
+let tracerProvider: NodeTracerProvider;
 
 let metricExporter: InMemoryMetricExporter;
 let metricReader: PeriodicExportingMetricReader;
@@ -61,11 +61,12 @@ function spansByName(spans: ReadableSpan[], name: string): ReadableSpan[] {
 }
 
 beforeEach(() => {
-  // Trace setup
+  // Trace setup — sdk-trace-base 2.x requires processors via constructor.
   spanExporter = new InMemorySpanExporter();
-  tracerProvider = new BasicTracerProvider();
-  tracerProvider.addSpanProcessor(new SimpleSpanProcessor(spanExporter));
-  tracerProvider.register();
+  tracerProvider = new NodeTracerProvider({
+    spanProcessors: [new SimpleSpanProcessor(spanExporter)],
+  });
+  trace.setGlobalTracerProvider(tracerProvider);
 
   // Metric setup
   metricExporter = new InMemoryMetricExporter(AggregationTemporality.DELTA);

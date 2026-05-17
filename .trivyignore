@@ -15,14 +15,12 @@
 # When that file is updated, this one must be too (and vice-versa).
 # -----------------------------------------------------------------------------
 
-CVE-2026-44902 # package=@opentelemetry/auto-instrumentations-node, severity=HIGH
-#   also covers @opentelemetry/sdk-node — same advisory (GHSA-q7rr-3cgh-j5r3)
-#   reason:       Prometheus exporter process crash via malformed HTTP request.
-#                 The vulnerable /metrics endpoint is cluster-internal only
-#                 (Grafana scraper behind ingress-level auth) — not reachable
-#                 from the public network.
-#   tracked_in:   Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)
-#   next_review:  2026-Q3
+# wave-L upgrade (W1, 2026-05-17): CVE-2026-44902
+# (@opentelemetry/auto-instrumentations-node + @opentelemetry/sdk-node,
+# GHSA-q7rr-3cgh-j5r3) is patched by sdk-node 0.218.0 +
+# auto-instrumentations-node 0.76.0 in this PR — the allowlist entry
+# has been removed alongside the matching entries in
+# scripts/audit-with-allowlist.mjs.
 
 CVE-2026-39356 # package=drizzle-orm, severity=HIGH
 #   reason:       SQL injection via improperly escaped identifier strings —
@@ -52,7 +50,13 @@ CVE-2025-59840 # package=vega + vega-expression, severity=HIGH
 #                 rendering pipeline; sticking with 5.x until upstream
 #                 lands a 5.x backport or we plan the 6.x migration.
 #   tracked_in:   Docs/DEP_HYGIENE.md (vega 6.x migration)
-#   next_review:  2026-Q3
+#   next_review:  2026-Q4
+#   wave-L audit: 2026-05-17 (W4) re-verified all three mitigations —
+#                 VEGA_DEBUG grep returns ZERO hits outside the
+#                 allowlist files; ajv validates every Vega-Lite spec
+#                 before render in both the server render-block and
+#                 the client VegaChart consumer; no setdata call sites
+#                 exist in genui/ or render-blocks/. Mitigations hold.
 
 CVE-2025-66648 # package=vega-functions, severity=HIGH
 #   GHSA-m9rg-mr6g-75gm
@@ -64,4 +68,7 @@ CVE-2025-66648 # package=vega-functions, severity=HIGH
 #                 only by the Vega runtime against server-controlled
 #                 data payloads.
 #   tracked_in:   Docs/DEP_HYGIENE.md (vega 6.x migration)
-#   next_review:  2026-Q3
+#   next_review:  2026-Q4
+#   wave-L audit: 2026-05-17 (W4) confirmed — VegaChart uses the
+#                 declarative `data: { values: props.data }` injection
+#                 pattern and never invokes setdata client-side.

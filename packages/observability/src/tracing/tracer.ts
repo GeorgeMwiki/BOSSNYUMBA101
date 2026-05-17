@@ -8,13 +8,17 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-  SEMRESATTRS_SERVICE_NAME,
-  SEMRESATTRS_SERVICE_VERSION,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
-  SEMRESATTRS_SERVICE_INSTANCE_ID,
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+  ATTR_SERVICE_INSTANCE_ID,
 } from '@opentelemetry/semantic-conventions';
+// `deployment.environment.name` is the stable replacement for the
+// legacy `deployment.environment` resource attribute. Pulled from the
+// incubating module so older collectors still receive a recognisable
+// key.
+import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME } from '@opentelemetry/semantic-conventions/incubating';
 import {
   trace,
   context,
@@ -44,12 +48,12 @@ export function initTracing(config: TelemetryConfig): NodeSDK {
     return sdkInstance;
   }
 
-  const resource = new Resource({
-    [SEMRESATTRS_SERVICE_NAME]: config.service.name,
-    [SEMRESATTRS_SERVICE_VERSION]: config.service.version,
-    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.service.environment,
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: config.service.name,
+    [ATTR_SERVICE_VERSION]: config.service.version,
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: config.service.environment,
     ...(config.service.instanceId && {
-      [SEMRESATTRS_SERVICE_INSTANCE_ID]: config.service.instanceId,
+      [ATTR_SERVICE_INSTANCE_ID]: config.service.instanceId,
     }),
   });
 

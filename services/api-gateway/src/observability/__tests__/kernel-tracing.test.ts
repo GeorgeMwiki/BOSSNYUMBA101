@@ -8,11 +8,11 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
   type ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { trace } from '@opentelemetry/api';
 
 import {
@@ -26,7 +26,7 @@ import {
 } from '../kernel-tracing';
 
 let exporter: InMemorySpanExporter;
-let provider: BasicTracerProvider;
+let provider: NodeTracerProvider;
 
 const scope: KernelTraceScope = {
   tenantId: 'tnt-001',
@@ -56,9 +56,13 @@ const decision: KernelDecisionForSpan = {
 
 beforeEach(() => {
   exporter = new InMemorySpanExporter();
-  provider = new BasicTracerProvider();
-  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-  provider.register();
+  // sdk-trace-base 2.x removed `addSpanProcessor` + `register()` — the
+  // processor list must be passed to the provider constructor and the
+  // global registration is now done via the trace API directly.
+  provider = new NodeTracerProvider({
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
+  });
+  trace.setGlobalTracerProvider(provider);
 });
 
 afterEach(async () => {
