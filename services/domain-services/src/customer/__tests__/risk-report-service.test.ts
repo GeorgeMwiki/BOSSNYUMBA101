@@ -118,7 +118,6 @@ describe('RiskReportService.generate', () => {
   it('handles non-Error thrown values in narration', async () => {
     const failing: RiskNarrator = {
       narrate: vi.fn(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw 'string-error';
       }),
     };

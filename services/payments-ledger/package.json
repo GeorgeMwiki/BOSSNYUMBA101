@@ -23,7 +23,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "migrate": "prisma migrate dev",
     "migrate:prod": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts"
