@@ -39,50 +39,56 @@ const ALLOWLIST = [
     tracked_in: 'Docs/DEP_HYGIENE.md (drizzle-orm 0.45 migration)',
     next_review: '2026-Q2',
   },
-  {
-    package: '@opentelemetry/auto-instrumentations-node',
-    severity: ['high'],
-    fix: '>=0.75.0',
-    reason:
-      'GHSA-q7rr-3cgh-j5r3: Prometheus exporter process crash via malformed HTTP request. The vulnerable surface is the Prometheus /metrics scrape endpoint. In BOSSNYUMBA the Prometheus exporter is not exposed publicly — only the cluster-internal Grafana scraper hits /metrics behind ingress-level auth. A malformed request would have to come from inside the cluster, so the crash vector is not reachable from the public network. Bumping to >=0.75.0 is a major version that touches the auto-instrumentation surface and is scheduled into the wave-L OpenTelemetry upgrade. Accepting the risk for now.',
-    tracked_in: 'Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)',
-    next_review: '2026-Q3',
-  },
-  {
-    package: '@opentelemetry/sdk-node',
-    severity: ['high'],
-    fix: '>=0.217.0',
-    reason:
-      'GHSA-q7rr-3cgh-j5r3: Same advisory as @opentelemetry/auto-instrumentations-node — Prometheus exporter process crash via malformed HTTP request. Same mitigation (cluster-internal scrape only). Bumping to >=0.217.0 is a coordinated upgrade with auto-instrumentations-node, tracked in the wave-L plan.',
-    tracked_in: 'Docs/DEP_HYGIENE.md (OpenTelemetry wave-L upgrade)',
-    next_review: '2026-Q3',
-  },
+  // wave-L upgrade (W1, 2026-05-17): OpenTelemetry sdk-node 0.218.0 +
+  // auto-instrumentations-node 0.76.0 land in this PR — both ship the
+  // GHSA-q7rr-3cgh-j5r3 Prometheus-exporter fix, so the two previous
+  // allowlist entries for those packages are gone. If a regression
+  // reintroduces a vulnerable version the audit script will flip
+  // blocking again rather than silently re-accept the risk.
+  //
+  // wave-L audit (W4, 2026-05-17): re-verified all three vega mitigations.
+  //   1. `grep -r VEGA_DEBUG` across .ts/.tsx/.js/.mjs/.env*/.json returns
+  //      ZERO hits outside this file — VEGA_DEBUG is never set anywhere
+  //      in app code, environment files, or runtime config.
+  //   2. ajv compiles a Vega-Lite structural schema and validates EVERY
+  //      spec before render in both the server-side render-block
+  //      (packages/central-intelligence/src/kernel/tools/render-blocks/
+  //      validate.ts:27-31) and the client-side consumer
+  //      (apps/admin-platform-portal/src/lib/genui/validate.ts:82-89 +
+  //      VegaChart.tsx:55-63, which refuses to render unless ajvOk.ok).
+  //   3. No `setdata` invocations exist in genui/ or render-blocks/ —
+  //      VegaChart uses the declarative `data: { values: props.data }`
+  //      injection pattern; setdata is never called client-side with
+  //      user-controlled data. The Vega runtime's internal setdata runs
+  //      only against server-emitted, ajv-validated payloads.
+  // Mitigations hold; vega 6.x major migration remains deferred (closed
+  // dependabot #60). Next review pushed to 2026-Q4.
   {
     package: 'vega',
     severity: ['high'],
     fix: '>=6.2.0',
     reason:
-      'GHSA-7f2v-3qq3-vvjf: Vega XSS via expressions abusing toString calls in environments using the VEGA_DEBUG global variable. BOSSNYUMBA never sets VEGA_DEBUG in production; the C3 generative-UI pipeline emits server-validated Vega-Lite specs that ajv-check before render, and the LLM never reaches the expression-builder surface. vega 6.x is a major version with a different rendering pipeline; sticking with 5.x until upstream lands a 5.x backport or we plan the 6.x migration.',
+      'GHSA-7f2v-3qq3-vvjf: Vega XSS via expressions abusing toString calls in environments using the VEGA_DEBUG global variable. BOSSNYUMBA never sets VEGA_DEBUG in production; the C3 generative-UI pipeline emits server-validated Vega-Lite specs that ajv-check before render, and the LLM never reaches the expression-builder surface. vega 6.x is a major version with a different rendering pipeline; sticking with 5.x until upstream lands a 5.x backport or we plan the 6.x migration. wave-L audit 2026-05-17 re-confirmed mitigations.',
     tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
-    next_review: '2026-Q3',
+    next_review: '2026-Q4',
   },
   {
     package: 'vega-expression',
     severity: ['high'],
     fix: '>=5.2.1',
     reason:
-      'GHSA-7f2v-3qq3-vvjf: Same advisory as vega — XSS via expressions abusing toString with VEGA_DEBUG. Same mitigation: VEGA_DEBUG never set in production; LLM never reaches expression surface (server-emitted, ajv-validated specs only).',
+      'GHSA-7f2v-3qq3-vvjf: Same advisory as vega — XSS via expressions abusing toString with VEGA_DEBUG. Same mitigation: VEGA_DEBUG never set in production; LLM never reaches expression surface (server-emitted, ajv-validated specs only). wave-L audit 2026-05-17 re-confirmed mitigations.',
     tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
-    next_review: '2026-Q3',
+    next_review: '2026-Q4',
   },
   {
     package: 'vega-functions',
     severity: ['high'],
     fix: '>=6.1.1',
     reason:
-      'GHSA-m9rg-mr6g-75gm: vega-functions XSS via setdata function. The C3 generative-UI pipeline server-emits Vega-Lite specs that ajv-validate against the v5 JSON schema BEFORE render. The LLM never reaches client-side setdata — setdata is invoked only by the Vega runtime against server-controlled data payloads. setdata-XSS requires attacker-controlled data injection into a setdata call site, which doesn\'t exist in our pipeline.',
+      'GHSA-m9rg-mr6g-75gm: vega-functions XSS via setdata function. The C3 generative-UI pipeline server-emits Vega-Lite specs that ajv-validate against the v5 JSON schema BEFORE render. The LLM never reaches client-side setdata — setdata is invoked only by the Vega runtime against server-controlled data payloads. setdata-XSS requires attacker-controlled data injection into a setdata call site, which doesn\'t exist in our pipeline. wave-L audit 2026-05-17 re-confirmed mitigations.',
     tracked_in: 'Docs/DEP_HYGIENE.md (vega 6.x migration)',
-    next_review: '2026-Q3',
+    next_review: '2026-Q4',
   },
 ];
 
