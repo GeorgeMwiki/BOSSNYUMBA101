@@ -52,7 +52,41 @@ export interface RouteHints {
   costBudget?: CostBudget;
   latencyBudget?: LatencyBudget;
   tenantTier?: TenantTier;
+  /**
+   * Per-call USD ceiling. If the projected cost of the chosen provider/model
+   * (using its registered pricing + expectedOutputTokens hint) exceeds this
+   * value, the call is rejected BEFORE the provider is invoked.
+   *
+   * Pricing-less providers are treated as unbounded — the envelope is
+   * bypassed because the estimator returns 0.
+   */
+  maxBudgetUsdPerCall?: number;
+  /**
+   * Expected output-token count for envelope estimation. Required when
+   * maxBudgetUsdPerCall is set and pricing is configured.
+   */
+  expectedOutputTokens?: number;
+  /**
+   * Expected prompt-token count for envelope estimation. Optional; defaults
+   * to 0 when omitted.
+   */
+  expectedPromptTokens?: number;
 }
+
+/**
+ * Tier → preferred Anthropic model. Per Phase D D7 spec:
+ *   enterprise → Opus 4.7
+ *   growth/standard → Sonnet 4.6
+ *   free → Haiku 4.5
+ */
+const TIER_PREFERRED_ANTHROPIC: Readonly<Record<TenantTier, string>> = {
+  enterprise: 'claude-opus-4-7',
+  growth: 'claude-sonnet-4-6',
+  free: 'claude-haiku-4-5-20251001',
+};
+
+/** How long to skip a provider after a 429 / RATE_LIMIT response. */
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
 
 export interface MultiLLMContext {
   readonly tenantId: string;
@@ -74,6 +108,11 @@ export interface ProviderRegistration {
   >;
 }
 
+export interface RouterLogger {
+  warn?(meta: Record<string, unknown>): void;
+  info?(meta: Record<string, unknown>): void;
+}
+
 export interface MultiLLMRouterDeps {
   /** Registered providers keyed by providerId (e.g. 'anthropic'). */
   readonly providers: Record<string, ProviderRegistration>;
@@ -85,6 +124,17 @@ export interface MultiLLMRouterDeps {
    * Wave 10 "preferred/fallback" pattern).
    */
   readonly fallbackChains?: Partial<Record<TaskType, string[]>>;
+  /**
+   * Optional structured logger. The router emits one warn() per
+   * rate-limited fallback so platform observability can correlate cool-off
+   * decisions with downstream impact.
+   */
+  readonly logger?: RouterLogger;
+  /**
+   * Override the cooldown window (ms) after a 429 / RATE_LIMIT response.
+   * Defaults to 60 000.
+   */
+  readonly rateLimitCooldownMs?: number;
 }
 
 export interface RouteDecision {
@@ -125,6 +175,39 @@ export function createMultiLLMRouter(
     ...DEFAULT_FALLBACK_CHAINS,
     ...(deps.fallbackChains ?? {}),
   };
+  const cooldownMs = deps.rateLimitCooldownMs ?? RATE_LIMIT_COOLDOWN_MS;
+  // Per-router-instance map of providerId → cooldown-expiry epoch ms.
+  const cooldownUntil = new Map<string, number>();
+
+  function isCooledOff(providerId: string): boolean {
+    const until = cooldownUntil.get(providerId);
+    if (until === undefined) return false;
+    if (Date.now() >= until) {
+      cooldownUntil.delete(providerId);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Choose the model for a registration given the requested task + tenant
+   * tier. Tier-aware override only applies to the Anthropic leg AND only
+   * when the requested model is supported by the registered provider.
+   */
+  function chooseModel(
+    providerId: string,
+    reg: ProviderRegistration,
+    hints: RouteHints,
+  ): string | null {
+    const base = reg.preferredModels[hints.taskType] ?? null;
+    if (providerId !== 'anthropic') return base;
+    const tier = hints.tenantTier;
+    if (!tier) return base;
+    const tierPick = TIER_PREFERRED_ANTHROPIC[tier];
+    if (!tierPick) return base;
+    if (reg.provider.supportsModel(tierPick)) return tierPick;
+    return base;
+  }
 
   function pick(hints: RouteHints): RouteDecision | null {
     const chain = chains[hints.taskType] ?? DEFAULT_FALLBACK_CHAINS[hints.taskType];
@@ -135,7 +218,8 @@ export function createMultiLLMRouter(
     for (const providerId of ordered) {
       const reg = providers[providerId];
       if (!reg) continue;
-      const model = reg.preferredModels[hints.taskType];
+      if (isCooledOff(providerId)) continue;
+      const model = chooseModel(providerId, reg, hints);
       if (!model) continue;
       return {
         providerId,
@@ -157,14 +241,48 @@ export function createMultiLLMRouter(
     await deps.ledger.assertWithinBudget(context.tenantId);
 
     const chain = chains[hints.taskType] ?? DEFAULT_FALLBACK_CHAINS[hints.taskType];
-    const ordered = applyBudgets(chain, hints);
+    const baseOrdered = applyBudgets(chain, hints);
+    // For execution, promote anthropic to the head when it's registered with
+    // a model for this task and the caller hasn't explicitly asked for cheap
+    // routing. This matches the Phase D D7 spec where Anthropic is the
+    // primary inference leg and openai/deepseek are 429/cost fallbacks.
+    const ordered =
+      hints.costBudget === 'cheap'
+        ? baseOrdered
+        : promoteAnthropicFirst(baseOrdered, providers, hints.taskType);
 
     let lastError: AIProviderError | null = null;
     for (const providerId of ordered) {
       const reg = providers[providerId];
       if (!reg) continue;
-      const model = reg.preferredModels[hints.taskType];
+      if (isCooledOff(providerId)) {
+        deps.logger?.warn?.({
+          event: 'provider-cooled-off',
+          providerId,
+          tenantId: context.tenantId,
+        });
+        continue;
+      }
+      const model = chooseModel(providerId, reg, hints);
       if (!model) continue;
+
+      // Per-call USD envelope check (D7). Skip when pricing is absent
+      // (estimator returns 0 → bypassed by design).
+      if (
+        hints.maxBudgetUsdPerCall !== undefined &&
+        hints.maxBudgetUsdPerCall >= 0
+      ) {
+        const projected = estimateProjectedCostUsd(reg, model, hints);
+        if (projected > hints.maxBudgetUsdPerCall) {
+          const envelopeErr: AIProviderError = {
+            code: 'PROVIDER_ERROR',
+            message: `Projected cost ${projected.toFixed(6)} USD exceeds per-call envelope ${hints.maxBudgetUsdPerCall.toFixed(6)} USD for ${providerId}/${model}`,
+            provider: providerId,
+            retryable: false,
+          };
+          return aiErr(envelopeErr);
+        }
+      }
 
       const scoped: AICompletionRequest = {
         ...request,
@@ -175,6 +293,17 @@ export function createMultiLLMRouter(
       if (!result.success) {
         const err = (result as { success: false; error: AIProviderError }).error;
         lastError = err;
+        // 429-aware fallback: park the provider for the cooldown window.
+        if (err.code === 'RATE_LIMIT') {
+          cooldownUntil.set(providerId, Date.now() + cooldownMs);
+          deps.logger?.warn?.({
+            event: 'rate-limited',
+            providerId,
+            tenantId: context.tenantId,
+            cooldownMs,
+          });
+          continue;
+        }
         // Only fail through for genuinely retryable-on-another-provider errors.
         if (!err.retryable) {
           await recordLedger(deps.ledger, context, providerId, model, 0, 0);
@@ -220,6 +349,26 @@ export function createMultiLLMRouter(
 }
 
 /**
+ * Estimate the USD cost of a single call using the registered pricing
+ * table and the caller's expectedOutputTokens / expectedPromptTokens hints.
+ * Returns 0 when pricing is absent (unbounded by design).
+ */
+function estimateProjectedCostUsd(
+  reg: ProviderRegistration,
+  model: string,
+  hints: RouteHints,
+): number {
+  const price = reg.pricing?.[model];
+  if (!price) return 0;
+  const promptTokens = hints.expectedPromptTokens ?? 0;
+  const outputTokens = hints.expectedOutputTokens ?? 0;
+  return (
+    (promptTokens / 1000) * price.promptPer1k +
+    (outputTokens / 1000) * price.completionPer1k
+  );
+}
+
+/**
  * Apply cost/latency overrides to the base chain. This is deterministic —
  * we only re-order, never add providers not already in the chain.
  */
@@ -249,6 +398,22 @@ function applyBudgets(base: string[], hints: RouteHints): string[] {
 
 function dedupe(xs: string[]): string[] {
   return Array.from(new Set(xs));
+}
+
+/**
+ * If anthropic is registered with a preferred model for the requested task,
+ * float it to the head of the chain. No-op when anthropic is absent or
+ * unconfigured for the task.
+ */
+function promoteAnthropicFirst(
+  chain: string[],
+  providers: Record<string, ProviderRegistration>,
+  taskType: TaskType,
+): string[] {
+  const ant = providers.anthropic;
+  if (!ant || !ant.preferredModels[taskType]) return chain;
+  if (chain[0] === 'anthropic') return chain;
+  return dedupe(['anthropic', ...chain]);
 }
 
 function estimateMicroCost(
