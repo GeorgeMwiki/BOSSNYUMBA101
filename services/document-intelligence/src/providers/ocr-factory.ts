@@ -14,7 +14,7 @@
  *     production.
  *   - The factory accepts a `tenantRegion` parameter so per-tenant OCR
  *     calls route to the tenant's home AWS region (TZ PDPA + KE DPA
- *     data-residency). The `'us-east-1'` literal is gone.
+ *     data-residency). The legacy default-US-region literal is gone.
  */
 
 import type { IOCRProvider } from '../services/ocr-extraction.service.js';
@@ -69,10 +69,10 @@ export interface EnvProviderOptions {
    * Per-tenant AWS region (read from `tenants.region`, migration 0158).
    * When supplied, overrides `env.AWS_REGION` so each tenant's OCR call
    * stays in their home region — required for TZ PDPA + KE DPA
-   * data-residency. The `'us-east-1'` literal fallback is gone; if
-   * neither `tenantRegion` nor `env.AWS_REGION` is set the factory
-   * refuses (throws `ProviderUnavailableError`) so no TZ/KE tenant
-   * silently gets routed to a US bucket.
+   * data-residency. The legacy default-US-region literal fallback is
+   * gone; if neither `tenantRegion` nor `env.AWS_REGION` is set the
+   * factory refuses (throws `ProviderUnavailableError`) so no TZ/KE
+   * tenant silently gets routed to a US bucket.
    */
   readonly tenantRegion?: string;
 }
@@ -120,7 +120,7 @@ export function getOcrProviderFromEnv(
         throw new ProviderUnavailableError(
           'OCR_PROVIDER=aws_textract requires a region — pass `tenantRegion` ' +
             '(from tenants.region) or set AWS_REGION. No default region literal ' +
-            'is used so TZ/KE tenants never get silently routed to us-east-1.'
+            'is used so TZ/KE tenants never get silently routed to a US region.'
         );
       }
       const textractConfig: AwsTextractConfig = {

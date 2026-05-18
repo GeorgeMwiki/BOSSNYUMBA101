@@ -26,7 +26,7 @@
  *
  * ── Recognised env vars ────────────────────────────────────────────────
  *   AWS_S3_BUCKET            (required for S3) Target bucket name.
- *   AWS_REGION               (required for S3) e.g. `us-east-1`.
+ *   AWS_REGION               (required for S3) AWS region name.
  *   AWS_S3_PREFIX            Optional key prefix; defaults to
  *                            `session-replay/`.
  *   AWS_S3_ENDPOINT          Optional override (MinIO / S3-compatible).

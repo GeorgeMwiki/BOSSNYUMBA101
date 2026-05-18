@@ -15,8 +15,11 @@
 // Main loop entry point.
 export {
   think,
+  thinkExtended,
+  narrowToLegacyResponse,
   type OrchestratorRequest,
   type OrchestratorResponse,
+  type OrchestratorResponseExtended,
   type OrchestratorDeps,
   type LLMRouter,
   type LLMRouterCall,
@@ -25,12 +28,16 @@ export {
 
 // Decision ADT + dispatch result.
 export {
+  isBackgroundSpawn,
   type Decision,
   type DecisionToolCall,
   type DispatchResult,
   type SubMdSpawn,
   type ScheduleWake,
   type MonitorWatch,
+  type SubMdModelClass,
+  type SubMdEffort,
+  type SubMdIsolation,
 } from './decision.js';
 
 // Budget primitives.
@@ -52,11 +59,25 @@ export {
   type HookChain,
   type HookContext,
   type HookResult,
+  type HookStage,
+  type ChatMessage,
   type PreToolUseHook,
   type PostToolUseHook,
   type StopHook,
+  type SessionStartHook,
+  type UserPromptSubmitHook,
+  type PreCompactHook,
+  type PostCompactHook,
+  type SubagentStartHook,
+  type SubagentStopHook,
   type StopSession,
   type ScopeFilter,
+  type PreToolUseChainResult,
+  type SessionStartPayload,
+  type UserPromptPayload,
+  type PreCompactPayload,
+  type PostCompactPayload,
+  type SubagentPayload,
 } from './hook-chain.js';
 
 // Plan tree.
@@ -97,15 +118,17 @@ export {
   type ToolDescriptor,
 } from './context-budget.js';
 
-// Memory tool — Anthropic /memories wrapper.
+// Memory tool — Anthropic /memories wrapper (memory_20250818).
 export {
   createInMemoryMemoryTool,
   safeMemoryPath,
   MemoryPathError,
+  MemoryPreconditionError,
   type MemoryTool,
   type MemoryEntry,
   type MemoryRecallArgs,
   type MemoryRecallResult,
+  type MemoryViewResult,
 } from './memory-tool.js';
 
 // Skill loader — Anthropic Agent Skills format.
@@ -120,6 +143,18 @@ export {
   type SkillExecutionDeps,
   type SkillExecutionResult,
 } from './skill.js';
+
+// Permission mode — Claude-Code parity operator switch.
+export {
+  evaluatePermissionMode,
+  renderPlanModePreview,
+  PERMISSION_MODES,
+  type PermissionMode,
+  type PermissionModeContext,
+  type PermissionAction,
+  type PermissionEvaluation,
+  type PlanModePreviewInput,
+} from './permission-mode.js';
 
 // Batch API wrapper.
 export {
@@ -191,3 +226,26 @@ export {
   type LedgerSealPort,
   type InMemoryLedgerSeal,
 } from './hooks/stop/ledger-seal-hook.js';
+
+// Phase F.2 — self-extension keystone. Detect recurring problems no
+// existing sub-MD handles → propose new sub-MD spec → four-eye approve
+// → compile + register + audit. Makes the MD's catalogue unbounded.
+export {
+  detectRecurringGap,
+  proposeNewSubMd,
+  compileAndDeploySubMd,
+  type SelfExtensionDeps,
+  type DetectRecurringGapOptions,
+  type ActivityLogPort,
+  type ActivityLogEntry,
+  type SubMdRegistryPort,
+  type RegistryReceipt,
+  type LLMRouterPort as SelfExtensionLLMRouterPort,
+  type OwnerApprovalPort,
+  type OwnerApprovalDecision,
+  type SelfExtensionLedgerPort,
+  type RecurringGapDiagnosis,
+  type SubMdSpec,
+  type SubMdProposal,
+  type DeploymentReceipt,
+} from './self-extension.js';

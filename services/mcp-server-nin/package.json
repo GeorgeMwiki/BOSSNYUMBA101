@@ -1,0 +1,38 @@
+{
+  "name": "@bossnyumba/mcp-server-nin",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Sandboxed MCP server for Nigeria NIN (National Identification Number) biometric KYC. Talks to NIMC NIVS (verify-only) — Phase E.5.4 scaffold; production adapter lands in Phase F.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "bossnyumba-mcp-nin": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

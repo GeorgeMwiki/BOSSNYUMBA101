@@ -79,6 +79,7 @@ export const storageSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
+  // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- platform-wide AWS_REGION env-default; per-tenant region overrides via tenants.region (see jurisdictional-rules.awsRegionDefault)
   AWS_REGION: z.string().default('eu-west-1'),
 });
 

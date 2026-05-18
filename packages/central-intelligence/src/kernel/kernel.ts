@@ -137,6 +137,16 @@ import {
 // `kernel_memory_episodic.summary` can't leak raw PII even though
 // that table is not in the RTBF list).
 import { scrubCotForPersist } from './cot-reservoir/pii-scrub-cot.js';
+// Phase E.5.1 — orchestrator wire-up. The orchestrator's `think()`
+// becomes the primary code path. The legacy 13-step pipeline below
+// remains a fallback toggled by `KERNEL_USE_ORCHESTRATOR` (or the
+// per-instance `useByDefault` flag on `BrainKernelDeps.orchestrator`).
+import {
+  think as orchestratorThink,
+  type OrchestratorDeps,
+  type OrchestratorRequest,
+  type OrchestratorResponse,
+} from './orchestrator/main-loop.js';
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -324,6 +334,40 @@ export interface BrainKernelDeps {
    *   - missing wire    → no-op
    */
   readonly rolloutController?: import('./rollout/rollout-controller.js').RolloutController;
+  /**
+   * Phase E.5.1 — orchestrator wire-up.
+   *
+   * When supplied, `think()` / `thinkStream()` delegate to the
+   * Claude-Code-style main-loop orchestrator (PreToolUse / PostToolUse /
+   * Stop hook substrate + Plan + Budget + Memory) instead of running
+   * the legacy 13-step pipeline. The feature flag controls per-call
+   * routing:
+   *
+   *   - `useByDefault: true`  (default when this dep is present and
+   *                            `KERNEL_USE_ORCHESTRATOR` is not the
+   *                            literal string `'false'`) — the new
+   *                            path runs for every call.
+   *   - `useByDefault: false` (or env `KERNEL_USE_ORCHESTRATOR=false`)
+   *                            — legacy 13-step pipeline runs. Ops can
+   *                            flip this without redeploying so an
+   *                            incident on the new path can be rolled
+   *                            back instantly.
+   *
+   * Composition root (`compose.ts`) constructs the OrchestratorDeps
+   * with the 9 built-in hooks bound to the existing kernel deps
+   * (four-eye approval, PII scrubber, tool denylist, rate limiter,
+   * cost circuit, sandbox resolver, permission scopes, audit sink,
+   * ledger seal). The hook chain is then passed into both `think()`
+   * and `thinkStream()` so per-call governance flows uniformly.
+   */
+  readonly orchestrator?: {
+    readonly deps: import('./orchestrator/main-loop.js').OrchestratorDeps;
+    /**
+     * Defaults to true. Set false to opt back into the legacy 13-step
+     * pipeline for this kernel instance (e.g. canary rollback).
+     */
+    readonly useByDefault?: boolean;
+  };
 }
 
 export interface BrainKernel {
@@ -352,8 +396,22 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
   const router = deps.router ?? createSensorRouter({ sensors: deps.sensors, clock: () => clock().getTime() });
   const reservoir = deps.cotReservoir;
 
+  // Phase E.5.1 — orchestrator routing gate. Resolves once per kernel
+  // instance (not per call) since the dep + env-var pair is stable for
+  // the kernel's lifetime. Composition root rebuilds the kernel on
+  // config change.
+  const orchestratorRoutingEnabled = resolveOrchestratorRoutingEnabled(deps);
+
   return {
     async think(req) {
+      // Phase E.5.1 — primary code path. When the orchestrator is wired
+      // and the feature flag is on, delegate the whole turn to the
+      // main-loop. The legacy 13-step pipeline below remains the
+      // fallback (flag off, or orchestrator not wired). Both paths
+      // surface a `BrainDecision` so callers don't observe the swap.
+      if (orchestratorRoutingEnabled && deps.orchestrator) {
+        return runViaOrchestrator(req, deps.orchestrator.deps, clock);
+      }
       const startedAt = clock().getTime();
       const thoughtId = randomUUID();
       const cacheKey = thoughtCacheKey(req);
@@ -1271,6 +1329,19 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
      *     drift/policy soften+block and a confidence event before done
      */
     async *thinkStream(req: ThoughtRequest): AsyncIterable<KernelStreamEvent> {
+      // Phase E.5.1 — orchestrator-routed streaming. When wired + flag
+      // on, the orchestrator's non-streaming `think()` runs and we
+      // translate the final answer into the legacy `JarvisStreamEvent`
+      // shape so the kernel's streaming contract is preserved. Token-
+      // level streaming through the orchestrator's hook chain is a
+      // follow-up (E1 emits decisions, not tokens). The translation
+      // layer still emits at least: turn_start, ≥1 text_delta,
+      // confidence (when present), done.
+      if (orchestratorRoutingEnabled && deps.orchestrator) {
+        yield* streamViaOrchestrator(req, deps.orchestrator.deps, clock);
+        return;
+      }
+
       const startedAt = clock().getTime();
       const thoughtId = randomUUID();
       const cacheKey = thoughtCacheKey(req);
@@ -2558,4 +2629,348 @@ function inferReflexionOutcome(
     if (selfRag.isRel === 'low') return 'mixed';
   }
   return 'success';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase E.5.1 — orchestrator wire-up helpers.
+//
+// `runViaOrchestrator(req, deps, clock)` is the kernel's primary code
+// path when `BrainKernelDeps.orchestrator` is wired AND the feature
+// flag is on. It converts the legacy `ThoughtRequest` shape into an
+// `OrchestratorRequest`, delegates to the main-loop's `think()`, and
+// translates the `OrchestratorResponse` ADT back into a `BrainDecision`
+// so callers don't observe the swap.
+//
+// The legacy 13-step pipeline below this helper remains the fallback —
+// callers that opted out via `useByDefault: false` or
+// `KERNEL_USE_ORCHESTRATOR=false` still get the old code path verbatim.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolve the orchestrator-routing feature flag.
+ *
+ * Order of precedence (highest wins):
+ *   1. `deps.orchestrator.useByDefault` — per-instance override the
+ *      composition root supplies (e.g. canary lever).
+ *   2. `process.env.KERNEL_USE_ORCHESTRATOR` — ops env-var lever.
+ *      Treats the literal string `'false'` as "disable"; everything
+ *      else (including unset) means "enable when wired".
+ *   3. Default: TRUE when the orchestrator dep is wired.
+ *
+ * When the orchestrator dep is absent, the flag is irrelevant — the
+ * legacy path runs unconditionally.
+ */
+function resolveOrchestratorRoutingEnabled(deps: BrainKernelDeps): boolean {
+  if (!deps.orchestrator) return false;
+  if (typeof deps.orchestrator.useByDefault === 'boolean') {
+    return deps.orchestrator.useByDefault;
+  }
+  // Defence-in-depth — env may be missing in test contexts. We avoid
+  // reading process.env when running in environments that lack a
+  // global `process` (e.g. some bundlers); the typed access protects
+  // against that.
+  const envFlag =
+    typeof process !== 'undefined' &&
+    process.env &&
+    typeof process.env.KERNEL_USE_ORCHESTRATOR === 'string'
+      ? process.env.KERNEL_USE_ORCHESTRATOR
+      : undefined;
+  if (envFlag === 'false') return false;
+  return true;
+}
+
+/**
+ * Convert a legacy `ThoughtRequest` into the orchestrator's
+ * `OrchestratorRequest`. The orchestrator carries less detail than
+ * the legacy pipeline (no `surface`, `stakes`, `attachments`, etc.) so
+ * we project only the fields the main loop reads. The richer fields
+ * stay accessible to PostToolUse hooks via the orchestrator-side
+ * `HookContext.scope` / `tier` shape.
+ */
+function toOrchestratorRequest(req: ThoughtRequest): OrchestratorRequest {
+  const base: {
+    threadId: string;
+    userMessage: string;
+    scope: ThoughtRequest['scope'];
+    tier: ThoughtRequest['tier'];
+    persona: string;
+    grantedScopes?: ReadonlyArray<string>;
+  } = {
+    threadId: req.threadId,
+    userMessage: req.userMessage,
+    scope: req.scope,
+    tier: req.tier,
+    // The legacy pipeline derives the persona from `selectPersona(req)`
+    // off the surface; the orchestrator only needs a textual persona
+    // name for the system-prompt assembly. We pass the personaId
+    // straight from the scope so an agency-rebranded id flows through.
+    persona: req.scope.personaId,
+  };
+  if (req.grantedScopes && req.grantedScopes.length > 0) {
+    base.grantedScopes = req.grantedScopes;
+  }
+  return base;
+}
+
+/**
+ * Run a `ThoughtRequest` through the orchestrator and project the
+ * `OrchestratorResponse` ADT into a `BrainDecision`. Every variant
+ * maps deterministically:
+ *
+ *   - `answer`               → `kind: 'answer'`
+ *   - `ask-approval`         → `kind: 'refusal'` with
+ *                              `gateThatRefused: 'policy'` and the
+ *                              hook's prompt as the reason (matches
+ *                              the existing four-eye escalation surface)
+ *   - `speculative`          → `kind: 'softened'` (sandbox divert is a
+ *                              soft "we ran a dry-run" outcome)
+ *   - `ack-schedule`         → `kind: 'answer'` (the wake handler owns
+ *                              the eventual user-visible message)
+ *   - `budget-exhausted`     → `kind: 'softened'` with the partial text
+ *                              + the exhaustion axis as the hedge
+ */
+async function runViaOrchestrator(
+  req: ThoughtRequest,
+  deps: OrchestratorDeps,
+  clock: () => Date,
+): Promise<BrainDecision> {
+  const startedAt = clock().getTime();
+  const thoughtId = randomUUID();
+  const orchestratorReq = toOrchestratorRequest(req);
+  let response: OrchestratorResponse;
+  try {
+    response = await orchestratorThink(orchestratorReq, deps);
+  } catch (err) {
+    // The orchestrator should never throw uncaught — but if it does
+    // (e.g. an upstream port adapter is buggy) we collapse to a refusal
+    // so the calling surface still sees a closed shape.
+    return makeRefusal({
+      thoughtId,
+      req,
+      reason:
+        err instanceof Error
+          ? `orchestrator-error: ${err.message}`
+          : 'orchestrator-error',
+      gate: 'policy',
+      startedAt,
+      clockNow: clock(),
+    });
+  }
+  return translateOrchestratorResponse({
+    response,
+    req,
+    thoughtId,
+    startedAt,
+    clockNow: clock(),
+  });
+}
+
+/**
+ * Pure translator: maps the orchestrator's response variants onto the
+ * `BrainDecision` ADT. Kept separate from `runViaOrchestrator` so the
+ * streaming wrapper can reuse it without re-invoking the main loop.
+ */
+function translateOrchestratorResponse(args: {
+  readonly response: OrchestratorResponse;
+  readonly req: ThoughtRequest;
+  readonly thoughtId: string;
+  readonly startedAt: number;
+  readonly clockNow: Date;
+}): BrainDecision {
+  const { response, req, thoughtId, startedAt, clockNow } = args;
+  const baseProvenance: ProvenanceRecord = {
+    thoughtId,
+    threadId: req.threadId,
+    scopeKind: req.scope.kind,
+    tier: req.tier,
+    stakes: req.stakes,
+    inputHash: sha(req.userMessage),
+    outputHash: sha(orchestratorResponseTextFor(response)),
+    toolCallSummaries: [],
+    sensorId: 'orchestrator',
+    modelId: 'orchestrator',
+    cacheHit: false,
+    judgeScore: null,
+    cohortFingerprints: [],
+    producedAt: clockNow.toISOString(),
+    latencyMs: clockNow.getTime() - startedAt,
+  };
+  switch (response.kind) {
+    case 'answer': {
+      // Successful turn — surface the orchestrator's text as a
+      // confident `answer`. Confidence is set to 1 on every axis;
+      // the orchestrator's hook chain has already enforced the gates
+      // that the legacy `pickDecisionShape` looked at.
+      const confidence: ConfidenceVector = {
+        groundedness: 1,
+        stability: 1,
+        review: 1,
+        numericalConsistency: 1,
+        overall: 1,
+      };
+      const gates: GateOutcome = {
+        inviolable: { status: 'pass' },
+        policy: { status: 'pass' },
+        drift: { status: 'pass' },
+        cognitiveLoad: { status: 'pass' },
+      };
+      return {
+        kind: 'answer',
+        text: response.text,
+        citations: response.citations,
+        artifacts: response.artifacts,
+        confidence,
+        gates,
+        provenance: baseProvenance,
+      };
+    }
+    case 'ask-approval': {
+      // Four-eye / approval flow — the legacy pipeline surfaces this
+      // as a policy refusal so the caller's UI can re-render with the
+      // approval prompt. The pendingDecision is recoverable via the
+      // orchestrator's plan store.
+      return {
+        kind: 'refusal',
+        reason: response.prompt,
+        gateThatRefused: 'policy',
+        provenance: baseProvenance,
+      };
+    }
+    case 'speculative': {
+      // Sandbox divert — semantic match for "we ran the speculative
+      // path" is a softened answer with the sandbox id as the hedge.
+      const confidence: ConfidenceVector = {
+        groundedness: 0.5,
+        stability: 0.5,
+        review: 0.5,
+        numericalConsistency: 0.5,
+        overall: 0.5,
+      };
+      const gates: GateOutcome = {
+        inviolable: { status: 'pass' },
+        policy: {
+          status: 'soften',
+          reason: `sandbox-divert: ${response.sandboxId}`,
+        },
+        drift: { status: 'pass' },
+        cognitiveLoad: { status: 'pass' },
+      };
+      return {
+        kind: 'softened',
+        text: `Speculative execution diverted to sandbox ${response.sandboxId}.`,
+        hedge: `sandbox-divert: ${response.sandboxId}`,
+        citations: [],
+        confidence,
+        gates,
+        provenance: baseProvenance,
+      };
+    }
+    case 'ack-schedule': {
+      // Wake-loop ack — the user-visible reply will come when the wake
+      // handler resumes the thread. For the synchronous return we
+      // surface a short acknowledgment.
+      const confidence: ConfidenceVector = {
+        groundedness: 1,
+        stability: 1,
+        review: 1,
+        numericalConsistency: 1,
+        overall: 1,
+      };
+      const gates: GateOutcome = {
+        inviolable: { status: 'pass' },
+        policy: { status: 'pass' },
+        drift: { status: 'pass' },
+        cognitiveLoad: { status: 'pass' },
+      };
+      return {
+        kind: 'answer',
+        text: `Scheduled wake (resume token: ${response.resumeToken}).`,
+        citations: [],
+        artifacts: [],
+        confidence,
+        gates,
+        provenance: baseProvenance,
+      };
+    }
+    case 'budget-exhausted': {
+      // Budget exhaustion is a "we did our best" outcome — surface as
+      // a softened reply with the exhaustion axis as the hedge so the
+      // UI can show the partial text alongside a "I ran out of
+      // <axis>" caveat.
+      const confidence: ConfidenceVector = {
+        groundedness: 0.5,
+        stability: 0.5,
+        review: 0.5,
+        numericalConsistency: 0.5,
+        overall: 0.5,
+      };
+      const gates: GateOutcome = {
+        inviolable: { status: 'pass' },
+        policy: {
+          status: 'soften',
+          reason: `budget-exhausted: ${response.axis}`,
+        },
+        drift: { status: 'pass' },
+        cognitiveLoad: { status: 'pass' },
+      };
+      return {
+        kind: 'softened',
+        text: response.partialText,
+        hedge: `budget-exhausted: ${response.axis}`,
+        citations: [],
+        confidence,
+        gates,
+        provenance: baseProvenance,
+      };
+    }
+  }
+}
+
+/**
+ * Extract a representative text payload from any `OrchestratorResponse`
+ * variant — used purely to compute the provenance outputHash.
+ */
+function orchestratorResponseTextFor(response: OrchestratorResponse): string {
+  switch (response.kind) {
+    case 'answer':
+      return response.text;
+    case 'ask-approval':
+      return response.prompt;
+    case 'speculative':
+      return `sandbox:${response.sandboxId}`;
+    case 'ack-schedule':
+      return `ack:${response.resumeToken}`;
+    case 'budget-exhausted':
+      return response.partialText;
+  }
+}
+
+/**
+ * Streaming counterpart to `runViaOrchestrator`. The current
+ * orchestrator (Phase E.1) emits decisions, not tokens, so we run the
+ * non-streaming path and emit a synthetic delta stream (turn_start +
+ * one text_delta + confidence + done) that satisfies the existing
+ * `JarvisStreamEvent` contract. Token-level streaming through the
+ * orchestrator's hook chain is a follow-up.
+ */
+async function* streamViaOrchestrator(
+  req: ThoughtRequest,
+  deps: OrchestratorDeps,
+  clock: () => Date,
+): AsyncIterable<KernelStreamEvent> {
+  // Pre-sensor persona — emit `turn_start` immediately so the streaming
+  // contract holds. We use the same `selectPersona` the legacy stream
+  // path uses so observers see an identical persona block.
+  const persona = selectPersona(req);
+  yield personaStartEvent(persona);
+
+  const decision = await runViaOrchestrator(req, deps, clock);
+
+  if (decision.kind !== 'refusal' && decision.text) {
+    yield { kind: 'text_delta', text: decision.text };
+  }
+  if (decision.kind !== 'refusal') {
+    yield { kind: 'confidence', vector: decision.confidence };
+  }
+  yield { kind: 'done', decision };
 }

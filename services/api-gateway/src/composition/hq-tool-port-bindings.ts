@@ -32,13 +32,21 @@
  *   leave the port unset; the registry then falls back to the
  *   `notYetWiredNidaPort` / `notYetWiredEardhiPort` stubs so the brain
  *   still shapes cleanly with a deterministic `gateway-error` refusal.
+ *
+ *   NIDA literals here are descriptive port-composition (env-var names,
+ *   diagnostic flags, JSDoc) — not flowing logic. The connector adapter
+ *   itself is allowlisted (packages/connectors/src/adapters/nida-adapter.ts).
  */
+/* eslint-disable bossnyumba/no-jurisdictional-literal -- NIDA port-composition wiring (env-var names + diagnostics, Case 3) */
 
 import {
   createEardhiAdapter,
   createNidaAdapter,
+  createNidaRealAdapter,
   type EardhiAdapter,
   type NidaAdapter,
+  type NidaEnv,
+  type NidaRealAdapter,
 } from '@bossnyumba/connectors';
 import { hqTools } from '@bossnyumba/central-intelligence';
 import {
@@ -177,15 +185,46 @@ function buildNidaPort(
   env: NodeJS.ProcessEnv,
   logger: HqToolPortBindingsLogger | undefined,
 ): hqTools.SeedHqBrainToolsDeps['nida'] | null {
+  const consumerKey = env.NIDA_CONSUMER_KEY?.trim();
+  const consumerSecret = env.NIDA_CONSUMER_SECRET?.trim();
+  const apiKey = env.NIDA_API_KEY?.trim();
+  const realEnv = (env.NIDA_ENV?.trim() as NidaEnv | undefined) ?? 'sandbox';
+
+  // Phase F.4 — prefer the production-grade real adapter when OAuth2
+  // consumer credentials OR a NIDA_ENV explicit selector + apiKey are set.
+  let realAdapter: NidaRealAdapter | null = null;
+  if (consumerKey && consumerSecret) {
+    realAdapter = createNidaRealAdapter({
+      env: realEnv,
+      auth: { kind: 'oauth2', consumerKey, consumerSecret },
+    });
+    logger?.info?.(
+      { env: realEnv, authMode: 'oauth2' },
+      'hq-tool-port-bindings: NIDA wired via REAL adapter (OAuth2)',
+    );
+  } else if (env.NIDA_ENV && apiKey) {
+    realAdapter = createNidaRealAdapter({
+      env: realEnv,
+      auth: { kind: 'api-key', key: apiKey },
+    });
+    logger?.info?.(
+      { env: realEnv, authMode: 'api-key' },
+      'hq-tool-port-bindings: NIDA wired via REAL adapter (api-key)',
+    );
+  }
+
+  if (realAdapter) {
+    return adaptNidaToKernelPort(realAdapter);
+  }
+
   const baseUrl = env.NIDA_GATEWAY_URL?.trim();
   if (!baseUrl) {
     logger?.warn?.(
-      { reason: 'NIDA_GATEWAY_URL not set' },
+      { reason: 'NIDA env vars not set' },
       'hq-tool-port-bindings: NIDA not bound — falling back to NOT_YET_WIRED stub',
     );
     return null;
   }
-  const apiKey = env.NIDA_API_KEY?.trim();
   const adapter: NidaAdapter = createNidaAdapter({
     baseUrl,
     ...(apiKey
@@ -218,6 +257,42 @@ function buildNidaPort(
           kind: 'unverified',
           reason: 'NIDA record not found',
         };
+      }
+      return {
+        kind: 'gateway-error',
+        message: formatConnectorFailure(outcome),
+      };
+    },
+  };
+}
+
+/**
+ * Adapt a NIDA real adapter to the kernel's narrow port contract.
+ * Same outcome translation as the stub-aware path above.
+ */
+function adaptNidaToKernelPort(
+  adapter: NidaRealAdapter,
+): hqTools.SeedHqBrainToolsDeps['nida'] {
+  return {
+    async verifyIdentity(args) {
+      const outcome = await adapter.verifyIdentity({
+        nidaNumber: args.nidaNumber,
+        biometricHash: args.biometricHash,
+      });
+      if (outcome.kind === 'ok') {
+        return {
+          kind: 'ok',
+          verified: outcome.data.verified,
+          name: outcome.data.name,
+          dob: outcome.data.dob,
+          photo_match_score: outcome.data.photo_match_score,
+        };
+      }
+      if (outcome.kind === 'validation-failed') {
+        return { kind: 'unverified', reason: outcome.issue };
+      }
+      if (outcome.kind === 'upstream-error' && outcome.status === 404) {
+        return { kind: 'unverified', reason: 'NIDA record not found' };
       }
       return {
         kind: 'gateway-error',

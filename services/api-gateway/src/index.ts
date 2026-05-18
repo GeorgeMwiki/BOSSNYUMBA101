@@ -47,6 +47,7 @@ import { notificationsRouter } from './routes/notifications';
 import { reportsHonoRouter } from './routes/reports.hono';
 import { dashboardRouter } from './routes/dashboard.hono';
 import { onboardingRouter } from './routes/onboarding';
+import { onboardingFlowRouter } from './routes/onboarding.router';
 import { feedbackRouter } from './routes/feedback';
 import { complaintsRouter } from './routes/complaints';
 import { inspectionsRouter } from './routes/inspections';
@@ -605,6 +606,10 @@ api.route('/vendors', vendorsRouter);
 api.route('/notifications', notificationsRouter);
 api.route('/reports', reportsHonoRouter);
 api.route('/dashboard', dashboardRouter);
+// Phase F.5 tenant-signup flow mounts FIRST so specific paths
+// (/signup, /first-property, /first-tenant-import, /first-md-chat,
+// /checklist) match before the legacy customer move-in router.
+api.route('/onboarding', onboardingFlowRouter);
 api.route('/onboarding', onboardingRouter);
 api.route('/feedback', feedbackRouter);
 api.route('/complaints', complaintsRouter);

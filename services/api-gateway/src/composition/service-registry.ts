@@ -1778,6 +1778,15 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
         hqToolRegistry: hqPortBindings.hqToolRegistry,
+        // Phase F.3 — production-grade orchestrator hook chain. The
+        // 9-hook PreToolUse / PostToolUse / Stop chain binds to real
+        // Drizzle / `scrubPii` / approval-gate / sovereign-ledger
+        // adapters so policy enforcement matches production posture
+        // even before the LLM router + dispatcher adapter lands.
+        orchestratorBindings: {
+          db,
+          tenantId: '_platform',
+        },
       });
       const llmUrl = process.env.CI_LLM_URL?.trim();
       if (!llmUrl) {

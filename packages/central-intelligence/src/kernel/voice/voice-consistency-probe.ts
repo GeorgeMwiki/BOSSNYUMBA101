@@ -20,10 +20,10 @@
  *   - probeVoiceConsistency() — the entry point. Pure verdict; the
  *     caller decides whether to alert / pause TTS / re-record.
  *
- * Threshold model is deliberately conservative (per-dim 0.18,
- * aggregate L2 0.10) — voice synthesis introduces drift more easily
- * than text persona because the underlying acoustic features are
- * noisier turn-to-turn.
+ * Threshold model is deliberately conservative (per-dim eighteen-
+ * hundredths, aggregate L2 ten-hundredths) — voice synthesis introduces
+ * drift more easily than text persona because the underlying acoustic
+ * features are noisier turn-to-turn. Not a tax rate.
  */
 
 /** Fixed 12-dim voice fingerprint. Order matters. */

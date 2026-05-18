@@ -8,14 +8,15 @@
  *    TaxRegimePort (canonical 7.5% per Finance Act 2024). Never hardcode
  *    tax rates — the plugin is the single source of truth so a future
  *    rate change is one edit away in the plugin, not a sprawl of constants.
- *  - VAT: 16% on applicable commercial rentals (Kenya-specific, stays inline
- *    until a VatPort is introduced).
+ *  - VAT: sourced from getJurisdictionalRules('KE').taxAuthority.vatRatePct
+ *    (currently 16%) on applicable commercial rentals.
  *
  * Output: CSV matching the iTax template columns commonly expected for
  * rental income.
  */
 
 import { resolvePlugin } from '@bossnyumba/compliance-plugins';
+import { getJurisdictionalRules } from '@bossnyumba/domain-models';
 
 export interface KeKraRentEntry {
   readonly leaseId: string;
@@ -66,7 +67,7 @@ const MRI_RATE = (() => {
   );
   return result.withholdingMinorUnits / probeGrossMinor;
 })();
-const VAT_RATE = 0.16;
+const VAT_RATE = getJurisdictionalRules('KE').taxAuthority.vatRatePct / 100;
 
 function toMajor(minor: number): number {
   return Math.round(minor) / 100;

@@ -17,7 +17,12 @@
  */
 
 import { demoteStage } from './canary-controller.js';
+import {
+  executeAutoRollback,
+  type AutoRollbackDeps,
+} from './auto-rollback.js';
 import type {
+  AutoRollbackReceipt,
   SloEvent,
   SloMonitorVerdict,
   SubMdSlo,
@@ -142,5 +147,127 @@ export function evaluateSlo(
     nextStage: 'shadow',
     action: 'kill-and-rollback',
     reason: `meanDelta ${meanDelta.toFixed(4)} breached — disable sub-MD and restore prior version`,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Live stream consumer (Phase E.5.3)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Single-SLO event-stream consumer. Resolves an SLO definition per event,
+ * batches events into the SLO's rolling window, and runs `evaluateSlo`
+ * every `evaluateEveryNEvents` events. When the verdict is a breach, the
+ * configured `AutoRollbackDeps` are invoked.
+ *
+ * Wire-side (production composition) supplies:
+ *   - `sloResolver`         : look up the (subMd, metric, tenant) SLO row
+ *   - `windowBuffer`        : an in-memory ring buffer per SLO key
+ *   - `rollbackDeps`        : canary store + handoff queue + revert port
+ *
+ * The consumer is a *pull* API — callers stream events into `consume(event)`.
+ * That makes it trivially testable + transport-agnostic (NATS / Postgres
+ * LISTEN / file tailer all fan into the same surface).
+ */
+export interface SloResolver {
+  /**
+   * Resolve the active SLO for the (subMd, metric, tenantId) tuple.
+   * Returns `null` when no SLO is configured — the event is ignored.
+   */
+  resolve(args: {
+    readonly subMd: string;
+    readonly metric: SloEvent['metric'];
+    readonly tenantId: string | null;
+  }): Promise<SubMdSlo | null>;
+}
+
+export interface SloWindowBuffer {
+  /** Append the event; the buffer trims to the SLO's rolling window. */
+  append(key: string, event: SloEvent): Promise<void>;
+  /** Read every event currently inside the window for this key. */
+  read(key: string): Promise<ReadonlyArray<SloEvent>>;
+  /** Number of events seen for `key` since the last evaluate. */
+  sinceLastEvaluate(key: string): Promise<number>;
+  /** Reset the sinceLastEvaluate counter for `key`. */
+  markEvaluated(key: string): Promise<void>;
+}
+
+export interface SloStreamConsumer {
+  consume(event: SloEvent): Promise<SloMonitorVerdict | null>;
+}
+
+export interface SubscribeSloStreamArgs {
+  readonly resolver: SloResolver;
+  readonly buffer: SloWindowBuffer;
+  readonly rollbackDeps: AutoRollbackDeps;
+  /**
+   * Evaluate the SLO every N events seen for the (subMd, metric, tenant)
+   * key. Default = 10 (matches `evaluateSlo`'s `minSampleSize` default).
+   */
+  readonly evaluateEveryNEvents?: number;
+  /** Forwarded to `evaluateSlo`. */
+  readonly monitorOptions?: SloMonitorOptions;
+  /**
+   * Side-effect hook for tests + audit: called for every rollback receipt
+   * (including no-op + warn). Defaults to a no-op.
+   */
+  readonly onReceipt?: (receipt: AutoRollbackReceipt) => Promise<void> | void;
+}
+
+function bufferKey(event: SloEvent | SubMdSlo): string {
+  const t = (event as SloEvent).tenantId ?? null;
+  const sub = event.subMd;
+  const metric = (event as SloEvent).metric ?? (event as SubMdSlo).metric;
+  return `${sub}::${metric}::${t ?? '*'}`;
+}
+
+/**
+ * Create a streaming consumer that drives `evaluateSlo` + `executeAutoRollback`
+ * for every Nth event observed on the SLO event stream.
+ *
+ * The consumer is pure-ish: it owns no transport. Wire-side adapters (NATS
+ * subscription, Postgres LISTEN, file tail) call `consume(event)` for each
+ * incoming event; the consumer batches into the buffer + decides when to
+ * evaluate.
+ */
+export function subscribeSloStream(args: SubscribeSloStreamArgs): SloStreamConsumer {
+  const {
+    resolver,
+    buffer,
+    rollbackDeps,
+    evaluateEveryNEvents = 10,
+    monitorOptions = {},
+    onReceipt,
+  } = args;
+
+  return Object.freeze({
+    async consume(event: SloEvent): Promise<SloMonitorVerdict | null> {
+      const slo = await resolver.resolve({
+        subMd: event.subMd,
+        metric: event.metric,
+        tenantId: event.tenantId,
+      });
+      if (slo === null) return null;
+
+      const key = bufferKey(event);
+      await buffer.append(key, event);
+
+      const since = await buffer.sinceLastEvaluate(key);
+      if (since < evaluateEveryNEvents) return null;
+
+      const window = await buffer.read(key);
+      const verdict = evaluateSlo(slo, window, monitorOptions);
+      await buffer.markEvaluated(key);
+
+      if (verdict.action !== 'no-op') {
+        const receipt = await executeAutoRollback(
+          { slo, verdict },
+          rollbackDeps,
+        );
+        if (onReceipt) await onReceipt(receipt);
+      }
+
+      return verdict;
+    },
   });
 }

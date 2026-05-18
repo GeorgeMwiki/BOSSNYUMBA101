@@ -602,3 +602,18 @@ export * as hqTools from './tool-spec/hq-tools/index.js';
  * `createBrainKernel`).
  */
 export * as orchestrator from './orchestrator/index.js';
+
+/**
+ * Phase F.2 — VP department-head sub-MDs.
+ *
+ * Five VPs (Operations, Finance, Growth, People, Risk & Compliance)
+ * each orchestrate a small set of line-worker sub-MDs and draft a
+ * weekly report rendered as KPI cards via genui in the owner portal.
+ * VPs do NOT have their own tool-belt; the only way for a VP to act
+ * is to spawn a line-worker. Capability gaps feed the MD's
+ * self-extension keystone (`orchestrator.proposeNewSubMd`).
+ *
+ * Exposed under the `vpPersonas` namespace to avoid clashes with the
+ * tenant-facing persona exports above.
+ */
+export * as vpPersonas from './vp-personas/index.js';

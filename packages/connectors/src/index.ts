@@ -70,6 +70,113 @@ export {
   type Encumbrance,
 } from './adapters/eardhi-adapter.js';
 
+// ─────────────────────────────────────────────────────────────────────
+// Phase F.4 — production-grade real adapters (sandbox + production env).
+// These adapters talk to real sandbox endpoints; tests inject `fetch`.
+// ─────────────────────────────────────────────────────────────────────
+
+export {
+  createMpesaRealAdapter,
+  StkPushInputSchema,
+  StkPushOutputSchema,
+  C2bRegisterUrlInputSchema,
+  C2bRegisterUrlOutputSchema,
+  C2bCallbackPayloadSchema,
+  B2cInputSchema,
+  B2cOutputSchema,
+  TransactionStatusInputSchema,
+  TransactionStatusOutputSchema,
+  AccountBalanceInputSchema,
+  AccountBalanceOutputSchema,
+  type MpesaEnv,
+  type MpesaRealAdapter,
+  type MpesaRealAdapterDeps,
+  type MpesaRealCredentials,
+  type StkPushInput,
+  type StkPushOutput,
+  type C2bRegisterUrlInput,
+  type C2bRegisterUrlOutput,
+  type C2bCallbackPayload,
+  type B2cInput,
+  type B2cOutput,
+  type TransactionStatusInput,
+  type TransactionStatusOutput,
+  type AccountBalanceInput,
+  type AccountBalanceOutput,
+} from './adapters/mpesa-real.js';
+
+export {
+  createKraEritsRealAdapter,
+  validateTaxPeriod,
+  TaxPeriodSchema,
+  KraPinSchema,
+  OwnerEntrySchema,
+  SubmitMriInputSchema,
+  SubmitMriOutputSchema,
+  GetReceiptInputSchema,
+  GetReceiptOutputSchema,
+  CancelFilingInputSchema,
+  CancelFilingOutputSchema,
+  ReceiptStatusSchema,
+  RejectionDetailSchema,
+  type KraEnv,
+  type KraEritsRealAdapter,
+  type KraEritsRealAdapterDeps,
+  type KraEritsCredentials,
+  type OwnerEntry,
+  type SubmitMriInput,
+  type SubmitMriOutput,
+  type GetReceiptInput,
+  type GetReceiptOutput,
+  type CancelFilingInput,
+  type CancelFilingOutput,
+  type ReceiptStatus,
+  type RejectionDetail,
+} from './adapters/kra-erits-real.js';
+
+export {
+  createNidaRealAdapter,
+  NidaNumberSchema as NidaRealNumberSchema,
+  BiometricHashSchema as NidaRealBiometricHashSchema,
+  VerifyIdentityInputSchema as NidaRealVerifyIdentityInputSchema,
+  VerifyIdentityOutputSchema as NidaRealVerifyIdentityOutputSchema,
+  type NidaEnv,
+  type NidaAuthMode,
+  type NidaRealAdapter,
+  type NidaRealAdapterDeps,
+} from './adapters/nida-real.js';
+
+export {
+  createGepgRealAdapter,
+  toGepgBillXml,
+  extractXmlTag,
+  GenerateControlNumberInputSchema,
+  GenerateControlNumberOutputSchema,
+  InquireStatusInputSchema,
+  InquireStatusOutputSchema,
+  CancelInputSchema as GepgCancelInputSchema,
+  CancelOutputSchema as GepgCancelOutputSchema,
+  ControlNumberStatusSchema,
+  DailyReconciliationInputSchema,
+  DailyReconciliationOutputSchema,
+  ReconciliationEntrySchema,
+  type GepgEnv,
+  type GepgFormat,
+  type GepgCredentials,
+  type GepgRealAdapter,
+  type GepgRealAdapterDeps,
+  type GenerateControlNumberInput,
+  type GenerateControlNumberOutput,
+  type InquireStatusInput,
+  type InquireStatusOutput,
+  type CancelInput as GepgCancelInput,
+  type CancelOutput as GepgCancelOutput,
+  type ControlNumberStatus,
+  type DailyReconciliationInput,
+  type DailyReconciliationOutput,
+  type ReconciliationEntry,
+} from './adapters/gepg-real.js';
+
 export * from './registry.js';
 export * from './orchestrator.js';
 export * from './health-scheduler.js';

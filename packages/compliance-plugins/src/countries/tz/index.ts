@@ -1,6 +1,14 @@
 /**
  * Tanzania (TZ) — first-class country profile.
  *
+ * This file IS the Tanzania-specific country plugin. NIDA, TRA, M-Pesa,
+ * GePG, +255, and Africa/Dar_es_Salaam literals here are by design — the
+ * country is the file's identity. The cross-country registry lives at
+ * packages/domain-models/src/common/jurisdictional-rules.ts; this file
+ * implements the TZ port that consumers reach through that registry.
+ * Allowlisted in the lint rule + audit script by directory pattern.
+ *
+ *
  * ============================================================================
  * TAX REGIME — Tanzania Revenue Authority (TRA)
  * ============================================================================

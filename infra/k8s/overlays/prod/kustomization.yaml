@@ -1,0 +1,53 @@
+# =============================================================================
+# Production overlay — full replica counts, prod hosts, hardened HPA + PDB
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bossnyumba-prod
+
+resources:
+  - ../../namespaces/bossnyumba-prod.yaml
+  - ../../base
+
+images:
+  - name: ghcr.io/georgemwiki/bossnyumba-api-gateway
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-consolidation-worker
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-mcp-process-intel
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-mcp-nin
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-mcp-firs
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-mcp-nggis
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-mcp-opay
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-document-intelligence
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-domain-services
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-identity
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-notifications
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-payments
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-reports
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-webhooks
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-customer-app
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-owner-portal
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-admin-platform-portal
+    newTag: latest
+  - name: ghcr.io/georgemwiki/bossnyumba-estate-manager-app
+    newTag: latest
+
+patches:
+  - path: patches/hpa-prod.yaml
+  - path: patches/anti-affinity.yaml

@@ -66,11 +66,23 @@ alpha-2 codes in registry order.
 | `paymentDueAdjustment` | enum | Weekend/holiday roll rule |
 | `phoneNumberPlanLength` | `{ min, max }` | Subscriber-number digits |
 
-## Adding a new country
+## Supported countries
 
-> _Tracked for Phase E follow-up: country #3 onboarding proof — the
-> goal is for adding country #3 to require **only** appending an entry
-> to `RULES_BY_COUNTRY`, with **zero** edits outside this file._
+Three jurisdictions ship in-tree (Phase E.5.4):
+
+| Code | Country | Statute / regulator basis |
+|------|---------|---------------------------|
+| `TZ` | Tanzania | TRA + NIDA + eArdhi + Electronic Transactions Act 2015 + PDPA 2022 |
+| `KE` | Kenya | KRA + Huduma + Ardhisasa + KICA Cap. 411A + DPA 2019 |
+| `NG` | Nigeria | FIRS/NRS + NIMC (NIN) + NGGIS + Evidence Act 2011 §84 + NDPA 2023 |
+
+The NG entry shipped in Phase E.5.4 as the **country-#3 onboarding
+proof**: it required exactly one edit to this module + four new
+`mcp-server-*` scaffolds (no `if (country === …)` branches added
+elsewhere). See `services/mcp-server-{nin,firs,nggis,opay}/` for the
+scaffold pattern.
+
+## Adding a new country
 
 1. Append a frozen `JurisdictionalRules` object to `RULES_BY_COUNTRY`
    in `jurisdictional-rules.ts`.

@@ -67,10 +67,11 @@ export {
 // without a namespace hop.
 export * from './kernel/index.js';
 
-// Namespace exports (`agency`, `counterModel`) must be re-exported
-// explicitly — `export * from` does NOT carry over `export * as <ns>`
-// declarations.
+// Namespace exports (`agency`, `counterModel`, `orchestrator`) must be
+// re-exported explicitly — `export * from` does NOT carry over
+// `export * as <ns>` declarations.
 export {
   agency,
   counterModel,
+  orchestrator,
 } from './kernel/index.js';
