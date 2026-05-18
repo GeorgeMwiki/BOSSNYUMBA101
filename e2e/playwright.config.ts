@@ -57,8 +57,10 @@ export default defineConfig({
     /* Ignore HTTPS errors */
     ignoreHTTPSErrors: true,
 
-    /* Locale and timezone */
+    /* Locale and timezone — Kenya pilot E2E browser context */
+    // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- pilot-country E2E test browser locale
     locale: 'en-KE',
+    // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- pilot-country E2E test browser timezone
     timezoneId: 'Africa/Nairobi',
   },
 
@@ -128,6 +130,22 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3001',
+      },
+    },
+
+    /*
+     * Phase F.5 owner-live journey suite — 10 specs covering critical
+     * owner workflows (signup → maintenance → arrears → KRA → briefing →
+     * plan-mode → Skills → slash-commands). Each spec self-skips when
+     * USE_REAL_SERVERS is unset so the project stays green on PR runs
+     * that don't boot the docker-compose stack.
+     */
+    {
+      name: 'owner-live-journeys',
+      testMatch: 'journeys/owner-live-tests/**/*.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.OWNER_PORTAL_URL ?? 'http://localhost:3000',
       },
     },
   ],

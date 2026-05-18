@@ -29,7 +29,9 @@ export default defineConfig({
     navigationTimeout: 30_000,
     viewport: { width: 1280, height: 800 },
     ignoreHTTPSErrors: true,
+    // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- pilot-country E2E test browser locale
     locale: 'en-KE',
+    // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- pilot-country E2E test browser timezone
     timezoneId: 'Africa/Nairobi',
     ...devices['Desktop Chrome'],
   },

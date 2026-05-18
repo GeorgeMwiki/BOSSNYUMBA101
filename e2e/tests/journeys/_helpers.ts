@@ -91,6 +91,7 @@ export async function seedCustomerAuth(page: Page): Promise<void> {
       window.localStorage.setItem('customer_token', 'mock-customer-token');
       window.localStorage.setItem(
         'customer_user',
+        // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- E2E test fixture phone number
         JSON.stringify({ id: 'cust_test', phone: '+255712345678' }),
       );
     } catch {
