@@ -11,6 +11,6 @@
     "allowImportingTsExtensions": false,
     "noEmit": true
   },
-  "include": ["runner/**/*", "scorers/**/*"],
-  "exclude": ["node_modules", "reports", "tasks"]
+  "include": ["runner/**/*", "scorers/**/*", "__tests__/**/*"],
+  "exclude": ["node_modules", "reports", "tasks", "output"]
 }

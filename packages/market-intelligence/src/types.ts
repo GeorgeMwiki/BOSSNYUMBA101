@@ -39,7 +39,13 @@ export interface Comparable {
   readonly distanceScore: number;
 }
 
-export type Currency = 'KES' | 'TZS' | 'UGX' | 'RWF';
+/**
+ * ISO-4217 currency code — typed as `string` for "built for the world"
+ * support. Runtime validation lives at country-onboarding edges; this
+ * module accepts any code so the market-intelligence engine can score
+ * data from any jurisdiction the platform supports.
+ */
+export type Currency = string;
 
 export interface SeasonalityBand {
   readonly countryCode: string;

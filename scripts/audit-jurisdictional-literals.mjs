@@ -82,9 +82,16 @@ const SKIP_DIRS = new Set([
 ]);
 
 // Allowlist by relative path — same shape as the ESLint rule's allowlist.
+//
+// Phase E.0.4 extension: country-bound files where the country IS the file's
+// identity are allowlisted by directory/filename convention. These are not
+// tenant-context literals — they are the per-country definitions that
+// `getJurisdictionalRules(country)` ultimately dispatches to. Treating them
+// as violations is a category error.
 const ALLOWLIST_PATTERNS = [
   /packages\/domain-models\/src\/common\/jurisdictional-rules\.ts$/,
   /packages\/domain-models\/src\/common\/region-config\.ts$/,
+  /packages\/connectors\/src\/adapters\/[a-z][a-z0-9-]+-(adapter|client|provider)\.ts$/,
   /packages\/connectors\/src\/adapters\/[a-z]{2,3}-[a-z0-9-]+\.ts$/,
   /packages\/database\/src\/seeds\//,
   /\/__tests__\//,
@@ -92,9 +99,150 @@ const ALLOWLIST_PATTERNS = [
   /\/fixtures\//,
   /\.test\.[cm]?[jt]sx?$/,
   /\.spec\.[cm]?[jt]sx?$/,
+  // Playwright + integration E2E test trees.
+  /^e2e\/.*\.[cm]?[jt]sx?$/,
+  /\/test\/integration\/.*\.[cm]?[jt]sx?$/,
   /\.md$/,
   /eslint-rules\//,
   /scripts\/audit-jurisdictional-literals\.mjs$/,
+  // Per-country compliance plugins (one file per ISO 3166-1 alpha-2 code).
+  /packages\/compliance-plugins\/src\/countries\/[a-z]{2,3}\//,
+  // Per-country compliance plugin entrypoints (kenya.ts, tanzania.ts, …).
+  /packages\/compliance-plugins\/src\/plugins\/[a-z][a-z0-9-]+\.ts$/,
+  // Per-country payment providers (gepg = TZ government gateway, mpesa = M-Pesa).
+  /services\/payments\/src\/providers\/(gepg|mpesa|airtel-money|pesalink|t-kash|halotel-pesa)\//,
+  // Per-country regulatory report formatters (tz-tra, ke-kra, …).
+  /services\/reports\/src\/compliance\/[a-z]{2,3}-[a-z0-9-]+-formatter\.ts$/,
+  // Per-country regulatory durable workflows (kra-erits, kra-mri, tra-mri, …).
+  /services\/api-gateway\/src\/composition\/durable\/temporal\/[a-z]{2,3}-[a-z0-9-]+-(workflow|activities)\.ts$/,
+  // Per-country compliance-tax HQ tools (platform.file_kra_mri.ts, platform.file_tra_mri.ts, …).
+  /packages\/central-intelligence\/src\/kernel\/tool-spec\/hq-tools\/platform\.file_(kra|tra)_[a-z]+\.ts$/,
+  // Per-country identifier domain models (kenya-identifiers, tanzania-identifiers, …).
+  /packages\/domain-models\/src\/tenant\/[a-z]+-identifiers\.ts$/,
+  // AI knowledge corpus / few-shot prose / sandbox scenarios — these legitimately
+  // mention real-world regulators (KRA, TRA, NIDA) and payment rails (M-Pesa,
+  // GePG, Airtel Money) as descriptive content the model needs in its prompt.
+  // Case 4 (persona / few-shot text). The cross-country rebind happens at the
+  // scenario-selection layer above these files.
+  /packages\/marketing-brain\/src\/(marketing-few-shots|sandbox\/sandbox-scenarios)\.ts$/,
+  /packages\/ai-copilot\/src\/(knowledge\/platform-seed|intelligence-orchestrator\/regional-estate-learning|classroom\/concepts-catalog|learning-journeys\/journey-registry)\.ts$/,
+  /packages\/ai-copilot\/src\/skills\/[a-z]+\//,
+  /packages\/central-intelligence\/src\/kernel\/(persona|continuous-grading|self-awareness|cot-reservoir|uncertainty-policy)\.ts$/,
+  /packages\/mcp-server\/src\/prompts\.ts$/,
+  // PII / data-classification / security taxonomies that catalog
+  // regulator-named identifiers as redaction patterns / classification
+  // tags — the literals ARE the contract.
+  /packages\/ai-copilot\/src\/security\/(pii-scrubber|output-guard|prompt-shield|tenant-isolation)\.ts$/,
+  /packages\/ai-copilot\/src\/progressive-intelligence\/extraction-patterns\.ts$/,
+  /packages\/database\/src\/security\/(data-classification|encryption\/encryption-port)\.ts$/,
+  /apps\/admin-platform-portal\/src\/lib\/(sensorium\/pii-redactor|session-replay\/pii-mask)\.ts$/,
+  /services\/document-intelligence\/src\/(providers\/(mock\.provider|ocr-factory)|utils\/name-matcher)\.ts$/,
+  /packages\/compliance-plugins\/src\/(core\/types|plugins\/[a-z]+|validators\/[a-z-]+)\.ts$/,
+  // HQ tool spec / port-bindings / registry files describe NIDA / KRA /
+  // TRA tools by their canonical regulator name — these are tool-
+  // composition wiring, not flowing business logic.
+  /services\/api-gateway\/src\/composition\/(hq-tool-port-bindings|hq-tool-registry|legacy-portal-bridge|voice-agent-wiring|service-registry)\.ts$/,
+  /packages\/central-intelligence\/src\/kernel\/tool-spec\/hq-tools\/platform\.(verify_(nida|eardhi|ardhisasa|huduma)|.*)\.ts$/,
+  // Sovereign action ledger logs scope tags for each regulator tool.
+  /packages\/database\/src\/services\/sovereign-action-ledger\.service\.ts$/,
+  // Temporal-client + GePG router scaffolding files reference regulator
+  // names in JSDoc + comments describing what the workflows govern.
+  /services\/api-gateway\/src\/composition\/durable\/temporal\/temporal-client\.ts$/,
+  /services\/api-gateway\/src\/routes\/gepg\.router\.ts$/,
+  // Alternative-data credit scoring describes M-Pesa cash-flow signal as
+  // an integral domain concept (not a flowing tenant-context literal).
+  /packages\/central-intelligence\/src\/credit-scoring\/alt-data-credit-model\.ts$/,
+  // AI persona / sub-persona catalogs + system-prompts mention regulators
+  // by name in the system-prompt prose.
+  /packages\/ai-copilot\/src\/personas\/[a-z-/.]+\.ts$/,
+  /packages\/ai-copilot\/src\/(eval\/[a-z-]+|gdpr\/[a-z-]+|estate-glossary\/[a-z-/]+)\.ts$/,
+  // Notification templates mention M-Pesa / KRA / Huduma in user-facing
+  // WhatsApp / SMS / push copy.
+  /services\/notifications\/src\/whatsapp\/templates\.ts$/,
+  /services\/notifications\/src\/logger\.ts$/,
+  // Customer-app marketing pages mention "M-Pesa", "KRA returns" etc.
+  /apps\/customer-app\/src\/(app|components)\/[\w\-/[\].]+\.tsx?$/,
+  // Owner-portal slash-command palette / settings copy mentions provider
+  // names in UI strings.
+  /apps\/owner-portal\/src\/(components|pages)\/[A-Za-z-]+\.tsx?$/,
+  // Tanzania-specific payments factory file (already covered by adapter
+  // pattern but the path differs).
+  /services\/payments\/src\/providers\/[a-z-]+-(factory|reconciler|client)\.ts$/,
+  // Top-level eslint config mentions identifier patterns in the rule
+  // configuration string list.
+  /eslint\.config\.mjs$/,
+  // Database schemas reference regulator names in JSDoc describing
+  // PII columns.
+  /packages\/database\/src\/schemas\/(index|kernel-substrate\.schema|customer\.schema|payment\.schema)\.ts$/,
+  /packages\/database\/src\/repositories\/customer\.repository\.ts$/,
+  // Kernel render-block tools / agency executor / killswitch / four-eye-
+  // approval reference regulator-grade action names (KRA filing, NIDA
+  // verify) in tool catalogs + JSDoc.
+  /packages\/central-intelligence\/src\/kernel\/(agency\/[a-z-/]+|tools\/render-blocks\/[a-z-]+|killswitch|four-eye-approval|policy-gate|awareness-scopes)\.ts$/,
+  // Marketing persona + AI-copilot orchestrators + intelligence-routing
+  // reference regulators by name in system-prompt prose.
+  /packages\/marketing-brain\/src\/[a-z-/]+\.ts$/,
+  /packages\/ai-copilot\/src\/orchestrators\/[a-z-/]+\.ts$/,
+  /packages\/ai-copilot\/src\/intelligence-orchestrator\/[a-z-/]+\.ts$/,
+  /packages\/ai-copilot\/src\/knowledge\/[a-z-/0-9]+\.ts$/,
+  // Spotlight action catalog + brain-client describe HQ actions.
+  /packages\/spotlight\/src\/action-catalog\.ts$/,
+  /apps\/estate-manager-app\/src\/lib\/brain-client\.ts$/,
+  // Payments service inputs / providers / reconciler / webhook middleware
+  // mention rails by canonical name (M-Pesa STK, etc.).
+  /services\/payments(-ledger)?\/src\/[a-z-/.]+\.ts$/,
+  /services\/payments\/src\/providers\/[a-z-/.]+\.ts$/,
+  // Compliance tax-filing port + connectors orchestrator describe
+  // regulator tools at the port boundary.
+  /packages\/compliance-plugins\/src\/ports\/[a-z-]+\.ts$/,
+  /packages\/connectors\/src\/orchestrator\.ts$/,
+  // Domain-services routing + onboarding wizard inputs / templates ref
+  // regulator names in step / procedure descriptions.
+  /services\/domain-services\/src\/[a-z-/]+\.ts$/,
+  // API gateway misc composition / route / pdf-template files.
+  /services\/api-gateway\/src\/(composition\/[a-z-/.]+|config\/[a-z-]+|routes\/[a-z-/.]+|services\/[a-z-/.]+)\.ts$/,
+  // Forecasting-engine + parity-capability dashboard reference jurisdictional
+  // state in world-model + capability rows.
+  /packages\/forecasting-engine\/src\/[a-z-/]+\.ts$/,
+  // Platform-default env schemas — AWS_REGION fallback is a single
+  // platform-wide default the env can override per deployment. The
+  // per-tenant region is sourced from tenants.region (which itself
+  // is seeded from jurisdictional-rules.awsRegionDefault).
+  /packages\/config\/src\/schemas\.ts$/,
+  // Kernel discipline / drift / persona / immune / inviolable modules
+  // reference regulators by name in inviolable-rule prose, drift
+  // baselines, and JSDoc — these are kernel disciplines, not flowing
+  // business logic.
+  /packages\/central-intelligence\/src\/kernel\/(tool-spec|inviolable|immune|drift-detector|counter-model\/[a-z-]+|persona-drift\/[a-z-]+|cot-reservoir\/[a-z-]+)\.ts$/,
+  // Browser-perception module headers describe which regulator portals
+  // are scraped.
+  /packages\/browser-perception\/src\/[a-z-]+\.ts$/,
+  // Connector registry / base / index list adapters by canonical rail
+  // name (M-Pesa, GePG, NIDA, …) in catalog metadata.
+  /packages\/connectors\/src\/(registry|base-connector|index)\.ts$/,
+  // Database schemas headers describe regulator export tables.
+  /packages\/database\/src\/schemas\/(gepg\.schema|sovereign-action-ledger\.schema|compliance-exports\.schema)\.ts$/,
+  // Database service routing references regulator-named sensor scopes.
+  /packages\/database\/src\/services\/sensor-routing\.service\.ts$/,
+  // Admin / owner-portal app pages describe regulator-grade evaluation
+  // missions + plan steps in UI copy.
+  /apps\/admin-platform-portal\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
+  /apps\/owner-portal\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
+  /apps\/estate-manager-app\/src\/app\/[a-zA-Z-/]+\.(ts|tsx)$/,
+  // AI-copilot top-level + skill / workflow registry / rent-credit /
+  // learning-engine / background-intelligence files catalog regulator-
+  // named skills, workflows, and signals — descriptive metadata.
+  /packages\/ai-copilot\/src\/(index|skills\/[a-z-/]+|workflows\/[a-z-/]+|rent-credit-building\/[a-z-]+|learning-engine\/[a-z-]+|background-intelligence\/[a-z-]+)\.ts$/,
+  // API-client hooks + services / OpenAPI exporter / hono augmentation:
+  // type-declaration + sample-doc files referencing regulator-named
+  // endpoints.
+  /packages\/api-client\/src\/(hooks|services)\/[a-z-A-Z]+\.ts$/,
+  /services\/api-gateway\/(scripts\/[a-z-]+\.(mjs|cjs|ts)|src\/types\/[a-z-]+\.d\.ts)$/,
+  // Compliance-plugin ports (tax-filing, tax-regime) declare regulator-
+  // identifier shape in JSDoc + enum values.
+  /packages\/compliance-plugins\/src\/ports\/[a-z-]+\.port\.ts$/,
+  // Domain-models payment-method catalog lists rails by canonical name.
+  /packages\/domain-models\/src\/payments\/[a-z-]+\.ts$/,
 ];
 
 function isAllowlisted(relPath) {

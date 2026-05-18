@@ -18,7 +18,13 @@ import {
   type TenantScopeArg,
 } from './shared';
 
-export type GepgCurrency = 'TZS' | 'USD';
+/**
+ * GePG is a Tanzania-only payment rail; TZS is the canonical settlement
+ * currency, USD is supported for cross-border invoices. The value is
+ * sourced from getJurisdictionalRules('TZ').defaultCurrency at the call
+ * site — this alias kept narrow for typed UI hooks only.
+ */
+export type GepgCurrency = string; // ISO 4217 code; runtime constrained to TZS|USD by GePG provider
 
 export interface GepgControlNumber {
   readonly controlNumber: string;

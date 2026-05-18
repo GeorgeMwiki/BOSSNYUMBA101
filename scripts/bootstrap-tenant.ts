@@ -18,7 +18,7 @@
  *     --name "Acme Properties" \
  *     --country TZ \
  *     --admin-email admin@acme.example \
- *     --admin-phone +255712345678 \
+ *     --admin-phone <e164-phone> \
  *     [--with-demo-data] [--slug acme] [--dry-run] [--json]
  *
  * Exit codes:

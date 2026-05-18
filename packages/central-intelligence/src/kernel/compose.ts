@@ -23,6 +23,79 @@
 
 import { createBrainKernel, type BrainKernel } from './kernel.js';
 import { createBrainCache } from './brain-cache.js';
+// Phase E.5.1 — orchestrator wire-up. The composition root builds the
+// 9-hook PreToolUse / PostToolUse / Stop chain from the same ports that
+// already flow through `composeSovereign(...)`. Callers that don't
+// supply the new orchestrator config keep the legacy 13-step pipeline
+// verbatim; callers that do get the Claude-Code-style main-loop as
+// the primary code path.
+import {
+  createHookChain,
+  type Hook,
+  type HookChain,
+} from './orchestrator/hook-chain.js';
+import {
+  createPiiScrubHook,
+  type PiiScrubberPort,
+} from './orchestrator/hooks/pre-tool-use/pii-scrub-hook.js';
+import {
+  createPermissionHook,
+  type ToolScopePort,
+} from './orchestrator/hooks/pre-tool-use/permission-hook.js';
+import {
+  createFourEyeHook,
+  type ToolApprovalPolicyPort,
+} from './orchestrator/hooks/pre-tool-use/four-eye-hook.js';
+import {
+  createToolDenylistHook,
+  type ToolDenylistPort,
+} from './orchestrator/hooks/pre-tool-use/tool-denylist-hook.js';
+import {
+  createRateLimitHook,
+  createInMemoryRateLimitCounter,
+  type RateLimitCounter,
+} from './orchestrator/hooks/pre-tool-use/rate-limit-hook.js';
+import {
+  createCostCircuitHook,
+  type CostCircuitPort,
+} from './orchestrator/hooks/pre-tool-use/cost-circuit-hook.js';
+import {
+  createSandboxDivertHook,
+  type SandboxResolverPort,
+} from './orchestrator/hooks/pre-tool-use/sandbox-divert-hook.js';
+import {
+  createAuditEmissionHook,
+  createInMemoryAuditEmissionSink,
+  type AuditEmissionSink,
+} from './orchestrator/hooks/post-tool-use/audit-emission-hook.js';
+import {
+  createLedgerSealHook,
+  createInMemoryLedgerSeal,
+  type LedgerSealPort,
+} from './orchestrator/hooks/stop/ledger-seal-hook.js';
+import {
+  createInMemoryPlanStore,
+  type PlanStore,
+} from './orchestrator/plan.js';
+import {
+  createInMemorySessionStore,
+  type SessionStore,
+} from './orchestrator/checkpoint.js';
+import {
+  createContextBudget,
+  createInMemoryToolSearch,
+  type ContextBudget,
+  type ToolSearch,
+} from './orchestrator/context-budget.js';
+import {
+  createInMemoryMemoryTool,
+  type MemoryTool,
+} from './orchestrator/memory-tool.js';
+import type {
+  Dispatcher,
+  LLMRouter,
+  OrchestratorDeps,
+} from './orchestrator/main-loop.js';
 import type { PersonaBrandingResolver } from './branding.js';
 import { createSensorRouter, type SensorRouter } from './sensor-failover.js';
 import {
@@ -235,6 +308,65 @@ export interface ComposeSovereignConfig {
    * Failures are swallowed — the brain-skin is a side-channel.
    */
   readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
+  /**
+   * Phase E.5.1 — orchestrator wire-up.
+   *
+   * When supplied, the kernel's `think()` / `thinkStream()` calls
+   * delegate to the Claude-Code-style main-loop orchestrator (the
+   * PreToolUse / PostToolUse / Stop hook substrate + Plan tree +
+   * Budget + Memory tool). The 9 built-in hooks fire in order:
+   *
+   *   1. `pii-scrub`        — transforms tool inputs to strip PII
+   *   2. `permission`       — denies on missing granted scopes
+   *   3. `four-eye-approval`— asks owner when an action requires sign-off
+   *   4. `tool-denylist`    — denies killswitched / banned tool names
+   *   5. `rate-limit`       — denies on per-thread/per-tool quota breach
+   *   6. `cost-circuit`     — denies on per-tenant USD ceiling breach
+   *   7. `sandbox-divert`   — routes shadow-mode calls to a sandbox
+   *   8. `audit-emission`   — emits an audit row per dispatch (PostToolUse)
+   *   9. `ledger-seal`      — seals the per-session chain at Stop
+   *
+   * Every port is optional — when omitted the composition root binds
+   * an in-memory / no-op stand-in so the kernel still constructs. The
+   * `router` + `dispatcher` are required (the orchestrator delegates
+   * sensor + tool-execution to them) and the composition root throws
+   * when the block is supplied without those two fields.
+   *
+   * Setting `useByDefault: false` (or env `KERNEL_USE_ORCHESTRATOR=false`)
+   * runs the legacy 13-step pipeline despite the wire — useful for an
+   * incident-time canary rollback.
+   */
+  readonly orchestrator?: {
+    /** Sensor call router — converts (system, tools, messages) → Decision. */
+    readonly router: LLMRouter;
+    /** Tool / response actuator — runs the Decision and returns DispatchResult. */
+    readonly dispatcher: Dispatcher;
+    /** Defaults to TRUE — flip to FALSE to revert per-instance. */
+    readonly useByDefault?: boolean;
+    // Hook ports — every port is optional; sensible defaults bind.
+    readonly piiScrubber?: PiiScrubberPort;
+    readonly toolScopes?: ToolScopePort;
+    readonly approvalPolicy?: ToolApprovalPolicyPort;
+    readonly toolDenylist?: {
+      readonly globalDenylist?: ReadonlyArray<string>;
+      readonly dynamic?: ToolDenylistPort;
+    };
+    readonly rateLimit?: {
+      readonly counter?: RateLimitCounter;
+      readonly maxCallsPerWindow?: number;
+      readonly windowMs?: number;
+    };
+    readonly costCircuit?: CostCircuitPort;
+    readonly sandboxResolver?: SandboxResolverPort;
+    readonly auditSink?: AuditEmissionSink;
+    readonly ledgerSeal?: LedgerSealPort;
+    // Orchestrator-side stores — all optional, in-memory defaults bind.
+    readonly planStore?: PlanStore;
+    readonly sessionStore?: SessionStore;
+    readonly contextBudget?: ContextBudget;
+    readonly toolSearch?: ToolSearch;
+    readonly memoryTool?: MemoryTool;
+  };
 }
 
 export interface SovereignBrain {
@@ -352,6 +484,25 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
     config.cognitiveLoadAccumulator ?? createCognitiveLoadAccumulator();
   (kernelDeps as any).affectiveAccumulator =
     config.affectiveAccumulator ?? createAffectiveAccumulator();
+
+  // Phase E.5.1 — orchestrator wire-up.
+  // When the caller supplies the orchestrator block, build the 9-hook
+  // chain + the 5 orchestrator-side stores and pass the assembled
+  // OrchestratorDeps into the kernel. The kernel's `think()` then
+  // delegates the whole turn to the main loop (unless useByDefault is
+  // explicitly false).
+  if (config.orchestrator) {
+    const orchestratorDeps = buildOrchestratorDeps(config.orchestrator);
+    const orchestratorWire: {
+      deps: OrchestratorDeps;
+      useByDefault?: boolean;
+    } = { deps: orchestratorDeps };
+    if (typeof config.orchestrator.useByDefault === 'boolean') {
+      orchestratorWire.useByDefault = config.orchestrator.useByDefault;
+    }
+    (kernelDeps as any).orchestrator = orchestratorWire;
+  }
+
   const kernel = createBrainKernel(kernelDeps);
 
   const approvalGateDeps: Parameters<typeof createApprovalGate>[0] = {
@@ -373,4 +524,152 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   });
 
   return { kernel, approvals, briefing, nudges, router };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase E.5.1 — orchestrator deps builder.
+//
+// Constructs the 9-hook chain + the 5 orchestrator-side stores from the
+// caller-supplied ports. Every port has a no-op / in-memory default so
+// callers that opt into the orchestrator without wiring all 9 hooks
+// (e.g. early development, tests) still get a working main loop.
+// ─────────────────────────────────────────────────────────────────────
+
+type OrchestratorConfig = NonNullable<ComposeSovereignConfig['orchestrator']>;
+
+function buildOrchestratorDeps(cfg: OrchestratorConfig): OrchestratorDeps {
+  const hookChain = buildHookChain(cfg);
+  const planStore: PlanStore = cfg.planStore ?? createInMemoryPlanStore();
+  const sessionStore: SessionStore =
+    cfg.sessionStore ?? createInMemorySessionStore();
+  const contextBudget: ContextBudget =
+    cfg.contextBudget ?? createContextBudget();
+  const toolSearch: ToolSearch =
+    cfg.toolSearch ?? createInMemoryToolSearch([]);
+  const memoryTool: MemoryTool =
+    cfg.memoryTool ?? createInMemoryMemoryTool();
+
+  return {
+    router: cfg.router,
+    toolSearch,
+    hookChain,
+    planStore,
+    sessionStore,
+    memoryTool,
+    contextBudget,
+    dispatcher: cfg.dispatcher,
+  };
+}
+
+/**
+ * Assemble the 9-hook PreToolUse / PostToolUse / Stop chain.
+ *
+ * Pre-tool-use (executed in declared order; first non-allow short-
+ * circuits the chain):
+ *   1. pii-scrub          (always wired — defaults to a no-op scrubber)
+ *   2. permission         (always wired — empty scope map is a no-op)
+ *   3. four-eye-approval  (always wired — default policy says nothing
+ *                          requires approval)
+ *   4. tool-denylist      (always wired — empty list is a no-op)
+ *   5. rate-limit         (always wired — in-memory counter + a high
+ *                          per-window ceiling so off-the-shelf use
+ *                          doesn't trip the gate)
+ *   6. cost-circuit       (always wired — default port reports $0
+ *                          projected so nothing trips the ceiling)
+ *   7. sandbox-divert     (always wired — default resolver returns null
+ *                          so production tooling executes)
+ *
+ * Post-tool-use:
+ *   8. audit-emission     (always wired — defaults to in-memory sink)
+ *
+ * Stop:
+ *   9. ledger-seal        (always wired — defaults to in-memory ledger)
+ */
+function buildHookChain(cfg: OrchestratorConfig): HookChain {
+  const hooks: Hook[] = [];
+
+  // 1. PII scrub — pure-text transform that strips PII from tool input.
+  const piiScrubber: PiiScrubberPort = cfg.piiScrubber ?? {
+    scrub(text: string): { scrubbed: string; hasPii: boolean } {
+      return { scrubbed: text, hasPii: false };
+    },
+  };
+  hooks.push(createPiiScrubHook({ scrubber: piiScrubber }));
+
+  // 2. Permission — denies when caller is missing a required scope.
+  const toolScopes: ToolScopePort = cfg.toolScopes ?? {
+    requiredScopes(): ReadonlyArray<string> {
+      return [];
+    },
+  };
+  hooks.push(createPermissionHook({ scopes: toolScopes }));
+
+  // 3. Four-eye approval — defaults to "no tool requires approval" so
+  // back-compat is preserved for callers who don't wire the policy port.
+  const approvalPolicy: ToolApprovalPolicyPort = cfg.approvalPolicy ?? {
+    requiresApproval(): boolean {
+      return false;
+    },
+    async approvalStatus(): Promise<
+      'none' | 'pending' | 'approved' | 'rejected'
+    > {
+      return 'approved';
+    },
+  };
+  hooks.push(createFourEyeHook({ policy: approvalPolicy }));
+
+  // 4. Tool denylist — globalDenylist + optional dynamic port.
+  const denylistDeps: {
+    globalDenylist?: ReadonlyArray<string>;
+    dynamic?: ToolDenylistPort;
+  } = {};
+  if (cfg.toolDenylist?.globalDenylist) {
+    denylistDeps.globalDenylist = cfg.toolDenylist.globalDenylist;
+  }
+  if (cfg.toolDenylist?.dynamic) {
+    denylistDeps.dynamic = cfg.toolDenylist.dynamic;
+  }
+  hooks.push(createToolDenylistHook(denylistDeps));
+
+  // 5. Rate limit — defaults to a permissive 10_000 / min ceiling so
+  // tests + back-compat callers never trip it.
+  const rateLimitCounter: RateLimitCounter =
+    cfg.rateLimit?.counter ?? createInMemoryRateLimitCounter();
+  hooks.push(
+    createRateLimitHook({
+      counter: rateLimitCounter,
+      maxCallsPerWindow: cfg.rateLimit?.maxCallsPerWindow ?? 10_000,
+      windowMs: cfg.rateLimit?.windowMs ?? 60_000,
+    }),
+  );
+
+  // 6. Cost circuit — defaults to a port that reports $0 / $∞ so the
+  // hook never trips when no breaker is wired.
+  const costCircuit: CostCircuitPort = cfg.costCircuit ?? {
+    async project(): Promise<{ projectedUsd: number; ceilingUsd: number }> {
+      return { projectedUsd: 0, ceilingUsd: Number.POSITIVE_INFINITY };
+    },
+  };
+  hooks.push(createCostCircuitHook({ breaker: costCircuit }));
+
+  // 7. Sandbox divert — defaults to "no divert" so production tooling
+  // executes verbatim.
+  const sandboxResolver: SandboxResolverPort = cfg.sandboxResolver ?? {
+    async resolve(): Promise<string | null> {
+      return null;
+    },
+  };
+  hooks.push(createSandboxDivertHook({ resolver: sandboxResolver }));
+
+  // 8. Audit emission (PostToolUse) — every successful or failed
+  // dispatch lays down a row.
+  const auditSink: AuditEmissionSink =
+    cfg.auditSink ?? createInMemoryAuditEmissionSink();
+  hooks.push(createAuditEmissionHook({ sink: auditSink }));
+
+  // 9. Ledger seal (Stop) — closes the per-session chain.
+  const ledger: LedgerSealPort = cfg.ledgerSeal ?? createInMemoryLedgerSeal();
+  hooks.push(createLedgerSealHook({ ledger }));
+
+  return createHookChain(hooks);
 }

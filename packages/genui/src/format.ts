@@ -1,20 +1,24 @@
 /**
  * Locale-aware formatters for KPI tiles + table cells.
  *
- * Property-management context: KES / TZS / USD as the supported
- * currencies. The user's preferred display currency lives in a
- * separate `currency_preferences` table (see MEMORY.md guidance);
- * the brain SHOULD pass values in the user's preferred currency
- * already, and the formatter only handles the locale rendering.
+ * Currency is typed as ISO-4217 string — the supported locale table
+ * below is a hint registry, not the authoritative list. Unknown codes
+ * fall back to the generic Intl.NumberFormat path (still renders
+ * cleanly via `${currency} ${value}`).
+ *
+ * The user's preferred display currency lives in a separate
+ * `currency_preferences` table (see MEMORY.md guidance); the brain
+ * SHOULD pass values in the user's preferred currency already, and
+ * the formatter only handles the locale rendering.
  */
 
-export type Currency = 'KES' | 'TZS' | 'USD';
+export type Currency = string;
 
-const LOCALES: Record<Currency, string> = {
+const LOCALES: Readonly<Record<string, string>> = Object.freeze({
   KES: 'en-KE',
   TZS: 'sw-TZ',
   USD: 'en-US',
-};
+});
 
 export function formatCurrency(value: number, currency: Currency): string {
   try {

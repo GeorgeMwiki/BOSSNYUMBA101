@@ -498,6 +498,187 @@ const KE_RULES: JurisdictionalRules = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
+// Nigeria
+// ---------------------------------------------------------------------------
+
+const NG_RULES: JurisdictionalRules = Object.freeze({
+  countryCode: 'NG',
+  countryName: 'Nigeria',
+  defaultCurrency: 'NGN',
+  defaultLocale: 'en-NG',
+  defaultTimezone: 'Africa/Lagos',
+  // af-south-1 (Cape Town) is currently the closest GA AWS region to
+  // West Africa; eu-west-1 (Ireland) remains an option when wider
+  // service parity is required. Revisit when AWS opens a West-Africa
+  // region (Lagos local-zone candidate per AWS 2025 roadmap).
+  awsRegionDefault: 'af-south-1',
+  e164CountryCode: '+234',
+  // Nigerian mobile NSN: 10 digits beginning [7|8|9][0|1] — covers the
+  // full GSM prefix space (070*, 071*, 080*, 081*, 090*, 091*) for MTN,
+  // Glo, Airtel, 9mobile (NCC Numbering Plan, May 2026). Mobile-number
+  // portability (2013) means prefixes don't reliably identify carrier.
+  // E.164 (+234 7XX/8XX/9XX XXX XXXX) OR national (07XX/08XX/09XX).
+  phoneRegex: /^(?:\+234|0)[789][01]\d{8}$/,
+  identityDocType: Object.freeze({
+    code: 'NIN',
+    displayName: 'National Identification Number (NIN)',
+    verifierMcpServer: '@bossnyumba/mcp-server-nin',
+    // NIMC NIN: 11 random digits + Verhoeff checksum (full validation
+    // happens in the MCP server; the regex only enforces shape).
+    // https://nimc.gov.ng/nin
+    numberRegex: /^\d{11}$/,
+  }),
+  taxAuthority: Object.freeze({
+    code: 'FIRS',
+    displayName: 'Federal Inland Revenue Service / Nigeria Revenue Service',
+    portalUrl: 'https://taxpromax.firs.gov.ng',
+    mriFilingFrequency: 'monthly',
+    // Finance Act 2020 raised VAT from 5% to 7.5% effective 01 Feb 2020.
+    vatRatePct: 7.5,
+    // Legacy FIRS TIN = 12 digits (numeric). The Nigeria Tax Act 2025
+    // introduced a new 13-digit NRS Tax ID effective 01 Jan 2026,
+    // derived from NIN (individuals) or CAC RC number (companies).
+    // Accept either era; the FIRS verify_tin MCP tool disambiguates.
+    taxpayerIdRegex: /^\d{12,13}$/,
+  }),
+  landRegistry: Object.freeze({
+    code: 'NGGIS',
+    displayName: 'National Geospatial Information System (federal aggregator over LASRRA / ABGIS / state deeds registries)',
+    mcpServer: '@bossnyumba/mcp-server-nggis',
+  }),
+  mobileMoney: Object.freeze([
+    // 2026 reach estimates per CBN Q1-2026 Mobile Money Operator
+    // returns + sector reporting (TechCabal, Innovation Village):
+    // OPay ~40 % daily-active share, PalmPay ~25 %, Moniepoint ~20 %.
+    Object.freeze({
+      provider: 'OPay',
+      mcpServer: '@bossnyumba/mcp-server-opay',
+      nationalReachPct: 40,
+    }),
+    Object.freeze({
+      provider: 'PalmPay',
+      mcpServer: '@bossnyumba/mcp-server-palmpay',
+      nationalReachPct: 25,
+    }),
+    Object.freeze({
+      provider: 'Moniepoint',
+      mcpServer: '@bossnyumba/mcp-server-moniepoint',
+      nationalReachPct: 20,
+    }),
+  ]),
+  bankRailProvider: Object.freeze({
+    code: 'NIBSS',
+    displayName: 'Nigeria Inter-Bank Settlement System (NIP / Instant Payment)',
+  }),
+  leaseRules: Object.freeze({
+    // Recovery of Premises Act (FCT Cap. 544 LFN 1990) + Lagos State
+    // Tenancy Law 2011 §13: yearly tenancies and above require six
+    // months written notice; monthly tenancies require one month;
+    // weekly tenancies one week. We surface the longest (yearly) as
+    // the conservative default; per-tenant overrides happen at the
+    // lease-domain layer.
+    minNoticeDays: Object.freeze({
+      quit: 180,
+      eviction: 180,
+      rentIncrease: 30,
+    }),
+    // No federal statutory cap; Lagos market norm is 6-12 months
+    // rent in advance + 1-2 months caution deposit. Lagos State
+    // Tenancy Law 2011 §4 prohibits demanding more than 6 months
+    // rent in advance from a sitting tenant.
+    maxSecurityDepositMonths: 6,
+    // After expiry of notice to quit, RPA + Lagos Tenancy Law §16
+    // require a further 7-day owner's-intention notice before suit.
+    statutoryGracePeriodDays: 7,
+    habitabilityStandardsRef: 'Recovery of Premises Act Cap. 544 LFN 1990 + Lagos State Tenancy Law No. 14 of 2011 §13',
+  }),
+  dataProtection: Object.freeze({
+    statuteName: 'Nigeria Data Protection Act 2023',
+    regulatorName: 'Nigeria Data Protection Commission (NDPC)',
+    // NDPA 2023 §40(2): controllers must notify NDPC within 72 hours of
+    // becoming aware of a high-risk personal-data breach.
+    breachNotifyHours: 72,
+    // NDPA does not impose a blanket localisation requirement; cross-
+    // border transfer is permitted on the §41 grounds (adequacy /
+    // SCC-equivalent / data-subject consent). Sector-specific rules
+    // (CBN, NCC) impose narrower localisation for fintech and telecoms
+    // metadata, but those live in the connector layer, not here.
+    dataLocalizationRequired: false,
+  }),
+  // ---- Phase E.0 fields ----
+  workingWeek: Object.freeze({ start: 'mon', end: 'fri' }),
+  // Public Holidays Act Cap. P40 LFN 2004 — fixed-date statutory
+  // observances. Movable Islamic holidays (Eid al-Fitr, Eid al-Adha,
+  // Eid el-Maulud) and Christian movable feasts (Good Friday, Easter
+  // Monday) require Hijri lookup + Easter computus and are tracked
+  // for Phase E.5.5. Note: 29-May was the previous Democracy Day
+  // (1999-2018); since 2019 (Order signed by President Buhari, 6 Jun
+  // 2019) Democracy Day moved to 12 June to honour the annulled 1993
+  // election — 29-May is NO LONGER a federal public holiday.
+  publicHolidays: (year: number) =>
+    Object.freeze([
+      Object.freeze({ date: `${year}-01-01`, name: "New Year's Day" }),
+      Object.freeze({ date: `${year}-05-01`, name: "Workers' Day" }),
+      Object.freeze({ date: `${year}-06-12`, name: 'Democracy Day' }),
+      Object.freeze({ date: `${year}-10-01`, name: 'Independence Day' }),
+      Object.freeze({ date: `${year}-12-25`, name: 'Christmas Day' }),
+      Object.freeze({ date: `${year}-12-26`, name: 'Boxing Day' }),
+    ]),
+  // Evidence Act 2011 §84 grants electronic signatures admissibility
+  // and presumptive equivalence to wet signatures provided the
+  // reliability tests in §84(2) hold. No bespoke statute code in our
+  // enum yet; reuse 'OTHER' with a descriptive displayName.
+  eSignatureRegime: Object.freeze({
+    code: 'OTHER',
+    displayName: 'Evidence Act 2011 §84 (Nigeria)',
+    legallyBinding: true,
+  }),
+  // ISO-4217 NGN = 2 decimal places (kobo). The kobo is rarely
+  // circulated as coin but remains legal tender for accounting.
+  currencyMinorUnits: 2,
+  addressFormat: Object.freeze({
+    schema: 'ng',
+    postalCodeRequired: false,
+    // NIPOST 6-digit postcode (first digit = NIPOST region 1-9; lowest
+    // observed code is 100001 — Ikeja HO Lagos). Adoption is patchy
+    // outside the federal capital and Lagos so the field is optional.
+    postalCodeRegex: /^[1-9]\d{5}$/,
+  }),
+  kycTier: Object.freeze({
+    baseTier: 'simplified',
+    // CBN AML/CFT/CPF Regulations 2022 + NDIC 3-tier KYC framework:
+    // Tier 1 (simplified) up to ~USD 500/mo; Tier 2 (standard) up to
+    // ~USD 5k/mo; Tier 3 (enhanced) above that; PEP screening above
+    // ~USD 50k/mo per Financial Action Task Force (FATF) guidance.
+    // Values in USD cents — looked up at runtime and converted to
+    // NGN at the prevailing CBN reference rate.
+    thresholdsUsdCents: Object.freeze([
+      Object.freeze({ above: 50_000, tier: 'standard' as const }),
+      Object.freeze({ above: 500_000, tier: 'enhanced' as const }),
+      Object.freeze({ above: 5_000_000, tier: 'pep' as const }),
+    ]),
+  }),
+  // No federal rent-control regime. Lagos State Tenancy Law 2011 §37
+  // caps rent increases to "reasonable" and lets tenants challenge
+  // arbitrary hikes in the Magistrate Court (tribunal route for
+  // commercial). Flag inactive (no statutory percentage cap) and
+  // record the soft-cap rationale for downstream UI surfaces.
+  rentControlRegime: Object.freeze({
+    active: false,
+    maxAnnualIncreasePct: null,
+    notes: 'No federal rent control. Lagos State Tenancy Law 2011 §37 caps increases to "reasonable" — disputes go to the Magistrate Court (or High Court for rents above NGN 10M).',
+  }),
+  // FIRS VAT registration threshold: NGN 25 million annual turnover
+  // (Finance Act 2019 §15) — approx USD 16k at mid-2026 CBN window
+  // rate (NGN ~1,550/USD). Stored as USD cents for cross-country
+  // comparability.
+  vatRegistrationThresholdUsdCents: 1_600_000,
+  paymentDueAdjustment: 'first-business-day-after',
+  // Nigerian NSN is always 10 digits after +234 (NCC Numbering Plan).
+  phoneNumberPlanLength: Object.freeze({ min: 10, max: 10 }),
+});
+
+// ---------------------------------------------------------------------------
 // Registry + lookup
 // ---------------------------------------------------------------------------
 
@@ -505,6 +686,7 @@ const RULES_BY_COUNTRY: Readonly<Record<string, JurisdictionalRules>> =
   Object.freeze({
     TZ: TZ_RULES,
     KE: KE_RULES,
+    NG: NG_RULES,
   });
 
 /**

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   think,
+  thinkExtended,
   type OrchestratorDeps,
   type OrchestratorRequest,
   type LLMRouter,
@@ -224,5 +225,93 @@ describe('main-loop think()', () => {
     await think(makeReq(), deps);
     expect(ledger.seals.length).toBe(1);
     expect(ledger.seals[0]?.threadId).toBe('thread_test');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Gap-5 — background sub-MD spawn: SubagentStart fires, parent
+  // continues, SubagentStop fires asynchronously (modeled here as
+  // back-to-back invocations because the in-memory dispatcher returns
+  // spawn_ack synchronously).
+  // ─────────────────────────────────────────────────────────────────
+  it('background sub-MD spawn fires SubagentStart and SubagentStop', async () => {
+    const dispatcher = recordingDispatcher();
+    let startedCount = 0;
+    let stoppedCount = 0;
+    const startHook: Hook = {
+      name: 'sub-start',
+      stage: 'subagent-start',
+      async fn() {
+        startedCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const stopHook: Hook = {
+      name: 'sub-stop',
+      stage: 'subagent-stop',
+      async fn() {
+        stoppedCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const router = fixedRouter([
+      {
+        kind: 'spawn_sub_md',
+        spawn: {
+          subMdId: 'sm_bg',
+          scope: {
+            kind: 'tenant',
+            tenantId: 't_1',
+            actorUserId: 'u_1',
+            roles: ['owner'],
+            personaId: 'p_1',
+          },
+          initialInput: { task: 'check-arrears' },
+          persona: 'arrears',
+          background: true,
+        },
+      },
+      { kind: 'respond_to_owner', text: 'parent continued' },
+    ]);
+    const deps = makeDeps(router, dispatcher, [startHook, stopHook]);
+    const out = await think(makeReq(), deps);
+    expect(startedCount).toBe(1);
+    expect(stoppedCount).toBe(1);
+    // The parent did continue past the spawn and answered.
+    expect(out.kind).toBe('answer');
+    if (out.kind === 'answer') expect(out.text).toBe('parent continued');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Plan-mode short-circuit — destructive tool is never dispatched.
+  // ─────────────────────────────────────────────────────────────────
+  it('plan-mode short-circuits a destructive tool', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([
+      {
+        kind: 'tool_call',
+        call: {
+          toolName: 'tenant.delete',
+          input: { id: 't_1' },
+          callId: 'cdel',
+        },
+      },
+      { kind: 'respond_to_owner', text: 'never reached' },
+    ]);
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      toolRiskTier: () => 'destroy',
+    };
+    const req: OrchestratorRequest = { ...makeReq(), permissionMode: 'plan' };
+    const out = await thinkExtended(req, deps);
+    expect(out.kind).toBe('plan-preview');
+    if (out.kind === 'plan-preview') {
+      expect(out.preview).toContain('tenant.delete');
+    }
+    // Crucially, the tool MUST NOT have been dispatched.
+    expect(
+      dispatcher.calls.find(
+        (d) => d.kind === 'tool_call' && d.call.toolName === 'tenant.delete',
+      ),
+    ).toBeUndefined();
   });
 });

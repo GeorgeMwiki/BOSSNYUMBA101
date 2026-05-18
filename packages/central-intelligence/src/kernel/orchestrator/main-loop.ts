@@ -2,18 +2,30 @@
  * Orchestrator main loop — Claude-Code-level while-loop that replaces
  * the kernel's flat 13-step pipeline.
  *
+ *   await hookChain.runSessionStart(...)
+ *   await hookChain.runUserPromptSubmit(...)
  *   while (budget.remaining() && !plan.isComplete()) {
  *     const tools    = await toolSearch.searchRelevant(plan.currentGoal(), 8)
  *     const memory   = await memoryTool.recall({ scope })
+ *     await hookChain.runPreCompact(...)
  *     const recent   = await contextBudget.compactIfOver(session.transcript, 0.8)
+ *     await hookChain.runPostCompact(...)
  *     const decision = await router.call({ system, tools, messages: recent })
- *     const pre      = await hookChain.runPreToolUse(decision, ctx)
+ *     // Permission-mode short-circuit (plan / bypass / dont-ask)
+ *     const pmEval   = await evaluatePermissionMode(...)
+ *     const preChain = await hookChain.runPreToolUse(decision, ctx)
  *     // deny → record rejection + continue
  *     // ask-owner → return askForApproval()
  *     // sandbox  → return runSpeculative()
- *     // transform → swap the decision and proceed
+ *     // transform / updated-input → swap the decision and proceed
+ *     // additional-context → fold into next router.call
+ *     // defer → return ack-defer
+ *     // stop → return immediately
  *     const result   = await dispatch(decision, deps)
  *     await hookChain.runPostToolUse(decision, result, ctx)
+ *     // For spawn_sub_md decisions:
+ *     await hookChain.runSubagentStart(...)
+ *     await hookChain.runSubagentStop(...)
  *     await sessionStore.checkpoint(session, decision, result, plan, budget)
  *     plan = plan.advance({ goalId, newStatus: 'complete' })
  *     budget = budget.consume(result)
@@ -29,13 +41,26 @@
 
 import type { ScopeContext, Citation, Artifact } from '../../types.js';
 import type { AwarenessTier } from '../kernel-types.js';
+import type { RiskTier } from '../risk-tier.js';
 import { Budget, type BudgetLimits } from './budget.js';
 import type { Decision, DispatchResult } from './decision.js';
-import type { HookChain, HookContext, HookResult } from './hook-chain.js';
+import { isBackgroundSpawn } from './decision.js';
+import type {
+  HookChain,
+  HookContext,
+  HookResult,
+  ChatMessage,
+  PreToolUseChainResult,
+} from './hook-chain.js';
 import type { Plan, PlanStore } from './plan.js';
 import type { SessionStore, Session } from './checkpoint.js';
 import type { MemoryTool } from './memory-tool.js';
 import type { ContextBudget, ToolSearch, ToolDescriptor } from './context-budget.js';
+import {
+  evaluatePermissionMode,
+  renderPlanModePreview,
+  type PermissionMode,
+} from './permission-mode.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Public request / response shapes
@@ -49,8 +74,17 @@ export interface OrchestratorRequest {
   readonly persona: string;
   readonly grantedScopes?: ReadonlyArray<string>;
   readonly budget?: Partial<BudgetLimits>;
+  /** Optional Claude-Code-style permission mode. Defaults to `default`. */
+  readonly permissionMode?: PermissionMode;
+  /** Optional tenant-scoped permission-mode override. */
+  readonly tenantPermissionModeOverride?: PermissionMode;
 }
 
+/**
+ * Phase-E.1 legacy response variants. Kernel.ts and other callers that
+ * pattern-match exhaustively on this union still compile after Phase E.6
+ * extensions because the new variants live in `OrchestratorResponseExtended`.
+ */
 export type OrchestratorResponse =
   | {
       readonly kind: 'answer';
@@ -80,6 +114,31 @@ export type OrchestratorResponse =
       readonly partialText: string;
     };
 
+/**
+ * Phase-E.6 extensions to the orchestrator response surface. Returned
+ * only when the caller opts in via `think()` with a configuration that
+ * surfaces defer / stop / plan-preview outcomes. Legacy callers receive
+ * a narrowed `OrchestratorResponse` via `narrowToLegacyResponse`.
+ */
+export type OrchestratorResponseExtended =
+  | OrchestratorResponse
+  | {
+      readonly kind: 'ack-defer';
+      readonly resumeAfterMs: number;
+      readonly reason: string;
+      readonly pendingDecision: Decision;
+    }
+  | {
+      readonly kind: 'stopped';
+      readonly reason: string;
+      readonly partialText: string;
+    }
+  | {
+      readonly kind: 'plan-preview';
+      readonly preview: string;
+      readonly pendingDecision: Decision;
+    };
+
 // ─────────────────────────────────────────────────────────────────────
 // LLM router port — the orchestrator does NOT couple to a specific
 // SDK. Composition root binds either the Anthropic adapter or the
@@ -89,7 +148,7 @@ export type OrchestratorResponse =
 export interface LLMRouterCall {
   readonly system: string;
   readonly tools: ReadonlyArray<ToolDescriptor>;
-  readonly messages: ReadonlyArray<{ role: 'user' | 'assistant' | 'tool'; content: string }>;
+  readonly messages: ReadonlyArray<{ role: 'user' | 'assistant' | 'tool' | 'system'; content: string }>;
 }
 
 export interface LLMRouter {
@@ -117,6 +176,13 @@ export interface OrchestratorDeps {
   readonly memoryTool: MemoryTool;
   readonly contextBudget: ContextBudget;
   readonly dispatcher: Dispatcher;
+  /**
+   * Optional risk-tier resolver. The permission-mode evaluator needs the
+   * tier of a tool to decide allow/ask/deny/plan-preview. When omitted,
+   * the orchestrator defaults to `mutate` for any tool_call — safe
+   * conservative fallback.
+   */
+  readonly toolRiskTier?: (toolName: string) => RiskTier;
   readonly clock?: () => number;
   readonly logger?: {
     info(msg: string, meta?: Record<string, unknown>): void;
@@ -128,15 +194,75 @@ export interface OrchestratorDeps {
 // Public entry point — the orchestrator's `think()`.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Narrow a Phase-E.6 extended response down to the legacy
+ * `OrchestratorResponse` shape. Callers that pattern-match on the
+ * five-variant union (kernel.ts, the streaming bridge) can use this
+ * to fold the three new variants onto compatible legacy shapes:
+ *
+ *   - `ack-defer`    → `ack-schedule` (defer is a short-term schedule)
+ *   - `stopped`      → `budget-exhausted` (axis=`wall-ms`, partialText=reason)
+ *   - `plan-preview` → `answer` (the preview IS the answer the MD returns)
+ */
+export function narrowToLegacyResponse(
+  response: OrchestratorResponseExtended,
+): OrchestratorResponse {
+  switch (response.kind) {
+    case 'ack-defer':
+      return {
+        kind: 'ack-schedule',
+        resumeToken: `defer:${response.resumeAfterMs}`,
+      };
+    case 'stopped':
+      return {
+        kind: 'budget-exhausted',
+        axis: 'wall-ms',
+        partialText: response.partialText || response.reason,
+      };
+    case 'plan-preview':
+      return {
+        kind: 'answer',
+        text: response.preview,
+        turnsUsed: 0,
+        citations: [],
+        artifacts: [],
+      };
+    default:
+      return response;
+  }
+}
+
+/**
+ * Legacy entry point — returns the five-variant `OrchestratorResponse`.
+ * Phase-E.6 extension variants are automatically narrowed via
+ * `narrowToLegacyResponse`. Callers that need the full extended surface
+ * (defer / stop / plan-preview as first-class outcomes) should call
+ * `thinkExtended()` instead.
+ */
 export async function think(
   req: OrchestratorRequest,
   deps: OrchestratorDeps,
 ): Promise<OrchestratorResponse> {
+  const ext = await thinkExtended(req, deps);
+  return narrowToLegacyResponse(ext);
+}
+
+/**
+ * Extended entry point — returns the full eight-variant
+ * `OrchestratorResponseExtended` shape. Used by Phase-E.6+ surfaces
+ * that need to distinguish `ack-defer`, `stopped`, and `plan-preview`
+ * from the legacy variants.
+ */
+export async function thinkExtended(
+  req: OrchestratorRequest,
+  deps: OrchestratorDeps,
+): Promise<OrchestratorResponseExtended> {
   const clock = deps.clock ?? Date.now;
   const session = await deps.sessionStore.resumeOrCreate(req.threadId);
   let plan = await deps.planStore.load(req.threadId);
   let budget = Budget.of(req.budget ?? {}, clock);
   let lastText = '';
+  const pendingContextInjections: ChatMessage[] = [];
 
   const ctx: HookContext = {
     threadId: req.threadId,
@@ -147,6 +273,31 @@ export async function think(
     ...(req.grantedScopes ? { grantedScopes: req.grantedScopes } : {}),
   };
 
+  // session-start — fires once. A registered hook can seed system
+  // context, set permission mode, etc. Any non-allow outcome short
+  // circuits the whole turn.
+  const sessionStartResult = await deps.hookChain.runSessionStart(
+    {
+      threadId: req.threadId,
+      tier: req.tier,
+      resumed: session.latestCheckpoint !== null,
+    },
+    ctx,
+  );
+  const sessionStartTerminal = terminalFromHook(sessionStartResult);
+  if (sessionStartTerminal) return sessionStartTerminal;
+
+  // user-prompt-submit — fired once for the inbound user message. Hooks
+  // can scrub PII or reject hostile prompts here.
+  const promptResult = await deps.hookChain.runUserPromptSubmit(
+    { text: req.userMessage },
+    ctx,
+  );
+  const promptTerminal = terminalFromHook(promptResult);
+  if (promptTerminal) return promptTerminal;
+
+  const permissionMode: PermissionMode = req.permissionMode ?? 'default';
+
   while (budget.remaining() && !plan.isComplete()) {
     const goal = plan.currentGoal();
     const tools = await deps.toolSearch.searchRelevant(
@@ -154,26 +305,111 @@ export async function think(
       8,
     );
     const memory = await deps.memoryTool.recall({ scope: req.scope });
+
+    // pre-compact — runs before the context window is folded. A hook
+    // can deny / defer to skip compaction altogether.
+    const originalTokens = approxTokens(session.transcript);
+    const preCompact = await deps.hookChain.runPreCompact(
+      {
+        currentTokens: originalTokens,
+        windowTokens: 200_000,
+        ratio: 0.8,
+      },
+      ctx,
+    );
+    const preCompactTerminal = terminalFromHook(preCompact);
+    if (preCompactTerminal) return preCompactTerminal;
+
     const compaction = await deps.contextBudget.compactIfOver(
       session.transcript,
       0.8,
     );
 
+    // post-compact — audit what was dropped.
+    if (compaction.compacted) {
+      const postCompact = await deps.hookChain.runPostCompact(
+        {
+          originalTokens: compaction.originalTokens,
+          finalTokens: compaction.finalTokens,
+          droppedTurnCount: Math.max(
+            session.transcript.length - compaction.turns.length,
+            0,
+          ),
+        },
+        ctx,
+      );
+      const postCompactTerminal = terminalFromHook(postCompact);
+      if (postCompactTerminal) return postCompactTerminal;
+    }
+
+    // Fold any pending additional-context injections from previous
+    // iterations into the next router.call payload.
+    const messages = [
+      ...pendingContextInjections.map((m) => ({ role: m.role, content: m.content })),
+      ...compaction.turns.map((t) => ({ role: t.role, content: t.content })),
+    ];
+    pendingContextInjections.length = 0;
+
     const decision = await deps.router.call({
       system: assembleSystem(req.persona, plan, memory.totalBytes),
       tools,
-      messages: compaction.turns.map((t) => ({ role: t.role, content: t.content })),
+      messages,
     });
 
-    const pre = await deps.hookChain.runPreToolUse(decision, ctx);
-    const effectiveDecision = await resolvePreHook(
-      pre,
-      decision,
-      plan,
-      goal?.id,
-    );
-    if (effectiveDecision === 'deny') {
-      plan = plan;
+    // Permission-mode pre-check for tool_call decisions. Plan mode
+    // short-circuits BEFORE the hook chain runs so destructive tools
+    // never even reach the dispatcher.
+    if (decision.kind === 'tool_call') {
+      const riskTier = (deps.toolRiskTier ?? defaultRiskTier)(
+        decision.call.toolName,
+      );
+      const pmEval = evaluatePermissionMode(
+        {
+          currentMode: permissionMode,
+          ...(req.tenantPermissionModeOverride
+            ? { tenantOverride: req.tenantPermissionModeOverride }
+            : {}),
+          callerScopes: req.grantedScopes ?? [],
+        },
+        { riskTier },
+      );
+      if (pmEval.decision === 'plan-preview') {
+        const preview = renderPlanModePreview({
+          toolName: decision.call.toolName,
+          inputs: decision.call.input,
+          riskTier,
+        });
+        return {
+          kind: 'plan-preview',
+          preview,
+          pendingDecision: decision,
+        };
+      }
+      if (pmEval.decision === 'deny') {
+        budget = budget.consume({
+          kind: 'tool_error',
+          callId: decision.call.callId,
+          message: pmEval.reason ?? 'permission-mode deny',
+          latencyMs: 0,
+        });
+        continue;
+      }
+      // `ask` falls through to the hook chain, which may also turn this
+      // into an ask-owner via the four-eye hook.
+      // `allow` falls through too — hooks still run for audit.
+    }
+
+    const preChain: PreToolUseChainResult =
+      await deps.hookChain.runPreToolUse(decision, ctx);
+
+    // Fold any chain-level additional-context emissions into the next
+    // iteration's router.call payload.
+    if (preChain.contextInjections.length > 0) {
+      pendingContextInjections.push(...preChain.contextInjections);
+    }
+
+    const preOutcome = preChain.outcome;
+    if (preOutcome.kind === 'deny') {
       budget = budget.consume({
         kind: 'tool_error',
         callId: 'denied',
@@ -182,25 +418,86 @@ export async function think(
       });
       continue;
     }
-    if (effectiveDecision === 'ask') {
+    if (preOutcome.kind === 'ask-owner') {
       return {
         kind: 'ask-approval',
-        prompt: (pre as HookResult & { kind: 'ask-owner' }).prompt,
-        channel: (pre as HookResult & { kind: 'ask-owner' }).channel,
+        prompt: preOutcome.prompt,
+        channel: preOutcome.channel,
         pendingDecision: decision,
       };
     }
-    if (effectiveDecision === 'sandbox') {
+    if (preOutcome.kind === 'sandbox') {
       return {
         kind: 'speculative',
-        sandboxId: (pre as HookResult & { kind: 'sandbox' }).sandboxId,
+        sandboxId: preOutcome.sandboxId,
         pendingDecision: decision,
+      };
+    }
+    if (preOutcome.kind === 'defer') {
+      return {
+        kind: 'ack-defer',
+        resumeAfterMs: preOutcome.resumeAfterMs,
+        reason: preOutcome.reason,
+        pendingDecision: decision,
+      };
+    }
+    if (preOutcome.kind === 'stop') {
+      await deps.hookChain.runStop(
+        {
+          threadId: req.threadId,
+          turnCount: budget.snapshot().usage.turns,
+          finalText: lastText,
+          exhaustedAxis: null,
+        },
+        ctx,
+      );
+      return {
+        kind: 'stopped',
+        reason: preOutcome.reason,
+        partialText: lastText,
       };
     }
 
+    // Resolve the Decision that the dispatcher actually runs. `transform`
+    // and `updated-input` both rewrite — the chain has already folded
+    // `updated-input` into `effectiveDecision`.
     const toRun: Decision =
-      pre.kind === 'transform' ? pre.replacement : decision;
+      preOutcome.kind === 'transform'
+        ? preOutcome.replacement
+        : preChain.effectiveDecision ?? decision;
+
     const result = await deps.dispatcher.dispatch(toRun, ctx);
+
+    // subagent lifecycle hooks for spawn_sub_md decisions.
+    if (toRun.kind === 'spawn_sub_md') {
+      const subStart = await deps.hookChain.runSubagentStart(
+        {
+          subMdId: toRun.spawn.subMdId,
+          persona: toRun.spawn.persona ?? req.persona,
+          parentThreadId: req.threadId,
+        },
+        ctx,
+      );
+      const subStartTerminal = terminalFromHook(subStart);
+      if (subStartTerminal) return subStartTerminal;
+
+      // Background spawns fire-and-forget: the parent continues
+      // immediately; the stop hook fires when the child completes
+      // (simulated synchronously here since the in-memory dispatcher
+      // returns a spawn_ack synchronously).
+      const subStop = await deps.hookChain.runSubagentStop(
+        {
+          subMdId: toRun.spawn.subMdId,
+          persona: toRun.spawn.persona ?? req.persona,
+          parentThreadId: req.threadId,
+          outcome: result,
+        },
+        ctx,
+      );
+      const subStopTerminal = terminalFromHook(subStop);
+      if (subStopTerminal) return subStopTerminal;
+    }
+
     await deps.hookChain.runPostToolUse(toRun, result, ctx);
     await deps.sessionStore.checkpoint(
       session,
@@ -224,7 +521,7 @@ export async function think(
         {
           threadId: req.threadId,
           turnCount: budget.snapshot().usage.turns,
-          finalText: toRun.kind === 'respond_to_owner' ? toRun.text : toRun.text,
+          finalText: toRun.text,
           exhaustedAxis: null,
         },
         ctx,
@@ -242,6 +539,10 @@ export async function think(
         kind: 'ack-schedule',
         resumeToken: toRun.wake.resumeToken ?? toRun.wake.wakeAt,
       };
+    }
+    // For spawn_sub_md fire-and-forget, the parent continues looping.
+    if (toRun.kind === 'spawn_sub_md' && isBackgroundSpawn(toRun.spawn)) {
+      continue;
     }
   }
 
@@ -277,25 +578,49 @@ export async function think(
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────
 
-type PreOutcome = 'allow' | 'transform' | 'deny' | 'ask' | 'sandbox';
-
-async function resolvePreHook(
+/**
+ * Map a hook-stage non-allow outcome onto an OrchestratorResponse. Used
+ * by the lifecycle stages (session-start, user-prompt-submit,
+ * pre-compact, post-compact, subagent-*) which all return a raw
+ * HookResult. Returns `null` when the outcome is `allow` or a
+ * pre-tool-use-only variant that doesn't apply to lifecycle stages.
+ */
+function terminalFromHook(
   result: HookResult,
-  _decision: Decision,
-  _plan: Plan,
-  _goalId: string | undefined,
-): Promise<PreOutcome> {
+): OrchestratorResponseExtended | null {
   switch (result.kind) {
     case 'allow':
-      return 'allow';
+    case 'updated-input':
+    case 'additional-context':
     case 'transform':
-      return 'transform';
-    case 'deny':
-      return 'deny';
-    case 'ask-owner':
-      return 'ask';
     case 'sandbox':
-      return 'sandbox';
+      return null;
+    case 'deny':
+      return {
+        kind: 'stopped',
+        reason: `denied: ${result.reason}`,
+        partialText: '',
+      };
+    case 'ask-owner':
+      return {
+        kind: 'ask-approval',
+        prompt: result.prompt,
+        channel: result.channel,
+        pendingDecision: { kind: 'final', text: '' },
+      };
+    case 'defer':
+      return {
+        kind: 'ack-defer',
+        resumeAfterMs: result.resumeAfterMs,
+        reason: result.reason,
+        pendingDecision: { kind: 'final', text: '' },
+      };
+    case 'stop':
+      return {
+        kind: 'stopped',
+        reason: result.reason,
+        partialText: '',
+      };
   }
 }
 
@@ -306,6 +631,27 @@ function assembleSystem(persona: string, plan: Plan, memoryBytes: number): strin
     goal ? `Current goal: ${goal.description}` : 'No active goal.',
     `Memory bytes loaded: ${memoryBytes}`,
   ].join('\n');
+}
+
+function approxTokens(
+  transcript: ReadonlyArray<{ content: string }>,
+): number {
+  // Cheap heuristic so the pre-compact hook gets a non-zero signal
+  // without importing the full token counter. Real counts come from
+  // contextBudget.compactIfOver.
+  let words = 0;
+  for (const t of transcript) {
+    if (!t.content) continue;
+    words += t.content.trim().split(/\s+/).length;
+  }
+  return Math.ceil(words / 0.75);
+}
+
+function defaultRiskTier(_toolName: string): RiskTier {
+  // Conservative fallback — assume the tool mutates state. The plan-mode
+  // short-circuit will preview rather than execute, which is the safe
+  // behaviour for an unknown tool.
+  return 'mutate';
 }
 
 // Re-export the Session type for callers wiring custom dispatchers.

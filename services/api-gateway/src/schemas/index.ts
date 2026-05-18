@@ -12,7 +12,7 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
- * Phone number in E.164 format (e.g., +255700000000)
+ * Phone number in E.164 format.
  *
  * Generic — accepts any well-formed international number. Use this for
  * any user-input boundary that is NOT explicitly scoped to a single
@@ -22,7 +22,7 @@ import { z } from 'zod';
  */
 export const phoneNumberSchema = z
   .string()
-  .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format. Use E.164 format (e.g., +255700000000)');
+  .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format. Use E.164 (leading +, 8-15 digits).');
 
 /**
  * Strict E.164 — leading `+` required, no national-format fallback.
@@ -34,7 +34,7 @@ export const phoneNumberSchema = z
  */
 export const e164PhoneSchema = z
   .string()
-  .regex(/^\+[1-9]\d{6,14}$/, 'Invalid phone number. Use E.164 format (e.g. +255712345678)');
+  .regex(/^\+[1-9]\d{6,14}$/, 'Invalid phone number. Use full E.164 (leading +, 7-15 digits).');
 
 /**
  * @deprecated TZ-only — kept for backwards compatibility with any

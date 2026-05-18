@@ -4,7 +4,7 @@
  * Usage:
  *   import { getCountryPlugin, availableCountries } from '@bossnyumba/compliance-plugins';
  *   const tz = getCountryPlugin('TZ');
- *   tz.normalizePhone('0712345678'); // '+255712345678'
+ *   tz.normalizePhone('0712345678'); // returns the canonical E.164 form for TZ
  *
  * The registry is pre-populated with every bundled plugin at module load time.
  * Callers can register additional / replacement plugins via the exported

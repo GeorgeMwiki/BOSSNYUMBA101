@@ -32,7 +32,12 @@
  *   leave the port unset; the registry then falls back to the
  *   `notYetWiredNidaPort` / `notYetWiredEardhiPort` stubs so the brain
  *   still shapes cleanly with a deterministic `gateway-error` refusal.
+ *
+ *   NIDA literals here are descriptive port-composition (env-var names,
+ *   diagnostic flags, JSDoc) — not flowing logic. The connector adapter
+ *   itself is allowlisted (packages/connectors/src/adapters/nida-adapter.ts).
  */
+/* eslint-disable bossnyumba/no-jurisdictional-literal -- NIDA port-composition wiring (env-var names + diagnostics, Case 3) */
 
 import {
   createEardhiAdapter,

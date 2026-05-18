@@ -64,9 +64,14 @@ export interface Money {
 }
 
 /**
- * Supported currencies (ISO 4217).
+ * @deprecated Use `CurrencyCode` from `./types` instead — it is typed
+ * as `string` so all 140+ ISO-4217 codes are accepted, which is the
+ * Phase-E "built for the world" stance. This 4-value union pinned the
+ * platform to KES/USD/EUR/GBP and blocked TZS / NGN / RWF / UGX etc.
+ *
+ * Kept as an alias for backwards compatibility with legacy imports.
  */
-export type Currency = 'KES' | 'USD' | 'EUR' | 'GBP';
+export type Currency = string;
 
 /**
  * Date range for time-bounded entities.

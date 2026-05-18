@@ -15,6 +15,12 @@ import {
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { getJurisdictionalRules } from '@bossnyumba/domain-models';
+
+// Platform-default data-residency region — sourced from the TZ pilot
+// jurisdictional rules (the first launch country). Per-tenant region
+// overrides this default at admin-console tenant-edit time.
+const PLATFORM_DEFAULT_REGION = getJurisdictionalRules('TZ').awsRegionDefault;
 
 // ============================================================================
 // Enums
@@ -101,11 +107,13 @@ export const tenants = pgTable(
     country: text('country'),
     /**
      * Data-residency region (A2b-3 wire #7). Drives KMS-key selection
-     * and cross-region SELECT short-circuits. Default 'eu-west-1'
-     * matches the platform-wide AWS_REGION default. Migration 0158
-     * adds the column + index; admin console updates this per tenant.
+     * and cross-region SELECT short-circuits. The DB default matches the
+     * platform-wide AWS_REGION env-default; the per-tenant region is
+     * sourced from jurisdictional-rules.awsRegionDefault at tenant
+     * creation. Migration 0158 adds the column + index; admin console
+     * updates this per tenant.
      */
-    region: text('region').notNull().default('eu-west-1'),
+    region: text('region').notNull().default(PLATFORM_DEFAULT_REGION),
 
     // Settings
     settings: jsonb('settings').default({}),

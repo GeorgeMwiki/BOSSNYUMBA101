@@ -106,7 +106,7 @@ export interface ScheduleEvent {
   readonly endAt: ISOTimestamp;
   readonly durationMinutes: number;
   readonly attendees: readonly EventAttendee[];
-  readonly timezone: string; // IANA timezone, e.g. Africa/Nairobi
+  readonly timezone: string; // IANA timezone — sourced from getJurisdictionalRules(tenant.country).defaultTimezone
   readonly location: string | null;
   readonly propertyId: PropertyId | null;
   readonly unitId: UnitId | null;

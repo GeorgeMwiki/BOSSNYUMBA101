@@ -39,7 +39,15 @@ export {
   isLowerBetterMetric,
   type SubMdSloInput,
 } from './slo/sub-md-slo.js';
-export { evaluateSlo, type SloMonitorOptions } from './slo/slo-monitor.js';
+export {
+  evaluateSlo,
+  subscribeSloStream,
+  type SloMonitorOptions,
+  type SloResolver,
+  type SloStreamConsumer,
+  type SloWindowBuffer,
+  type SubscribeSloStreamArgs,
+} from './slo/slo-monitor.js';
 export {
   STAGE_TRAFFIC_SHARE,
   stageIndex,

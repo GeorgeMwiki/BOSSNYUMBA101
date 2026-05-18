@@ -7,7 +7,13 @@
  *   - `respond_to_owner`   final natural-language reply to the caller
  *   - `tool_call`          invoke a registered BrainTool / HQ tool
  *   - `spawn_sub_md`       fork a sub-MD (maintenance-dispatch, complaint-
- *                          triage, etc.) with a scoped sub-budget
+ *                          triage, etc.) with a scoped sub-budget. The
+ *                          payload mirrors Claude Code's Agent tool full
+ *                          contract — tools whitelist/blacklist, model
+ *                          class, effort hint, permission mode,
+ *                          fire-and-forget background mode, isolation
+ *                          (inline vs simulated-worktree), parent
+ *                          breadcrumb id, per-sub-MD budget.
  *   - `schedule_wake`      ask the wake-loop to revive this thread later
  *   - `monitor`            install a watcher (event predicate) and yield
  *   - `final`              graceful close — plan reached its goal
@@ -17,6 +23,9 @@
  */
 
 import type { ScopeContext } from '../../types.js';
+import type { ScopeFilter } from './hook-chain.js';
+import type { PermissionMode } from './permission-mode.js';
+import type { BudgetLimits } from './budget.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Tool-call payload — orchestrator-side, intentionally distinct from
@@ -36,10 +45,12 @@ export interface DecisionToolCall {
 
 // ─────────────────────────────────────────────────────────────────────
 // Sub-MD spawn payload — handoff descriptor for the autonomy-governance
-// layer. The orchestrator does NOT itself execute the sub-MD; it emits a
-// dispatch envelope the composition root forwards to the right runtime
-// (maintenance-dispatch, complaint-triage, etc.).
+// layer. Mirrors Claude Code's Agent tool full contract.
 // ─────────────────────────────────────────────────────────────────────
+
+export type SubMdModelClass = 'haiku' | 'sonnet' | 'opus';
+export type SubMdEffort = 'low' | 'medium' | 'high';
+export type SubMdIsolation = 'inline' | 'worktree' | 'simulated-worktree';
 
 export interface SubMdSpawn {
   readonly subMdId: string;
@@ -47,6 +58,51 @@ export interface SubMdSpawn {
   readonly initialInput: Readonly<Record<string, unknown>>;
   /** Caller-supplied SLO id so the parent can read the sub-MD's bench. */
   readonly sloId?: string;
+  /**
+   * Short description shown to the owner UI alongside the sub-MD's
+   * persona name. Helps disambiguate multiple in-flight sub-MDs.
+   */
+  readonly description?: string;
+  /** Persona id the sub-MD should adopt — mirrors Agent's `persona`. */
+  readonly persona?: string;
+  /** Free-form prompt the sub-MD ingests as its opening user turn. */
+  readonly prompt?: string;
+  /** Optional scope filter that restricts which tools the sub-MD can use. */
+  readonly toolScope?: ScopeFilter;
+  /** Allowed tool subset (mirrors Agent's `tools` whitelist). */
+  readonly tools?: ReadonlyArray<string>;
+  /** Tools the sub-MD is forbidden to call (overrides `tools` allowlist). */
+  readonly disallowedTools?: ReadonlyArray<string>;
+  /** Model class override (haiku/sonnet/opus). */
+  readonly model?: SubMdModelClass;
+  /** Extended-thinking budget hint. */
+  readonly effort?: SubMdEffort;
+  /** Permission-mode override scoped to the sub-MD. */
+  readonly permissionMode?: PermissionMode;
+  /**
+   * Fire-and-forget mode. When `true`, the parent returns a handle and
+   * the SubagentStart hook fires synchronously; SubagentStop fires
+   * asynchronously when the child completes.
+   */
+  readonly background?: boolean;
+  /** Alias for `background:true`. Both supported for caller convenience. */
+  readonly fireAndForget?: boolean;
+  /**
+   * Isolation level. `inline` runs in the parent thread; `worktree`
+   * clones a sandbox DB schema (Phase F wire); `simulated-worktree` is
+   * the Phase E placeholder that emits a structured breadcrumb but
+   * shares the parent's DB.
+   */
+  readonly isolation?: SubMdIsolation;
+  /** Parent tool-use id so nested spawn chains can be reconstructed. */
+  readonly parentToolUseId?: string;
+  /** Per-sub-MD budget envelope. */
+  readonly budget?: Partial<BudgetLimits>;
+}
+
+/** True when the spawn should run fire-and-forget. */
+export function isBackgroundSpawn(spawn: SubMdSpawn): boolean {
+  return Boolean(spawn.background ?? spawn.fireAndForget);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -136,6 +192,12 @@ export type DispatchResult =
       readonly kind: 'spawn_ack';
       readonly subMdId: string;
       readonly handoffToken: string;
+      /**
+       * Set when the spawn was fire-and-forget. The parent should NOT
+       * block on the child; the SubagentStop hook fires whenever the
+       * child completes.
+       */
+      readonly background?: boolean;
     }
   | {
       readonly kind: 'wake_ack';

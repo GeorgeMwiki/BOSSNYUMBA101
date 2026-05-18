@@ -100,8 +100,8 @@ export interface SelectEncryptionPortOptions {
    * Optional per-tenant region (from `tenants.region`). When provided
    * AND it differs from `env.AWS_REGION`, the adapter selects a
    * region-specific KMS key (via `env[`KMS_KEY_${REGION}`]`) and a
-   * region-specific KMS client, so PII written for an `af-south-1`
-   * tenant never leaks into a `eu-west-1` KMS account.
+   * region-specific KMS client, so PII written for a tenant in one
+   * AWS region never leaks into a different region's KMS account.
    *
    * Falls back to `env.AWS_KMS_KEY_ID` + `env.AWS_REGION` when no
    * region-specific key is configured.

@@ -7,6 +7,12 @@ import {
   type PreToolUseHook,
   type PostToolUseHook,
   type StopHook,
+  type SessionStartHook,
+  type UserPromptSubmitHook,
+  type PreCompactHook,
+  type PostCompactHook,
+  type SubagentStartHook,
+  type SubagentStopHook,
 } from '../hook-chain.js';
 import type { Decision, DispatchResult } from '../decision.js';
 import { createPiiScrubHook } from '../hooks/pre-tool-use/pii-scrub-hook.js';
@@ -83,7 +89,7 @@ const respond: Decision = { kind: 'respond_to_owner', text: 'done' };
 describe('createHookChain', () => {
   it('returns allow when no hooks are registered', async () => {
     const chain = createHookChain([]);
-    expect((await chain.runPreToolUse(respond, tenantCtx)).kind).toBe('allow');
+    expect((await chain.runPreToolUse(respond, tenantCtx)).outcome.kind).toBe('allow');
     expect(chain.list()).toEqual([]);
   });
 
@@ -106,7 +112,7 @@ describe('createHookChain', () => {
     };
     const chain = createHookChain([first, second]);
     const result = await chain.runPreToolUse(toolCall('any'), tenantCtx);
-    expect(result.kind).toBe('deny');
+    expect(result.outcome.kind).toBe('deny');
     expect(secondCalled).toBe(false);
   });
 
@@ -120,9 +126,9 @@ describe('createHookChain', () => {
       },
     };
     const chain = createHookChain([hook]);
-    expect((await chain.runPreToolUse(toolCall('tenant.read'), tenantCtx)).kind)
+    expect((await chain.runPreToolUse(toolCall('tenant.read'), tenantCtx)).outcome.kind)
       .toBe('allow');
-    expect((await chain.runPreToolUse(toolCall('tenant.delete'), tenantCtx)).kind)
+    expect((await chain.runPreToolUse(toolCall('tenant.delete'), tenantCtx)).outcome.kind)
       .toBe('deny');
   });
 
@@ -417,5 +423,326 @@ describe('built-in hooks', () => {
       });
       expect(ledger.seals[0]?.exhaustedAxis).toBe('turns');
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Gap-2 — four new HookResult variants on the pre-tool-use chain.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('HookResult ADT extensions', () => {
+  it('updated-input rewrites the decision and continues the chain', async () => {
+    const rewriter: PreToolUseHook = {
+      name: 'rewrite',
+      stage: 'pre-tool-use',
+      async fn(_ctx, decision): Promise<HookResult> {
+        if (decision.kind !== 'tool_call') return { kind: 'allow' };
+        return {
+          kind: 'updated-input',
+          replacement: {
+            kind: 'tool_call',
+            call: {
+              ...decision.call,
+              input: { ...decision.call.input, scrubbed: true },
+            },
+          },
+        };
+      },
+    };
+    const downstream: PreToolUseHook = {
+      name: 'verifier',
+      stage: 'pre-tool-use',
+      async fn(_ctx, decision): Promise<HookResult> {
+        if (
+          decision.kind === 'tool_call' &&
+          decision.call.input.scrubbed === true
+        ) {
+          return { kind: 'allow' };
+        }
+        return { kind: 'deny', code: 'D', reason: 'not scrubbed' };
+      },
+    };
+    const chain = createHookChain([rewriter, downstream]);
+    const out = await chain.runPreToolUse(toolCall('x'), tenantCtx);
+    expect(out.outcome.kind).toBe('allow');
+    expect(out.effectiveDecision).not.toBeNull();
+    if (out.effectiveDecision?.kind === 'tool_call') {
+      expect(out.effectiveDecision.call.input.scrubbed).toBe(true);
+    }
+  });
+
+  it('additional-context accumulates injected messages', async () => {
+    const policyReminder: PreToolUseHook = {
+      name: 'policy',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        return {
+          kind: 'additional-context',
+          messages: [
+            { role: 'system', content: 'Remember: never expose tenant emails.' },
+          ],
+        };
+      },
+    };
+    const citation: PreToolUseHook = {
+      name: 'citation',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        return {
+          kind: 'additional-context',
+          messages: [{ role: 'system', content: 'Citation: RFC-1234' }],
+        };
+      },
+    };
+    const chain = createHookChain([policyReminder, citation]);
+    const out = await chain.runPreToolUse(toolCall('x'), tenantCtx);
+    expect(out.outcome.kind).toBe('allow');
+    expect(out.contextInjections.length).toBe(2);
+    expect(out.contextInjections[0]?.content).toContain('never expose');
+  });
+
+  it('defer returns the defer outcome to the main-loop', async () => {
+    const deferHook: PreToolUseHook = {
+      name: 'rate-pause',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        return {
+          kind: 'defer',
+          resumeAfterMs: 5_000,
+          reason: 'upstream rate-limit cooldown',
+        };
+      },
+    };
+    const chain = createHookChain([deferHook]);
+    const out = await chain.runPreToolUse(toolCall('x'), tenantCtx);
+    expect(out.outcome.kind).toBe('defer');
+    if (out.outcome.kind === 'defer') {
+      expect(out.outcome.resumeAfterMs).toBe(5_000);
+      expect(out.outcome.reason).toContain('cooldown');
+    }
+  });
+
+  it('stop aborts the chain immediately', async () => {
+    let downstreamRan = false;
+    const stopper: PreToolUseHook = {
+      name: 'stopper',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        return { kind: 'stop', reason: 'system shutting down' };
+      },
+    };
+    const after: PreToolUseHook = {
+      name: 'never',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        downstreamRan = true;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([stopper, after]);
+    const out = await chain.runPreToolUse(toolCall('x'), tenantCtx);
+    expect(out.outcome.kind).toBe('stop');
+    expect(downstreamRan).toBe(false);
+  });
+
+  it('chain composition — two hooks both updating input', async () => {
+    const piiScrub: PreToolUseHook = {
+      name: 'pii',
+      stage: 'pre-tool-use',
+      async fn(_c, d): Promise<HookResult> {
+        if (d.kind !== 'tool_call') return { kind: 'allow' };
+        return {
+          kind: 'updated-input',
+          replacement: {
+            kind: 'tool_call',
+            call: {
+              ...d.call,
+              input: { ...d.call.input, pii: '[redacted]' },
+            },
+          },
+        };
+      },
+    };
+    const tag: PreToolUseHook = {
+      name: 'tag',
+      stage: 'pre-tool-use',
+      async fn(_c, d): Promise<HookResult> {
+        if (d.kind !== 'tool_call') return { kind: 'allow' };
+        return {
+          kind: 'updated-input',
+          replacement: {
+            kind: 'tool_call',
+            call: {
+              ...d.call,
+              input: { ...d.call.input, tagged: 'v1' },
+            },
+          },
+        };
+      },
+    };
+    const chain = createHookChain([piiScrub, tag]);
+    const out = await chain.runPreToolUse(
+      toolCall('x', { phone: '+255700' }),
+      tenantCtx,
+    );
+    expect(out.outcome.kind).toBe('allow');
+    if (out.effectiveDecision?.kind === 'tool_call') {
+      // Both hooks composed onto the same final Decision.
+      expect(out.effectiveDecision.call.input.pii).toBe('[redacted]');
+      expect(out.effectiveDecision.call.input.tagged).toBe('v1');
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Gap-3 — six new lifecycle stages.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('HookChain extended stages', () => {
+  it('session-start fires the registered hook once per invocation', async () => {
+    let firedCount = 0;
+    const hook: SessionStartHook = {
+      name: 'seed',
+      stage: 'session-start',
+      async fn(): Promise<HookResult> {
+        firedCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runSessionStart(
+      { threadId: 'th', tier: 'tenant', resumed: false },
+      tenantCtx,
+    );
+    expect(firedCount).toBe(1);
+  });
+
+  it('user-prompt-submit can deny a hostile prompt', async () => {
+    const hook: UserPromptSubmitHook = {
+      name: 'profanity',
+      stage: 'user-prompt-submit',
+      async fn(_c, payload): Promise<HookResult> {
+        if (payload.text.includes('drop-table')) {
+          return { kind: 'deny', code: 'profanity', reason: 'sql probe' };
+        }
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    expect(
+      (await chain.runUserPromptSubmit({ text: 'hi' }, tenantCtx)).kind,
+    ).toBe('allow');
+    expect(
+      (await chain.runUserPromptSubmit({ text: 'drop-table' }, tenantCtx)).kind,
+    ).toBe('deny');
+  });
+
+  it('pre-compact sees the current token usage', async () => {
+    let observed = 0;
+    const hook: PreCompactHook = {
+      name: 'audit',
+      stage: 'pre-compact',
+      async fn(_c, payload): Promise<HookResult> {
+        observed = payload.currentTokens;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runPreCompact(
+      { currentTokens: 90_000, windowTokens: 100_000, ratio: 0.9 },
+      tenantCtx,
+    );
+    expect(observed).toBe(90_000);
+  });
+
+  it('post-compact records what was dropped', async () => {
+    let dropped = 0;
+    const hook: PostCompactHook = {
+      name: 'audit-after',
+      stage: 'post-compact',
+      async fn(_c, payload): Promise<HookResult> {
+        dropped = payload.droppedTurnCount;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runPostCompact(
+      { originalTokens: 100_000, finalTokens: 40_000, droppedTurnCount: 12 },
+      tenantCtx,
+    );
+    expect(dropped).toBe(12);
+  });
+
+  it('subagent-start fires when a sub-MD spawns', async () => {
+    let observedPersona = '';
+    const hook: SubagentStartHook = {
+      name: 'audit-spawn',
+      stage: 'subagent-start',
+      async fn(_c, payload): Promise<HookResult> {
+        observedPersona = payload.persona;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runSubagentStart(
+      {
+        subMdId: 'sm_1',
+        persona: 'maintenance-dispatch',
+        parentThreadId: 'th',
+      },
+      tenantCtx,
+    );
+    expect(observedPersona).toBe('maintenance-dispatch');
+  });
+
+  it('subagent-stop receives the child outcome', async () => {
+    let observedKind = '';
+    const hook: SubagentStopHook = {
+      name: 'audit-stop',
+      stage: 'subagent-stop',
+      async fn(_c, payload): Promise<HookResult> {
+        observedKind = payload.outcome?.kind ?? 'absent';
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runSubagentStop(
+      {
+        subMdId: 'sm_1',
+        persona: 'p',
+        parentThreadId: 'th',
+        outcome: {
+          kind: 'spawn_ack',
+          subMdId: 'sm_1',
+          handoffToken: 'h_1',
+        },
+      },
+      tenantCtx,
+    );
+    expect(observedKind).toBe('spawn_ack');
+  });
+
+  it('ordering — session-start fires once across many runSessionStart calls', async () => {
+    let firedCount = 0;
+    const hook: SessionStartHook = {
+      name: 'seed',
+      stage: 'session-start',
+      async fn(): Promise<HookResult> {
+        firedCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([hook]);
+    await chain.runSessionStart(
+      { threadId: 'th', tier: 'tenant', resumed: false },
+      tenantCtx,
+    );
+    // Subsequent stages should NOT re-fire session-start.
+    await chain.runUserPromptSubmit({ text: 'hi' }, tenantCtx);
+    await chain.runPreCompact(
+      { currentTokens: 1, windowTokens: 10, ratio: 0.1 },
+      tenantCtx,
+    );
+    expect(firedCount).toBe(1);
   });
 });

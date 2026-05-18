@@ -67,7 +67,7 @@ export interface RegionConfig {
   readonly id: string;
   readonly name: string;
   readonly provider: string;          // e.g., 'aws', 'gcp', 'azure'
-  readonly location: string;          // e.g., 'us-east-1', 'europe-west1'
+  readonly location: string;          // Cloud-provider region identifier — value sourced from jurisdictional-rules.awsRegionDefault per tenant
   readonly isPrimary: boolean;
   readonly priority: number;          // Lower = higher priority for failover
   readonly endpoints: {

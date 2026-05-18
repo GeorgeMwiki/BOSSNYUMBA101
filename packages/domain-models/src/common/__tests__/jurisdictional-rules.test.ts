@@ -95,6 +95,109 @@ describe('getJurisdictionalRules — Kenya', () => {
   });
 });
 
+describe('getJurisdictionalRules — Nigeria', () => {
+  it('returns the NG entry with currency, locale, timezone, dialing code, tax authority, and VAT rate', () => {
+    const rules = getJurisdictionalRules('NG');
+    expect(rules.countryCode).toBe('NG');
+    expect(rules.countryName).toBe('Nigeria');
+    expect(rules.defaultCurrency).toBe('NGN');
+    expect(rules.defaultLocale).toBe('en-NG');
+    expect(rules.defaultTimezone).toBe('Africa/Lagos');
+    expect(rules.e164CountryCode).toBe('+234');
+    expect(rules.taxAuthority.code).toBe('FIRS');
+    expect(rules.taxAuthority.vatRatePct).toBe(7.5);
+    expect(rules.identityDocType.code).toBe('NIN');
+    expect(rules.landRegistry.code).toBe('NGGIS');
+    expect(rules.bankRailProvider.code).toBe('NIBSS');
+  });
+
+  it('exposes Phase E.0 fields: working week, currency minor units, signature regime, phone plan, payment-due adjustment', () => {
+    const rules = getJurisdictionalRules('NG');
+    expect(rules.workingWeek).toEqual({ start: 'mon', end: 'fri' });
+    expect(rules.currencyMinorUnits).toBe(2); // NGN has kobo
+    expect(rules.eSignatureRegime.code).toBe('OTHER');
+    expect(rules.eSignatureRegime.legallyBinding).toBe(true);
+    expect(rules.eSignatureRegime.displayName).toMatch(/Evidence Act/);
+    expect(rules.phoneNumberPlanLength).toEqual({ min: 10, max: 10 });
+    expect(rules.paymentDueAdjustment).toBe('first-business-day-after');
+  });
+
+  it('exposes Phase E.0 fields: address format, KYC tiers, rent control, VAT-registration threshold', () => {
+    const rules = getJurisdictionalRules('NG');
+    expect(rules.addressFormat.schema).toBe('ng');
+    expect(rules.addressFormat.postalCodeRequired).toBe(false);
+    // NIPOST 6-digit postcode; first digit is region 1-9.
+    expect(rules.addressFormat.postalCodeRegex?.test('100001')).toBe(true); // Ikeja HO
+    expect(rules.addressFormat.postalCodeRegex?.test('900001')).toBe(true); // Garki HO
+    expect(rules.addressFormat.postalCodeRegex?.test('000000')).toBe(false);
+    expect(rules.addressFormat.postalCodeRegex?.test('12345')).toBe(false); // KE 5-digit
+    expect(rules.kycTier.baseTier).toBe('simplified');
+    expect(rules.kycTier.thresholdsUsdCents.length).toBeGreaterThanOrEqual(3);
+    expect(rules.kycTier.thresholdsUsdCents[0]?.tier).toBe('standard');
+    expect(rules.rentControlRegime.active).toBe(false);
+    expect(rules.rentControlRegime.maxAnnualIncreasePct).toBeNull();
+    expect(rules.rentControlRegime.notes).toMatch(/Lagos State Tenancy Law/);
+    expect(rules.vatRegistrationThresholdUsdCents).toBeGreaterThan(0);
+  });
+
+  it('returns a list of fixed-date statutory holidays for a given Gregorian year', () => {
+    const rules = getJurisdictionalRules('NG');
+    const holidays2026 = rules.publicHolidays(2026);
+    expect(holidays2026.length).toBeGreaterThanOrEqual(5);
+    expect(holidays2026.every((h) => h.date.startsWith('2026-'))).toBe(true);
+    const byDate = new Map(holidays2026.map((h) => [h.date, h.name]));
+    expect(byDate.get('2026-10-01')).toBe('Independence Day');
+    expect(byDate.get('2026-06-12')).toBe('Democracy Day');
+    expect(byDate.get('2026-12-25')).toBe('Christmas Day');
+    // 29 May is the historic (pre-2019) Democracy Day — must NOT
+    // appear in the fixed-date list per Presidential Order of 6 Jun
+    // 2019 moving Democracy Day to 12 June.
+    expect(byDate.has('2026-05-29')).toBe(false);
+  });
+
+  it('triggers the KYC tier ladder at expected thresholds (USD cents)', () => {
+    const rules = getJurisdictionalRules('NG');
+    const ladder = rules.kycTier.thresholdsUsdCents;
+    // First threshold is "standard"; final is "pep".
+    expect(ladder[0]).toEqual({ above: 50_000, tier: 'standard' });
+    expect(ladder[ladder.length - 1]).toEqual({ above: 5_000_000, tier: 'pep' });
+    // Middle entry escalates to enhanced.
+    expect(ladder.some((t) => t.tier === 'enhanced')).toBe(true);
+  });
+});
+
+describe('Nigerian NIN regex', () => {
+  it('accepts an 11-digit NIN and rejects shape mismatches', () => {
+    const { identityDocType } = getJurisdictionalRules('NG');
+    expect(identityDocType.numberRegex.test('12345678901')).toBe(true);
+    // KE-style 7-9 digits — too short.
+    expect(identityDocType.numberRegex.test('1234567890')).toBe(false);
+    // KRA-PIN-style letter-bracketed token — wrong charset.
+    expect(identityDocType.numberRegex.test('A123456789B')).toBe(false);
+    // NIDA TZ-style 20-digit number — too long.
+    expect(identityDocType.numberRegex.test('12345678901234567890')).toBe(false);
+  });
+});
+
+describe('Nigerian phone regex', () => {
+  it('matches a Nigerian E.164 mobile number and rejects neighbour codes', () => {
+    const { phoneRegex } = getJurisdictionalRules('NG');
+    expect(phoneRegex.test('+2348012345678')).toBe(true); // 0801* Airtel
+    expect(phoneRegex.test('+2347031234567')).toBe(true); // 0703* MTN
+    expect(phoneRegex.test('+2349013456789')).toBe(true); // 0901* Airtel
+    // Kenyan number under +254 — must reject.
+    expect(phoneRegex.test('+2547012345678')).toBe(false);
+    // TZ number under +255 — must reject.
+    expect(phoneRegex.test('+255712345678')).toBe(false);
+  });
+
+  it('also accepts the national-format (0…) entry', () => {
+    const { phoneRegex } = getJurisdictionalRules('NG');
+    expect(phoneRegex.test('08012345678')).toBe(true);
+    expect(phoneRegex.test('07031234567')).toBe(true);
+  });
+});
+
 describe('Phase E.0 contract — every supported jurisdiction populates all 10 new fields', () => {
   it('every entry has working-week, currency-minor-units, signature regime, address-format, KYC, rent-control, VAT threshold, payment-due adjustment, phone plan, and public-holidays fn', () => {
     for (const code of listSupportedJurisdictions()) {
@@ -146,7 +249,7 @@ describe('getJurisdictionalRules — unknown country', () => {
 describe('listSupportedJurisdictions', () => {
   it('returns the configured ISO 3166-1 alpha-2 codes', () => {
     const codes = [...listSupportedJurisdictions()].sort();
-    expect(codes).toEqual(['KE', 'TZ']);
+    expect(codes).toEqual(['KE', 'NG', 'TZ']);
   });
 });
 
