@@ -40,6 +40,20 @@ import { Gauge } from './components/Gauge';
 import { MetricSparkline } from './components/MetricSparkline';
 import { ImageAnnotation } from './components/ImageAnnotation';
 import { SignaturePad } from './components/SignaturePad';
+// Phase E.7 — 13 new primitives
+import { PdfViewer } from './components/PdfViewer';
+import { SliderInput } from './components/SliderInput';
+import { MultistepWizard } from './components/MultistepWizard';
+import { MediaGrid } from './components/MediaGrid';
+import { ChatEmbed } from './components/ChatEmbed';
+import { LiveCounter } from './components/LiveCounter';
+import { OrgChart } from './components/OrgChart';
+import { ComparisonTable } from './components/ComparisonTable';
+import { GeoFence } from './components/GeoFence';
+import { NotificationToast } from './components/NotificationToast';
+import { DecisionTrace } from './components/DecisionTrace';
+import { CodeBlock } from './components/CodeBlock';
+import { DataflowDiagram } from './components/DataflowDiagram';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const GENUI_REGISTRY: Record<AgUiUiPart['kind'], ComponentType<any>> = {
@@ -67,6 +81,20 @@ export const GENUI_REGISTRY: Record<AgUiUiPart['kind'], ComponentType<any>> = {
   'metric-sparkline': MetricSparkline,
   'image-annotation': ImageAnnotation,
   'signature-pad': SignaturePad,
+  // Phase E.7 — 13 new primitives
+  'pdf-viewer': PdfViewer,
+  'slider-input': SliderInput,
+  'multistep-wizard': MultistepWizard,
+  'media-grid': MediaGrid,
+  'chat-embed': ChatEmbed,
+  'live-counter': LiveCounter,
+  'org-chart': OrgChart,
+  'comparison-table': ComparisonTable,
+  'geo-fence': GeoFence,
+  'notification-toast': NotificationToast,
+  'decision-trace': DecisionTrace,
+  'code-block': CodeBlock,
+  'dataflow-diagram': DataflowDiagram,
 };
 
 export const GENUI_KINDS = Object.keys(GENUI_REGISTRY) as ReadonlyArray<

@@ -32,6 +32,20 @@ import {
   MetricSparklinePartSchema,
   ImageAnnotationPartSchema,
   SignaturePadPartSchema,
+  // Phase E.7
+  PdfViewerPartSchema,
+  SliderInputPartSchema,
+  MultistepWizardPartSchema,
+  MediaGridPartSchema,
+  ChatEmbedPartSchema,
+  LiveCounterPartSchema,
+  OrgChartPartSchema,
+  ComparisonTablePartSchema,
+  GeoFencePartSchema,
+  NotificationToastPartSchema,
+  DecisionTracePartSchema,
+  CodeBlockPartSchema,
+  DataflowDiagramPartSchema,
   PART_SCHEMAS,
 } from '../schemas';
 import { quickVegaShapeCheck } from '../validate';
@@ -356,8 +370,8 @@ describe('client schemas — file-preview', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('genui PART_SCHEMAS surface', () => {
-  it('covers exactly 22 primitive kinds (10 original + 12 ProdFix-7)', () => {
-    expect(Object.keys(PART_SCHEMAS)).toHaveLength(22);
+  it('covers exactly 35 primitive kinds (10 original + 12 ProdFix-7 + 13 Phase E.7)', () => {
+    expect(Object.keys(PART_SCHEMAS)).toHaveLength(35);
   });
 
   it('covers every primitive the brain can emit', () => {
@@ -385,6 +399,20 @@ describe('genui PART_SCHEMAS surface', () => {
       'metric-sparkline',
       'image-annotation',
       'signature-pad',
+      // Phase E.7
+      'pdf-viewer',
+      'slider-input',
+      'multistep-wizard',
+      'media-grid',
+      'chat-embed',
+      'live-counter',
+      'org-chart',
+      'comparison-table',
+      'geo-fence',
+      'notification-toast',
+      'decision-trace',
+      'code-block',
+      'dataflow-diagram',
     ];
     for (const k of expected) {
       expect(PART_SCHEMAS[k as keyof typeof PART_SCHEMAS]).toBeDefined();
@@ -751,6 +779,361 @@ describe('client schemas — signature-pad', () => {
       prompt: 'p',
       requiredFor: 'x',
       onSubmitAction: { kind: 'submit', payload: {} },
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════
+// Phase E.7 — 13 new client schemas (3 tests each)
+// ═════════════════════════════════════════════════════════════════════
+
+describe('client schemas — pdf-viewer', () => {
+  it('accepts a valid http URL', () => {
+    const r = PdfViewerPartSchema.safeParse({
+      kind: 'pdf-viewer',
+      url: 'https://example.com/x.pdf',
+      name: 'x.pdf',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects file:// URL', () => {
+    const r = PdfViewerPartSchema.safeParse({
+      kind: 'pdf-viewer',
+      url: 'file:///etc/passwd',
+      name: 'x',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects missing name', () => {
+    const r = PdfViewerPartSchema.safeParse({
+      kind: 'pdf-viewer',
+      url: '/lease.pdf',
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — slider-input', () => {
+  it('accepts a valid slider config', () => {
+    const r = SliderInputPartSchema.safeParse({
+      kind: 'slider-input',
+      label: 'Rent offer',
+      min: 100,
+      max: 1000,
+      value: 500,
+      onChangeAction: { kind: 'tool', payload: {} },
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects min >= max', () => {
+    const r = SliderInputPartSchema.safeParse({
+      kind: 'slider-input',
+      label: 'X',
+      min: 1000,
+      max: 100,
+      value: 500,
+      onChangeAction: { kind: 'tool', payload: {} },
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects currency format without currency', () => {
+    const r = SliderInputPartSchema.safeParse({
+      kind: 'slider-input',
+      label: 'X',
+      min: 0,
+      max: 100,
+      value: 50,
+      format: 'currency',
+      onChangeAction: { kind: 'tool', payload: {} },
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — multistep-wizard', () => {
+  it('accepts a valid wizard', () => {
+    const r = MultistepWizardPartSchema.safeParse({
+      kind: 'multistep-wizard',
+      steps: [{ id: 's1', title: 'Step 1', fields: [] }],
+      onSubmitAction: '/api/x',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects empty steps', () => {
+    const r = MultistepWizardPartSchema.safeParse({
+      kind: 'multistep-wizard',
+      steps: [],
+      onSubmitAction: '/api/x',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects missing onSubmitAction', () => {
+    const r = MultistepWizardPartSchema.safeParse({
+      kind: 'multistep-wizard',
+      steps: [{ id: 's1', title: 'x', fields: [] }],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — media-grid', () => {
+  it('accepts a valid item list', () => {
+    const r = MediaGridPartSchema.safeParse({
+      kind: 'media-grid',
+      items: [{ id: 'a', url: 'https://x/y.jpg' }],
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects empty items', () => {
+    const r = MediaGridPartSchema.safeParse({ kind: 'media-grid', items: [] });
+    expect(r.success).toBe(false);
+  });
+  it('rejects file:// url', () => {
+    const r = MediaGridPartSchema.safeParse({
+      kind: 'media-grid',
+      items: [{ id: 'a', url: 'file:///etc/x.jpg' }],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — chat-embed', () => {
+  it('accepts a valid scope', () => {
+    const r = ChatEmbedPartSchema.safeParse({
+      kind: 'chat-embed',
+      scope: 'arrears.case.123',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects empty scope', () => {
+    const r = ChatEmbedPartSchema.safeParse({ kind: 'chat-embed', scope: '' });
+    expect(r.success).toBe(false);
+  });
+  it('rejects unknown message role', () => {
+    const r = ChatEmbedPartSchema.safeParse({
+      kind: 'chat-embed',
+      scope: 'x',
+      initialMessages: [{ role: 'mod', text: 'hi' }],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — live-counter', () => {
+  it('accepts a valid counter', () => {
+    const r = LiveCounterPartSchema.safeParse({
+      kind: 'live-counter',
+      label: 'Queue depth',
+      value: 42,
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects unknown trend', () => {
+    const r = LiveCounterPartSchema.safeParse({
+      kind: 'live-counter',
+      label: 'x',
+      value: 1,
+      trend: 'sideways',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty label', () => {
+    const r = LiveCounterPartSchema.safeParse({
+      kind: 'live-counter',
+      label: '',
+      value: 1,
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — org-chart', () => {
+  it('accepts a nested chart', () => {
+    const r = OrgChartPartSchema.safeParse({
+      kind: 'org-chart',
+      root: { id: 'r', label: 'Owner', children: [{ id: 'p', label: 'Property' }] },
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects node missing id', () => {
+    const r = OrgChartPartSchema.safeParse({
+      kind: 'org-chart',
+      root: { label: 'X' },
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects unknown orientation', () => {
+    const r = OrgChartPartSchema.safeParse({
+      kind: 'org-chart',
+      root: { id: 'r', label: 'X' },
+      orientation: 'diagonal',
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — comparison-table', () => {
+  it('accepts valid columns + rows', () => {
+    const r = ComparisonTablePartSchema.safeParse({
+      kind: 'comparison-table',
+      columns: ['Unit A', 'Unit B'],
+      rows: [{ key: 'rent', label: 'Rent', values: [1000, 1100] }],
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects fewer than 2 columns', () => {
+    const r = ComparisonTablePartSchema.safeParse({
+      kind: 'comparison-table',
+      columns: ['Only'],
+      rows: [{ key: 'r', label: 'R', values: [1] }],
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty rows', () => {
+    const r = ComparisonTablePartSchema.safeParse({
+      kind: 'comparison-table',
+      columns: ['A', 'B'],
+      rows: [],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — geo-fence', () => {
+  it('accepts valid center + fence', () => {
+    const r = GeoFencePartSchema.safeParse({
+      kind: 'geo-fence',
+      center: [-6.79, 39.2],
+      zoom: 14,
+      fence: [{ lat: -6.79, lng: 39.2 }],
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects out-of-range latitude in fence', () => {
+    const r = GeoFencePartSchema.safeParse({
+      kind: 'geo-fence',
+      center: [0, 0],
+      zoom: 14,
+      fence: [{ lat: 91, lng: 0 }],
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects invalid zoom', () => {
+    const r = GeoFencePartSchema.safeParse({
+      kind: 'geo-fence',
+      center: [0, 0],
+      zoom: 99,
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — notification-toast', () => {
+  it('accepts valid toast', () => {
+    const r = NotificationToastPartSchema.safeParse({
+      kind: 'notification-toast',
+      message: 'Saved',
+      severity: 'success',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects unknown severity', () => {
+    const r = NotificationToastPartSchema.safeParse({
+      kind: 'notification-toast',
+      message: 'x',
+      severity: 'panic',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty message', () => {
+    const r = NotificationToastPartSchema.safeParse({
+      kind: 'notification-toast',
+      message: '',
+      severity: 'info',
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — decision-trace', () => {
+  it('accepts a valid trace', () => {
+    const r = DecisionTracePartSchema.safeParse({
+      kind: 'decision-trace',
+      steps: [
+        { id: 's1', title: 'observed arrears', rationale: 'past due 30+', kind: 'observation' },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects unknown step kind', () => {
+    const r = DecisionTracePartSchema.safeParse({
+      kind: 'decision-trace',
+      steps: [{ id: 's', title: 't', rationale: 'r', kind: 'hunch' }],
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty steps', () => {
+    const r = DecisionTracePartSchema.safeParse({
+      kind: 'decision-trace',
+      steps: [],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — code-block', () => {
+  it('accepts SQL code', () => {
+    const r = CodeBlockPartSchema.safeParse({
+      kind: 'code-block',
+      code: 'SELECT 1',
+      language: 'sql',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects unknown language', () => {
+    const r = CodeBlockPartSchema.safeParse({
+      kind: 'code-block',
+      code: 'x',
+      language: 'cobol',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty code', () => {
+    const r = CodeBlockPartSchema.safeParse({
+      kind: 'code-block',
+      code: '',
+      language: 'text',
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('client schemas — dataflow-diagram', () => {
+  it('accepts valid nodes + edges', () => {
+    const r = DataflowDiagramPartSchema.safeParse({
+      kind: 'dataflow-diagram',
+      nodes: [
+        { id: 'src', label: 'Lease feed', kind: 'source' },
+        { id: 'snk', label: 'Statements', kind: 'sink' },
+      ],
+      edges: [{ from: 'src', to: 'snk' }],
+    });
+    expect(r.success).toBe(true);
+  });
+  it('rejects unknown node kind', () => {
+    const r = DataflowDiagramPartSchema.safeParse({
+      kind: 'dataflow-diagram',
+      nodes: [{ id: 'x', label: 'X', kind: 'cosmic' }],
+      edges: [],
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects empty nodes', () => {
+    const r = DataflowDiagramPartSchema.safeParse({
+      kind: 'dataflow-diagram',
+      nodes: [],
+      edges: [],
     });
     expect(r.success).toBe(false);
   });

@@ -390,3 +390,11 @@ export * from './core-memory-blocks.schema.js';
 // Consolidation emissions (migration 0152, D8 — morning digest publish).
 // One row per (tenant, day) summarising the consolidation tick.
 export * from './consolidation-emissions.schema.js';
+
+// MDR plan items (migration 0161, Phase E.7) — owner-visible, steerable
+// plan tree spanning annual → daily horizons.
+export * from './mdr-plan.schema.js';
+
+// Owner skills marketplace (migration 0162, Phase E.7) — owner-installable
+// Skills (cron / event / manual triggered workflows).
+export * from './owner-skills.schema.js';

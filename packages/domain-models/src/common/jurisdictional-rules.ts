@@ -87,6 +87,72 @@ export interface JurisdictionalDataProtection {
   readonly dataLocalizationRequired: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Phase E.0 — 10 new fields (working-week, public holidays, e-signature
+// regime, currency minor-units, address-format, KYC tiers, rent-control,
+// VAT-registration threshold, payment-due adjustment, phone-plan length).
+// Each is wired so a Phase E.0.4 rebind pass can replace existing
+// `if (country === 'TZ')` branches with a single getJurisdictionalRules
+// call. See JURISDICTIONAL-RULES.md for the full contract documentation.
+// ---------------------------------------------------------------------------
+
+export interface JurisdictionalWorkingWeek {
+  /** First day of the local working week. TZ/KE: 'mon'; Gulf states: 'sun'. */
+  readonly start: 'sun' | 'mon';
+  /** Last day of the local working week. TZ/KE: 'fri'; Gulf states: 'thu'. */
+  readonly end: 'thu' | 'fri' | 'sat';
+}
+
+export interface JurisdictionalPublicHoliday {
+  /** ISO-8601 date in the country's local calendar (YYYY-MM-DD). */
+  readonly date: string;
+  readonly name: string;
+}
+
+export interface JurisdictionalESignatureRegime {
+  readonly code:
+    | 'eIDAS'
+    | 'ESIGN'
+    | 'UETA'
+    | 'ETA'
+    | 'TZ-ETA'
+    | 'KE-KICA'
+    | 'OTHER';
+  readonly displayName: string;
+  readonly legallyBinding: boolean;
+}
+
+export interface JurisdictionalAddressFormat {
+  readonly schema: 'us' | 'uk' | 'tz' | 'ke' | 'ng' | 'jp' | 'generic';
+  readonly postalCodeRequired: boolean;
+  readonly postalCodeRegex: RegExp | null;
+}
+
+export interface JurisdictionalKycTier {
+  readonly baseTier: 'simplified' | 'standard' | 'enhanced';
+  /**
+   * Threshold ladder ordered by `above` (USD minor units, i.e. cents) —
+   * a customer whose monthly throughput exceeds `above` is escalated to
+   * `tier`. The highest-matching entry wins.
+   */
+  readonly thresholdsUsdCents: ReadonlyArray<{
+    readonly above: number;
+    readonly tier: 'standard' | 'enhanced' | 'pep';
+  }>;
+}
+
+export interface JurisdictionalRentControlRegime {
+  readonly active: boolean;
+  readonly maxAnnualIncreasePct: number | null;
+  readonly notes: string;
+}
+
+export interface JurisdictionalPhoneNumberPlan {
+  /** Subscriber-number length (not including +CC). TZ/KE: min 9, max 9. */
+  readonly min: number;
+  readonly max: number;
+}
+
 export interface JurisdictionalRules {
   readonly countryCode: string;
   readonly countryName: string;
@@ -103,6 +169,34 @@ export interface JurisdictionalRules {
   readonly bankRailProvider: JurisdictionalBankRailProvider;
   readonly leaseRules: JurisdictionalLeaseRules;
   readonly dataProtection: JurisdictionalDataProtection;
+  // ---- Phase E.0 expansion (10 new fields) ----
+  readonly workingWeek: JurisdictionalWorkingWeek;
+  /**
+   * Recurrence-driven public-holiday calendar. Given a Gregorian year,
+   * returns the country's observed statutory holidays (fixed-date +
+   * any computed religious / Easter-anchored entries the country
+   * recognises). Implementations are pure & memoisable.
+   */
+  readonly publicHolidays: (
+    year: number
+  ) => ReadonlyArray<JurisdictionalPublicHoliday>;
+  readonly eSignatureRegime: JurisdictionalESignatureRegime;
+  /** ISO-4217 minor-unit exponent. TZS: 0, KES: 2, JPY: 0, BHD: 3. */
+  readonly currencyMinorUnits: number;
+  readonly addressFormat: JurisdictionalAddressFormat;
+  readonly kycTier: JurisdictionalKycTier;
+  readonly rentControlRegime: JurisdictionalRentControlRegime;
+  /** Annual revenue (USD minor units) that triggers VAT registration. */
+  readonly vatRegistrationThresholdUsdCents: number;
+  /**
+   * When a payment due-date falls on a weekend / public holiday, which
+   * business day applies. TZ/KE follow `first-business-day-after`.
+   */
+  readonly paymentDueAdjustment:
+    | 'first-business-day-after'
+    | 'last-business-day-before'
+    | 'none';
+  readonly phoneNumberPlanLength: JurisdictionalPhoneNumberPlan;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +274,82 @@ const TZ_RULES: JurisdictionalRules = Object.freeze({
     breachNotifyHours: 72,
     dataLocalizationRequired: true,
   }),
+  // ---- Phase E.0 fields ----
+  workingWeek: Object.freeze({ start: 'mon', end: 'fri' }),
+  // Fixed-date statutory holidays per the Public Holidays Act (Cap. 35)
+  // — religious-calendar entries (Eid al-Fitr, Eid al-Hajj, Good Friday,
+  // Easter Monday, Maulid) are NOT included here yet because they vary
+  // year-on-year and require a Hijri/Easter computus; tracked for Phase
+  // E follow-up. The fixed list below covers the legally guaranteed
+  // 11 fixed-date observances.
+  publicHolidays: (year: number) =>
+    Object.freeze([
+      Object.freeze({ date: `${year}-01-01`, name: "New Year's Day" }),
+      Object.freeze({
+        date: `${year}-01-12`,
+        name: 'Zanzibar Revolution Day',
+      }),
+      Object.freeze({
+        date: `${year}-04-07`,
+        name: 'Karume Day (Sheikh Abeid Karume)',
+      }),
+      Object.freeze({ date: `${year}-04-26`, name: 'Union Day' }),
+      Object.freeze({ date: `${year}-05-01`, name: 'Labour Day' }),
+      Object.freeze({ date: `${year}-07-07`, name: 'Saba Saba Day' }),
+      Object.freeze({ date: `${year}-08-08`, name: 'Nane Nane (Farmers Day)' }),
+      Object.freeze({
+        date: `${year}-10-14`,
+        name: 'Mwalimu Nyerere Memorial Day',
+      }),
+      Object.freeze({ date: `${year}-12-09`, name: 'Independence Day' }),
+      Object.freeze({ date: `${year}-12-25`, name: 'Christmas Day' }),
+      Object.freeze({ date: `${year}-12-26`, name: 'Boxing Day' }),
+    ]),
+  // Electronic & Postal Communications (Electronic Transactions) Act,
+  // 2015 — Sections 4-6 grant equivalence of paper signatures provided
+  // method-of-identification + integrity test passes. Aliased 'TZ-ETA'.
+  eSignatureRegime: Object.freeze({
+    code: 'TZ-ETA',
+    displayName: 'Electronic Transactions Act 2015 (Tanzania)',
+    legallyBinding: true,
+  }),
+  // ISO-4217 lists TZS with 0 decimals (no fractional unit in
+  // circulation — the senti was demonetised; smallest note is TSh 500).
+  currencyMinorUnits: 0,
+  addressFormat: Object.freeze({
+    schema: 'tz',
+    postalCodeRequired: false,
+    // TZ has a 5-digit postal-code system (TPN) but adoption is patchy
+    // and most addresses still use the P.O. Box convention; we record
+    // the regex for the rare cases that do supply it.
+    postalCodeRegex: /^\d{5}$/,
+  }),
+  kycTier: Object.freeze({
+    baseTier: 'simplified',
+    // Aligned with FIU-TZ guidance (POCAMLA 2006 + AML Regs 2012):
+    // simplified KYC for amounts under USD 1k/mo; standard above that;
+    // enhanced + PEP screening above USD 10k/mo. Values in USD cents.
+    thresholdsUsdCents: Object.freeze([
+      Object.freeze({ above: 100_000, tier: 'standard' as const }),
+      Object.freeze({ above: 1_000_000, tier: 'enhanced' as const }),
+      Object.freeze({ above: 5_000_000, tier: 'pep' as const }),
+    ]),
+  }),
+  // Rent Restriction Act (Cap. 339) was repealed in 2005 — TZ has no
+  // active rent-cap regime; market-rate increases are permitted subject
+  // to the 30-day notice in `leaseRules`.
+  rentControlRegime: Object.freeze({
+    active: false,
+    maxAnnualIncreasePct: null,
+    notes: 'Rent Restriction Act repealed 2005. Market-rate increases permitted with 30-day written notice.',
+  }),
+  // TRA VAT registration threshold: TSh 200 million annual turnover
+  // (~USD 79k at mid-2026 FX). Stored as USD cents for cross-country
+  // comparability and shielded from FX drift at lookup time.
+  vatRegistrationThresholdUsdCents: 7_900_000,
+  paymentDueAdjustment: 'first-business-day-after',
+  // Tanzanian subscriber numbers are always 9 digits after +255.
+  phoneNumberPlanLength: Object.freeze({ min: 9, max: 9 }),
 });
 
 // ---------------------------------------------------------------------------
@@ -257,6 +427,74 @@ const KE_RULES: JurisdictionalRules = Object.freeze({
     breachNotifyHours: 72,
     dataLocalizationRequired: false,
   }),
+  // ---- Phase E.0 fields ----
+  workingWeek: Object.freeze({ start: 'mon', end: 'fri' }),
+  // Public Holidays Act, Cap. 110 — fixed-date entries only. Movable
+  // observances (Good Friday, Easter Monday, Eid al-Fitr, Eid al-Adha)
+  // require Easter computus + Hijri lookup; tracked for Phase E follow-up.
+  publicHolidays: (year: number) =>
+    Object.freeze([
+      Object.freeze({ date: `${year}-01-01`, name: "New Year's Day" }),
+      Object.freeze({ date: `${year}-05-01`, name: 'Labour Day' }),
+      Object.freeze({ date: `${year}-06-01`, name: 'Madaraka Day' }),
+      Object.freeze({ date: `${year}-10-10`, name: 'Huduma Day' }),
+      Object.freeze({
+        date: `${year}-10-20`,
+        name: 'Mashujaa Day (Heroes Day)',
+      }),
+      Object.freeze({ date: `${year}-12-12`, name: 'Jamhuri Day' }),
+      Object.freeze({ date: `${year}-12-25`, name: 'Christmas Day' }),
+      Object.freeze({
+        date: `${year}-12-26`,
+        name: 'Utamaduni Day (Boxing Day)',
+      }),
+    ]),
+  // Kenya Information & Communications Act, Cap. 411A (KICA) — Section
+  // 83 grants electronic signatures the same legal effect as wet
+  // signatures provided uniqueness + signer-linkage + integrity hold.
+  eSignatureRegime: Object.freeze({
+    code: 'KE-KICA',
+    displayName: 'Kenya Information & Communications Act Cap. 411A',
+    legallyBinding: true,
+  }),
+  // ISO-4217 KES = 2 decimal places (the senti is still legal tender,
+  // though no coin smaller than KSh 1 is commonly circulated).
+  currencyMinorUnits: 2,
+  addressFormat: Object.freeze({
+    schema: 'ke',
+    postalCodeRequired: false,
+    // KE postal codes are 5 digits, e.g. 00100 (Nairobi GPO).
+    postalCodeRegex: /^\d{5}$/,
+  }),
+  kycTier: Object.freeze({
+    baseTier: 'simplified',
+    // CBK Prudential Guideline CBK/PG/08 + Proceeds of Crime & Anti-
+    // Money Laundering Act (POCAMLA) thresholds — simplified up to
+    // ~USD 1k/mo, standard up to ~USD 10k/mo, enhanced + PEP screen
+    // above that. Values in USD cents.
+    thresholdsUsdCents: Object.freeze([
+      Object.freeze({ above: 100_000, tier: 'standard' as const }),
+      Object.freeze({ above: 1_000_000, tier: 'enhanced' as const }),
+      Object.freeze({ above: 5_000_000, tier: 'pep' as const }),
+    ]),
+  }),
+  // Rent Restriction Act (Cap. 296) caps annual increases on protected
+  // tenancies (controlled rents below KSh 2,500/month — effectively
+  // legacy stock); modern leases are governed by the L&T (Shops,
+  // Hotels & Catering) Act Cap. 301 with 90-day notice but no cap on
+  // increase percentage. Flag as `active: true` to retain awareness;
+  // `maxAnnualIncreasePct: null` signals "case-by-case via tribunal".
+  rentControlRegime: Object.freeze({
+    active: true,
+    maxAnnualIncreasePct: null,
+    notes: 'Rent Restriction Act Cap. 296 protects controlled tenancies below KSh 2,500/mo; modern leases under L&T Act Cap. 301 require 90-day notice but no statutory cap on increase percentage. Disputes go to the Rent Restriction Tribunal.',
+  }),
+  // KRA VAT registration threshold: KSh 5 million annual turnover
+  // (~USD 38.5k at mid-2026 FX). Stored as USD cents.
+  vatRegistrationThresholdUsdCents: 3_850_000,
+  paymentDueAdjustment: 'first-business-day-after',
+  // Kenyan subscriber numbers are always 9 digits after +254.
+  phoneNumberPlanLength: Object.freeze({ min: 9, max: 9 }),
 });
 
 // ---------------------------------------------------------------------------

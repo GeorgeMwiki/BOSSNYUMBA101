@@ -46,6 +46,20 @@ import { Gauge } from './components/Gauge';
 import { MetricSparkline } from './components/MetricSparkline';
 import { ImageAnnotation } from './components/ImageAnnotation';
 import { SignaturePad } from './components/SignaturePad';
+// Phase E.7 — 13 new primitives
+import { PdfViewer } from './components/PdfViewer';
+import { SliderInput } from './components/SliderInput';
+import { MultistepWizard } from './components/MultistepWizard';
+import { MediaGrid } from './components/MediaGrid';
+import { ChatEmbed } from './components/ChatEmbed';
+import { LiveCounter } from './components/LiveCounter';
+import { OrgChart } from './components/OrgChart';
+import { ComparisonTable } from './components/ComparisonTable';
+import { GeoFence } from './components/GeoFence';
+import { NotificationToast } from './components/NotificationToast';
+import { DecisionTrace } from './components/DecisionTrace';
+import { CodeBlock } from './components/CodeBlock';
+import { DataflowDiagram } from './components/DataflowDiagram';
 
 export interface AdaptiveRendererSingleProps {
   readonly uiPart: AgUiUiPart;
@@ -109,6 +123,33 @@ function renderOne(uiPart: AgUiUiPart): JSX.Element {
       return <ImageAnnotation {...uiPart} />;
     case 'signature-pad':
       return <SignaturePad {...uiPart} />;
+    // ── Phase E.7 ─────────────────────────────────────────────────────
+    case 'pdf-viewer':
+      return <PdfViewer {...uiPart} />;
+    case 'slider-input':
+      return <SliderInput {...uiPart} />;
+    case 'multistep-wizard':
+      return <MultistepWizard {...uiPart} />;
+    case 'media-grid':
+      return <MediaGrid {...uiPart} />;
+    case 'chat-embed':
+      return <ChatEmbed {...uiPart} />;
+    case 'live-counter':
+      return <LiveCounter {...uiPart} />;
+    case 'org-chart':
+      return <OrgChart {...uiPart} />;
+    case 'comparison-table':
+      return <ComparisonTable {...uiPart} />;
+    case 'geo-fence':
+      return <GeoFence {...uiPart} />;
+    case 'notification-toast':
+      return <NotificationToast {...uiPart} />;
+    case 'decision-trace':
+      return <DecisionTrace {...uiPart} />;
+    case 'code-block':
+      return <CodeBlock {...uiPart} />;
+    case 'dataflow-diagram':
+      return <DataflowDiagram {...uiPart} />;
     default: {
       // Defensive: a future brain version might emit a kind this
       // client doesn't yet know. Renders an obvious unknown-kind card

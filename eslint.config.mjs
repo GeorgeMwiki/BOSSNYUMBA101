@@ -17,6 +17,13 @@ import tseslint from 'typescript-eslint';
 import securityPlugin from 'eslint-plugin-security';
 import noSecretsPlugin from 'eslint-plugin-no-secrets';
 import globals from 'globals';
+import { createRequire } from 'node:module';
+
+// Local custom rules live in `./eslint-rules/` and are exposed as the
+// `bossnyumba` plugin. We use createRequire because the plugin entry is
+// CommonJS (idiomatic for ESLint rule authoring) while this file is ESM.
+const require = createRequire(import.meta.url);
+const bossnyumbaPlugin = require('./eslint-rules/index.js');
 
 const NO_SECRETS_OPTIONS = {
   tolerance: 4.5,
@@ -124,6 +131,7 @@ export default [
     plugins: {
       security: securityPlugin,
       'no-secrets': noSecretsPlugin,
+      bossnyumba: bossnyumbaPlugin,
     },
     linterOptions: {
       reportUnusedDisableDirectives: true,
@@ -142,6 +150,14 @@ export default [
 
       // ---- Secret detection ----
       'no-secrets/no-secrets': ['error', NO_SECRETS_OPTIONS],
+
+      // ---- Phase E.0: jurisdictional literal containment ----
+      // Default to `warn` so the existing literals across the codebase
+      // surface in CI without blocking PRs. The companion audit script
+      // (`scripts/audit-jurisdictional-literals.mjs`) enumerates each
+      // violation site as a worklist for the Phase E.0.4 rebind pass;
+      // once that pass lands the severity will flip to `error`.
+      'bossnyumba/no-jurisdictional-literal': 'warn',
 
       // ---- Security plugin tuning ----
       // Object-injection is noisy on TS with typed keys; keep as warn so CI
@@ -203,6 +219,8 @@ export default [
       'security/detect-non-literal-fs-filename': 'off',
       'security/detect-object-injection': 'off',
       'no-secrets/no-secrets': 'off',
+      // Tests legitimately use NIDA / KRA / +254 / +255 in fixtures.
+      'bossnyumba/no-jurisdictional-literal': 'off',
     },
   },
 
