@@ -72,6 +72,21 @@ export interface OutcomeRecorderOptions {
   readonly tenantId?: string | null;
   /** SLO event stream sink — optional. When omitted, no events are emitted. */
   readonly sloEventSink?: SloEventSink;
+  /**
+   * HIGH-B — when true, an SloEvent emission failure throws.
+   * When false (default), the failure is logged via `logger.error` but
+   * the recorded outcome still returns successfully.
+   *
+   * Persistence (the `sink.record(rec)` write) is ALWAYS independent
+   * of the SloEvent emission. If `sink.record` throws, we attempt the
+   * SloEvent emit anyway so auto-rollback breach detection isn't
+   * silently swallowed when the audit sink is down.
+   */
+  readonly failFast?: boolean;
+  /** Optional logger port for partial-failure surfaces. */
+  readonly logger?: {
+    error(msg: string, meta?: Record<string, unknown>): void;
+  };
 }
 
 export interface OutcomeRecorder {
@@ -154,6 +169,8 @@ export function createOutcomeRecorder(
   }
   const tenantId: string | null = options.tenantId ?? null;
   const sloEventSink = options.sloEventSink;
+  const failFast = options.failFast ?? false;
+  const logger = options.logger;
 
   const history: OutcomeRecord[] = [];
   return {
@@ -178,9 +195,17 @@ export function createOutcomeRecorder(
         recordedAtMs: actual.recordedAtMs,
       });
       history.push(rec);
-      if (sink) {
-        await sink.record(rec);
-      }
+
+      // HIGH-B — Persist + emit are now INDEPENDENT. If persistence
+      // throws, we still attempt the SLO event emission (so the
+      // auto-rollback monitor still observes the breach). If the SLO
+      // event emission throws, we either log + swallow (default) or
+      // rethrow when `failFast` is true.
+      //
+      // Both writes use `Promise.allSettled` so each gets independently
+      // attempted regardless of the other's outcome.
+      const tasks: Promise<unknown>[] = [];
+      if (sink) tasks.push(sink.record(rec));
       if (sloEventSink) {
         const event = outcomeToSloEvent({
           subMdName,
@@ -188,7 +213,39 @@ export function createOutcomeRecorder(
           actual,
           tenantId,
         });
-        await sloEventSink.emit(event);
+        tasks.push(sloEventSink.emit(event));
+      }
+      const settled = await Promise.allSettled(tasks);
+
+      const failures = settled
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.status === 'rejected');
+
+      if (failures.length > 0) {
+        for (const { r, i } of failures) {
+          const reason =
+            r.status === 'rejected'
+              ? r.reason instanceof Error
+                ? r.reason.message
+                : String(r.reason)
+              : '';
+          const which = sink && i === 0 ? 'persistence-sink' : 'slo-event-sink';
+          if (logger) {
+            logger.error(`outcome-recorder.${which} failed`, {
+              subMdName,
+              reason,
+            });
+          }
+        }
+        if (failFast) {
+          // Surface the first failure when caller opts in.
+          const first = failures[0]?.r;
+          if (first && first.status === 'rejected') {
+            throw first.reason instanceof Error
+              ? first.reason
+              : new Error(String(first.reason));
+          }
+        }
       }
       return rec;
     },

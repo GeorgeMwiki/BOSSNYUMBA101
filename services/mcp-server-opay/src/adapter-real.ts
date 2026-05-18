@@ -251,8 +251,19 @@ export class OpayRealAdapter implements OpayAdapter {
 
   async cashflowLookup(args: CashflowLookupArgs): Promise<CashflowLookupResult> {
     try {
-      const path = `/api/v3/account/balance?phone=${encodeURIComponent(args.payerPhone)}&from=${encodeURIComponent(args.fromDate)}&to=${encodeURIComponent(args.toDate)}`;
-      const res = await this.get<OpayBalanceResponse>(path);
+      // CRITICAL #7 — Phone number (PII) MUST NOT appear in URL query
+      // strings. L7 proxies, WAFs, CDNs and access logs all retain the
+      // query string verbatim, so any `?phone=+234...` leaks the
+      // payer's number into long-retention infra logs. We POST the
+      // lookup with the phone in the request BODY (HMAC-signed) so
+      // the URL only carries an opaque RPC path.
+      const path = `/api/v3/account/balance`;
+      const body = {
+        phone: args.payerPhone,
+        from: args.fromDate,
+        to: args.toDate,
+      };
+      const res = await this.post<OpayBalanceResponse>(path, body);
       if (res.code !== '00000' || !res.data) {
         return Object.freeze({
           samples: Object.freeze([] as ReadonlyArray<CashflowSample>),

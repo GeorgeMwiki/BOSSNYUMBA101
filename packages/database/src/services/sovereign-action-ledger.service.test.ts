@@ -145,7 +145,9 @@ function makeStubDb(initial: ReadonlyArray<Row> = []): {
         const joined = (q as { strings: TemplateStringsArray }).strings.join(
           ' ',
         );
-        if (joined.includes('pg_advisory_lock')) {
+        if (joined.includes('pg_advisory_xact_lock')) {
+          lockCalls.push('xact-lock');
+        } else if (joined.includes('pg_advisory_lock')) {
           lockCalls.push('lock');
         } else if (joined.includes('pg_advisory_unlock')) {
           lockCalls.push('unlock');
@@ -175,6 +177,31 @@ describe('hashPayload', () => {
 
   it('null payload maps to a stable hash', () => {
     expect(hashPayload(null)).toBe(hashPayload(null));
+  });
+
+  // CRITICAL #5 regression test — same payload with reordered NESTED
+  // object keys must produce the same hash. The previous implementation
+  // only sorted top-level keys; nested objects retained insertion order,
+  // which broke the ledger chain verifier for any non-flat payload.
+  it('deep-sorts nested object keys — same hash regardless of producer order', () => {
+    const a = hashPayload({
+      lease: { id: 'l_1', tenantId: 't_1', amountCents: 100 },
+      owner: { id: 'o_1', email: 'x@y.com' },
+    });
+    const b = hashPayload({
+      owner: { email: 'x@y.com', id: 'o_1' },
+      lease: { tenantId: 't_1', amountCents: 100, id: 'l_1' },
+    });
+    expect(a).toBe(b);
+  });
+
+  // Array ordering IS semantically significant — the verifier must
+  // distinguish `[a,b]` from `[b,a]` (sequences carry meaning in many
+  // sovereign actions, e.g. approver order).
+  it('preserves array order — [a,b] hashes differently from [b,a]', () => {
+    const a = hashPayload({ approvers: ['u_admin', 'u_finance'] });
+    const b = hashPayload({ approvers: ['u_finance', 'u_admin'] });
+    expect(a).not.toBe(b);
   });
 });
 
@@ -224,7 +251,8 @@ describe('createSovereignActionLedgerService.appendLedgerEntry', () => {
     expect(res.prevHash).toBe(GENESIS_HASH);
     expect(res.thisHash).toHaveLength(64);
     expect(stub.rows).toHaveLength(1);
-    expect(stub.lockCalls).toEqual(['lock', 'unlock']);
+    // HIGH-C — xact-scoped lock, no separate unlock needed.
+    expect(stub.lockCalls).toEqual(['xact-lock']);
   });
 
   it('second row chains off the first row', async () => {

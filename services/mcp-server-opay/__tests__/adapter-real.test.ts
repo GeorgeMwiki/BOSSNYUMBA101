@@ -247,4 +247,30 @@ describe('OpayRealAdapter.cashflowLookup', () => {
     expect(r.samples).toHaveLength(0);
     expect(r.totalInflowsKobo).toBe(0);
   });
+
+  // CRITICAL #7 regression — payer phone (PII) must NOT appear in URL
+  // query string. URLs are logged by every L7 hop; PII in the query
+  // string is a long-retention leak.
+  it('never puts payer phone in the URL query string (POST body only)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { code: '00000', data: { samples: [] } }),
+    );
+    const adapter = new OpayRealAdapter({ credentials: CREDS, fetch: fetchMock });
+    const phone = '+2348012345678';
+    await adapter.cashflowLookup({
+      tenantId: 't',
+      payerPhone: phone,
+      fromDate: '2026-05-16',
+      toDate: '2026-05-17',
+    });
+    const call = fetchMock.mock.calls[0];
+    const url = String(call?.[0] ?? '');
+    expect(url).not.toContain(phone);
+    expect(url).not.toContain(encodeURIComponent(phone));
+    expect(url).not.toMatch(/\?phone=/);
+    // And POST method is used so phone lands in the HMAC-signed body.
+    const init = call?.[1] as { method?: string; body?: string };
+    expect(init?.method).toBe('POST');
+    expect(String(init?.body ?? '')).toContain(phone);
+  });
 });

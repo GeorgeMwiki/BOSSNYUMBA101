@@ -314,4 +314,66 @@ describe('main-loop think()', () => {
       ),
     ).toBeUndefined();
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // CRITICAL #3 regression — plan-mode propagates to spawn_sub_md.
+  // ─────────────────────────────────────────────────────────────────
+  it('plan-mode short-circuits a spawn_sub_md decision (CRITICAL #3)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([
+      {
+        kind: 'spawn_sub_md',
+        spawn: {
+          subMdId: 'eviction.coordinator',
+          scope: {
+            kind: 'tenant',
+            tenantId: 't_1',
+            actorUserId: 'u_1',
+            roles: ['owner'],
+            personaId: 'p_1',
+          },
+          initialInput: { caseId: 'c_1' },
+          persona: 'eviction-coordinator',
+          prompt: 'Begin the eviction workflow',
+          background: false,
+        },
+      },
+      { kind: 'respond_to_owner', text: 'never reached' },
+    ]);
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+    };
+    const req: OrchestratorRequest = { ...makeReq(), permissionMode: 'plan' };
+    const out = await thinkExtended(req, deps);
+    // The spawn must short-circuit to a plan-preview, NOT dispatch.
+    expect(out.kind).toBe('plan-preview');
+    // No spawn must have hit the dispatcher.
+    expect(
+      dispatcher.calls.find((d) => d.kind === 'spawn_sub_md'),
+    ).toBeUndefined();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // HIGH-A regression — Decision.kind === 'monitor' yields ack-schedule.
+  // ─────────────────────────────────────────────────────────────────
+  it("yields ack-schedule when the model emits Decision.kind === 'monitor' (HIGH-A)", async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([
+      {
+        kind: 'monitor',
+        watch: {
+          watchId: 'w_arrears',
+          predicate: 'arrears > 100k',
+          timeoutMs: 86_400_000,
+        },
+      },
+      { kind: 'respond_to_owner', text: 'after-watch' },
+    ]);
+    const deps = makeDeps(router, dispatcher);
+    const out = await think(makeReq(), deps);
+    expect(out.kind).toBe('ack-schedule');
+    if (out.kind === 'ack-schedule') {
+      expect(out.resumeToken).toBe('monitor:w_arrears');
+    }
+  });
 });

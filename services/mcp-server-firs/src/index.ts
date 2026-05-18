@@ -20,10 +20,27 @@ import type { FirsAdapter, FirsTool, ToolDeps } from './types.js';
 const DEFAULT_NAME = 'bossnyumba-mcp-firs';
 const DEFAULT_VERSION = '0.1.0';
 
+// CRITICAL #4 — Per-tenant allowlist. See mcp-server-nin/src/index.ts
+// for the contract; this file mirrors it.
+const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
+  const raw = process.env[ALLOWLIST_ENV_VAR];
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, ReadonlyArray<string>>;
+    const list = parsed?.[key];
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface FirsServerConfig {
   readonly name?: string;
   readonly version?: string;
   readonly adapter?: FirsAdapter;
+  /** Per-tenant allowlist (CRITICAL #4). See mcp-server-nin for contract. */
+  readonly allowlist?: ReadonlyArray<string>;
 }
 
 export function createFirsServer(config: FirsServerConfig = {}): {
@@ -50,8 +67,11 @@ export function createFirsServer(config: FirsServerConfig = {}): {
     })),
   }));
 
+  const allowlist: ReadonlyArray<string> | null =
+    config.allowlist ?? readEnvAllowlist('firs') ?? null;
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: args, _meta } = request.params;
     const tool = findFirsTool(name);
     if (!tool) {
       return {
@@ -60,6 +80,41 @@ export function createFirsServer(config: FirsServerConfig = {}): {
           {
             type: 'text',
             text: `Unknown tool: ${name}. Known tools: ${FIRS_TOOLS.map((t) => t.name).join(', ')}`,
+          },
+        ],
+      };
+    }
+    // CRITICAL #4 — per-tenant allowlist guard.
+    const argsObj = (args ?? {}) as Record<string, unknown>;
+    const metaTenantId =
+      (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const tenantId =
+      typeof argsObj.tenantId === 'string'
+        ? argsObj.tenantId
+        : typeof metaTenantId === 'string'
+          ? metaTenantId
+          : '';
+    if (!tenantId) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'firs: missing tenantId — required in args.tenantId or request._meta.tenantId',
+          },
+        ],
+      };
+    }
+    const allowlistResolved =
+      allowlist ??
+      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `firs: tenant '${tenantId}' is not in the per-tenant allowlist`,
           },
         ],
       };

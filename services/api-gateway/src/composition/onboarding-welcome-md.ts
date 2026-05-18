@@ -214,12 +214,14 @@ function buildGreeting(input: WelcomeCoordinatorInput): string {
   ].join(' ');
 }
 
+import { randomUUID } from 'crypto';
+
 const MESSAGE_ID_PREFIX = 'msg_welcome_';
 
 function newMessageId(): string {
-  return `${MESSAGE_ID_PREFIX}${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  // CRITICAL #2 / quick-win Q1 — message IDs were guessable via
+  // Math.random(). Replace with crypto.randomUUID() (122 bits entropy).
+  return `${MESSAGE_ID_PREFIX}${randomUUID()}`;
 }
 
 /**

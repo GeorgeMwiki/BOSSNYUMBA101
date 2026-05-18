@@ -24,11 +24,47 @@ import type { NinAdapter, NinTool, ToolDeps } from './types.js';
 const DEFAULT_NAME = 'bossnyumba-mcp-nin';
 const DEFAULT_VERSION = '0.1.0';
 
+// CRITICAL #4 — Per-tenant allowlist guard for the NIN MCP server.
+//
+// Without this, any stdio caller can invoke the production NIMC NIVS
+// adapter regardless of which tenant the action is supposedly on
+// behalf of. The allowlist is sourced from:
+//   1. an explicit `config.allowlist` array (composition root path), OR
+//   2. the env var `MCP_TENANT_ALLOWLIST` (JSON `{"nin": ["t1","t2"]}`)
+// Missing or empty allowlist defaults to "deny all" for safety in
+// production; tests using the in-memory mock can pass an empty array.
+//
+// Caller MUST include a `tenantId` either:
+//   - in the tool args (every NIN tool already has `tenantId` required), OR
+//   - in the request `_meta.tenantId` field (MCP request _meta channel)
+const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+
+function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
+  const raw = process.env[ALLOWLIST_ENV_VAR];
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, ReadonlyArray<string>>;
+    const list = parsed?.[key];
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface NinServerConfig {
   readonly name?: string;
   readonly version?: string;
   /** Inject an adapter; tests use this to swap in a deterministic mock. */
   readonly adapter?: NinAdapter;
+  /**
+   * Per-tenant allowlist (CRITICAL #4). When set, only listed tenants
+   * may invoke any tool. When unset, falls back to env
+   * `MCP_TENANT_ALLOWLIST['nin']`. When BOTH are unset:
+   *   - non-production (`NODE_ENV !== 'production'`) → bypass (so
+   *     existing dev/test flows keep working)
+   *   - production → deny all (fail closed)
+   */
+  readonly allowlist?: ReadonlyArray<string>;
 }
 
 export function createNinServer(config: NinServerConfig = {}): {
@@ -59,8 +95,12 @@ export function createNinServer(config: NinServerConfig = {}): {
     })),
   }));
 
+  // Resolved allowlist (constructor-injected wins; otherwise env).
+  const allowlist: ReadonlyArray<string> | null =
+    config.allowlist ?? readEnvAllowlist('nin') ?? null;
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: args, _meta } = request.params;
     const tool = findNinTool(name);
     if (!tool) {
       return {
@@ -73,6 +113,43 @@ export function createNinServer(config: NinServerConfig = {}): {
         ],
       };
     }
+
+    // CRITICAL #4 — per-tenant allowlist guard.
+    const argsObj = (args ?? {}) as Record<string, unknown>;
+    const metaTenantId =
+      (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const tenantId =
+      typeof argsObj.tenantId === 'string'
+        ? argsObj.tenantId
+        : typeof metaTenantId === 'string'
+          ? metaTenantId
+          : '';
+    if (!tenantId) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'nin: missing tenantId — required in args.tenantId or request._meta.tenantId',
+          },
+        ],
+      };
+    }
+    const allowlistResolved =
+      allowlist ??
+      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `nin: tenant '${tenantId}' is not in the per-tenant allowlist`,
+          },
+        ],
+      };
+    }
+
     try {
       const result = await tool.execute((args ?? {}) as never, deps);
       return {

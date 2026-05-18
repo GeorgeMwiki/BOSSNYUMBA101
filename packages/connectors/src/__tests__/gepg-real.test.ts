@@ -52,7 +52,7 @@ describe('createGepgRealAdapter — env selection', () => {
       expiresAt: '2026-06-01',
     });
     const url = fetchMock.mock.calls[0]?.[0] as string;
-    expect(url.startsWith('https://gepg-sandbox.tz.go')).toBe(true);
+    expect(url.startsWith('https://gepg-sandbox.go.tz')).toBe(true);
   });
 
   it('uses production URL when env=production', async () => {
@@ -80,7 +80,7 @@ describe('createGepgRealAdapter — env selection', () => {
       expiresAt: '2026-06-01',
     });
     const url = fetchMock.mock.calls[0]?.[0] as string;
-    expect(url.startsWith('https://gepg.tz.go')).toBe(true);
+    expect(url.startsWith('https://gepg.go.tz')).toBe(true);
   });
 
   it('refuses to construct without spCode/apiKey', () => {

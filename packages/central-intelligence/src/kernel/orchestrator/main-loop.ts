@@ -350,7 +350,7 @@ export async function thinkExtended(
     ];
     pendingContextInjections.length = 0;
 
-    const decision = await deps.router.call({
+    let decision: Decision = await deps.router.call({
       system: assembleSystem(req.persona, plan, memory.totalBytes),
       tools,
       messages,
@@ -397,6 +397,66 @@ export async function thinkExtended(
       // `ask` falls through to the hook chain, which may also turn this
       // into an ask-owner via the four-eye hook.
       // `allow` falls through too — hooks still run for audit.
+    }
+
+    // CRITICAL #3 — Plan-mode propagation to spawn_sub_md.
+    //
+    // Without this branch, a parent in plan-mode could spawn a sub-MD
+    // that executes mutates the parent's plan-mode promised would be
+    // previewed. We treat any spawn as a mutate-tier action (spawning
+    // a child sub-MD IS a mutate of the parent's task graph), so
+    // plan-mode short-circuits to a preview and the child is NEVER
+    // spawned. For non-plan modes, we ALSO thread the parent's
+    // permissionMode into the spawn payload so the child orchestrator
+    // inherits the policy — transitivity across the spawn tree.
+    if (decision.kind === 'spawn_sub_md') {
+      const spawnPmEval = evaluatePermissionMode(
+        {
+          currentMode: permissionMode,
+          ...(req.tenantPermissionModeOverride
+            ? { tenantOverride: req.tenantPermissionModeOverride }
+            : {}),
+          callerScopes: req.grantedScopes ?? [],
+        },
+        { riskTier: 'mutate' },
+      );
+      if (spawnPmEval.decision === 'plan-preview') {
+        const preview = renderPlanModePreview({
+          toolName: `spawn_sub_md:${decision.spawn.subMdId}`,
+          inputs: {
+            persona: decision.spawn.persona ?? req.persona,
+            description: decision.spawn.description ?? '',
+            prompt: decision.spawn.prompt ?? '',
+            tools: decision.spawn.tools ?? [],
+            background: decision.spawn.background ?? decision.spawn.fireAndForget ?? false,
+          },
+          riskTier: 'mutate',
+        });
+        return {
+          kind: 'plan-preview',
+          preview,
+          pendingDecision: decision,
+        };
+      }
+      if (spawnPmEval.decision === 'deny') {
+        budget = budget.consume({
+          kind: 'tool_error',
+          callId: `spawn:${decision.spawn.subMdId}`,
+          message: spawnPmEval.reason ?? 'permission-mode deny (spawn)',
+          latencyMs: 0,
+        });
+        continue;
+      }
+      // Transitivity — overwrite the spawn payload's permissionMode with
+      // the parent's effective mode unless the spawn explicitly carries
+      // one (a child overriding is allowed but the override starts from
+      // the parent's policy, not from `default`).
+      if (decision.spawn.permissionMode === undefined) {
+        decision = {
+          kind: 'spawn_sub_md',
+          spawn: { ...decision.spawn, permissionMode },
+        };
+      }
     }
 
     const preChain: PreToolUseChainResult =
@@ -538,6 +598,17 @@ export async function thinkExtended(
       return {
         kind: 'ack-schedule',
         resumeToken: toRun.wake.resumeToken ?? toRun.wake.wakeAt,
+      };
+    }
+    // HIGH-A — `Decision.kind === 'monitor'` was previously unhandled.
+    // The dispatcher returned `monitor_ack` and the loop kept going,
+    // contradicting `decision.ts:18` ("install a watcher and yield").
+    // The orchestrator now yields an ack-schedule keyed by the watcher
+    // id so the wake-loop can re-enter when the predicate fires.
+    if (toRun.kind === 'monitor') {
+      return {
+        kind: 'ack-schedule',
+        resumeToken: `monitor:${toRun.watch.watchId}`,
       };
     }
     // For spawn_sub_md fire-and-forget, the parent continues looping.

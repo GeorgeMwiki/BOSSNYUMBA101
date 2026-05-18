@@ -117,17 +117,44 @@ const DEFAULT_TAIL = 100;
 const VERIFY_CHUNK = 500;
 
 /**
- * Canonical JSON serialisation: sort keys at every level so the hash is
- * stable across producers. Mirrors the kernel-side `hashPayload` in
- * `agency/executor/audit-sink.ts` (sha256 of canonical-key-sorted JSON).
+ * Canonical JSON serialisation — DEEP-SORT every nested object's keys
+ * so the hash is stable across producers regardless of insertion order.
+ * Mirrors the kernel-side `hashPayload` in
+ * `agency/executor/audit-sink.ts` (sha256 of canonical JSON).
+ *
+ * CRITICAL #5 fix: the previous implementation passed
+ * `Object.keys(payload).sort()` as JSON.stringify's replacer-list arg,
+ * which only sorts TOP-LEVEL keys. Nested objects retained insertion
+ * order, so two semantically-equal payloads could produce different
+ * payload_hashes — breaking the ledger chain verifier for any non-flat
+ * payload. We now deep-sort recursively. Arrays are NOT sorted (array
+ * order IS semantically significant — the verifier must distinguish
+ * `[a,b]` from `[b,a]`).
  */
+function canonicalize(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    // Preserve array order — semantic ordering matters for sequences.
+    return value.map((v) => canonicalize(v));
+  }
+  const sortedEntries = Object.entries(value as Record<string, unknown>)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => [k, canonicalize(v)] as const);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of sortedEntries) {
+    out[k] = v;
+  }
+  return out;
+}
+
 export function hashPayload(payload: Record<string, unknown> | null): string {
   if (!payload || typeof payload !== 'object') {
     return createHash('sha256').update('null', 'utf8').digest('hex');
   }
   let canonical: string;
   try {
-    canonical = JSON.stringify(payload, Object.keys(payload).sort());
+    canonical = JSON.stringify(canonicalize(payload));
   } catch {
     canonical = String(payload);
   }
@@ -330,26 +357,46 @@ export function createSovereignActionLedgerService(
       const redactedPayload = redactPayloadPii(args.payloadJson);
       const lockKey = tenantLockKey(args.tenantId);
       const id = randomUUID();
-      // Advisory lock keeps two simultaneous appends on the same
-      // tenant chain from racing on the prev_hash read. We use the
-      // session-level `pg_advisory_lock` paired with `pg_advisory_unlock`
-      // to keep the lock scoped to this call even outside an explicit
-      // transaction (the drizzle helper does not always open one).
-      try {
-        await (db as unknown as {
+
+      // HIGH-C — Use `pg_advisory_xact_lock` inside an explicit
+      // transaction so the lock is AUTO-RELEASED when the transaction
+      // ends (commit or rollback). The previous `pg_advisory_lock` is
+      // session-scoped; if the pooled connection returned to the pool
+      // between acquire and unlock (e.g. a thrown error before the
+      // explicit unlock, or pool reset on transaction error), the lock
+      // leaked. Wrapping in a transaction with xact-scoped lock makes
+      // the contract crash-safe.
+      //
+      // The transaction is opened via the drizzle `db.transaction`
+      // helper when available; fall back to inline execute for stub
+      // clients in tests (which mock `execute()`).
+      const dbAny = db as unknown as {
+        execute(q: unknown): Promise<unknown>;
+        transaction?: <T>(
+          fn: (tx: typeof db) => Promise<T>,
+        ) => Promise<T>;
+      };
+
+      async function runInside(
+        tx: typeof db | undefined,
+      ): Promise<{ id: string; thisHash: string; prevHash: string }> {
+        const exec = (tx ?? db) as unknown as {
           execute(q: unknown): Promise<unknown>;
-        }).execute(sql`SELECT pg_advisory_lock(${lockKey})`);
-      } catch (error) {
-        console.error(
-          'sovereign-action-ledger: advisory_lock failed:',
-          error,
-        );
-        throw error instanceof Error
-          ? error
-          : new Error('sovereign-action-ledger: advisory_lock failed');
-      }
-      try {
-        const headRows = (await db
+        };
+        try {
+          await exec.execute(sql`SELECT pg_advisory_xact_lock(${lockKey})`);
+        } catch (error) {
+          console.error(
+            'sovereign-action-ledger: advisory_xact_lock failed:',
+            error,
+          );
+          throw error instanceof Error
+            ? error
+            : new Error(
+                'sovereign-action-ledger: advisory_xact_lock failed',
+              );
+        }
+        const headRows = (await (tx ?? db)
           .select({ thisHash: sovereignActionLedger.thisHash })
           .from(sovereignActionLedger)
           .where(eq(sovereignActionLedger.tenantId, args.tenantId))
@@ -367,7 +414,7 @@ export function createSovereignActionLedgerService(
           executedAt: args.executedAt,
         });
         try {
-          await db.insert(sovereignActionLedger).values({
+          await (tx ?? db).insert(sovereignActionLedger).values({
             id,
             tenantId: args.tenantId,
             actionType: args.actionType,
@@ -377,41 +424,43 @@ export function createSovereignActionLedgerService(
             >,
             payloadHash,
             proposer: args.proposer,
-            approvers: args.approvers as unknown as Record<string, unknown>[],
+            approvers: args.approvers as unknown as Record<
+              string,
+              unknown
+            >[],
             executedAt: args.executedAt,
             prevHash,
             thisHash,
             ...(args.rollbackPayload !== undefined
               ? {
-                  rollbackPayload: args.rollbackPayload as unknown as Record<
-                    string,
-                    unknown
-                  >,
+                  rollbackPayload:
+                    args.rollbackPayload as unknown as Record<
+                      string,
+                      unknown
+                    >,
                 }
               : {}),
           } as never);
         } catch (error) {
-          console.error('sovereign-action-ledger.append insert failed:', error);
+          console.error(
+            'sovereign-action-ledger.append insert failed:',
+            error,
+          );
           throw error instanceof Error
             ? error
             : new Error('sovereign-action-ledger.append failed');
         }
         return { id, thisHash, prevHash };
-      } finally {
-        try {
-          await (db as unknown as {
-            execute(q: unknown): Promise<unknown>;
-          }).execute(sql`SELECT pg_advisory_unlock(${lockKey})`);
-        } catch (error) {
-          // unlock failure is non-fatal — the session will release the
-          // lock on disconnect anyway. Log so operators can spot a
-          // stuck session.
-          console.error(
-            'sovereign-action-ledger: advisory_unlock failed:',
-            error,
-          );
-        }
       }
+
+      if (typeof dbAny.transaction === 'function') {
+        return await dbAny.transaction(async (tx) => runInside(tx));
+      }
+      // Fallback path for stubbed/mocked clients without
+      // `.transaction()`. Still issues `pg_advisory_xact_lock` — in a
+      // mocked test environment the lock is a no-op, but the SQL emitted
+      // matches the production contract so tests can assert on it.
+      return await runInside(undefined);
     },
 
     async getLedgerTail(tenantId, limit) {

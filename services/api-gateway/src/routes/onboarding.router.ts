@@ -35,7 +35,44 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
+import { randomUUID, randomBytes } from 'crypto';
 import { runWelcomeCoordinator } from '../composition/onboarding-welcome-md';
+
+// ---------------------------------------------------------------------------
+// Crypto-grade ID generation (replaces former Math.random() usage).
+//
+// CRITICAL #2: session tokens MUST be unguessable; `Math.random()` is
+// trivially predictable and leaks credentials via signup-replay. Use
+// crypto.randomBytes for tokens, crypto.randomUUID for other IDs.
+// ---------------------------------------------------------------------------
+
+/** Cryptographically-strong session token (32 bytes → 43 base64url chars). */
+function newSessionToken(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+/** Bcrypt cost factor — kept at 10 for parity with auth.ts. */
+const BCRYPT_COST = 10;
+
+interface OwnerCredentialStore {
+  emailToTenantId: Map<string, string>; // normalized email → tenantId
+  tenantIdToCredential: Map<
+    string,
+    {
+      ownerUserId: string;
+      email: string;
+      passwordHash: string;
+      emailVerifiedAt: string | null;
+      createdAt: string;
+    }
+  >;
+}
+
+const credentials: OwnerCredentialStore = {
+  emailToTenantId: new Map(),
+  tenantIdToCredential: new Map(),
+};
 
 // ---------------------------------------------------------------------------
 // Types + in-memory store
@@ -78,6 +115,13 @@ interface OnboardingFlowSession {
 
 const sessions = new Map<string, OnboardingFlowSession>(); // keyed by tenantId
 const sessionsByToken = new Map<string, string>(); // sessionToken → tenantId
+
+// Pending email-verification tokens. Burned on first use. In production
+// composition this lands in a Drizzle row with a short TTL + audit trail.
+const pendingEmailVerifications = new Map<
+  string,
+  { tenantId: string; email: string; issuedAtMs: number }
+>();
 
 const DEFAULT_STEPS: ReadonlyArray<OnboardingFlowStep> = Object.freeze([
   {
@@ -131,7 +175,9 @@ const DEFAULT_STEPS: ReadonlyArray<OnboardingFlowStep> = Object.freeze([
 ]);
 
 function newId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  // crypto.randomUUID() (122 bits of entropy) replaces the predictable
+  // Math.random()-based generator. Used for tenantId / ownerUserId / etc.
+  return `${prefix}_${randomUUID()}`;
 }
 
 function markStep(
@@ -228,30 +274,68 @@ const FirstMdChatSchema = z.object({
 const app = new Hono();
 
 // 1. POST /signup -----------------------------------------------------------
+//
+// CRITICAL #1 + #2 fix:
+//   * Password is bcrypt-hashed (cost 10) and persisted in the credential
+//     store (Phase D wire — pluggable to UserRepository at composition
+//     root).
+//   * Duplicate-email signup returns 409 Conflict with `loginUrl`. We
+//     NEVER return the existing tenant's session token because that
+//     would leak credentials to anyone who knows the email
+//     (signup-replay → account takeover).
+//   * Until email is confirmed via `/verify-email`, no session-token is
+//     issued. The response carries `pendingEmailConfirmation: true` and
+//     a one-shot `verificationToken` the FE can wire to the confirm
+//     screen for E2E testability (in production this lands via an
+//     email link, NOT in the HTTP response).
 app.post('/signup', zValidator('json', SignupSchema), async (c) => {
   const body = c.req.valid('json');
   const normalizedEmail = body.email.trim().toLowerCase();
 
-  // Idempotency: if a session already exists for this email, return it.
-  const existing = Array.from(sessions.values()).find(
-    (s) => s.email === normalizedEmail,
-  );
-  if (existing) {
-    return c.json({
-      success: true,
-      data: {
-        sessionToken: existing.sessionToken,
-        tenantId: existing.tenantId,
-        ownerUserId: existing.ownerUserId,
-        steps: existing.steps,
-        alreadyExisted: true,
+  // Duplicate-email defence (CRITICAL #2). Return 409 with a login URL
+  // instead of leaking the existing session token.
+  if (credentials.emailToTenantId.has(normalizedEmail)) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'email-already-registered',
+          message:
+            'An account with this email already exists. Please sign in instead.',
+          loginUrl: '/auth/login',
+        },
       },
-    });
+      409,
+    );
   }
 
+  const passwordHash = await bcrypt.hash(body.password, BCRYPT_COST);
   const tenantId = newId('tn');
   const ownerUserId = newId('usr');
-  const sessionToken = newId('onb');
+  const createdAt = new Date().toISOString();
+
+  // Persist the credential atomically with the onboarding session. In
+  // production composition the userRepo.create() insert lands here too,
+  // wrapped in the same transaction.
+  credentials.emailToTenantId.set(normalizedEmail, tenantId);
+  credentials.tenantIdToCredential.set(tenantId, {
+    ownerUserId,
+    email: normalizedEmail,
+    passwordHash,
+    emailVerifiedAt: null,
+    createdAt,
+  });
+
+  // Email-verification token. Until consumed, no sessionToken is issued.
+  const verificationToken = newSessionToken();
+  pendingEmailVerifications.set(verificationToken, {
+    tenantId,
+    email: normalizedEmail,
+    issuedAtMs: Date.now(),
+  });
+
+  // Stage the onboarding session WITHOUT issuing a sessionToken. The
+  // session row exists so we can resume after email confirmation.
   const session: OnboardingFlowSession = {
     id: newId('sess'),
     tenantId,
@@ -259,27 +343,118 @@ app.post('/signup', zValidator('json', SignupSchema), async (c) => {
     email: normalizedEmail,
     businessName: body.businessName.trim(),
     country: body.country.toUpperCase(),
-    sessionToken,
-    createdAt: new Date().toISOString(),
+    sessionToken: '', // empty until email confirmed
+    createdAt,
     steps: DEFAULT_STEPS,
   };
   sessions.set(tenantId, session);
-  sessionsByToken.set(sessionToken, tenantId);
 
   return c.json(
     {
       success: true,
       data: {
-        sessionToken,
         tenantId,
         ownerUserId,
         email: normalizedEmail,
         businessName: session.businessName,
+        pendingEmailConfirmation: true,
+        // In production, this is sent ONLY via the email-link channel.
+        // The HTTP-response copy is gated behind NODE_ENV !== production
+        // so test suites + the local-dev FE can drive the confirm step
+        // without scraping mailcatcher.
+        ...(process.env.NODE_ENV !== 'production'
+          ? { verificationToken }
+          : {}),
         steps: session.steps,
       },
     },
     201,
   );
+});
+
+// 1b. POST /verify-email ----------------------------------------------------
+//
+// Consumes the one-shot verification token from /signup, marks the
+// owner-credential row as email-verified, and ONLY then mints a
+// crypto-grade session token the FE can use to drive the rest of the
+// onboarding flow.
+const VerifyEmailSchema = z.object({
+  verificationToken: z.string().min(16).max(256),
+});
+
+app.post('/verify-email', zValidator('json', VerifyEmailSchema), async (c) => {
+  const body = c.req.valid('json');
+  const pending = pendingEmailVerifications.get(body.verificationToken);
+  if (!pending) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'invalid-or-expired-verification-token',
+          message: 'Verification link is invalid or has expired.',
+        },
+      },
+      400,
+    );
+  }
+  // One-shot — burn the token.
+  pendingEmailVerifications.delete(body.verificationToken);
+
+  const credential = credentials.tenantIdToCredential.get(pending.tenantId);
+  if (!credential) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'tenant-not-found',
+          message: 'Owner credential record missing.',
+        },
+      },
+      404,
+    );
+  }
+  // Immutable update — replace the credential row with verifiedAt set.
+  credentials.tenantIdToCredential.set(pending.tenantId, {
+    ...credential,
+    emailVerifiedAt: new Date().toISOString(),
+  });
+
+  const session = sessions.get(pending.tenantId);
+  if (!session) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'session-not-found',
+          message: 'Onboarding session missing.',
+        },
+      },
+      404,
+    );
+  }
+  // Mint a crypto-grade session token NOW (post-confirmation).
+  const sessionToken = newSessionToken();
+  const updated: OnboardingFlowSession = {
+    ...session,
+    sessionToken,
+    steps: markStep(session.steps, 'verify_email', {
+      verifiedAt: new Date().toISOString(),
+    }),
+  };
+  sessions.set(pending.tenantId, updated);
+  sessionsByToken.set(sessionToken, pending.tenantId);
+
+  return c.json({
+    success: true,
+    data: {
+      sessionToken,
+      tenantId: updated.tenantId,
+      ownerUserId: updated.ownerUserId,
+      email: updated.email,
+      businessName: updated.businessName,
+      steps: updated.steps,
+    },
+  });
 });
 
 // 2. POST /first-property ---------------------------------------------------
@@ -465,6 +640,9 @@ if (process.env.NODE_ENV !== 'production') {
   app.post('/__test__/reset', (c) => {
     sessions.clear();
     sessionsByToken.clear();
+    pendingEmailVerifications.clear();
+    credentials.emailToTenantId.clear();
+    credentials.tenantIdToCredential.clear();
     return c.json({ success: true });
   });
 }

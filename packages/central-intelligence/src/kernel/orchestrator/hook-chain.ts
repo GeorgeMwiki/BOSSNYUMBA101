@@ -369,14 +369,42 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
   );
   const stop = hooks.filter((h): h is StopHook => h.stage === 'stop');
 
+  // CRITICAL #8 — hook throws must NOT unwind the chain. We wrap every
+  // hook invocation in try/catch and translate the throw into a typed
+  // `{kind:'deny', code:'hook-threw'}` outcome. The module docstring at
+  // line 16-18 promises this contract; the implementation now honours it.
+  async function safeInvoke<P>(
+    hook: {
+      readonly name?: string;
+      fn: (c: HookContext, p: P) => Promise<HookResult>;
+    },
+    ctx: HookContext,
+    payload: P,
+  ): Promise<HookResult> {
+    try {
+      return await hook.fn(ctx, payload);
+    } catch (err) {
+      const reason =
+        err instanceof Error ? err.message : 'hook threw a non-Error value';
+      return {
+        kind: 'deny',
+        reason: `hook ${hook.name ?? '<anonymous>'} threw: ${reason}`,
+        code: 'hook-threw',
+      };
+    }
+  }
+
   // Generic chain runner for stages whose hooks take a single payload.
   async function runSimple<P>(
-    chain: ReadonlyArray<{ fn: (c: HookContext, p: P) => Promise<HookResult> }>,
+    chain: ReadonlyArray<{
+      readonly name?: string;
+      fn: (c: HookContext, p: P) => Promise<HookResult>;
+    }>,
     ctx: HookContext,
     payload: P,
   ): Promise<HookResult> {
     for (const h of chain) {
-      const out = await h.fn(ctx, payload);
+      const out = await safeInvoke(h, ctx, payload);
       if (out.kind !== 'allow') return out;
     }
     return { kind: 'allow' };
@@ -406,7 +434,14 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
 
     for (const h of pre) {
       if (!matchesScope(h.scope, currentDecision, ctx)) continue;
-      const out = await h.fn(ctx, currentDecision);
+      // safeInvoke maps any thrown error to a typed `deny` with
+      // code `hook-threw` (CRITICAL #8). The decision argument is the
+      // payload for pre-tool-use hooks.
+      const out = await safeInvoke<Decision>(
+        { name: h.name, fn: h.fn },
+        ctx,
+        currentDecision,
+      );
 
       if (out.kind === 'allow') continue;
 
@@ -444,7 +479,18 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
   ): Promise<HookResult> {
     for (const h of post) {
       if (!matchesScope(h.scope, decision, ctx)) continue;
-      const out = await h.fn(ctx, decision, result);
+      let out: HookResult;
+      try {
+        out = await h.fn(ctx, decision, result);
+      } catch (err) {
+        const reason =
+          err instanceof Error ? err.message : 'hook threw a non-Error value';
+        out = {
+          kind: 'deny',
+          reason: `hook ${h.name ?? '<anonymous>'} threw: ${reason}`,
+          code: 'hook-threw',
+        };
+      }
       if (out.kind !== 'allow') return out;
     }
     return { kind: 'allow' };
@@ -483,7 +529,11 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
     ctx: HookContext,
   ): Promise<HookResult> {
     for (const h of stop) {
-      const out = await h.fn(ctx, session);
+      const out = await safeInvoke<StopSession>(
+        { name: h.name, fn: h.fn },
+        ctx,
+        session,
+      );
       if (out.kind !== 'allow') return out;
     }
     return { kind: 'allow' };
