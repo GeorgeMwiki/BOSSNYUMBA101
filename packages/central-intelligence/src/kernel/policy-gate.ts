@@ -66,6 +66,10 @@ export interface PolicyGateRequestContext {
   readonly afterHoursOverride?: boolean;
   /** Optional override clock for the off-hours check; defaults to now. */
   readonly now?: Date;
+  /** D9 — caller's preferred language. Drives language-consistency check. */
+  readonly language?: 'en' | 'sw';
+  /** D9 — numerical baselines per metric for the 10x-numerical-sanity heuristic. */
+  readonly numericalBaselines?: Readonly<Record<string, number>>;
 }
 
 export interface PolicyGateDecisionContext {
@@ -73,6 +77,10 @@ export interface PolicyGateDecisionContext {
   readonly tenantId?: string;
   /** Scopes the action requires to execute. */
   readonly requiredScopes?: ReadonlyArray<string>;
+  /** D9 — TRUE when the produced text makes a factual claim that needs a source. */
+  readonly hasFactualClaim?: boolean;
+  /** D9 — TRUE when the secondary judge contradicts the primary on a fact. */
+  readonly judgeContradicted?: boolean;
 }
 
 export interface PolicyGateInput {
@@ -103,7 +111,14 @@ const PII_PATTERNS: ReadonlyArray<{ kind: string; re: RegExp; replace: string }>
 ];
 
 const NUMERICAL_PATTERN = /\b\d{1,3}(?:[.,]\d+)?%/g; // 92.3% etc
-const ABSOLUTE_MONEY_PATTERN = /\b(TZS|KES|USD)\s?\d[\d,]*\b/g;
+// ISO-4217 + common informal labels. BOSSNYUMBA is global — every
+// currency we ship a plugin for must be detected here, otherwise the
+// policy gate misses a money claim. Source of truth lives in
+// packages/ai-copilot/src/security/currency-patterns.ts; replicated here
+// because central-intelligence cannot import from ai-copilot (would
+// create a backward edge).
+const ABSOLUTE_MONEY_PATTERN =
+  /\b(?:TZS|KES|UGX|RWF|NGN|ZAR|GHS|EGP|USD|EUR|GBP|CHF|JPY|CNY|INR|AUD|CAD|Ksh|KShs|Tsh|TShs|Sh|Shs)\s?\d[\d,]*(?:\.\d+)?\b/gi;
 
 const REGULATORY_TRIGGERS: ReadonlyArray<RegExp> = [
   /\bevict\w*/i,
@@ -159,9 +174,13 @@ function blockedOutput(reason: string, mutation: string): PolicyGateOutput {
 // Public API
 // ─────────────────────────────────────────────────────────────────────
 
-export function runPolicyGate(input: PolicyGateInput): PolicyGateOutput {
+export function runPolicyGate(initialInput: PolicyGateInput): PolicyGateOutput {
+  let input: PolicyGateInput = initialInput;
   const request = input.request;
   const decision = input.decision;
+  // D9 mutations accumulate here so they survive the existing
+  // `mutations` initialisation below.
+  const preMutations: string[] = [];
 
   // 1) Tenant-isolation context check.
   if (
@@ -220,9 +239,54 @@ export function runPolicyGate(input: PolicyGateInput): PolicyGateOutput {
     }
   }
 
+  // 5) D9 — language-consistency check (soften / hedge).
+  if (request?.language) {
+    if (detectLanguageMismatch(input.text, request.language)) {
+      input = {
+        ...input,
+        text: `${input.text.trimEnd()}\n\n(Note: response language requested as "${request.language}" — please verify against the source-language version.)`,
+      };
+      preMutations.push('hedged:language-consistency');
+    }
+  }
+
+  // 6) D9 — grounding-cite check (block).
+  if (decision?.hasFactualClaim === true && !input.hasCitations) {
+    return blockedOutput(
+      'grounding-cite violation: response contains a factual claim but no source citation was attached',
+      'blocked:grounding-cite',
+    );
+  }
+
+  // 7) D9 — fabrication (judge cross-check) gate (block).
+  if (decision?.judgeContradicted === true) {
+    return blockedOutput(
+      'fabrication suspected: secondary judge contradicted the primary sensor on a factual claim',
+      'blocked:fabrication',
+    );
+  }
+
+  // 8) D9 — 10x-numerical-sanity heuristic (soften / hedge).
+  if (
+    request?.numericalBaselines &&
+    Object.keys(request.numericalBaselines).length > 0
+  ) {
+    const flagged = detectTenXSanityViolations(
+      input.text,
+      request.numericalBaselines,
+    );
+    if (flagged.length > 0) {
+      input = {
+        ...input,
+        text: appendSanityHedge(input.text, flagged),
+      };
+      preMutations.push('hedged:10x-numerical-sanity');
+    }
+  }
+
   // ─── Output-side checks (unchanged) ────────────────────────────────
   let text = input.text;
-  const mutations: string[] = [];
+  const mutations: string[] = [...preMutations];
 
   for (const p of PII_PATTERNS) {
     if (p.re.test(text)) {
@@ -276,3 +340,87 @@ export function runPolicyGate(input: PolicyGateInput): PolicyGateOutput {
 
 /** Exported for diagnostics + tests; do not mutate. */
 export { isWithinBusinessHoursEAT };
+// ──────────────────────────────────────────────────────────────────
+// D9 helpers — language consistency + 10x numerical sanity.
+// ──────────────────────────────────────────────────────────────────
+
+const SWAHILI_MARKERS: ReadonlyArray<RegExp> = [
+  /\b(ni|na|ya|wa|katika|kwa|kwamba|hii|hiyo|hivyo|sasa|baada|kabla)\b/gi,
+  /\b(nyumba|pango|kodi|mwenye|mpangaji|mwezi|siku|leo|jana|kesho)\b/gi,
+  /\b(habari|asante|tafadhali|samahani|karibu|jambo|mambo)\b/gi,
+];
+
+const ENGLISH_MARKERS: ReadonlyArray<RegExp> = [
+  /\b(the|and|is|are|was|were|will|with|in|on|at|by|for|to|of|from)\b/gi,
+  /\b(rent|lease|tenant|property|unit|payment|invoice|arrears|notice|month|day)\b/gi,
+];
+
+export function detectLanguageMismatch(text: string, expected: 'en' | 'sw'): boolean {
+  if (!text || text.length < 40) return false;
+  let sw = 0;
+  let en = 0;
+  for (const re of SWAHILI_MARKERS) {
+    sw += (text.match(re) ?? []).length;
+  }
+  for (const re of ENGLISH_MARKERS) {
+    en += (text.match(re) ?? []).length;
+  }
+  const total = sw + en;
+  if (total < 4) return false;
+  const swRatio = sw / total;
+  const enRatio = en / total;
+  if (expected === 'sw' && swRatio < 0.4) return true;
+  if (expected === 'en' && enRatio < 0.6) return true;
+  return false;
+}
+
+export interface NumericalSanityFlag {
+  readonly metric: string;
+  readonly baseline: number;
+  readonly observed: number;
+  readonly ratio: number;
+}
+
+const TEN_X_LOW = 9;
+const TENTH_LOW = 0.05;
+const TENTH_HIGH = 0.15;
+
+export function detectTenXSanityViolations(
+  text: string,
+  baselines: Readonly<Record<string, number>>,
+): ReadonlyArray<NumericalSanityFlag> {
+  const flags: NumericalSanityFlag[] = [];
+  const lower = text.toLowerCase();
+  for (const [metric, baseline] of Object.entries(baselines)) {
+    if (!Number.isFinite(baseline) || baseline === 0) continue;
+    const idx = lower.indexOf(metric.toLowerCase());
+    if (idx < 0) continue;
+    const window = text.slice(Math.max(0, idx - 80), idx + metric.length + 80);
+    const numbers = (window.match(/[\d][\d,]*(?:\.\d+)?/g) ?? [])
+      .map((s) => Number(s.replace(/,/g, '')))
+      .filter((n) => Number.isFinite(n) && (n < 1900 || n > 2100 || n > 3_000));
+    for (const n of numbers) {
+      if (n === baseline) continue;
+      const ratio = n / baseline;
+      if (
+        (ratio >= TEN_X_LOW && ratio <= 100) ||
+        (ratio >= TENTH_LOW && ratio <= TENTH_HIGH)
+      ) {
+        flags.push({ metric, baseline, observed: n, ratio });
+        break;
+      }
+    }
+  }
+  return flags;
+}
+
+function appendSanityHedge(
+  text: string,
+  flagged: ReadonlyArray<NumericalSanityFlag>,
+): string {
+  const lines = flagged.map(
+    (f) =>
+      `  - ${f.metric}: observed ${f.observed} vs baseline ${f.baseline} (${f.ratio.toFixed(1)}× shift) — verify against the ledger before acting.`,
+  );
+  return `${text.trimEnd()}\n\nNumerical-sanity flag (10× rule):\n${lines.join('\n')}`;
+}

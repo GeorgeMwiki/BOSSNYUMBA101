@@ -382,3 +382,11 @@ export * from './platform-announcements.schema.js';
 // enforces append-only idempotency. PII masked at the client BEFORE upload;
 // inputs (password / cc / NIDA / KRA / M-Pesa) never persist to cold store.
 export * from './session-replay-chunks.schema.js';
+
+// Core memory blocks (migration 0151, D8 — Letta-style self-summary).
+// Per-agent persistent blocks injected at the TOP of every system prompt.
+export * from './core-memory-blocks.schema.js';
+
+// Consolidation emissions (migration 0152, D8 — morning digest publish).
+// One row per (tenant, day) summarising the consolidation tick.
+export * from './consolidation-emissions.schema.js';

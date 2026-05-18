@@ -61,6 +61,15 @@ export interface CreateTenantArgs {
   readonly name: string;
   readonly ownerEmail: string;
   readonly plan: 'starter' | 'pro' | 'enterprise';
+  /**
+   * Owner's family name. Optional — when omitted we mark the user row
+   * as profile-incomplete via `preferences.isProfileIncomplete = true`
+   * instead of seeding a literal `'TBD'` string that previously shipped
+   * to the UI verbatim. The HQ tool surface keeps email-only creation
+   * legal so the operator can move fast; the "complete your profile"
+   * nudge is the system-of-record for finishing the row.
+   */
+  readonly ownerLastName?: string | null;
 }
 
 export interface CreateTenantResult {
@@ -302,7 +311,17 @@ export function createPlatformTenantsService(
       // the HQ-tool surface intentionally only requires email at create-time.
       const local = args.ownerEmail.split('@')[0] ?? 'owner';
       const firstName = local.length > 0 ? local : 'Owner';
-      const lastName = 'TBD';
+      // Previously seeded the literal `'TBD'` string which shipped to
+      // the UI verbatim. Now we either take the explicit caller value
+      // (preferred — keeps the HQ surface clean) or default to an empty
+      // string and flag the row as profile-incomplete via the
+      // `preferences.isProfileIncomplete` JSONB key. The "complete your
+      // profile" surface in the owner-portal reads this flag and shows
+      // a nudge until the operator fills the row.
+      const explicitLastName =
+        typeof args.ownerLastName === 'string' ? args.ownerLastName.trim() : '';
+      const lastName = explicitLastName;
+      const isProfileIncomplete = explicitLastName.length === 0;
       try {
         // Drizzle-postgres exposes `.transaction(cb)`. Duck-type to a
         // minimal Transactional surface so tests can mock it without
@@ -331,6 +350,7 @@ export function createPlatformTenantsService(
             lastName,
             status: 'pending_activation',
             isOwner: true,
+            preferences: { isProfileIncomplete },
             createdAt: now,
             updatedAt: now,
           } as never);

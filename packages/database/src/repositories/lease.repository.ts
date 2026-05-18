@@ -1,6 +1,12 @@
 // @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * LeaseRepository - PostgreSQL implementation for lease data access.
+ *
+ * Phase D / A2b-1 — `leases.tenant_signature_url` is marked
+ * `encryptAtRest: true`. The repository accepts an optional
+ * `EncryptionPort` + audit sink via its constructor; writes/reads are
+ * wrapped so that signature URLs (and any future encryptAtRest columns
+ * on `leases`) land as ciphertext on disk.
  */
 
 import { eq, and, desc, isNull, sql, inArray } from 'drizzle-orm';
@@ -17,8 +23,18 @@ import type {
   LeaseId,
 } from '@bossnyumba/domain-models';
 import { buildPaginatedResult, DEFAULT_PAGINATION } from './base.repository.js';
+import {
+  decryptRow,
+  decryptRows,
+  encryptRow,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
+} from '../security/encryption/index.js';
+import type { RepoEncryptionDeps } from './customer.repository.js';
 
 type LeaseRow = typeof leases.$inferSelect;
+
+const LEASES_TABLE = 'leases';
 
 export interface LeaseFilters {
   status?: string | string[];
@@ -28,7 +44,41 @@ export interface LeaseFilters {
 }
 
 export class LeaseRepository {
-  constructor(private readonly db: DatabaseClient) {}
+  private readonly encPort: EncryptionPort | null;
+  private readonly encAudit: FieldEncryptionAuditSink | null;
+
+  constructor(
+    private readonly db: DatabaseClient,
+    deps: RepoEncryptionDeps = {},
+  ) {
+    this.encPort = deps.encPort ?? null;
+    this.encAudit = deps.encAudit ?? null;
+  }
+
+  private async decryptOne(
+    row: LeaseRow | null,
+    tenantId: TenantId,
+  ): Promise<LeaseRow | null> {
+    if (!row || !this.encPort) return row;
+    return decryptRow({
+      row,
+      table: LEASES_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    });
+  }
+
+  private async decryptMany(
+    rows: LeaseRow[],
+    tenantId: TenantId,
+  ): Promise<LeaseRow[]> {
+    if (!this.encPort || rows.length === 0) return rows;
+    return (await decryptRows(rows, {
+      table: LEASES_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    })) as LeaseRow[];
+  }
 
   async findById(id: LeaseId, tenantId: TenantId): Promise<LeaseRow | null> {
     const result = await this.db
@@ -42,7 +92,7 @@ export class LeaseRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
   /**
@@ -53,7 +103,7 @@ export class LeaseRepository {
   async findByIds(ids: LeaseId[], tenantId: TenantId): Promise<LeaseRow[]> {
     if (ids.length === 0) return [];
     const unique = Array.from(new Set(ids));
-    return this.db
+    const rows = await this.db
       .select()
       .from(leases)
       .where(
@@ -63,6 +113,7 @@ export class LeaseRepository {
           isNull(leases.deletedAt)
         )
       );
+    return this.decryptMany(rows, tenantId);
   }
 
   async findByNumber(
@@ -80,7 +131,7 @@ export class LeaseRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
   async findMany(
@@ -126,7 +177,8 @@ export class LeaseRepository {
     ]);
 
     const total = countResult[0]?.count ?? 0;
-    return buildPaginatedResult(items, total, { limit, offset });
+    const decrypted = await this.decryptMany(items, tenantId);
+    return buildPaginatedResult(decrypted, total, { limit, offset });
   }
 
   async findByProperty(
@@ -157,16 +209,26 @@ export class LeaseRepository {
     input: typeof leases.$inferInsert,
     createdBy: UserId
   ): Promise<LeaseRow> {
+    const encryptedInput = this.encPort
+      ? await encryptRow({
+          row: { ...input },
+          table: LEASES_TABLE,
+          tenantId: input.tenantId ? String(input.tenantId) : null,
+          rowId: input.id ? String(input.id) : null,
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : input;
     const [row] = await this.db
       .insert(leases)
       .values({
-        ...input,
+        ...encryptedInput,
         createdBy: createdBy ?? input.createdBy,
         updatedBy: createdBy ?? input.updatedBy,
       })
       .returning();
     if (!row) throw new Error('Failed to create lease');
-    return row;
+    return (await this.decryptOne(row, input.tenantId as TenantId)) as LeaseRow;
   }
 
   async update(
@@ -175,10 +237,20 @@ export class LeaseRepository {
     input: Partial<typeof leases.$inferInsert>,
     updatedBy: UserId
   ): Promise<LeaseRow> {
+    const encryptedPatch = this.encPort
+      ? await encryptRow({
+          row: { ...input },
+          table: LEASES_TABLE,
+          tenantId: String(tenantId),
+          rowId: String(id),
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : input;
     const [row] = await this.db
       .update(leases)
       .set({
-        ...input,
+        ...encryptedPatch,
         updatedAt: new Date(),
         updatedBy: updatedBy ?? input.updatedBy,
       })
@@ -190,7 +262,7 @@ export class LeaseRepository {
       )
       .returning();
     if (!row) throw new Error(`Lease not found: ${id}`);
-    return row;
+    return (await this.decryptOne(row, tenantId)) as LeaseRow;
   }
 
   async delete(id: LeaseId, tenantId: TenantId, deletedBy: UserId): Promise<void> {

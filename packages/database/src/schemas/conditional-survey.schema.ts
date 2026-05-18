@@ -186,7 +186,12 @@ export const conditionalSurveyActionPlans = pgTable(
       .default('proposed'),
 
     estimatedCost: integer('estimated_cost_cents'), // in minor units
-    currency: text('currency').default('KES'),
+    // ISO-4217 currency code. Resolved by the app layer from the
+    // tenant's `currency_preferences` row; nullable because some
+    // proposed actions have no cost line. No DB default — a missed
+    // wire on a costed row surfaces as a NULL rather than silently
+    // pinning to KES.
+    currency: text('currency'),
     targetDate: timestamp('target_date', { withTimezone: true }),
 
     approvedBy: text('approved_by').references(() => users.id, {

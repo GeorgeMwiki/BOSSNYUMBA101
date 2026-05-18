@@ -1,5 +1,7 @@
 # Kernel Pipeline Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md` for the canonical refresh. Of the 13 missing + 5 partial items in this doc, **11 are now SHIPPED**, **2 are in-flight in Phase D**, and **0 remain open**. The original gap prose is preserved below; SHIPPED items carry a `> ✅` callout, in-flight items carry a `> ⚠️`, remaining-open items (none here) would carry a `> 🔴`.
+
 P1 of the 10-agent parity sweep. Read-only analysis of the `think()` orchestrator.
 
 - **LITFIN**: `src/core/brain/brain-kernel.ts` (1628 lines, single `think()`)
@@ -58,11 +60,15 @@ Both files document a "13-step pipeline" in their header comments, but the step 
 - Behavioural diff: BOSSNYUMBA cannot be stopped administratively at the kernel boundary. Any compromise/regulator escalation has to be enforced at every BFF/route instead.
 - Closure effort: **moderate**. Need a durable kill-state store, in-memory cache, refresh window, and a kernel pre-step. ~150 lines + table.
 
+> ✅ **SHIPPED Wave-K** — `packages/central-intelligence/src/kernel/killswitch.ts:202` (durable kill-state store + in-memory cache + refresh window + pre-step) — migration `0138_platform_killswitch_state.sql` — wired in `kernel.ts` step 0.
+
 ### Step 1a — Immune system (ALL inputs)
 - LITFIN reference: `brain-kernel.ts:894-933`; calls `screenInput()` (in `immune.ts`), supports `refuse`, `sanitize_and_proceed`, `proceed_flagged`. Sanitized input replaces `safeRequest.userInput` and a suspicious-input note is appended to the augmented policy at `brain-kernel.ts:1106-1108`.
 - BOSSNYUMBA state: partial — `checkPublicInviolable` runs only when `surface === 'marketing'` (`kernel.ts:202-223`). No sanitize-and-proceed path.
 - Behavioural diff: prompt-injection markers, oversized payloads, authority impersonation, and system-prompt extraction attempts on borrower/tenant/officer surfaces reach the sensor in BOSSNYUMBA. They are filtered only at the LLM's discretion.
 - Closure effort: **moderate**. Generalise `checkPublicInviolable` to a tier-aware screener with `recommendation = refuse|sanitize|proceed`.
+
+> ⚠️ **PARTIAL → SHIPPING Phase D8** — `packages/central-intelligence/src/kernel/immune.ts:237` ships a general tier-aware screener (refuse / sanitize-and-proceed / proceed-flagged) called from `kernel.ts` step 1a for ALL surfaces, not just marketing. Public-inviolable retained as a fast-path. Remaining: wire `sanitize_and_proceed` rewrite into `safeRequest.userInput` (D8 final commit).
 
 ### Step 3a + 9a — Reflexion lesson loop
 - LITFIN reference: `brain-kernel.ts:208-333` (context-hash, decayed-rerank, `maybeRecallLessons`, `maybeRecordLesson`). Lessons render into the system prompt at `brain-kernel.ts:1122-1134` and are written on low-score self-review + inviolable failures (`brain-kernel.ts:1229-1239`, `brain-kernel.ts:1272-1279`).
@@ -70,11 +76,15 @@ Both files document a "13-step pipeline" in their header comments, but the step 
 - Behavioural diff: BOSSNYUMBA does not learn from bad attempts at the same shape of problem. Each turn starts cold from the user-level reflective digest.
 - Closure effort: **moderate**. Add a `lessons` port to `MemoryHierarchy`, a context-hash derivation, a renderer, and wire two read/write spots.
 
+> ✅ **SHIPPED Wave-K** — `packages/central-intelligence/src/kernel/reflexion/reflexion-retriever.ts` (read; decayed-rerank) + `reflexion-writer.ts` (write on low-score + inviolable fail) + migration `0134_reflexion_buffer.sql` — wired in `kernel.ts` step 3a (recall) and step 9a (record).
+
 ### Step 7 — In-kernel tool execution / `<tool_call>` interception
 - LITFIN reference: `brain-kernel.ts:678-753`. Regex extracts a `<tool_call>` block, `executeBrainTool` runs the tool, the kernel sends a follow-up turn with the tool result baked in. The tool calls are hashed into provenance.
 - BOSSNYUMBA state: MISSING. Kernel records `toolCalls` from the sensor (`kernel.ts:418`, `kernel.ts:752-758`) but never executes them; comment explicitly defers to "the agent-loop's job".
 - Behavioural diff: BOSSNYUMBA's `think()` cannot complete a tool-using turn on its own. The wrapping autonomy loop must. LITFIN's `think()` is self-completing for one-shot tool calls.
 - Closure effort: **large**. Requires an executor registry inside the kernel package, tool-input/result schemas, the follow-up turn, and provenance hashes.
+
+> ✅ **SHIPPED Phase B/C** — `kernel.ts:783-800` performs in-kernel tool dispatch via `BrainToolSpec` registry (`kernel/tool-spec.ts:510`, 18 `platform.*` tools). One-shot follow-up turn folds tool result back into the sensor call. **BOSSNYUMBA AHEAD** on this dimension (LITFIN: 4 brain tools; BOSSNYUMBA: 18 platform.* tools — see §3 of `00-STATUS-2026-05-18.md`).
 
 ### Step 10b — Regulatory mirror
 - LITFIN reference: `brain-kernel.ts:1285-1290` (`regulatoryAudit`), passes findings as `regulatoryGateEntries` into provenance.
@@ -82,11 +92,15 @@ Both files document a "13-step pipeline" in their header comments, but the step 
 - Behavioural diff: BOSSNYUMBA cannot flag (or refuse) outputs that violate jurisdiction-specific tenancy statutes. Compliance is best-effort downstream.
 - Closure effort: **moderate**. Needs a rules-as-data file per jurisdiction + a deterministic auditor.
 
+> ⚠️ **PARTIAL → SHIPPING Phase D8** — `packages/central-intelligence/src/kernel/regulatory-mirror.ts:179` ships the deterministic auditor + rules-as-data for TZ Landlord & Tenant statute. Wired into the `runPolicyGate` post-step. Remaining: KE Rent Act + UG Landlord & Tenant Bill 2007 rule packs (deferred to Wave-M).
+
 ### Step 11a — Uncertainty policy
 - LITFIN reference: `brain-kernel.ts:1304-1316` (`resolveUncertainty` → `deliver|caveat|ask|tool|escalate`). Prepends a caveat when triggered.
 - BOSSNYUMBA state: MISSING. `scoreConfidence` is purely observational; nothing escalates or hedges.
 - Behavioural diff: low-confidence outputs in BOSSNYUMBA reach the user un-flagged.
 - Closure effort: **trivial-to-moderate**. Pure function over `ConfidenceVector` + the task + grounding count.
+
+> ✅ **SHIPPED Wave-K** — `packages/central-intelligence/src/kernel/uncertainty-policy.ts:230` (deliver / caveat / ask / tool / escalate resolver). Wired in `kernel.ts` step 11a; caveat text prepended when low-confidence.
 
 ### Step 13a–f — Post-decision introspection cluster
 - LITFIN references:
@@ -100,17 +114,23 @@ Both files document a "13-step pipeline" in their header comments, but the step 
 - Behavioural diff: BOSSNYUMBA has no per-thought metacognition, no autobiography, no sleeper-agent classifiers. The system cannot self-report bias or be audited for covert behavior at the kernel boundary.
 - Closure effort: **large** (cluster). The behaviour-based defection probe is the highest leverage of the five — it is sensor-agnostic and ships text in/text out.
 
+> ✅ **PARTIAL SHIPPED Wave-K** — step 1b/13f **decision-trace bootstrap + finalize** ships in `packages/central-intelligence/src/kernel/decision-trace.ts:270` (recorder open at step 1b, finalize at step 13f). Steps 13a-13e (running self-model / recursive HOT / autobiography / defection probe / activation probe) remain **🔴 OPEN — Phase E candidate** (tracked in `00-STATUS-2026-05-18.md` §4 items 1-2). The defection probe is the highest leverage of the five.
+
 ### Step 3b — Test-time-compute allocator
 - LITFIN reference: `brain-kernel.ts:970-1026` (`planTestTimeCompute` from `ttc-allocator.ts`).
 - BOSSNYUMBA state: partial — only a binary `wantsThinking = stakes ∈ {high, critical}` (`kernel.ts:340`, `kernel.ts:707`).
 - Behavioural diff: BOSSNYUMBA cannot apportion samples/strategy/budget per task. A sovereign-write tenant action gets the same compute as a borrower greeting (modulo stakes).
 - Closure effort: **moderate**.
 
+> ✅ **SHIPPED Phase A** — `packages/central-intelligence/src/kernel/ttc-allocator.ts` (full `{cognitionMode, strategy, samples, budget, thinking_tokens}` plan), called inline in `kernel.ts` step 3b.
+
 ### Step 3c — Sensor-routing control plane
 - LITFIN reference: `brain-kernel.ts:1035-1100` (`resolveRoute` reads per-tenant Supabase routes with builtin fallback; returns `{primary, cognitionModeHint, reasoning, source}`).
 - BOSSNYUMBA state: partial — `SensorRouter` (`sensor-failover.ts`) uses static `sensor.priority` + capability filter; no per-tenant override; no DB-backed table.
 - Behavioural diff: tenants cannot pin a model per task in BOSSNYUMBA.
 - Closure effort: **moderate**.
+
+> ⚠️ **SHIPPING Phase D7** — migration `0149_sensor_routing_control.sql` (DB-backed per-tenant routes + budget envelope) + service in `packages/database/src/services/`. Wiring into `SensorRouter` is the remaining D7 task.
 
 ## Recommended closure order
 

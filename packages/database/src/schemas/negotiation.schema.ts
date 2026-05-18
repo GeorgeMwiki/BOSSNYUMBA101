@@ -90,7 +90,11 @@ export const negotiationPolicies = pgTable(
     maxDiscountPct: decimal('max_discount_pct', { precision: 5, scale: 2 })
       .notNull()
       .default('0'),
-    currency: text('currency').notNull().default('KES'),
+    // ISO-4217 currency code. Resolved by the app layer from the
+    // tenant's `currency_preferences` row; literal `'KES'` default
+    // removed so a missed wire surfaces as an insert error rather
+    // than silently pinning the policy to KES.
+    currency: text('currency').notNull(),
 
     // Flexibility levers
     acceptableConcessions: jsonb('acceptable_concessions').default([]),

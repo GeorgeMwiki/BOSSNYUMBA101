@@ -24,6 +24,7 @@ import {
   AIContentBlock,
   AIMessage,
 } from './ai-provider.js';
+import { applyPrefixCache } from './anthropic-prefix-cache.js';
 
 /**
  * Anthropic provider configuration
@@ -180,7 +181,18 @@ export class AnthropicProvider implements AIProvider {
       }));
     }
 
-    const result = await this.requestWithRetry(body, timeoutMs);
+    // A2b-2 wire #10a — Anthropic prompt-cache breakpoints. Marks the
+    // system prompt + tools array as `cache_control: ephemeral` so
+    // repeat turns reuse the same prefix at ~80% cost reduction. The
+    // policy honours the 1-2 breakpoint recommendation (max 4) and
+    // never mutates the input — `applyPrefixCache` returns a fresh
+    // body that we re-assign before the retry loop.
+    const prefixCacheResult = applyPrefixCache(
+      body as Parameters<typeof applyPrefixCache>[0],
+      {},
+    );
+    const cachedBody = prefixCacheResult.body as Record<string, unknown>;
+    const result = await this.requestWithRetry(cachedBody, timeoutMs);
     if (!result.success) {
       const e = (result as { success: false; error: AIProviderError }).error;
       return aiErr(e);

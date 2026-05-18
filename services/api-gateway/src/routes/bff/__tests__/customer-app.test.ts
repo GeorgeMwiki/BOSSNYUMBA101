@@ -308,7 +308,7 @@ describe('GET /customer/move-out/disputes', () => {
     });
   });
 
-  it('returns an honest empty list with TODO note even when repo IS wired (no per-tenant filter yet)', async () => {
+  it('returns 501 loud-failure when repo is wired but per-tenant filter is not (and no flag)', async () => {
     const services = {
       damageDeductions: {
         repo: {
@@ -317,16 +317,46 @@ describe('GET /customer/move-out/disputes', () => {
           ],
         },
       },
+      // No featureFlags service → flag default off → 501.
     };
     const app = mountWithContext({ services });
+    const res = await app.request('/customer/move-out/disputes', {
+      headers: { Authorization: bearer() },
+    });
+    expect(res.status).toBe(501);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_IMPLEMENTED');
+    expect(body.error.flagKey).toBe('flag.bff.customer_app.move_out_disputes');
+  });
+
+  it('returns intersected list when repos.leases.findByCustomer is wired', async () => {
+    const services = {
+      damageDeductions: {
+        repo: {
+          listOpen: async () => [
+            { id: 'dd-1', leaseId: 'lease-x', status: 'claim_filed' },
+            { id: 'dd-2', leaseId: 'lease-y', status: 'pending' },
+          ],
+        },
+      },
+    };
+    const repos = {
+      leases: {
+        async findByCustomer() {
+          return [{ id: 'lease-x' }];
+        },
+      },
+    };
+    const app = mountWithContext({ services, repos });
     const res = await app.request('/customer/move-out/disputes', {
       headers: { Authorization: bearer() },
     });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data).toEqual([]);
-    expect(body.meta?.note).toMatch(/tenant-filter/);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe('dd-1');
   });
 });
 

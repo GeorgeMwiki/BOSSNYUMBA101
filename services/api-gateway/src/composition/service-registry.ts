@@ -232,6 +232,13 @@ import {
   createBrainKernelWiring,
   type BrainKernelWiring as BrainKernelWiringSlot,
 } from './brain-kernel-wiring.js';
+// ProdFix-1 wires 4 + 5 — NIDA + e-Ardhi adapters + lazy Temporal
+// dispatchers + HQ tool registry composition. Encapsulated so the
+// service-registry stays thin.
+import {
+  createHqToolPortBindings,
+  type HqToolPortBindings,
+} from './hq-tool-port-bindings.js';
 import {
   createMarketSurveillanceWiring,
   type MarketSurveillanceWiring,
@@ -248,6 +255,15 @@ import {
   createSovereignLedgerVerifyCronSupervisor,
   type SovereignLedgerVerifyCronSupervisor,
 } from './sovereign-ledger-verify-cron.js';
+import {
+  createAuditVerifyCronSupervisor,
+  type AuditVerifyCronSupervisor,
+} from './audit-verify-cron.js';
+import { createDrizzleAiAuditChainRepo } from './ai-audit-chain-repo.js';
+import {
+  createSecuritySuite,
+  type SecuritySuite,
+} from '@bossnyumba/ai-copilot';
 import {
   createParityCapabilityDashboard,
   type ParityCapabilityDashboardService,
@@ -703,6 +719,16 @@ export interface ServiceRegistry {
    *  on the shared bus. Null in degraded mode. Inert until `start()`. */
   readonly sovereignLedgerVerifyCron: SovereignLedgerVerifyCronSupervisor | null;
 
+  /**
+   * AI audit-chain verify cron (Phase D D2). Periodically calls
+   * `verifyRandomSample(tenantId, p=0.05)` every 15 min and
+   * `verifyLedgerChain(tenantId)` nightly per active tenant. Emits
+   * `ai-audit.tampered` on the shared bus + structured ERROR log on
+   * any failed verdict. Null in degraded mode (no AI-audit verifier
+   * wired). Inert until `.start()`.
+   */
+  readonly auditVerifyCron: AuditVerifyCronSupervisor | null;
+
   /** Parity capability dashboard (Wave-K parity-litfin Gap C). Aggregates
    *  `kernel_provenance` + `kernel_cot_reservoir` rows into the per-
    *  capability tiles the mission-eval UI renders. Null in degraded
@@ -1093,6 +1119,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Wave-K Tier-3 — sovereign-ledger verify cron is null in degraded
     // mode (no DB → no chain rows to walk).
     sovereignLedgerVerifyCron: null,
+    // Phase D D2 — AI audit-chain verify cron is null in degraded mode
+    // (no verifier wired). `index.ts` skips `.start()` accordingly.
+    auditVerifyCron: null,
     // Wave-K parity-litfin Gap C — null in degraded mode; the router
     // surfaces a zeroed-but-shaped payload so mission-eval keeps loading.
     parityCapabilityDashboard: null,
@@ -1702,6 +1731,39 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         sink,
         modelVersion: 'live-pending-llm',
       });
+      // ProdFix-1 wires 4 + 5 — HQ tool registry composition.
+      // Constructs the NIDA + e-Ardhi connectors (when env-configured)
+      // and threads three lazy Temporal dispatchers in front of the
+      // synchronously-built bundle promise. The brain-kernel wiring
+      // below merges these tools into the kernel's tool registry so
+      // every `platform.verify_nida` / `platform.evict_tenant` /
+      // `platform.payout_owner` / `platform.file_kra_mri` call routes
+      // through the real adapter when bound (and through the existing
+      // deterministic NOT_YET_WIRED refusal otherwise).
+      const hqPortBindings: HqToolPortBindings = createHqToolPortBindings({
+        db,
+        callerResolver: {
+          // Placeholder resolver — real per-request principal binding
+          // lives in the BFF router; the central-intelligence registry
+          // boots with a service-level identity so the registry's
+          // scope-aware caller checks succeed for ops endpoints. The
+          // per-call principal is re-bound when the kernel dispatches
+          // the tool (kernel-tool-pipeline overrides the caller ctx
+          // with the in-flight request principal).
+          resolve: () => ({
+            callerId: 'api-gateway',
+            scopes: ['platform:*'] as ReadonlyArray<string>,
+          }),
+        },
+        logger: {
+          info: (obj, msg) =>
+            console.info('hq-tool-port-bindings:', msg ?? '', obj),
+          warn: (obj, msg) =>
+            console.warn('hq-tool-port-bindings:', msg ?? '', obj),
+          error: (obj, msg) =>
+            console.error('hq-tool-port-bindings:', msg ?? '', obj),
+        },
+      });
       // Wave-K T1 — brain-kernel wiring with env-driven killswitch,
       // always-on decision-trace recorder, seeded tool registry, and
       // env-flagged uncertainty policy. Null when no Anthropic key
@@ -1715,6 +1777,7 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         buildBudgetGuardedAnthropicClient,
         approvalPolicyResolver: createApprovalPolicyService(db),
         sensorRoutingService: createSensorRoutingService(db),
+        hqToolRegistry: hqPortBindings.hqToolRegistry,
       });
       const llmUrl = process.env.CI_LLM_URL?.trim();
       if (!llmUrl) {
@@ -1899,6 +1962,33 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
       },
     }),
+    // A2b-2 wires #8 + #9 — bind the AI audit-chain HMAC verifier
+    // AND compose the full ai-copilot security suite. The supervisor's
+    // verifier port expects `verifyRandomSample` + `verifyLedgerChain`;
+    // the underlying `AuditHashChain` exposes `verifyRandomSample`
+    // + `verifyChain`. We adapt the latter to the former so the chain
+    // is the single source of truth for both this cron and any
+    // downstream consumer (canary, cost breaker, observability).
+    auditVerifyCron: (() => {
+      const repo = createDrizzleAiAuditChainRepo(db);
+      if (!repo) return null;
+      const suite: SecuritySuite = createSecuritySuite({ auditRepo: repo });
+      return createAuditVerifyCronSupervisor({
+        verifier: {
+          verifyRandomSample: (tenantId: string, p: number) =>
+            suite.auditChain.verifyRandomSample(tenantId, p),
+          verifyLedgerChain: (tenantId: string) =>
+            suite.auditChain.verifyChain(tenantId),
+        },
+        db,
+        eventBus,
+        logger: {
+          info: (obj, msg) => console.info('audit-verify-cron:', msg ?? '', obj),
+          warn: (obj, msg) => console.warn('audit-verify-cron:', msg ?? '', obj),
+          error: (obj, msg) => console.error('audit-verify-cron:', msg ?? '', obj),
+        },
+      });
+    })(),
     // Central Command Phase C C4 — session-replay retention purge.
     // Storage adapter slot is null at the registry level today (the
     // production `SessionReplayStoragePort` has no `delete()` yet — a

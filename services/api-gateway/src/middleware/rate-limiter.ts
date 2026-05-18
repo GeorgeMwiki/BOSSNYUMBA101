@@ -387,12 +387,37 @@ export const rateLimitMiddleware = createMiddleware(async (c, next) => {
 });
 
 /**
+ * Per-user rate-limit factory — windowMs + max, scoped to the
+ * authenticated `userId` (falls back to IP for anonymous callers).
+ * Wraps the same token-bucket store so values cohabit with the other
+ * limiters.
+ *
+ * Used by the declared-facts router to cap producer churn at 30 calls
+ * per minute per user (A2b-3 wire #5).
+ */
+export const perUserRateLimit = (opts: {
+  readonly windowMs: number;
+  readonly max: number;
+}) => {
+  const config: RateLimitConfig = {
+    maxRequests: opts.max,
+    windowSizeSeconds: Math.max(1, Math.floor(opts.windowMs / 1000)),
+    keyGenerator: (c) => {
+      const auth = c.get('auth') as AuthContext | undefined;
+      if (auth) return `perUser:${auth.tenantId}:${auth.userId}`;
+      return `perUser:ip:${getClientIP(c)}`;
+    },
+  };
+  return customRateLimit(config);
+};
+
+/**
  * Custom rate limiter for specific endpoints
  */
 export const customRateLimit = (config: RateLimitConfig) => {
   return createMiddleware(async (c, next) => {
     const key = generateKey(c, config);
-    
+
     const result = rateLimiter.check(key, config);
     
     c.header('X-RateLimit-Limit', String(config.maxRequests));

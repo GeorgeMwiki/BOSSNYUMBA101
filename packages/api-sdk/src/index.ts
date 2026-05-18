@@ -59,4 +59,5 @@ export {
   type JarvisStreamPersona,
   type JarvisStreamConfidence,
   type JarvisStreamGateVerdict,
+  type JarvisStreamUiPart,
 } from './jarvis-stream.js';

@@ -22,7 +22,11 @@ describe('createHqToolRegistry', () => {
       },
       clock: fixedClock(),
     });
-    expect(wiring.toolNames).toHaveLength(15);
+    // 17 = 12 legacy platform.* + 3 sovereign Temporal-backed
+    // (evict/payout/file_kra_mri) + 2 East-Africa identity / land-registry
+    // (verify_nida / verify_eardhi_title). The count grows as new HQ tools
+    // ship; assertions on individual tool names live below.
+    expect(wiring.toolNames).toHaveLength(17);
     expect(wiring.registry.get('platform.list_tenants')).not.toBeNull();
     expect(wiring.registry.get('platform.set_killswitch')).not.toBeNull();
   });
@@ -102,7 +106,11 @@ describe('createHqToolRegistry', () => {
       maxRecipientCount: 5_000,
       clock: fixedClock(),
     });
-    expect(wiring.toolNames).toHaveLength(15);
+    // 17 = 12 legacy platform.* + 3 sovereign Temporal-backed
+    // (evict/payout/file_kra_mri) + 2 East-Africa identity / land-registry
+    // (verify_nida / verify_eardhi_title). The count grows as new HQ tools
+    // ship; assertions on individual tool names live below.
+    expect(wiring.toolNames).toHaveLength(17);
   });
 });
 
@@ -195,7 +203,11 @@ describe('createHqToolRegistry — integration (real-deps threading)', () => {
       clock: fixedClock(),
       logger: { info },
     });
-    expect(wiring.toolNames).toHaveLength(15);
+    // 17 = 12 legacy platform.* + 3 sovereign Temporal-backed
+    // (evict/payout/file_kra_mri) + 2 East-Africa identity / land-registry
+    // (verify_nida / verify_eardhi_title). The count grows as new HQ tools
+    // ship; assertions on individual tool names live below.
+    expect(wiring.toolNames).toHaveLength(17);
     expect(info).toHaveBeenCalledOnce();
     const [meta] = info.mock.calls[0] as [Record<string, unknown>, string];
     expect(meta.depsSource).toBe('stub');

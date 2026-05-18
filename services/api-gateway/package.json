@@ -32,6 +32,7 @@
     "@liveblocks/node": "^2.0.0",
     "@bossnyumba/central-intelligence": "workspace:*",
     "@bossnyumba/compliance-plugins": "workspace:*",
+    "@bossnyumba/connectors": "workspace:*",
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
     "@bossnyumba/domain-services": "workspace:*",

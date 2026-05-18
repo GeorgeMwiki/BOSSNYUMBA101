@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { StaffNav } from '@/components/StaffNav';
 import { StaffIdentityStrip } from '@/components/StaffIdentityStrip';
 import { DegradedCard } from '@/components/DegradedCard';
+import { requirePublicBaseUrl } from '@/lib/env-guard';
 
 interface InsightPattern {
   readonly id: string;
@@ -16,7 +17,10 @@ type InsightsResult =
 
 async function fetchPatterns(cookieHeader: string): Promise<InsightsResult> {
   try {
-    const base = process.env.NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL ?? 'http://localhost:3020';
+    const base = requirePublicBaseUrl(
+      'NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL',
+      'http://localhost:3020',
+    );
     const res = await fetch(`${base}/api/platform/insights/patterns`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',

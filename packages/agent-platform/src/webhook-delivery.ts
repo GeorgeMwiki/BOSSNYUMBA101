@@ -16,6 +16,7 @@
  *   User-Agent: BOSSNYUMBA-Webhook/1.0
  */
 
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
 import { hmacSha256Hex } from './agent-auth.js';
 import { correlationHeaders } from './correlation-id.js';
 import type { WebhookDelivery, WebhookSubscription } from './types.js';
@@ -75,6 +76,14 @@ export interface DeliverDeps {
   readonly retryDelaysMs?: ReadonlyArray<number>;
   readonly maxConsecutiveFailures?: number;
   readonly timeoutMs?: number;
+  /**
+   * Injectable DNS lookup used by `assertUrlSafe` — tests inject a stub
+   * to verify EC2-metadata / RFC1918 hostnames are rejected. Defaults to
+   * `node:dns/promises#lookup` (i.e. real resolution).
+   */
+  readonly dnsLookup?: (
+    host: string,
+  ) => Promise<ReadonlyArray<{ readonly address: string; readonly family: number }>>;
 }
 
 const DEFAULT_RETRY_DELAYS_MS: ReadonlyArray<number> = Object.freeze([
@@ -90,6 +99,14 @@ export async function deliverToSubscription(
   subscription: WebhookSubscription,
   event: DeliverEventPayload,
 ): Promise<WebhookDelivery> {
+  // SSRF pre-flight — centralised in @bossnyumba/enterprise-hardening so
+  // any policy change (e.g. new internal range, new scheme block) lands
+  // in one place. Includes the DNS-resolved-IP gate added in A2b-3, so a
+  // subscription URL whose A-record points to 169.254.169.254 or
+  // 127.0.0.1 is rejected before the fetch fires.
+  await assertUrlSafe(subscription.url, {
+    ...(deps.dnsLookup ? { dnsLookup: deps.dnsLookup } : {}),
+  });
   const now = (deps.now ?? Date.now)();
   const retryDelays = deps.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
   const maxFailures = deps.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES;

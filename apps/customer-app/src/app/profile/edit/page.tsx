@@ -7,6 +7,27 @@ import { Mail, Phone, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Avatar } from '@/components/profile/Avatar';
 
+/**
+ * Phone placeholder map. BOSSNYUMBA is a global app — we never hard-code a
+ * national format. Deployment sets NEXT_PUBLIC_DEFAULT_COUNTRY (ISO-3166).
+ */
+const PHONE_PLACEHOLDERS_BY_COUNTRY: Readonly<Record<string, string>> = {
+  TZ: '+255 7XX XXX XXX',
+  KE: '+254 7XX XXX XXX',
+  UG: '+256 7XX XXX XXX',
+  RW: '+250 7XX XXX XXX',
+  NG: '+234 80X XXX XXXX',
+  ZA: '+27 7X XXX XXXX',
+  US: '+1 XXX XXX XXXX',
+  GB: '+44 7XXX XXX XXX',
+};
+const _DEFAULT_COUNTRY: string =
+  (typeof process !== 'undefined'
+    ? process.env?.NEXT_PUBLIC_DEFAULT_COUNTRY?.trim().toUpperCase()
+    : undefined) || '';
+const PHONE_PLACEHOLDER =
+  PHONE_PLACEHOLDERS_BY_COUNTRY[_DEFAULT_COUNTRY] ?? '+CC XXX XXX XXXX';
+
 // Empty initial data — populated from `useCurrentCustomer()` when the auth
 // context resolves. No fabricated demo identity.
 const initialData = {
@@ -147,7 +168,7 @@ export default function EditProfilePage() {
               value={formData.phone}
               onChange={handleChange}
               className="input pl-10"
-              placeholder="+XXX XXX XXX XXX"
+              placeholder={PHONE_PLACEHOLDER}
             />
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             {phoneVerified && (
@@ -191,7 +212,7 @@ export default function EditProfilePage() {
               value={formData.emergencyContactPhone}
               onChange={handleChange}
               className="input"
-              placeholder="+XXX XXX XXX XXX"
+              placeholder={PHONE_PLACEHOLDER}
             />
           </div>
         </section>

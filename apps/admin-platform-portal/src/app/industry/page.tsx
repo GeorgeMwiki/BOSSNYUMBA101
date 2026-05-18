@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { StaffNav } from '@/components/StaffNav';
 import { StaffIdentityStrip } from '@/components/StaffIdentityStrip';
 import { DegradedCard } from '@/components/DegradedCard';
+import { requirePublicBaseUrl } from '@/lib/env-guard';
 
 const SLOTS = [
   { key: 'arrears-by-jurisdiction', title: 'Arrears by jurisdiction' },
@@ -27,7 +28,10 @@ type SlotResult =
 
 async function fetchSlot(slot: SlotKey, cookieHeader: string): Promise<SlotResult> {
   try {
-    const base = process.env.NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL ?? 'http://localhost:3020';
+    const base = requirePublicBaseUrl(
+      'NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL',
+      'http://localhost:3020',
+    );
     const res = await fetch(`${base}/api/platform/industry/${slot}`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',

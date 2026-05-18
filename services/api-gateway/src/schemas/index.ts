@@ -13,17 +13,46 @@ import { z } from 'zod';
 
 /**
  * Phone number in E.164 format (e.g., +255700000000)
+ *
+ * Generic — accepts any well-formed international number. Use this for
+ * any user-input boundary that is NOT explicitly scoped to a single
+ * country. For per-country validation, prefer
+ * `buildPhoneSchemaForCountry(code)` from
+ * `@bossnyumba/domain-models/common/region-config`.
  */
 export const phoneNumberSchema = z
   .string()
   .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format. Use E.164 format (e.g., +255700000000)');
 
 /**
- * Tanzanian phone number
+ * Strict E.164 — leading `+` required, no national-format fallback.
+ *
+ * Use this on production routes that MUST receive a fully-qualified
+ * international number (e.g. webhook callback registrations, third-
+ * party API integrations). For lighter validation on UI-facing user
+ * input, `phoneNumberSchema` (above) is more forgiving.
  */
-export const tanzanianPhoneSchema = z
+export const e164PhoneSchema = z
+  .string()
+  .regex(/^\+[1-9]\d{6,14}$/, 'Invalid phone number. Use E.164 format (e.g. +255712345678)');
+
+/**
+ * @deprecated TZ-only — kept for backwards compatibility with any
+ * legacy import sites. New code MUST use `phoneNumberSchema` (generic
+ * E.164) or `buildPhoneSchemaForCountry()` for per-region validation.
+ * BOSSNYUMBA is built for the world; pinning a user-input boundary to
+ * TZ blocks every other jurisdiction.
+ */
+export const tanzanianPhoneSchemaLegacyTZOnly = z
   .string()
   .regex(/^\+255[67]\d{8}$/, 'Invalid Tanzanian phone number. Use format +255XXXXXXXXX');
+
+/**
+ * @deprecated alias preserved for source-import compatibility. New
+ * imports should use `tanzanianPhoneSchemaLegacyTZOnly` (explicit
+ * scope) or, preferably, the generic schemas above.
+ */
+export const tanzanianPhoneSchema = tanzanianPhoneSchemaLegacyTZOnly;
 
 /**
  * Email address

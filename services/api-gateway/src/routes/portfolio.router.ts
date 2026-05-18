@@ -104,12 +104,69 @@ portfolioRouter.get('/summary', async (c) => {
   }
 });
 
-portfolioRouter.get('/performance', (c) => {
+// Loud-failure 501: the per-property revenue/NOI rollup tables are not
+// yet wired. We return 501 unless a per-tenant feature flag is on (dev
+// mode). The previous silent empty array hid the gap from observability.
+async function performanceFlagOn(c: any): Promise<boolean> {
+  const services = c.get('services') ?? {};
+  const ff = services.featureFlags;
+  if (!ff || typeof ff.isEnabled !== 'function') return false;
+  try {
+    const auth = c.get('auth');
+    return Boolean(await ff.isEnabled(auth?.tenantId ?? '', 'flag.bff.portfolio.performance'));
+  } catch {
+    return false;
+  }
+}
+
+async function growthFlagOn(c: any): Promise<boolean> {
+  const services = c.get('services') ?? {};
+  const ff = services.featureFlags;
+  if (!ff || typeof ff.isEnabled !== 'function') return false;
+  try {
+    const auth = c.get('auth');
+    return Boolean(await ff.isEnabled(auth?.tenantId ?? '', 'flag.bff.portfolio.growth'));
+  } catch {
+    return false;
+  }
+}
+
+portfolioRouter.get('/performance', async (c) => {
+  if (!(await performanceFlagOn(c))) {
+    c.header('X-Backend-Status', 'degraded');
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Per-property performance rollup not wired. Concrete next-step: build a Drizzle query joining properties → units → leases → invoices → payments scoped to auth.propertyAccess returning { propertyId, monthlyRevenue, noi, capRate }.',
+          flagKey: 'flag.bff.portfolio.performance',
+        },
+      },
+      501,
+    );
+  }
   // Frontend expects an array of per-property performance rows.
   return c.json({ success: true, data: [] });
 });
 
-portfolioRouter.get('/growth', (c) => {
+portfolioRouter.get('/growth', async (c) => {
+  if (!(await growthFlagOn(c))) {
+    c.header('X-Backend-Status', 'degraded');
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Per-month growth rollup not wired. Concrete next-step: aggregate payments by month-of-receipt grouped by auth.propertyAccess returning { month, collections, momDelta }.',
+          flagKey: 'flag.bff.portfolio.growth',
+        },
+      },
+      501,
+    );
+  }
   // Frontend expects an array of per-month growth points.
   return c.json({ success: true, data: [] });
 });

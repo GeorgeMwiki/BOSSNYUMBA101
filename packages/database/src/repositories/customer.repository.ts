@@ -1,6 +1,16 @@
 // @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * CustomerRepository - PostgreSQL implementation for customer data access.
+ *
+ * Phase D / A2b-1 — Field-level encryption-at-rest is wired here. The
+ * repository accepts an optional `EncryptionPort` + audit sink via its
+ * constructor; when present, every write is wrapped with `encryptRow()`
+ * and every read is wrapped with `decryptRow()` so callers see plaintext
+ * at the service boundary but Postgres stores ciphertext for every
+ * column the classification registry marks `encryptAtRest: true`
+ * (NIDA, KRA PIN, M-Pesa phone, etc.). When `encPort` is omitted the
+ * repo degrades to legacy plaintext behaviour — preserves backwards
+ * compatibility for tests that do not need encryption.
  */
 
 import { eq, and, desc, isNull, sql, like, or, inArray } from 'drizzle-orm';
@@ -14,6 +24,13 @@ import type {
   CustomerId,
 } from '@bossnyumba/domain-models';
 import { buildPaginatedResult, DEFAULT_PAGINATION } from './base.repository.js';
+import {
+  decryptRow,
+  decryptRows,
+  encryptRow,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
+} from '../security/encryption/index.js';
 
 type CustomerRow = typeof customers.$inferSelect;
 
@@ -22,8 +39,49 @@ export interface CustomerFilters {
   search?: string;
 }
 
+export interface RepoEncryptionDeps {
+  readonly encPort?: EncryptionPort | null;
+  readonly encAudit?: FieldEncryptionAuditSink | null;
+}
+
+const CUSTOMERS_TABLE = 'customers';
+
 export class CustomerRepository {
-  constructor(private readonly db: DatabaseClient) {}
+  private readonly encPort: EncryptionPort | null;
+  private readonly encAudit: FieldEncryptionAuditSink | null;
+
+  constructor(
+    private readonly db: DatabaseClient,
+    deps: RepoEncryptionDeps = {},
+  ) {
+    this.encPort = deps.encPort ?? null;
+    this.encAudit = deps.encAudit ?? null;
+  }
+
+  private async decryptOne(
+    row: CustomerRow | null,
+    tenantId: TenantId,
+  ): Promise<CustomerRow | null> {
+    if (!row || !this.encPort) return row;
+    return decryptRow({
+      row,
+      table: CUSTOMERS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    });
+  }
+
+  private async decryptMany(
+    rows: CustomerRow[],
+    tenantId: TenantId,
+  ): Promise<CustomerRow[]> {
+    if (!this.encPort || rows.length === 0) return rows;
+    return (await decryptRows(rows, {
+      table: CUSTOMERS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    })) as CustomerRow[];
+  }
 
   async findById(id: CustomerId, tenantId: TenantId): Promise<CustomerRow | null> {
     const result = await this.db
@@ -37,7 +95,7 @@ export class CustomerRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
   /**
@@ -48,7 +106,7 @@ export class CustomerRepository {
   async findByIds(ids: CustomerId[], tenantId: TenantId): Promise<CustomerRow[]> {
     if (ids.length === 0) return [];
     const unique = Array.from(new Set(ids));
-    return this.db
+    const rows = await this.db
       .select()
       .from(customers)
       .where(
@@ -58,6 +116,7 @@ export class CustomerRepository {
           isNull(customers.deletedAt)
         )
       );
+    return this.decryptMany(rows, tenantId);
   }
 
   async findByCode(
@@ -75,9 +134,19 @@ export class CustomerRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
+  /**
+   * NOTE: `email` is encrypted-at-rest. A bare `WHERE email = $plaintext`
+   * predicate will not find encrypted rows on Postgres. Callers that need
+   * to query by email after encryption is wired should look up via a
+   * (tenant_id, email_lookup_hash) index — a follow-up migration will add
+   * that column. Today this method continues to issue the legacy WHERE
+   * so existing tests/back-fill scripts keep working; once the historical
+   * back-fill completes (operator runbook `scripts/encrypt-existing-rows`)
+   * this method MUST be migrated to the lookup-hash form.
+   */
   async findByEmail(
     email: string,
     tenantId: TenantId
@@ -93,7 +162,7 @@ export class CustomerRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
   async findMany(
@@ -140,23 +209,34 @@ export class CustomerRepository {
     ]);
 
     const total = countResult[0]?.count ?? 0;
-    return buildPaginatedResult(items, total, { limit, offset });
+    const decrypted = await this.decryptMany(items, tenantId);
+    return buildPaginatedResult(decrypted, total, { limit, offset });
   }
 
   async create(
     input: typeof customers.$inferInsert,
     createdBy: UserId
   ): Promise<CustomerRow> {
+    const encryptedInput = this.encPort
+      ? await encryptRow({
+          row: { ...input },
+          table: CUSTOMERS_TABLE,
+          tenantId: input.tenantId ? String(input.tenantId) : null,
+          rowId: input.id ? String(input.id) : null,
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : input;
     const [row] = await this.db
       .insert(customers)
       .values({
-        ...input,
+        ...encryptedInput,
         createdBy: createdBy ?? input.createdBy,
         updatedBy: createdBy ?? input.updatedBy,
       })
       .returning();
     if (!row) throw new Error('Failed to create customer');
-    return row;
+    return (await this.decryptOne(row, input.tenantId as TenantId)) as CustomerRow;
   }
 
   async update(
@@ -165,10 +245,20 @@ export class CustomerRepository {
     input: Partial<typeof customers.$inferInsert>,
     updatedBy: UserId
   ): Promise<CustomerRow> {
+    const encryptedPatch = this.encPort
+      ? await encryptRow({
+          row: { ...input },
+          table: CUSTOMERS_TABLE,
+          tenantId: String(tenantId),
+          rowId: String(id),
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : input;
     const [row] = await this.db
       .update(customers)
       .set({
-        ...input,
+        ...encryptedPatch,
         updatedAt: new Date(),
         updatedBy: updatedBy ?? input.updatedBy,
       })
@@ -180,7 +270,7 @@ export class CustomerRepository {
       )
       .returning();
     if (!row) throw new Error(`Customer not found: ${id}`);
-    return row;
+    return (await this.decryptOne(row, tenantId)) as CustomerRow;
   }
 
   async delete(id: CustomerId, tenantId: TenantId, deletedBy: UserId): Promise<void> {

@@ -24,6 +24,19 @@ import {
   MapPartSchema,
   CalendarPartSchema,
   FilePreviewPartSchema,
+  // ProdFix-7
+  KanbanPartSchema,
+  DashboardGridPartSchema,
+  HeatmapPartSchema,
+  MarkdownCardPartSchema,
+  PromptSuggestionsPartSchema,
+  EvidenceCardPartSchema,
+  TreePartSchema,
+  DiffViewPartSchema,
+  GaugePartSchema,
+  MetricSparklinePartSchema,
+  ImageAnnotationPartSchema,
+  SignaturePadPartSchema,
 } from './schemas.js';
 import type { AgUiUiPartByKind } from './ag-ui-types.js';
 import type { Tool } from '../../../types.js';
@@ -91,7 +104,11 @@ export const renderDataTableTool: Tool<unknown, AgUiUiPartByKind<'data-table'>> 
                 type: 'string',
                 enum: ['text', 'currency', 'percent', 'number', 'date'],
               },
-              currency: { type: 'string', enum: ['KES', 'TZS', 'USD'] },
+              currency: {
+                type: 'string',
+                pattern: '^[A-Z]{3}$',
+                description: 'ISO-4217 currency code (e.g. KES, TZS, USD, EUR)',
+              },
               enableSorting: { type: 'boolean' },
             },
             additionalProperties: false,
@@ -172,7 +189,11 @@ export const renderKpiGridTool: Tool<unknown, AgUiUiPartByKind<'kpi-grid'>> =
               delta: { type: 'number' },
               deltaDirection: { type: 'string', enum: ['up', 'down', 'flat'] },
               format: { type: 'string', enum: ['currency', 'percent', 'number'] },
-              currency: { type: 'string', enum: ['KES', 'TZS', 'USD'] },
+              currency: {
+                type: 'string',
+                pattern: '^[A-Z]{3}$',
+                description: 'ISO-4217 currency code (e.g. KES, TZS, USD, EUR)',
+              },
             },
             additionalProperties: false,
           },
@@ -404,6 +425,446 @@ export const renderFilePreviewTool: Tool<unknown, AgUiUiPartByKind<'file-preview
     },
   });
 
+// ═════════════════════════════════════════════════════════════════════
+// ProdFix-7 — Tier-1 (6 new tools)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 11. kanban ────────────────────────────────────────────────────────
+
+export const renderKanbanTool: Tool<unknown, AgUiUiPartByKind<'kanban'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'kanban'>>({
+    name: 'render-blocks.kanban',
+    kind: 'kanban',
+    description:
+      'Render a kanban board with swimlane columns and cards. Use for ' +
+      'maintenance ticket queue, vacancy-to-lease pipeline, KRA filing ' +
+      'states, move-in pipeline. Max 8 columns, 500 cards/column.',
+    schema: KanbanPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['columns'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        columns: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 8,
+          items: {
+            type: 'object',
+            required: ['id', 'title', 'cards'],
+            properties: {
+              id: { type: 'string' },
+              title: { type: 'string' },
+              cards: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'title'],
+                  properties: {
+                    id: { type: 'string' },
+                    title: { type: 'string' },
+                    subtitle: { type: 'string' },
+                    badges: { type: 'array', items: { type: 'string' } },
+                    meta: { type: 'object' },
+                    dueAt: { type: 'string', description: 'ISO-8601' },
+                  },
+                  additionalProperties: false,
+                },
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 12. dashboard-grid ────────────────────────────────────────────────
+
+export const renderDashboardGridTool: Tool<unknown, AgUiUiPartByKind<'dashboard-grid'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'dashboard-grid'>>({
+    name: 'render-blocks.dashboard-grid',
+    kind: 'dashboard-grid',
+    description:
+      'Render a composite 12-column responsive dashboard grid. Each ' +
+      'cell holds another UiPart (chart-vega, kpi-grid, data-table, etc.) ' +
+      'with a `span` 1..12. Lets the brain emit ONE structured layout ' +
+      'per turn instead of N flat parts.',
+    schema: DashboardGridPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['cells'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        cells: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 32,
+          items: {
+            type: 'object',
+            required: ['span', 'part'],
+            properties: {
+              span: { type: 'integer', minimum: 1, maximum: 12 },
+              part: {
+                type: 'object',
+                description: 'Nested UiPart with discriminator field `kind`.',
+                required: ['kind'],
+                properties: { kind: { type: 'string' } },
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 13. heatmap ───────────────────────────────────────────────────────
+
+export const renderHeatmapTool: Tool<unknown, AgUiUiPartByKind<'heatmap'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'heatmap'>>({
+    name: 'render-blocks.heatmap',
+    kind: 'heatmap',
+    description:
+      'Render a 2D value matrix as a heatmap. Use for arrears by ' +
+      'property × month, occupancy by unit × week. `cells[y][x]` order; ' +
+      'cells.length must equal yAxis.length and each row length must ' +
+      'equal xAxis.length.',
+    schema: HeatmapPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['xAxis', 'yAxis', 'cells', 'colorScale', 'format'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        xAxis: { type: 'array', items: { type: 'string' } },
+        yAxis: { type: 'array', items: { type: 'string' } },
+        cells: {
+          type: 'array',
+          items: { type: 'array', items: { type: 'number' } },
+        },
+        colorScale: { type: 'string', enum: ['linear', 'log', 'diverging'] },
+        minValue: { type: 'number' },
+        maxValue: { type: 'number' },
+        format: { type: 'string', enum: ['currency', 'percent', 'count'] },
+        currency: {
+          type: 'string',
+          pattern: '^[A-Z]{3}$',
+          description: 'ISO-4217 currency code when format=currency',
+        },
+        unit: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 14. markdown-card ─────────────────────────────────────────────────
+
+export const renderMarkdownCardTool: Tool<unknown, AgUiUiPartByKind<'markdown-card'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'markdown-card'>>({
+    name: 'render-blocks.markdown-card',
+    kind: 'markdown-card',
+    description:
+      'Render a rich narrative markdown block with optional citations. ' +
+      'Use for briefings, case studies, decision-rationale. Citations ' +
+      'are referenced in the markdown body via [cite:<id>] markers and ' +
+      'rendered as a list below the body.',
+    schema: MarkdownCardPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['markdown'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        markdown: { type: 'string', maxLength: 20000 },
+        citations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['id', 'label'],
+            properties: {
+              id: { type: 'string' },
+              label: { type: 'string' },
+              sourceUri: { type: 'string' },
+              sourceRowRef: { type: 'string' },
+            },
+            additionalProperties: false,
+          },
+        },
+        severity: { type: 'string', enum: ['info', 'warning', 'success', 'danger'] },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 15. prompt-suggestions ────────────────────────────────────────────
+
+export const renderPromptSuggestionsTool: Tool<unknown, AgUiUiPartByKind<'prompt-suggestions'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'prompt-suggestions'>>({
+    name: 'render-blocks.prompt-suggestions',
+    kind: 'prompt-suggestions',
+    description:
+      'Render typed quick-reply buttons. Clicking dispatches the prompt ' +
+      'as the next user message. Use to surface common follow-ups, ' +
+      'guided drill-downs, destructive options (with destructive kind).',
+    schema: PromptSuggestionsPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['suggestions'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        suggestions: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 12,
+          items: {
+            type: 'object',
+            required: ['label', 'prompt', 'kind'],
+            properties: {
+              label: { type: 'string' },
+              prompt: { type: 'string' },
+              kind: { type: 'string', enum: ['primary', 'secondary', 'destructive'] },
+              icon: { type: 'string' },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 16. evidence-card ─────────────────────────────────────────────────
+
+export const renderEvidenceCardTool: Tool<unknown, AgUiUiPartByKind<'evidence-card'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'evidence-card'>>({
+    name: 'render-blocks.evidence-card',
+    kind: 'evidence-card',
+    description:
+      'Render a document-quote with cite-link. Use for compliance ' +
+      'reasoning ("MD says X because page 4 of the lease says Y"). ' +
+      'Quote rendered in styled blockquote with source ref + click-through.',
+    schema: EvidenceCardPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['quote', 'sourceTitle'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        quote: { type: 'string', maxLength: 4000 },
+        sourceTitle: { type: 'string' },
+        sourceUri: { type: 'string' },
+        sourcePageOrLocator: { type: 'string' },
+        confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+        extractedAt: { type: 'string', description: 'ISO-8601' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ═════════════════════════════════════════════════════════════════════
+// ProdFix-7 — Tier-2 (6 new tools)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 17. tree ──────────────────────────────────────────────────────────
+
+const treeNodeJsonSchema: Readonly<Record<string, unknown>> = {
+  type: 'object',
+  required: ['id', 'label'],
+  properties: {
+    id: { type: 'string' },
+    label: { type: 'string' },
+    badge: { type: 'string' },
+    children: { type: 'array', items: { type: 'object' } },
+    onClickAction: {
+      type: 'object',
+      required: ['kind', 'payload'],
+      properties: {
+        kind: { type: 'string', enum: ['message', 'tool', 'navigate'] },
+        payload: { type: 'object' },
+      },
+    },
+  },
+  additionalProperties: false,
+};
+
+export const renderTreeTool: Tool<unknown, AgUiUiPartByKind<'tree'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'tree'>>({
+    name: 'render-blocks.tree',
+    kind: 'tree',
+    description:
+      'Render a hierarchical tree with expand/collapse + optional ' +
+      'click actions. Use for owner → portfolio → property → block → ' +
+      'unit drill-downs.',
+    schema: TreePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['root'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        root: treeNodeJsonSchema,
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 18. diff-view ─────────────────────────────────────────────────────
+
+export const renderDiffViewTool: Tool<unknown, AgUiUiPartByKind<'diff-view'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'diff-view'>>({
+    name: 'render-blocks.diff-view',
+    kind: 'diff-view',
+    description:
+      'Render a side-by-side or unified diff. Critical for plan-mode ' +
+      '(before/after preview), lease redline, config drift review.',
+    schema: DiffViewPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['left', 'right', 'leftLabel', 'rightLabel', 'mode'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        left: { type: 'string' },
+        right: { type: 'string' },
+        leftLabel: { type: 'string' },
+        rightLabel: { type: 'string' },
+        mode: { type: 'string', enum: ['unified', 'split'] },
+        language: { type: 'string', enum: ['text', 'json', 'sql'] },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 19. gauge ─────────────────────────────────────────────────────────
+
+export const renderGaugeTool: Tool<unknown, AgUiUiPartByKind<'gauge'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'gauge'>>({
+    name: 'render-blocks.gauge',
+    kind: 'gauge',
+    description:
+      'Render a radial gauge/donut. Use for NPS, collection-rate dials, ' +
+      'occupancy donuts. Thresholds drive colour bands.',
+    schema: GaugePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['value', 'min', 'max', 'label'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        value: { type: 'number' },
+        min: { type: 'number' },
+        max: { type: 'number' },
+        label: { type: 'string' },
+        format: { type: 'string', enum: ['percent', 'number', 'currency'] },
+        currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+        thresholds: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['value', 'color'],
+            properties: {
+              value: { type: 'number' },
+              color: { type: 'string', pattern: '^#[0-9a-fA-F]{3,8}$' },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 20. metric-sparkline ──────────────────────────────────────────────
+
+export const renderMetricSparklineTool: Tool<unknown, AgUiUiPartByKind<'metric-sparkline'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'metric-sparkline'>>({
+    name: 'render-blocks.metric-sparkline',
+    kind: 'metric-sparkline',
+    description:
+      'Render an inline mini-trend behind a single KPI. Tighter than ' +
+      'kpi-grid (one metric at a time, includes sparkline history).',
+    schema: MetricSparklinePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['label', 'value', 'format', 'sparkline'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        label: { type: 'string' },
+        value: { type: 'number' },
+        format: { type: 'string', enum: ['currency', 'percent', 'number'] },
+        currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+        sparkline: { type: 'array', items: { type: 'number' }, minItems: 2 },
+        delta: { type: 'number' },
+        deltaIsPositive: { type: 'boolean' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 21. image-annotation ──────────────────────────────────────────────
+
+export const renderImageAnnotationTool: Tool<unknown, AgUiUiPartByKind<'image-annotation'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'image-annotation'>>({
+    name: 'render-blocks.image-annotation',
+    kind: 'image-annotation',
+    description:
+      'Render an image with overlay markers. Use for inspection-photo ' +
+      'finding markup, AXTree overlay. x/y are 0..1 normalised.',
+    schema: ImageAnnotationPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['imageUrl', 'annotations'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        imageUrl: { type: 'string' },
+        annotations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['x', 'y', 'label', 'severity'],
+            properties: {
+              x: { type: 'number', minimum: 0, maximum: 1 },
+              y: { type: 'number', minimum: 0, maximum: 1 },
+              label: { type: 'string' },
+              severity: { type: 'string', enum: ['info', 'warning', 'critical'] },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 22. signature-pad ─────────────────────────────────────────────────
+
+export const renderSignaturePadTool: Tool<unknown, AgUiUiPartByKind<'signature-pad'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'signature-pad'>>({
+    name: 'render-blocks.signature-pad',
+    kind: 'signature-pad',
+    description:
+      'Render an inline canvas-based signature capture. The component ' +
+      'accepts a signature, exports a dataURL, and dispatches the ' +
+      'onSubmitAction tool/navigate. Use for lease-renewal e-signature.',
+    schema: SignaturePadPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['prompt', 'requiredFor', 'onSubmitAction'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        prompt: { type: 'string' },
+        requiredFor: { type: 'string' },
+        onSubmitAction: {
+          type: 'object',
+          required: ['kind', 'payload'],
+          properties: {
+            kind: { type: 'string', enum: ['tool', 'navigate'] },
+            payload: { type: 'object' },
+          },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
 // ─────────────────────────────────────────────────────────────────────
 // Bundle — the convenience factory.
 // ─────────────────────────────────────────────────────────────────────
@@ -419,6 +880,20 @@ export interface RenderBlockToolBundle {
   readonly map: typeof renderMapTool;
   readonly calendar: typeof renderCalendarTool;
   readonly filePreview: typeof renderFilePreviewTool;
+  // ProdFix-7 Tier-1
+  readonly kanban: typeof renderKanbanTool;
+  readonly dashboardGrid: typeof renderDashboardGridTool;
+  readonly heatmap: typeof renderHeatmapTool;
+  readonly markdownCard: typeof renderMarkdownCardTool;
+  readonly promptSuggestions: typeof renderPromptSuggestionsTool;
+  readonly evidenceCard: typeof renderEvidenceCardTool;
+  // ProdFix-7 Tier-2
+  readonly tree: typeof renderTreeTool;
+  readonly diffView: typeof renderDiffViewTool;
+  readonly gauge: typeof renderGaugeTool;
+  readonly metricSparkline: typeof renderMetricSparklineTool;
+  readonly imageAnnotation: typeof renderImageAnnotationTool;
+  readonly signaturePad: typeof renderSignaturePadTool;
   readonly all: ReadonlyArray<Tool>;
 }
 
@@ -441,6 +916,20 @@ export function createRenderBlockTools(): RenderBlockToolBundle {
     renderMapTool,
     renderCalendarTool,
     renderFilePreviewTool,
+    // ProdFix-7 Tier-1
+    renderKanbanTool,
+    renderDashboardGridTool,
+    renderHeatmapTool,
+    renderMarkdownCardTool,
+    renderPromptSuggestionsTool,
+    renderEvidenceCardTool,
+    // ProdFix-7 Tier-2
+    renderTreeTool,
+    renderDiffViewTool,
+    renderGaugeTool,
+    renderMetricSparklineTool,
+    renderImageAnnotationTool,
+    renderSignaturePadTool,
   ] as ReadonlyArray<Tool>);
 
   return {
@@ -454,6 +943,18 @@ export function createRenderBlockTools(): RenderBlockToolBundle {
     map: renderMapTool,
     calendar: renderCalendarTool,
     filePreview: renderFilePreviewTool,
+    kanban: renderKanbanTool,
+    dashboardGrid: renderDashboardGridTool,
+    heatmap: renderHeatmapTool,
+    markdownCard: renderMarkdownCardTool,
+    promptSuggestions: renderPromptSuggestionsTool,
+    evidenceCard: renderEvidenceCardTool,
+    tree: renderTreeTool,
+    diffView: renderDiffViewTool,
+    gauge: renderGaugeTool,
+    metricSparkline: renderMetricSparklineTool,
+    imageAnnotation: renderImageAnnotationTool,
+    signaturePad: renderSignaturePadTool,
     all,
   };
 }

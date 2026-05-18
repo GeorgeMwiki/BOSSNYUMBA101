@@ -1,16 +1,38 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+import { getApiGatewayBase, proxyJson, readJsonBody } from '@/lib/proxy';
 
 /**
- * Create a new platform-scope intelligence thread.
+ * Proxy: create a new platform-scope intelligence thread.
  *
- * TODO (intelligence-wiring): proxy to the API gateway's
- * POST /api/v1/intelligence/thread with `{ scope: 'platform',
- * persona: 'industry-observer' }` and forward the Set-Cookie /
- * bearer from the staff session. Until wired, respond 503.
+ * Forwards POST /api/v1/intelligence/thread with `{ scope: 'platform',
+ * persona: 'industry-observer' }` and the staff session cookie /
+ * Authorization header so the gateway can enforce role gates.
  */
-export function POST() {
-  return NextResponse.json(
-    { error: 'intelligence-service not wired for platform scope' },
-    { status: 503 },
-  );
+export async function POST(req: NextRequest) {
+  const incoming = await readJsonBody(req);
+  if (incoming === null) {
+    return NextResponse.json({ error: 'json body required' }, { status: 400 });
+  }
+  // Re-serialise with scope + persona enforced at this layer so a
+  // misbehaving caller cannot escape the platform scope by omitting
+  // the field. The gateway double-checks but defence-in-depth here.
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = JSON.parse(incoming) as Record<string, unknown>;
+  } catch {
+    parsed = {};
+  }
+  const body = JSON.stringify({
+    ...parsed,
+    scope: 'platform',
+    persona: parsed.persona ?? 'industry-observer',
+  });
+
+  const base = getApiGatewayBase();
+  return proxyJson(`${base}/api/v1/intelligence/thread`, {
+    method: 'POST',
+    body,
+    contentType: 'application/json',
+  });
 }

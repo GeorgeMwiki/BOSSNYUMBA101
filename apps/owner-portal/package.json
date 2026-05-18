@@ -17,6 +17,7 @@
     "@bossnyumba/chat-ui": "*",
     "@bossnyumba/design-system": "*",
     "@bossnyumba/domain-models": "*",
+    "@bossnyumba/genui": "*",
     "@bossnyumba/observability": "workspace:^",
     "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "*",

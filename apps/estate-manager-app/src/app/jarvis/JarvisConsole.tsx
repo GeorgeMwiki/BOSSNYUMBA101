@@ -23,6 +23,7 @@ import {
   useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
+import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 
 const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
 
@@ -233,8 +234,13 @@ export function JarvisConsole(): JSX.Element {
             // The single-shot turn carries `decision`; the streaming
             // turn carries `finalDecision`. Coalesce so the renderer
             // stays mode-agnostic.
-            const tt = t as { decision?: any; finalDecision?: any } & typeof t;
+            const tt = t as {
+              decision?: any;
+              finalDecision?: any;
+              uiParts?: ReadonlyArray<AgUiUiPart>;
+            } & typeof t;
             const decision = tt.finalDecision ?? tt.decision;
+            const uiParts: ReadonlyArray<AgUiUiPart> = tt.uiParts ?? [];
             return (
               <div
                 key={t.id}
@@ -245,6 +251,16 @@ export function JarvisConsole(): JSX.Element {
                 }
               >
                 <div className="whitespace-pre-wrap">{t.text}</div>
+                {t.role === 'assistant' && uiParts.length > 0 ? (
+                  // ProdFix-4: render typed AG-UI uiParts through the
+                  // shared `@bossnyumba/genui` AdaptiveRenderer. Before
+                  // this fix estate-manager-app did not surface uiParts
+                  // at all — chart-vega / kpi-grid / data-table payloads
+                  // were dropped.
+                  <div className="mt-2 flex flex-col gap-2">
+                    <AdaptiveRenderer parts={uiParts} />
+                  </div>
+                ) : null}
                 {t.role === 'assistant' && decision?.confidence ? (
                   <div className="mt-1 text-xs text-muted-foreground">
                     confidence {(decision.confidence.overall * 100).toFixed(0)}%

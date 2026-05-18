@@ -5,6 +5,7 @@ import { StaffNav } from '@/components/StaffNav';
 import { StaffIdentityStrip } from '@/components/StaffIdentityStrip';
 import { DegradedCard } from '@/components/DegradedCard';
 import { PLATFORM_SESSION_COOKIE } from '@/lib/session';
+import { requirePublicBaseUrl } from '@/lib/env-guard';
 
 const HERO_CARDS = [
   {
@@ -41,7 +42,10 @@ interface BudgetPayload {
 
 async function fetchBudget(cookieHeader: string): Promise<BudgetPayload | null> {
   try {
-    const base = process.env.NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL ?? 'http://localhost:3020';
+    const base = requirePublicBaseUrl(
+      'NEXT_PUBLIC_PLATFORM_PORTAL_BASE_URL',
+      'http://localhost:3020',
+    );
     const res = await fetch(`${base}/api/platform/budget`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',

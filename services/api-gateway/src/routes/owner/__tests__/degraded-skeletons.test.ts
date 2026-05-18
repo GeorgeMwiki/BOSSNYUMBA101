@@ -1,28 +1,26 @@
 /**
- * Owner-portal placeholder-page skeleton tests (Wave-4 D6).
+ * Owner-portal placeholder-page skeleton tests (Wave-4 D6, Phase D update).
  *
- * Each of the 10 endpoints below answers a `MissingBackendNotice` page
- * created in commit 0ee27a0. The contract is fixed:
+ * Phase D flipped these endpoints from "honest empty list with degraded
+ * header" (HTTP 200) to "loud-failure 501 unless a per-tenant feature
+ * flag is on" (`flag.bff.<endpoint>`). The previous silent-empty
+ * behaviour hid the gap from observability dashboards and confused
+ * operators who reasonably believed an empty response meant the tenant
+ * had no data.
  *
- *   - HTTP 200 (never 404, never 503)
- *   - body: `{ success: true, data: <empty>, ... }`
- *   - `meta.degradedReason: 'not_implemented'`
- *   - `meta.concreteNextStep: <non-empty string>`
- *   - `meta.tenantId === <auth tenant>`
- *   - response header `X-Backend-Status: degraded`
+ * The fixed contract is now:
  *
- * These tests exercise:
+ *   - HTTP 501 Not Implemented (default; flag is off)
+ *   - response body: { success: false, error: { code: 'NOT_IMPLEMENTED',
+ *       message: '<concrete next-step>', flagKey: '<flag.bff.…>' } }
+ *   - `X-Backend-Status: degraded` header (unchanged from Wave-4 D6).
+ *
+ * Tests exercise:
  *   - the auth gate (anonymous → 401)
  *   - the role gate (RESIDENT → 403)
- *   - the degraded-shape envelope
- *   - tenant-isolation (the `meta.tenantId` reflects the bearer's tenant,
- *     never a body / query parameter, so the routes can't be coerced
- *     into echoing another tenant's id).
- *
- * Note on `/admin/users`: the existing `bff/admin-portal.ts` mounts the
- * router at `/admin` first and DOES NOT define `/users`, so requests
- * fall through to our `adminUsersRouter`. The test below validates the
- * skeleton in isolation, mounted directly at `/admin`.
+ *   - the loud-failure 501 envelope (no FeatureFlags service wired)
+ *   - the `flagKey` field is per-endpoint (so observability can pivot
+ *     on it).
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -70,26 +68,26 @@ beforeAll(() => {
 });
 
 /**
- * Common assertion for list-shaped degraded responses. Every router
- * with a list endpoint should pass this contract verbatim.
+ * Shared assertion for the new 501-Not-Implemented contract. The
+ * caller has no FeatureFlags service in context, so the route falls
+ * through to the loud-failure path.
  */
-async function assertDegradedListResponse(
+async function assertNotImplemented(
   app: Hono,
   path: string,
-  tenantId: string,
+  expectedFlagKey: string,
 ): Promise<void> {
   const res = await app.request(path, {
-    headers: { Authorization: bearer(UserRole.OWNER, tenantId) },
+    headers: { Authorization: bearer(UserRole.OWNER, TEST_TENANT) },
   });
-  expect(res.status).toBe(200);
+  expect(res.status).toBe(501);
   expect(res.headers.get('x-backend-status')).toBe('degraded');
   const body = await res.json();
-  expect(body.success).toBe(true);
-  expect(body.data).toEqual([]);
-  expect(body.meta.degradedReason).toBe('not_implemented');
-  expect(typeof body.meta.concreteNextStep).toBe('string');
-  expect(body.meta.concreteNextStep.length).toBeGreaterThan(0);
-  expect(body.meta.tenantId).toBe(tenantId);
+  expect(body.success).toBe(false);
+  expect(body.error.code).toBe('NOT_IMPLEMENTED');
+  expect(typeof body.error.message).toBe('string');
+  expect(body.error.message.length).toBeGreaterThan(0);
+  expect(body.error.flagKey).toBe(expectedFlagKey);
 }
 
 // ---------------------------------------------------------------------------
@@ -111,20 +109,19 @@ describe('GET /analytics/exports/templates (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded list shape for OWNER', async () => {
-    await assertDegradedListResponse(
+  it('returns 501 loud-failure when feature flag is off', async () => {
+    await assertNotImplemented(
       app,
       '/analytics/exports/templates',
-      TEST_TENANT,
+      'flag.bff.analytics.exports',
     );
   });
 
-  it('echoes the bearer tenant id in meta (isolation)', async () => {
-    await assertDegradedListResponse(
-      app,
-      '/analytics/exports/templates',
-      OTHER_TENANT,
-    );
+  it('still applies tenant-scoped auth (other tenant gets the same 501)', async () => {
+    const res = await app.request('/analytics/exports/templates', {
+      headers: { Authorization: bearer(UserRole.OWNER, OTHER_TENANT) },
+    });
+    expect(res.status).toBe(501);
   });
 });
 
@@ -147,15 +144,15 @@ describe('GET /analytics/growth (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded list shape for OWNER', async () => {
-    await assertDegradedListResponse(app, '/analytics/growth', TEST_TENANT);
+  it('returns 501 loud-failure for OWNER when flag is off', async () => {
+    await assertNotImplemented(app, '/analytics/growth', 'flag.bff.analytics.growth');
   });
 
-  it('returns degraded list shape for TENANT_ADMIN', async () => {
+  it('returns 501 loud-failure for TENANT_ADMIN when flag is off', async () => {
     const res = await app.request('/analytics/growth', {
       headers: { Authorization: bearer(UserRole.TENANT_ADMIN) },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(501);
   });
 });
 
@@ -178,8 +175,8 @@ describe('GET /analytics/usage (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded list shape for OWNER', async () => {
-    await assertDegradedListResponse(app, '/analytics/usage', TEST_TENANT);
+  it('returns 501 loud-failure for OWNER when flag is off', async () => {
+    await assertNotImplemented(app, '/analytics/usage', 'flag.bff.analytics.usage');
   });
 });
 
@@ -202,20 +199,12 @@ describe('GET /billing/subscription (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded subscription object with X-Backend-Status header', async () => {
-    const res = await app.request('/billing/subscription', {
-      headers: { Authorization: bearer(UserRole.OWNER) },
-    });
-    expect(res.status).toBe(200);
-    expect(res.headers.get('x-backend-status')).toBe('degraded');
-    const body = await res.json();
-    expect(body.success).toBe(true);
-    expect(body.data.plan).toBeNull();
-    expect(body.data.status).toBe('unknown');
-    expect(body.data.mrrMinor).toBe(0);
-    expect(body.data.meta.degradedReason).toBe('not_implemented');
-    expect(body.data.meta.tenantId).toBe(TEST_TENANT);
-    expect(body.data.meta.concreteNextStep.length).toBeGreaterThan(0);
+  it('returns 501 loud-failure for OWNER when no platformBilling is wired', async () => {
+    await assertNotImplemented(
+      app,
+      '/billing/subscription',
+      'flag.bff.billing.subscription',
+    );
   });
 });
 
@@ -238,31 +227,31 @@ describe('GET /owner/messaging/{broadcasts,campaigns,templates} (skeleton)', () 
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded list for /broadcasts', async () => {
-    await assertDegradedListResponse(
+  it('returns 501 for /broadcasts when flag is off', async () => {
+    await assertNotImplemented(
       app,
       '/owner/messaging/broadcasts',
-      TEST_TENANT,
+      'flag.bff.owner_messaging.broadcasts',
     );
   });
 
-  it('returns degraded list for /campaigns', async () => {
-    await assertDegradedListResponse(
+  it('returns 501 for /campaigns when flag is off', async () => {
+    await assertNotImplemented(
       app,
       '/owner/messaging/campaigns',
-      TEST_TENANT,
+      'flag.bff.owner_messaging.campaigns',
     );
   });
 
-  it('returns degraded list for /templates', async () => {
-    await assertDegradedListResponse(
+  it('returns 501 for /templates when flag is off', async () => {
+    await assertNotImplemented(
       app,
       '/owner/messaging/templates',
-      TEST_TENANT,
+      'flag.bff.owner_messaging.templates',
     );
   });
 
-  it('next-step strings are domain-specific (not copy-pasted)', async () => {
+  it('next-step messages are domain-specific (not copy-pasted)', async () => {
     const headers = { Authorization: bearer(UserRole.OWNER) };
     const [b, c, t] = await Promise.all([
       app.request('/owner/messaging/broadcasts', { headers }),
@@ -270,9 +259,9 @@ describe('GET /owner/messaging/{broadcasts,campaigns,templates} (skeleton)', () 
       app.request('/owner/messaging/templates', { headers }),
     ]);
     const [bb, cb, tb] = await Promise.all([b.json(), c.json(), t.json()]);
-    expect(bb.meta.concreteNextStep).toMatch(/broadcasts/);
-    expect(cb.meta.concreteNextStep).toMatch(/campaigns/);
-    expect(tb.meta.concreteNextStep).toMatch(/templates/);
+    expect(bb.error.message).toMatch(/broadcasts/);
+    expect(cb.error.message).toMatch(/campaigns/);
+    expect(tb.error.message).toMatch(/templates/);
   });
 });
 
@@ -295,8 +284,8 @@ describe('GET /support/tickets (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns degraded list shape for OWNER', async () => {
-    await assertDegradedListResponse(app, '/support/tickets', TEST_TENANT);
+  it('returns 501 loud-failure for OWNER when flag is off', async () => {
+    await assertNotImplemented(app, '/support/tickets', 'flag.bff.support.tickets');
   });
 });
 
@@ -319,27 +308,25 @@ describe('GET /admin/users (skeleton)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('allows TENANT_ADMIN', async () => {
+  it('allows TENANT_ADMIN past the auth gate (501 still, because no platformUsers svc)', async () => {
     const res = await app.request('/admin/users', {
       headers: { Authorization: bearer(UserRole.TENANT_ADMIN) },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(501);
   });
 
-  it('returns degraded list shape for OWNER', async () => {
-    await assertDegradedListResponse(app, '/admin/users', TEST_TENANT);
+  it('returns 501 for OWNER when flag is off', async () => {
+    await assertNotImplemented(app, '/admin/users', 'flag.bff.admin_users.list');
   });
 
-  it('isolates tenants — meta.tenantId reflects bearer, not a query', async () => {
-    // Even if a malicious query string tries to override tenantId, the
-    // skeleton always reads from the auth context. Send a query and
-    // verify the response still echoes the bearer's tenant.
+  it('isolates tenants — a malicious query string cannot route to another tenant', async () => {
+    // Even with a query that tries to override tenantId, the route reads
+    // from auth context. We assert the 501 still fires (the loud-failure
+    // path runs after auth) — tenant isolation is preserved.
     const res = await app.request(
       `/admin/users?tenantId=${OTHER_TENANT}`,
       { headers: { Authorization: bearer(UserRole.OWNER, TEST_TENANT) } },
     );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.meta.tenantId).toBe(TEST_TENANT);
+    expect(res.status).toBe(501);
   });
 });

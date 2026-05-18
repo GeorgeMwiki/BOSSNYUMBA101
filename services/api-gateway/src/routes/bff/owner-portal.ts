@@ -679,21 +679,51 @@ app.post('/documents/:id/sign', async (c) => {
 
 // ----------------------------------------------------------------------------
 // Frontend gap-fix endpoint — owner-portal CoOwnerInviteModal renders the
-// co-owners list above the "+ Invite" button. The underlying co-owner
-// invitation pipeline is still in design (a co-owner becomes a USER row
-// with role=OWNER scoped to the same `propertyAccess` set as the inviter).
-// Returning an empty array keeps the page renderable until that lands.
-// TODO(api-gateway, OWNER-BFF-001): join `users` ⨝ `user_property_access`
-//   filtered to rows where the inviter shares any `propertyAccess[*]`.
-//   Concrete next-step:
-//     1. Add `repos.userPropertyAccess.findCoOwners(tenantId, propertyIds)`
-//        in @bossnyumba/database.
-//     2. Build `propertyIds = await getOwnerScope(auth, repos)`.
-//     3. Return the intersected user list with role filter
-//        `role IN ('OWNER','CO_OWNER')`.
+// co-owners list above the "+ Invite" button. OWNER-BFF-001 — when the
+// `repos.userPropertyAccess.findCoOwners` query lands we use it directly.
+// Until then: loud-fail 501 unless `flag.bff.owner_portal.co_owners` is
+// on for the tenant.
 // ----------------------------------------------------------------------------
-app.get('/co-owners', (c) => {
-  return c.json({ success: true, data: [] });
+app.get('/co-owners', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos') as { userPropertyAccess?: { findCoOwners?: Function } } | undefined;
+  const findCoOwners = repos?.userPropertyAccess?.findCoOwners;
+  if (typeof findCoOwners === 'function') {
+    try {
+      const rows = await findCoOwners.call(repos!.userPropertyAccess, auth.tenantId, auth.propertyAccess ?? []);
+      return c.json({ success: true, data: rows ?? [] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'co-owners query failed';
+      return c.json(
+        { success: false, error: { code: 'CO_OWNERS_SERVICE_ERROR', message } },
+        503,
+      );
+    }
+  }
+
+  const services = c.get('services') as { featureFlags?: { isEnabled: Function } } | undefined;
+  const flagKey = 'flag.bff.owner_portal.co_owners';
+  let flagOn = false;
+  try {
+    flagOn = Boolean(await services?.featureFlags?.isEnabled?.(auth.tenantId, flagKey));
+  } catch {
+    flagOn = false;
+  }
+  if (!flagOn) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Co-owner list pipeline not wired. Concrete next-step: add repos.userPropertyAccess.findCoOwners(tenantId, propertyIds) and intersect with the inviter property scope.',
+          flagKey,
+        },
+      },
+      501,
+    );
+  }
+  return c.json({ success: true, data: [], meta: { note: 'flag-gated dev empty list; co-owner pipeline pending' } });
 });
 
 // ============================================================================
@@ -994,16 +1024,52 @@ app.post('/invitations/co-owner', async (c) => {
     expiresAt,
   });
 
-  // TODO(api-gateway, OWNER-BFF-002): persist to `invitations` table +
-  //   enqueue email-delivery job once the invitation domain service
-  //   lands. Concrete next-step:
-  //     1. Add `invitations` migration ({ id, tenantId, email, role,
-  //        propertyAccess, invitedBy, expiresAt, status, token }).
-  //     2. Add InvitationService.create(...) in @bossnyumba/domain-services
-  //        that writes the row + enqueues a `notification.email.dispatch`
-  //        job onto the outbox.
-  //     3. Replace the `signInvitationToken` shortcut with the service
-  //        call; keep the same response shape so the FE stays stable.
+  // OWNER-BFF-002: real wire when an InvitationService is on `services`.
+  // Otherwise loud-fail 501 unless `flag.bff.owner_portal.invitations_create`
+  // is on — in dev mode we still return the signed token so the FE can
+  // exercise the end-to-end flow without persistence.
+  const services = c.get('services') as { invitationService?: { create: Function }; featureFlags?: { isEnabled: Function } } | undefined;
+  const invitationService = services?.invitationService;
+  if (invitationService && typeof invitationService.create === 'function') {
+    try {
+      const created = await invitationService.create({
+        invitationId,
+        email,
+        role,
+        propertyAccess,
+        invitedBy: auth.userId,
+        tenantId: auth.tenantId,
+        expiresAt,
+        token,
+      });
+      return c.json({ success: true, data: { ...created, token } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'invitation create failed';
+      return c.json({ success: false, error: { code: 'INVITATION_SERVICE_ERROR', message } }, 503);
+    }
+  }
+
+  const flagKey = 'flag.bff.owner_portal.invitations_create';
+  let flagOn = false;
+  try {
+    flagOn = Boolean(await services?.featureFlags?.isEnabled?.(auth.tenantId, flagKey));
+  } catch {
+    flagOn = false;
+  }
+  if (!flagOn) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Invitation persistence not wired. Concrete next-step: add invitations table + InvitationService.create(...) that writes the row + enqueues notification.email.dispatch onto the outbox.',
+          flagKey,
+        },
+      },
+      501,
+    );
+  }
   return c.json({
     success: true,
     data: {

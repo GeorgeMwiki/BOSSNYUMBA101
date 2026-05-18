@@ -39,6 +39,10 @@ import {
   SchedulingRepository,
   ComplianceRepository,
   DocumentRepository,
+  selectEncryptionPort,
+  createFieldEncryptionAuditService,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
 } from '@bossnyumba/database';
 import pino from 'pino';
 
@@ -71,6 +75,15 @@ const USE_MOCK_DATA = EXPLICIT_MOCK_MODE || !DATABASE_URL;
 
 // Singleton database client (connection pooling handled by postgres.js)
 let db: DatabaseClient | null = null;
+// Phase D / A2b-1 — field-level encryption port + audit sink. Built
+// lazily once per process from `process.env` and threaded into every
+// repository so PII columns are encrypted on write and decrypted on
+// read transparently. Set to `null` in dev/test when
+// `ENCRYPTION_MASTER_KEY` is not configured — repos degrade to
+// legacy plaintext mode in that case.
+let encPort: EncryptionPort | null = null;
+let encAudit: FieldEncryptionAuditSink | null = null;
+let encryptionInitAttempted = false;
 
 /**
  * Initialize database connection
@@ -119,7 +132,48 @@ export interface Repositories {
 let repositories: Repositories | null = null;
 
 /**
- * Get or create repositories
+ * Build the field-level encryption port + audit sink. Lazy so a missing
+ * `ENCRYPTION_MASTER_KEY` in dev does not crash the boot — the repos
+ * degrade to plaintext mode and surface a single startup warning. In
+ * production the absence MUST be a hard failure; gateway boot wiring
+ * checks that explicitly via `selectEncryptionPort`'s
+ * `EncryptionKeyUnavailableError`.
+ */
+async function buildEncryption(
+  database: DatabaseClient,
+): Promise<{ port: EncryptionPort | null; audit: FieldEncryptionAuditSink | null }> {
+  if (encryptionInitAttempted) {
+    return { port: encPort, audit: encAudit };
+  }
+  encryptionInitAttempted = true;
+  if (!process.env.ENCRYPTION_MASTER_KEY) {
+    if (IS_PRODUCTION) {
+      throw new Error(
+        'ENCRYPTION_MASTER_KEY is required in production — refusing to start without field-level encryption',
+      );
+    }
+    logger.warn(
+      'ENCRYPTION_MASTER_KEY not configured; field-level encryption disabled (DEV mode only)',
+    );
+    return { port: null, audit: null };
+  }
+  try {
+    encPort = await selectEncryptionPort(
+      process.env as unknown as Record<string, string | undefined>,
+    );
+    encAudit = createFieldEncryptionAuditService(database);
+    logger.info('Field-level encryption port + audit sink initialized');
+    return { port: encPort, audit: encAudit };
+  } catch (error) {
+    logger.error({ error }, 'Failed to initialize encryption port');
+    if (IS_PRODUCTION) throw error;
+    return { port: null, audit: null };
+  }
+}
+
+/**
+ * Get or create repositories. The first call builds the encryption
+ * port + audit sink (lazily). Subsequent calls reuse the singleton.
  */
 function getRepositories(): Repositories | null {
   const database = getDatabase();
@@ -128,18 +182,27 @@ function getRepositories(): Repositories | null {
   }
 
   if (!repositories) {
+    // Kick off the encryption init in the background; until it resolves
+    // repos run in plaintext mode. Production boot should call
+    // `initRepositoriesAsync()` first to guarantee encryption is ready
+    // before any request is served.
+    void buildEncryption(database).then((res) => {
+      encPort = res.port;
+      encAudit = res.audit;
+    });
+    const deps = { encPort, encAudit };
     repositories = {
-      tenants: new TenantRepository(database),
-      users: new UserRepository(database),
+      tenants: new TenantRepository(database, deps),
+      users: new UserRepository(database, deps),
       properties: new PropertyRepository(database),
       units: new UnitRepository(database),
-      customers: new CustomerRepository(database),
-      leases: new LeaseRepository(database),
-      invoices: new InvoiceRepository(database),
-      payments: new PaymentRepository(database),
+      customers: new CustomerRepository(database, deps),
+      leases: new LeaseRepository(database, deps),
+      invoices: new InvoiceRepository(database, deps),
+      payments: new PaymentRepository(database, deps),
       workOrders: new WorkOrderRepository(database),
       vendors: new VendorRepository(database),
-      messaging: new MessagingRepository(database),
+      messaging: new MessagingRepository(database, deps),
       inspections: new InspectionRepository(database),
       scheduling: new SchedulingRepository(database),
       compliance: new ComplianceRepository(database),
@@ -148,6 +211,38 @@ function getRepositories(): Repositories | null {
     logger.info('Repositories initialized');
   }
 
+  return repositories;
+}
+
+/**
+ * Async boot-time entry point that guarantees the encryption port is
+ * fully constructed (KMS-adapter lazy-loaded) before any request is
+ * served. Call this from the gateway boot sequence; the sync
+ * `getRepositories()` path remains for tests that don't need
+ * encryption.
+ */
+export async function initRepositoriesAsync(): Promise<Repositories | null> {
+  const database = getDatabase();
+  if (!database) return null;
+  const { port, audit } = await buildEncryption(database);
+  const deps = { encPort: port, encAudit: audit };
+  repositories = {
+    tenants: new TenantRepository(database, deps),
+    users: new UserRepository(database, deps),
+    properties: new PropertyRepository(database),
+    units: new UnitRepository(database),
+    customers: new CustomerRepository(database, deps),
+    leases: new LeaseRepository(database, deps),
+    invoices: new InvoiceRepository(database, deps),
+    payments: new PaymentRepository(database, deps),
+    workOrders: new WorkOrderRepository(database),
+    vendors: new VendorRepository(database),
+    messaging: new MessagingRepository(database, deps),
+    inspections: new InspectionRepository(database),
+    scheduling: new SchedulingRepository(database),
+    compliance: new ComplianceRepository(database),
+    documents: new DocumentRepository(database),
+  };
   return repositories;
 }
 

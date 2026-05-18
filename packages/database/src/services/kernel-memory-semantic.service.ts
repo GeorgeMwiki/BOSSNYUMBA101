@@ -29,9 +29,32 @@
  */
 
 import { randomUUID } from 'crypto';
-import { and, eq, like, sql, desc, isNull, type SQL } from 'drizzle-orm';
+import { and, eq, like, sql, desc, isNull, count, type SQL } from 'drizzle-orm';
 import { kernelMemorySemantic } from '../schemas/kernel-memory-semantic.schema.js';
 import type { DatabaseClient } from '../client.js';
+
+/**
+ * Per-user cap on declared facts — protects the kernel memory store
+ * from abuse (memory amplification, JSON-bomb storage). Enforced when
+ * `source === 'declared'`; extracted / consolidated facts come from
+ * platform-trusted pipelines and bypass the cap.
+ */
+export const DECLARED_FACTS_PER_USER_CAP = 500;
+
+/**
+ * Typed error raised by `upsertFact` when an insert would push a user
+ * over the cap. The router translates this into HTTP 429 with
+ * `{ error: { code: 'declared-facts-cap' } }`.
+ */
+export class DeclaredFactsCapExceededError extends Error {
+  readonly code = 'declared-facts-cap' as const;
+  readonly cap: number;
+  constructor(cap: number) {
+    super(`Maximum ${cap} declared facts per user.`);
+    this.name = 'DeclaredFactsCapExceededError';
+    this.cap = cap;
+  }
+}
 
 export type SemanticSource = 'extracted' | 'declared' | 'consolidated';
 
@@ -134,6 +157,51 @@ export function createSemanticMemoryService(
         const source: SemanticSource = args.source ?? 'extracted';
         const embedding = sanitizeEmbedding(args.embedding);
 
+        // A2b-3 wire #5 — per-user declared-facts cap. Only enforced
+        // for `source === 'declared'` (user-driven writes); extracted /
+        // consolidated facts come from platform-trusted pipelines.
+        // Re-upserting an existing (tenant, user, key) is an update,
+        // not an insert, so we exempt that case from the cap check.
+        if (source === 'declared' && userId) {
+          const existingByKey = await db
+            .select({ id: kernelMemorySemantic.id })
+            .from(kernelMemorySemantic)
+            .where(
+              and(
+                args.tenantId
+                  ? eq(kernelMemorySemantic.tenantId, args.tenantId)
+                  : isNull(kernelMemorySemantic.tenantId),
+                eq(kernelMemorySemantic.userId, userId),
+                eq(kernelMemorySemantic.key, key),
+              ),
+            )
+            .limit(1);
+          const isUpdate =
+            Array.isArray(existingByKey) && existingByKey.length > 0;
+          if (!isUpdate) {
+            const countRows = await db
+              .select({ n: count() })
+              .from(kernelMemorySemantic)
+              .where(
+                and(
+                  args.tenantId
+                    ? eq(kernelMemorySemantic.tenantId, args.tenantId)
+                    : isNull(kernelMemorySemantic.tenantId),
+                  eq(kernelMemorySemantic.userId, userId),
+                  eq(kernelMemorySemantic.source, 'declared'),
+                ),
+              );
+            const total = Number(
+              (countRows as ReadonlyArray<{ n: number }>)[0]?.n ?? 0,
+            );
+            if (total >= DECLARED_FACTS_PER_USER_CAP) {
+              throw new DeclaredFactsCapExceededError(
+                DECLARED_FACTS_PER_USER_CAP,
+              );
+            }
+          }
+        }
+
         const insertValues: Record<string, unknown> = {
           id: randomUUID(),
           tenantId: args.tenantId,
@@ -170,6 +238,12 @@ export function createSemanticMemoryService(
             set: updateSet as never,
           });
       } catch (error) {
+        // Cap-exceeded is a typed signal the router needs to see —
+        // re-throw so it can return HTTP 429 instead of silently
+        // dropping the write.
+        if (error instanceof DeclaredFactsCapExceededError) {
+          throw error;
+        }
         console.error('kernel-memory-semantic.upsertFact failed:', error);
       }
     },

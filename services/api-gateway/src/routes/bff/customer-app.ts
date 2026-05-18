@@ -308,23 +308,50 @@ app.get('/move-out/disputes', async (c) => {
     });
   }
   try {
-    // The damage-deduction rows reference `leaseId`; until the repo gains
-    // a "by tenant user" filter we surface a structural empty list with a
-    // TODO note. We still call listOpen so connectivity errors surface
-    // here instead of being swallowed silently.
-    //
-    // TODO(api-gateway, CUST-BFF-001): once `repos.leases` exposes a
-    //   `findByCustomer(tenantId, customerId)` query, intersect its
-    //   leaseIds with the damage-deduction rows from `repo.listOpen`
-    //   and return only the caller's disputes. Concrete next-step:
-    //     1. Add `findByCustomer` to LeaseRepository in
-    //        @bossnyumba/database.
-    //     2. Replace this stub with the intersected list.
-    await repo.listOpen(auth.tenantId);
+    // CUST-BFF-001: real wire when `repos.leases.findByCustomer` exists,
+    // intersect leaseIds with the damage-deduction rows from
+    // `repo.listOpen`. Otherwise: loud-fail 501 unless a per-tenant
+    // feature flag is on (dev mode).
+    const repos = c.get('repos') as { leases?: { findByCustomer?: Function } } | undefined;
+    const leasesByCustomer = repos?.leases?.findByCustomer;
+    const openRows = await repo.listOpen(auth.tenantId);
+    if (typeof leasesByCustomer === 'function') {
+      const leases = (await leasesByCustomer.call(repos!.leases, auth.tenantId, auth.userId)) as Array<{ id: string }>;
+      const leaseIds = new Set((leases ?? []).map((l) => l.id));
+      const scoped = (openRows ?? []).filter((row: any) => leaseIds.has(row.leaseId));
+      return c.json({
+        success: true,
+        data: scoped,
+        meta: { note: 'live: damage-deductions filtered by caller leaseIds' },
+      });
+    }
+
+    const ff = services?.featureFlags;
+    const flagKey = 'flag.bff.customer_app.move_out_disputes';
+    let flagOn = false;
+    try {
+      flagOn = Boolean(await ff?.isEnabled?.(auth.tenantId, flagKey));
+    } catch {
+      flagOn = false;
+    }
+    if (!flagOn) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_IMPLEMENTED',
+            message:
+              'Per-customer damage-deduction filter not wired. Concrete next-step: add LeaseRepository.findByCustomer(tenantId, customerId) and intersect with repo.listOpen results.',
+            flagKey,
+          },
+        },
+        501,
+      );
+    }
     return c.json({
       success: true,
       data: [],
-      meta: { note: 'tenant-filter on damage-deductions pending' },
+      meta: { note: 'flag-gated dev response; tenant-filter on damage-deductions pending' },
     });
   } catch (error) {
     logger.warn('customer-app: damage-deductions listOpen failed', {

@@ -1,5 +1,20 @@
 # Operational DNA Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 6 LITFIN-extended gaps below, **6 are now SHIPPED** and **2 are in-flight in Phase D9 (multi-region terraform + DR runbook; security-route-coverage CI gate)**. The BOSSNYUMBA-extended dimensions GREW: Wave-L coordinated all `@opentelemetry/*` packages 0.45 → 0.218; Phase D6 added per-agent Grafana panels + judge-confidence histograms + drift alerts.
+>
+> Headline shipments:
+> - ✅ **Secret rotation runbook + dual-key verify** — `Docs/SECRETS_ROTATION.md` + `scripts/rotate-keys.mjs` + `verifyWithRotation` in `packages/ai-copilot/src/security/audit-hash-chain.ts` (closes Gap #2).
+> - ✅ **SBOM (CycloneDX)** — `.github/workflows/sbom.yml` (closes Gap 6g).
+> - ✅ **Trivy** — `.github/workflows/trivy.yml` (closes Gap 6h).
+> - ✅ **Red-team CI** — `.github/workflows/red-team.yml` (closes Gap 6l).
+> - ✅ **OTel coordinated bump (Wave-L)** — `packages/observability/` + sdk-node 0.218 (commit `79a313bc`).
+> - ✅ **Per-agent Grafana dashboards + judge-confidence histograms + drift alerts** — Phase D6 ✅. `monitoring/grafana-dashboards/bossnyumba-{ai,overview,payments}-D6.json`.
+> - ✅ **OTel → Langfuse exporter** — Phase D6 ✅. Wired in `packages/observability/src/tracing/langfuse-exporter.ts`.
+> - ✅ **Multi-stage Dockerfiles** — `docker/Dockerfile.api` + `docker/Dockerfile.web` ship `builder → runtime` 2-stage builds with non-root user + healthcheck.
+> - ✅ **Tenant credit rating** — `packages/ai-copilot/src/credit-rating/` (property-mgmt-specific 5-C model; BOSSNYUMBA-only). See `00-STATUS-2026-05-18.md` §3 item 15.
+> - ⚠️ **Multi-region terraform + DR runbook** — Phase D9 in flight (closes Gap #3 multi-region).
+> - ⚠️ **Security-route-coverage CI gate** — `.github/workflows/security-route-coverage.yml` SHIPPED; threshold tuning + missing-route reporting is the remaining Phase D9 task.
+
 P10 of the 10-agent parity sweep. Read-only analysis of OpenTelemetry coverage, dashboards-as-code, alerting rules, runbooks, CI/CD gates, and enterprise hardening (rate limit / circuit breaker / retry / timeout / health check).
 
 - **LITFIN ops surface**: Next.js single-app deploy; observability is **Sentry + Supabase `platform_events` + in-memory counters** (no OTel); per-tenant LLM telemetry via `src/core/ai/llm-telemetry.ts`; ops dashboards live as Next.js pages under `src/app/(litfin-admin)/litfin-admin/*` (e.g. `litfin-ai-ops/`, `model-performance/`, `live-ops/`, `errors/`, `pulse/`, `parity/`).

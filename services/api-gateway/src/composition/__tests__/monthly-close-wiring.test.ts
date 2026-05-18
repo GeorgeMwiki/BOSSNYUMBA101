@@ -170,6 +170,17 @@ vi.mock('@bossnyumba/database', () => {
       lastFakeAdapter = buildFakeAdapter();
       return lastFakeAdapter;
     },
+    // ProdFix-2 wire #4 — wiring now resolves the per-tenant display
+    // currency via the platform `currency_preferences` service so the
+    // statement-adapter never falls back to the literal `'XXX'`. The
+    // tests only need the resolver to return *some* valid currency for
+    // the orchestrator to walk through; a stub `KES` is fine.
+    createCurrencyPreferencesService: () => ({
+      resolve: async () => ({ currency: 'KES', source: 'fallback' as const }),
+      list: async () => [],
+      upsert: async () => undefined,
+      remove: async () => undefined,
+    }),
   };
 });
 

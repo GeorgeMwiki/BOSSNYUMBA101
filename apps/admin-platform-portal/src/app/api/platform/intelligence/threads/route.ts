@@ -1,16 +1,18 @@
-import { NextResponse } from 'next/server';
+import { getApiGatewayBase, proxyJson } from '@/lib/proxy';
 
 /**
- * List of platform-scope intelligence threads (Industry conversations).
+ * Proxy: list platform-scope intelligence threads (Industry conversations).
  *
- * TODO (intelligence-wiring): proxy to the API gateway's
- * GET /api/v1/intelligence/threads?scope=platform with the staff's
- * session token. Until that is wired, respond 503 so the UI renders
- * an honest degraded state — never mock conversations.
+ * Forwards GET /api/v1/intelligence/threads?scope=platform to the
+ * api-gateway with the staff session cookie + Authorization header so
+ * the gateway can enforce the SUPER_ADMIN / ADMIN role gate upstream.
+ *
+ * In production `API_GATEWAY_URL` must be set; the proxy helper throws
+ * if not. In dev it falls back to `http://localhost:4000`.
  */
-export function GET() {
-  return NextResponse.json(
-    { error: 'intelligence-service not wired for platform scope' },
-    { status: 503 },
-  );
+export async function GET() {
+  const base = getApiGatewayBase();
+  return proxyJson(`${base}/api/v1/intelligence/threads?scope=platform`, {
+    method: 'GET',
+  });
 }

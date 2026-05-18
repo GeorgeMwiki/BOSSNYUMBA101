@@ -17,15 +17,25 @@ import {
 import type { DatabaseClient } from '../client.js';
 import { invoices, payments, transactions } from '../schemas/index.js';
 import type { TenantId } from '@bossnyumba/domain-models';
+import {
+  decryptRow,
+  decryptRows,
+  encryptRow,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
+} from '../security/encryption/index.js';
+import type { RepoEncryptionDeps } from './customer.repository.js';
 
 const NON_OVERDUE_INVOICE_STATUSES = ['paid', 'cancelled', 'void'] as const;
+
+const PAYMENTS_TABLE = 'payments';
 
 // ============================================================================
 // InvoiceRepository
 // ============================================================================
 
 export class InvoiceRepository {
-  constructor(private db: DatabaseClient) {}
+  constructor(private db: DatabaseClient, _deps: RepoEncryptionDeps = {}) {}
 
   async findMany(tenantId: TenantId, limit = 50, offset = 0) {
     const rows = await this.db
@@ -215,7 +225,38 @@ export class InvoiceRepository {
 // ============================================================================
 
 export class PaymentRepository {
-  constructor(private db: DatabaseClient) {}
+  private readonly encPort: EncryptionPort | null;
+  private readonly encAudit: FieldEncryptionAuditSink | null;
+
+  constructor(private db: DatabaseClient, deps: RepoEncryptionDeps = {}) {
+    this.encPort = deps.encPort ?? null;
+    this.encAudit = deps.encAudit ?? null;
+  }
+
+  private async decryptOne<T extends Record<string, unknown>>(
+    row: T | null | undefined,
+    tenantId: TenantId,
+  ): Promise<T | null> {
+    if (!row || !this.encPort) return (row as T | null) ?? null;
+    return decryptRow({
+      row,
+      table: PAYMENTS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    });
+  }
+
+  private async decryptMany<T extends Record<string, unknown>>(
+    rows: T[],
+    tenantId: TenantId,
+  ): Promise<T[]> {
+    if (!this.encPort || rows.length === 0) return rows;
+    return (await decryptRows(rows, {
+      table: PAYMENTS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    })) as T[];
+  }
 
   async findMany(tenantId: TenantId, limit = 50, offset = 0) {
     const rows = await this.db
@@ -229,7 +270,8 @@ export class PaymentRepository {
       .select({ total: count() })
       .from(payments)
       .where(eq(payments.tenantId, tenantId));
-    return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+    const decrypted = await this.decryptMany(rows, tenantId);
+    return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async findById(id: string, tenantId: TenantId) {
@@ -237,7 +279,7 @@ export class PaymentRepository {
       .select()
       .from(payments)
       .where(and(eq(payments.id, id), eq(payments.tenantId, tenantId)));
-    return rows[0] ?? null;
+    return this.decryptOne(rows[0], tenantId);
   }
 
   async findByNumber(paymentNumber: string, tenantId: TenantId) {
@@ -247,7 +289,7 @@ export class PaymentRepository {
       .where(
         and(eq(payments.paymentNumber, paymentNumber), eq(payments.tenantId, tenantId))
       );
-    return rows[0] ?? null;
+    return this.decryptOne(rows[0], tenantId);
   }
 
   async findByCustomer(customerId: string, tenantId: TenantId, limit = 50, offset = 0) {
@@ -262,11 +304,12 @@ export class PaymentRepository {
       .select({ total: count() })
       .from(payments)
       .where(and(eq(payments.customerId, customerId), eq(payments.tenantId, tenantId)));
-    return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+    const decrypted = await this.decryptMany(rows, tenantId);
+    return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async findByInvoice(invoiceId: string, tenantId: TenantId) {
-    return this.db
+    const rows = await this.db
       .select()
       .from(payments)
       .where(
@@ -276,6 +319,7 @@ export class PaymentRepository {
         )
       )
       .orderBy(desc(payments.createdAt));
+    return this.decryptMany(rows, tenantId);
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
@@ -290,7 +334,8 @@ export class PaymentRepository {
       .select({ total: count() })
       .from(payments)
       .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)));
-    return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+    const decrypted = await this.decryptMany(rows, tenantId);
+    return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   /**
@@ -299,7 +344,7 @@ export class PaymentRepository {
    * memory.
    */
   async findByProvider(provider: string, tenantId: TenantId, maxRows = 1000) {
-    return this.db
+    const rows = await this.db
       .select()
       .from(payments)
       .where(
@@ -307,20 +352,41 @@ export class PaymentRepository {
       )
       .orderBy(desc(payments.createdAt))
       .limit(maxRows);
+    return this.decryptMany(rows, tenantId);
   }
 
   async create(data: typeof payments.$inferInsert) {
-    const [row] = await this.db.insert(payments).values(data).returning();
-    return row!;
+    const encryptedInput = this.encPort
+      ? await encryptRow({
+          row: { ...data },
+          table: PAYMENTS_TABLE,
+          tenantId: data.tenantId ? String(data.tenantId) : null,
+          rowId: data.id ? String(data.id) : null,
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : data;
+    const [row] = await this.db.insert(payments).values(encryptedInput).returning();
+    return (await this.decryptOne(row!, data.tenantId as TenantId))!;
   }
 
   async update(id: string, tenantId: TenantId, data: Partial<typeof payments.$inferInsert>) {
+    const encryptedPatch = this.encPort
+      ? await encryptRow({
+          row: { ...data },
+          table: PAYMENTS_TABLE,
+          tenantId: String(tenantId),
+          rowId: String(id),
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : data;
     const [row] = await this.db
       .update(payments)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...encryptedPatch, updatedAt: new Date() })
       .where(and(eq(payments.id, id), eq(payments.tenantId, tenantId)))
       .returning();
-    return row ?? null;
+    return this.decryptOne(row, tenantId);
   }
 
   async getNextSequence(tenantId: TenantId): Promise<number> {
@@ -337,7 +403,7 @@ export class PaymentRepository {
 // ============================================================================
 
 export class TransactionRepository {
-  constructor(private db: DatabaseClient) {}
+  constructor(private db: DatabaseClient, _deps: RepoEncryptionDeps = {}) {}
 
   async findById(id: string, tenantId: TenantId) {
     const rows = await this.db

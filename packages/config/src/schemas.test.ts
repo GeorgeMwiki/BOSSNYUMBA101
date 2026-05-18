@@ -9,6 +9,7 @@ import {
   aiSchema,
   urlsSchema,
   envSchema,
+  privacySchema,
   apiGatewayEnvSchema,
   paymentsEnvSchema,
   notificationsEnvSchema,
@@ -88,6 +89,30 @@ describe('@bossnyumba/config schemas', () => {
     it('reportsEnvSchema exists and validates', () => {
       const r = reportsEnvSchema.safeParse({ DATABASE_URL: 'postgres://x:y@z/d' });
       expect(r.success).toBe(true);
+    });
+  });
+
+  describe('privacySchema (A2b-3 wire #6)', () => {
+    it("defaults BOSSNYUMBA_PII_EXTENDED to '1' so prod ships with the scrub ON", () => {
+      const parsed = privacySchema.parse({});
+      expect(parsed.BOSSNYUMBA_PII_EXTENDED).toBe('1');
+    });
+
+    it('honours an explicit "0" override (dev / tests)', () => {
+      const parsed = privacySchema.parse({ BOSSNYUMBA_PII_EXTENDED: '0' });
+      expect(parsed.BOSSNYUMBA_PII_EXTENDED).toBe('0');
+    });
+
+    it('round-trips USER_HASH_SALT when provided', () => {
+      const parsed = privacySchema.parse({ USER_HASH_SALT: 'pepper' });
+      expect(parsed.USER_HASH_SALT).toBe('pepper');
+    });
+
+    it('exposes the privacy defaults via the composite envSchema', () => {
+      const parsed = envSchema.parse({
+        DATABASE_URL: 'postgres://x:y@z/d',
+      });
+      expect(parsed.BOSSNYUMBA_PII_EXTENDED).toBe('1');
     });
   });
 

@@ -112,14 +112,14 @@ export function getAuditLogger(): AuditLogger {
  * @example
  * ```typescript
  * await logAuditEvent(
- *   { id: 'user-123', name: 'John Doe', email: 'john@example.com' },
+ *   { id: 'user-123', name: '<user>', email: '<user@example.com>' },
  *   'UPDATE',
- *   { type: 'Property', id: 'prop-456', name: 'Sunset Apartments' },
+ *   { type: 'Property', id: 'prop-456', name: '<Property Name>' },
  *   {
  *     category: 'PROPERTY',
  *     outcome: 'SUCCESS',
  *     description: 'Updated property details',
- *     changes: [{ field: 'name', previousValue: 'Old Name', newValue: 'New Name' }],
+ *     changes: [{ field: 'name', previousValue: '<Old Name>', newValue: '<New Name>' }],
  *   }
  * );
  * ```

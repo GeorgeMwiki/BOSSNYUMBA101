@@ -118,9 +118,16 @@ describe('dsar-data-source-drizzle / explicit column list', () => {
     }
   });
 
-  it('every binding has tenant_scoped flag = true', () => {
+  it('every binding has tenant_scoped flag set (true for tenant-scoped tables)', () => {
+    // Phase D / A2b-1 — tenant_identities is the one cross-tenant
+    // principal table (no tenant_id column); every other DSAR binding
+    // is tenant_scoped=true.
+    const NON_TENANT_SCOPED: ReadonlySet<DsarTableName> = new Set([
+      'tenant_identities',
+    ]);
     for (const name of Object.keys(DSAR_TABLE_BINDINGS) as DsarTableName[]) {
-      expect(DSAR_TABLE_BINDINGS[name].tenantScoped).toBe(true);
+      const expected = !NON_TENANT_SCOPED.has(name);
+      expect(DSAR_TABLE_BINDINGS[name].tenantScoped).toBe(expected);
     }
   });
 

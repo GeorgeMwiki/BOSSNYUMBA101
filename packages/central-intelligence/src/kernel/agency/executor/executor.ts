@@ -44,6 +44,13 @@ import type {
   CounterModel,
   CounterModelReviewOutcome,
 } from '../../counter-model/index.js';
+// A2b-2 wires #5 + #6 — per-tenant tool-call denylist + four-eye
+// one-shot consumption guard.
+import {
+  assertToolCallAllowed,
+  ToolCallDeniedError,
+  type ToolCallDenylistStore,
+} from '../../tool-spec/tool-call-denylist.js';
 import type {
   ActionAuditDecision,
   ActionAuditEntry,
@@ -175,6 +182,15 @@ export interface ExecutorDeps {
    * failing-open). The executor consumes that contract verbatim.
    */
   readonly counterModel?: CounterModel;
+  /**
+   * A2b-2 wire #6 — per-tenant tool-call denylist. When wired, the
+   * executor calls `assertToolCallAllowed(...)` immediately after
+   * resolving the tool from the registry, BEFORE the autonomy-policy
+   * check fires. A denial surfaces as a `failed` step with reason
+   * `tool-denylisted`. Operators use this to disable a specific tool
+   * for a tenant under regulatory hold without redeploying.
+   */
+  readonly toolDenylist?: ToolCallDenylistStore;
   /** Optional structured logger used for ledger write failures. */
   readonly logger?: ExecutorLogger;
   readonly clock?: () => Date;
@@ -222,14 +238,81 @@ export function createExecutor(deps: ExecutorDeps): Executor {
       const proposedActionIds: string[] = [];
       const failureMessages: string[] = [];
 
-      const orderedSteps = [...goal.steps].sort((a, b) => a.seq - b.seq);
+      // Phase D / D12.8 — topological order honours `dependsOn` edges.
+      const orderedSteps = topoSort(goal.steps);
+      const completedStepIds = new Set<string>(
+        goal.steps.filter((s) => s.status === 'done').map((s) => s.id),
+      );
 
       let bailed = false;
       for (const step of orderedSteps) {
         if (bailed) break;
         if (step.status !== 'pending') {
-          // Already ran on a prior cycle — leave it.
+          if (step.status === 'done') completedStepIds.add(step.id);
           continue;
+        }
+        if (step.blockers && step.blockers.length > 0) {
+          await safeAudit(deps, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            goalId: goal.id,
+            stepId: step.id,
+            toolName: step.toolName,
+            decision: 'skipped',
+            payloadHash: hashPayload(step.toolPayload),
+            outcome: `blocked:${step.blockers[0]!.kind}`,
+            errorMessage: null,
+            startedAt: null,
+            endedAt: null,
+            latencyMs: null,
+          });
+          continue;
+        }
+        if (step.due) {
+          const dueMs = Date.parse(step.due);
+          if (Number.isFinite(dueMs) && dueMs <= clock().getTime()) {
+            await safeUpdateStep(deps, {
+              goalId: goal.id,
+              stepId: step.id,
+              status: 'skipped',
+              outcome: 'deadline-passed',
+            });
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'skipped',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: 'deadline-passed',
+              errorMessage: null,
+              startedAt: null,
+              endedAt: null,
+              latencyMs: null,
+            });
+            continue;
+          }
+        }
+        if (step.dependsOn && step.dependsOn.length > 0) {
+          const unmet = step.dependsOn.filter((d) => !completedStepIds.has(d));
+          if (unmet.length > 0) {
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'skipped',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: `waiting-on:${unmet.join(',')}`,
+              errorMessage: null,
+              startedAt: null,
+              endedAt: null,
+              latencyMs: null,
+            });
+            continue;
+          }
         }
         stepsRun += 1;
         const startedAt = clock();
@@ -276,10 +359,57 @@ export function createExecutor(deps: ExecutorDeps): Executor {
             latencyMs: clock().getTime() - startedAt.getTime(),
           });
           stepsSucceeded += 1;
+          completedStepIds.add(step.id);
           continue;
         }
 
         const tool = deps.tools.get(step.toolName);
+        // A2b-2 wire #6 — consult the per-tenant tool-call denylist
+        // BEFORE the autonomy-policy + four-eye-approval flow. A
+        // tenant under regulatory tool-disable will see the call
+        // refused with `tool-denylisted` and the deny-rule reason
+        // preserved on the audit trail.
+        if (deps.toolDenylist && goal.tenantId && step.toolName) {
+          try {
+            await assertToolCallAllowed(
+              deps.toolDenylist,
+              goal.tenantId,
+              step.toolName,
+            );
+          } catch (err) {
+            const reason =
+              err instanceof ToolCallDeniedError
+                ? err.reason
+                : err instanceof Error
+                  ? err.message
+                  : String(err);
+            const message = `tool-denylisted: ${reason}`;
+            await safeUpdateStep(deps, {
+              goalId: goal.id,
+              stepId: step.id,
+              status: 'failed',
+              errorMessage: message,
+            });
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'failed',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: 'tool-denylisted',
+              errorMessage: message,
+              startedAt: startedAt.toISOString(),
+              endedAt: clock().toISOString(),
+              latencyMs: clock().getTime() - startedAt.getTime(),
+            });
+            stepsFailed += 1;
+            failureMessages.push(message);
+            bailed = true;
+            continue;
+          }
+        }
         if (!tool) {
           const message = `unknown tool: ${step.toolName}`;
           await safeUpdateStep(deps, {
@@ -583,6 +713,48 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           bailed = true;
           continue;
         }
+        // A2b-2 wire #5 — one-shot consumption guard. When this step
+        // carries a prior `awaiting-approval:<actionId>` outcome (the
+        // proposal was created on a previous executor pass and the
+        // human approvers have since signed it), call
+        // `markExecuted(actionId)` BEFORE recording the success so a
+        // replayed action-id cannot re-dispatch the side-effect. The
+        // gate's atomic CAS path throws `already-executed: ...` on
+        // the second invocation — we surface that as a step failure
+        // so the audit chain captures the replay attempt.
+        const consumedActionId = parseAwaitingApprovalActionId(step.outcome);
+        if (consumedActionId && deps.approvalGate) {
+          try {
+            await deps.approvalGate.markExecuted(consumedActionId);
+          } catch (err) {
+            const message =
+              err instanceof Error ? err.message : String(err);
+            await safeUpdateStep(deps, {
+              goalId: goal.id,
+              stepId: step.id,
+              status: 'failed',
+              errorMessage: message,
+            });
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'failed',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: 'approval-replay-blocked',
+              errorMessage: message,
+              startedAt: startedAt.toISOString(),
+              endedAt: clock().toISOString(),
+              latencyMs: clock().getTime() - startedAt.getTime(),
+            });
+            stepsFailed += 1;
+            failureMessages.push(message);
+            bailed = true;
+            continue;
+          }
+        }
         // Tool invocation succeeded — first record the success in both
         // step state and the legacy audit-sink, then attempt the
         // sovereign-tier ledger append. In fail-closed mode, if the
@@ -653,6 +825,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           continue;
         }
         stepsSucceeded += 1;
+        completedStepIds.add(step.id);
       }
 
       // If every step is now `done`, flip the goal to completed.
@@ -812,6 +985,25 @@ function approvalStakeFor(stakes: ActionToolStakes): ApprovalStake {
   return stakes;
 }
 
+/**
+ * A2b-2 wire #5 helper. Step outcomes of the form
+ * `awaiting-approval:<uuid>` carry the approval-record id consumed by
+ * this step. When the executor re-walks the goal on a later pass (the
+ * step's status is restored to `pending` with this outcome) the
+ * autonomous branch consults the parsed id and calls
+ * `approvalGate.markExecuted(id)` to enforce the one-shot guard.
+ * Returns null when the outcome is missing or shaped differently.
+ */
+function parseAwaitingApprovalActionId(
+  outcome: string | null | undefined,
+): string | null {
+  if (!outcome) return null;
+  const prefix = 'awaiting-approval:';
+  if (!outcome.startsWith(prefix)) return null;
+  const id = outcome.slice(prefix.length).trim();
+  return id.length > 0 ? id : null;
+}
+
 function shortSummary(step: GoalStep, goal: Goal): string {
   const head = goal.title ? `${goal.title} — ` : '';
   return `${head}${step.description}`.slice(0, 280);
@@ -834,3 +1026,46 @@ function stringifyOutput(output: unknown): string {
 // streaming becomes the default, the loop will re-use this audit
 // decision union.
 export type { ActionAuditDecision };
+
+/**
+ * Topological sort over goal steps honouring `dependsOn` edges.
+ * Phase D / D12.8. Cycles and unknown ids are tolerated.
+ */
+export function topoSort(
+  steps: ReadonlyArray<GoalStep>,
+): ReadonlyArray<GoalStep> {
+  if (steps.length === 0) return [];
+  const bySeq = [...steps].sort((a, b) => a.seq - b.seq);
+  const idIndex = new Map<string, GoalStep>();
+  for (const s of bySeq) idIndex.set(s.id, s);
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const ordered: GoalStep[] = [];
+  const cyclic = new Set<string>();
+  function visit(step: GoalStep): void {
+    if (visited.has(step.id)) return;
+    if (inStack.has(step.id)) {
+      cyclic.add(step.id);
+      return;
+    }
+    inStack.add(step.id);
+    const deps = step.dependsOn ?? [];
+    for (const depId of deps) {
+      const dep = idIndex.get(depId);
+      if (dep) visit(dep);
+    }
+    inStack.delete(step.id);
+    if (!cyclic.has(step.id)) {
+      visited.add(step.id);
+      ordered.push(step);
+    }
+  }
+  for (const s of bySeq) visit(s);
+  for (const s of bySeq) {
+    if (cyclic.has(s.id) && !visited.has(s.id)) {
+      visited.add(s.id);
+      ordered.push(s);
+    }
+  }
+  return ordered;
+}

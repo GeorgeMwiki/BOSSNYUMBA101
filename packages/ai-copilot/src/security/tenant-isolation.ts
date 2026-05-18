@@ -57,6 +57,96 @@ export class TenantBoundaryError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// D9 / G4 — cross-tenant denial audit sink.
+// ---------------------------------------------------------------------------
+
+export interface CrossTenantDenialRecord {
+  readonly callerTenantId: string;
+  readonly foreignTenantId?: string;
+  readonly actorId?: string;
+  readonly personaId?: string;
+  readonly sessionId?: string;
+  readonly violationPath: string;
+  readonly violationType: IsolationViolation['type'];
+  readonly severity: IsolationViolation['severity'];
+  readonly detail: string;
+  readonly verdict: 'blocked' | 'detected';
+  readonly surface?: string;
+  readonly traceId?: string;
+  readonly occurredAt: string;
+}
+
+export interface CrossTenantDenialSink {
+  record(row: CrossTenantDenialRecord): Promise<void> | void;
+}
+
+let __sink: CrossTenantDenialSink | null = null;
+
+export function setCrossTenantDenialSink(sink: CrossTenantDenialSink | null): void {
+  __sink = sink;
+}
+
+export function getCrossTenantDenialSink(): CrossTenantDenialSink | null {
+  return __sink;
+}
+
+function emitDenials(
+  ctx: TenantContext,
+  violations: readonly IsolationViolation[],
+  verdict: 'blocked' | 'detected',
+  surface?: string,
+  traceId?: string,
+): void {
+  if (!__sink || violations.length === 0) return;
+  const now = new Date().toISOString();
+  for (const v of violations) {
+    try {
+      const row: CrossTenantDenialRecord = {
+        callerTenantId: ctx.tenantId || '<empty>',
+        foreignTenantId: v.foreignTenantId,
+        actorId: ctx.actorId,
+        personaId: ctx.personaId,
+        violationPath: v.path,
+        violationType: v.type,
+        severity: v.severity,
+        detail: v.detail,
+        verdict,
+        surface,
+        traceId,
+        occurredAt: now,
+      };
+      const out = __sink.record(row);
+      if (out && typeof (out as Promise<void>).then === 'function') {
+        (out as Promise<void>).catch(() => {
+          /* intentionally suppressed */
+        });
+      }
+    } catch {
+      /* intentionally suppressed */
+    }
+  }
+}
+
+export function createInMemoryCrossTenantDenialSink(): CrossTenantDenialSink & {
+  rows(): readonly CrossTenantDenialRecord[];
+  clear(): void;
+} {
+  const buf: CrossTenantDenialRecord[] = [];
+  return {
+    record(row) {
+      buf.push(row);
+    },
+    rows() {
+      return Object.freeze([...buf]);
+    },
+    clear() {
+      buf.length = 0;
+    },
+  };
+}
+
+
+// ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
 
@@ -122,41 +212,77 @@ function walk(
 // ---------------------------------------------------------------------------
 
 /**
+ * Optional audit metadata accepted by validate/assert. Passing `surface`
+ * + `traceId` lets the cross_tenant_denials table join cleanly against
+ * the SecurityEvent stream.
+ */
+export interface ValidateOptions {
+  readonly surface?: string;
+  readonly traceId?: string;
+}
+
+/**
  * Deep scan an object graph for cross-tenant records. Safe to pass tool
  * results, memory fragments, or user-facing payloads.
+ *
+ * D9/G4: emits one row per violation to the registered
+ * CrossTenantDenialSink with verdict='detected'.
  */
 export function validateTenantScope(
   value: unknown,
   ctx: TenantContext,
+  opts?: ValidateOptions,
 ): IsolationCheckResult {
   if (!ctx.tenantId) {
-    return {
-      safe: false,
-      violations: [
-        {
-          type: 'missing_tenant_filter',
-          path: '<context>',
-          severity: 'high',
-          detail: 'TenantContext.tenantId is empty; refusing to evaluate',
-        },
-      ],
-    };
+    const violations: IsolationViolation[] = [
+      {
+        type: 'missing_tenant_filter',
+        path: '<context>',
+        severity: 'high',
+        detail: 'TenantContext.tenantId is empty; refusing to evaluate',
+      },
+    ];
+    emitDenials(ctx, violations, 'detected', opts?.surface, opts?.traceId);
+    return { safe: false, violations };
   }
   const violations: IsolationViolation[] = [];
   walk(value, ctx.tenantId, 'root', violations);
+  if (violations.length > 0) {
+    emitDenials(ctx, violations, 'detected', opts?.surface, opts?.traceId);
+  }
   return { safe: violations.length === 0, violations };
 }
 
 /**
  * Guard variant — throws TenantBoundaryError on breach. Use inside the AI
  * call path where silent redaction is not acceptable.
+ *
+ * D9/G4: emits one row per violation to the registered
+ * CrossTenantDenialSink with verdict='blocked' BEFORE throwing.
  */
-export function assertTenantScope(value: unknown, ctx: TenantContext): void {
-  const result = validateTenantScope(value, ctx);
-  if (!result.safe) {
+export function assertTenantScope(
+  value: unknown,
+  ctx: TenantContext,
+  opts?: ValidateOptions,
+): void {
+  // Compute violations without emitting through validateTenantScope (which
+  // would record verdict='detected'). We want verdict='blocked' here.
+  const violations: IsolationViolation[] = [];
+  if (!ctx.tenantId) {
+    violations.push({
+      type: 'missing_tenant_filter',
+      path: '<context>',
+      severity: 'high',
+      detail: 'TenantContext.tenantId is empty; refusing to evaluate',
+    });
+  } else {
+    walk(value, ctx.tenantId, 'root', violations);
+  }
+  if (violations.length > 0) {
+    emitDenials(ctx, violations, 'blocked', opts?.surface, opts?.traceId);
     throw new TenantBoundaryError({
-      tenantId: ctx.tenantId,
-      violations: result.violations,
+      tenantId: ctx.tenantId || '<empty>',
+      violations,
     });
   }
 }
@@ -211,32 +337,37 @@ export function assertQueryHasTenantFilter(
   description: string,
   filters: Readonly<Record<string, unknown>>,
   ctx: TenantContext,
+  opts?: ValidateOptions,
 ): void {
   if (!ctx.tenantId) {
+    const violations: IsolationViolation[] = [
+      {
+        type: 'missing_tenant_filter',
+        path: description,
+        severity: 'critical',
+        detail: 'tenantId missing from context',
+      },
+    ];
+    emitDenials(ctx, violations, 'blocked', opts?.surface, opts?.traceId);
     throw new TenantBoundaryError({
       tenantId: '<empty>',
-      violations: [
-        {
-          type: 'missing_tenant_filter',
-          path: description,
-          severity: 'critical',
-          detail: 'tenantId missing from context',
-        },
-      ],
+      violations,
     });
   }
   const hasFilter = TENANT_FIELD_KEYS.some((k) => k in filters);
   if (!hasFilter) {
+    const violations: IsolationViolation[] = [
+      {
+        type: 'missing_tenant_filter',
+        path: description,
+        severity: 'high',
+        detail: `Query "${description}" missing tenant filter`,
+      },
+    ];
+    emitDenials(ctx, violations, 'blocked', opts?.surface, opts?.traceId);
     throw new TenantBoundaryError({
       tenantId: ctx.tenantId,
-      violations: [
-        {
-          type: 'missing_tenant_filter',
-          path: description,
-          severity: 'high',
-          detail: `Query "${description}" missing tenant filter`,
-        },
-      ],
+      violations,
     });
   }
 }

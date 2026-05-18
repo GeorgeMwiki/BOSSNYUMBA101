@@ -1,5 +1,20 @@
 # Agency Layer Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 9 missing + 4 partial items below, **7 are now SHIPPED** and **2 are in-flight in Phase D2 + D12 (DAG / step-deadline / blockers; four-eye recall + plan-artifact + executed flag)**. Original gap prose preserved; SHIPPED items overlaid below.
+>
+> Headline shipments:
+> - ✅ **Hash-chained sovereign-ledger with `pg_advisory_lock`** — `packages/database/src/services/sovereign-action-ledger.service.ts:182+,399` + migration `0129_sovereign_action_ledger.sql`. Closes gaps 4b (hash-chained ledger) + 4d (retention).
+> - ✅ **Role-gated approval** — `kernel/four-eye-approval.ts:46-78,210-224` (closes gap 6c). Role-groups + slot-filling logic.
+> - ⚠️ **Per-action expiry + recall window** — `kernel/four-eye-approval.ts:59` `maxStaleMinutes` per-action; **Phase D12** ships full recall API + window (closes gaps 6e, 6f).
+> - ✅ **Stall detector** — `kernel/agency/stall-detector.ts:263-355` (closes gap 7c). Auto-flips `active → blocked` on N-day inactivity.
+> - ✅ **Wake-loop scheduled cron** — `services/api-gateway/src/composition/wake-loop-cron.ts:361` + `k8s/wake-loop-cron.yaml` (closes gap 7b).
+> - ✅ **Counter-model LIVE in sovereign.ts** — Phase C C1 commit `b3639d11`. The counter-model module under `kernel/counter-model/` is now invoked inline at sovereign decision-time.
+> - ✅ **4 HQ wake triggers** — `kernel/agency/wake-triggers/` registers: `subscription-churn`, `ai-cost-overrun`, `webhook-dlq-depth`, `persona-drift-breach`. Added to `DEFAULT_WAKE_TRIGGERS`.
+> - ✅ **18-tool typed-action bus** — `kernel/tool-spec.ts:510` + 18 `platform.*` tools (`platform.file_kra_mri`, `platform.kill_sensor`, `platform.rebalance_routing`, etc.). **BOSSNYUMBA AHEAD** — zero LITFIN counterpart. See `00-STATUS-2026-05-18.md` §3 item 3.
+> - ⚠️ **DAG + step-deadline + blockers on goal steps** — Phase D12 in flight (closes gaps 2b, 2c, 2d).
+> - ⚠️ **Rollback payload on sovereign ledger** — migration `0144_sovereign_ledger_rollback_payload.sql` SHIPPED (Phase D2; closes gap 4c). Wiring into `recordExecution` is the remaining D2 task.
+> - ⚠️ **Four-eye `executed` flag + plan-artifact emission** — migration `0145_approval_executed_flag.sql` SHIPPED (Phase D2; closes gap 6i). Emission into brain outbox is the remaining D2 task.
+
 P7 of the 10-agent parity sweep. Read-only analysis of the agency layer:
 persistent goals, executor, action audit, autonomy policy, sovereign approvals,
 and the ambient wake-loop.

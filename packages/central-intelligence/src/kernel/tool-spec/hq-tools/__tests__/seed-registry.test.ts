@@ -215,10 +215,11 @@ function makeStubDeps(): SeedHqBrainToolsDeps {
 describe('seedHqBrainTools', () => {
   let registry: BrainToolRegistry;
 
-  it('registers all 15 platform.* tools', () => {
+  it('registers all platform.* tools advertised in HQ_TOOL_NAMES', () => {
     registry = createBrainToolRegistry();
     const names = seedHqBrainTools(registry, makeStubDeps());
-    expect(names).toHaveLength(15);
+    // Length-agnostic: source of truth is HQ_TOOL_NAMES.
+    expect(names).toHaveLength(HQ_TOOL_NAMES.length);
     for (const expected of HQ_TOOL_NAMES) {
       expect(registry.get(expected)).not.toBeNull();
     }

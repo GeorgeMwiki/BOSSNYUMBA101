@@ -33,16 +33,22 @@ export default function CreateAnnouncementPage() {
     ? propertiesQuery.data!.data!
     : [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
-    // TODO(api): wire to a POST /api/v1/announcements endpoint via a new
-    //   `announcementsService.create({...})` method on the api-client.
-    //   The gateway does not yet expose announcement persistence — we
-    //   need the router + Drizzle table + repo before the mutation can
-    //   land. Tracking issue: announcements-mvp. Until then we route
-    //   back to the list so the UX never silently swallows input.
-    router.push('/announcements');
+    setSubmitError(null);
+
+    // Announcements API is not yet wired. Until POST /api/v1/announcements
+    // exists, fail loudly so we never silently swallow tenant input.
+    // Tracked under PHASE-E-WIRE: announcements-mvp (see
+    // .planning/phase-e-todo-backlog.md). Once
+    // `announcementsService.create(...)` ships in @bossnyumba/api-client,
+    // replace this branch with the real mutation.
+    setSubmitError(
+      'Announcements posting is not yet available in this deployment. The feature is queued — please check back, or contact platform support if this is blocking you.',
+    );
   };
 
   return (
@@ -127,6 +133,15 @@ export default function CreateAnnouncementPage() {
             <label htmlFor="isPinned" className="text-sm">{t('pinToTop')}</label>
           </div>
         </div>
+
+        {submitError && (
+          <div
+            role="alert"
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"
+          >
+            {submitError}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">

@@ -107,7 +107,12 @@ const HOUSE_RULES: HouseRule[] = [
       'Do not share your access card or gate code',
       'Report lost access cards immediately',
       'Do not prop open security doors',
-      'Report suspicious activity to security: +254 700 000 111',
+      // Generic — the per-tenant support phone is resolved at render-time
+      // from `tenant.supportPhone` or `NEXT_PUBLIC_SUPPORT_PHONE`. We never
+      // hard-code a national number here because BOSSNYUMBA is a global app.
+      process.env.NEXT_PUBLIC_SUPPORT_PHONE
+        ? `Report suspicious activity to security: ${process.env.NEXT_PUBLIC_SUPPORT_PHONE}`
+        : 'Report suspicious activity to security via the in-app support channel',
       'Use intercom to verify deliveries before granting access',
     ],
     acknowledged: false,

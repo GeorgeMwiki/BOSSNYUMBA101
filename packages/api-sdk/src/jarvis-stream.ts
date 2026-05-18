@@ -62,6 +62,17 @@ export interface JarvisStreamConfidence {
 
 export type JarvisStreamGateVerdict = 'pass' | 'soften' | 'block';
 
+/**
+ * Structured UI-part the MD emits during a turn — rendered by the
+ * `AdaptiveRenderer` in `@bossnyumba/genui`. The kernel sends one
+ * per `tool_output_available` SSE event; the client appends to the
+ * turn's `uiParts[]`.
+ */
+export interface JarvisStreamUiPart {
+  readonly kind: string;
+  readonly [key: string]: unknown;
+}
+
 export type JarvisStreamEvent =
   | {
       readonly kind: 'turn_start';
@@ -78,6 +89,16 @@ export type JarvisStreamEvent =
   | {
       readonly kind: 'confidence';
       readonly vector: JarvisStreamConfidence;
+    }
+  | {
+      /**
+       * Wire event name: `tool_output_available`. Payload `uiPart` is a
+       * structured UI block (table / chart / kanban / approval / ...)
+       * the MD emitted during the turn. Client appends to the turn's
+       * `uiParts[]` so the `AdaptiveRenderer` can render it.
+       */
+      readonly kind: 'tool_output_available';
+      readonly uiPart: JarvisStreamUiPart;
     }
   | { readonly kind: 'done'; readonly decision: JarvisDecision }
   | { readonly kind: 'error'; readonly message: string };
@@ -412,6 +433,20 @@ export function translateEvent(
       };
       acc.confidence = vec;
       return [{ kind: 'confidence', vector: vec }];
+    }
+    case 'tool_output_available': {
+      // Structured UI-part emitted by the MD mid-turn. We pass it
+      // straight through to the consumer; the chat-ui hook appends to
+      // the turn's `uiParts[]`.
+      const uiPart = payload.uiPart;
+      if (
+        uiPart === null ||
+        typeof uiPart !== 'object' ||
+        typeof (uiPart as { kind?: unknown }).kind !== 'string'
+      ) {
+        return [];
+      }
+      return [{ kind: 'tool_output_available', uiPart: uiPart as JarvisStreamUiPart }];
     }
     case 'error': {
       const message =

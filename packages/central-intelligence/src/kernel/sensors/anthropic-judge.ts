@@ -22,6 +22,22 @@ export interface AnthropicJudgeConfig {
   readonly maxTokens?: number;
 }
 
+/**
+ * D12.7 — 5-C rubric. When the model returns a `rubric` block the
+ * judge parses it, clamps each axis to [0,1], and surfaces the
+ * weakest axis so the kernel can target regeneration feedback.
+ * Drops the rubric (and weakestAxis) when any axis is non-numeric.
+ */
+export interface JudgeRubric {
+  readonly completeness: number;
+  readonly correctness: number;
+  readonly citations: number;
+  readonly consistency: number;
+  readonly candor: number;
+}
+
+export type JudgeRubricAxis = keyof JudgeRubric;
+
 export interface JudgeVerdict {
   readonly score: number;
   /** Human-readable rationale from the judge (≤ 1-2 sentences). */
@@ -32,11 +48,15 @@ export interface JudgeVerdict {
    * follow-up prompt. Empty string when the judge declines to suggest.
    */
   readonly suggestedFix: string;
+  /** 5-C rubric — present only when the model returned a valid block. */
+  readonly rubric?: JudgeRubric;
+  /** Lowest axis on the rubric — used to focus regen feedback. */
+  readonly weakestAxis?: JudgeRubricAxis;
 }
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
-const SYSTEM_PROMPT = `You are a quality judge for property-management AI answers. You read a draft answer and return a single JSON object: {"score": NUMBER, "reasonText": STRING, "suggestedFix": STRING}.
+const SYSTEM_PROMPT = `You are a quality judge for property-management AI answers. You read a draft answer and return a single JSON object: {"score": NUMBER, "reasonText": STRING, "suggestedFix": STRING, "rubric": {"completeness": NUMBER, "correctness": NUMBER, "citations": NUMBER, "consistency": NUMBER, "candor": NUMBER}}.
 
 The score is in [0, 1]:
   1.0 — every factual claim is grounded; tone matches a property-ops voice; no fabrication.
@@ -44,10 +64,25 @@ The score is in [0, 1]:
   0.4 — partial grounding; reasonable structure; at least one clear hedge missing.
   0.0 — fabrications, off-topic, or refuses without justification.
 
+The 5-C rubric scores each axis in [0, 1]:
+  completeness — covers every part of the question.
+  correctness — every claim is right.
+  citations   — load-bearing claims are sourced.
+  consistency — tone + voice match the property-ops persona.
+  candor      — hedges when uncertain; never fabricates confidence.
+
 "reasonText" is one short sentence (≤ 25 words) explaining the score.
 "suggestedFix" is a one-sentence imperative instruction the property-ops AI could follow to lift the score; empty string if the draft already scores ≥ 0.9.
 
 Return ONLY the JSON object. No markdown. No commentary.`;
+
+const RUBRIC_AXES: ReadonlyArray<JudgeRubricAxis> = [
+  'completeness',
+  'correctness',
+  'citations',
+  'consistency',
+  'candor',
+];
 
 export function createAnthropicJudge(
   client: AnthropicMessagesClient,
@@ -77,11 +112,14 @@ export function createAnthropicJudge(
         if (block.type === 'text' && typeof block.text === 'string') body += block.text;
       }
       const parsed = parseJudgeResponse(body);
-      return {
+      const verdict: JudgeVerdict = {
         score: clamp01(parsed.score),
         reasonText: parsed.reasonText,
         suggestedFix: parsed.suggestedFix,
+        ...(parsed.rubric ? { rubric: parsed.rubric } : {}),
+        ...(parsed.weakestAxis ? { weakestAxis: parsed.weakestAxis } : {}),
       };
+      return verdict;
     } catch {
       // A judge failure must not break the main turn; fall back to
       // the neutral 1.0 (kernel uses min(...components), so 1.0 means
@@ -91,7 +129,15 @@ export function createAnthropicJudge(
   };
 }
 
-function parseJudgeResponse(body: string): { score: number; reasonText: string; suggestedFix: string } {
+interface ParsedJudgeBody {
+  readonly score: number;
+  readonly reasonText: string;
+  readonly suggestedFix: string;
+  readonly rubric?: JudgeRubric;
+  readonly weakestAxis?: JudgeRubricAxis;
+}
+
+function parseJudgeResponse(body: string): ParsedJudgeBody {
   const match = body.match(/\{[\s\S]*\}/);
   if (!match) return { score: 1, reasonText: '', suggestedFix: '' };
   try {
@@ -100,18 +146,58 @@ function parseJudgeResponse(body: string): { score: number; reasonText: string; 
       reasonText?: unknown;
       reasons?: unknown;
       suggestedFix?: unknown;
+      rubric?: unknown;
     };
     const s = Number(obj.score);
     const reasonText = readReasonText(obj.reasonText, obj.reasons);
     const suggestedFix = typeof obj.suggestedFix === 'string' ? obj.suggestedFix : '';
+    const rubric = parseRubric(obj.rubric);
+    const weakestAxis = rubric ? findWeakestAxis(rubric) : undefined;
     return {
       score: Number.isFinite(s) ? s : 1,
       reasonText,
       suggestedFix,
+      ...(rubric ? { rubric } : {}),
+      ...(weakestAxis ? { weakestAxis } : {}),
     };
   } catch {
     return { score: 1, reasonText: '', suggestedFix: '' };
   }
+}
+
+/**
+ * Validate + clamp a 5-C rubric block. Returns undefined when any
+ * axis is missing or non-numeric — the kernel falls back to the
+ * legacy single-score shape.
+ */
+function parseRubric(raw: unknown): JudgeRubric | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: Record<JudgeRubricAxis, number> = {
+    completeness: 0,
+    correctness: 0,
+    citations: 0,
+    consistency: 0,
+    candor: 0,
+  };
+  for (const axis of RUBRIC_AXES) {
+    const v = r[axis];
+    if (typeof v !== 'number' || !Number.isFinite(v)) return undefined;
+    out[axis] = clamp01(v);
+  }
+  return out;
+}
+
+function findWeakestAxis(rubric: JudgeRubric): JudgeRubricAxis {
+  let weakest: JudgeRubricAxis = RUBRIC_AXES[0]!;
+  let weakestValue = rubric[weakest];
+  for (const axis of RUBRIC_AXES) {
+    if (rubric[axis] < weakestValue) {
+      weakest = axis;
+      weakestValue = rubric[axis];
+    }
+  }
+  return weakest;
 }
 
 function readReasonText(reasonText: unknown, reasons: unknown): string {

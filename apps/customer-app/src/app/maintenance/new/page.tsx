@@ -11,6 +11,7 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Camera, Send, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getApiBaseUrl } from '@/lib/api';
 
 interface PhotoItem {
   readonly id: string;
@@ -20,14 +21,11 @@ interface PhotoItem {
 
 type Severity = 'low' | 'medium' | 'high' | 'critical' | 'emergency';
 
-function apiBase(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
-  if (url?.trim()) {
-    const base = url.trim().replace(/\/$/, '');
-    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
-  }
-  return 'http://localhost:4001/api/v1';
-}
+// `apiBase` hoisted into `@/lib/api`'s `getApiBaseUrl()` — single helper
+// that throws in production when `NEXT_PUBLIC_API_URL` is unset rather than
+// silently falling back to localhost. Was duplicated across 4 pages
+// (CRITICAL in `.audit/production-readiness-gaps.md`).
+const apiBase = getApiBaseUrl;
 
 async function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

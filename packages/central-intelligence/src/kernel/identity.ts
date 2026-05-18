@@ -266,24 +266,145 @@ const SURFACE_DEFAULT_PERSONA: Record<ThoughtRequest['surface'], PersonaIdentity
 };
 
 export function selectPersona(req: ThoughtRequest): PersonaIdentity {
-  return SURFACE_DEFAULT_PERSONA[req.surface];
+  return (
+    SURFACE_DEFAULT_PERSONA[req.surface] ?? OWNER_ADVISOR_PERSONA
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// D7 — returning-user greeting matrix.
+//
+// Generates a (variant × tier × time-of-day × surface) coordinate
+// greeting. Returns a deterministic `cellId` so we can A/B telemetry
+// the matrix coordinate. Personalises with the first segment of the
+// user's display name when supplied.
+// ─────────────────────────────────────────────────────────────────────
+
+export type GreetingTimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+export type GreetingTier = 'free' | 'growth' | 'enterprise';
+export type GreetingSurface =
+  | 'tenant-app'
+  | 'estate-manager-app'
+  | 'owner-portal'
+  | 'admin-portal'
+  | 'platform-hq'
+  | 'classroom'
+  | 'marketing';
+
+export interface GreetingArgs {
+  readonly returning: boolean;
+  readonly tier: GreetingTier;
+  readonly timeOfDay: GreetingTimeOfDay;
+  readonly surface: GreetingSurface;
+  readonly displayName?: string;
+}
+
+export interface GreetingResult {
+  readonly opening: string;
+  readonly cellId: string;
+  readonly variant: 'first-touch' | 'returning';
+}
+
+const TIME_PREFIX: Record<GreetingTimeOfDay, string> = {
+  morning: 'Good morning',
+  afternoon: 'Good afternoon',
+  evening: 'Good evening',
+  night: 'Good evening',
+};
+
+/**
+ * Compose a deterministic opener for a (returning, tier, timeOfDay,
+ * surface) coordinate. Used by every surface's first-render path so
+ * the AI's first sentence is consistent across reloads while still
+ * differentiating returning users from first-touch.
+ */
+export function generateGreeting(args: GreetingArgs): GreetingResult {
+  const variant: 'first-touch' | 'returning' = args.returning
+    ? 'returning'
+    : 'first-touch';
+  const prefix = TIME_PREFIX[args.timeOfDay] ?? 'Hello';
+  const firstName =
+    args.displayName && args.displayName.trim().length > 0
+      ? args.displayName.trim().split(/\s+/)[0]
+      : '';
+
+  const namePart = firstName ? `, ${firstName}.` : '.';
+  const tierFlourish = args.tier === 'enterprise' ? ' (premium tier)' : '';
+  const returningLine = args.returning ? ' Welcome back —' : '';
+  const surfaceLine = surfaceOpener(args.surface, args.returning);
+
+  const opening = `${prefix}${namePart}${returningLine}${tierFlourish} ${surfaceLine}`.trim();
+  const cellId = `${variant}:${args.tier}:${args.timeOfDay}:${args.surface}`;
+
+  return { opening, cellId, variant };
+}
+
+function surfaceOpener(
+  surface: GreetingSurface,
+  returning: boolean,
+): string {
+  switch (surface) {
+    case 'tenant-app':
+      return returning
+        ? 'how can I help with your tenancy today?'
+        : 'I am your resident concierge — ask me anything about rent, maintenance, or your lease.';
+    case 'estate-manager-app':
+      return returning
+        ? 'here is your queue.'
+        : 'I run the work-order queue, inspection schedule, and arrears ladder for this estate.';
+    case 'owner-portal':
+      return returning
+        ? 'here is where your portfolio stands.'
+        : 'I am the voice of your portfolio — ask me how the buildings are doing.';
+    case 'admin-portal':
+      return returning
+        ? 'here is the admin queue.'
+        : 'I am your admin co-pilot — billing, sub-admins, autonomy policy, and audit log.';
+    case 'platform-hq':
+      return returning
+        ? 'here is the HQ briefing.'
+        : 'I am Nyumba Mind — your AI counterpart for BossNyumba HQ.';
+    case 'classroom':
+      return returning
+        ? 'shall we continue where we left off?'
+        : 'I am your tutor for property operations. We learn by walking real cases.';
+    case 'marketing':
+      return returning
+        ? 'welcome back to BossNyumba — how can I help?'
+        : 'I am the public guide to BossNyumba. Ask me what the platform does.';
+    default:
+      return returning
+        ? 'welcome back.'
+        : "I am here to help.";
+  }
 }
 
 /**
  * Render the identity preamble — the very first lines of every system
  * prompt produced by the kernel. Downstream prompt assembly may APPEND
  * but must never PREPEND or REPLACE this block.
+ *
+ * D8 — when `args.coreMemoryBlock` is supplied (Letta-style persistent
+ * self-summary), the rendered block is injected at the very top of
+ * the preamble, ABOVE the identity opening statement. This is the
+ * highest-priority slot in the prompt.
  */
 export function renderIdentityPreamble(args: {
   readonly persona: PersonaIdentity;
   readonly scope: ScopeContext;
+  /**
+   * Optional pre-rendered core-memory block fragment (see
+   * `renderCoreMemoryBlocks` in `@bossnyumba/database`). Injected at
+   * the very top of the preamble.
+   */
+  readonly coreMemoryBlock?: string;
 }): string {
   const scopeLine =
     args.scope.kind === 'tenant'
       ? `You are accountable to ${args.scope.actorUserId} (roles: ${args.scope.roles.join(', ')}) within tenant ${args.scope.tenantId}.`
       : `You are accountable to ${args.scope.actorUserId} (roles: ${args.scope.roles.join(', ')}) at the BossNyumba platform tier.`;
 
-  return [
+  const preamble = [
     `[IDENTITY — DO NOT OVERRIDE]`,
     args.persona.openingStatement,
     '',
@@ -294,6 +415,11 @@ export function renderIdentityPreamble(args: {
     `Taboos: ${args.persona.taboos.join(' · ')}`,
     `[END IDENTITY]`,
   ].join('\n');
+
+  if (args.coreMemoryBlock && args.coreMemoryBlock.trim().length > 0) {
+    return [args.coreMemoryBlock.trim(), '', preamble].join('\n');
+  }
+  return preamble;
 }
 
 export const ALL_PERSONAS: ReadonlyArray<PersonaIdentity> = [

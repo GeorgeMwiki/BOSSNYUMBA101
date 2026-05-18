@@ -1,15 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+import { getApiGatewayBase, proxyJson } from '@/lib/proxy';
+
+interface RouteContext {
+  readonly params: Promise<{ readonly threadId: string }>;
+}
 
 /**
- * Read a single platform-scope intelligence thread (messages + artifacts).
+ * Proxy: read a single platform-scope intelligence thread.
  *
- * TODO (intelligence-wiring): proxy to the API gateway's
- * GET /api/v1/intelligence/thread/:id with scope=platform enforcement.
- * Until wired, respond 503 so the UI renders the degraded state.
+ * Forwards GET /api/v1/intelligence/thread/:id (with `scope=platform`
+ * enforcement upstream) and mirrors the gateway response.
  */
-export function GET() {
-  return NextResponse.json(
-    { error: 'intelligence-service not wired for platform scope' },
-    { status: 503 },
-  );
+export async function GET(
+  _req: NextRequest,
+  context: RouteContext,
+): Promise<Response> {
+  const params = await context.params;
+  const threadId = params.threadId;
+  if (!threadId || threadId.length === 0) {
+    return NextResponse.json({ error: 'threadId required' }, { status: 400 });
+  }
+  const base = getApiGatewayBase();
+  const url = `${base}/api/v1/intelligence/thread/${encodeURIComponent(threadId)}?scope=platform`;
+  return proxyJson(url, { method: 'GET' });
 }

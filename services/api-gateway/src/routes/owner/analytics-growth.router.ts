@@ -25,10 +25,12 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
-import { buildDegradedList, markDegraded } from './degraded-shape';
+import { buildDegradedList, isFlagOn, markDegraded, notImplementedFlagged } from './degraded-shape';
 
 const NEXT_STEP =
   'create analytics_growth_monthly Drizzle view + repos.analyticsGrowth.series(tenantId, range) and replace this skeleton';
+
+const FLAG_KEY = 'flag.bff.analytics.growth';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -42,8 +44,12 @@ app.use(
   ),
 );
 
-app.get('/', (c) => {
+app.get('/', async (c) => {
   const auth = c.get('auth');
+  // Loud-failure path: 501 unless an operator turns the dev-mode flag on.
+  if (!(await isFlagOn(c, FLAG_KEY))) {
+    return notImplementedFlagged(c, FLAG_KEY, NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, NEXT_STEP));
 });

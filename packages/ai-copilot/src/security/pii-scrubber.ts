@@ -23,6 +23,7 @@
 export type PiiType =
   | 'national_id'
   | 'tin_number'
+  | 'kra_pin'
   | 'phone_number'
   | 'email'
   | 'credit_card'
@@ -30,7 +31,8 @@ export type PiiType =
   | 'passport'
   | 'ssn'
   | 'ip_address'
-  | 'api_key';
+  | 'api_key'
+  | 'date_of_birth';
 
 export interface PiiMatch {
   readonly type: PiiType;
@@ -72,6 +74,14 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     regex: /\bTIN[\s:]*\d{3}[-\s]?\d{3}[-\s]?\d{3}\b/i,
     replacement: '[TIN]',
   },
+  // Kenya KRA PIN — A2b-2 wire #3. 11 chars: uppercase letter + 9
+  // digits + uppercase letter. Narrow shape to avoid product SKU
+  // collisions.
+  {
+    type: 'kra_pin',
+    regex: /\b[A-Z]\d{9}[A-Z]\b/,
+    replacement: '<kra-pin:redacted>',
+  },
   // Kenya +254 mobiles.
   {
     type: 'phone_number',
@@ -82,6 +92,12 @@ const PII_PATTERNS: readonly PiiPattern[] = [
   {
     type: 'phone_number',
     regex: /\b(?:\+?255|0)\s?[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/,
+    replacement: '[PHONE]',
+  },
+  // Malaysia +60 mobiles — 9 or 10 digits after +60/0 prefix.
+  {
+    type: 'phone_number',
+    regex: /\b(?:\+?60|0)\s?1\d[\s-]?\d{3,4}[\s-]?\d{4}\b/,
     replacement: '[PHONE]',
   },
   // International fallback — conservative.
@@ -132,6 +148,25 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     regex: /\b(?:sk|pk|api[_-]?key|token)[-_][A-Za-z0-9]{16,}\b/i,
     replacement: '[API_KEY]',
   },
+  // D9: Date of birth — multiple formats.
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])\b/,
+    replacement: '[DOB]',
+  },
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:0?[1-9]|[12]\d|3[01])[-/.](?:0?[1-9]|1[0-2])[-/.](?:19|20)\d{2}\b/,
+    replacement: '[DOB]',
+  },
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:0?[1-9]|[12]\d|3[01])\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(?:19|20)\d{2}\b/i,
+    replacement: '[DOB]',
+  },
 ];
 
 interface ContextPattern {
@@ -165,22 +200,27 @@ const CONTEXT_PATTERNS: readonly ContextPattern[] = [
     type: 'national_id',
     replacement: '[NIDA_ID]',
   },
+  // A2b-2 wire #3 — KRA PIN context-aware: English + Swahili.
+  // Trigger phrase first, then the canonical 11-char PIN in tail.
+  {
+    regex:
+      /(?:my\s+kra(?:\s+pin)?(?:\s+is)?|nambari\s+yangu\s+ya\s+kra(?:\s+ni)?|kra\s+pin\s+is)\s+/i,
+    piiRegex: /[A-Z]\d{9}[A-Z]/,
+    type: 'kra_pin',
+    replacement: '<kra-pin:redacted>',
+  },
 ];
 
-// Monetary patterns — we do not scrub monetary amounts.
-const MONETARY_PATTERNS: readonly RegExp[] = [
-  /\bTSh\s*[\d,]+/i,
-  /\bTZS\s*[\d,]+/i,
-  /\bKSh\s*[\d,]+/i,
-  /\bKES\s*[\d,]+/i,
-  /\$\s*[\d,]+/,
-  /\bUSD\s*[\d,]+/i,
-  /[\d,]+\s*(?:shillings?|shilingi|laki|elfu|milioni|bilioni)\b/i,
-];
+// Monetary patterns — we do not scrub monetary amounts. The pattern set
+// is centralised in `./currency-patterns.ts` so every detector across the
+// codebase (policy-gate, self-rag, sovereign-action-ledger) shares the
+// same global ISO-4217 + symbol coverage.
+import { MONETARY_PATTERNS as SHARED_MONETARY_PATTERNS } from './currency-patterns.js';
+const MONETARY_PATTERNS: readonly RegExp[] = SHARED_MONETARY_PATTERNS;
 
 // Placeholders we emit — never re-scrub them.
 const PLACEHOLDER_RX =
-  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY)\]/;
+  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB)\]|<kra-pin:redacted>/;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -245,10 +285,12 @@ export function scrubPii(message: string): PiiScrubResult {
       if (p.type !== 'email' && p.type !== 'api_key') {
         if (isMonetary(message, start, end)) continue;
       }
-      // Very short digit runs are likely false positives.
+      // Very short digit runs are likely false positives. DOBs are
+      // excluded — they carry structural markers (separators / months).
       if (
         p.type !== 'email' &&
         p.type !== 'api_key' &&
+        p.type !== 'date_of_birth' &&
         m[0].replace(/[\s-]/g, '').length < 6
       ) {
         continue;

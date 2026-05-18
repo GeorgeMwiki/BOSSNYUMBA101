@@ -69,10 +69,34 @@ app.get('/unread/count', async (c) => {
   const db = services.db;
   if (!db) return notConfigured(c);
   // Unread is a function of per-user delivery state that isn't tracked in
-  // dispatch log directly (there's no `read_at`). Returning zero until the
-  // in-app notification inbox schema lands — documented so UI can render
-  // a badge that's guaranteed to be accurate.
-  return c.json({ success: true, data: { unread: 0, note: 'in-app inbox schema pending' } });
+  // dispatch log directly (there's no `read_at`). The in-app notification
+  // inbox schema is not landed yet — return a loud 501 unless the
+  // `flag.bff.notifications.unread_count` flag is explicitly on (dev mode).
+  const ff = services.featureFlags;
+  const tenantId = c.get('tenantId');
+  let flagOn = false;
+  if (ff && typeof ff.isEnabled === 'function') {
+    try {
+      flagOn = Boolean(await ff.isEnabled(tenantId, 'flag.bff.notifications.unread_count'));
+    } catch {
+      flagOn = false;
+    }
+  }
+  if (!flagOn) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Unread-count endpoint requires the in-app inbox schema. Concrete next-step: add notification_inbox_state(user_id, dispatch_id, read_at) + a service method to count where read_at IS NULL.',
+          flagKey: 'flag.bff.notifications.unread_count',
+        },
+      },
+      501,
+    );
+  }
+  return c.json({ success: true, data: { unread: 0, note: 'in-app inbox schema pending; flag-gated dev response' } });
 });
 
 app.get('/:id', async (c) => {

@@ -140,6 +140,8 @@ export {
 } from './kernel-memory-episodic.service.js';
 export {
   createSemanticMemoryService,
+  DeclaredFactsCapExceededError,
+  DECLARED_FACTS_PER_USER_CAP,
   type DecayArgs,
   type LookupArgs,
   type SearchArgs,
@@ -555,3 +557,23 @@ export {
   type ReEmbedReport as SemanticBulkReEmbedReport,
   type SemanticBulkReEmbedService,
 } from './semantic-bulk-reembed.service.js';
+
+// Core memory blocks (migration 0151, D8 — Letta-style self-summary).
+export {
+  createCoreMemoryBlocksService,
+  renderCoreMemoryBlocks,
+  type CoreMemoryBlock,
+  type CoreMemoryBlockKind,
+  type CoreMemoryBlocksService,
+  type UpsertCoreMemoryBlockArgs,
+  type ListActiveCoreMemoryBlocksArgs,
+} from './core-memory-blocks.service.js';
+
+// Consolidation emissions (migration 0152, D8 — morning digest publish).
+export {
+  createConsolidationEmissionsService,
+  type ConsolidationEmission,
+  type ConsolidationEmissionsService,
+  type RecordConsolidationEmissionArgs,
+  type ListConsolidationEmissionsArgs,
+} from './consolidation-emissions.service.js';

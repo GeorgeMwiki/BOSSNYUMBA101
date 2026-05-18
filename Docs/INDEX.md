@@ -19,12 +19,14 @@ Master index of every document in `Docs/`, organized by category.
 | File | Summary |
 |------|---------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture — multi-tenant, services, data model |
+| [ARCHITECTURE_CENTRAL_COMMAND.md](./ARCHITECTURE_CENTRAL_COMMAND.md) | Canonical Central Command architecture — phase status, kernel pipeline, sleep consolidation |
 | [ARCHITECTURE_BRAIN.md](./ARCHITECTURE_BRAIN.md) | AI "Brain" architecture — personas, providers, deterministic gates |
 | [CPG_ARCHITECTURE.md](./CPG_ARCHITECTURE.md) | Customer-property-graph architecture |
 | [DOMAIN_MODEL.md](./DOMAIN_MODEL.md) | Core domain entities and relationships |
 | [DATA_FLOWS.md](./DATA_FLOWS.md) | Event-driven and synchronous request flows |
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | UI design tokens, components, patterns |
 | [ENTERPRISE_HARDENING.md](./ENTERPRISE_HARDENING.md) | Rate limiting, CSRF, audit logging, secret rotation |
+| [ADR/README.md](./ADR/README.md) | Architecture Decision Records (ADRs) — chronological registry |
 
 ## API + contracts
 
@@ -66,9 +68,20 @@ Master index of every document in `Docs/`, organized by category.
 | [ENV.md](./ENV.md) | Environment variables reference |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Local + staging + production deploy guide; env-var reference (wave-5 additions); composition root degraded mode |
 | [RUNBOOK.md](./RUNBOOK.md) | On-call runbook; standard operational procedures (migrations, seeds, health checks, API key rotation, 503 triage); incident playbooks |
+| [RUNBOOKS/README.md](./RUNBOOKS/README.md) | Operational runbooks index (incident response, killswitch, encryption rotation, RTBF, cron debug) |
+| [SUPABASE_LIVE_TEST.md](./SUPABASE_LIVE_TEST.md) | First-time production live-test against Supabase (REQUIRED reading before first deploy) |
 | [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) | Pre-deployment checklist and known integration notes |
 | [OPERATIONAL_SLA.md](./OPERATIONAL_SLA.md) | SLAs, escalation paths |
 | [KPIS_AND_SLOS.md](./KPIS_AND_SLOS.md) | Key KPIs and service-level objectives |
+
+## Compliance
+
+| File | Summary |
+|------|---------|
+| [COMPLIANCE/SOC2_CONTROLS.md](./COMPLIANCE/SOC2_CONTROLS.md) | SOC 2 Type II Common Criteria (CC1-CC9) control mapping |
+| [COMPLIANCE/TZ_PDPA_2022.md](./COMPLIANCE/TZ_PDPA_2022.md) | Tanzania Personal Data Protection Act 2022 (Articles 5-30) mapping |
+| [COMPLIANCE/GDPR_ARTICLE_30.md](./COMPLIANCE/GDPR_ARTICLE_30.md) | GDPR Article 30 Record of Processing — controller + processor view |
+| [COMPLIANCE/DPA_TEMPLATE.md](./COMPLIANCE/DPA_TEMPLATE.md) | Data Processing Agreement template for tenants |
 
 ## AI-native agents (composition + persistence)
 

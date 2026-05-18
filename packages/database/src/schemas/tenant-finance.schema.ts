@@ -88,7 +88,12 @@ export const tenantFinancialStatements = pgTable(
     monthlyGrossIncome: integer('monthly_gross_income').notNull().default(0),
     monthlyNetIncome: integer('monthly_net_income').notNull().default(0),
     otherIncome: integer('other_income').notNull().default(0),
-    incomeCurrency: text('income_currency').notNull().default('KES'),
+    // ISO-4217 currency code. The app layer (financial-profile.router
+    // already enforces this via a Zod schema) MUST resolve from the
+    // tenant's `currency_preferences` row; we removed the literal `'KES'`
+    // default so a missed wire surfaces as an insert error rather than
+    // silently pinning the row to KES.
+    incomeCurrency: text('income_currency').notNull(),
     incomeSources: jsonb('income_sources').notNull().default([]),
 
     // Obligations (minor units)

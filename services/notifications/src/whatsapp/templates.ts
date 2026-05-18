@@ -106,19 +106,25 @@ Watu wangapi wataishi katika nyumba (pamoja nawe)?`,
     },
   } satisfies InteractiveTemplate,
 
+  // The phone example is rendered per-country at call time via the
+  // `{{phoneExample}}` placeholder. Callers should resolve the
+  // example from the recipient's tenant.country (see
+  // `getPhoneExampleForCountry` below) so a TZ resident sees
+  // `+255 712 345 678`, a KE resident sees `+254 712 345 678`, and a
+  // tenant in an un-overlaid country sees the generic `+CC ...`.
   emergencyContactRequest: {
     en: `Perfect! {{occupants}} occupant(s) noted.
 
 For safety purposes, please provide an emergency contact:
 📞 Name and phone number
 
-Example: "John Doe, 0712345678"`,
+Example: "John Doe, {{phoneExample}}"`,
     sw: `Vyema! Wakaaji {{occupants}} wameandikwa.
 
 Kwa usalama, tafadhali toa mtu wa kuwasiliana naye wakati wa dharura:
 📞 Jina na nambari ya simu
 
-Mfano: "John Doe, 0712345678"`,
+Mfano: "John Doe, {{phoneExample}}"`,
   } satisfies MessageTemplate,
 
   confirmationSummary: {
@@ -1072,6 +1078,31 @@ export function renderTemplate(
     result = result.replace(placeholder, String(value));
   }
   return result;
+}
+
+/**
+ * Per-ISO-3166-alpha-2 country examples for the `{{phoneExample}}`
+ * placeholder used by `emergencyContactRequest` (and any future
+ * template asking the user to type a local phone). The values are
+ * representative of each country's national pattern but do not need
+ * to be valid live numbers.
+ *
+ * Returns a generic `+CC ...` placeholder when the country is not in
+ * the overlay map, so brand-new jurisdictions degrade gracefully.
+ */
+const COUNTRY_PHONE_EXAMPLES: Readonly<Record<string, string>> = Object.freeze({
+  TZ: '+255 712 345 678',
+  KE: '+254 712 345 678',
+  UG: '+256 772 345 678',
+  RW: '+250 788 345 678',
+  ZA: '+27 72 345 6789',
+  NG: '+234 802 345 6789',
+});
+
+export function getPhoneExampleForCountry(country: string | null | undefined): string {
+  if (!country) return '+CC XXX XXX XXX';
+  const iso = country.trim().toUpperCase();
+  return COUNTRY_PHONE_EXAMPLES[iso] ?? '+CC XXX XXX XXX';
 }
 
 /**

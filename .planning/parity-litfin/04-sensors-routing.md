@@ -1,5 +1,16 @@
 # P4 — Sensor failover + multi-LLM routing + provider health + degradation mode
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 8 gaps below, **6 are now SHIPPED**, **1 is in-flight in Phase D7**, and **1 (pattern-family cache hit on "hi"/"habari") is shipped via brain-cache.ts:77-125 pattern-family matcher**.
+>
+> Headline shipments:
+> - ✅ **Rolling 60s window + 3-strike circuit breaker** — `kernel/sensor-failover.ts:38-321` (Phase A; bumped from 90 LOC → 321 LOC).
+> - ✅ **Pattern-family brain cache** — `kernel/brain-cache.ts:77-125` (greeting / acknowledgment / farewell / platform_intro / how_to_start regex families).
+> - ✅ **Normaliser deep-set** — `kernel/normalizer.ts:33-287` (7 preamble strips + 4 trailing strips + smart-quote + JSON extract + ui_block extract; bumped from 98 LOC → 287 LOC).
+> - ✅ **Continuous grading framework** — `kernel/continuous-grading.ts:158-535` (5-axis × 80-150 LOC per axis). **BOSSNYUMBA AHEAD** — 696 LOC vs LITFIN's 404-LOC sketch. See `00-STATUS-2026-05-18.md` §3 item 9.
+> - ✅ **MCP server** — `packages/mcp-server/` (full handler set + tier-router + cost-persistence + universal-tool-adapter).
+> - ✅ **Semantic cache layering** — `kernel/semantic-cache/` + migration `0147_semantic_cache_log.sql` (Phase D4 ✅).
+> - ⚠️ **DB-backed sensor-routing control plane** — migration `0149_sensor_routing_control.sql` SHIPPED; `SensorRouter` wiring is the remaining Phase D7 task.
+
 **Agent**: P4 of 10
 **Slice**: Sensor failover, multi-LLM router, provider health, brain cache, output normaliser, continuous grading framework
 **Mode**: READ-ONLY analysis, cite `file:line`

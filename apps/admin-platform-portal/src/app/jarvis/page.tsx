@@ -14,6 +14,15 @@ export const metadata = {
   title: 'Nyumba Mind · BossNyumba HQ',
 };
 
+/**
+ * Skip static prerender — JarvisConsole and its chat-ui / genui
+ * descendants touch `window` (Web Speech adapter, uiParts streaming
+ * hook, dynamic-renderer mounts). Static export crashes with
+ * `ReferenceError: window is not defined`. Force dynamic rendering
+ * so the page is built at request time.
+ */
+export const dynamic = 'force-dynamic';
+
 export default function JarvisPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">

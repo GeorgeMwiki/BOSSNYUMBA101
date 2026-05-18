@@ -164,21 +164,51 @@ export function createMigrationRouter(deps: {
     };
     if (!body.message) return c.json({ error: 'missing message' }, 400);
 
-    // TODO(api-gateway, KI-013): wire to MigrationWizardCopilot via
-    //   the shared BrainRegistry once the copilot is registered at
-    //   composition root. Concrete next-step:
-    //     1. Add `MigrationWizardCopilot` to ServiceRegistry alongside
-    //        the other AI agents (services/api-gateway/src/composition/*).
-    //     2. Pass the registry to `createMigrationRouter` via deps.
-    //     3. Replace this stub body with:
-    //          const copilot = deps.registry.getMigrationWizard(tenantId);
-    //          const out = await copilot.run({ tenantId, actorId, runId, message });
-    //          return c.json(out);
-    //   See Docs/KNOWN_ISSUES.md#ki-013 for the broader context.
+    // KI-013 — when a MigrationWizardCopilot is bound on the deps, use
+    // it. Otherwise: loud-failure 501 unless a per-tenant feature flag
+    // is on (dev mode). The previous silent ack hid the gap from
+    // observability dashboards.
+    const wizard = (deps as { migrationWizardCopilot?: { run(args: { tenantId: string; actorId: string; runId: string; message: string }): Promise<unknown> } })
+      .migrationWizardCopilot;
+    if (wizard && typeof wizard.run === 'function') {
+      try {
+        const out = await wizard.run({ tenantId, actorId, runId, message: body.message });
+        return c.json({ ok: true, runId, data: out });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'copilot failed';
+        return c.json(
+          { ok: false, error: { code: 'COPILOT_ERROR', message } },
+          503,
+        );
+      }
+    }
+
+    const services = (c.get('services') as { featureFlags?: { isEnabled(t: string, k: string): Promise<boolean> } } | undefined) ?? {};
+    const flagKey = 'flag.bff.migration.copilot_ask';
+    let flagOn = false;
+    try {
+      flagOn = Boolean(await services.featureFlags?.isEnabled(tenantId, flagKey));
+    } catch {
+      flagOn = false;
+    }
+    if (!flagOn) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'NOT_IMPLEMENTED',
+            message:
+              'Migration-wizard copilot is not wired. Concrete next-step: add MigrationWizardCopilot to ServiceRegistry and pass it to createMigrationRouter via deps.migrationWizardCopilot. See Docs/KNOWN_ISSUES.md#ki-013.',
+            flagKey,
+          },
+        },
+        501,
+      );
+    }
     return c.json({
       runId,
       ack: true,
-      note: 'copilot proxy scaffolded — wire to BrainRegistry in Phase 2',
+      note: 'copilot proxy scaffolded — flag-gated dev response while BrainRegistry wiring is pending',
     });
   });
 

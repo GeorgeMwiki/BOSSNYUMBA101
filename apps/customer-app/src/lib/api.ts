@@ -11,7 +11,22 @@ import {
   getApiClient,
 } from '@bossnyumba/api-client';
 
-function getApiBaseUrl(): string {
+/**
+ * Resolve the api-gateway base URL. Always returns a `/api/v1`-suffixed
+ * URL.
+ *
+ * Production guard: when `NEXT_PUBLIC_API_URL` / `API_URL` is unset AND
+ * `NODE_ENV=production`, this THROWS rather than silently falling back to
+ * `http://localhost:4001/api/v1` (which would either ERR_CONNECTION or —
+ * worse — hit a colocated dev API by accident).
+ *
+ * Exported so every customer-app page imports the same single helper —
+ * previously four pages (`lease/renewal`, `maintenance/triage`,
+ * `maintenance/new`, `notifications`) each duplicated the dev-fallback
+ * without the production throw. Audited as CRITICAL in
+ * `.audit/production-readiness-gaps.md`.
+ */
+export function getApiBaseUrl(): string {
   // Accept either variable on any runtime. Server-side only envs (API_URL)
   // are preferred when available; otherwise fall back to the public var,
   // which is inlined at build time and therefore always defined the same

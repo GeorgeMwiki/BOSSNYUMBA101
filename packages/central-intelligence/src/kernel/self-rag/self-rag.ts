@@ -78,7 +78,9 @@ export interface SelfRagInput {
  *   - explicit policy statements ("according to the lease …")
  */
 const FINANCIAL_REGEXES: ReadonlyArray<RegExp> = [
-  /\b(?:TZS|KES|UGX|USD|EUR|GBP|TSH|KSH)\s*[\d,]+(?:\.\d+)?/i,
+  // ISO-4217 + common informal labels. Kept in sync with policy-gate's
+  // ABSOLUTE_MONEY_PATTERN and ai-copilot's MONETARY_PATTERNS.
+  /\b(?:TZS|KES|UGX|RWF|NGN|ZAR|GHS|EGP|USD|EUR|GBP|CHF|JPY|CNY|INR|AUD|CAD|Ksh|KShs|Tsh|TShs|Sh|Shs)\s*[\d,]+(?:\.\d+)?/i,
   /\$\s*\d[\d,]*(?:\.\d+)?/,
   /\b(?:rent|deposit|fee|fine|penalty|surcharge|payment)\s+of\s+[\d,]+/i,
   /\b(?:lease|contract)\s+(?:clause|section|article)\s+[\d.]+/i,

@@ -52,6 +52,14 @@ export interface SovereignLedgerAppendArgs {
   readonly proposer: string;
   readonly approvers: ReadonlyArray<string>;
   readonly executedAt: Date;
+  /**
+   * Optional reversal-plan payload (Phase D D2). Persisted alongside
+   * the chain row so operators can drive a recovery workflow if a
+   * sovereign action needs to be undone. NOT included in the hash
+   * chain — verifyLedgerChain walks the existing hash inputs
+   * untouched.
+   */
+  readonly rollbackPayload?: unknown;
 }
 
 export interface SovereignLedgerRow {
@@ -94,6 +102,14 @@ export interface SovereignActionLedgerService {
     limit: number,
   ): Promise<ReadonlyArray<SovereignLedgerRow>>;
   verifyLedgerChain(tenantId: string): Promise<SovereignLedgerVerifyResult>;
+  /**
+   * Load the optional rollback payload for a previously-recorded
+   * sovereign action (Phase D D2). Returns `null` when the row is
+   * missing OR when the row has no recorded rollback plan. Errors are
+   * logged and surface as `null` so the operator UI can fall back to
+   * manual recovery.
+   */
+  loadRollbackPayload(actionId: string): Promise<unknown | null>;
 }
 
 const MAX_TAIL = 1000;
@@ -116,6 +132,110 @@ export function hashPayload(payload: Record<string, unknown> | null): string {
     canonical = String(payload);
   }
   return createHash('sha256').update(canonical, 'utf8').digest('hex');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase D / A2b-1 — PII redaction for ledger payload_json.
+//
+// Sovereign-action ledger rows live under append-only audit retention.
+// Operators have legitimate read access, but ledger payloads must not
+// leak raw PII (KRA PIN, NIDA, M-Pesa phone, email) into the
+// long-retention surface. We redact-before-write so the persisted JSONB
+// column never contains plaintext PII — but the HASH is computed on
+// the ORIGINAL payload so the tamper-detection chain stays intact
+// (the verifier re-derives the hash from (prev || tenant || type ||
+// payload_hash || executed_at) — never from the persisted payload_json
+// — so this redaction is invariant-safe).
+//
+// Patterns mirror `packages/ai-copilot/src/security/pii-scrubber.ts`
+// — duplicated locally to avoid a backward dependency edge from the
+// `database` package to `ai-copilot` (ai-copilot already imports
+// database via the DSAR data-source).
+// ─────────────────────────────────────────────────────────────────────
+
+const PAYLOAD_PII_PATTERNS: ReadonlyArray<{
+  readonly regex: RegExp;
+  readonly replacement: string;
+}> = [
+  // Kenya KRA PIN — A123456789B
+  {
+    regex: /\b[A-Z]\d{9}[A-Z]\b/g,
+    replacement: '<kra-pin:redacted>',
+  },
+  // Tanzania NIDA — 20 digits, dash-separated
+  {
+    regex: /\b(19|20)\d{2}[-\s]?\d{4}[-\s]?\d{5}[-\s]?\d{2,4}\b/g,
+    replacement: '[NIDA_ID]',
+  },
+  // Kenya +254 mobile
+  {
+    regex: /\b(?:\+?254|0)\s?7\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Tanzania +255 mobile
+  {
+    regex: /\b(?:\+?255|0)\s?[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Uganda +256 mobile
+  {
+    regex: /\b(?:\+?256|0)\s?[37]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Rwanda +250 mobile
+  {
+    regex: /\b(?:\+?250|0)\s?[78]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,
+    replacement: '[PHONE]',
+  },
+  // South Africa +27 mobile
+  {
+    regex: /\b(?:\+?27|0)\s?[678]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Nigeria +234 mobile
+  {
+    regex: /\b(?:\+?234|0)\s?[789]\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Generic E.164 fallback — anything else that looks like an
+  // international phone. ITU-T E.164: 7-15 digits after the country code.
+  {
+    regex: /\+[1-9]\d{6,14}\b/g,
+    replacement: '[PHONE]',
+  },
+  // Email
+  {
+    regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+    replacement: '[EMAIL]',
+  },
+];
+
+function scrubPiiFromString(input: string): string {
+  let out = input;
+  for (const p of PAYLOAD_PII_PATTERNS) {
+    out = out.replace(p.regex, p.replacement);
+  }
+  return out;
+}
+
+/**
+ * Walk an unknown JSON-compatible value and scrub PII from every
+ * leaf string. Returns a NEW value — never mutates the input.
+ */
+export function redactPayloadPii<T>(payload: T): T {
+  if (payload === null || payload === undefined) return payload;
+  if (typeof payload === 'string') {
+    return scrubPiiFromString(payload) as unknown as T;
+  }
+  if (typeof payload !== 'object') return payload;
+  if (Array.isArray(payload)) {
+    return payload.map((v) => redactPayloadPii(v)) as unknown as T;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
+    out[k] = redactPayloadPii(v);
+  }
+  return out as unknown as T;
 }
 
 /**
@@ -199,7 +319,15 @@ export function createSovereignActionLedgerService(
         throw new Error('sovereign-action-ledger.append: proposer is required');
       }
 
+      // Hash is computed on the ORIGINAL payload — the tamper-detection
+      // chain ties to the canonical un-redacted form. Persistence uses
+      // the REDACTED form so the long-retention JSONB column never
+      // carries plaintext PII. The verifier re-derives the hash from
+      // (prev || tenant || type || payload_hash || executed_at) — never
+      // from the persisted payload_json — so this redaction is
+      // invariant-safe.
       const payloadHash = hashPayload(args.payloadJson);
+      const redactedPayload = redactPayloadPii(args.payloadJson);
       const lockKey = tenantLockKey(args.tenantId);
       const id = randomUUID();
       // Advisory lock keeps two simultaneous appends on the same
@@ -243,7 +371,7 @@ export function createSovereignActionLedgerService(
             id,
             tenantId: args.tenantId,
             actionType: args.actionType,
-            payloadJson: args.payloadJson as unknown as Record<
+            payloadJson: redactedPayload as unknown as Record<
               string,
               unknown
             >,
@@ -253,6 +381,14 @@ export function createSovereignActionLedgerService(
             executedAt: args.executedAt,
             prevHash,
             thisHash,
+            ...(args.rollbackPayload !== undefined
+              ? {
+                  rollbackPayload: args.rollbackPayload as unknown as Record<
+                    string,
+                    unknown
+                  >,
+                }
+              : {}),
           } as never);
         } catch (error) {
           console.error('sovereign-action-ledger.append insert failed:', error);
@@ -391,6 +527,30 @@ export function createSovereignActionLedgerService(
           actual: '',
           reason: 'db-error',
         };
+      }
+    },
+
+    async loadRollbackPayload(actionId) {
+      if (!actionId) return null;
+      try {
+        const rows = (await db
+          .select()
+          .from(sovereignActionLedger)
+          .where(eq(sovereignActionLedger.id, actionId))
+          .limit(1)) as ReadonlyArray<Record<string, unknown>>;
+        const first = rows?.[0];
+        if (!first) return null;
+        const raw =
+          (first.rollbackPayload as unknown) ??
+          (first.rollback_payload as unknown) ??
+          null;
+        return raw ?? null;
+      } catch (error) {
+        console.error(
+          'sovereign-action-ledger.loadRollbackPayload failed:',
+          error,
+        );
+        return null;
       }
     },
   };

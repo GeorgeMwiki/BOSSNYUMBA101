@@ -15,6 +15,7 @@
 
 import { PageShell } from '@/components/migrated/PageShell';
 import { SessionReplayList } from './_filters';
+import { requirePublicBaseUrl } from '@/lib/env-guard';
 
 interface RecentSession {
   readonly sessionId: string;
@@ -38,8 +39,10 @@ async function fetchRecentSessions(): Promise<{
   error: string | null;
 }> {
   try {
-    const base =
-      process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+    const base = requirePublicBaseUrl(
+      'NEXT_PUBLIC_API_BASE_URL',
+      'http://localhost:3001',
+    );
     const res = await fetch(
       `${base.replace(/\/$/, '')}/api/v1/session-replay/sessions`,
       {

@@ -30,6 +30,18 @@ export default defineConfig({
           '../../packages/central-intelligence/src/index.ts',
         ),
       },
+      // ProdFix-4 — load @bossnyumba/genui from source so the schema
+      // tests pick up the latest exports without requiring a `pnpm
+      // build` of genui first. Without this, CI fresh-install lands
+      // before the genui dist is built and vitest collects 0 tests
+      // for the genui-schemas suite.
+      {
+        find: /^@bossnyumba\/genui$/,
+        replacement: path.resolve(
+          __dirname,
+          '../../packages/genui/src/index.ts',
+        ),
+      },
     ],
   },
   test: {

@@ -248,6 +248,10 @@ export {
 } from './sensors/anthropic-judge.js';
 export { scrubCotText } from './cot-reservoir.js';
 export {
+  scrubCotForPersist,
+  type ScrubCotForPersistResult,
+} from './cot-reservoir/pii-scrub-cot.js';
+export {
   createDpCohortSource,
   type DpAggregator,
   type DpAggregateQuery,

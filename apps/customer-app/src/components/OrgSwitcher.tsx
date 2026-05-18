@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth, type CustomerOrgMembership } from '../contexts/AuthContext';
 
 export interface OrgSwitcherProps {
@@ -20,6 +21,7 @@ export interface OrgSwitcherProps {
 
 export function OrgSwitcher({ onAddOrganization }: OrgSwitcherProps) {
   const { user, setActiveOrg } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +115,7 @@ export function OrgSwitcher({ onAddOrganization }: OrgSwitcherProps) {
               onClick={() => {
                 setOpen(false);
                 onAddOrganization?.();
-                // TODO: next/navigation router.push('/onboarding/redeem-code')
+                router.push('/onboarding/redeem-code');
               }}
             >
               + Add organization (enter invite code)

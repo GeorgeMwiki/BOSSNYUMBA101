@@ -387,7 +387,48 @@ function buildResolvers(registry: ServiceRegistry): ResourceResolvers {
   const empty = async () => ({});
   return {
     async portfolioOverview(context) {
-      return { tenantId: context.tenantId, note: 'portfolio overview placeholder' };
+      // Wire to drizzle if available — return a compact aggregate of
+      // properties / units / active leases scoped to the tenant. When
+      // db is not configured, surface a structured NOT_IMPLEMENTED so
+      // the MCP catalog doesn't silently serve a placeholder.
+      const db = (registry as { db?: unknown }).db as
+        | {
+            execute: (q: unknown) => Promise<unknown> | unknown;
+          }
+        | undefined;
+      if (!db) {
+        return {
+          tenantId: context.tenantId,
+          error: 'NOT_IMPLEMENTED',
+          note:
+            'portfolio overview requires DATABASE_URL — wire registry.db so this resolver can aggregate properties/units/leases',
+        };
+      }
+      try {
+        const { sql } = await import('drizzle-orm');
+        const rowsRaw = await (db as { execute: Function }).execute(
+          sql`SELECT
+                (SELECT COUNT(*) FROM properties WHERE tenant_id = ${context.tenantId}) AS property_count,
+                (SELECT COUNT(*) FROM units WHERE tenant_id = ${context.tenantId}) AS unit_count,
+                (SELECT COUNT(*) FROM leases WHERE tenant_id = ${context.tenantId} AND status = 'active') AS active_lease_count`,
+        );
+        const list = Array.isArray(rowsRaw) ? rowsRaw : ((rowsRaw as { rows?: unknown[] })?.rows ?? []);
+        const head = (list[0] ?? {}) as Record<string, unknown>;
+        return {
+          tenantId: context.tenantId,
+          counts: {
+            properties: Number(head.property_count ?? 0),
+            units: Number(head.unit_count ?? 0),
+            activeLeases: Number(head.active_lease_count ?? 0),
+          },
+        };
+      } catch (err) {
+        return {
+          tenantId: context.tenantId,
+          error: 'AGGREGATE_FAILED',
+          note: err instanceof Error ? err.message : 'portfolio overview query failed',
+        };
+      }
     },
     async activeCompliancePlugins(context) {
       return { tenantId: context.tenantId, plugins: [] };

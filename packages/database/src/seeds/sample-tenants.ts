@@ -6,9 +6,14 @@
  * phone numbers use TZ dialing code 255 with fictitious subscriber numbers,
  * and emails use the reserved @example.com domain (RFC 2606).
  *
- * Amounts are denominated in TZS minor units (cents). Tanzanian Shilling
- * has 2 minor units in the BOSSNYUMBA region config — see
- * packages/domain-models/src/common/region-config.ts.
+ * Amounts are denominated in minor units (2 dp) of the seed's target
+ * currency — which defaults to TZS but is reinterpreted as the demo
+ * country's currency (KES, UGX, ...) when demo-org-seed.ts runs with
+ * `--country=KE|UG|...`. The numeric magnitudes stay the same; consumers
+ * read `DEMO_CURRENCY` from the seed runner. See
+ * packages/database/src/seeds/demo-org-seed.ts for the country resolver
+ * and packages/domain-models/src/common/region-config.ts for the
+ * authoritative per-country minor-unit table.
  */
 
 export interface SampleTenantIdentity {

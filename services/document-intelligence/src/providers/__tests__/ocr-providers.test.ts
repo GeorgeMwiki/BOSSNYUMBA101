@@ -177,8 +177,24 @@ describe('OCR factory routing', () => {
 // ---------------------------------------------------------------------------
 
 describe('getOcrProviderFromEnv', () => {
-  it('defaults to mock when OCR_PROVIDER unset', () => {
-    const provider = getOcrProviderFromEnv({ env: {} });
+  // ProdFix-1 — `OCR_PROVIDER` MUST be explicit outside NODE_ENV=test.
+  // The previous behaviour silently defaulted to fixture data which
+  // leaked NIDA / Kenya-ID shaped output to staging + QA tenants.
+  it('throws ProviderUnavailableError when OCR_PROVIDER unset in non-test env', () => {
+    expect(() =>
+      getOcrProviderFromEnv({ env: { NODE_ENV: 'development' } }),
+    ).toThrow(/OCR_PROVIDER not configured/);
+  });
+
+  it('returns mock without OCR_PROVIDER only when NODE_ENV=test', () => {
+    const provider = getOcrProviderFromEnv({ env: { NODE_ENV: 'test' } });
+    expect(provider.name).toBe('mock');
+  });
+
+  it('selects mock only with explicit OCR_PROVIDER=mock (dev)', () => {
+    const provider = getOcrProviderFromEnv({
+      env: { OCR_PROVIDER: 'mock', NODE_ENV: 'development' },
+    });
     expect(provider.name).toBe('mock');
   });
 
@@ -194,12 +210,25 @@ describe('getOcrProviderFromEnv', () => {
     expect(provider).toBeInstanceOf(AwsTextractProvider);
   });
 
-  it('wraps with FallbackOcrProvider in dev', () => {
+  it('does NOT wrap with FallbackOcrProvider by default in dev', () => {
+    // ProdFix-1 — OCR_FALLBACK_TO_MOCK now defaults to false everywhere.
     const provider = getOcrProviderFromEnv({
       env: {
         OCR_PROVIDER: 'google',
         GOOGLE_PROJECT_ID: 'demo',
         NODE_ENV: 'development',
+      },
+    });
+    expect(provider).toBeInstanceOf(GoogleVisionProvider);
+  });
+
+  it('wraps with FallbackOcrProvider when OCR_FALLBACK_TO_MOCK=true in dev', () => {
+    const provider = getOcrProviderFromEnv({
+      env: {
+        OCR_PROVIDER: 'google',
+        GOOGLE_PROJECT_ID: 'demo',
+        NODE_ENV: 'development',
+        OCR_FALLBACK_TO_MOCK: 'true',
       },
     });
     expect(provider).toBeInstanceOf(FallbackOcrProvider);
@@ -219,8 +248,34 @@ describe('getOcrProviderFromEnv', () => {
 
   it('throws if google provider missing project id', () => {
     expect(() =>
-      getOcrProviderFromEnv({ env: { OCR_PROVIDER: 'google' } })
+      getOcrProviderFromEnv({
+        env: { OCR_PROVIDER: 'google', NODE_ENV: 'development' },
+      }),
     ).toThrow(/GOOGLE_PROJECT_ID/);
+  });
+
+  it('uses tenantRegion in preference to AWS_REGION env var', () => {
+    const provider = getOcrProviderFromEnv({
+      env: {
+        OCR_PROVIDER: 'aws_textract',
+        AWS_REGION: 'us-east-1',
+        NODE_ENV: 'production',
+      },
+      tenantRegion: 'eu-west-1',
+    });
+    expect(provider).toBeInstanceOf(AwsTextractProvider);
+    // Underlying provider config stamps the region — region is consumed
+    // by the underlying SDK call. The factory test asserts construction
+    // succeeds with the override; downstream extraction tests cover
+    // region routing in detail.
+  });
+
+  it('throws when AWS_REGION + tenantRegion both missing for textract', () => {
+    expect(() =>
+      getOcrProviderFromEnv({
+        env: { OCR_PROVIDER: 'aws_textract', NODE_ENV: 'production' },
+      }),
+    ).toThrow(/region/);
   });
 });
 

@@ -1,13 +1,13 @@
 /**
- * ajv-based Vega-Lite v5 spec validator.
+ * ajv-based Vega-Lite v5/v6 spec validator.
  *
  * Anti-pattern enforced (per R2):
  *   "Render only on `tool-output-available`. ajv-validate every
  *    Vega-Lite spec BEFORE the render block emits."
  *
  * Strategy:
- *   - The full Vega-Lite v5 JSON Schema lives at
- *     https://vega.github.io/schema/vega-lite/v5.json (~1.6 MB). Bundling
+ *   - The full Vega-Lite v6 JSON Schema lives at
+ *     https://vega.github.io/schema/vega-lite/v6.json (~1.7 MB). Bundling
  *     it in a kernel package is heavy and the schema changes; instead we
  *     validate against a CURATED structural subset that catches the
  *     LLM failure modes (wrong types, missing $schema, missing mark,
@@ -16,6 +16,12 @@
  *     plus a full ajv-against-official-schema pass when the spec is
  *     parsed before being handed to react-vega — see
  *     `apps/admin-platform-portal/src/lib/genui/validate.ts`.
+ *
+ * Phase D11 (2026-05-17): vega 5 → 6 + vega-lite 5 → 6 + react-vega
+ * 7 → 8 + vega-embed 6 → 7 — the named mark enum below is a superset
+ * of v5 and v6 marks so this validator stays compatible across the
+ * upgrade. Composition operators (layer/concat/repeat/facet) are
+ * unchanged in v6.
  *
  * The structural ajv pass here uses a hand-written schema kept
  * intentionally small to avoid a heavy bundled dependency on

@@ -20,9 +20,37 @@ import {
 } from '../schemas/index.js';
 import type { TenantId } from '@bossnyumba/domain-models';
 import { buildPaginatedResult } from './base.repository.js';
+import {
+  decryptRow,
+  decryptRows,
+  encryptRow,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
+} from '../security/encryption/index.js';
+import type { RepoEncryptionDeps } from './customer.repository.js';
+
+const MESSAGES_TABLE = 'messages';
 
 export class MessagingRepository {
-  constructor(private db: DatabaseClient) {}
+  private readonly encPort: EncryptionPort | null;
+  private readonly encAudit: FieldEncryptionAuditSink | null;
+
+  constructor(private db: DatabaseClient, deps: RepoEncryptionDeps = {}) {
+    this.encPort = deps.encPort ?? null;
+    this.encAudit = deps.encAudit ?? null;
+  }
+
+  private async decryptMessagesMany<T extends Record<string, unknown>>(
+    rows: T[],
+    tenantId: string | null,
+  ): Promise<T[]> {
+    if (!this.encPort || rows.length === 0) return rows;
+    return (await decryptRows(rows, {
+      table: MESSAGES_TABLE,
+      tenantId,
+      port: this.encPort,
+    })) as T[];
+  }
 
   async createConversation(data: typeof conversations.$inferInsert) {
     const [row] = await this.db.insert(conversations).values(data).returning();
@@ -70,24 +98,43 @@ export class MessagingRepository {
   }
 
   async createMessage(data: typeof messages.$inferInsert) {
-    const [row] = await this.db.insert(messages).values(data).returning();
-    return row!;
+    const tenantIdForCrypto = (data as Record<string, unknown>).tenantId as string | undefined;
+    const encryptedInput = this.encPort
+      ? await encryptRow({
+          row: { ...data },
+          table: MESSAGES_TABLE,
+          tenantId: tenantIdForCrypto ?? null,
+          rowId: (data as Record<string, unknown>).id ? String((data as Record<string, unknown>).id) : null,
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : data;
+    const [row] = await this.db.insert(messages).values(encryptedInput).returning();
+    if (!row || !this.encPort) return row!;
+    return (await decryptRow({
+      row,
+      table: MESSAGES_TABLE,
+      tenantId: tenantIdForCrypto ?? null,
+      port: this.encPort,
+    })) as typeof row;
   }
 
   async getMessages(
     conversationId: string,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number; tenantId?: TenantId | string | null }
   ) {
     const limit = options?.limit ?? 50;
     const offset = options?.offset ?? 0;
 
-    return this.db
+    const rows = await this.db
       .select()
       .from(messages)
       .where(and(eq(messages.conversationId, conversationId), isNull(messages.deletedAt)))
       .orderBy(desc(messages.createdAt))
       .limit(limit)
       .offset(offset);
+    const tid = options?.tenantId ?? null;
+    return this.decryptMessagesMany(rows, tid !== null ? String(tid) : null);
   }
 
   async markAsRead(

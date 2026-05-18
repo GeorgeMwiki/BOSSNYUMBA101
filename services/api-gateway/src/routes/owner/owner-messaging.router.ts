@@ -34,7 +34,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
-import { buildDegradedList, markDegraded } from './degraded-shape';
+import { buildDegradedList, isFlagOn, markDegraded, notImplementedFlagged } from './degraded-shape';
 
 const BROADCASTS_NEXT_STEP =
   'create comms_broadcasts table + CommunicationsService.listBroadcasts(tenantId) and replace this skeleton';
@@ -42,6 +42,10 @@ const CAMPAIGNS_NEXT_STEP =
   'create comms_campaigns table + CommunicationsService.listCampaigns(tenantId) and replace this skeleton';
 const TEMPLATES_NEXT_STEP =
   'create comms_templates table + CommunicationsService.listTemplates(tenantId) and replace this skeleton';
+
+const FLAG_BROADCASTS = 'flag.bff.owner_messaging.broadcasts';
+const FLAG_CAMPAIGNS = 'flag.bff.owner_messaging.campaigns';
+const FLAG_TEMPLATES = 'flag.bff.owner_messaging.templates';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -55,20 +59,29 @@ app.use(
   ),
 );
 
-app.get('/broadcasts', (c) => {
+app.get('/broadcasts', async (c) => {
   const auth = c.get('auth');
+  if (!(await isFlagOn(c, FLAG_BROADCASTS))) {
+    return notImplementedFlagged(c, FLAG_BROADCASTS, BROADCASTS_NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, BROADCASTS_NEXT_STEP));
 });
 
-app.get('/campaigns', (c) => {
+app.get('/campaigns', async (c) => {
   const auth = c.get('auth');
+  if (!(await isFlagOn(c, FLAG_CAMPAIGNS))) {
+    return notImplementedFlagged(c, FLAG_CAMPAIGNS, CAMPAIGNS_NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, CAMPAIGNS_NEXT_STEP));
 });
 
-app.get('/templates', (c) => {
+app.get('/templates', async (c) => {
   const auth = c.get('auth');
+  if (!(await isFlagOn(c, FLAG_TEMPLATES))) {
+    return notImplementedFlagged(c, FLAG_TEMPLATES, TEMPLATES_NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, TEMPLATES_NEXT_STEP));
 });
