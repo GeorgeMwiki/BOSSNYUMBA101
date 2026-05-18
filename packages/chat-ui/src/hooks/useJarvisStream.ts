@@ -22,9 +22,12 @@ import type {
   JarvisStreamConfidence,
   JarvisStreamEvent,
   JarvisStreamPersona,
+  JarvisStreamUiPart,
   JarvisSurfaceClient,
   JarvisThinkRequest,
 } from '@bossnyumba/api-sdk';
+
+export type { JarvisStreamUiPart };
 
 export interface JarvisStreamTurn {
   readonly id: string;
@@ -36,6 +39,12 @@ export interface JarvisStreamTurn {
   readonly persona?: JarvisStreamPersona;
   readonly confidence?: JarvisStreamConfidence;
   readonly finalDecision?: JarvisDecision;
+  /**
+   * Structured UI parts the MD emitted during this turn — aggregated
+   * from `tool_output_available` SSE events and rendered by the
+   * `AdaptiveRenderer` in `@bossnyumba/genui`.
+   */
+  readonly uiParts?: ReadonlyArray<JarvisStreamUiPart>;
   readonly at: string;
 }
 
@@ -239,6 +248,17 @@ function applyEvent(
       setTurns((prev) =>
         prev.map((t) =>
           t.id === assistantId ? { ...t, confidence: ev.vector } : t,
+        ),
+      );
+      return;
+    case 'tool_output_available':
+      // Append the structured ui-part to the turn's uiParts[]. The
+      // AdaptiveRenderer in @bossnyumba/genui renders the array.
+      setTurns((prev) =>
+        prev.map((t) =>
+          t.id === assistantId
+            ? { ...t, uiParts: [...(t.uiParts ?? []), ev.uiPart] }
+            : t,
         ),
       );
       return;

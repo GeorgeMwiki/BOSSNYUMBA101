@@ -26,9 +26,32 @@ export interface CreateWebSpeechAudioPortOptions {
 
 const NO_WINDOW = typeof window === 'undefined';
 
-function pickRecognitionCtor(): SpeechRecognitionConstructor | null {
+// Inline structural types for the experimental Web Speech API surface.
+// We don't rely on the ambient `web-speech.d.ts` here because downstream
+// packages that consume chat-ui's source (types-to-source resolution)
+// may not include this package's d.ts files in their tsconfig.
+interface SpeechRecognitionInstanceShape {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onresult: ((ev: { resultIndex: number; results: ArrayLike<{ readonly isFinal: boolean; readonly length: number; readonly [index: number]: { readonly transcript: string; readonly confidence: number } }> }) => void) | null;
+  onerror: ((ev: { error: string; message: string }) => void) | null;
+  onend: ((ev: Event) => void) | null;
+  onstart: ((ev: Event) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstanceShape;
+
+function pickRecognitionCtor(): SpeechRecognitionCtor | null {
   if (NO_WINDOW) return null;
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 function hasSpeechSynthesis(): boolean {
@@ -61,7 +84,7 @@ export function createWebSpeechAudioPort(
 
     let stopped = false;
 
-    recognition.onresult = (event: SpeechRecognitionEvent): void => {
+    recognition.onresult = (event): void => {
       // Iterate only through new results since `resultIndex`.
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const r = event.results[i];
@@ -82,7 +105,7 @@ export function createWebSpeechAudioPort(
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent): void => {
+    recognition.onerror = (event): void => {
       // 'no-speech' and 'aborted' are benign; surface anything else.
       if (event.error && event.error !== 'no-speech' && event.error !== 'aborted') {
         console.warn('SpeechRecognition error:', event.error, event.message);
