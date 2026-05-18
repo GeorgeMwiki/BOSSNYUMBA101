@@ -111,6 +111,12 @@ if (invokedDirectly) {
 
 export { OPAY_TOOLS, findOpayTool } from './tools/index.js';
 export { MockOpayAdapter, OpayMerchantAdapter } from './adapter.js';
+export {
+  OpayRealAdapter,
+  type OpayEnv,
+  type OpayRealAdapterDeps,
+  type OpayRealCredentials,
+} from './adapter-real.js';
 export type {
   OpayAdapter,
   OpayTool,

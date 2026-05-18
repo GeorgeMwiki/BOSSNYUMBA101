@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: bossnyumba }
+spec:
+  tls:
+    - hosts:
+        - staging-api.bossnyumba.com
+        - staging.bossnyumba.com
+        - staging-admin.bossnyumba.com
+        - staging-owners.bossnyumba.com
+        - staging-manage.bossnyumba.com
+      secretName: bossnyumba-tls
+  rules:
+    - host: staging-api.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: api-gateway, port: { number: 80 } } }
+    - host: staging.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: customer-app, port: { number: 80 } } }
+    - host: staging-admin.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: admin-platform-portal, port: { number: 80 } } }
+    - host: staging-owners.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: owner-portal, port: { number: 80 } } }
+    - host: staging-manage.bossnyumba.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: estate-manager-app, port: { number: 80 } } }

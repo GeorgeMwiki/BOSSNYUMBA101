@@ -49,14 +49,17 @@
 
 import {
   composeSovereign,
+  createApprovalGate,
   createBrainKernel,
   createBrainToolRegistry,
   createDecisionTraceRecorder,
   createEnvKillswitchPort,
+  createInMemoryApprovalStore,
   createInMemoryDecisionTraceStore,
   createNullEmbedder,
   createOpenAiEmbedder,
   registerSeedBrainTools,
+  type ApprovalGate,
   type BrainToolRegistry,
   type BrainToolSpec,
   type DecisionTraceRecorder,
@@ -64,6 +67,10 @@ import {
   type KillswitchPort,
   type SeedBrainToolDeps,
 } from '@bossnyumba/central-intelligence';
+import {
+  buildOrchestratorBindings,
+  type OrchestratorBindings,
+} from './orchestrator-bindings.js';
 
 /**
  * Concrete `BrainKernel` shape derived from the factory. Keeping the
@@ -188,6 +195,36 @@ export interface BrainKernelWiringDeps {
     readonly registry: BrainToolRegistry;
     readonly toolNames: ReadonlyArray<`platform.${string}`>;
   };
+  /**
+   * Phase F.3 — production-grade orchestrator hook-chain bindings.
+   *
+   * When provided, the wiring constructs the 9-hook PreToolUse /
+   * PostToolUse / Stop chain via `buildOrchestratorBindings(...)` and
+   * surfaces the assembled HookChain on the return value
+   * (`wiring.orchestratorBindings`). The chain is NOT yet threaded into
+   * `composeSovereign({ orchestrator: ... })` because the LLM router +
+   * dispatcher adapters ship in a separate PR (see service-registry
+   * comments on the `agent: null` slot). Once those land, the wiring
+   * threads them in along with `bindings.deps` and the kernel's
+   * `think()` route flips to the Claude-Code-style main-loop.
+   *
+   * Typed as `unknown` for the db slot to dodge the namespace-vs-type
+   * drift (TS2709) the rest of this composition layer routes around.
+   * The structural shape matches `DrizzleLike` in
+   * `orchestrator-bindings.ts`.
+   */
+  readonly orchestratorBindings?: {
+    /** Drizzle client (null in degraded mode). */
+    readonly db: unknown | null;
+    /** Optional caller-supplied tenant id (defaults to platform). */
+    readonly tenantId?: string;
+    /** Optional global denylist (always-banned tools). */
+    readonly globalDenylist?: ReadonlyArray<string>;
+    /** Optional approval gate override (defaults to in-memory store). */
+    readonly approvalGate?: ApprovalGate;
+    /** Optional proposer id for ledger writes. */
+    readonly proposer?: string;
+  };
 }
 
 /**
@@ -237,6 +274,15 @@ export interface BrainKernelWiring {
    * the kernel catches and falls back to key-based recall).
    */
   readonly embedder: EmbedderPort;
+  /**
+   * Phase F.3 — production-grade orchestrator hook-chain bindings.
+   * Null when the caller did not pass `deps.orchestratorBindings`.
+   * Surfaces `{ hookChain, deps }` so a future composition extension
+   * (LLM router + dispatcher adapter) can thread the chain into
+   * `composeSovereign({ orchestrator: ... })` and flip kernel.think()
+   * onto the Claude-Code-style main loop.
+   */
+  readonly orchestratorBindings: OrchestratorBindings | null;
 }
 
 /**
@@ -430,6 +476,61 @@ export function createBrainKernelWiring(
     return null;
   }
 
+  // Phase F.3 — build the production-grade orchestrator hook-chain
+  // bindings. We construct the chain even when the caller did not pass
+  // `deps.orchestratorBindings` so the wiring still surfaces a
+  // structurally-complete (real-port-bound) chain for diagnostic /
+  // future-wiring use. The kernel's `composeSovereign({...})` call
+  // above does NOT yet thread the chain in — the LLM router +
+  // dispatcher adapters ship as a separate PR. When the caller skips
+  // the bindings block, we surface `null` so the audit script doesn't
+  // mis-classify the absence as a no-op chain.
+  let orchestratorBindings: OrchestratorBindings | null = null;
+  if (deps.orchestratorBindings) {
+    try {
+      const approvalGate =
+        deps.orchestratorBindings.approvalGate ??
+        createApprovalGate({ store: createInMemoryApprovalStore() });
+      const bindingsArgs: Parameters<typeof buildOrchestratorBindings>[0] = {
+        db: deps.orchestratorBindings.db,
+        approvalGate,
+        toolRegistry,
+        tenantId: deps.orchestratorBindings.tenantId ?? '_platform',
+        env: envSource,
+        ...(deps.logger ? { logger: deps.logger } : {}),
+        ...(deps.orchestratorBindings.globalDenylist
+          ? { globalDenylist: deps.orchestratorBindings.globalDenylist }
+          : {}),
+        ...(deps.orchestratorBindings.proposer
+          ? { proposer: deps.orchestratorBindings.proposer }
+          : {}),
+      };
+      orchestratorBindings = buildOrchestratorBindings(bindingsArgs);
+      if (deps.logger?.info) {
+        deps.logger.info(
+          {
+            wiring: 'brain-kernel',
+            hooks: orchestratorBindings.hookChain
+              .list()
+              .map((h) => `${h.name}:${h.stage}`),
+            dbBacked: deps.orchestratorBindings.db !== null,
+          },
+          'brain-kernel: production orchestrator hook chain bound (9 ports)',
+        );
+      }
+    } catch (err) {
+      if (deps.logger?.warn) {
+        deps.logger.warn(
+          {
+            wiring: 'brain-kernel',
+            error: err instanceof Error ? err.message : String(err),
+          },
+          'brain-kernel: orchestrator hook-chain bindings failed; continuing without',
+        );
+      }
+    }
+  }
+
   if (deps.logger?.info) {
     deps.logger.info(
       {
@@ -455,6 +556,7 @@ export function createBrainKernelWiring(
     uncertaintyPolicy,
     sensorRoutingService: deps.sensorRoutingService ?? null,
     embedder,
+    orchestratorBindings,
   };
 }
 

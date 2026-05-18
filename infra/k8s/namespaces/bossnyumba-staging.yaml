@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bossnyumba-staging
+  labels:
+    app.kubernetes.io/part-of: bossnyumba
+    environment: staging
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    bossnyumba.com/managed-by: kustomize
+    bossnyumba.com/runbook: docs/deployment/README.md

@@ -226,3 +226,26 @@ export {
   type LedgerSealPort,
   type InMemoryLedgerSeal,
 } from './hooks/stop/ledger-seal-hook.js';
+
+// Phase F.2 — self-extension keystone. Detect recurring problems no
+// existing sub-MD handles → propose new sub-MD spec → four-eye approve
+// → compile + register + audit. Makes the MD's catalogue unbounded.
+export {
+  detectRecurringGap,
+  proposeNewSubMd,
+  compileAndDeploySubMd,
+  type SelfExtensionDeps,
+  type DetectRecurringGapOptions,
+  type ActivityLogPort,
+  type ActivityLogEntry,
+  type SubMdRegistryPort,
+  type RegistryReceipt,
+  type LLMRouterPort as SelfExtensionLLMRouterPort,
+  type OwnerApprovalPort,
+  type OwnerApprovalDecision,
+  type SelfExtensionLedgerPort,
+  type RecurringGapDiagnosis,
+  type SubMdSpec,
+  type SubMdProposal,
+  type DeploymentReceipt,
+} from './self-extension.js';

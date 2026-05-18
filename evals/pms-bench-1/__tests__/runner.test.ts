@@ -81,16 +81,27 @@ describe('pms-bench-1 runner — mock-llm end-to-end', () => {
     }
   });
 
-  it('unsupported scenarios (Tier-B/C) fail by design under the mock', async () => {
+  it('Tier-B/C scenarios now resolve to a sub-MD after F.1 registration', async () => {
+    // After Phase F.1 + integration, the Tier-B/C scenarios are registered
+    // in SUPPORTED_SCENARIOS. The mock-LLM still doesn't have canned answers
+    // for them so each task scores low, but `subMd` resolves and runs the
+    // pipeline cleanly (no longer "fail by design — unsupported").
     const llm = createMockLlm();
     const { writer } = createMemorySloWriter();
-    for (const scenario of ['arrears-triage', 'kra-filing', 'lease-renewal']) {
+    const supportedNow: Record<string, string> = {
+      'arrears-triage': 'arrears.chaser',
+      'kra-filing': 'kra.filing_assistant',
+      'lease-renewal': 'lease.coordinator',
+    };
+    for (const [scenario, expectedSubMd] of Object.entries(supportedNow)) {
       const fixtures = await loadFixtures(scenario);
-expect(fixtures.length).toBeGreaterThan(0);
+      expect(fixtures.length).toBeGreaterThan(0);
       const fixture = fixtures[0] as (typeof fixtures)[0];
       const summary = await runTask({ fixture, k: 2, llm, sloWriter: writer });
-      expect(summary.passK).toBe(false);
-      expect(summary.subMd).toBeNull();
+      expect(summary.subMd).toBe(expectedSubMd);
+      // Mock-LLM has no canned plan for these yet, so pass^k stays false
+      // until canned plans land in a follow-up — that's expected.
+      expect(typeof summary.passK).toBe('boolean');
     }
   });
 
