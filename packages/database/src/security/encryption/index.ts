@@ -81,10 +81,32 @@ import {
 export interface SelectEncryptionPortEnv extends EncryptionEnv {
   readonly AWS_KMS_KEY_ID?: string;
   readonly AWS_REGION?: string;
+  /**
+   * Optional per-region key ARNs / aliases. When a `tenantRegion` is
+   * supplied to `selectEncryptionPort`, we look up
+   * `env[`KMS_KEY_${region}`]` (uppercased, hyphens preserved) and
+   * fall back to `AWS_KMS_KEY_ID` if no region-specific key is set.
+   *
+   * Example env keys: `KMS_KEY_EU_WEST_1`, `KMS_KEY_AF_SOUTH_1`,
+   * `KMS_KEY_US_EAST_1`. Hyphens in AWS region names are mapped to
+   * underscores so they're valid shell identifiers.
+   */
+  readonly [perRegionKey: `KMS_KEY_${string}`]: string | undefined;
 }
 
 export interface SelectEncryptionPortOptions {
   readonly logger?: KmsLogger;
+  /**
+   * Optional per-tenant region (from `tenants.region`). When provided
+   * AND it differs from `env.AWS_REGION`, the adapter selects a
+   * region-specific KMS key (via `env[`KMS_KEY_${REGION}`]`) and a
+   * region-specific KMS client, so PII written for an `af-south-1`
+   * tenant never leaks into a `eu-west-1` KMS account.
+   *
+   * Falls back to `env.AWS_KMS_KEY_ID` + `env.AWS_REGION` when no
+   * region-specific key is configured.
+   */
+  readonly tenantRegion?: string;
 }
 
 /**
@@ -95,6 +117,13 @@ export interface SelectEncryptionPortOptions {
  *   - Otherwise → libsodium adapter (XChaCha20-Poly1305 when the
  *     dependency is installed, AES-256-GCM Node built-in fallback
  *     otherwise).
+ *
+ * When `tenantRegion` is supplied and differs from `env.AWS_REGION`,
+ * the adapter consults a region-specific KMS key from
+ * `env[`KMS_KEY_${region}`]` (underscores in place of hyphens, e.g.
+ * `KMS_KEY_AF_SOUTH_1`) so PII for that tenant is encrypted under a
+ * regional CMK. If no region-specific key is set, we fall back to
+ * `AWS_KMS_KEY_ID` and log a one-shot warn.
  *
  * `ENCRYPTION_MASTER_KEY` is required in both branches — the KMS
  * adapter also needs it for the fallback path when `@aws-sdk/client-
@@ -107,12 +136,46 @@ export async function selectEncryptionPort(
   const snapshot = loadMasterKeySnapshot(env);
   const wantsKms = !!env.AWS_KMS_KEY_ID && !!env.AWS_REGION;
   if (wantsKms) {
+    const { region, kmsKeyId } = resolveRegionAndKey(env, options);
     return createKmsAdapter({
-      kmsKeyId: env.AWS_KMS_KEY_ID as string,
-      region: env.AWS_REGION as string,
+      kmsKeyId,
+      region,
       fallbackSnapshot: snapshot,
       ...(options.logger ? { logger: options.logger } : {}),
     });
   }
   return createLibsodiumAdapter({ snapshot });
+}
+
+/**
+ * Pure helper — given the env and an optional `tenantRegion`, returns
+ * the region + KMS key the adapter should use. When `tenantRegion`
+ * matches `env.AWS_REGION` (or is absent), returns the default pair.
+ * When it differs, looks up `env[`KMS_KEY_${REGION_UPPER}`]` (with
+ * hyphens replaced by underscores); if absent, falls back to the
+ * default key and logs a warn.
+ *
+ * Exported for tests so the dispatch logic can be exercised without a
+ * live KMS client.
+ */
+export function resolveRegionAndKey(
+  env: SelectEncryptionPortEnv,
+  options: SelectEncryptionPortOptions,
+): { readonly region: string; readonly kmsKeyId: string } {
+  const defaultRegion = env.AWS_REGION as string;
+  const defaultKey = env.AWS_KMS_KEY_ID as string;
+  const tenantRegion = options.tenantRegion?.trim();
+  if (!tenantRegion || tenantRegion === defaultRegion) {
+    return { region: defaultRegion, kmsKeyId: defaultKey };
+  }
+  const envKey = `KMS_KEY_${tenantRegion.toUpperCase().replace(/-/g, '_')}` as const;
+  const perRegionKey = (env as Record<string, string | undefined>)[envKey];
+  if (perRegionKey && perRegionKey.length > 0) {
+    return { region: tenantRegion, kmsKeyId: perRegionKey };
+  }
+  options.logger?.warn(
+    'selectEncryptionPort: no region-specific KMS key configured; falling back to AWS_KMS_KEY_ID',
+    { tenantRegion, defaultRegion, expectedEnvVar: envKey },
+  );
+  return { region: tenantRegion, kmsKeyId: defaultKey };
 }

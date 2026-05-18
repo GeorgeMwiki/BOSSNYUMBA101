@@ -13,6 +13,7 @@ import {
   renderTemplate,
   getTemplate,
   detectLanguage,
+  getPhoneExampleForCountry,
 } from './templates.js';
 import type {
   ConversationSession,
@@ -26,6 +27,29 @@ import type {
 } from './types.js';
 
 const logger = createLogger('ConversationOrchestrator');
+
+/**
+ * Thrown when an outbound WhatsApp template cannot be rendered because
+ * a required context field is missing. The previous code substituted a
+ * literal `'TBD'` which silently shipped misleading copy to residents.
+ *
+ * Callers are expected to either backfill the field via the
+ * orchestrator's state machine (preferred) or surface a structured
+ * error to the operator console.
+ */
+export class TemplateContextIncomplete extends Error {
+  readonly code = 'TEMPLATE_CONTEXT_INCOMPLETE';
+  readonly templateId: string;
+  readonly missingFields: ReadonlyArray<string>;
+  constructor(templateId: string, missingFields: ReadonlyArray<string>) {
+    super(
+      `WhatsApp template ${templateId} cannot be rendered — missing required fields: ${missingFields.join(', ')}`,
+    );
+    this.name = 'TemplateContextIncomplete';
+    this.templateId = templateId;
+    this.missingFields = missingFields;
+  }
+}
 
 // ============================================================================
 // Session Store Interface
@@ -107,6 +131,14 @@ export interface TenantInfo {
   leaseStartDate?: string;
   onboardingStatus: OnboardingStatus;
   preferredLanguage?: SupportedLanguage;
+  /**
+   * ISO-3166-1 alpha-2 country code for the tenant's home market.
+   * Used to resolve per-country examples in outbound copy (e.g. the
+   * emergency-contact phone example). Optional so legacy lookups that
+   * don't carry country information continue to compile; the
+   * orchestrator falls back to a generic `+CC ...` placeholder.
+   */
+  country?: string;
 }
 
 export type OnboardingStatus = 
@@ -512,10 +544,17 @@ export class ConversationOrchestrator {
       session.context.onboarding.completedSteps.push('occupants');
     }
 
+    // Resolve the phone example from the recipient's home country so
+    // TZ residents see `+255 ...`, KE residents see `+254 ...`, etc.
+    // When `tenant.country` is absent the helper returns a generic
+    // `+CC ...` placeholder — never a misleading per-country example.
+    const tenantForExample = await this.tenantLookup.findById(session.tenantId);
+    const phoneExample = getPhoneExampleForCountry(tenantForExample?.country);
+
     // Ask for emergency contact
     const emergencyMessage = renderTemplate(
       getTemplate(ONBOARDING_TEMPLATES.emergencyContactRequest, session.language) as string,
-      { occupants: occupants.toString() }
+      { occupants: occupants.toString(), phoneExample }
     );
     await this.whatsappClient.sendText({ to: session.phoneNumber, text: emergencyMessage });
 
@@ -565,14 +604,35 @@ export class ConversationOrchestrator {
     const ctx = session.context.onboarding;
     if (!ctx) return;
 
+    // Refuse to render the confirmation template if a required field is
+    // missing. Previously we substituted `'TBD'` for `moveInDate`, which
+    // shipped misleading copy to residents. The state machine should
+    // backfill before retrying — surface a TemplateContextIncomplete
+    // so the caller can route to the right backfill step instead of
+    // silently sending a broken summary.
+    const missing: string[] = [];
+    if (!ctx.moveInDate) missing.push('moveInDate');
+    if (missing.length > 0) {
+      logger.warn('Refusing to render onboarding confirmation: missing fields', {
+        tenantId: session.tenantId,
+        sessionPhoneNumber: session.phoneNumber,
+        missing,
+      });
+      throw new TemplateContextIncomplete('ONBOARDING_TEMPLATES.confirmationSummary', missing);
+    }
+
     const tenant = await this.tenantLookup.findById(session.tenantId);
-    
+
+    // `ctx.moveInDate` is non-null here — the early-return above
+    // throws if it is missing. Use the bang operator to satisfy the
+    // narrowing strict-null compiler when the typedef carries
+    // `moveInDate?: string`.
     const summaryMessage = renderTemplate(
       getTemplate(ONBOARDING_TEMPLATES.confirmationSummary, session.language) as string,
       {
         propertyName: tenant?.propertyName || 'Your Property',
         unitNumber: tenant?.unitNumber || 'Your Unit',
-        moveInDate: ctx.moveInDate || 'TBD',
+        moveInDate: ctx.moveInDate!,
         occupants: ctx.numberOfOccupants?.toString() || '1',
         emergencyContact: `${ctx.emergencyContactName || ''} (${ctx.emergencyContactPhone || ''})`,
       }

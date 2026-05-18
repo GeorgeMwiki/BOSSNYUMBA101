@@ -136,6 +136,13 @@ export function renderPdfBytes(
   if (typeof input === 'string') {
     // Legacy / stub path — wrap the supplied html-like blob in a real
     // PDF so the artifact still passes a `%PDF-` magic-byte check.
+    // No real-currency context exists at this seam (the caller passed a
+    // raw string), so we route through the template-internal empty
+    // currencyCode path — `formatMinorAmount` and `buildStatementLines`
+    // both fall back to `'XXX'` when the code is empty, keeping the
+    // stub bytes valid PDF without baking a jurisdiction into the
+    // renderer. Real flows MUST go through `rowToPdfData` which carries
+    // the row's resolved currency.
     return renderOwnerStatementPdf({
       statementId: '(legacy)',
       statementNumber: '(legacy)',
@@ -143,7 +150,7 @@ export function renderPdfBytes(
       ownerId: '(legacy)',
       periodStart: '',
       periodEnd: '',
-      currencyCode: 'XXX',
+      currencyCode: '',
       grossRentMinor: 0,
       extraLineItems: [{ label: input, amountMinor: 0 }],
     });

@@ -68,6 +68,12 @@ import {
 } from './cognitive-load.js';
 import type { BrainToolRegistry } from './tool-spec.js';
 import type { TextEmbedder } from './kernel-types.js';
+// A2b-2 wire #7 — boot-time Ed25519 registry signature gate.
+import {
+  enforceToolRegistrySignatureAtBoot,
+  serializeRegistry,
+  type SignableSpec,
+} from './tool-spec/tool-registry-signing.js';
 
 export interface SubstrateSinks {
   readonly cot: CotReservoirSink;
@@ -296,7 +302,40 @@ export function composeSovereign(config: ComposeSovereignConfig): SovereignBrain
   if (config.killswitch)        (kernelDeps as any).killswitch = config.killswitch;
   if (config.traceRecorder)     (kernelDeps as any).traceRecorder = config.traceRecorder;
   if (config.uncertaintyPolicy) (kernelDeps as any).uncertaintyPolicy = config.uncertaintyPolicy;
-  if (config.toolRegistry)      (kernelDeps as any).toolRegistry = config.toolRegistry;
+  if (config.toolRegistry) {
+    // A2b-2 wire #7 — Ed25519 boot-time registry signature gate.
+    // When TOOL_REGISTRY_SIGNATURE_HEX + TOOL_REGISTRY_PUBKEY_HEX
+    // env vars are set, verify the registry's declarative shape
+    // (name, tier, requiresApproval, schema sigs) against the
+    // signature. Mismatch throws so the kernel refuses to start.
+    // Both env vars unset → warning + boot (dev mode).
+    const declarative: ReadonlyArray<SignableSpec> = config.toolRegistry
+      .list()
+      .map((spec) => {
+        const s = spec as unknown as Record<string, unknown>;
+        const result: SignableSpec = {
+          name: typeof s.name === 'string' ? s.name : '',
+          description:
+            typeof s.description === 'string' ? s.description : '',
+          tier: typeof s.tier === 'string' ? s.tier : 'unknown',
+          requiresApproval:
+            typeof s.requiresApproval === 'boolean'
+              ? s.requiresApproval
+              : false,
+        };
+        if (typeof s.schemaInSig === 'string') {
+          (result as { schemaInSig?: string }).schemaInSig = s.schemaInSig;
+        }
+        if (typeof s.schemaOutSig === 'string') {
+          (result as { schemaOutSig?: string }).schemaOutSig = s.schemaOutSig;
+        }
+        return result;
+      });
+    enforceToolRegistrySignatureAtBoot({
+      canonical: serializeRegistry(declarative),
+    });
+    (kernelDeps as any).toolRegistry = config.toolRegistry;
+  }
   if (config.embedder)          (kernelDeps as any).embedder = config.embedder;
   // C5 — Progressive Intelligence.
   if (config.skillRetriever)    (kernelDeps as any).skillRetriever = config.skillRetriever;

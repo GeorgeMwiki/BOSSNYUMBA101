@@ -23,6 +23,11 @@
 
 import { createHash } from 'node:crypto';
 import type { CotSample, CotReservoirSink, ThoughtRequest } from './kernel-types.js';
+// A2b-2 wire #4 — persist-boundary scrub at the reservoir write
+// path. The cycle with pii-scrub-cot.ts is safe under ESM because
+// both consumers reference each other only via function-scoped calls
+// (hoisted function declarations), not at module-evaluation time.
+import { scrubCotForPersist } from './cot-reservoir/pii-scrub-cot.js';
 
 const SAMPLE_RATES: Record<ThoughtRequest['stakes'], number> = {
   low: 0.01,
@@ -302,7 +307,11 @@ export function createCotReservoir(deps: CotReservoirDeps): CotReservoir {
       if (!input.thoughtText) return { sampled: false };
       const rate = SAMPLE_RATES[input.stakes];
       if (rng() >= rate) return { sampled: false };
-      const { sanitized } = scrubCotText(input.thoughtText);
+      // A2b-2 wire #4 — persist-boundary scrub. Covers the regional
+      // PII baseline AND the Phase-D categories (API keys, model URLs,
+      // M-Pesa confirmation IDs, model-named entities). Replaces the
+      // capture-only `scrubCotText` so writes never land raw secrets.
+      const sanitized = scrubCotForPersist(input.thoughtText).scrubbed;
       const sample: CotSample = {
         thoughtId: input.thoughtId,
         threadId: input.threadId,

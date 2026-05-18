@@ -23,6 +23,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createSemanticMemoryService } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
+import { perUserRateLimit } from '../middleware/rate-limiter';
 import { getDb } from '../composition/db-client';
 
 const DeclareSchema = z.object({
@@ -59,6 +60,11 @@ const DeleteSchema = z.object({
 
 const router = new Hono();
 router.use('*', authMiddleware);
+// A2b-3 wire #5 — declared-facts is a producer endpoint and a natural
+// target for abuse (memory amplification). Cap per-user churn at 30
+// calls / 60s. Sits after authMiddleware so the bucket key is the
+// authenticated (tenant, user) pair, not a coarse IP.
+router.use('*', perUserRateLimit({ windowMs: 60_000, max: 30 }));
 
 // POST /memory/declare — upsert one declared fact.
 router.post('/declare', zValidator('json', DeclareSchema), async (c) => {
@@ -106,6 +112,23 @@ router.post('/declare', zValidator('json', DeclareSchema), async (c) => {
       sourceTurnId: null,
     });
   } catch (err) {
+    // A2b-3 wire #5 — cap-exceeded signal → HTTP 429.
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      (err as { code?: unknown }).code === 'declared-facts-cap'
+    ) {
+      return c.json(
+        {
+          error: {
+            code: 'declared-facts-cap',
+            message: 'Maximum 500 declared facts per user.',
+          },
+        },
+        429,
+      );
+    }
     return c.json(
       {
         success: false,

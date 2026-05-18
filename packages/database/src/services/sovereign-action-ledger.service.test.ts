@@ -318,6 +318,58 @@ describe('createSovereignActionLedgerService.verifyLedgerChain', () => {
   });
 });
 
+describe('createSovereignActionLedgerService.appendLedgerEntry / PII redaction', () => {
+  beforeEach(() => {
+    captured.current = {};
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('redacts KRA PIN + email + phone from payload_json before persist', async () => {
+    const stub = makeStubDb();
+    const svc = createSovereignActionLedgerService(stub.client);
+    await svc.appendLedgerEntry({
+      tenantId: 't1',
+      actionType: 'tax.kra-filing-prepared',
+      payloadJson: {
+        kraPin: 'A123456789B',
+        ownerPhone: '+255712345678',
+        ownerEmail: 'owner@example.com',
+        ownerName: 'Asha Kweli',
+        amount: 9000,
+      },
+      proposer: 'u_admin',
+      approvers: ['u_admin', 'u_finance'],
+      executedAt: new Date('2026-05-14T00:00:00Z'),
+    });
+    expect(stub.rows).toHaveLength(1);
+    const persistedPayload = JSON.stringify(stub.rows[0]?.payloadJson ?? {});
+    expect(persistedPayload).not.toContain('A123456789B');
+    expect(persistedPayload).not.toContain('+255712345678');
+    expect(persistedPayload).not.toContain('owner@example.com');
+    expect(persistedPayload).toContain('<kra-pin:redacted>');
+    expect(persistedPayload).toContain('[PHONE]');
+    expect(persistedPayload).toContain('[EMAIL]');
+    // Amount + non-PII fields preserved.
+    expect(persistedPayload).toContain('9000');
+    expect(persistedPayload).toContain('Asha Kweli');
+  });
+
+  it('hash is computed on the ORIGINAL payload — verify chain stays intact after redaction', async () => {
+    const stub = makeStubDb();
+    const svc = createSovereignActionLedgerService(stub.client);
+    await svc.appendLedgerEntry({
+      tenantId: 't1',
+      actionType: 'tax.kra-filing-prepared',
+      payloadJson: { kraPin: 'A123456789B', amount: 5000 },
+      proposer: 'u_admin',
+      approvers: ['u_admin'],
+      executedAt: new Date('2026-05-14T00:00:00Z'),
+    });
+    const verify = await svc.verifyLedgerChain('t1');
+    expect(verify.ok).toBe(true);
+  });
+});
+
 describe('createSovereignActionLedgerService.getLedgerTail', () => {
   beforeEach(() => {
     captured.current = {};

@@ -99,7 +99,14 @@ export const tenants = pgTable(
      * with a logged warning instead of being silently Kenyan.
      */
     country: text('country'),
-    
+    /**
+     * Data-residency region (A2b-3 wire #7). Drives KMS-key selection
+     * and cross-region SELECT short-circuits. Default 'eu-west-1'
+     * matches the platform-wide AWS_REGION default. Migration 0158
+     * adds the column + index; admin console updates this per tenant.
+     */
+    region: text('region').notNull().default('eu-west-1'),
+
     // Settings
     settings: jsonb('settings').default({}),
     billingSettings: jsonb('billing_settings').default({}),

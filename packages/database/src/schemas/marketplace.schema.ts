@@ -82,11 +82,11 @@ export const marketplaceListings = pgTable(
 
     listingKind: listingKindEnum('listing_kind').notNull().default('rent'),
     headlinePrice: integer('headline_price').notNull(), // minor units
-    // Currency MUST be supplied by the caller from `tenant.defaultCurrency`
-    // (see `@bossnyumba/domain-models` `getDefaultCurrency(tenant.countryCode)`).
-    // The default below is the neutral fallback for rows created before a
-    // tenant's region is resolved; never rely on it in production flows.
-    currency: text('currency').notNull().default('KES'),
+    // ISO-4217 currency code. The app layer MUST resolve this from the
+    // tenant's `currency_preferences` row before insert. The DB default
+    // has been removed so a missed wire surfaces as an insert error
+    // rather than silently pinning the listing to KES.
+    currency: text('currency').notNull(),
     negotiable: boolean('negotiable').notNull().default(true),
 
     // Media: photos / video / 360 / street-view urls
@@ -145,7 +145,8 @@ export const tenders = pgTable(
 
     budgetRangeMin: integer('budget_range_min').notNull(),
     budgetRangeMax: integer('budget_range_max').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    // ISO-4217 — app-layer-resolved (see marketplace_listings note).
+    currency: text('currency').notNull(),
 
     status: tenderStatusEnum('status').notNull().default('open'),
     visibility: tenderVisibilityEnum('visibility').notNull().default('public'),
@@ -199,7 +200,8 @@ export const bids = pgTable(
     vendorId: text('vendor_id').notNull(),
 
     price: integer('price').notNull(),
-    currency: text('currency').notNull().default('KES'),
+    // ISO-4217 — app-layer-resolved (see marketplace_listings note).
+    currency: text('currency').notNull(),
     timelineDays: integer('timeline_days').notNull(),
 
     notes: text('notes'),

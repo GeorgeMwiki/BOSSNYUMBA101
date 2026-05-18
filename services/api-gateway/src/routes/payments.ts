@@ -182,9 +182,48 @@ app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
 
 app.get('/plans', async (c) => {
   const auth = c.get('auth');
-  // Live data lives in domain-services payment-plan repo; until that
-  // wiring is complete, return an empty envelope so the client UI can
-  // render its empty state instead of throwing on the missing route.
+  const repos = c.get('repos') as { paymentPlans?: { findMany?: Function } } | undefined;
+  const findMany = repos?.paymentPlans?.findMany;
+  if (typeof findMany === 'function') {
+    const result = await findMany.call(repos!.paymentPlans, auth.tenantId, 20, 0);
+    return c.json({
+      success: true,
+      data: result.items ?? [],
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        totalItems: result.total ?? (result.items?.length ?? 0),
+        totalPages: Math.max(1, Math.ceil((result.total ?? 0) / 20)),
+        hasNextPage: (result.total ?? 0) > 20,
+        hasPreviousPage: false,
+      },
+      meta: { tenantId: auth.tenantId, source: 'live' },
+    });
+  }
+
+  // Loud-failure: 501 unless dev-mode flag is on.
+  const services = c.get('services') as { featureFlags?: { isEnabled: Function } } | undefined;
+  const flagKey = 'flag.bff.payments.plans';
+  let flagOn = false;
+  try {
+    flagOn = Boolean(await services?.featureFlags?.isEnabled?.(auth.tenantId, flagKey));
+  } catch {
+    flagOn = false;
+  }
+  if (!flagOn) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message:
+            'Payment plans repo not wired. Concrete next-step: add repos.paymentPlans.findMany(tenantId, limit, offset) in @bossnyumba/database and surface it via composition root.',
+          flagKey,
+        },
+      },
+      501,
+    );
+  }
   return c.json({
     success: true,
     data: [],
@@ -196,16 +235,37 @@ app.get('/plans', async (c) => {
       hasNextPage: false,
       hasPreviousPage: false,
     },
-    meta: { tenantId: auth.tenantId, note: 'payment-plans repo wiring pending' },
+    meta: { tenantId: auth.tenantId, note: 'payment-plans repo wiring pending; flag-gated dev response' },
   });
 });
 
 app.get('/plans/:id', async (c) => {
   const id = c.req.param('id');
-  // Same placeholder until the repo is wired.
+  const auth = c.get('auth');
+  const repos = c.get('repos') as { paymentPlans?: { findById?: Function } } | undefined;
+  const findById = repos?.paymentPlans?.findById;
+  if (typeof findById === 'function') {
+    const row = await findById.call(repos!.paymentPlans, id, auth.tenantId);
+    if (!row) {
+      return c.json(
+        { success: false, error: { code: 'NOT_FOUND', message: `Payment plan ${id} not found` } },
+        404,
+      );
+    }
+    return c.json({ success: true, data: row });
+  }
+  // No repo wired — same 501 pattern as /plans above.
   return c.json(
-    { success: false, error: { code: 'NOT_FOUND', message: `Payment plan ${id} not found` } },
-    404
+    {
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message:
+          'Payment plans repo not wired. Concrete next-step: add repos.paymentPlans.findById(id, tenantId).',
+        flagKey: 'flag.bff.payments.plans',
+      },
+    },
+    501,
   );
 });
 

@@ -5,6 +5,7 @@
  * Provides span creation utilities with platform-specific context.
  */
 
+import { createHash } from 'node:crypto';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
@@ -276,7 +277,43 @@ export function setTenantContext(tenantId: string, tenantName?: string): void {
 }
 
 /**
- * Add user context to the current span
+ * Hash a user email for safe span emission. Uses `USER_HASH_SALT` from
+ * the environment so an attacker who steals the trace store can't run
+ * a rainbow-table lookup against the world's email corpus to deanonymise
+ * the user. Returns the first 16 hex chars of `sha256(email + salt)` —
+ * enough entropy to keep collision pressure negligible for cross-trace
+ * correlation while being short enough to read in logs.
+ *
+ * Production posture: salt MUST be set. Without it we fall back to a
+ * fixed redaction token so the raw email NEVER ships, but operators get
+ * a clear signal that the salt is missing.
+ *
+ * Exported for unit-testability — pure function over (email, env).
+ */
+export function hashUserEmailForSpan(
+  email: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const salt = (env.USER_HASH_SALT ?? '').trim();
+  const nodeEnv = (env.NODE_ENV ?? '').trim().toLowerCase();
+  if (!salt) {
+    if (nodeEnv === 'production') {
+      throw new Error(
+        'USER_HASH_SALT must be configured in production before any OTel spans tag user emails',
+      );
+    }
+    return '<email:redacted>';
+  }
+  return createHash('sha256')
+    .update(`${email}${salt}`, 'utf8')
+    .digest('hex')
+    .slice(0, 16);
+}
+
+/**
+ * Add user context to the current span. The email — if provided — is
+ * hashed via {@link hashUserEmailForSpan} before it ever touches a span
+ * attribute. Raw emails MUST NOT appear in trace storage; SOC 2 CC6.1.
  */
 export function setUserContext(
   userId: string,
@@ -287,7 +324,7 @@ export function setUserContext(
   if (span) {
     span.setAttribute(SpanAttributes.USER_ID, userId);
     if (email) {
-      span.setAttribute(SpanAttributes.USER_EMAIL, email);
+      span.setAttribute(SpanAttributes.USER_EMAIL, hashUserEmailForSpan(email));
     }
     if (roles) {
       span.setAttribute(SpanAttributes.USER_ROLES, roles.join(','));

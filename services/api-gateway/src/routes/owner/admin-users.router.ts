@@ -35,10 +35,12 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
-import { buildDegradedList, markDegraded } from './degraded-shape';
+import { buildDegradedList, isFlagOn, markDegraded, notImplementedFlagged } from './degraded-shape';
 
 const NEXT_STEP =
   'add repos.users.findManyForAdmin(tenantId, filters) returning paginated user rows + replace this skeleton with real CRUD';
+
+const FLAG_KEY = 'flag.bff.admin_users.list';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -55,8 +57,45 @@ app.use(
   ),
 );
 
-app.get('/users', (c) => {
+app.get('/users', async (c) => {
   const auth = c.get('auth');
+  const services = c.get('services') ?? {};
+
+  // Real wire: the platform users service exposes `listUsers({ tenantId,
+  // role, limit, cursor })`. We adapt to the admin UI's expected shape
+  // (paginated rows + total). This is the same service the HQ tool
+  // surface uses (B1), so we're not divergent.
+  const usersSvc = services?.platformUsers;
+  if (usersSvc && typeof usersSvc.listUsers === 'function') {
+    try {
+      const limitParam = c.req.query('limit');
+      const limit = limitParam ? Math.min(200, Math.max(1, Number(limitParam))) : 50;
+      const cursor = c.req.query('cursor') ?? null;
+      const role = c.req.query('role') ?? null;
+      const result = await usersSvc.listUsers({
+        tenantId: auth.tenantId,
+        role,
+        limit,
+        cursor,
+      });
+      return c.json({
+        success: true,
+        data: result.rows ?? [],
+        pagination: { nextCursor: result.nextCursor ?? null, returned: result.totalReturned ?? (result.rows?.length ?? 0) },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'users service failed';
+      return c.json(
+        { success: false, error: { code: 'USERS_SERVICE_ERROR', message } },
+        503,
+      );
+    }
+  }
+
+  // Loud-failure path: 501 unless an operator turns the dev-mode flag on.
+  if (!(await isFlagOn(c, FLAG_KEY))) {
+    return notImplementedFlagged(c, FLAG_KEY, NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, NEXT_STEP));
 });

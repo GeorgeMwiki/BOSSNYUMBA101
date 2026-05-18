@@ -322,6 +322,66 @@ export const RTBF_POLICY: Readonly<Record<DsarTableName, RtbfPolicyEntry>> =
       },
       tenantScoped: true,
     },
+    // Phase D / A2b-1 — kernel memory tables hold chat summaries
+    // (episodic) and user-declared facts (semantic). Both are
+    // HARD_DELETE on RTBF.
+    kernel_memory_episodic: {
+      sqlName: 'kernel_memory_episodic',
+      action: 'HARD_DELETE',
+      reason:
+        'chat summaries / episodic recollections; no audit obligation, fully erasable',
+      piiColumns: [],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: [],
+        tenantId: ['tenant_id'],
+      },
+      tenantScoped: true,
+    },
+    kernel_memory_semantic: {
+      sqlName: 'kernel_memory_semantic',
+      action: 'HARD_DELETE',
+      reason:
+        'user-declared semantic facts; subject-owned and fully erasable on request',
+      piiColumns: [],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: [],
+        tenantId: ['tenant_id'],
+      },
+      tenantScoped: true,
+    },
+    // tenant_identities — cross-org principal. ANONYMIZE so referential
+    // integrity into org_memberships survives but contact details are stripped.
+    tenant_identities: {
+      sqlName: 'tenant_identities',
+      action: 'ANONYMIZE',
+      reason:
+        'preserve identity row for cross-org FK integrity; strip contact details',
+      piiColumns: ['email', 'phone_normalized'],
+      subjectColumns: {
+        customerId: ['id'],
+        email: ['email'],
+        tenantId: [],
+      },
+      tenantScoped: false,
+    },
+    // employees — staff PII. ANONYMIZE so historical assignments,
+    // performance reviews, and audit trails keep their FK linkage
+    // while the staff member's identity is stripped.
+    employees: {
+      sqlName: 'employees',
+      action: 'ANONYMIZE',
+      reason:
+        'retain employment record for HR audit / payroll history; strip personal contact + name fields',
+      piiColumns: ['first_name', 'last_name', 'email', 'phone', 'phone_alt'],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: ['email'],
+        tenantId: [],
+      },
+      tenantScoped: true,
+    },
   });
 
 // ─────────────────────────────────────────────────────────────────────

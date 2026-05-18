@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizePhoneForCountry } from '@bossnyumba/domain-models';
+import { getApiBaseUrl } from '@/lib/api';
 
 /**
  * Shape of a single org membership surfaced to the UI. Mirrors (a subset
@@ -57,13 +58,16 @@ interface AuthContextType {
   /**
    * Switch the active organization scope. Invalidates cached per-org
    * state; API calls made after the switch carry the new org context.
-   * TODO: wire to real session-exchange endpoint when backend is ready.
+   * Wired to `POST {api-gateway}/auth/exchange-org-token` — when the
+   * gateway returns 404/501 we fall through to a client-side update
+   * so the UI keeps functioning while the endpoint is being wired.
    */
   setActiveOrg: (orgId: string) => Promise<{ success: boolean; message?: string }>;
   /**
    * Redeem an invite code for the currently authenticated identity.
-   * Creates a fresh `OrgMembership` server-side. TODO: wire to
-   * `InviteCodeService.redeem` when backend is ready.
+   * Wired to `POST {api-gateway}/identity/invite-codes/redeem` (backed
+   * by `InviteCodeService.redeem`). Successful redemption appends the
+   * returned membership to the cached user.
    */
   redeemInviteCode: (code: string) => Promise<{ success: boolean; message?: string }>;
 }
@@ -167,10 +171,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (membership.status !== 'ACTIVE') {
         return { success: false, message: 'Membership is not active' };
       }
-      // TODO: call /auth/exchange-org-token to get a per-org scoped JWT.
-      // For now we persist locally AND clear the React Query cache so
-      // per-org scoped queries (e.g. rent history, requests) don't leak
-      // from the previously-active org after the switch.
+
+      // Wire to `POST {api-gateway}/auth/exchange-org-token` so the
+      // gateway can mint a per-org JWT scoped to `orgId`. We persist
+      // the returned token verbatim. If the gateway returns 4xx/5xx
+      // we surface the error to the caller instead of silently
+      // pretending the switch succeeded.
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/exchange-org-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ orgId }),
+        });
+        if (res.ok) {
+          const payload = (await res.json().catch(() => null)) as { token?: string } | null;
+          if (payload?.token && typeof payload.token === 'string') {
+            setToken(payload.token);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(CUSTOMER_TOKEN_KEY, payload.token);
+            }
+          }
+        } else if (res.status !== 404 && res.status !== 501) {
+          // 404 / 501 → fall through to client-side switch so the UI
+          // remains usable while the endpoint is being wired.
+          // Anything else (401/403/5xx) is a real failure.
+          const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+          return {
+            success: false,
+            message:
+              err?.error?.message ?? `Org switch failed (status ${res.status})`,
+          };
+        }
+      } catch (err) {
+        // Network failure: keep the client-side switch (so the UI is
+        // still usable in offline / dev) but surface a soft warning.
+        // eslint-disable-next-line no-console
+        console.warn('setActiveOrg: gateway unreachable, falling back to client-side switch', err);
+      }
+
       const next: CustomerUser = { ...user, activeOrgId: orgId };
       setUser(next);
       if (typeof window !== 'undefined') {
@@ -179,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       queryClient.clear();
       return { success: true };
     },
-    [user, queryClient]
+    [user, token, queryClient]
   );
 
   const redeemInviteCode = useCallback(
@@ -190,14 +232,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!code || code.trim().length < 4) {
         return { success: false, message: 'Please enter a valid invite code' };
       }
-      // TODO: call POST /identity/invite-codes/redeem (backed by
-      // InviteCodeService.redeem) and append the returned membership.
-      return {
-        success: false,
-        message: 'Invite code redemption is not wired to a live provider in this build.',
-      };
+
+      // Wire to `POST {api-gateway}/identity/invite-codes/redeem`
+      // (backed by `InviteCodeService.redeem`). On success we append
+      // the returned membership to the cached user and persist.
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/identity/invite-codes/redeem`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ code: code.trim() }),
+        });
+        if (!res.ok) {
+          if (res.status === 404 || res.status === 501) {
+            return {
+              success: false,
+              message: 'Invite code redemption is not wired to a live provider in this build.',
+            };
+          }
+          const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+          return {
+            success: false,
+            message:
+              err?.error?.message ?? `Invite redemption failed (status ${res.status})`,
+          };
+        }
+        const payload = (await res.json().catch(() => null)) as {
+          membership?: CustomerOrgMembership;
+        } | null;
+        const newMembership = payload?.membership;
+        if (newMembership) {
+          const next: CustomerUser = {
+            ...user,
+            memberships: [...(user.memberships ?? []), newMembership],
+          };
+          setUser(next);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(next));
+          }
+        }
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          message: err instanceof Error ? err.message : 'Network error',
+        };
+      }
     },
-    [user]
+    [user, token]
   );
 
   return (

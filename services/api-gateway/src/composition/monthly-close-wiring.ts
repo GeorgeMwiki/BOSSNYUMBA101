@@ -64,6 +64,7 @@ import type {
 } from '@bossnyumba/domain-services';
 import { createDrizzleReconciliationAdapter } from '../services/monthly-close/reconciliation-adapter.js';
 import { createDrizzleStatementAdapter } from '../services/monthly-close/statement-adapter.js';
+import { createCurrencyPreferencesService } from '@bossnyumba/database';
 import { createDrizzleDisbursementAdapter } from '../services/monthly-close/disbursement-adapter.js';
 import { createDrizzleNotificationAdapter } from '../services/monthly-close/notification-adapter.js';
 import {
@@ -132,10 +133,30 @@ export function createMonthlyCloseWiring(
   const logger = adaptLogger(deps.logger);
   const store = adaptStore(createMonthlyCloseRunsService(deps.db));
 
+  // Per-tenant currency resolver — used by the statement-adapter to
+  // resolve the display currency for owners that have no completed
+  // payments in the period. Removes the literal `'XXX'` fallback so a
+  // missed wire surfaces as a thrown error rather than an unreadable
+  // statement.
+  // NOTE: `createCurrencyPreferencesService` expects the platform DB
+  // client shape; we pass it through as-is because both wiring sites
+  // share a single Drizzle client.
+  const currencyPreferences = createCurrencyPreferencesService(
+    deps.db as never,
+  );
+  const statementCurrencyResolver = {
+    async resolveForTenant(tenantId: string): Promise<string> {
+      const resolved = await currencyPreferences.resolve({ tenantId });
+      return resolved.currency;
+    },
+  };
+
   const orchestratorDeps: MonthlyCloseOrchestratorDeps = {
     store,
     reconciliation: createDrizzleReconciliationAdapter(deps.db, logger),
-    statements: createDrizzleStatementAdapter(deps.db, logger),
+    statements: createDrizzleStatementAdapter(deps.db, logger, {
+      currencyResolver: statementCurrencyResolver,
+    }),
     disbursement: createDrizzleDisbursementAdapter(deps.db, logger),
     notifications: createDrizzleNotificationAdapter(deps.db, logger),
     eventBus: deps.eventBus

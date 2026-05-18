@@ -110,10 +110,12 @@ export function allocateTtc(input: TtcAllocatorInput): TtcAllocation {
   const ambiguity = clamp01(input.ambiguityScore ?? 0);
   let mode = baseMode(input.stakes, ambiguity);
 
-  // Caller-side override.
-  if (input.requireJudge) {
-    mode = strongerMode(mode, 'judge');
-  }
+  // Caller-side override — applied AFTER the cost-ceiling downgrade
+  // ladder so the caller's hard requirement is never silently
+  // demoted by the stakes budget. The override never DOWNGRADES a
+  // multi-sample mode (a caller asking for judge means "at least
+  // judge"; see the contract test in ttc-allocator.test.ts).
+  const requireJudge = input.requireJudge === true;
 
   // Cost-ceiling soft cap — when a low ceiling is supplied, downgrade
   // 'multi-sample' to 'judge' to stay within budget.
@@ -125,6 +127,10 @@ export function allocateTtc(input: TtcAllocatorInput): TtcAllocation {
   if (mode === 'multi-sample' && budget < 0.3) mode = 'judge';
   if (mode === 'judge' && budget < 0.05) mode = 'deliberate';
   if (mode === 'deliberate' && budget < 0.01) mode = 'fast';
+
+  if (requireJudge) {
+    mode = strongerMode(mode, 'judge');
+  }
 
   // Marketing / classroom surfaces never go above 'judge' regardless of
   // stakes — they're unauthenticated / educational and a multi-sample

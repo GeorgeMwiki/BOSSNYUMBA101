@@ -36,6 +36,58 @@ import {
   type LangfuseSpanAttributes,
 } from './tracer.js';
 
+// ---------------------------------------------------------------------------
+// Type-level guard against raw-text metadata keys (A2b-3 wire #2)
+// ---------------------------------------------------------------------------
+
+/** Keys that MUST NOT appear in a metadata bag — they likely contain PII. */
+export const FORBIDDEN_METADATA_KEYS = Object.freeze([
+  'userMessage',
+  'prompt',
+  'response',
+  'chatText',
+  'cot',
+  'thoughtText',
+] as const);
+
+export type ForbiddenMetadataKey = (typeof FORBIDDEN_METADATA_KEYS)[number];
+
+/**
+ * Metadata bag with the high-risk keys excluded at the type level.
+ * Passing a literal `{ userMessage: '...' }` fails the type-checker.
+ */
+export type SafeLangfuseMetadata = {
+  readonly [K in string]: K extends ForbiddenMetadataKey ? never : unknown;
+};
+
+/**
+ * Strip forbidden keys at runtime and emit a console.warn for each one
+ * dropped. Defence-in-depth — the type system can't catch metadata that
+ * arrives via `Record<string, unknown>` widening.
+ */
+export function scrubForbiddenMetadata(
+  meta: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!meta) return meta;
+  const dropped: string[] = [];
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(meta)) {
+    if ((FORBIDDEN_METADATA_KEYS as ReadonlyArray<string>).includes(k)) {
+      dropped.push(k);
+      continue;
+    }
+    out[k] = v;
+  }
+  if (dropped.length > 0) {
+    console.warn(
+      `[observability/langfuse] dropped forbidden metadata key(s): ${dropped.join(
+        ', ',
+      )} — never attach raw user text to a trace.`,
+    );
+  }
+  return out;
+}
+
 /** Env var names checked when deciding whether Langfuse is enabled. */
 const LANGFUSE_HOST_ENV = 'LANGFUSE_HOST';
 const LANGFUSE_BASEURL_ENV = 'LANGFUSE_BASEURL';
@@ -119,12 +171,22 @@ export async function loadLangfuseClient(): Promise<LangfuseSdkLoadResult> {
 export async function withLangfuseGeneration<T>(
   tracer: Tracer,
   name: string,
-  attrs: Omit<LangfuseSpanAttributes, 'modelName'> & {
+  attrs: Omit<LangfuseSpanAttributes, 'modelName' | 'metadata'> & {
     readonly modelName: string;
+    readonly metadata?: SafeLangfuseMetadata;
   },
   fn: (span: Span) => Promise<T>,
 ): Promise<T> {
-  return emitLangfuseSpan(tracer, name, 'generation', attrs, fn);
+  // Runtime scrub — drops `userMessage` / `prompt` / `response` etc.
+  // even when the caller widens past the type-system guard.
+  const safeMetadata = scrubForbiddenMetadata(
+    attrs.metadata as Record<string, unknown> | undefined,
+  );
+  const safeAttrs: LangfuseSpanAttributes = {
+    ...attrs,
+    ...(safeMetadata !== undefined ? { metadata: safeMetadata } : {}),
+  };
+  return emitLangfuseSpan(tracer, name, 'generation', safeAttrs, fn);
 }
 
 /**
@@ -136,10 +198,19 @@ export async function withLangfuseSpan<T>(
   tracer: Tracer,
   name: string,
   kind: LangfuseObservationKind,
-  attrs: LangfuseSpanAttributes,
+  attrs: Omit<LangfuseSpanAttributes, 'metadata'> & {
+    readonly metadata?: SafeLangfuseMetadata;
+  },
   fn: (span: Span) => Promise<T>,
 ): Promise<T> {
-  return emitLangfuseSpan(tracer, name, kind, attrs, fn);
+  const safeMetadata = scrubForbiddenMetadata(
+    attrs.metadata as Record<string, unknown> | undefined,
+  );
+  const safeAttrs: LangfuseSpanAttributes = {
+    ...attrs,
+    ...(safeMetadata !== undefined ? { metadata: safeMetadata } : {}),
+  };
+  return emitLangfuseSpan(tracer, name, kind, safeAttrs, fn);
 }
 
 // Re-export for convenience so downstream packages only need to depend

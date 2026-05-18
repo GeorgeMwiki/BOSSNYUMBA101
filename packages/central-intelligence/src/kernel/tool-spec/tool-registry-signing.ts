@@ -191,6 +191,93 @@ export async function verifyToolSignature(
 }
 
 // ---------------------------------------------------------------------------
+// Registry-level signature check — A2b-2 wire #7.
+// Bound at the kernel composition root. Reads pubkey + signature
+// from env so production rotates without redeploys.
+// ---------------------------------------------------------------------------
+
+export function verifyRegistryHexSignature(args: {
+  readonly canonical: string;
+  readonly signatureHex: string;
+  readonly publicKeyHex: string;
+}): { ok: true } | { ok: false; reason: string } {
+  let signatureBuf: Buffer;
+  let publicKeyBuf: Buffer;
+  try {
+    signatureBuf = Buffer.from(args.signatureHex, 'hex');
+    if (signatureBuf.length === 0) {
+      return { ok: false, reason: 'signature hex is empty' };
+    }
+  } catch {
+    return { ok: false, reason: 'signature is not valid hex' };
+  }
+  try {
+    publicKeyBuf = Buffer.from(args.publicKeyHex, 'hex');
+    if (publicKeyBuf.length !== 32) {
+      return {
+        ok: false,
+        reason: `public key must be 32 bytes (raw Ed25519); got ${publicKeyBuf.length}`,
+      };
+    }
+  } catch {
+    return { ok: false, reason: 'public key is not valid hex' };
+  }
+  try {
+    const publicKey = rawPublicToKey(new Uint8Array(publicKeyBuf));
+    const ok = nodeVerify(
+      null,
+      Buffer.from(args.canonical, 'utf8'),
+      publicKey,
+      signatureBuf,
+    );
+    return ok
+      ? { ok: true }
+      : { ok: false, reason: 'signature verification returned false' };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `verify threw: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+}
+
+export function enforceToolRegistrySignatureAtBoot(args: {
+  readonly canonical: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly logger?: { warn?: (msg: string) => void };
+}): void {
+  const env = args.env ?? process.env;
+  const signatureHex = env.TOOL_REGISTRY_SIGNATURE_HEX?.trim();
+  const publicKeyHex = env.TOOL_REGISTRY_PUBKEY_HEX?.trim();
+  if (!signatureHex || !publicKeyHex) {
+    const warn = args.logger?.warn ?? ((msg) => console.warn(msg));
+    warn(
+      'tool-registry-signing: TOOL_REGISTRY_SIGNATURE_HEX / TOOL_REGISTRY_PUBKEY_HEX not set — ' +
+        'skipping registry signature verification (dev mode). Production MUST set both.',
+    );
+    return;
+  }
+  const outcome = verifyRegistryHexSignature({
+    canonical: args.canonical,
+    signatureHex,
+    publicKeyHex,
+  });
+  if (!outcome.ok) {
+    throw new Error(
+      `refusing to start: tool registry signature mismatch (${outcome.reason})`,
+    );
+  }
+}
+
+export function serializeRegistry(
+  specs: ReadonlyArray<SignableSpec>,
+): string {
+  return JSON.stringify(specs.map(canonicalise));
+}
+
+// ---------------------------------------------------------------------------
 // Key generation (utility — primarily for tests).
 // ---------------------------------------------------------------------------
 

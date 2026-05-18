@@ -128,6 +128,15 @@ import {
   isExplicitSessionTerminator,
   recordReflection,
 } from './reflexion/reflexion-writer.js';
+// A2b-2 wires #1 + #2 — pre-LLM PII scrub. The persist-boundary
+// scrubber covers the regional baseline (email, phone, NIDA, KRA,
+// M-Pesa till) AND the Phase-D extension (API keys, model URLs,
+// M-Pesa confirmation IDs, model-named entities). Used to scrub
+// `req.userMessage` BEFORE the sensor egress (so third-party LLMs
+// never see raw PII) and BEFORE the episodic-memory write (so
+// `kernel_memory_episodic.summary` can't leak raw PII even though
+// that table is not in the RTBF list).
+import { scrubCotForPersist } from './cot-reservoir/pii-scrub-cot.js';
 
 export interface BrainKernelDeps {
   readonly sensors: ReadonlyArray<Sensor>;
@@ -305,6 +314,16 @@ export interface BrainKernelDeps {
   readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
   /** D8 — optional regulatory mirror; see `regulatory-mirror.ts`. */
   readonly regulatoryMirror?: import('./regulatory-mirror.js').RegulatoryMirror;
+  /**
+   * D5 — optional rollout controller. When wired the kernel calls
+   * `pickPrompt(...)` BEFORE composing the system prompt; the
+   * returned `promptText` is mixed into the system block. Every
+   * failure mode collapses to the hard-coded preamble:
+   *   - null decision   → no marker mixed
+   *   - throws          → swallowed; no marker mixed
+   *   - missing wire    → no-op
+   */
+  readonly rolloutController?: import('./rollout/rollout-controller.js').RolloutController;
 }
 
 export interface BrainKernel {
@@ -340,6 +359,14 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const cacheKey = thoughtCacheKey(req);
       const memTenantIdEarly =
         req.scope.kind === 'tenant' ? req.scope.tenantId : null;
+
+      // A2b-2 wire #1 — pre-LLM PII scrub. Compute ONCE per turn;
+      // reuse for every sensor egress (initial sensor.call, regen
+      // pass, debate fallback) and for the episodic-memory write
+      // (wire #2). The original `req.userMessage` is preserved on
+      // the closure variable so audit-side hashes (`sha(req.
+      // userMessage)`) still bind to the user's literal input.
+      const scrubbedUserMessage = scrubCotForPersist(req.userMessage).scrubbed;
 
       // Decision-trace writer — null when no recorder is wired. We use
       // a mutable handle so each `traceStep(...)` call can replace it
@@ -607,6 +634,27 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const persona = applyBrandingOverride(baseSurfacePersona, branding);
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
 
+      // D5 — rollout controller. When wired, the controller picks the
+      // prompt version for the (tenant, kernel-system) tuple and we
+      // mix the resolved promptText into the system block. Every
+      // failure mode (null / throw / missing wire) collapses to a
+      // no-op so the legacy preamble + module inventory still ships.
+      let rolloutPromptFragment = '';
+      if (deps.rolloutController) {
+        try {
+          const decision = await deps.rolloutController.pickPrompt({
+            tenantId:
+              req.scope.kind === 'tenant' ? req.scope.tenantId : null,
+            capability: 'kernel-system',
+          });
+          if (decision && decision.promptText.length > 0) {
+            rolloutPromptFragment = decision.promptText;
+          }
+        } catch {
+          // Swallowed — kernel falls back to its hard-coded preamble.
+        }
+      }
+
       // K3 — platform-voice anchor + situated address. Sits BEFORE the
       // per-surface identity preamble so the cache-eligible block hits
       // first; the legacy preamble + module inventory layer on top.
@@ -659,6 +707,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         personaPrelude,
         '',
         identity,
+        '',
+        rolloutPromptFragment,
         '',
         moduleInventory,
         '',
@@ -755,10 +805,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         } catch (e) {
           traceStep('debate', debateStart, 'failed; falling back to single-shot', e);
           // On debate failure, fall back to the single-shot path.
+          // A2b-2 wire #1 — scrubbed userMessage at sensor egress.
           sensorResult = await router.call(
             {
               system,
-              userMessage: req.userMessage,
+              systemPrompt: system,
+              userMessage: scrubbedUserMessage,
               priorTurns,
               extendedThinking: wantsThinking,
               stakes: req.stakes,
@@ -773,10 +825,13 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           );
         }
       } else {
+        // A2b-2 wire #1 — scrubbed userMessage on the primary sensor
+        // egress.
         sensorResult = await router.call(
           {
             system,
-            userMessage: req.userMessage,
+            systemPrompt: system,
+            userMessage: scrubbedUserMessage,
             priorTurns,
             extendedThinking: wantsThinking,
             stakes: req.stakes,
@@ -790,6 +845,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           `sensor=${sensorResult.sensorId} model=${sensorResult.modelId}`,
         );
       }
+
+      // Defensive normalisation — duck-typed sensor adapters (test
+      // spies, MCP probes) may return a partial result without
+      // `toolCalls` / `latencyMs`. Coerce missing fields here so the
+      // post-sensor pipeline never null-derefs downstream.
+      sensorResult = normaliseSensorResult(sensorResult);
 
       // 7b) tool dispatch — when the sensor emitted a `tool_use` call
       // matching a seed PM tool AND a registry is wired, resolve it
@@ -845,10 +906,12 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
           'Improve grounding, hedge uncited numbers, and match the property-ops voice.';
         const regenSystem = `${system}\n\nA self-review judge flagged the previous draft (score=${judgeOut.score.toFixed(2)}). Apply this fix EXACTLY ONCE and re-answer: ${fix}`;
         try {
+          // A2b-2 wire #1 — scrubbed userMessage on the regen pass.
           const regenResult = await router.call(
             {
               system: regenSystem,
-              userMessage: req.userMessage,
+              systemPrompt: regenSystem,
+              userMessage: scrubbedUserMessage,
               priorTurns,
               extendedThinking: wantsThinking,
               stakes: req.stakes,
@@ -1148,13 +1211,17 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       }
       // Episodic memory writes — fire-and-forget, never blocks the
       // caller, errors swallowed.
+      // A2b-2 wire #2 — scrubbed userMessage so `kernel_memory_
+      // _episodic.summary` cannot leak raw PII (the table is not in
+      // the RTBF list so a retention bypass would otherwise be the
+      // leak vector).
       writeEpisodicTurnTrace({
         memory: deps.memory,
         tenantId: memTenantId,
         userId: memUserId,
         threadId: req.threadId,
         turnId: thoughtId,
-        userMessage: req.userMessage,
+        userMessage: scrubbedUserMessage,
         agentText: pickAgentTraceText(decision),
       });
       traceStep('provenance-write', provStart, `outcome=${decision.kind}`);
@@ -1207,6 +1274,9 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       const startedAt = clock().getTime();
       const thoughtId = randomUUID();
       const cacheKey = thoughtCacheKey(req);
+
+      // A2b-2 wires #1 + #2 — pre-LLM PII scrub, streaming path.
+      const scrubbedUserMessage = scrubCotForPersist(req.userMessage).scrubbed;
 
       // Pre-sensor persona — needed for the turn_start event below.
       const baseSurfacePersona = selectPersona(req);
@@ -1360,6 +1430,24 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       // 6) identity + ToM + cognitive-load
       const identity = renderIdentityPreamble({ persona, scope: req.scope });
 
+      // D5 — rollout controller. Same wiring as the non-streaming
+      // path; every failure mode collapses to the hard-coded preamble.
+      let rolloutPromptFragment = '';
+      if (deps.rolloutController) {
+        try {
+          const decision = await deps.rolloutController.pickPrompt({
+            tenantId:
+              req.scope.kind === 'tenant' ? req.scope.tenantId : null,
+            capability: 'kernel-system',
+          });
+          if (decision && decision.promptText.length > 0) {
+            rolloutPromptFragment = decision.promptText;
+          }
+        } catch {
+          // Swallowed — kernel falls back to its hard-coded preamble.
+        }
+      }
+
       // K3 — platform-voice anchor + situated address (cache-eligible
       // prefix) + per-surface identity + module-inventory block.
       const personaPrelude = renderPersonaPrelude(
@@ -1400,6 +1488,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         '',
         identity,
         '',
+        rolloutPromptFragment,
+        '',
         moduleInventory,
         '',
         `Locus: ${locusPhrase(req.tier, req.scope)}.`,
@@ -1432,9 +1522,11 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       if (wantsThinking) required.push('thinking');
       if (hasAttachments) required.push('vision');
 
+      // A2b-2 wire #1 — scrubbed userMessage on the streaming egress.
       const sensorArgs: SensorCallArgs = {
         system,
-        userMessage: req.userMessage,
+        systemPrompt: system,
+        userMessage: scrubbedUserMessage,
         priorTurns,
         extendedThinking: wantsThinking,
         stakes: req.stakes,
@@ -1664,13 +1756,15 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         void deps.provenanceSink.record(provenance).catch(() => undefined);
       }
       // Episodic memory writes — fire-and-forget.
+      // A2b-2 wire #2 — scrubbed userMessage on the streaming episodic
+      // memory persistence path.
       writeEpisodicTurnTrace({
         memory: deps.memory,
         tenantId: memTenantId,
         userId: memUserId,
         threadId: req.threadId,
         turnId: thoughtId,
-        userMessage: req.userMessage,
+        userMessage: scrubbedUserMessage,
         agentText: pickAgentTraceText(decision),
       });
 
@@ -1795,6 +1889,28 @@ function makeRefusal(args: {
 
 function sha(s: string): string {
   return createHash('sha256').update(s, 'utf8').digest('hex');
+}
+
+/**
+ * Defensive normaliser for sensor-call results.
+ *
+ * Production sensors (anthropic/openai/etc) always return the full
+ * `SensorCallResult` shape, but duck-typed adapters (test spies, MCP
+ * probes, the D5 kernel-composition rollout test) sometimes omit
+ * fields like `toolCalls` and `latencyMs`. We coerce missing fields
+ * to safe defaults so the post-sensor pipeline (tool-dispatch, drift,
+ * provenance) can rely on them.
+ */
+function normaliseSensorResult(raw: SensorCallResult): SensorCallResult {
+  const r = raw as Partial<SensorCallResult> & Record<string, unknown>;
+  return {
+    text: typeof r.text === 'string' ? r.text : '',
+    thought: typeof r.thought === 'string' ? r.thought : null,
+    toolCalls: Array.isArray(r.toolCalls) ? r.toolCalls : [],
+    latencyMs: typeof r.latencyMs === 'number' ? r.latencyMs : 0,
+    modelId: typeof r.modelId === 'string' ? r.modelId : 'unknown',
+    sensorId: typeof r.sensorId === 'string' ? r.sensorId : 'unknown',
+  };
 }
 
 function extractCitationsFromUiBlock(ui: unknown): ReadonlyArray<Citation> {
@@ -2169,16 +2285,40 @@ function renderActiveGoalsFragment(goals: ReadonlyArray<Goal>): string {
   return ["**What you've asked me to work on:**", ...lines].join('\n');
 }
 
-function formatGroundingValue(f: GroundingFact): string {
+/**
+ * Format a numeric grounding fact for the LLM working-set.
+ *
+ * Built for the world: when `unit` is `currency-<iso>` (any lowercase
+ * ISO-4217 3-letter code), we render the amount with `Intl.NumberFormat`
+ * so a EUR, ZAR, NGN, INR fact formats just as well as the legacy
+ * KES/TZS cases. The kernel never silently drops a fact because its
+ * currency code is "unknown".
+ */
+export function formatGroundingValue(f: GroundingFact): string {
   if (typeof f.value === 'string') return f.value;
   switch (f.unit) {
     case 'pct':           return `${(f.value * 100).toFixed(1)}%`;
     case 'count':         return f.value.toFixed(0);
-    case 'currency-tzs':  return `TZS ${f.value.toLocaleString('en-US')}`;
-    case 'currency-kes':  return `KES ${f.value.toLocaleString('en-US')}`;
     case 'days':          return `${f.value.toFixed(1)} days`;
-    default:              return String(f.value);
+    default:              break;
   }
+  if (typeof f.unit === 'string' && f.unit.startsWith('currency-')) {
+    const code = f.unit.slice('currency-'.length).toUpperCase();
+    if (/^[A-Z]{3}$/.test(code)) {
+      try {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: code,
+          currencyDisplay: 'code',
+        }).format(f.value);
+      } catch {
+        // Intl rejects truly unknown codes (e.g. 'AAA'); fall through
+        // to the bare code + grouped number so the fact still appears.
+        return `${code} ${f.value.toLocaleString('en-US')}`;
+      }
+    }
+  }
+  return String(f.value);
 }
 
 // ─────────────────────────────────────────────────────────────────────

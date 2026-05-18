@@ -140,6 +140,8 @@ export {
 } from './kernel-memory-episodic.service.js';
 export {
   createSemanticMemoryService,
+  DeclaredFactsCapExceededError,
+  DECLARED_FACTS_PER_USER_CAP,
   type DecayArgs,
   type LookupArgs,
   type SearchArgs,

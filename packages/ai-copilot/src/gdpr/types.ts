@@ -61,7 +61,15 @@ export type DsarTableName =
   | 'kra_mri_filings'
   | 'gepg_transactions'
   | 'audit_events'
-  | 'cot_reservoir';
+  | 'cot_reservoir'
+  // Phase D / A2b-1 — kernel memory tables hold chat summaries and
+  // user-declared facts; both must be HARD_DELETE on RTBF.
+  | 'kernel_memory_episodic'
+  | 'kernel_memory_semantic'
+  // tenant_identities — cross-org principal; anonymize email + phone.
+  | 'tenant_identities'
+  // employees — staff PII; anonymize names + contact details.
+  | 'employees';
 
 /**
  * One row in a DSAR bundle. Plain JSON object — values are scalars,

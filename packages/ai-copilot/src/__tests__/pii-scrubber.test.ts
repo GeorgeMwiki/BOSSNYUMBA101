@@ -57,6 +57,27 @@ describe('pii-scrubber', () => {
     expect(twice.scrubbed).toBe(once.scrubbed);
   });
 
+  it('redacts Kenyan KRA PIN (A123456789B shape)', () => {
+    const r = scrubPii('My KRA PIN is A123456789Z for the filing.');
+    expect(r.hasPii).toBe(true);
+    expect(r.scrubbed).toContain('<kra-pin:redacted>');
+    expect(r.scrubbed).not.toContain('A123456789Z');
+  });
+
+  it('redacts KRA PIN via "my kra pin is" context (English)', () => {
+    const r = scrubPii('my kra pin is P987654321Q');
+    expect(r.hasPii).toBe(true);
+    expect(r.scrubbed).toContain('<kra-pin:redacted>');
+    expect(r.scrubbed).not.toContain('P987654321Q');
+  });
+
+  it('redacts KRA PIN via "nambari yangu ya kra" context (Swahili)', () => {
+    const r = scrubPii('nambari yangu ya kra ni B111222333C tafadhali.');
+    expect(r.hasPii).toBe(true);
+    expect(r.scrubbed).toContain('<kra-pin:redacted>');
+    expect(r.scrubbed).not.toContain('B111222333C');
+  });
+
   it('buildPiiAuditRecord records types without values', () => {
     const r = scrubPii('alice@example.com, +255 712 345 678');
     const audit = buildPiiAuditRecord(r);

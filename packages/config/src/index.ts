@@ -32,6 +32,12 @@ function loadEnv(): EnvSchema {
     AI_PROVIDER: process.env.AI_PROVIDER,
     API_URL: process.env.API_URL ?? (isProduction ? undefined : 'http://localhost:4000'),
     FRONTEND_URL: process.env.FRONTEND_URL ?? (isProduction ? undefined : 'http://localhost:3000'),
+    // A2b-3 wire #6 — privacy posture. Default-on means the kernel ships
+    // with the extended-PII scrub active; ops opts OUT for dev, not IN
+    // for prod.
+    BOSSNYUMBA_PII_EXTENDED: process.env.BOSSNYUMBA_PII_EXTENDED,
+    USER_HASH_SALT: process.env.USER_HASH_SALT,
+    AWS_REGION_BY_TENANT_OVERRIDE: process.env.AWS_REGION_BY_TENANT_OVERRIDE,
   };
 
   const result = envSchema.safeParse(raw);
@@ -157,6 +163,15 @@ export const urls = () => ({
   frontendUrl: getConfig().FRONTEND_URL,
 });
 
+/**
+ * Privacy configuration (A2b-3 wire #6)
+ */
+export const privacy = () => ({
+  piiExtended: getConfig().BOSSNYUMBA_PII_EXTENDED === '1',
+  userHashSalt: getConfig().USER_HASH_SALT,
+  awsRegionByTenantOverride: getConfig().AWS_REGION_BY_TENANT_OVERRIDE,
+});
+
 /** Re-export schemas for consumers that need validation */
 export {
   envSchema,
@@ -168,6 +183,7 @@ export {
   storageSchema,
   aiSchema,
   urlsSchema,
+  privacySchema,
 } from './schemas.js';
 export type { EnvSchema } from './schemas.js';
 

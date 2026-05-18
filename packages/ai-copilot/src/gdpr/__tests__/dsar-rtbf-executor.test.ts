@@ -431,7 +431,7 @@ describe('dsar-rtbf-executor / per-policy mapping', () => {
     }
   });
 
-  it('policy table breakdown matches expectations: 5 anonymize, 3 hard-delete, 7 retain', () => {
+  it('policy table breakdown matches expectations: 7 anonymize, 5 hard-delete, 7 retain', () => {
     const counts: Record<string, number> = {
       ANONYMIZE: 0,
       HARD_DELETE: 0,
@@ -440,10 +440,100 @@ describe('dsar-rtbf-executor / per-policy mapping', () => {
     for (const policy of Object.values(RTBF_POLICY)) {
       counts[policy.action] = (counts[policy.action] ?? 0) + 1;
     }
-    expect(counts.ANONYMIZE).toBe(5);
-    expect(counts.HARD_DELETE).toBe(3);
+    // Phase D / A2b-1 added kernel_memory_episodic + kernel_memory_semantic
+    // (HARD_DELETE × 2) and tenant_identities + employees (ANONYMIZE × 2).
+    expect(counts.ANONYMIZE).toBe(7);
+    expect(counts.HARD_DELETE).toBe(5);
     expect(counts.RETAIN).toBe(7);
-    expect(Object.keys(RTBF_POLICY).length).toBe(15);
+    expect(Object.keys(RTBF_POLICY).length).toBe(19);
+  });
+
+  describe('phase-2 RTBF tables (A2b-1)', () => {
+    it('kernel_memory_episodic is HARD_DELETE on customerId path', async () => {
+      const { exec, capturedQueries } = buildExecutor(
+        { mutationsByTable: { kernel_memory_episodic: 3 } },
+        { tenantId: 'tnt_t' },
+      );
+      const report = await exec.executeRtbf({
+        subjectId: 'cus_42',
+        requestedBy: 'admin-1',
+      });
+      const entry = report.tablesProcessed.find(
+        (t) => t.table === 'kernel_memory_episodic',
+      );
+      expect(entry?.action).toBe('hard-deleted');
+      expect(entry?.rowsAffected).toBe(3);
+      const del = capturedQueries.find(
+        (q) =>
+          q.kind === 'DELETE' && q.rendered.includes('"kernel_memory_episodic"'),
+      );
+      expect(del).toBeDefined();
+      expect(del!.rendered).toContain('"user_id"');
+    });
+
+    it('kernel_memory_semantic is HARD_DELETE on customerId path', async () => {
+      const { exec, capturedQueries } = buildExecutor(
+        { mutationsByTable: { kernel_memory_semantic: 7 } },
+        { tenantId: 'tnt_t' },
+      );
+      const report = await exec.executeRtbf({
+        subjectId: 'cus_77',
+        requestedBy: 'admin-1',
+      });
+      const entry = report.tablesProcessed.find(
+        (t) => t.table === 'kernel_memory_semantic',
+      );
+      expect(entry?.action).toBe('hard-deleted');
+      expect(entry?.rowsAffected).toBe(7);
+      const del = capturedQueries.find(
+        (q) =>
+          q.kind === 'DELETE' && q.rendered.includes('"kernel_memory_semantic"'),
+      );
+      expect(del).toBeDefined();
+    });
+
+    it('tenant_identities is ANONYMIZE on email path — strips email + phone', async () => {
+      const { exec, capturedQueries } = buildExecutor({
+        mutationsByTable: { tenant_identities: 1 },
+      });
+      const report = await exec.executeRtbf({
+        subjectId: 'user@example.com',
+        requestedBy: 'admin-1',
+      });
+      const entry = report.tablesProcessed.find(
+        (t) => t.table === 'tenant_identities',
+      );
+      expect(entry?.action).toBe('anonymized');
+      const upd = capturedQueries.find(
+        (q) => q.kind === 'UPDATE' && q.rendered.includes('"tenant_identities"'),
+      );
+      expect(upd).toBeDefined();
+      expect(upd!.rendered).toContain('"email"');
+      expect(upd!.rendered).toContain('"phone_normalized"');
+      expect(upd!.rendered).toContain('[REDACTED]');
+    });
+
+    it('employees is ANONYMIZE on customerId (user_id) path — strips name + contact', async () => {
+      const { exec, capturedQueries } = buildExecutor(
+        { mutationsByTable: { employees: 1 } },
+        { tenantId: 'tnt_alpha' },
+      );
+      const report = await exec.executeRtbf({
+        subjectId: 'usr_99',
+        requestedBy: 'admin-1',
+      });
+      const entry = report.tablesProcessed.find((t) => t.table === 'employees');
+      expect(entry?.action).toBe('anonymized');
+      const upd = capturedQueries.find(
+        (q) => q.kind === 'UPDATE' && q.rendered.includes('"employees"'),
+      );
+      expect(upd).toBeDefined();
+      expect(upd!.rendered).toContain('"first_name"');
+      expect(upd!.rendered).toContain('"last_name"');
+      expect(upd!.rendered).toContain('"email"');
+      expect(upd!.rendered).toContain('"phone"');
+      expect(upd!.rendered).toContain("tenant_id = 'tnt_alpha'");
+    });
   });
 });
 

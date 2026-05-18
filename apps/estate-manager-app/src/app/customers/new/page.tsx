@@ -9,6 +9,27 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 
+/**
+ * Phone placeholder map. BOSSNYUMBA is a global app — we never hard-code a
+ * national format. Deployment sets NEXT_PUBLIC_DEFAULT_COUNTRY (ISO-3166).
+ */
+const PHONE_PLACEHOLDERS_BY_COUNTRY: Readonly<Record<string, string>> = {
+  TZ: '+255 7XX XXX XXX',
+  KE: '+254 7XX XXX XXX',
+  UG: '+256 7XX XXX XXX',
+  RW: '+250 7XX XXX XXX',
+  NG: '+234 80X XXX XXXX',
+  ZA: '+27 7X XXX XXXX',
+  US: '+1 XXX XXX XXXX',
+  GB: '+44 7XXX XXX XXX',
+};
+const _DEFAULT_COUNTRY: string =
+  (typeof process !== 'undefined'
+    ? process.env?.NEXT_PUBLIC_DEFAULT_COUNTRY?.trim().toUpperCase()
+    : undefined) || '';
+const PHONE_PLACEHOLDER =
+  PHONE_PLACEHOLDERS_BY_COUNTRY[_DEFAULT_COUNTRY] ?? '+CC XXX XXX XXXX';
+
 const customerSchema = z.object({
   type: z.enum(['INDIVIDUAL', 'COMPANY']),
   firstName: z.string().trim().min(1, 'First name is required'),
@@ -142,7 +163,7 @@ export default function CustomerFormPage() {
               id="phone"
               type="tel"
               className="input"
-              placeholder="+XXX..."
+              placeholder={PHONE_PLACEHOLDER}
               aria-invalid={!!errors.phone}
               {...register('phone')}
             />

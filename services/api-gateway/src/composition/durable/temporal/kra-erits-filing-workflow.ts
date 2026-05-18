@@ -163,6 +163,20 @@ export async function kraEritsFilingWorkflowBody(
     let receiptRef: string | null = null;
     let acceptedOwnerIds: ReadonlyArray<string> = [];
     let rejectedOwnerIds: ReadonlyArray<string> = [];
+    // KRA gateway may return accepted/partial synchronously on submit
+    // (small batch / warm connector). In that case we still need to
+    // fetch the receipt-ref + per-owner breakdown via pollBatchReceipt.
+    // Do NOT poll on rejected (it's terminal and gives no extra info)
+    // or pending (handled by the poll-while-pending loop below).
+    if (status === 'accepted' || status === 'partial') {
+      const poll = await deps.activities.pollBatchReceipt({
+        submissionId: submission.submissionId,
+      });
+      status = poll.status;
+      receiptRef = poll.receiptRef;
+      acceptedOwnerIds = poll.acceptedOwnerIds;
+      rejectedOwnerIds = poll.rejectedOwnerIds;
+    }
     for (let i = 0; i < maxPolls && status === 'pending'; i += 1) {
       await deps.sleep(pollInterval);
       const poll = await deps.activities.pollBatchReceipt({

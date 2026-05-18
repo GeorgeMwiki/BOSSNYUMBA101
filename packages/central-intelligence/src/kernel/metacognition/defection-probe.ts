@@ -119,13 +119,21 @@ export function createDefectionProbe(): DefectionProbe {
 
       // 4) Voice shift vs. recent history — when the prior history is
       //    available we look for a sudden change in first-person form.
+      //    Uses a word-boundary regex so a sentence-initial pronoun
+      //    ("I have updated your record.") matches just like a mid-
+      //    sentence one. The previous space-padded substring check
+      //    missed sentence-initial pronouns entirely.
       if (Array.isArray(input.history) && input.history.length >= 2) {
         const noun = input.persona.firstPersonNoun.toLowerCase();
+        const wordRe = new RegExp(
+          `\\b${noun.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`,
+          'i',
+        );
         const recentCount = input.history
           .slice(-3)
-          .filter((h) => h.toLowerCase().includes(` ${noun} `))
+          .filter((h) => wordRe.test(h))
           .length;
-        const currentUses = lower.includes(` ${noun} `);
+        const currentUses = wordRe.test(text);
         if (recentCount >= 2 && !currentUses && text.length > 80) {
           reasons.push('sudden-voice-drop');
         }

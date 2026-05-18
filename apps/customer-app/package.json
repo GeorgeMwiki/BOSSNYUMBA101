@@ -22,6 +22,7 @@
     "@bossnyumba/database": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/domain-models": "workspace:*",
+    "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
     "@bossnyumba/realtime-rooms": "workspace:*",
     "@bossnyumba/spotlight": "workspace:*",

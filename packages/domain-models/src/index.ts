@@ -74,6 +74,22 @@ export type {
 export * from './common/money';
 export * from './common/region-config';
 
+// Per-country jurisdictional rules — new pluggable contract (Phase D).
+// Currently TZ + KE. Adding a country is a single-object edit. See file
+// header for the rationale on coexistence with region-config.ts.
+export {
+  getJurisdictionalRules,
+  listSupportedJurisdictions,
+  type JurisdictionalRules,
+  type JurisdictionalIdentityDocType,
+  type JurisdictionalTaxAuthority,
+  type JurisdictionalLandRegistry,
+  type JurisdictionalMobileMoneyProvider,
+  type JurisdictionalBankRailProvider,
+  type JurisdictionalLeaseRules,
+  type JurisdictionalDataProtection,
+} from './common/jurisdictional-rules.js';
+
 // Tenant/Organization
 export * from './tenant/tenant';
 export * from './tenant/organization';

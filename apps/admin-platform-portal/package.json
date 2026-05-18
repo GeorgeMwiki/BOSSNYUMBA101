@@ -18,6 +18,7 @@
     "@bossnyumba/chat-ui": "workspace:*",
     "@bossnyumba/design-system": "workspace:*",
     "@bossnyumba/forecasting": "workspace:*",
+    "@bossnyumba/genui": "workspace:*",
     "@bossnyumba/graph-privacy": "workspace:*",
     "@bossnyumba/observability": "workspace:^",
     "@bossnyumba/realtime-rooms": "workspace:*",

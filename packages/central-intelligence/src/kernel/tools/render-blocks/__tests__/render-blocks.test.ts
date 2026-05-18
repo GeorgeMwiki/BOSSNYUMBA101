@@ -23,6 +23,18 @@ import {
   renderMapTool,
   renderCalendarTool,
   renderFilePreviewTool,
+  renderKanbanTool,
+  renderDashboardGridTool,
+  renderHeatmapTool,
+  renderMarkdownCardTool,
+  renderPromptSuggestionsTool,
+  renderEvidenceCardTool,
+  renderTreeTool,
+  renderDiffViewTool,
+  renderGaugeTool,
+  renderMetricSparklineTool,
+  renderImageAnnotationTool,
+  renderSignaturePadTool,
 } from '../tools.js';
 import { validateVegaSpec } from '../validate.js';
 
@@ -126,6 +138,28 @@ describe('render-blocks.data-table', () => {
     });
     expect(outcome.kind).toBe('error');
   });
+
+  it('accepts any ISO-4217 currency code (EUR, ZAR, NGN)', async () => {
+    for (const code of ['EUR', 'ZAR', 'NGN'] as const) {
+      const outcome = await call(renderDataTableTool, {
+        columns: [
+          { id: 'amt', header: 'Amount', accessorKey: 'amt', format: 'currency', currency: code },
+        ],
+        rows: [{ amt: 100 }],
+      });
+      expectOk(outcome);
+    }
+  });
+
+  it('rejects currency that is not 3 upper-case letters', async () => {
+    const outcome = await call(renderDataTableTool, {
+      columns: [
+        { id: 'amt', header: 'Amount', accessorKey: 'amt', format: 'currency', currency: 'kes' },
+      ],
+      rows: [],
+    });
+    expect(outcome.kind).toBe('error');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -185,6 +219,15 @@ describe('render-blocks.kpi-grid', () => {
       tiles: [{ label: 'X', value: 100, format: 'fancy' }],
     });
     expect(outcome.kind).toBe('error');
+  });
+
+  it('accepts any ISO-4217 currency code (EUR, ZAR)', async () => {
+    for (const code of ['EUR', 'ZAR'] as const) {
+      const outcome = await call(renderKpiGridTool, {
+        tiles: [{ label: 'X', value: 100, format: 'currency', currency: code }],
+      });
+      expectOk(outcome);
+    }
   });
 });
 
@@ -415,9 +458,9 @@ describe('render-blocks.file-preview', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('createRenderBlockTools bundle', () => {
-  it('returns all 10 tools registered under render-blocks.*', () => {
+  it('returns all 22 tools registered under render-blocks.*', () => {
     const bundle = createRenderBlockTools();
-    expect(bundle.all).toHaveLength(10);
+    expect(bundle.all).toHaveLength(22);
     for (const t of bundle.all) {
       expect(t.name.startsWith('render-blocks.')).toBe(true);
       expect(t.scopes).toContain('platform');
@@ -430,6 +473,444 @@ describe('createRenderBlockTools bundle', () => {
     for (const t of bundle.all) {
       expect(t.inputJsonSchema).toBeTruthy();
       expect((t.inputJsonSchema as { type?: string }).type).toBe('object');
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════
+// ProdFix-7 — 12 new tool kinds (Tier-1 + Tier-2)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 11. kanban ────────────────────────────────────────────────────────
+
+describe('render-blocks.kanban', () => {
+  it('emits a UiPart for valid columns + cards', async () => {
+    const outcome = await call(renderKanbanTool, {
+      columns: [
+        {
+          id: 'open',
+          title: 'Open',
+          cards: [{ id: 't1', title: 'Leak at 4B', subtitle: 'Plumbing' }],
+        },
+        { id: 'in-progress', title: 'In Progress', cards: [] },
+      ],
+    });
+    expectOk(outcome);
+    expect(outcome.output.columns).toHaveLength(2);
+  });
+
+  it('rejects more than 8 columns', async () => {
+    const cols = Array.from({ length: 9 }, (_, i) => ({
+      id: `c${i}`,
+      title: `Col ${i}`,
+      cards: [],
+    }));
+    const outcome = await call(renderKanbanTool, { columns: cols });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects empty columns array', async () => {
+    const outcome = await call(renderKanbanTool, { columns: [] });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 12. dashboard-grid ────────────────────────────────────────────────
+
+describe('render-blocks.dashboard-grid', () => {
+  it('emits a UiPart for valid cells', async () => {
+    const outcome = await call(renderDashboardGridTool, {
+      cells: [
+        { span: 6, part: { kind: 'kpi-grid', tiles: [] } },
+        { span: 6, part: { kind: 'chart-vega', spec: {}, data: [] } },
+      ],
+    });
+    expectOk(outcome);
+    expect(outcome.output.cells).toHaveLength(2);
+  });
+
+  it('rejects cell with span > 12', async () => {
+    const outcome = await call(renderDashboardGridTool, {
+      cells: [{ span: 99, part: { kind: 'kpi-grid' } }],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects cell missing inner kind discriminator', async () => {
+    const outcome = await call(renderDashboardGridTool, {
+      cells: [{ span: 6, part: {} }],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 13. heatmap ───────────────────────────────────────────────────────
+
+describe('render-blocks.heatmap', () => {
+  it('emits a UiPart for valid matrix', async () => {
+    const outcome = await call(renderHeatmapTool, {
+      xAxis: ['Jan', 'Feb'],
+      yAxis: ['Property A', 'Property B'],
+      cells: [
+        [10, 20],
+        [30, 40],
+      ],
+      colorScale: 'linear',
+      format: 'count',
+    });
+    expectOk(outcome);
+    expect(outcome.output.cells).toHaveLength(2);
+  });
+
+  it('rejects mismatched row length', async () => {
+    const outcome = await call(renderHeatmapTool, {
+      xAxis: ['Jan', 'Feb'],
+      yAxis: ['A', 'B'],
+      cells: [
+        [10, 20, 30],
+        [40, 50],
+      ],
+      colorScale: 'linear',
+      format: 'count',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('requires currency code when format=currency', async () => {
+    const outcome = await call(renderHeatmapTool, {
+      xAxis: ['J'],
+      yAxis: ['A'],
+      cells: [[1]],
+      colorScale: 'linear',
+      format: 'currency',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 14. markdown-card ─────────────────────────────────────────────────
+
+describe('render-blocks.markdown-card', () => {
+  it('emits a UiPart for valid markdown + citations', async () => {
+    const outcome = await call(renderMarkdownCardTool, {
+      markdown: 'Briefing on **arrears** [cite:doc1].',
+      citations: [{ id: 'doc1', label: 'Q1 statement', sourceUri: 'https://x/y.pdf' }],
+      severity: 'warning',
+    });
+    expectOk(outcome);
+    expect(outcome.output.citations).toHaveLength(1);
+  });
+
+  it('rejects empty markdown', async () => {
+    const outcome = await call(renderMarkdownCardTool, { markdown: '' });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects unknown severity', async () => {
+    const outcome = await call(renderMarkdownCardTool, {
+      markdown: 'ok',
+      severity: 'panic',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 15. prompt-suggestions ────────────────────────────────────────────
+
+describe('render-blocks.prompt-suggestions', () => {
+  it('emits a UiPart for valid suggestions', async () => {
+    const outcome = await call(renderPromptSuggestionsTool, {
+      suggestions: [
+        { label: 'View arrears', prompt: 'show arrears', kind: 'primary' },
+        { label: 'Snooze', prompt: 'snooze ticket', kind: 'secondary' },
+      ],
+    });
+    expectOk(outcome);
+    expect(outcome.output.suggestions).toHaveLength(2);
+  });
+
+  it('rejects more than 12 suggestions', async () => {
+    const sugg = Array.from({ length: 13 }, (_, i) => ({
+      label: `L${i}`,
+      prompt: `p${i}`,
+      kind: 'secondary' as const,
+    }));
+    const outcome = await call(renderPromptSuggestionsTool, { suggestions: sugg });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects unknown kind', async () => {
+    const outcome = await call(renderPromptSuggestionsTool, {
+      suggestions: [{ label: 'X', prompt: 'y', kind: 'fancy' }],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 16. evidence-card ─────────────────────────────────────────────────
+
+describe('render-blocks.evidence-card', () => {
+  it('emits a UiPart for valid quote', async () => {
+    const outcome = await call(renderEvidenceCardTool, {
+      quote: 'Rent is due on the 1st of the month.',
+      sourceTitle: 'Lease 4B v2',
+      sourcePageOrLocator: 'page 4',
+      confidence: 'high',
+    });
+    expectOk(outcome);
+    expect(outcome.output.quote).toContain('Rent is due');
+  });
+
+  it('rejects empty quote', async () => {
+    const outcome = await call(renderEvidenceCardTool, {
+      quote: '',
+      sourceTitle: 'Lease',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects unknown confidence', async () => {
+    const outcome = await call(renderEvidenceCardTool, {
+      quote: 'q',
+      sourceTitle: 's',
+      confidence: 'absolute',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 17. tree ──────────────────────────────────────────────────────────
+
+describe('render-blocks.tree', () => {
+  it('emits a UiPart for nested tree', async () => {
+    const outcome = await call(renderTreeTool, {
+      root: {
+        id: 'p',
+        label: 'Portfolio',
+        children: [
+          { id: 'b1', label: 'Bldg 1', badge: '12 units' },
+          { id: 'b2', label: 'Bldg 2' },
+        ],
+      },
+    });
+    expectOk(outcome);
+    expect(outcome.output.root.children).toHaveLength(2);
+  });
+
+  it('rejects root missing label', async () => {
+    const outcome = await call(renderTreeTool, {
+      root: { id: 'p' },
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects action with unknown kind', async () => {
+    const outcome = await call(renderTreeTool, {
+      root: {
+        id: 'p',
+        label: 'P',
+        onClickAction: { kind: 'jump', payload: {} },
+      },
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 18. diff-view ─────────────────────────────────────────────────────
+
+describe('render-blocks.diff-view', () => {
+  it('emits a UiPart for valid diff', async () => {
+    const outcome = await call(renderDiffViewTool, {
+      left: 'rent: 45000',
+      right: 'rent: 50000',
+      leftLabel: 'Current',
+      rightLabel: 'Proposed',
+      mode: 'split',
+    });
+    expectOk(outcome);
+    expect(outcome.output.mode).toBe('split');
+  });
+
+  it('rejects unknown mode', async () => {
+    const outcome = await call(renderDiffViewTool, {
+      left: 'a',
+      right: 'b',
+      leftLabel: 'l',
+      rightLabel: 'r',
+      mode: 'overlay',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects missing labels', async () => {
+    const outcome = await call(renderDiffViewTool, {
+      left: 'a',
+      right: 'b',
+      mode: 'unified',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 19. gauge ─────────────────────────────────────────────────────────
+
+describe('render-blocks.gauge', () => {
+  it('emits a UiPart for valid gauge', async () => {
+    const outcome = await call(renderGaugeTool, {
+      value: 0.85,
+      min: 0,
+      max: 1,
+      label: 'Collection rate',
+      format: 'percent',
+    });
+    expectOk(outcome);
+    expect(outcome.output.label).toBe('Collection rate');
+  });
+
+  it('rejects min >= max', async () => {
+    const outcome = await call(renderGaugeTool, {
+      value: 5,
+      min: 10,
+      max: 5,
+      label: 'x',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('requires currency when format=currency', async () => {
+    const outcome = await call(renderGaugeTool, {
+      value: 100,
+      min: 0,
+      max: 1000,
+      label: 'NOI',
+      format: 'currency',
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 20. metric-sparkline ──────────────────────────────────────────────
+
+describe('render-blocks.metric-sparkline', () => {
+  it('emits a UiPart for valid metric + sparkline', async () => {
+    const outcome = await call(renderMetricSparklineTool, {
+      label: 'MoM rent',
+      value: 1250000,
+      format: 'currency',
+      currency: 'KES',
+      sparkline: [1.1, 1.15, 1.2, 1.18, 1.25],
+      delta: 0.05,
+      deltaIsPositive: true,
+    });
+    expectOk(outcome);
+    expect(outcome.output.sparkline).toHaveLength(5);
+  });
+
+  it('rejects sparkline with < 2 points', async () => {
+    const outcome = await call(renderMetricSparklineTool, {
+      label: 'x',
+      value: 1,
+      format: 'number',
+      sparkline: [1],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('requires currency when format=currency', async () => {
+    const outcome = await call(renderMetricSparklineTool, {
+      label: 'x',
+      value: 1,
+      format: 'currency',
+      sparkline: [1, 2],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 21. image-annotation ──────────────────────────────────────────────
+
+describe('render-blocks.image-annotation', () => {
+  it('emits a UiPart for valid image + annotations', async () => {
+    const outcome = await call(renderImageAnnotationTool, {
+      imageUrl: 'https://docs.bossnyumba.com/inspections/4b.jpg',
+      annotations: [
+        { x: 0.25, y: 0.4, label: 'Cracked tile', severity: 'warning' },
+      ],
+    });
+    expectOk(outcome);
+    expect(outcome.output.annotations).toHaveLength(1);
+  });
+
+  it('rejects out-of-range coordinates', async () => {
+    const outcome = await call(renderImageAnnotationTool, {
+      imageUrl: 'https://x/y.png',
+      annotations: [{ x: 1.5, y: 0.5, label: 'oops', severity: 'info' }],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects file:// imageUrl', async () => {
+    const outcome = await call(renderImageAnnotationTool, {
+      imageUrl: 'file:///etc/img.png',
+      annotations: [],
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── 22. signature-pad ─────────────────────────────────────────────────
+
+describe('render-blocks.signature-pad', () => {
+  it('emits a UiPart for valid signature config', async () => {
+    const outcome = await call(renderSignaturePadTool, {
+      prompt: 'Sign to accept the renewal',
+      requiredFor: 'Lease 4B renewal',
+      onSubmitAction: { kind: 'tool', payload: { tool: 'lease.sign' } },
+    });
+    expectOk(outcome);
+    expect(outcome.output.requiredFor).toContain('Lease 4B');
+  });
+
+  it('rejects unknown action kind', async () => {
+    const outcome = await call(renderSignaturePadTool, {
+      prompt: 'sign',
+      requiredFor: 'x',
+      onSubmitAction: { kind: 'submit', payload: {} },
+    });
+    expect(outcome.kind).toBe('error');
+  });
+
+  it('rejects missing prompt', async () => {
+    const outcome = await call(renderSignaturePadTool, {
+      requiredFor: 'x',
+      onSubmitAction: { kind: 'tool', payload: {} },
+    });
+    expect(outcome.kind).toBe('error');
+  });
+});
+
+// ── ProdFix-7 bundle sanity ───────────────────────────────────────────
+
+describe('createRenderBlockTools — ProdFix-7 surface', () => {
+  it('exposes all 12 new kinds under render-blocks.*', () => {
+    const bundle = createRenderBlockTools();
+    const names = bundle.all.map((t) => t.name);
+    const expected = [
+      'render-blocks.kanban',
+      'render-blocks.dashboard-grid',
+      'render-blocks.heatmap',
+      'render-blocks.markdown-card',
+      'render-blocks.prompt-suggestions',
+      'render-blocks.evidence-card',
+      'render-blocks.tree',
+      'render-blocks.diff-view',
+      'render-blocks.gauge',
+      'render-blocks.metric-sparkline',
+      'render-blocks.image-annotation',
+      'render-blocks.signature-pad',
+    ];
+    for (const name of expected) {
+      expect(names).toContain(name);
     }
   });
 });

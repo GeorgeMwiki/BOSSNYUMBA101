@@ -102,3 +102,53 @@ export function buildDegradedObject<T extends Record<string, unknown>>(
 export function markDegraded(c: Context): void {
   c.header(DEGRADED_HEADER, DEGRADED_VALUE);
 }
+
+/**
+ * Build a `501 Not Implemented` envelope for an endpoint whose downstream
+ * service has not been wired into the api-gateway composition root yet.
+ *
+ * Loud-failure pattern: a 501 forces the caller to either (a) flip the
+ * feature flag on (operator-confirmed dev mode) or (b) wait for the real
+ * wire. The previous behaviour (silent empty array) hid the gap from
+ * observability dashboards and confused operators who reasonably
+ * believed an empty response meant the tenant had no data.
+ */
+export function notImplementedFlagged(
+  c: Context,
+  flagKey: string,
+  concreteNextStep: string,
+): Response {
+  c.header(DEGRADED_HEADER, DEGRADED_VALUE);
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message:
+          `Downstream service for this endpoint is not wired. Concrete next-step: ${concreteNextStep}`,
+        flagKey,
+      },
+    },
+    501 as never,
+  );
+}
+
+/**
+ * Resolve a feature flag from the service context, defaulting to OFF
+ * when the flag service is unavailable. Off → fall through to 501.
+ */
+export async function isFlagOn(
+  c: Context,
+  flagKey: string,
+): Promise<boolean> {
+  const services = (c as unknown as { get: (k: string) => any }).get('services') ?? {};
+  const ff = services.featureFlags;
+  if (!ff || typeof ff.isEnabled !== 'function') return false;
+  try {
+    const auth = (c as unknown as { get: (k: string) => any }).get('auth');
+    const tenantId = auth?.tenantId ?? '';
+    return Boolean(await ff.isEnabled(tenantId, flagKey));
+  } catch {
+    return false;
+  }
+}

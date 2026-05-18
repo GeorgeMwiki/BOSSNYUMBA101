@@ -1,16 +1,15 @@
-import { NextResponse } from 'next/server';
+import { getApiGatewayBase, proxyJson } from '@/lib/proxy';
 
 /**
- * Privacy-budget readout.
+ * Privacy-budget readout proxy.
  *
- * TODO (graph-privacy wiring): call the platform DP-accountant in
- * `@bossnyumba/graph-privacy` to read the current ε spend in the
- * rolling window. Until that service is reachable, respond 503 so the
- * UI renders a degraded-state card — never a mock ε value.
+ * Forwards GET /api/v1/platform/budget (DP-accountant snapshot) to the
+ * api-gateway with the staff session cookie + Authorization header so
+ * the gateway can enforce HQ-tier auth upstream. The accountant lives
+ * in `@bossnyumba/graph-privacy`; the gateway composes it onto the
+ * registry via `services.privacyBudgetComposer`.
  */
-export function GET() {
-  return NextResponse.json(
-    { error: 'graph-privacy accountant not wired' },
-    { status: 503 },
-  );
+export async function GET() {
+  const base = getApiGatewayBase();
+  return proxyJson(`${base}/api/v1/platform/budget`, { method: 'GET' });
 }

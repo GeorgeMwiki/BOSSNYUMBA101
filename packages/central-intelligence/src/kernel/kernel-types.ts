@@ -258,6 +258,14 @@ export type BrainDecision =
 
 export interface SensorCallArgs {
   readonly system: string;
+  /**
+   * Alias of `system`. Some sensor adapters (and the D5 rollout-
+   * composition tests) read the composed prompt off `systemPrompt`
+   * rather than `system`. The kernel populates both with the same
+   * value so adapters can use whichever field matches their existing
+   * upstream contract.
+   */
+  readonly systemPrompt?: string;
   readonly userMessage: string;
   readonly priorTurns: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>;
   readonly extendedThinking: boolean;
@@ -401,13 +409,22 @@ export interface ProvenanceSink {
 // aggregate cross-tenant statistics.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Currency unit token for `GroundingFact.unit` — `currency-<iso>` where
+ * `<iso>` is a lowercase ISO-4217 3-letter code. e.g. `currency-tzs`,
+ * `currency-eur`, `currency-zar`. The kernel's fact-formatter parses
+ * the code out of the token and uses `Intl.NumberFormat` to render the
+ * amount with the right symbol / decimals / grouping.
+ */
+export type GroundingFactCurrencyUnit = `currency-${string}`;
+
 export interface GroundingFact {
   /** Stable id; used as a citation token in the rendered prompt. */
   readonly id: string;
   readonly label: string;
   readonly value: string | number;
   /** Optional unit for numeric values. */
-  readonly unit?: 'pct' | 'count' | 'currency-tzs' | 'currency-kes' | 'days';
+  readonly unit?: 'pct' | 'count' | GroundingFactCurrencyUnit | 'days';
   /** Source identifier — table name, service name, etc. */
   readonly source: string;
   readonly asOf: string;

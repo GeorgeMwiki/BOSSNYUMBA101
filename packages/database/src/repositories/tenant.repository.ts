@@ -1,6 +1,15 @@
 // @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * TenantRepository & UserRepository - PostgreSQL implementations for tenant and user data access.
+ *
+ * Phase D / A2b-1 — `users.email`, `users.phone`, `users.password_hash`,
+ * `users.mfa_secret` are marked `encryptAtRest: true` in the
+ * classification registry. The repository accepts an optional
+ * `EncryptionPort` + audit sink via its constructor; when present,
+ * every write/read of the `users` table is wrapped so the on-disk
+ * representation is ciphertext. `tenants` table currently has no
+ * encryptAtRest columns in the registry but the port is plumbed in
+ * for symmetry / forward-compat.
  */
 
 import { eq, and, desc, isNull, sql, like, or, count } from 'drizzle-orm';
@@ -13,11 +22,27 @@ import type {
   PaginatedResult,
 } from '@bossnyumba/domain-models';
 import { buildPaginatedResult, DEFAULT_PAGINATION } from './base.repository.js';
+import {
+  decryptRow,
+  decryptRows,
+  encryptRow,
+  type EncryptionPort,
+  type FieldEncryptionAuditSink,
+} from '../security/encryption/index.js';
+import type { RepoEncryptionDeps } from './customer.repository.js';
 
 type TenantRow = typeof tenants.$inferSelect;
 
+const USERS_TABLE = 'users';
+
 export class TenantRepository {
-  constructor(private readonly db: DatabaseClient) {}
+  constructor(
+    private readonly db: DatabaseClient,
+    _deps: RepoEncryptionDeps = {},
+  ) {
+    // tenants currently has no encrypt-at-rest columns; constructor
+    // accepts deps for symmetry so callers can pass the same shape.
+  }
 
   async findById(id: TenantId): Promise<TenantRow | null> {
     const result = await this.db
@@ -137,7 +162,41 @@ export interface UserFilters {
 }
 
 export class UserRepository {
-  constructor(private readonly db: DatabaseClient) {}
+  private readonly encPort: EncryptionPort | null;
+  private readonly encAudit: FieldEncryptionAuditSink | null;
+
+  constructor(
+    private readonly db: DatabaseClient,
+    deps: RepoEncryptionDeps = {},
+  ) {
+    this.encPort = deps.encPort ?? null;
+    this.encAudit = deps.encAudit ?? null;
+  }
+
+  private async decryptOne(
+    row: UserRow | null,
+    tenantId: TenantId | string,
+  ): Promise<UserRow | null> {
+    if (!row || !this.encPort) return row;
+    return decryptRow({
+      row,
+      table: USERS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    });
+  }
+
+  private async decryptMany(
+    rows: UserRow[],
+    tenantId: TenantId | string,
+  ): Promise<UserRow[]> {
+    if (!this.encPort || rows.length === 0) return rows;
+    return (await decryptRows(rows, {
+      table: USERS_TABLE,
+      tenantId: String(tenantId),
+      port: this.encPort,
+    })) as UserRow[];
+  }
 
   async findById(id: string, tenantId: TenantId): Promise<UserRow | null> {
     const result = await this.db
@@ -151,9 +210,16 @@ export class UserRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
+  /**
+   * NOTE: `email` is encrypted-at-rest on users. See the parallel note on
+   * CustomerRepository.findByEmail — direct WHERE-by-plaintext-email
+   * will not find encrypted rows after back-fill. Pending lookup-hash
+   * column migration; the call site is kept for back-compat with
+   * pre-encryption flows.
+   */
   async findByEmail(email: string, tenantId: TenantId): Promise<UserRow | null> {
     const result = await this.db
       .select()
@@ -166,7 +232,7 @@ export class UserRepository {
         )
       )
       .limit(1);
-    return result[0] ?? null;
+    return this.decryptOne(result[0] ?? null, tenantId);
   }
 
   async findMany(
@@ -210,13 +276,24 @@ export class UserRepository {
       .from(users)
       .where(whereClause);
 
-    return { items: rows, total, limit, offset, hasMore: offset + rows.length < total };
+    const decrypted = await this.decryptMany(rows, tenantId);
+    return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }
 
   async create(data: typeof users.$inferInsert): Promise<UserRow> {
-    const [row] = await this.db.insert(users).values(data).returning();
+    const encryptedInput = this.encPort
+      ? await encryptRow({
+          row: { ...data },
+          table: USERS_TABLE,
+          tenantId: data.tenantId ? String(data.tenantId) : null,
+          rowId: data.id ? String(data.id) : null,
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : data;
+    const [row] = await this.db.insert(users).values(encryptedInput).returning();
     if (!row) throw new Error('Failed to create user');
-    return row;
+    return (await this.decryptOne(row, data.tenantId as TenantId)) as UserRow;
   }
 
   async update(
@@ -224,9 +301,19 @@ export class UserRepository {
     tenantId: TenantId,
     data: Partial<typeof users.$inferInsert>
   ): Promise<UserRow | null> {
+    const encryptedPatch = this.encPort
+      ? await encryptRow({
+          row: { ...data },
+          table: USERS_TABLE,
+          tenantId: String(tenantId),
+          rowId: String(id),
+          port: this.encPort,
+          ...(this.encAudit ? { audit: this.encAudit } : {}),
+        })
+      : data;
     const [row] = await this.db
       .update(users)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...encryptedPatch, updatedAt: new Date() })
       .where(
         and(
           eq(users.id, id),
@@ -235,7 +322,7 @@ export class UserRepository {
         )
       )
       .returning();
-    return row ?? null;
+    return this.decryptOne(row ?? null, tenantId);
   }
 
   async delete(id: string, tenantId: TenantId, deletedBy: string): Promise<void> {

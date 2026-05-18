@@ -58,6 +58,51 @@ import {
 } from './sample-tenants.js';
 
 // ---------------------------------------------------------------------------
+// CLI parameterisation
+// ---------------------------------------------------------------------------
+//
+// BOSSNYUMBA is a global platform. The demo seed defaults to Tanzania but
+// can be re-targeted at any supported country via `--country=KE|UG|...`.
+// The runner reads this off `process.argv` so existing invocations keep
+// working unchanged. Currency / timezone / locale resolve from a small
+// inline table keyed by ISO-3166 alpha-2; this mirrors the snapshot in
+// `packages/domain-models/src/common/region-config.ts` so the seed does
+// not take a hard dependency on the domain package's plugin runtime.
+
+interface DemoSeedRegion {
+  readonly currencyCode: string;
+  readonly timezone: string;
+  readonly locale: string;
+}
+
+const DEMO_REGIONS: Readonly<Record<string, DemoSeedRegion>> = {
+  TZ: { currencyCode: 'TZS', timezone: 'Africa/Dar_es_Salaam', locale: 'sw-TZ' },
+  KE: { currencyCode: 'KES', timezone: 'Africa/Nairobi', locale: 'en-KE' },
+  UG: { currencyCode: 'UGX', timezone: 'Africa/Kampala', locale: 'en-UG' },
+  RW: { currencyCode: 'RWF', timezone: 'Africa/Kigali', locale: 'en-RW' },
+  NG: { currencyCode: 'NGN', timezone: 'Africa/Lagos', locale: 'en-NG' },
+  ZA: { currencyCode: 'ZAR', timezone: 'Africa/Johannesburg', locale: 'en-ZA' },
+};
+
+function resolveDemoCountry(): string {
+  const argv = typeof process !== 'undefined' ? process.argv ?? [] : [];
+  for (const a of argv) {
+    const m = a.match(/^--country=(.+)$/i);
+    if (m && m[1]) {
+      const upper = m[1].trim().toUpperCase();
+      if (DEMO_REGIONS[upper]) return upper;
+    }
+  }
+  return 'TZ';
+}
+
+const DEMO_COUNTRY = resolveDemoCountry();
+const DEMO_REGION = DEMO_REGIONS[DEMO_COUNTRY]!;
+const DEMO_TIMEZONE = DEMO_REGION.timezone;
+const DEMO_LOCALE = DEMO_REGION.locale;
+const DEMO_CURRENCY = DEMO_REGION.currencyCode;
+
+// ---------------------------------------------------------------------------
 // Deterministic IDs
 // ---------------------------------------------------------------------------
 export const DEMO_TENANT_ID = 'demo-tenant';
@@ -264,7 +309,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
         primaryPhone: '255222118800',
         addressLine1: 'Sample Drive',
         city: 'Dar es Salaam',
-        country: 'TZ',
+        country: DEMO_COUNTRY,
         maxUsers: 500,
         maxProperties: 2000,
         maxUnits: 10000,
@@ -344,8 +389,8 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
         displayName: 'Director General',
         status: 'active',
         isOwner: true,
-        timezone: 'Africa/Dar_es_Salaam',
-        locale: 'sw-TZ',
+        timezone: DEMO_TIMEZONE,
+        locale: DEMO_LOCALE,
         preferences: { authorityLevel: 'OWNER', title: 'Director General' },
       })
       .onConflictDoNothing();
@@ -637,11 +682,11 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           status: 'active',
           addressLine1: p.addressLine1,
           city: p.city,
-          country: 'TZ',
+          country: DEMO_COUNTRY,
           totalUnits: 1,
           occupiedUnits: 0,
           vacantUnits: 1,
-          defaultCurrency: 'TZS',
+          defaultCurrency: DEMO_CURRENCY,
           features: { demoCategory: p.type, stationCode: p.stationCode },
         })
         .onConflictDoNothing();
@@ -660,7 +705,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           type: p.type === 'bareland' ? 'other' : 'warehouse',
           status: 'vacant',
           baseRentAmount: 200_000_00, // default placeholder; overridden by leases
-          baseRentCurrency: 'TZS',
+          baseRentCurrency: DEMO_CURRENCY,
         })
         .onConflictDoNothing();
     }
@@ -681,7 +726,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           kycStatus: 'verified',
           occupation: t.occupation,
           monthlyIncome: t.monthlyIncomeTzsMinor,
-          incomeCurrency: 'TZS',
+          incomeCurrency: DEMO_CURRENCY,
           nationality: 'Tanzanian',
         })
         .onConflictDoNothing();
@@ -712,7 +757,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           startDate,
           endDate,
           rentAmount: l.monthlyRentTzsMinor,
-          rentCurrency: 'TZS',
+          rentCurrency: DEMO_CURRENCY,
           rentFrequency: 'monthly',
           rentDueDay: 1,
           securityDepositAmount: l.monthlyRentTzsMinor * l.depositMultiplier,
@@ -733,7 +778,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           name: `Rent Receivable — ${l.tenantRef}`,
           type: 'CUSTOMER_LIABILITY',
           status: 'ACTIVE',
-          currency: 'TZS',
+          currency: DEMO_CURRENCY,
           balanceMinorUnits: 0,
         })
         .onConflictDoNothing();
@@ -760,7 +805,7 @@ export async function seedDemoOrg(db: DatabaseClient): Promise<void> {
           type: 'RENT_PAYMENT',
           direction: 'CREDIT',
           amountMinorUnits: p.amountTzsMinor,
-          currency: 'TZS',
+          currency: DEMO_CURRENCY,
           balanceAfterMinorUnits: 0,
           sequenceNumber: seq++,
           effectiveDate: effective,

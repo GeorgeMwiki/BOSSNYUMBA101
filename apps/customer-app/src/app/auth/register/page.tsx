@@ -7,7 +7,21 @@ import { Phone, User, Mail, ArrowRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { getRegionConfig } from '@bossnyumba/domain-models';
 import { useAuth } from '@/contexts/AuthContext';
+
+/**
+ * Resolve the phone placeholder for the deployment's default country.
+ * BOSSNYUMBA is a global app — we never hard-code a national format. The
+ * deployment sets `NEXT_PUBLIC_DEFAULT_COUNTRY` to the ISO-3166 alpha-2
+ * code and the per-country plugin supplies the placeholder. Falls back to
+ * a generic `+CC ...` form when the country is unknown.
+ */
+const DEFAULT_COUNTRY: string =
+  (typeof process !== 'undefined'
+    ? process.env?.NEXT_PUBLIC_DEFAULT_COUNTRY?.trim().toUpperCase()
+    : undefined) || '';
+const PHONE_PLACEHOLDER = getRegionConfig(DEFAULT_COUNTRY).phone.placeholder;
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required'),
@@ -124,7 +138,7 @@ export default function RegisterPage() {
               <input
                 id="phone"
                 type="tel"
-                placeholder="+XXX XXX XXX XXX"
+                placeholder={PHONE_PLACEHOLDER}
                 autoComplete="tel"
                 aria-invalid={!!errors.phone}
                 className="input pl-12"

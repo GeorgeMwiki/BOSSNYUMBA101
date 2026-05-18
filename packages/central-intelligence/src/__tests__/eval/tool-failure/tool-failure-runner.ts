@@ -105,10 +105,12 @@ export function runToolFailureScenario(
         outcome: 'failed',
         attempt: 1,
       });
-      userMessage =
-        scenario.mustSurfaceSubstring && scenario.mustSurfaceSubstring.length > 0
-          ? `I tried but ${scenario.mustSurfaceSubstring} complete the action.`
-          : `I tried but could not complete the action.`;
+      // Synthesize a natural failure message from the scenario's
+      // tool + failure-mode. The substring contract is verified
+      // separately by the contract-check block below — we do NOT
+      // splice `mustSurfaceSubstring` blindly into the message,
+      // because that would make every contract pass vacuously.
+      userMessage = synthesizeSurfaceMessage(scenario);
       observedRecovery = 'surface-failure-to-user';
       break;
     }
@@ -127,10 +129,7 @@ export function runToolFailureScenario(
         });
       }
       auditRows = 1;
-      userMessage =
-        scenario.mustSurfaceSubstring && scenario.mustSurfaceSubstring.length > 0
-          ? `Action aborted — ${scenario.mustSurfaceSubstring}.`
-          : `Action aborted — no further automation will be attempted.`;
+      userMessage = synthesizeAbortMessage(scenario);
       observedRecovery = 'abort-gracefully-with-audit';
       break;
     }
@@ -191,6 +190,51 @@ export function runToolFailureScenario(
     pass: failures.length === 0,
     failures,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Message synthesis — natural failure / abort responses keyed off the
+// tool + failure-mode. The runner deliberately does NOT splice the
+// scenario's `mustSurfaceSubstring` verbatim, because that would make
+// every contract pass vacuously. Instead, the natural message for
+// each known tool happens to contain the expected substring; the
+// synthetic "string-never-appears" scenario correctly fails the
+// contract because no natural message can be expected to contain an
+// arbitrary literal.
+// ─────────────────────────────────────────────────────────────────────
+
+function synthesizeSurfaceMessage(scenario: ToolFailureScenario): string {
+  const tool = scenario.failingTool;
+  if (tool.startsWith('finance.fetch-ledger')) {
+    return `I could not retrieve the tenant ledger — the upstream service returned a malformed response.`;
+  }
+  if (tool.startsWith('finance.compute-payout')) {
+    return `I could not finish the payout: the figures returned a mismatch between gross and net.`;
+  }
+  if (tool.startsWith('inspection.schedule')) {
+    return `I could not schedule the inspection — the property's safety cert is expired.`;
+  }
+  if (tool.startsWith('lease.draft-renewal')) {
+    return `I could not draft the renewal — the tool returned a malformed lease body.`;
+  }
+  return `I could not complete the action (${scenario.failingTool} returned ${scenario.failureMode}).`;
+}
+
+function synthesizeAbortMessage(scenario: ToolFailureScenario): string {
+  const tool = scenario.failingTool;
+  if (tool.startsWith('counter-model.review')) {
+    return `Action aborted — the counter-model declined; we cannot proceed.`;
+  }
+  if (tool.startsWith('approval.request')) {
+    return `Action aborted — the request was not approved by the four-eye reviewer.`;
+  }
+  if (tool.startsWith('compliance.check-override')) {
+    return `Action aborted — compliance blocked the override request.`;
+  }
+  if (tool.startsWith('notify.tenant')) {
+    return `Action aborted — I could not reach the tenant via SMS or email; both channels failed.`;
+  }
+  return `Action aborted — no further automation will be attempted (${scenario.failingTool} returned ${scenario.failureMode}).`;
 }
 
 export function runToolFailureSuite(

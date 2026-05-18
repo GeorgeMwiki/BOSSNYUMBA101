@@ -101,6 +101,33 @@ export const urlsSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// Privacy Schema (A2b-3 wire #6) — PII scrubbing posture, residency.
+// Default-on means a fresh deploy ships safe without requiring ops to
+// remember the env var; ops can still flip to '0' for dev when they
+// need the raw text in traces.
+// -----------------------------------------------------------------------------
+export const privacySchema = z.object({
+  BOSSNYUMBA_PII_EXTENDED: z
+    .string()
+    .default('1')
+    .describe(
+      'When "1", the kernel scrubs GPS coords / IBAN / passport / other extended-PII formats before persisting CoT, traces, or logs.',
+    ),
+  USER_HASH_SALT: z
+    .string()
+    .optional()
+    .describe(
+      'Salt used by the OTel tracer when hashing user emails. REQUIRED in production — boot fails when missing.',
+    ),
+  AWS_REGION_BY_TENANT_OVERRIDE: z
+    .string()
+    .optional()
+    .describe(
+      'Optional comma-list mapping tenant_id:region — overrides the per-tenant `region` column for KMS key selection.',
+    ),
+});
+
+// -----------------------------------------------------------------------------
 // Combined Environment Schema
 // -----------------------------------------------------------------------------
 export const envSchema = databaseSchema
@@ -110,7 +137,8 @@ export const envSchema = databaseSchema
   .merge(notificationsSchema)
   .merge(storageSchema)
   .merge(aiSchema)
-  .merge(urlsSchema);
+  .merge(urlsSchema)
+  .merge(privacySchema);
 
 export type EnvSchema = z.infer<typeof envSchema>;
 

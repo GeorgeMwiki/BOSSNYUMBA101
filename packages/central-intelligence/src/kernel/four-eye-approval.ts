@@ -276,6 +276,17 @@ export interface ApprovalStore {
   put(record: ApprovalRecord): Promise<void>;
   get(actionId: string): Promise<ApprovalRecord | null>;
   list(filter?: { status?: ApprovalStatus }): Promise<ReadonlyArray<ApprovalRecord>>;
+  /**
+   * A2b-2 wire #5 — atomic compare-and-set on the `executed` flag.
+   *
+   * `UPDATE sovereign_approvals SET executed=true WHERE id=$1 AND
+   * executed=false RETURNING *` semantics. Returns the updated record
+   * on success, null when the CAS lost (already executed, unknown, or
+   * not-approved). Optional for back-compat; production Postgres
+   * stores MUST provide a real implementation so concurrent executors
+   * cannot both flip the flag (TOCTOU).
+   */
+  casMarkExecuted?(actionId: string): Promise<ApprovalRecord | null>;
 }
 
 export interface ApprovalGateDeps {
@@ -554,6 +565,31 @@ export function createApprovalGate(deps: ApprovalGateDeps): ApprovalGate {
     },
 
     async markExecuted(actionId) {
+      // A2b-2 wire #5 — prefer atomic CAS path. Wired against
+      // `UPDATE sovereign_approvals SET executed=true WHERE id=$1
+      // AND executed=false RETURNING *` so two concurrent executors
+      // cannot both succeed. CAS-null disambiguates downstream by
+      // re-reading the row.
+      if (deps.store.casMarkExecuted) {
+        const updated = await deps.store.casMarkExecuted(actionId);
+        if (updated) return ensureExecutedField(updated);
+        const existing = await deps.store.get(actionId);
+        if (!existing) throw new Error(`unknown action: ${actionId}`);
+        const normalised = ensureExecutedField(existing);
+        if (normalised.status !== 'approved') {
+          throw new Error(
+            `not-approved: action ${actionId} status=${normalised.status}`,
+          );
+        }
+        if (deps.logger?.warn) {
+          deps.logger.warn(
+            { actionId, tenantId: normalised.action.tenantId ?? null },
+            'approval-gate: already-executed replay attempt rejected (atomic CAS)',
+          );
+        }
+        throw new Error(`already-executed: action ${actionId}`);
+      }
+      // Legacy non-atomic fallback for in-memory test fakes only.
       const existing = await deps.store.get(actionId);
       if (!existing) throw new Error(`unknown action: ${actionId}`);
       const normalised = ensureExecutedField(existing);
@@ -718,6 +754,20 @@ export function createInMemoryApprovalStore(): ApprovalStore {
       const all = [...map.values()];
       if (!filter?.status) return all;
       return all.filter((r) => r.status === filter.status);
+    },
+    // A2b-2 wire #5 — atomic CAS surface for tests. The Node event
+    // loop already serialises the get→put pair in a single process.
+    // Production Postgres stores back this with `UPDATE ... WHERE
+    // executed=false RETURNING *` (see `sovereign_approvals`
+    // repository — wired by A2b-1).
+    async casMarkExecuted(actionId) {
+      const existing = map.get(actionId);
+      if (!existing) return null;
+      if (existing.status !== 'approved') return null;
+      if (existing.executed) return null;
+      const next: ApprovalRecord = { ...existing, executed: true };
+      map.set(actionId, next);
+      return next;
     },
   };
 }

@@ -54,12 +54,13 @@ function bearer(): string {
  * client init).
  */
 function mountWithContext(
-  overrides: { repos?: unknown; db?: unknown } = {},
+  overrides: { repos?: unknown; db?: unknown; services?: unknown } = {},
 ): Hono {
   const app = new Hono();
   app.use('*', async (c, next) => {
     if (overrides.repos !== undefined) c.set('repos', overrides.repos);
     if (overrides.db !== undefined) c.set('db', overrides.db);
+    if (overrides.services !== undefined) c.set('services', overrides.services);
     await next();
   });
   app.route('/owner', ownerPortalRouter);
@@ -437,8 +438,40 @@ describe('POST /owner/invitations/co-owner', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns invitationId + expiresAt + signed token on success', async () => {
+  it('returns 501 loud-failure when no InvitationService and flag is off', async () => {
     const app = mountWithContext({ repos: emptyRepos(), db: { execute: async () => undefined } });
+    const res = await app.request('/owner/invitations/co-owner', {
+      method: 'POST',
+      headers: {
+        Authorization: bearer(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'co@example.com',
+        role: 'co-owner',
+        propertyAccess: ['prop-1', 'prop-2'],
+      }),
+    });
+    expect(res.status).toBe(501);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_IMPLEMENTED');
+    expect(body.error.flagKey).toBe('flag.bff.owner_portal.invitations_create');
+  });
+
+  it('returns the signed token + invitationId when the dev-flag is on', async () => {
+    const services = {
+      featureFlags: {
+        async isEnabled(_t: string, k: string) {
+          return k === 'flag.bff.owner_portal.invitations_create';
+        },
+      },
+    };
+    const app = mountWithContext({
+      repos: emptyRepos(),
+      db: { execute: async () => undefined },
+      services,
+    });
     const res = await app.request('/owner/invitations/co-owner', {
       method: 'POST',
       headers: {

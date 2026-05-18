@@ -49,6 +49,16 @@ type Logger = {
 
 type DbExecutor = { execute(q: unknown): Promise<unknown> };
 
+/**
+ * Resolves the display currency for a tenant — wraps the
+ * `currency_preferences` service. Used when no payments yet exist in
+ * the period (so we can't derive the currency from completed-payment
+ * rows). The composition root supplies the implementation.
+ */
+export type StatementCurrencyResolver = {
+  resolveForTenant(tenantId: string): Promise<string>;
+};
+
 function asRows(res: unknown): readonly Record<string, unknown>[] {
   if (Array.isArray(res)) return res as Record<string, unknown>[];
   const r = (res as { rows?: unknown }).rows;
@@ -81,11 +91,25 @@ function periodWindow(year: number, month: number): {
   };
 }
 
+export type CreateDrizzleStatementAdapterOptions = {
+  /**
+   * Optional per-tenant currency resolver. When supplied, the adapter
+   * falls back to the tenant's `currency_preferences` row whenever the
+   * dominant-currency subquery returns NULL (no completed payments in
+   * the period). The literal `'XXX'` (ISO unknown) fallback has been
+   * removed: a missed resolver wire surfaces as a thrown error rather
+   * than silently producing an unreadable statement.
+   */
+  readonly currencyResolver?: StatementCurrencyResolver;
+};
+
 export function createDrizzleStatementAdapter(
   db: unknown,
   logger: Logger,
+  options: CreateDrizzleStatementAdapterOptions = {},
 ): StatementPort {
   const exec = (db as DbExecutor).execute.bind(db as DbExecutor);
+  const { currencyResolver } = options;
   return {
     async generateOwnerStatementsForPeriod(input) {
       const { tenantId, year, month } = input;
@@ -138,17 +162,45 @@ export function createDrizzleStatementAdapter(
           currency: string;
         }> = [];
 
+        // Resolve a tenant-default currency once for the period — used
+        // whenever a row has no completed payments yet (dominant_currency
+        // is NULL).
+        let tenantDefaultCurrency: string | null = null;
+        if (currencyResolver) {
+          try {
+            tenantDefaultCurrency = await currencyResolver.resolveForTenant(
+              tenantId,
+            );
+          } catch (err) {
+            logger.warn(
+              {
+                port: 'statements',
+                tenantId,
+                degraded_reason: 'currency_resolver_failed',
+                err: err instanceof Error ? err.message : String(err),
+              },
+              'monthly-close: statement-adapter currency resolver threw — will fail loudly on rows with no payments',
+            );
+          }
+        }
+
         for (const row of rows) {
           const ownerId =
             typeof row.owner_id === 'string' ? row.owner_id : null;
           if (!ownerId) continue;
 
           const grossRentMinor = toNumber(row.gross_minor);
-          const currency =
+          const dominantCurrency =
             typeof row.dominant_currency === 'string' &&
             row.dominant_currency.length > 0
               ? row.dominant_currency
-              : '';
+              : null;
+          const currency = dominantCurrency ?? tenantDefaultCurrency ?? '';
+          if (!currency) {
+            throw new Error(
+              `statement-adapter: cannot resolve currency for tenant ${tenantId} owner ${ownerId} (no completed payments AND no currencyResolver wired). Refusing to write 'XXX' to the statement.`,
+            );
+          }
 
           const statementId = `stmt_${tenantId.slice(0, 8)}_${ownerId.slice(0, 8)}_${year}_${month}_${randomUUID().slice(0, 8)}`;
           const statementNumber = `STMT-${year}-${String(month).padStart(2, '0')}-${ownerId.slice(0, 8)}`;
@@ -173,7 +225,7 @@ export function createDrizzleStatementAdapter(
               ${ownerId}, ${statementNumber},
               ${periodStart}, ${periodEnd}, 'draft',
               ${grossRentMinor}, ${grossRentMinor},
-              ${currency || 'XXX'},
+              ${currency},
               ${grossRentMinor}, NOW(), NOW()
             WHERE EXISTS (
               SELECT 1 FROM properties WHERE tenant_id = ${tenantId} AND owner_id = ${ownerId}

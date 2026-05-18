@@ -19,7 +19,7 @@ import {
   EncryptionKeyUnavailableError,
   type EncryptedBlob,
 } from '../encryption-port.js';
-import { selectEncryptionPort } from '../index.js';
+import { resolveRegionAndKey, selectEncryptionPort } from '../index.js';
 
 describe('serializeBlob / deserializeBlob', () => {
   const blob: EncryptedBlob = {
@@ -82,5 +82,54 @@ describe('selectEncryptionPort', () => {
     });
     // KMS adapter when SDK loads, libsodium when it does not — both valid.
     expect(['kms', 'libsodium']).toContain(port.kind);
+  });
+});
+
+describe('resolveRegionAndKey (tenant-region routing)', () => {
+  it('returns the default region + key when tenantRegion is absent', () => {
+    const out = resolveRegionAndKey(
+      { AWS_REGION: 'eu-west-1', AWS_KMS_KEY_ID: 'alias/default' } as never,
+      {},
+    );
+    expect(out).toEqual({ region: 'eu-west-1', kmsKeyId: 'alias/default' });
+  });
+
+  it('returns the default pair when tenantRegion matches env.AWS_REGION', () => {
+    const out = resolveRegionAndKey(
+      { AWS_REGION: 'eu-west-1', AWS_KMS_KEY_ID: 'alias/default' } as never,
+      { tenantRegion: 'eu-west-1' },
+    );
+    expect(out).toEqual({ region: 'eu-west-1', kmsKeyId: 'alias/default' });
+  });
+
+  it('uses a region-specific KMS key when KMS_KEY_<REGION> is set', () => {
+    const out = resolveRegionAndKey(
+      {
+        AWS_REGION: 'eu-west-1',
+        AWS_KMS_KEY_ID: 'alias/default',
+        KMS_KEY_AF_SOUTH_1: 'alias/za-cmk',
+      } as never,
+      { tenantRegion: 'af-south-1' },
+    );
+    expect(out).toEqual({ region: 'af-south-1', kmsKeyId: 'alias/za-cmk' });
+  });
+
+  it('falls back to AWS_KMS_KEY_ID and warns when no region-specific key set', () => {
+    const warns: Array<{ msg: string; ctx?: Record<string, unknown> }> = [];
+    const logger = {
+      info: () => undefined,
+      warn: (msg: string, ctx?: Record<string, unknown>) =>
+        warns.push(ctx ? { msg, ctx } : { msg }),
+    };
+    const out = resolveRegionAndKey(
+      { AWS_REGION: 'eu-west-1', AWS_KMS_KEY_ID: 'alias/default' } as never,
+      { tenantRegion: 'af-south-1', logger },
+    );
+    expect(out).toEqual({ region: 'af-south-1', kmsKeyId: 'alias/default' });
+    expect(warns).toHaveLength(1);
+    expect(warns[0]?.ctx).toMatchObject({
+      tenantRegion: 'af-south-1',
+      expectedEnvVar: 'KMS_KEY_AF_SOUTH_1',
+    });
   });
 });

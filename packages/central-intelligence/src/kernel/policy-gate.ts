@@ -111,7 +111,14 @@ const PII_PATTERNS: ReadonlyArray<{ kind: string; re: RegExp; replace: string }>
 ];
 
 const NUMERICAL_PATTERN = /\b\d{1,3}(?:[.,]\d+)?%/g; // 92.3% etc
-const ABSOLUTE_MONEY_PATTERN = /\b(TZS|KES|USD)\s?\d[\d,]*\b/g;
+// ISO-4217 + common informal labels. BOSSNYUMBA is global — every
+// currency we ship a plugin for must be detected here, otherwise the
+// policy gate misses a money claim. Source of truth lives in
+// packages/ai-copilot/src/security/currency-patterns.ts; replicated here
+// because central-intelligence cannot import from ai-copilot (would
+// create a backward edge).
+const ABSOLUTE_MONEY_PATTERN =
+  /\b(?:TZS|KES|UGX|RWF|NGN|ZAR|GHS|EGP|USD|EUR|GBP|CHF|JPY|CNY|INR|AUD|CAD|Ksh|KShs|Tsh|TShs|Sh|Shs)\s?\d[\d,]*(?:\.\d+)?\b/gi;
 
 const REGULATORY_TRIGGERS: ReadonlyArray<RegExp> = [
   /\bevict\w*/i,

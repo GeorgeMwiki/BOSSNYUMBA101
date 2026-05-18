@@ -25,10 +25,12 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/hono-auth';
 import { requireRole } from '../../middleware/authorization';
 import { UserRole } from '../../types/user-role';
-import { buildDegradedList, markDegraded } from './degraded-shape';
+import { buildDegradedList, isFlagOn, markDegraded, notImplementedFlagged } from './degraded-shape';
 
 const NEXT_STEP =
   'create support_tickets table (or external adapter) + SupportService.listTickets(tenantId, filters) and replace this skeleton';
+
+const FLAG_KEY = 'flag.bff.support.tickets';
 
 const app = new Hono();
 app.use('*', authMiddleware);
@@ -44,8 +46,11 @@ app.use(
   ),
 );
 
-app.get('/tickets', (c) => {
+app.get('/tickets', async (c) => {
   const auth = c.get('auth');
+  if (!(await isFlagOn(c, FLAG_KEY))) {
+    return notImplementedFlagged(c, FLAG_KEY, NEXT_STEP);
+  }
   markDegraded(c);
   return c.json(buildDegradedList(auth.tenantId, NEXT_STEP));
 });

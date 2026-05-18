@@ -24,9 +24,25 @@ import {
   useJarvisStream,
   type VoiceAudioPort,
 } from '@bossnyumba/chat-ui';
+import { AdaptiveRenderer, type AgUiUiPart } from '@bossnyumba/genui';
 import { FeedbackThumbs, type FeedbackVerdict } from '@/components/FeedbackThumbs';
 
-const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://localhost:4000';
+// Build-time guard: production deployments MUST set
+// NEXT_PUBLIC_API_GATEWAY_URL. The localhost fallback exists only so a
+// developer running `next dev` against the local gateway gets a working
+// console without explicit env wiring. Any non-development NODE_ENV
+// without the env var fails loud at module load.
+function resolveGatewayUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_GATEWAY_URL?.trim();
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'NEXT_PUBLIC_API_GATEWAY_URL is required in production builds of customer-app.',
+    );
+  }
+  return 'http://localhost:4000';
+}
+const DEFAULT_GATEWAY = resolveGatewayUrl();
 
 // UI-side cap. The gateway enforces 10 / 4 MiB per attachment as the hard
 // server-side limit; the console intentionally caps lower for tenants.
@@ -258,8 +274,13 @@ export function JarvisConsole(): JSX.Element {
             // The single-shot turn carries `decision`; the streaming
             // turn carries `finalDecision`. Coalesce so the renderer
             // stays mode-agnostic.
-            const tt = t as { decision?: any; finalDecision?: any } & typeof t;
+            const tt = t as {
+              decision?: any;
+              finalDecision?: any;
+              uiParts?: ReadonlyArray<AgUiUiPart>;
+            } & typeof t;
             const decision = tt.finalDecision ?? tt.decision;
+            const uiParts: ReadonlyArray<AgUiUiPart> = tt.uiParts ?? [];
             return (
               <div
                 key={t.id}
@@ -270,6 +291,16 @@ export function JarvisConsole(): JSX.Element {
                 }
               >
                 <div className="whitespace-pre-wrap">{t.text}</div>
+                {t.role === 'assistant' && uiParts.length > 0 ? (
+                  // ProdFix-4: render typed AG-UI uiParts through the
+                  // shared `@bossnyumba/genui` AdaptiveRenderer. Before
+                  // this fix customer-app did not surface uiParts at
+                  // all — chart-vega / kpi-grid / data-table payloads
+                  // were dropped.
+                  <div className="mt-2 flex flex-col gap-2">
+                    <AdaptiveRenderer parts={uiParts} />
+                  </div>
+                ) : null}
                 {t.role === 'assistant' && decision?.confidence ? (
                   <div className="mt-1 text-xs text-muted-foreground">
                     confidence {(decision.confidence.overall * 100).toFixed(0)}%

@@ -1,9 +1,14 @@
 /**
  * Tests for the bank-EFT placeholder adapter.
+ *
+ * Phase D update: the adapter now FAILS LOUD instead of returning a
+ * benign `'failed'` row. Valid inputs throw `EftNotConfiguredError`;
+ * invalid inputs still return `'failed'` so callers can distinguish
+ * "input was malformed" from "no bank rail bound".
  */
 import { describe, it, expect } from 'vitest';
 
-import { createEftStubAdapter } from '../eft-stub-adapter';
+import { createEftStubAdapter, EftNotConfiguredError } from '../eft-stub-adapter';
 import type { PayoutProviderInput } from '../../stub-payout-provider';
 
 const INPUT: PayoutProviderInput = {
@@ -16,45 +21,34 @@ const INPUT: PayoutProviderInput = {
 };
 
 describe('createEftStubAdapter', () => {
-  it('returns failed with eft_not_implemented for a valid input', async () => {
+  it('throws EftNotConfiguredError for a valid input (loud-failure)', async () => {
     const adapter = createEftStubAdapter();
-    const result = await adapter.send(INPUT);
-    expect(result.status).toBe('failed');
-    expect(result.failureReason).toBe('eft_not_implemented');
-    expect(result.providerRef).toContain('tenant-eft');
-    expect(result.providerRef).toContain('eft-1');
+    await expect(adapter.send(INPUT)).rejects.toBeInstanceOf(EftNotConfiguredError);
   });
 
-  it('rejects unsupported currencies when the supported list is configured', async () => {
-    const adapter = createEftStubAdapter({ supportedCurrencies: ['TZS'] });
-    const result = await adapter.send({ ...INPUT, currency: 'USD' });
-    expect(result.status).toBe('failed');
-    expect(result.failureReason).toBe('eft_unsupported_currency_USD');
-  });
-
-  it('accepts currencies in the supported list', async () => {
-    const adapter = createEftStubAdapter({ supportedCurrencies: ['TZS', 'KES'] });
-    const result = await adapter.send({ ...INPUT, currency: 'TZS' });
-    expect(result.failureReason).toBe('eft_not_implemented');
-  });
-
-  it('rejects negative amounts', async () => {
+  it('rejects negative amounts BEFORE the loud refusal', async () => {
     const adapter = createEftStubAdapter();
     const result = await adapter.send({ ...INPUT, amountMinor: -1 });
     expect(result.status).toBe('failed');
     expect(result.failureReason).toBe('eft_invalid_amount');
   });
 
-  it('rejects empty destination', async () => {
+  it('rejects empty destination BEFORE the loud refusal', async () => {
     const adapter = createEftStubAdapter();
     const result = await adapter.send({ ...INPUT, destination: '   ' });
     expect(result.status).toBe('failed');
     expect(result.failureReason).toBe('eft_missing_destination');
   });
 
-  it('preserves tenant id in the provider ref so audit rows are traceable', async () => {
+  it('surfaces tenantId in the error message so DLQ rows are traceable', async () => {
     const adapter = createEftStubAdapter();
-    const result = await adapter.send({ ...INPUT, tenantId: 'tenant-XYZ' });
-    expect(result.providerRef).toContain('tenant-XYZ');
+    let caught: unknown = null;
+    try {
+      await adapter.send({ ...INPUT, tenantId: 'tenant-XYZ' });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(EftNotConfiguredError);
+    expect((caught as Error).message).toContain('tenant-XYZ');
   });
 });

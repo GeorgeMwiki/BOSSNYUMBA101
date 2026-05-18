@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { FileSignature, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getApiBaseUrl } from '@/lib/api';
 
 interface RenewalOffer {
   readonly id: string;
@@ -26,14 +27,11 @@ interface RenewalOffer {
   readonly expiresAt: string;
 }
 
-function apiBase(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
-  if (url?.trim()) {
-    const base = url.trim().replace(/\/$/, '');
-    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
-  }
-  return 'http://localhost:4001/api/v1';
-}
+// `apiBase` hoisted into `@/lib/api`'s `getApiBaseUrl()` — single helper
+// that throws in production when `NEXT_PUBLIC_API_URL` is unset rather than
+// silently falling back to localhost. Was duplicated across 4 pages
+// (CRITICAL in `.audit/production-readiness-gaps.md`).
+const apiBase = getApiBaseUrl;
 
 function token(): string {
   return typeof window !== 'undefined'

@@ -402,6 +402,68 @@ const TABLE_BINDINGS: Readonly<Record<DsarTableName, TableBinding>> =
       },
       tenantScoped: true,
     },
+    // Phase D / A2b-1 — kernel memory tables (chat summaries + facts).
+    kernel_memory_episodic: {
+      sqlName: 'kernel_memory_episodic',
+      columns: ['id', 'tenant_id', 'user_id', 'summary', 'created_at'],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: [],
+        tenantId: ['tenant_id'],
+      },
+      tenantScoped: true,
+    },
+    kernel_memory_semantic: {
+      sqlName: 'kernel_memory_semantic',
+      columns: ['id', 'tenant_id', 'user_id', 'key', 'value', 'created_at'],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: [],
+        tenantId: ['tenant_id'],
+      },
+      tenantScoped: true,
+    },
+    tenant_identities: {
+      sqlName: 'tenant_identities',
+      columns: [
+        'id',
+        'phone_normalized',
+        'phone_country_code',
+        'email',
+        'email_verified',
+        'status',
+        'created_at',
+      ],
+      subjectColumns: {
+        customerId: ['id'],
+        email: ['email'],
+        tenantId: [],
+      },
+      tenantScoped: false,
+    },
+    employees: {
+      sqlName: 'employees',
+      columns: [
+        'id',
+        'tenant_id',
+        'user_id',
+        'employee_code',
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
+        'phone_alt',
+        'status',
+        'job_title',
+        'created_at',
+      ],
+      subjectColumns: {
+        customerId: ['user_id'],
+        email: ['email'],
+        tenantId: [],
+      },
+      tenantScoped: true,
+    },
   });
 
 // ─────────────────────────────────────────────────────────────────────

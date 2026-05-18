@@ -405,6 +405,52 @@ export function getDefaultCurrency(
   return getRegionConfig(countryCode).currencyCode;
 }
 
+/**
+ * Build a Zod phone-number validator scoped to the supplied country.
+ *
+ * When the country is known and the plugin/overlay carries a national-
+ * number regex, the schema accepts EITHER the local format (e.g.
+ * `0712345678`) or the E.164 form (e.g. `+254712345678`). When the
+ * country is unknown, falls back to a generic E.164 validator
+ * (`^\+[1-9]\d{6,14}$`) so the platform stays usable in any jurisdiction.
+ *
+ * This is the world-friendly counterpart to the legacy
+ * `tanzanianPhoneSchema` in `services/api-gateway/src/schemas/index.ts`.
+ */
+export function buildPhoneSchemaForCountry(countryCode: string | null | undefined) {
+  const cfg = getRegionConfig(countryCode);
+  const dialingCode = cfg.phone.dialingCode;
+  const placeholder = cfg.phone.placeholder;
+  const e164 = /^\+[1-9]\d{6,14}$/;
+  // When we have a national-number regex AND a dialing code, accept
+  // either `0XXXXXXXXX` (national-format with leading zero), the bare
+  // national number (e.g. `712345678`), or the E.164 form.
+  if (dialingCode) {
+    const nationalRegex = cfg.phone.nationalNumberRegex;
+    return z
+      .string()
+      .trim()
+      .min(1, 'Phone number is required')
+      .refine(
+        (raw) => {
+          if (e164.test(raw)) return true;
+          const cleaned = raw.replace(/\D/g, '');
+          const candidates = [
+            cleaned,
+            cleaned.replace(/^0/, dialingCode),
+            cleaned.startsWith(dialingCode) ? cleaned : dialingCode + cleaned,
+          ];
+          return candidates.some((c) => nationalRegex.test(c));
+        },
+        { message: `Invalid phone number. Expected ${placeholder}` },
+      );
+  }
+  return z
+    .string()
+    .trim()
+    .regex(e164, 'Invalid phone number. Use E.164 format (e.g. +255712345678)');
+}
+
 export function buildTaxpayerIdSchema(countryCode: string) {
   const cfg = getRegionConfig(countryCode);
   const base = z

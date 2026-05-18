@@ -222,6 +222,15 @@ export interface HqToolRegistryWiringDeps {
   readonly kraMriDispatcher?:
     | hqTools.SeedHqBrainToolsDeps['kraMriDispatcher']
     | null;
+  /**
+   * East-Africa identity + land-registry gateway ports. When omitted the
+   * registry threads `notYetWiredNidaPort()` / `notYetWiredEardhiPort()`
+   * stubs so the HQ tool still shapes cleanly with a deterministic
+   * `gateway-error` refusal — composition root wires the real
+   * connectors via `packages/connectors/src/adapters/{nida,eardhi}-*`.
+   */
+  readonly nida?: hqTools.SeedHqBrainToolsDeps['nida'] | null;
+  readonly eardhi?: hqTools.SeedHqBrainToolsDeps['eardhi'] | null;
   /** Caller-identity resolver — required to bind scopes to each call. */
   readonly callerResolver: HqCallerResolver;
   /** Optional OTel span recorder — wired when @opentelemetry/api is. */
@@ -345,6 +354,8 @@ export function createHqToolRegistry(
       ...(deps.kraMriDispatcher
         ? { kraMriDispatcher: deps.kraMriDispatcher }
         : {}),
+      ...(deps.nida ? { nida: deps.nida } : {}),
+      ...(deps.eardhi ? { eardhi: deps.eardhi } : {}),
     });
     depsSource = 'db';
   } else {
@@ -368,6 +379,8 @@ export function createHqToolRegistry(
     ...(deps.kraMriDispatcher
       ? { kraMriDispatcher: deps.kraMriDispatcher }
       : {}),
+    ...(deps.nida ? { nida: deps.nida } : {}),
+    ...(deps.eardhi ? { eardhi: deps.eardhi } : {}),
   };
 
   const seeded: hqTools.SeedHqBrainToolsDeps = {
@@ -421,6 +434,14 @@ export interface BuildHqDepsFromDbOptions {
   readonly evictionDispatcher?: hqTools.SeedHqBrainToolsDeps['evictionDispatcher'];
   readonly ownerPayoutDispatcher?: hqTools.SeedHqBrainToolsDeps['ownerPayoutDispatcher'];
   readonly kraMriDispatcher?: hqTools.SeedHqBrainToolsDeps['kraMriDispatcher'];
+  /**
+   * Optional NIDA + e-Ardhi gateway ports. When omitted, the
+   * NOT_YET_WIRED stubs surface a clean `gateway-error` refusal so
+   * `platform.verify_nida` / `platform.verify_eardhi_title` ship even
+   * before the real connector adapters are bound.
+   */
+  readonly nida?: hqTools.SeedHqBrainToolsDeps['nida'];
+  readonly eardhi?: hqTools.SeedHqBrainToolsDeps['eardhi'];
 }
 
 /**
@@ -500,6 +521,12 @@ export function buildHqDepsFromDb(
   const kraMriDispatcher =
     options.kraMriDispatcher ?? notYetWiredKraMriDispatcher();
 
+  // East-Africa identity + land-registry gateway ports. NOT_YET_WIRED
+  // stubs surface a deterministic gateway-error refusal until the real
+  // connector adapters land (packages/connectors/src/adapters/).
+  const nida = options.nida ?? notYetWiredNidaPort();
+  const eardhi = options.eardhi ?? notYetWiredEardhiPort();
+
   return {
     tenantsList: tenantsService,
     usersList: usersService,
@@ -516,6 +543,8 @@ export function buildHqDepsFromDb(
     evictionDispatcher,
     ownerPayoutDispatcher,
     kraMriDispatcher,
+    nida,
+    eardhi,
   };
 }
 
@@ -693,6 +722,8 @@ function buildNotYetWiredHqDeps(): Omit<
     evictionDispatcher: notYetWiredEvictionDispatcher(),
     ownerPayoutDispatcher: notYetWiredOwnerPayoutDispatcher(),
     kraMriDispatcher: notYetWiredKraMriDispatcher(),
+    nida: notYetWiredNidaPort(),
+    eardhi: notYetWiredEardhiPort(),
   };
 }
 
@@ -734,6 +765,38 @@ function notYetWiredKraMriDispatcher(): hqTools.SeedHqBrainToolsDeps['kraMriDisp
     },
     async requestRetraction() {
       throw new NotYetWiredError('kraMriDispatcher.requestRetraction');
+    },
+  };
+}
+
+/**
+ * NOT_YET_WIRED stub for the NIDA biometric gateway port. Surfaces a
+ * deterministic `gateway-error` refusal so `platform.verify_nida`
+ * ships before the real `packages/connectors/.../nida-adapter` is bound.
+ */
+function notYetWiredNidaPort(): hqTools.SeedHqBrainToolsDeps['nida'] {
+  return {
+    async verifyIdentity() {
+      return {
+        kind: 'gateway-error',
+        message: 'NIDA gateway not yet wired in api-gateway',
+      };
+    },
+  };
+}
+
+/**
+ * NOT_YET_WIRED stub for the e-Ardhi title-deed gateway port. Mirrors
+ * the same gateway-error shape so `platform.verify_eardhi_title` ships
+ * cleanly until the real connector adapter lands.
+ */
+function notYetWiredEardhiPort(): hqTools.SeedHqBrainToolsDeps['eardhi'] {
+  return {
+    async verifyTitle() {
+      return {
+        kind: 'gateway-error',
+        message: 'e-Ardhi gateway not yet wired in api-gateway',
+      };
     },
   };
 }

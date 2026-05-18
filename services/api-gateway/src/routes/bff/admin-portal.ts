@@ -107,45 +107,113 @@ app.get('/overview', async (c) => {
 // stub for a real query.
 // ----------------------------------------------------------------------------
 
+// Helper: resolve a feature flag from services.featureFlags. Defaults to
+// false (off) so 501-Not-Implemented is the loud-failure path.
+async function adminFlagOn(c: any, flagKey: string): Promise<boolean> {
+  const services = c.get('services') ?? {};
+  const ff = services.featureFlags;
+  if (!ff || typeof ff.isEnabled !== 'function') return false;
+  try {
+    const auth = c.get('auth');
+    return Boolean(await ff.isEnabled(auth?.tenantId ?? '', flagKey));
+  } catch {
+    return false;
+  }
+}
+
+function notImpl(c: any, flagKey: string, nextStep: string) {
+  c.header('X-Backend-Status', 'degraded');
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message: `Downstream service for this endpoint is not wired. Concrete next-step: ${nextStep}`,
+        flagKey,
+      },
+    },
+    501,
+  );
+}
+
 // GET /webhooks — outbound webhook subscriptions registry.
-// TODO(api-gateway, ADMIN-BFF-001): wire to webhook-delivery service /
-//   outbound-webhooks table once the read endpoint lands. Today only
-//   the inbound delivery receipt path (`/notification-webhooks/*`) and
-//   the DLQ (`/webhooks` from createWebhookDlqRouter) exist; the
-//   registry of subscriptions a tenant has configured is not exposed.
-//   Concrete next-step: expose `repos.outboundWebhooks.findMany(tenantId)`
-//   from @bossnyumba/database and call it here scoped to auth.tenantId.
-app.get('/webhooks', (c) => {
+// ADMIN-BFF-001: real wire when `repos.outboundWebhooks.findMany` exists.
+// Otherwise: loud-fail 501 unless the per-tenant feature flag is on.
+app.get('/webhooks', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos') as { outboundWebhooks?: { findMany?: Function } } | undefined;
+  const findMany = repos?.outboundWebhooks?.findMany;
+  if (typeof findMany === 'function') {
+    const rows = await findMany.call(repos!.outboundWebhooks, auth.tenantId);
+    return c.json({ success: true, data: rows ?? [] });
+  }
+  if (!(await adminFlagOn(c, 'flag.bff.admin_portal.webhooks'))) {
+    return notImpl(
+      c,
+      'flag.bff.admin_portal.webhooks',
+      'expose repos.outboundWebhooks.findMany(tenantId) and call it here',
+    );
+  }
   return c.json({ success: true, data: [] });
 });
 
 // GET /api-keys — tenant-scoped API key listing.
-// TODO(api-gateway, ADMIN-BFF-002): wire to assertApiKeyConfig registry.
-//   The current `api-key-registry` middleware enforces presence at boot
-//   but does not expose a list/CRUD surface for the UI. Concrete
-//   next-step: add `apiKeyRegistry.listForTenant(tenantId)` returning
-//   { keyId, label, lastUsedAt } (never the secret) and call it here.
-app.get('/api-keys', (c) => {
+// ADMIN-BFF-002: real wire when an api-key registry exposes listForTenant.
+app.get('/api-keys', async (c) => {
+  const auth = c.get('auth');
+  const services = c.get('services') as { apiKeyRegistry?: { listForTenant?: Function } } | undefined;
+  const list = services?.apiKeyRegistry?.listForTenant;
+  if (typeof list === 'function') {
+    const rows = await list.call(services!.apiKeyRegistry, auth.tenantId);
+    return c.json({ success: true, data: rows ?? [] });
+  }
+  if (!(await adminFlagOn(c, 'flag.bff.admin_portal.api_keys'))) {
+    return notImpl(
+      c,
+      'flag.bff.admin_portal.api_keys',
+      'add apiKeyRegistry.listForTenant(tenantId) returning { keyId, label, lastUsedAt }',
+    );
+  }
   return c.json({ success: true, data: [] });
 });
 
 // GET /roles — tenant-scoped roles read-model.
-// TODO(api-gateway, ADMIN-BFF-003): wire to a Drizzle query over
-//   `roles` once the role listing is gated behind the same RBAC
-//   predicates the assignment flow uses. Concrete next-step: select
-//   from `roles` where tenantId = auth.tenantId, returning
-//   { id, name, scope }. Returning empty here until then so the page
-//   renders.
-app.get('/roles', (c) => {
+// ADMIN-BFF-003: real wire when `repos.roles.findMany` exists.
+app.get('/roles', async (c) => {
+  const auth = c.get('auth');
+  const repos = c.get('repos') as { roles?: { findMany?: Function } } | undefined;
+  const findMany = repos?.roles?.findMany;
+  if (typeof findMany === 'function') {
+    const rows = await findMany.call(repos!.roles, auth.tenantId);
+    return c.json({ success: true, data: rows ?? [] });
+  }
+  if (!(await adminFlagOn(c, 'flag.bff.admin_portal.roles'))) {
+    return notImpl(
+      c,
+      'flag.bff.admin_portal.roles',
+      'select id,name,scope from roles where tenantId = auth.tenantId via repos.roles.findMany',
+    );
+  }
   return c.json({ success: true, data: [] });
 });
 
 // GET /roles/audit — recent role change audit entries.
-// TODO(api-gateway, ADMIN-BFF-004): wire to audit-trail
-//   (`/audit-trail/entries?eventType=role_change&tenantId=...`) once
-//   that filter is exposed by the audit-trail router. Today the audit
-//   trail does not expose a typed eventType filter.
-app.get('/roles/audit', (c) => {
+// ADMIN-BFF-004: real wire when audit trail exposes a typed eventType filter.
+app.get('/roles/audit', async (c) => {
+  const auth = c.get('auth');
+  const services = c.get('services') as { auditTrail?: { findByEventType?: Function } } | undefined;
+  const findByEventType = services?.auditTrail?.findByEventType;
+  if (typeof findByEventType === 'function') {
+    const rows = await findByEventType.call(services!.auditTrail, auth.tenantId, 'role_change');
+    return c.json({ success: true, data: rows ?? [] });
+  }
+  if (!(await adminFlagOn(c, 'flag.bff.admin_portal.roles_audit'))) {
+    return notImpl(
+      c,
+      'flag.bff.admin_portal.roles_audit',
+      'expose audit-trail filter by eventType=role_change scoped to tenantId',
+    );
+  }
   return c.json({ success: true, data: [] });
 });
 

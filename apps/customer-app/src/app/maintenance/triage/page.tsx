@@ -23,6 +23,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getApiBaseUrl } from '@/lib/api';
 
 // ─────────────────────────────────────────────────────────────────────
 // Local mirror of the triage tree (kept in sync with
@@ -246,14 +247,11 @@ const TREE: { rootNodeId: string; nodes: Record<string, Node> } = {
 // API helper
 // ─────────────────────────────────────────────────────────────────────
 
-function apiBase(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL;
-  if (url && url.trim()) {
-    const base = url.trim().replace(/\/$/, '');
-    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
-  }
-  return 'http://localhost:4001/api/v1';
-}
+// `apiBase` hoisted into `@/lib/api`'s `getApiBaseUrl()` — single helper
+// that throws in production when `NEXT_PUBLIC_API_URL` is unset rather than
+// silently falling back to localhost. Was duplicated across 4 pages
+// (CRITICAL in `.audit/production-readiness-gaps.md`).
+const apiBase = getApiBaseUrl;
 
 interface Turn {
   readonly nodeId: string;

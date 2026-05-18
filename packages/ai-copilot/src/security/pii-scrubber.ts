@@ -23,6 +23,7 @@
 export type PiiType =
   | 'national_id'
   | 'tin_number'
+  | 'kra_pin'
   | 'phone_number'
   | 'email'
   | 'credit_card'
@@ -72,6 +73,14 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     type: 'tin_number',
     regex: /\bTIN[\s:]*\d{3}[-\s]?\d{3}[-\s]?\d{3}\b/i,
     replacement: '[TIN]',
+  },
+  // Kenya KRA PIN — A2b-2 wire #3. 11 chars: uppercase letter + 9
+  // digits + uppercase letter. Narrow shape to avoid product SKU
+  // collisions.
+  {
+    type: 'kra_pin',
+    regex: /\b[A-Z]\d{9}[A-Z]\b/,
+    replacement: '<kra-pin:redacted>',
   },
   // Kenya +254 mobiles.
   {
@@ -191,22 +200,27 @@ const CONTEXT_PATTERNS: readonly ContextPattern[] = [
     type: 'national_id',
     replacement: '[NIDA_ID]',
   },
+  // A2b-2 wire #3 — KRA PIN context-aware: English + Swahili.
+  // Trigger phrase first, then the canonical 11-char PIN in tail.
+  {
+    regex:
+      /(?:my\s+kra(?:\s+pin)?(?:\s+is)?|nambari\s+yangu\s+ya\s+kra(?:\s+ni)?|kra\s+pin\s+is)\s+/i,
+    piiRegex: /[A-Z]\d{9}[A-Z]/,
+    type: 'kra_pin',
+    replacement: '<kra-pin:redacted>',
+  },
 ];
 
-// Monetary patterns — we do not scrub monetary amounts.
-const MONETARY_PATTERNS: readonly RegExp[] = [
-  /\bTSh\s*[\d,]+/i,
-  /\bTZS\s*[\d,]+/i,
-  /\bKSh\s*[\d,]+/i,
-  /\bKES\s*[\d,]+/i,
-  /\$\s*[\d,]+/,
-  /\bUSD\s*[\d,]+/i,
-  /[\d,]+\s*(?:shillings?|shilingi|laki|elfu|milioni|bilioni)\b/i,
-];
+// Monetary patterns — we do not scrub monetary amounts. The pattern set
+// is centralised in `./currency-patterns.ts` so every detector across the
+// codebase (policy-gate, self-rag, sovereign-action-ledger) shares the
+// same global ISO-4217 + symbol coverage.
+import { MONETARY_PATTERNS as SHARED_MONETARY_PATTERNS } from './currency-patterns.js';
+const MONETARY_PATTERNS: readonly RegExp[] = SHARED_MONETARY_PATTERNS;
 
 // Placeholders we emit — never re-scrub them.
 const PLACEHOLDER_RX =
-  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB)\]/;
+  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB)\]|<kra-pin:redacted>/;
 
 // ---------------------------------------------------------------------------
 // Helpers

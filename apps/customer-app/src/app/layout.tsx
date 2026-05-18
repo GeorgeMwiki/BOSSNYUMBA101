@@ -16,21 +16,18 @@ export const metadata: Metadata = {
   applicationName: 'BossNyumba',
   manifest: '/manifest.json',
   metadataBase: (() => {
-    // NEXT_PUBLIC_APP_URL is baked into the bundle at build time. When
-    // absent we fall back to a sensible default rather than hard-failing
-    // the build — production deployments supply the real value via their
-    // CI/CD pipeline. A missing value in a real prod deploy is a config
-    // bug that surfaces as wrong absolute URLs in OG tags, not a hard
-    // crash. Warn once at module load so it shows up in build logs.
+    // NEXT_PUBLIC_APP_URL is baked into the bundle at build time. We
+    // REFUSE TO BUILD a production bundle without it — silent absolute-URL
+    // breakage in OG tags / metadata is a P0 brand bug (CRITICAL in
+    // `.audit/production-readiness-gaps.md`). Outside production we fall
+    // back to the dev port so local builds still work.
     const url = process.env.NEXT_PUBLIC_APP_URL?.trim();
     if (url) return new URL(url);
     if (process.env.NODE_ENV === 'production') {
-      // eslint-disable-next-line no-console
-      console.warn(
-        'customer-app: NEXT_PUBLIC_APP_URL not set — falling back to ' +
-          'https://app.bossnyumba.com. Set this env var in your deploy target.'
+      throw new Error(
+        'customer-app: NEXT_PUBLIC_APP_URL is required in production — ' +
+          'set it on the deploy target so OG / metadata URLs are absolute.'
       );
-      return new URL('https://app.bossnyumba.com');
     }
     return new URL('http://localhost:3002');
   })(),

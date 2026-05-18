@@ -178,10 +178,12 @@ export function createVoiceConsistencyProbe(
           worstDim = dim;
         }
       }
-      const aggregate = Math.min(
-        1,
-        Math.sqrt(sqSum / VOICE_FEATURE_DIMS.length),
-      );
+      // Aggregate drift = L2 norm of the per-dim normalised drift
+      // vector (clamped to [0,1]). A pure L2 lets several moderate
+      // dim drifts compound to breach the aggregate threshold even
+      // when no single dim is above the per-dim ceiling — the case
+      // voice synthesis defects actually look like in production.
+      const aggregate = Math.min(1, Math.sqrt(sqSum));
 
       const perDimThreshold =
         input.perDimThreshold ?? DEFAULT_PER_DIM_THRESHOLD;

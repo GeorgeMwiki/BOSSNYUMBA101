@@ -30,6 +30,32 @@ export interface PatternMatch {
 }
 
 // ============================================================================
+// Phone-prefix table
+// ============================================================================
+//
+// Source of truth for the country dialing codes we extract from raw text.
+// Each entry carries the ISO-3166 alpha-2 code, the international dialing
+// prefix, and the national-format leading digit(s) we accept after `0`.
+//
+// IMPORTANT — this list is the bridge to `getJurisdictionalRules(country)`
+// in `packages/domain-models/src/common/jurisdictional-rules.ts` (landing
+// in ProdFix-5). Once that module merges, swap this constant for a
+// runtime read so adding a new country no longer requires touching the
+// extractor.
+export const KNOWN_PHONE_PREFIXES: readonly {
+  readonly country: string;
+  readonly dialing: string;
+  readonly national: string; // regex fragment, no anchors
+}[] = Object.freeze([
+  { country: 'TZ', dialing: '255', national: '[67]\\d{8}' },
+  { country: 'KE', dialing: '254', national: '[17]\\d{8}' },
+  { country: 'UG', dialing: '256', national: '[37]\\d{8}' },
+  { country: 'RW', dialing: '250', national: '[78]\\d{8}' },
+  { country: 'ZA', dialing: '27', national: '[678]\\d{8}' },
+  { country: 'NG', dialing: '234', national: '[789]\\d{9}' },
+]);
+
+// ============================================================================
 // Patterns
 // ============================================================================
 

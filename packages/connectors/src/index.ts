@@ -45,6 +45,31 @@ export {
   type FetchScoreInput,
 } from './adapters/credit-bureau-adapter.js';
 
+export {
+  createNidaAdapter,
+  NidaNumberSchema,
+  BiometricHashSchema,
+  VerifyIdentityInputSchema,
+  VerifyIdentityOutputSchema,
+  type NidaAdapter,
+  type NidaAdapterDeps,
+  type VerifyIdentityInput,
+  type VerifyIdentityOutput,
+} from './adapters/nida-adapter.js';
+
+export {
+  createEardhiAdapter,
+  TitleNumberSchema,
+  VerifyTitleInputSchema,
+  VerifyTitleOutputSchema,
+  EncumbranceSchema,
+  type EardhiAdapter,
+  type EardhiAdapterDeps,
+  type VerifyTitleInput,
+  type VerifyTitleOutput,
+  type Encumbrance,
+} from './adapters/eardhi-adapter.js';
+
 export * from './registry.js';
 export * from './orchestrator.js';
 export * from './health-scheduler.js';

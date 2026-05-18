@@ -140,10 +140,20 @@ export function computeRiskScore(input: ScreeningInput): number {
 
   const evictionPenalty = Math.min(400, input.evictionRecord.evictionsLast5y * 200);
   const settledOffset = input.evictionRecord.arrearsSettled ? 50 : 0;
+  // Verified-employer bonus — strong signal of payment reliability.
+  // Mirrors the SafeRent / Findigs heuristic that an employer-verified
+  // applicant outperforms a same-income unverified applicant by ~30
+  // points on the blended-credit scale.
+  const employerVerifiedBonus = input.employment.employerVerified ? 30 : 0;
 
   return Math.max(
     0,
-    Math.min(1000, Math.round(blended - evictionPenalty + settledOffset)),
+    Math.min(
+      1000,
+      Math.round(
+        blended - evictionPenalty + settledOffset + employerVerifiedBonus,
+      ),
+    ),
   );
 }
 

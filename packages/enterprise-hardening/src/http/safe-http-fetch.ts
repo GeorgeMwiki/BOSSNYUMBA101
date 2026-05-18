@@ -24,6 +24,8 @@
  * caller-side audit log; this module merely enforces the boundary.
  */
 
+import { promises as dnsP, type LookupAddress } from 'node:dns';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -68,6 +70,15 @@ export interface SafeHttpFetchOptions {
    * was called without spinning up a real network listener.
    */
   readonly fetchImpl?: typeof fetch;
+  /**
+   * Injectable DNS lookup (defaults to `node:dns/promises#lookup`). Lets
+   * tests simulate DNS-rebinding scenarios — first resolution must be
+   * pinned and reused, so a poisoned second resolution can't sneak the
+   * request to an internal IP.
+   */
+  readonly dnsLookup?: (
+    host: string,
+  ) => Promise<ReadonlyArray<LookupAddress>>;
 }
 
 export interface SafeHttpFetchResult {
@@ -132,6 +143,45 @@ function isInternalHost(host: string): boolean {
   return false;
 }
 
+/**
+ * Resolve `host` via DNS and return the first internal IP (if any) plus
+ * the full address set. Closes the SSRF gap where a hostname whose
+ * A-record points to RFC1918 / link-local addresses would bypass the
+ * string-only check.
+ *
+ * For literal IPs we skip the DNS round-trip — `isInternalHost` has
+ * already screened them.
+ */
+async function resolveAndScreen(
+  host: string,
+  lookup: (host: string) => Promise<ReadonlyArray<LookupAddress>>,
+): Promise<{
+  readonly internalHit: LookupAddress | null;
+  readonly all: ReadonlyArray<LookupAddress>;
+}> {
+  if (/^[\d.]+$/.test(host) || host.includes(':')) {
+    return { internalHit: null, all: [] };
+  }
+  let addresses: ReadonlyArray<LookupAddress>;
+  try {
+    addresses = await lookup(host);
+  } catch {
+    return { internalHit: null, all: [] };
+  }
+  for (const a of addresses) {
+    const isInternal =
+      a.family === 6 ? isInternalIPv6(a.address) : isInternalIPv4(a.address);
+    if (isInternal) {
+      return { internalHit: a, all: addresses };
+    }
+  }
+  return { internalHit: null, all: addresses };
+}
+
+const defaultDnsLookup = async (
+  host: string,
+): Promise<ReadonlyArray<LookupAddress>> => dnsP.lookup(host, { all: true });
+
 // ---------------------------------------------------------------------------
 // Allowlist matching
 // ---------------------------------------------------------------------------
@@ -191,7 +241,7 @@ export async function safeHttpFetch(
       `port ${port} not in [${allowedPorts.join(', ')}]`,
     );
   }
-  // 3) Internal-IP / hostname denylist.
+  // 3) Internal-IP / hostname denylist (string-only short-circuit).
   // Hostname can include zone (e.g. fe80::1%eth0); strip brackets for v6.
   const rawHost = parsed.hostname.replace(/^\[|\]$/g, '');
   if (isInternalHost(rawHost)) {
@@ -199,6 +249,18 @@ export async function safeHttpFetch(
       'denied-internal-ip',
       url,
       `host "${rawHost}" resolves to an internal / reserved range`,
+    );
+  }
+  // 3b) DNS-resolved IP screening — closes the gap where a hostname
+  // has an A-record pointing to a private range (e.g. `localtest.me`
+  // → 127.0.0.1) that the string-only check can't see.
+  const lookup = options.dnsLookup ?? defaultDnsLookup;
+  const { internalHit } = await resolveAndScreen(rawHost, lookup);
+  if (internalHit) {
+    throw new SafeHttpFetchError(
+      'denied-internal-ip',
+      url,
+      `host "${rawHost}" resolved to internal IP ${internalHit.address}`,
     );
   }
   // 4) Allowlist (when present).
@@ -255,10 +317,92 @@ export async function safeHttpFetch(
 }
 
 // ---------------------------------------------------------------------------
+// Pure URL-safety assertion — usable from any caller that wants the
+// `safeHttpFetch` policy without committing to its fetch shape (e.g.
+// webhook-delivery, which has its own injectable fetch port).
+// ---------------------------------------------------------------------------
+
+export interface AssertUrlSafeOptions {
+  readonly allowlist?: ReadonlyArray<string>;
+  readonly allowedPorts?: ReadonlyArray<number>;
+  readonly allowedSchemes?: ReadonlyArray<string>;
+  readonly dnsLookup?: (
+    host: string,
+  ) => Promise<ReadonlyArray<LookupAddress>>;
+}
+
+/**
+ * Verify that `url` is safe to dispatch — scheme, port, internal-host
+ * string-gate, DNS-resolved IP gate, and (optional) allowlist. Throws
+ * `SafeHttpFetchError` on the first failure. Used by `safeHttpFetch`
+ * itself; also exported so peers like the webhook-delivery dispatcher
+ * can apply the exact same policy without depending on the fetch port.
+ */
+export async function assertUrlSafe(
+  url: string,
+  options: AssertUrlSafeOptions = {},
+): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new SafeHttpFetchError('invalid-url', url, 'URL parse failed');
+  }
+  const allowedSchemes = options.allowedSchemes ?? DEFAULT_ALLOWED_SCHEMES;
+  if (!allowedSchemes.includes(parsed.protocol)) {
+    throw new SafeHttpFetchError(
+      'unsupported-scheme',
+      url,
+      `scheme "${parsed.protocol}" not in [${allowedSchemes.join(', ')}]`,
+    );
+  }
+  const allowedPorts = options.allowedPorts ?? DEFAULT_ALLOWED_PORTS;
+  const port =
+    parsed.port !== ''
+      ? Number(parsed.port)
+      : parsed.protocol === 'https:'
+        ? 443
+        : 80;
+  if (!allowedPorts.includes(port)) {
+    throw new SafeHttpFetchError(
+      'denied-port',
+      url,
+      `port ${port} not in [${allowedPorts.join(', ')}]`,
+    );
+  }
+  const rawHost = parsed.hostname.replace(/^\[|\]$/g, '');
+  if (isInternalHost(rawHost)) {
+    throw new SafeHttpFetchError(
+      'denied-internal-ip',
+      url,
+      `host "${rawHost}" resolves to an internal / reserved range`,
+    );
+  }
+  const lookup = options.dnsLookup ?? defaultDnsLookup;
+  const { internalHit } = await resolveAndScreen(rawHost, lookup);
+  if (internalHit) {
+    throw new SafeHttpFetchError(
+      'denied-internal-ip',
+      url,
+      `host "${rawHost}" resolved to internal IP ${internalHit.address}`,
+    );
+  }
+  const allowlist = options.allowlist ?? [];
+  if (!matchesAllowlist(rawHost, allowlist)) {
+    throw new SafeHttpFetchError(
+      'denied-not-in-allowlist',
+      url,
+      `host "${rawHost}" not in allowlist`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostic helpers (exported for tests)
 // ---------------------------------------------------------------------------
 
 export const __internals = {
   isInternalHost,
   matchesAllowlist,
+  resolveAndScreen,
 };
