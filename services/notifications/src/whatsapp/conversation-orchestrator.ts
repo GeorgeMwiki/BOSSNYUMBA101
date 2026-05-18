@@ -618,6 +618,7 @@ export class ConversationOrchestrator {
         sessionPhoneNumber: session.phoneNumber,
         missing,
       });
+      // eslint-disable-next-line no-secrets/no-secrets -- template registry path, not a secret
       throw new TemplateContextIncomplete('ONBOARDING_TEMPLATES.confirmationSummary', missing);
     }
 

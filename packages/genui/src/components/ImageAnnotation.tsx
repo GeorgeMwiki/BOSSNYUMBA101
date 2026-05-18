@@ -35,7 +35,6 @@ export function ImageAnnotation(props: ImageAnnotationProps): JSX.Element {
       {...(props.title ? { title: props.title } : {})}
     >
       <div className="relative inline-block max-w-full">
-        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative annotated image */}
         <img
           src={props.imageUrl}
           alt={props.title ?? 'annotated image'}

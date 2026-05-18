@@ -99,6 +99,7 @@ export function getOcrProviderFromEnv(
   if (!rawProvider) {
     if (nodeEnv !== 'test') {
       throw new ProviderUnavailableError(
+        // eslint-disable-next-line no-secrets/no-secrets -- documented enum values, not a secret
         'OCR_PROVIDER not configured — set OCR_PROVIDER=mock|aws_textract|google_vision. ' +
           'Mock fixtures are only allowed in NODE_ENV=test; staging / QA / production ' +
           'must point at a real OCR vendor.'

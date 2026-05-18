@@ -343,8 +343,13 @@ describe('client schemas — file-preview', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('genui PART_SCHEMAS surface', () => {
-  it('covers exactly 10 primitive kinds', () => {
-    expect(Object.keys(PART_SCHEMAS)).toHaveLength(10);
+  it('covers at least the 10 base primitive kinds (Tier-1)', () => {
+    // ProdFix-7 expanded the catalogue from 10 → 22 (added kanban,
+    // dashboard-grid, heatmap, markdown-card, prompt-suggestions,
+    // evidence-card, tree, diff-view, gauge, metric-sparkline,
+    // image-annotation, signature-pad). The assertion is an at-least
+    // lower-bound so future Tier-3 additions don't break it.
+    expect(Object.keys(PART_SCHEMAS).length).toBeGreaterThanOrEqual(10);
   });
 
   it('covers every primitive the brain can emit', () => {

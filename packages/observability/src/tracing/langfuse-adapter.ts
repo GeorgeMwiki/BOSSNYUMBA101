@@ -141,6 +141,10 @@ export async function loadLangfuseClient(): Promise<LangfuseSdkLoadResult> {
   try {
     // Indirect dynamic import — keeps `langfuse` off the static dep
     // graph so tsc / vitest don't fail when the package is absent.
+    // This is the intentional "dynamic-import dodge" pattern; it is
+    // NOT eval of user input — the literal `return import(specifier)`
+    // body is fixed at module-load time.
+    // eslint-disable-next-line no-new-func -- intentional dynamic-import dodge for optional peer-dep
     const dynamicImport = new Function(
       'specifier',
       'return import(specifier)',
