@@ -21,6 +21,7 @@
     "uat:walkthrough": "bash scripts/uat-walkthrough.sh",
     "openapi:export": "pnpm -F @bossnyumba/api-gateway openapi:export",
     "audit:fix": "pnpm audit --audit-level=high",
+    "audit:jurisdictional": "node scripts/audit-jurisdictional-literals.mjs",
     "migrate": "pnpm -C packages/database db:migrate",
     "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts"
   },

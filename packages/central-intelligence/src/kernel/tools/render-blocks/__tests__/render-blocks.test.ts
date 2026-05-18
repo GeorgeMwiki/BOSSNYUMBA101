@@ -458,9 +458,9 @@ describe('render-blocks.file-preview', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('createRenderBlockTools bundle', () => {
-  it('returns all 22 tools registered under render-blocks.*', () => {
+  it('returns all 35 tools registered under render-blocks.* (10 original + 12 ProdFix-7 + 13 Phase E.7)', () => {
     const bundle = createRenderBlockTools();
-    expect(bundle.all).toHaveLength(22);
+    expect(bundle.all).toHaveLength(35);
     for (const t of bundle.all) {
       expect(t.name.startsWith('render-blocks.')).toBe(true);
       expect(t.scopes).toContain('platform');

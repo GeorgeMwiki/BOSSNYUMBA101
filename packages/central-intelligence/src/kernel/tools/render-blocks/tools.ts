@@ -37,6 +37,20 @@ import {
   MetricSparklinePartSchema,
   ImageAnnotationPartSchema,
   SignaturePadPartSchema,
+  // Phase E.7
+  PdfViewerPartSchema,
+  SliderInputPartSchema,
+  MultistepWizardPartSchema,
+  MediaGridPartSchema,
+  ChatEmbedPartSchema,
+  LiveCounterPartSchema,
+  OrgChartPartSchema,
+  ComparisonTablePartSchema,
+  GeoFencePartSchema,
+  NotificationToastPartSchema,
+  DecisionTracePartSchema,
+  CodeBlockPartSchema,
+  DataflowDiagramPartSchema,
 } from './schemas.js';
 import type { AgUiUiPartByKind } from './ag-ui-types.js';
 import type { Tool } from '../../../types.js';
@@ -865,6 +879,372 @@ export const renderSignaturePadTool: Tool<unknown, AgUiUiPartByKind<'signature-p
     },
   });
 
+// ═════════════════════════════════════════════════════════════════════
+// Phase E.7 — 13 new tools (formerly ProdFix-8 TODO)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 23. pdf-viewer ────────────────────────────────────────────────────
+
+export const renderPdfViewerTool: Tool<unknown, AgUiUiPartByKind<'pdf-viewer'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'pdf-viewer'>>({
+    name: 'render-blocks.pdf-viewer',
+    kind: 'pdf-viewer',
+    description:
+      'Render a full PDF viewer with pan/zoom + optional annotate toggle. ' +
+      'Use for signed leases, KRA receipts, owner statements where the user ' +
+      'needs to read across multiple pages (vs. file-preview which is ' +
+      'thumbnail-only).',
+    schema: PdfViewerPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['url', 'name'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        url: { type: 'string' },
+        name: { type: 'string' },
+        initialPage: { type: 'integer', minimum: 1 },
+        allowAnnotate: { type: 'boolean' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 24. slider-input ──────────────────────────────────────────────────
+
+export const renderSliderInputTool: Tool<unknown, AgUiUiPartByKind<'slider-input'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'slider-input'>>({
+    name: 'render-blocks.slider-input',
+    kind: 'slider-input',
+    description:
+      'Render a range slider for the user to tune a numeric value. Use ' +
+      'for rent-negotiation what-ifs, budget-allocation, threshold ' +
+      'tweaks. The component dispatches the configured tool/message on ' +
+      'change.',
+    schema: SliderInputPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['label', 'min', 'max', 'value', 'onChangeAction'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        label: { type: 'string' },
+        min: { type: 'number' },
+        max: { type: 'number' },
+        step: { type: 'number' },
+        value: { type: 'number' },
+        format: { type: 'string', enum: ['number', 'currency', 'percent'] },
+        currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+        onChangeAction: {
+          type: 'object',
+          required: ['kind', 'payload'],
+          properties: {
+            kind: { type: 'string', enum: ['tool', 'message'] },
+            payload: { type: 'object' },
+          },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 25. multistep-wizard ──────────────────────────────────────────────
+
+export const renderMultistepWizardTool: Tool<unknown, AgUiUiPartByKind<'multistep-wizard'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'multistep-wizard'>>({
+    name: 'render-blocks.multistep-wizard',
+    kind: 'multistep-wizard',
+    description:
+      'Render an N-step wizard with retained state between steps. Use ' +
+      'for tenant onboarding, multi-page applications, structured data ' +
+      'capture that benefits from progressive disclosure. The wizard ' +
+      'POSTs the aggregated values to onSubmitAction (api-gateway URL).',
+    schema: MultistepWizardPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['steps', 'onSubmitAction'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        steps: { type: 'array', items: { type: 'object' } },
+        currentStepId: { type: 'string' },
+        values: { type: 'object' },
+        onSubmitAction: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 26. media-grid ────────────────────────────────────────────────────
+
+export const renderMediaGridTool: Tool<unknown, AgUiUiPartByKind<'media-grid'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'media-grid'>>({
+    name: 'render-blocks.media-grid',
+    kind: 'media-grid',
+    description:
+      'Render a photo / image gallery as a grid with a lightbox. Use for ' +
+      'property photos, inspection albums, damage-finding photo evidence.',
+    schema: MediaGridPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['items'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        items: { type: 'array', items: { type: 'object' } },
+        columns: { type: 'integer', minimum: 1, maximum: 8 },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 27. chat-embed ────────────────────────────────────────────────────
+
+export const renderChatEmbedTool: Tool<unknown, AgUiUiPartByKind<'chat-embed'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'chat-embed'>>({
+    name: 'render-blocks.chat-embed',
+    kind: 'chat-embed',
+    description:
+      'Embed a scoped sub-chat inside the current admin turn. Useful when ' +
+      'a side-topic warrants its own short transcript without polluting ' +
+      'the main thread. Messages dispatch via genui:chat-embed-message ' +
+      'to the host portal.',
+    schema: ChatEmbedPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['scope'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        scope: { type: 'string' },
+        placeholder: { type: 'string' },
+        initialMessages: { type: 'array', items: { type: 'object' } },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 28. live-counter ──────────────────────────────────────────────────
+
+export const renderLiveCounterTool: Tool<unknown, AgUiUiPartByKind<'live-counter'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'live-counter'>>({
+    name: 'render-blocks.live-counter',
+    kind: 'live-counter',
+    description:
+      'Render a real-time counter with optional warn/critical thresholds. ' +
+      'Use for queue depth, payment-rail latency, active sessions, error ' +
+      'rate. Re-emit the same kind with new value to animate the count.',
+    schema: LiveCounterPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['label', 'value'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        label: { type: 'string' },
+        value: { type: 'number' },
+        unit: { type: 'string' },
+        trend: { type: 'string', enum: ['up', 'down', 'flat'] },
+        thresholdWarn: { type: 'number' },
+        thresholdCritical: { type: 'number' },
+        updatedAt: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 29. org-chart ─────────────────────────────────────────────────────
+
+const orgChartNodeJsonSchema: Readonly<Record<string, unknown>> = {
+  type: 'object',
+  required: ['id', 'label'],
+  properties: {
+    id: { type: 'string' },
+    label: { type: 'string' },
+    role: { type: 'string' },
+    badge: { type: 'string' },
+    children: { type: 'array', items: { type: 'object' } },
+  },
+  additionalProperties: false,
+};
+
+export const renderOrgChartTool: Tool<unknown, AgUiUiPartByKind<'org-chart'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'org-chart'>>({
+    name: 'render-blocks.org-chart',
+    kind: 'org-chart',
+    description:
+      'Render a hierarchical relationship graph. Use for tenant ↔ guarantor ' +
+      '↔ co-applicant chains, owner ↔ portfolio ↔ property hierarchies, ' +
+      'staff org-charts.',
+    schema: OrgChartPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['root'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        root: orgChartNodeJsonSchema,
+        orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 30. comparison-table ──────────────────────────────────────────────
+
+export const renderComparisonTableTool: Tool<unknown, AgUiUiPartByKind<'comparison-table'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'comparison-table'>>({
+    name: 'render-blocks.comparison-table',
+    kind: 'comparison-table',
+    description:
+      'Typed equivalent of the block-system property_comparison_table. ' +
+      'One row per attribute, one column per subject (property, unit, ' +
+      'tenant). Optional best/worst highlight per row.',
+    schema: ComparisonTablePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['columns', 'rows'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        columns: { type: 'array', items: { type: 'string' } },
+        rows: { type: 'array', items: { type: 'object' } },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 31. geo-fence ─────────────────────────────────────────────────────
+
+export const renderGeoFenceTool: Tool<unknown, AgUiUiPartByKind<'geo-fence'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'geo-fence'>>({
+    name: 'render-blocks.geo-fence',
+    kind: 'geo-fence',
+    description:
+      'Render a drawable map for defining an alert zone (e.g. "notify me ' +
+      'when a tenant\'s vehicle leaves this perimeter"). Click-to-add ' +
+      'vertices when editable=true; emits genui:geo-fence-change with ' +
+      'the polygon.',
+    schema: GeoFencePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['center', 'zoom'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        center: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 2,
+          items: { type: 'number' },
+        },
+        zoom: { type: 'integer', minimum: 0, maximum: 20 },
+        fence: { type: 'array', items: { type: 'object' } },
+        editable: { type: 'boolean' },
+        onChangeAction: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 32. notification-toast ────────────────────────────────────────────
+
+export const renderNotificationToastTool: Tool<unknown, AgUiUiPartByKind<'notification-toast'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'notification-toast'>>({
+    name: 'render-blocks.notification-toast',
+    kind: 'notification-toast',
+    description:
+      'Render a server-pushed ephemeral toast confirmation (vs. timeline ' +
+      'which is historical). Use for "Payment posted", "Notice sent", ' +
+      '"Lease saved" confirmations. Auto-dismisses after autoCloseMs.',
+    schema: NotificationToastPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['message', 'severity'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        message: { type: 'string' },
+        severity: {
+          type: 'string',
+          enum: ['info', 'success', 'warning', 'error'],
+        },
+        autoCloseMs: { type: 'integer', minimum: 0, maximum: 60000 },
+        actionLabel: { type: 'string' },
+        actionPayload: { type: 'object' },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 33. decision-trace ────────────────────────────────────────────────
+
+export const renderDecisionTraceTool: Tool<unknown, AgUiUiPartByKind<'decision-trace'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'decision-trace'>>({
+    name: 'render-blocks.decision-trace',
+    kind: 'decision-trace',
+    description:
+      "Render the kernel's own provenance + reasoning trail. Each step " +
+      'is observation | inference | tool-call | decision | output with ' +
+      'a rationale + optional evidence links. Use for transparency: ' +
+      '"why did Mr. Mwikila propose this?".',
+    schema: DecisionTracePartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['steps'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        summary: { type: 'string', maxLength: 2000 },
+        steps: { type: 'array', items: { type: 'object' } },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 34. code-block ────────────────────────────────────────────────────
+
+export const renderCodeBlockTool: Tool<unknown, AgUiUiPartByKind<'code-block'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'code-block'>>({
+    name: 'render-blocks.code-block',
+    kind: 'code-block',
+    description:
+      'Render SQL / log / JSON / TypeScript / Python / bash with light ' +
+      'syntax-highlight + copy-to-clipboard. Use for query traces, audit ' +
+      'log slices, CLI examples. NEVER use to emit executable code as ' +
+      'an instruction — just for display.',
+    schema: CodeBlockPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['code', 'language'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        code: { type: 'string' },
+        language: {
+          type: 'string',
+          enum: ['sql', 'json', 'log', 'text', 'bash', 'typescript', 'python'],
+        },
+        filename: { type: 'string' },
+        highlightLines: { type: 'array', items: { type: 'integer' } },
+      },
+      additionalProperties: false,
+    },
+  });
+
+// ── 35. dataflow-diagram ──────────────────────────────────────────────
+
+export const renderDataflowDiagramTool: Tool<unknown, AgUiUiPartByKind<'dataflow-diagram'>> =
+  createRenderBlockTool<AgUiUiPartByKind<'dataflow-diagram'>>({
+    name: 'render-blocks.dataflow-diagram',
+    kind: 'dataflow-diagram',
+    description:
+      'Render a node/edge dataflow diagram for an upcoming or running ' +
+      'workflow. Use for surfaces like "here is what the monthly-close ' +
+      'pipeline does"; nodes carry kind (source/transform/sink/decision) ' +
+      'and optional status (pending/running/done/failed).',
+    schema: DataflowDiagramPartSchema,
+    inputJsonSchema: {
+      type: 'object',
+      required: ['nodes', 'edges'],
+      properties: {
+        title: { type: 'string', maxLength: 200 },
+        nodes: { type: 'array', items: { type: 'object' } },
+        edges: { type: 'array', items: { type: 'object' } },
+      },
+      additionalProperties: false,
+    },
+  });
+
 // ─────────────────────────────────────────────────────────────────────
 // Bundle — the convenience factory.
 // ─────────────────────────────────────────────────────────────────────
@@ -894,6 +1274,20 @@ export interface RenderBlockToolBundle {
   readonly metricSparkline: typeof renderMetricSparklineTool;
   readonly imageAnnotation: typeof renderImageAnnotationTool;
   readonly signaturePad: typeof renderSignaturePadTool;
+  // Phase E.7
+  readonly pdfViewer: typeof renderPdfViewerTool;
+  readonly sliderInput: typeof renderSliderInputTool;
+  readonly multistepWizard: typeof renderMultistepWizardTool;
+  readonly mediaGrid: typeof renderMediaGridTool;
+  readonly chatEmbed: typeof renderChatEmbedTool;
+  readonly liveCounter: typeof renderLiveCounterTool;
+  readonly orgChart: typeof renderOrgChartTool;
+  readonly comparisonTable: typeof renderComparisonTableTool;
+  readonly geoFence: typeof renderGeoFenceTool;
+  readonly notificationToast: typeof renderNotificationToastTool;
+  readonly decisionTrace: typeof renderDecisionTraceTool;
+  readonly codeBlock: typeof renderCodeBlockTool;
+  readonly dataflowDiagram: typeof renderDataflowDiagramTool;
   readonly all: ReadonlyArray<Tool>;
 }
 
@@ -930,6 +1324,20 @@ export function createRenderBlockTools(): RenderBlockToolBundle {
     renderMetricSparklineTool,
     renderImageAnnotationTool,
     renderSignaturePadTool,
+    // Phase E.7 — 13 new tools
+    renderPdfViewerTool,
+    renderSliderInputTool,
+    renderMultistepWizardTool,
+    renderMediaGridTool,
+    renderChatEmbedTool,
+    renderLiveCounterTool,
+    renderOrgChartTool,
+    renderComparisonTableTool,
+    renderGeoFenceTool,
+    renderNotificationToastTool,
+    renderDecisionTraceTool,
+    renderCodeBlockTool,
+    renderDataflowDiagramTool,
   ] as ReadonlyArray<Tool>);
 
   return {
@@ -955,6 +1363,20 @@ export function createRenderBlockTools(): RenderBlockToolBundle {
     metricSparkline: renderMetricSparklineTool,
     imageAnnotation: renderImageAnnotationTool,
     signaturePad: renderSignaturePadTool,
+    // Phase E.7
+    pdfViewer: renderPdfViewerTool,
+    sliderInput: renderSliderInputTool,
+    multistepWizard: renderMultistepWizardTool,
+    mediaGrid: renderMediaGridTool,
+    chatEmbed: renderChatEmbedTool,
+    liveCounter: renderLiveCounterTool,
+    orgChart: renderOrgChartTool,
+    comparisonTable: renderComparisonTableTool,
+    geoFence: renderGeoFenceTool,
+    notificationToast: renderNotificationToastTool,
+    decisionTrace: renderDecisionTraceTool,
+    codeBlock: renderCodeBlockTool,
+    dataflowDiagram: renderDataflowDiagramTool,
     all,
   };
 }

@@ -122,6 +122,76 @@ export interface SignatureAction {
   readonly payload: Readonly<Record<string, unknown>>;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Phase E.7 — 13 new kinds (deferred from ProdFix-7's TODO: ProdFix-8)
+// ─────────────────────────────────────────────────────────────────────
+
+export interface WizardStep {
+  readonly id: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly fields: ReadonlyArray<{
+    readonly key: string;
+    readonly label: string;
+    readonly type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox';
+    readonly options?: ReadonlyArray<{ readonly label: string; readonly value: string }>;
+    readonly required?: boolean;
+  }>;
+}
+
+export interface MediaGridItem {
+  readonly id: string;
+  readonly url: string;
+  readonly thumbUrl?: string;
+  readonly caption?: string;
+  readonly takenAt?: string;
+  readonly mimeType?: string;
+}
+
+export interface OrgChartNode {
+  readonly id: string;
+  readonly label: string;
+  readonly role?: string;
+  readonly badge?: string;
+  readonly children?: ReadonlyArray<OrgChartNode>;
+}
+
+export interface ComparisonRow {
+  readonly key: string;
+  readonly label: string;
+  readonly values: ReadonlyArray<string | number | null>;
+  readonly format?: 'text' | 'currency' | 'percent' | 'number' | 'date';
+  readonly currency?: string;
+  readonly highlight?: 'best' | 'worst' | 'none';
+}
+
+export interface GeoFencePoint {
+  readonly lat: number;
+  readonly lng: number;
+}
+
+export interface DataflowNode {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: 'source' | 'transform' | 'sink' | 'decision';
+  readonly status?: 'pending' | 'running' | 'done' | 'failed';
+}
+
+export interface DataflowEdge {
+  readonly from: string;
+  readonly to: string;
+  readonly label?: string;
+}
+
+export interface DecisionTraceStep {
+  readonly id: string;
+  readonly title: string;
+  readonly rationale: string;
+  readonly kind: 'observation' | 'inference' | 'tool-call' | 'decision' | 'output';
+  readonly evidence?: ReadonlyArray<{ readonly label: string; readonly uri?: string }>;
+  readonly confidence?: 'high' | 'medium' | 'low';
+}
+
 export type AgUiUiPart =
   | {
       readonly kind: 'chart-vega';
@@ -289,6 +359,115 @@ export type AgUiUiPart =
       readonly prompt: string;
       readonly requiredFor: string;
       readonly onSubmitAction: SignatureAction;
+    }
+  // ── Phase E.7 — 13 new kinds ──────────────────────────────────────
+  | {
+      readonly kind: 'pdf-viewer';
+      readonly title?: string;
+      readonly url: string;
+      readonly name: string;
+      readonly initialPage?: number;
+      readonly allowAnnotate?: boolean;
+    }
+  | {
+      readonly kind: 'slider-input';
+      readonly title?: string;
+      readonly label: string;
+      readonly min: number;
+      readonly max: number;
+      readonly step?: number;
+      readonly value: number;
+      readonly format?: 'number' | 'currency' | 'percent';
+      readonly currency?: string;
+      readonly onChangeAction: {
+        readonly kind: 'tool' | 'message';
+        readonly payload: Readonly<Record<string, unknown>>;
+      };
+    }
+  | {
+      readonly kind: 'multistep-wizard';
+      readonly title?: string;
+      readonly steps: ReadonlyArray<WizardStep>;
+      readonly currentStepId?: string;
+      readonly values?: Readonly<Record<string, unknown>>;
+      readonly onSubmitAction: string;
+    }
+  | {
+      readonly kind: 'media-grid';
+      readonly title?: string;
+      readonly items: ReadonlyArray<MediaGridItem>;
+      readonly columns?: number;
+    }
+  | {
+      readonly kind: 'chat-embed';
+      readonly title?: string;
+      readonly scope: string;
+      readonly placeholder?: string;
+      readonly initialMessages?: ReadonlyArray<{
+        readonly role: 'user' | 'assistant' | 'system';
+        readonly text: string;
+      }>;
+    }
+  | {
+      readonly kind: 'live-counter';
+      readonly title?: string;
+      readonly label: string;
+      readonly value: number;
+      readonly unit?: string;
+      readonly trend?: 'up' | 'down' | 'flat';
+      readonly thresholdWarn?: number;
+      readonly thresholdCritical?: number;
+      readonly updatedAt?: string;
+    }
+  | {
+      readonly kind: 'org-chart';
+      readonly title?: string;
+      readonly root: OrgChartNode;
+      readonly orientation?: 'vertical' | 'horizontal';
+    }
+  | {
+      readonly kind: 'comparison-table';
+      readonly title?: string;
+      readonly columns: ReadonlyArray<string>;
+      readonly rows: ReadonlyArray<ComparisonRow>;
+    }
+  | {
+      readonly kind: 'geo-fence';
+      readonly title?: string;
+      readonly center: readonly [number, number];
+      readonly zoom: number;
+      readonly fence?: ReadonlyArray<GeoFencePoint>;
+      readonly editable?: boolean;
+      readonly onChangeAction?: string;
+    }
+  | {
+      readonly kind: 'notification-toast';
+      readonly title?: string;
+      readonly message: string;
+      readonly severity: 'info' | 'success' | 'warning' | 'error';
+      readonly autoCloseMs?: number;
+      readonly actionLabel?: string;
+      readonly actionPayload?: Readonly<Record<string, unknown>>;
+    }
+  | {
+      readonly kind: 'decision-trace';
+      readonly title?: string;
+      readonly summary?: string;
+      readonly steps: ReadonlyArray<DecisionTraceStep>;
+    }
+  | {
+      readonly kind: 'code-block';
+      readonly title?: string;
+      readonly code: string;
+      readonly language: 'sql' | 'json' | 'log' | 'text' | 'bash' | 'typescript' | 'python';
+      readonly filename?: string;
+      readonly highlightLines?: ReadonlyArray<number>;
+    }
+  | {
+      readonly kind: 'dataflow-diagram';
+      readonly title?: string;
+      readonly nodes: ReadonlyArray<DataflowNode>;
+      readonly edges: ReadonlyArray<DataflowEdge>;
     };
 
 export type AgUiUiPartByKind<K extends AgUiUiPart['kind']> = Extract<

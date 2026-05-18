@@ -528,6 +528,337 @@ export const SignaturePadPartSchema = z
   })
   .strict();
 
+// ═════════════════════════════════════════════════════════════════════
+// Phase E.7 — 13 new UiPart kinds (ProdFix-7 deferred → ProdFix-8)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 23. pdf-viewer ────────────────────────────────────────────────────
+
+export const PdfViewerPartSchema = z
+  .object({
+    kind: z.literal('pdf-viewer'),
+    title: z.string().max(200).optional(),
+    url: z
+      .string()
+      .min(1)
+      .max(2000)
+      .refine(
+        (u) => /^https?:\/\//.test(u) || u.startsWith('/'),
+        'url must be http(s) or path-relative',
+      ),
+    name: z.string().min(1).max(200),
+    initialPage: z.number().int().min(1).max(10_000).optional(),
+    allowAnnotate: z.boolean().optional(),
+  })
+  .strict();
+
+// ── 24. slider-input ──────────────────────────────────────────────────
+
+const SliderChangeActionSchema = z
+  .object({
+    kind: z.enum(['tool', 'message']),
+    payload: z.record(z.unknown()),
+  })
+  .strict();
+
+export const SliderInputPartSchema = z
+  .object({
+    kind: z.literal('slider-input'),
+    title: z.string().max(200).optional(),
+    label: z.string().min(1).max(200),
+    min: z.number(),
+    max: z.number(),
+    step: z.number().positive().optional(),
+    value: z.number(),
+    format: z.enum(['number', 'currency', 'percent']).optional(),
+    currency: Iso4217Schema.optional(),
+    onChangeAction: SliderChangeActionSchema,
+  })
+  .strict()
+  .superRefine((p, ctx) => {
+    if (p.min >= p.max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'min must be less than max',
+        path: ['min'],
+      });
+    }
+    if (p.format === 'currency' && !p.currency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'currency required when format=currency',
+        path: ['currency'],
+      });
+    }
+  });
+
+// ── 25. multistep-wizard ──────────────────────────────────────────────
+
+export const WizardFieldSchema = z
+  .object({
+    key: z.string().min(1).max(120),
+    label: z.string().min(1).max(200),
+    type: z.enum(['text', 'number', 'select', 'textarea', 'checkbox']),
+    options: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(200),
+            value: z.string().min(1).max(200),
+          })
+          .strict(),
+      )
+      .max(50)
+      .optional(),
+    required: z.boolean().optional(),
+  })
+  .strict();
+
+export const WizardStepSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    title: z.string().min(1).max(200),
+    description: z.string().max(2000).optional(),
+    fields: z.array(WizardFieldSchema).max(40),
+  })
+  .strict();
+
+export const MultistepWizardPartSchema = z
+  .object({
+    kind: z.literal('multistep-wizard'),
+    title: z.string().max(200).optional(),
+    steps: z.array(WizardStepSchema).min(1).max(20),
+    currentStepId: z.string().max(120).optional(),
+    values: z.record(z.unknown()).optional(),
+    onSubmitAction: z.string().min(1).max(500),
+  })
+  .strict();
+
+// ── 26. media-grid ────────────────────────────────────────────────────
+
+export const MediaGridItemSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    url: z
+      .string()
+      .min(1)
+      .max(2000)
+      .refine(
+        (u) => /^https?:\/\//.test(u) || u.startsWith('/') || u.startsWith('data:'),
+        'url must be http(s), path-relative, or data:',
+      ),
+    thumbUrl: z.string().max(2000).optional(),
+    caption: z.string().max(500).optional(),
+    takenAt: Iso8601Schema.optional(),
+    mimeType: z.string().max(120).optional(),
+  })
+  .strict();
+
+export const MediaGridPartSchema = z
+  .object({
+    kind: z.literal('media-grid'),
+    title: z.string().max(200).optional(),
+    items: z.array(MediaGridItemSchema).min(1).max(500),
+    columns: z.number().int().min(1).max(8).optional(),
+  })
+  .strict();
+
+// ── 27. chat-embed ────────────────────────────────────────────────────
+
+export const ChatEmbedMessageSchema = z
+  .object({
+    role: z.enum(['user', 'assistant', 'system']),
+    text: z.string().min(1).max(8000),
+  })
+  .strict();
+
+export const ChatEmbedPartSchema = z
+  .object({
+    kind: z.literal('chat-embed'),
+    title: z.string().max(200).optional(),
+    scope: z.string().min(1).max(200),
+    placeholder: z.string().max(200).optional(),
+    initialMessages: z.array(ChatEmbedMessageSchema).max(50).optional(),
+  })
+  .strict();
+
+// ── 28. live-counter ──────────────────────────────────────────────────
+
+export const LiveCounterPartSchema = z
+  .object({
+    kind: z.literal('live-counter'),
+    title: z.string().max(200).optional(),
+    label: z.string().min(1).max(200),
+    value: z.number(),
+    unit: z.string().max(40).optional(),
+    trend: z.enum(['up', 'down', 'flat']).optional(),
+    thresholdWarn: z.number().optional(),
+    thresholdCritical: z.number().optional(),
+    updatedAt: Iso8601Schema.optional(),
+  })
+  .strict();
+
+// ── 29. org-chart ─────────────────────────────────────────────────────
+
+export type OrgChartNodeShape = {
+  id: string;
+  label: string;
+  role?: string;
+  badge?: string;
+  children?: OrgChartNodeShape[];
+};
+
+export const OrgChartNodeSchema: z.ZodType<OrgChartNodeShape> = z.lazy(() =>
+  z
+    .object({
+      id: z.string().min(1).max(120),
+      label: z.string().min(1).max(200),
+      role: z.string().max(120).optional(),
+      badge: z.string().max(60).optional(),
+      children: z.array(OrgChartNodeSchema).max(200).optional(),
+    })
+    .strict() as unknown as z.ZodType<OrgChartNodeShape>,
+);
+
+export const OrgChartPartSchema = z
+  .object({
+    kind: z.literal('org-chart'),
+    title: z.string().max(200).optional(),
+    root: OrgChartNodeSchema,
+    orientation: z.enum(['vertical', 'horizontal']).optional(),
+  })
+  .strict();
+
+// ── 30. comparison-table ──────────────────────────────────────────────
+
+export const ComparisonRowSchema = z
+  .object({
+    key: z.string().min(1).max(120),
+    label: z.string().min(1).max(200),
+    values: z.array(z.union([z.string().max(500), z.number(), z.null()])).max(20),
+    format: z.enum(['text', 'currency', 'percent', 'number', 'date']).optional(),
+    currency: Iso4217Schema.optional(),
+    highlight: z.enum(['best', 'worst', 'none']).optional(),
+  })
+  .strict();
+
+export const ComparisonTablePartSchema = z
+  .object({
+    kind: z.literal('comparison-table'),
+    title: z.string().max(200).optional(),
+    columns: z.array(z.string().min(1).max(200)).min(2).max(20),
+    rows: z.array(ComparisonRowSchema).min(1).max(100),
+  })
+  .strict();
+
+// ── 31. geo-fence ─────────────────────────────────────────────────────
+
+export const GeoFencePointSchema = z
+  .object({
+    lat: z.number().gte(-90).lte(90),
+    lng: z.number().gte(-180).lte(180),
+  })
+  .strict();
+
+export const GeoFencePartSchema = z
+  .object({
+    kind: z.literal('geo-fence'),
+    title: z.string().max(200).optional(),
+    center: z.tuple([z.number().gte(-90).lte(90), z.number().gte(-180).lte(180)]),
+    zoom: z.number().int().min(0).max(20),
+    fence: z.array(GeoFencePointSchema).max(200).optional(),
+    editable: z.boolean().optional(),
+    onChangeAction: z.string().min(1).max(500).optional(),
+  })
+  .strict();
+
+// ── 32. notification-toast ────────────────────────────────────────────
+
+export const NotificationToastPartSchema = z
+  .object({
+    kind: z.literal('notification-toast'),
+    title: z.string().max(200).optional(),
+    message: z.string().min(1).max(1000),
+    severity: z.enum(['info', 'success', 'warning', 'error']),
+    autoCloseMs: z.number().int().min(0).max(60_000).optional(),
+    actionLabel: z.string().max(60).optional(),
+    actionPayload: z.record(z.unknown()).optional(),
+  })
+  .strict();
+
+// ── 33. decision-trace ────────────────────────────────────────────────
+
+export const DecisionTraceStepSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    title: z.string().min(1).max(200),
+    rationale: z.string().min(1).max(4000),
+    kind: z.enum(['observation', 'inference', 'tool-call', 'decision', 'output']),
+    evidence: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(200),
+            uri: z.string().max(2000).optional(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
+    confidence: z.enum(['high', 'medium', 'low']).optional(),
+  })
+  .strict();
+
+export const DecisionTracePartSchema = z
+  .object({
+    kind: z.literal('decision-trace'),
+    title: z.string().max(200).optional(),
+    summary: z.string().max(2000).optional(),
+    steps: z.array(DecisionTraceStepSchema).min(1).max(100),
+  })
+  .strict();
+
+// ── 34. code-block ────────────────────────────────────────────────────
+
+export const CodeBlockPartSchema = z
+  .object({
+    kind: z.literal('code-block'),
+    title: z.string().max(200).optional(),
+    code: z.string().min(1).max(50_000),
+    language: z.enum(['sql', 'json', 'log', 'text', 'bash', 'typescript', 'python']),
+    filename: z.string().max(200).optional(),
+    highlightLines: z.array(z.number().int().min(1).max(10_000)).max(200).optional(),
+  })
+  .strict();
+
+// ── 35. dataflow-diagram ──────────────────────────────────────────────
+
+export const DataflowNodeSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    label: z.string().min(1).max(200),
+    kind: z.enum(['source', 'transform', 'sink', 'decision']),
+    status: z.enum(['pending', 'running', 'done', 'failed']).optional(),
+  })
+  .strict();
+
+export const DataflowEdgeSchema = z
+  .object({
+    from: z.string().min(1).max(120),
+    to: z.string().min(1).max(120),
+    label: z.string().max(120).optional(),
+  })
+  .strict();
+
+export const DataflowDiagramPartSchema = z
+  .object({
+    kind: z.literal('dataflow-diagram'),
+    title: z.string().max(200).optional(),
+    nodes: z.array(DataflowNodeSchema).min(1).max(100),
+    edges: z.array(DataflowEdgeSchema).max(300),
+  })
+  .strict();
+
 export const PART_SCHEMAS = {
   'chart-vega': ChartVegaPartSchema,
   'data-table': DataTablePartSchema,
@@ -553,6 +884,20 @@ export const PART_SCHEMAS = {
   'metric-sparkline': MetricSparklinePartSchema,
   'image-annotation': ImageAnnotationPartSchema,
   'signature-pad': SignaturePadPartSchema,
+  // Phase E.7 — 13 new kinds
+  'pdf-viewer': PdfViewerPartSchema,
+  'slider-input': SliderInputPartSchema,
+  'multistep-wizard': MultistepWizardPartSchema,
+  'media-grid': MediaGridPartSchema,
+  'chat-embed': ChatEmbedPartSchema,
+  'live-counter': LiveCounterPartSchema,
+  'org-chart': OrgChartPartSchema,
+  'comparison-table': ComparisonTablePartSchema,
+  'geo-fence': GeoFencePartSchema,
+  'notification-toast': NotificationToastPartSchema,
+  'decision-trace': DecisionTracePartSchema,
+  'code-block': CodeBlockPartSchema,
+  'dataflow-diagram': DataflowDiagramPartSchema,
 } as const;
 
 export type PartKind = keyof typeof PART_SCHEMAS;

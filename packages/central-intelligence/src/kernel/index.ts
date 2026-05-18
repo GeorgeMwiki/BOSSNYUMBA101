@@ -586,3 +586,19 @@ export {
 } from './risk-tier.js';
 
 export * as hqTools from './tool-spec/hq-tools/index.js';
+
+/**
+ * Phase E.1 — Anthropic Agent SDK runtime rebind.
+ *
+ * The orchestrator substrate replaces the legacy `kernel.ts` flat 13-step
+ * pipeline with a Claude-Code-level while-loop main loop, PreToolUse /
+ * PostToolUse / Stop hook chain, SKILL.md format reader, /memories tool
+ * wrapper, and Batch API wrapper. Both surfaces coexist — callers opt in
+ * at composition time by binding the orchestrator's `think()` instead of
+ * the legacy `BrainKernel.think()`.
+ *
+ * Exposed under the `orchestrator` namespace to avoid name clashes with
+ * the legacy kernel exports (which also surface `think()` indirectly via
+ * `createBrainKernel`).
+ */
+export * as orchestrator from './orchestrator/index.js';

@@ -47,6 +47,20 @@ export { Gauge, type GaugeProps } from './components/Gauge';
 export { MetricSparkline, type MetricSparklineProps } from './components/MetricSparkline';
 export { ImageAnnotation, type ImageAnnotationProps } from './components/ImageAnnotation';
 export { SignaturePad, type SignaturePadProps } from './components/SignaturePad';
+// Phase E.7 — 13 new primitives (formerly TODO: ProdFix-8)
+export { PdfViewer, type PdfViewerProps } from './components/PdfViewer';
+export { SliderInput, type SliderInputProps } from './components/SliderInput';
+export { MultistepWizard, type MultistepWizardProps } from './components/MultistepWizard';
+export { MediaGrid, type MediaGridProps } from './components/MediaGrid';
+export { ChatEmbed, type ChatEmbedProps } from './components/ChatEmbed';
+export { LiveCounter, type LiveCounterProps } from './components/LiveCounter';
+export { OrgChart, type OrgChartProps } from './components/OrgChart';
+export { ComparisonTable, type ComparisonTableProps } from './components/ComparisonTable';
+export { GeoFence, type GeoFenceProps } from './components/GeoFence';
+export { NotificationToast, type NotificationToastProps } from './components/NotificationToast';
+export { DecisionTrace, type DecisionTraceProps } from './components/DecisionTrace';
+export { CodeBlock, type CodeBlockProps } from './components/CodeBlock';
+export { DataflowDiagram, type DataflowDiagramProps } from './components/DataflowDiagram';
 
 export { Frame, GenUiError } from './components/Frame';
 export { ClientOnly } from './components/ClientOnly';
@@ -71,6 +85,15 @@ export type {
   ImageAnnotation as ImageAnnotationType,
   GaugeThreshold,
   SignatureAction,
+  // Phase E.7 sub-types
+  WizardStep,
+  MediaGridItem,
+  OrgChartNode,
+  ComparisonRow,
+  GeoFencePoint,
+  DataflowNode,
+  DataflowEdge,
+  DecisionTraceStep,
 } from './types';
 
 export {
@@ -104,6 +127,30 @@ export {
   ImageAnnotationPartSchema,
   ImageAnnotationSchema,
   SignaturePadPartSchema,
+  // Phase E.7 schemas
+  PdfViewerPartSchema,
+  SliderInputPartSchema,
+  MultistepWizardPartSchema,
+  WizardStepSchema,
+  WizardFieldSchema,
+  MediaGridPartSchema,
+  MediaGridItemSchema,
+  ChatEmbedPartSchema,
+  ChatEmbedMessageSchema,
+  LiveCounterPartSchema,
+  OrgChartPartSchema,
+  OrgChartNodeSchema,
+  ComparisonTablePartSchema,
+  ComparisonRowSchema,
+  GeoFencePartSchema,
+  GeoFencePointSchema,
+  NotificationToastPartSchema,
+  DecisionTracePartSchema,
+  DecisionTraceStepSchema,
+  CodeBlockPartSchema,
+  DataflowDiagramPartSchema,
+  DataflowNodeSchema,
+  DataflowEdgeSchema,
   PART_SCHEMAS,
   type PartKind,
 } from './schemas';

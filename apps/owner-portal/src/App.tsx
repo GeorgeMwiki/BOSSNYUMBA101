@@ -45,6 +45,9 @@ import TenantCommunicationsPage from './app/tenants/communications/page';
 import BudgetsPage from './app/budgets/page';
 import PropertyBudgetPage from './app/budgets/[propertyId]/page';
 import BudgetForecastsPage from './app/budgets/forecasts/page';
+// Phase E.7 — MDR plan + Skills marketplace
+import PlanPage from './app/plan/page';
+import SkillsPage from './app/skills/page';
 // Pages migrated from the deprecated apps/admin-portal/. The owner is the
 // admin in the 4-portal model — these surfaces now live here.
 import { AuditLogPage } from './pages/AuditLogPage';
@@ -159,6 +162,8 @@ function App() {
                   <Route path="/budgets" element={<BudgetsPage />} />
                   <Route path="/budgets/forecasts" element={<BudgetForecastsPage />} />
                   <Route path="/budgets/:propertyId" element={<PropertyBudgetPage />} />
+                  <Route path="/plan" element={<PlanPage />} />
+                  <Route path="/skills" element={<SkillsPage />} />
                   <Route path="/financial" element={<FinancialPage />} />
                   <Route path="/financial/disbursements" element={<DisbursementsPage />} />
                   <Route path="/maintenance" element={<MaintenancePage />} />
