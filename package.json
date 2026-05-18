@@ -25,7 +25,7 @@
     "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.41.2",
     "@types/node": "^25.8.0",
     "eslint": "^10.4.0",
