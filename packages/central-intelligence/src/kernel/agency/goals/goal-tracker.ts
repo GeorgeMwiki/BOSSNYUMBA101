@@ -5,14 +5,6 @@
  * roots before the Drizzle-backed adapter (`createKernelGoalsService`)
  * is wired. Mirrors the port shape exactly so prod / dev can swap
  * adapters without touching the executor or wake-loop.
- *
- * Mutation rules:
- *   - All public methods are `async` to match the port contract.
- *   - `open()` allocates a uuid + timestamps + a fresh metrics block.
- *   - `updateStepStatus()` rewrites the step list immutably and bumps
- *     `metrics.stepsDone` when the step transitions to `done`.
- *   - `setStatus()` rewrites the goal's status and stamps `completedAt`
- *     when transitioning to `completed`.
  */
 import { randomUUID } from 'crypto';
 import type {
@@ -50,6 +42,10 @@ export function createInMemoryGoalsPort(
         endedAt: null,
         outcome: null,
         errorMessage: null,
+        // Phase D / D12.8 — pass-through optional planning fields.
+        ...(draft.dependsOn ? { dependsOn: draft.dependsOn } : {}),
+        ...(draft.due ? { due: draft.due } : {}),
+        ...(draft.blockers ? { blockers: draft.blockers } : {}),
       }));
       const goal: Goal = {
         id,
@@ -96,7 +92,9 @@ export function createInMemoryGoalsPort(
         const startedAt =
           args.status === 'running' && !s.startedAt ? now : s.startedAt;
         const endedAt =
-          args.status === 'done' || args.status === 'failed' || args.status === 'skipped'
+          args.status === 'done' ||
+          args.status === 'failed' ||
+          args.status === 'skipped'
             ? now
             : s.endedAt;
         return {

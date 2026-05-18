@@ -52,6 +52,14 @@ export interface SovereignLedgerAppendArgs {
   readonly proposer: string;
   readonly approvers: ReadonlyArray<string>;
   readonly executedAt: Date;
+  /**
+   * Optional reversal-plan payload (Phase D D2). Persisted alongside
+   * the chain row so operators can drive a recovery workflow if a
+   * sovereign action needs to be undone. NOT included in the hash
+   * chain — verifyLedgerChain walks the existing hash inputs
+   * untouched.
+   */
+  readonly rollbackPayload?: unknown;
 }
 
 export interface SovereignLedgerRow {
@@ -94,6 +102,14 @@ export interface SovereignActionLedgerService {
     limit: number,
   ): Promise<ReadonlyArray<SovereignLedgerRow>>;
   verifyLedgerChain(tenantId: string): Promise<SovereignLedgerVerifyResult>;
+  /**
+   * Load the optional rollback payload for a previously-recorded
+   * sovereign action (Phase D D2). Returns `null` when the row is
+   * missing OR when the row has no recorded rollback plan. Errors are
+   * logged and surface as `null` so the operator UI can fall back to
+   * manual recovery.
+   */
+  loadRollbackPayload(actionId: string): Promise<unknown | null>;
 }
 
 const MAX_TAIL = 1000;
@@ -253,6 +269,14 @@ export function createSovereignActionLedgerService(
             executedAt: args.executedAt,
             prevHash,
             thisHash,
+            ...(args.rollbackPayload !== undefined
+              ? {
+                  rollbackPayload: args.rollbackPayload as unknown as Record<
+                    string,
+                    unknown
+                  >,
+                }
+              : {}),
           } as never);
         } catch (error) {
           console.error('sovereign-action-ledger.append insert failed:', error);
@@ -391,6 +415,30 @@ export function createSovereignActionLedgerService(
           actual: '',
           reason: 'db-error',
         };
+      }
+    },
+
+    async loadRollbackPayload(actionId) {
+      if (!actionId) return null;
+      try {
+        const rows = (await db
+          .select()
+          .from(sovereignActionLedger)
+          .where(eq(sovereignActionLedger.id, actionId))
+          .limit(1)) as ReadonlyArray<Record<string, unknown>>;
+        const first = rows?.[0];
+        if (!first) return null;
+        const raw =
+          (first.rollbackPayload as unknown) ??
+          (first.rollback_payload as unknown) ??
+          null;
+        return raw ?? null;
+      } catch (error) {
+        console.error(
+          'sovereign-action-ledger.loadRollbackPayload failed:',
+          error,
+        );
+        return null;
       }
     },
   };

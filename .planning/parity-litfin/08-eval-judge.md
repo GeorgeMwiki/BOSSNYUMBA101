@@ -1,5 +1,19 @@
 # Eval Harness Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 8 missing + 4 partial items below, **5 are now SHIPPED** and **4 are in-flight in Phase D12 (5-C rubric, self-grading judge, trajectory + tool-fail + long-horizon + Pareto + A/B prompt evals)**. The remaining open items track to Phase E (CoT → eval feedback loop, memory recall bench).
+>
+> Headline shipments:
+> - ✅ **Regenerate-on-low-score** — `anthropic-judge.ts:25-35` returns `{score, feedback}` + `kernel.ts:808-870` checks threshold, bakes feedback into followup, re-calls sensor once on low score (closes Gap 2).
+> - ✅ **Per-PR CI eval workflows** — `.github/workflows/{kernel-eval,eval-orchestrator-scenarios,red-team,trajectory-eval}.yml` (closes Gap 6c).
+> - ✅ **Drift baselines** — `__tests__/eval/eval.test.ts:36-141` + `baseline.json` reviewed-diff ritual (closes Gap 5b).
+> - ✅ **Red-team eval corpus** — `__tests__/red-team/scenarios.ts` + `.github/workflows/red-team.yml`.
+> - ✅ **Mission-eval admin UI** — `apps/admin-platform-portal/src/app/mission-eval/` (closes Gap 6a — operator-facing borderline-turn inspection).
+> - ⚠️ **Self-grading judge** — `packages/central-intelligence/src/__tests__/self-grading-judge.test.ts` (Phase D12). Implementation lives in `kernel/critics/` and is being wired into the judge path.
+> - ⚠️ **5-C rubric in judge** — Phase D12 swaps the judge prompt to ask for `{condition, cashflow, covenant, context, compliance}` JSON; folds each into `confidence.review`.
+> - ⚠️ **Trajectory + tool-fail + long-horizon + Pareto + A/B prompt evals** — Phase D12 ships 5 new eval suites (each with 30-50 scenarios) + `.github/workflows/trajectory-eval.yml`.
+> - 🔴 **CoT → eval feedback loop** — Phase E candidate (Gap 7). Distill captured CoT into Reflexion lessons that feed the next system prompt. See `00-STATUS-2026-05-18.md` §4 item 5.
+> - 🔴 **Memory recall bench** — Phase E candidate (Gap 8). Separate exact-match + token-F1 harness for kernel memory tiers.
+
 P8 of the 10-agent parity sweep. Read-only analysis of judge rubric, scenario library, CoT reservoir sampling, eval workflow, drift alerting, and the manual-review surface.
 
 - **LITFIN judge**: `src/core/brain/brain-kernel.ts:160-190` (`judgeAnswer`) + `src/core/brain/envelope.ts:85-90` (review hook)

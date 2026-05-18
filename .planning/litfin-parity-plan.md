@@ -3,6 +3,35 @@
 Date: 2026-05-05
 Status: in progress
 
+## Status as of 2026-05-18
+
+**This umbrella plan is now SUPERSEDED for parity-claim purposes by `.planning/parity-litfin/00-STATUS-2026-05-18.md`.** That doc carries the canonical SHIPPED / PARTIAL / OPEN / IN-FLIGHT status across all 13 original gaps in this plan + the 10 deep-dive docs `01..10-*.md` written 2026-05-15.
+
+Of the 13 original kernel-discipline gaps in §"Real gaps" below:
+
+| # | Gap                                  | Status 2026-05-18 |
+|---|--------------------------------------|-------------------|
+| 1 | 13-step cognitive pipeline           | ✅ SHIPPED — `kernel/kernel.ts` 2421 LOC, all 13 steps + 13a-f post-decision cluster (Wave-K) |
+| 2 | Identity-first prompt assembly       | ✅ SHIPPED — `kernel/identity.ts:277-297` `[IDENTITY — DO NOT OVERRIDE]` block (Wave-K) |
+| 3 | Inviolable refusal gates             | ✅ SHIPPED — 7-cat authed `inviolable.ts:33-42` + 6-cat public `public-inviolable.ts:44-141`. **BOSSNYUMBA-AHEAD** |
+| 4 | Policy gate at output                | ✅ SHIPPED — `kernel/policy-gate.ts:34-92` (Phase D9 adds 4 more checks) |
+| 5 | Self-awareness + persona drift       | ✅ SHIPPED — `self-awareness.ts:159-477` + 24-dim drift vector `persona-drift/vectors.ts:28-53`. **BOSSNYUMBA-AHEAD** |
+| 6 | Theory of mind + cognitive load      | ✅ SHIPPED — stateful accumulators `theory-of-mind.ts:152-390` + `cognitive-load.ts:101-279` (Phase A) |
+| 7 | Awareness scopes                     | ✅ SHIPPED — `kernel/awareness-scopes.ts` |
+| 8 | Confidence scoring                   | ✅ SHIPPED — `kernel/confidence.ts` (4-axis vector) + Phase D12 5-C extension in flight |
+| 9 | CoT reservoir sampling               | ✅ SHIPPED — `kernel/cot-reservoir.ts` 1/5/50/100% by stakes; Phase D3 ✅ adds PII scrub + RLS + queryCot |
+| 10 | Sensor failover                     | ✅ SHIPPED — `sensor-failover.ts:38-321` with rolling 60s window + 3-strike breaker (Phase A) |
+| 11 | Brain-side cache                    | ✅ SHIPPED — `brain-cache.ts:77-125` with pattern-family hit + semantic cache layering (Phase D4) |
+| 12 | Output normalizer                   | ✅ SHIPPED — `normalizer.ts:33-287` (7 preamble + 4 trailing + smart-quote + JSON repair + ui_block extract) |
+| 13 | Continuous grading dimension        | ✅ SHIPPED — `continuous-grading.ts:158-535` (5-axis × 80-150 LOC). **BOSSNYUMBA-AHEAD** (696 LOC vs LITFIN 404) |
+
+**All 13 gaps in the original plan are SHIPPED.** BOSSNYUMBA is now AHEAD of LITFIN on 15 dimensions tracked in `00-STATUS-2026-05-18.md` §3 (24-dim drift, streaming kernel, 18-tool BrainToolSpec, persistent privacy-budget, tier-scaled k-anonymity, AsyncLocalStorage tenant-isolation, two-track inviolable gates, HMAC-rotation audit chain, 696-LOC continuous-grading, advisory-lock sovereign ledger, OTel 0.218 full stack, per-agent Grafana D6, Temporal Entity Graph + Louvain, DB-backed sensor-routing control plane, tenant credit-rating model).
+
+For any new work referencing this plan, also read `00-STATUS-2026-05-18.md` §4 (Phase E candidates) and §5 (Wave-M / deferred) before opening a PR.
+
+---
+
+
 ## Goal
 
 Bring BOSSNYUMBA's central intelligence to LITFIN-grade discipline — the
@@ -12,18 +41,33 @@ the security and orchestration primitives BOSSNYUMBA already ships.
 
 ## What both projects already have
 
-| Capability                 | LITFIN              | BOSSNYUMBA              |
-|----------------------------|---------------------|-------------------------|
-| Central intelligence agent | brain-kernel.ts     | central-intelligence/agent-loop |
-| Hash-chain audit           | block32_audit_events| ai-audit-chain          |
-| Knowledge graph            | Neo4j               | Neo4j (CPG)             |
-| Forecasting                | TGN + foundation    | TGN + conformal         |
-| HQ portal                  | litfin-ai-ops       | admin-platform-portal   |
-| LLM tool-use               | tools.ts            | tools/registry.ts       |
-| Personas                   | identity.ts         | personas/ + voice/      |
-| Eval harness               | self-review judge   | ai-copilot/eval         |
-| Vacancy pipeline           | n/a (lending)       | vacancy-to-lease orch   |
-| DP aggregation             | not present         | graph-privacy           |
+*(Refreshed 2026-05-18 — see also `parity-litfin/00-STATUS-2026-05-18.md` §3 for the 15-item BOSSNYUMBA-ahead list.)*
+
+| Capability                 | LITFIN              | BOSSNYUMBA              | Verdict 2026-05-18 |
+|----------------------------|---------------------|-------------------------|--------------------|
+| Central intelligence agent | brain-kernel.ts 1628 LOC | `kernel.ts` 2421 LOC + `thinkStream()` | **BOSSNYUMBA-ahead** (streaming kernel) |
+| Hash-chain audit           | block32_audit_events | `audit-hash-chain.ts` HMAC-SHA-256 + rotation + `timingSafeEqual` | **BOSSNYUMBA-ahead** (rotation discipline) |
+| Knowledge graph            | Neo4j               | Neo4j + temporal-entity-graph + Louvain (922 LOC) | **BOSSNYUMBA-ahead** (Louvain communities) |
+| Forecasting                | TGN + foundation    | TGN + conformal         | parity |
+| HQ portal                  | litfin-ai-ops       | admin-platform-portal + mission-eval UI | parity |
+| LLM tool-use               | `tools.ts` 4 brain tools | `tool-spec.ts:510` 510 LOC + 18 `platform.*` typed-action bus | **BOSSNYUMBA-ahead** (18 vs 4) |
+| Personas                   | `identity.ts` single-tenant | `identity.ts` 374 LOC, 8 personas + `branding.ts` per-tenant resolver | **BOSSNYUMBA-ahead** (per-tenant DNA) |
+| Eval harness               | self-review judge   | `ai-copilot/eval` + `central-intelligence/__tests__/eval` 309 scenarios + per-PR CI | **BOSSNYUMBA-ahead** (CI + dual mode) |
+| Vacancy pipeline           | n/a (lending)       | vacancy-to-lease orch   | BOSSNYUMBA-only |
+| DP aggregation             | Laplace only        | Laplace + Gaussian + persistent ε,δ budget + crypto-RNG | **BOSSNYUMBA-ahead** (Gaussian + persistence) |
+| k-anonymity                | global k=5          | tier-scaled lattice 5 → 7 → 10 → 15 → 20 → 25 | **BOSSNYUMBA-ahead** |
+| Tenant isolation           | `buildTenantFilter` helper | AsyncLocalStorage `runWithTenantContext` + `TenantScoped` generic | **BOSSNYUMBA-ahead** (type-level) |
+| Persona drift              | 1-D Jaccard scalar  | 24-dim persona-vector probe + alert pipeline | **BOSSNYUMBA-ahead** |
+| Observability              | Sentry + platform_events | OpenTelemetry 0.218 + Grafana JSON + Prom alerts + Langfuse | **BOSSNYUMBA-ahead** (OTel full stack) |
+| Inviolable refusal gates   | single authed gate  | 7-cat authed + 6-cat public (two-track) | **BOSSNYUMBA-ahead** |
+| Continuous grading         | `five-c-continuous.ts` 404 LOC (credit-side) | `continuous-grading.ts` 696 LOC (property-side) | **BOSSNYUMBA-ahead** |
+| Killswitch HALT            | brain-kernel.ts:814-869 | `kernel/killswitch.ts:202` + migration 0138 | parity |
+| Reflexion lesson loop      | context-hash + decayed rerank | `kernel/reflexion/` + migration 0134 | parity |
+| Regulatory mirror          | TZ statute via `regulatoryAudit` | `kernel/regulatory-mirror.ts:179` TZ Landlord & Tenant (Phase D8) | parity (TZ); KE/UG deferred Wave-M |
+| Uncertainty policy         | resolveUncertainty `deliver/caveat/ask/tool/escalate` | `kernel/uncertainty-policy.ts:230` | parity |
+| Secret rotation runbook    | Docs/SECRETS-ROTATION.md + 4-phase | Docs/SECRETS_ROTATION.md + scripts/rotate-keys.mjs | parity |
+| SBOM + Trivy + red-team CI | security.yml         | sbom.yml + trivy.yml + red-team.yml | parity |
+| Tenant credit rating       | borrower 5-C model  | `ai-copilot/credit-rating/` (rent-arrears + lease-tenure + occupancy) | BOSSNYUMBA-only (property-mgmt) |
 
 ## Real gaps (LITFIN has, BOSSNYUMBA does not)
 

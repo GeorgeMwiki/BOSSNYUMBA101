@@ -68,6 +68,15 @@ export const sovereignActionLedger = pgTable(
     /** sha256(prev_hash || tenant_id || action_type || payload_hash
      *  || executed_at_iso). Computed on insert; immutable after. */
     thisHash: text('this_hash').notNull(),
+    /**
+     * Optional reversal-plan payload (Phase D D2). Shape is action-
+     * type specific (e.g. for `tenant.evict`: { unitId, customerId,
+     * restoreLeaseId } — for `owner.payout`: { disbursementId,
+     * clawbackBankRef }). Operators use this to drive a recovery
+     * workflow if a sovereign action needs to be undone. NOT included
+     * in the hash chain — see migration 0144 for the rationale.
+     */
+    rollbackPayload: jsonb('rollback_payload'),
     capturedAt: timestamp('captured_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

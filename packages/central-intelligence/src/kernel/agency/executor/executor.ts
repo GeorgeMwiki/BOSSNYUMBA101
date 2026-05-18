@@ -222,14 +222,81 @@ export function createExecutor(deps: ExecutorDeps): Executor {
       const proposedActionIds: string[] = [];
       const failureMessages: string[] = [];
 
-      const orderedSteps = [...goal.steps].sort((a, b) => a.seq - b.seq);
+      // Phase D / D12.8 — topological order honours `dependsOn` edges.
+      const orderedSteps = topoSort(goal.steps);
+      const completedStepIds = new Set<string>(
+        goal.steps.filter((s) => s.status === 'done').map((s) => s.id),
+      );
 
       let bailed = false;
       for (const step of orderedSteps) {
         if (bailed) break;
         if (step.status !== 'pending') {
-          // Already ran on a prior cycle — leave it.
+          if (step.status === 'done') completedStepIds.add(step.id);
           continue;
+        }
+        if (step.blockers && step.blockers.length > 0) {
+          await safeAudit(deps, {
+            tenantId: goal.tenantId,
+            userId: goal.userId,
+            goalId: goal.id,
+            stepId: step.id,
+            toolName: step.toolName,
+            decision: 'skipped',
+            payloadHash: hashPayload(step.toolPayload),
+            outcome: `blocked:${step.blockers[0]!.kind}`,
+            errorMessage: null,
+            startedAt: null,
+            endedAt: null,
+            latencyMs: null,
+          });
+          continue;
+        }
+        if (step.due) {
+          const dueMs = Date.parse(step.due);
+          if (Number.isFinite(dueMs) && dueMs <= clock().getTime()) {
+            await safeUpdateStep(deps, {
+              goalId: goal.id,
+              stepId: step.id,
+              status: 'skipped',
+              outcome: 'deadline-passed',
+            });
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'skipped',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: 'deadline-passed',
+              errorMessage: null,
+              startedAt: null,
+              endedAt: null,
+              latencyMs: null,
+            });
+            continue;
+          }
+        }
+        if (step.dependsOn && step.dependsOn.length > 0) {
+          const unmet = step.dependsOn.filter((d) => !completedStepIds.has(d));
+          if (unmet.length > 0) {
+            await safeAudit(deps, {
+              tenantId: goal.tenantId,
+              userId: goal.userId,
+              goalId: goal.id,
+              stepId: step.id,
+              toolName: step.toolName,
+              decision: 'skipped',
+              payloadHash: hashPayload(step.toolPayload),
+              outcome: `waiting-on:${unmet.join(',')}`,
+              errorMessage: null,
+              startedAt: null,
+              endedAt: null,
+              latencyMs: null,
+            });
+            continue;
+          }
         }
         stepsRun += 1;
         const startedAt = clock();
@@ -276,6 +343,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
             latencyMs: clock().getTime() - startedAt.getTime(),
           });
           stepsSucceeded += 1;
+          completedStepIds.add(step.id);
           continue;
         }
 
@@ -653,6 +721,7 @@ export function createExecutor(deps: ExecutorDeps): Executor {
           continue;
         }
         stepsSucceeded += 1;
+        completedStepIds.add(step.id);
       }
 
       // If every step is now `done`, flip the goal to completed.
@@ -834,3 +903,46 @@ function stringifyOutput(output: unknown): string {
 // streaming becomes the default, the loop will re-use this audit
 // decision union.
 export type { ActionAuditDecision };
+
+/**
+ * Topological sort over goal steps honouring `dependsOn` edges.
+ * Phase D / D12.8. Cycles and unknown ids are tolerated.
+ */
+export function topoSort(
+  steps: ReadonlyArray<GoalStep>,
+): ReadonlyArray<GoalStep> {
+  if (steps.length === 0) return [];
+  const bySeq = [...steps].sort((a, b) => a.seq - b.seq);
+  const idIndex = new Map<string, GoalStep>();
+  for (const s of bySeq) idIndex.set(s.id, s);
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const ordered: GoalStep[] = [];
+  const cyclic = new Set<string>();
+  function visit(step: GoalStep): void {
+    if (visited.has(step.id)) return;
+    if (inStack.has(step.id)) {
+      cyclic.add(step.id);
+      return;
+    }
+    inStack.add(step.id);
+    const deps = step.dependsOn ?? [];
+    for (const depId of deps) {
+      const dep = idIndex.get(depId);
+      if (dep) visit(dep);
+    }
+    inStack.delete(step.id);
+    if (!cyclic.has(step.id)) {
+      visited.add(step.id);
+      ordered.push(step);
+    }
+  }
+  for (const s of bySeq) visit(s);
+  for (const s of bySeq) {
+    if (cyclic.has(s.id) && !visited.has(s.id)) {
+      visited.add(s.id);
+      ordered.push(s);
+    }
+  }
+  return ordered;
+}

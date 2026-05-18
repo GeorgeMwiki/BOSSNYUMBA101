@@ -85,11 +85,48 @@ const DEFAULT_RETRY_DELAYS_MS: ReadonlyArray<number> = Object.freeze([
 const DEFAULT_MAX_FAILURES = 10;
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/**
+ * D9 SSRF pre-flight — mirrors the `safeHttpFetch` predicate in
+ * `@bossnyumba/enterprise-hardening/http/safe-http-fetch`. Inlined to
+ * avoid a fresh inter-package dependency edge. Any change to the central
+ * denylist must be mirrored back into this function.
+ */
+function assertSafeWebhookUrl(url: string): void {
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`webhook url scheme "${parsed.protocol}" not permitted`);
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const internal =
+    host === 'localhost' ||
+    host === '::1' ||
+    host === '::' ||
+    host === '169.254.169.254' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.localhost') ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(?:1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    host.startsWith('fc') ||
+    host.startsWith('fd') ||
+    host.startsWith('fe80:');
+  if (internal) {
+    throw new Error(
+      `webhook url host "${host}" resolves to an internal range — refusing to dispatch`,
+    );
+  }
+}
+
 export async function deliverToSubscription(
   deps: DeliverDeps,
   subscription: WebhookSubscription,
   event: DeliverEventPayload,
 ): Promise<WebhookDelivery> {
+  // D9 SSRF pre-flight (1-line migration to the central safeHttpFetch pattern).
+  assertSafeWebhookUrl(subscription.url);
   const now = (deps.now ?? Date.now)();
   const retryDelays = deps.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
   const maxFailures = deps.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES;

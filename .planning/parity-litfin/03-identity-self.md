@@ -1,5 +1,17 @@
 # P3 — Identity-first prompts · Persona-drift · Self-awareness · Cognitive load · Theory of mind
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 6 missing + 2 partial items below, **5 are now SHIPPED**, **1 is in-flight in Phase D7**, and **2 (returning-user greeting branch, EAT-clock injection) remain partial polish — Wave-M deferred**. Original gap text preserved; SHIPPED items overlaid with `> ✅` callouts in §6 (Detailed gaps).
+>
+> Headline shipments visible across this doc:
+> - ✅ **First-person `[IDENTITY — DO NOT OVERRIDE]` block** — `kernel/identity.ts:277-297` (Wave-K).
+> - ✅ **Per-tenant `PersonaBrandingResolver`** — `kernel/branding.ts:49+` wired via `compose.ts:73-80`. **BOSSNYUMBA AHEAD** vs LITFIN's single-tenant persona.
+> - ✅ **Module inventory + self-awareness** — `kernel/self-awareness.ts:159-477`.
+> - ✅ **Jaccard drift detector** — `kernel/drift-detector.ts` (Wave-K).
+> - ✅ **24-dim persona-vector probe + alert** — `kernel/persona-drift/vectors.ts:28-53` + `alert.ts:32-33`. **BOSSNYUMBA AHEAD** — LITFIN's drift is a single Jaccard scalar; BOSSNYUMBA's is a 24-dim vector (tone, register, refusal posture, citation discipline, etc.). See `00-STATUS-2026-05-18.md` §3 item 1.
+> - ✅ **Stateful theory-of-mind accumulator** — `kernel/theory-of-mind.ts:152-390` (Phase A).
+> - ✅ **Stateful cognitive-load accumulator** — `kernel/cognitive-load.ts:101-279` (Phase A).
+> - ⚠️ **Persona hot-swap registry + drift cron** — migration `0150_persona_registry.sql` + `kernel/persona/persona-registry.ts` SHIPPED; cron wiring + rollout config is the remaining D7 task.
+
 **Slice:** identity assembly, persona drift detection, self-awareness module,
 cognitive-load model, theory-of-mind module.
 **Method:** read-only diff of the LITFIN brain primitives against the

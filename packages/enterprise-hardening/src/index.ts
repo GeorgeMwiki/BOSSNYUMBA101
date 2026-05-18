@@ -191,3 +191,12 @@ export {
   type WorkflowTemplate,
   type ExecutionContext,
 } from './enterprise';
+
+// HTTP exports (D9 — A3/A5 Tier-1 SSRF closure).
+export {
+  safeHttpFetch,
+  SafeHttpFetchError,
+  type SafeHttpFetchOptions,
+  type SafeHttpFetchResult,
+  type SafeHttpFetchErrorCode,
+} from './http';

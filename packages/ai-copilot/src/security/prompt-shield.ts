@@ -100,6 +100,14 @@ const PATTERNS: readonly InjectionPattern[] = [
   // Context manipulation
   { regex: /\[IMPORTANT\]\s*(ignore|override|forget|disregard)/i, category: 'context_manipulation', severity: 'high', name: 'important_override' },
   { regex: /ADMIN\s+OVERRIDE/i, category: 'context_manipulation', severity: 'critical', name: 'admin_override' },
+
+  // D9 — additional Agentforce-Trust-Layer-style patterns.
+  { regex: /\b(?:tool|plugin|connector)\s+(?:password|secret|api[\s_-]?key|token)\b/i, category: 'system_probe', severity: 'critical', name: 'tool_password' },
+  { regex: /\b(?:execute|run|spawn|invoke)\s+(?:arbitrary|raw|shell|bash|powershell|cmd|system)\s+(?:command|code|script)/i, category: 'tool_abuse', severity: 'critical', name: 'arbitrary_exec' },
+  { regex: /\b(?:emergency|urgent|critical)\s+(?:override|bypass|escalation|approval)\b/i, category: 'role_manipulation', severity: 'high', name: 'emergency_override' },
+  { regex: /\b(?:maintenance|debug|diagnostic|service)\s+mode\s+(?:enabled|active|engaged|on)\b/i, category: 'role_manipulation', severity: 'high', name: 'maintenance_mode' },
+  { regex: /(?:^|\n)\s*(?:---{3,}|\*{3,}|={3,}|_{3,})\s*(?:\n|$)/, category: 'delimiter_attack', severity: 'medium', name: 'markdown_separator' },
+  { regex: /\b(?:reveal|show|leak|print|output|dump)\s+(?:my|your|the|any)\s+(?:[A-Z_]{3,}_)?(?:API|SECRET|ACCESS|PRIVATE)[_\s-]?KEY\b/i, category: 'system_probe', severity: 'critical', name: 'api_key_probe' },
 ];
 
 const SEVERITY_RANK: Readonly<Record<ThreatLevel, number>> = {

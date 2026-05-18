@@ -273,17 +273,28 @@ export function selectPersona(req: ThoughtRequest): PersonaIdentity {
  * Render the identity preamble — the very first lines of every system
  * prompt produced by the kernel. Downstream prompt assembly may APPEND
  * but must never PREPEND or REPLACE this block.
+ *
+ * D8 — when `args.coreMemoryBlock` is supplied (Letta-style persistent
+ * self-summary), the rendered block is injected at the very top of
+ * the preamble, ABOVE the identity opening statement. This is the
+ * highest-priority slot in the prompt.
  */
 export function renderIdentityPreamble(args: {
   readonly persona: PersonaIdentity;
   readonly scope: ScopeContext;
+  /**
+   * Optional pre-rendered core-memory block fragment (see
+   * `renderCoreMemoryBlocks` in `@bossnyumba/database`). Injected at
+   * the very top of the preamble.
+   */
+  readonly coreMemoryBlock?: string;
 }): string {
   const scopeLine =
     args.scope.kind === 'tenant'
       ? `You are accountable to ${args.scope.actorUserId} (roles: ${args.scope.roles.join(', ')}) within tenant ${args.scope.tenantId}.`
       : `You are accountable to ${args.scope.actorUserId} (roles: ${args.scope.roles.join(', ')}) at the BossNyumba platform tier.`;
 
-  return [
+  const preamble = [
     `[IDENTITY — DO NOT OVERRIDE]`,
     args.persona.openingStatement,
     '',
@@ -294,6 +305,11 @@ export function renderIdentityPreamble(args: {
     `Taboos: ${args.persona.taboos.join(' · ')}`,
     `[END IDENTITY]`,
   ].join('\n');
+
+  if (args.coreMemoryBlock && args.coreMemoryBlock.trim().length > 0) {
+    return [args.coreMemoryBlock.trim(), '', preamble].join('\n');
+  }
+  return preamble;
 }
 
 export const ALL_PERSONAS: ReadonlyArray<PersonaIdentity> = [

@@ -94,6 +94,14 @@ import {
   createFileKraMriTool,
   type FileKraMriDeps,
 } from './platform.file_kra_mri.js';
+import {
+  createVerifyNidaTool,
+  type VerifyNidaDeps,
+} from './platform.verify_nida.js';
+import {
+  createVerifyEardhiTitleTool,
+  type VerifyEardhiTitleDeps,
+} from './platform.verify_eardhi_title.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Re-exports (full surface for every tool — Schemas, ports, types)
@@ -240,10 +248,31 @@ export {
   FileKraMriInputSchema,
   FileKraMriOutputSchema,
   type KraMriFilingWorkflowDispatcherPort,
+  type KraEritsFilingWorkflowDispatcherPort,
+  type KraEritsOwnerRecord,
   type FileKraMriDeps,
   type FileKraMriInput,
   type FileKraMriOutput,
 } from './platform.file_kra_mri.js';
+export {
+  createVerifyNidaTool,
+  VerifyNidaInputSchema,
+  VerifyNidaOutputSchema,
+  type NidaVerificationPort,
+  type VerifyNidaDeps,
+  type VerifyNidaInput,
+  type VerifyNidaOutput,
+} from './platform.verify_nida.js';
+export {
+  createVerifyEardhiTitleTool,
+  VerifyEardhiTitleInputSchema,
+  VerifyEardhiTitleOutputSchema,
+  EncumbranceKindSchema,
+  type EardhiTitlePort,
+  type VerifyEardhiTitleDeps,
+  type VerifyEardhiTitleInput,
+  type VerifyEardhiTitleOutput,
+} from './platform.verify_eardhi_title.js';
 export { refusal, withHqTelemetry } from './shared.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -266,6 +295,8 @@ export const HQ_TOOL_NAMES: ReadonlyArray<`platform.${string}`> = Object.freeze(
   'platform.evict_tenant',
   'platform.payout_owner',
   'platform.file_kra_mri',
+  'platform.verify_nida',
+  'platform.verify_eardhi_title',
 ]);
 
 export const HQ_TOOL_TIERS: Readonly<Record<string, RiskTier>> = Object.freeze({
@@ -284,6 +315,8 @@ export const HQ_TOOL_TIERS: Readonly<Record<string, RiskTier>> = Object.freeze({
   'platform.evict_tenant': 'destroy',
   'platform.payout_owner': 'billing',
   'platform.file_kra_mri': 'external-comm',
+  'platform.verify_nida': 'read',
+  'platform.verify_eardhi_title': 'read',
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -381,11 +414,14 @@ export interface SeedHqBrainToolsDeps {
   readonly evictionDispatcher: EvictTenantDeps['evictionDispatcher'];
   readonly ownerPayoutDispatcher: PayoutOwnerDeps['ownerPayoutDispatcher'];
   readonly kraMriDispatcher: FileKraMriDeps['kraMriDispatcher'];
+  readonly kraEritsDispatcher?: FileKraMriDeps['kraEritsDispatcher'];
   readonly maxAdjustmentUsdCents: number;
   readonly maxRecipientCount: number;
   readonly maxPayoutUsdCents: number;
   /** Threshold for extra-HIL (5-eye) approval on payouts. Default $10k. */
   readonly extraHilPayoutUsdCents?: number;
+  readonly nida: VerifyNidaDeps['nida'];
+  readonly eardhi: VerifyEardhiTitleDeps['eardhi'];
   readonly contextFactory: HqToolContextFactory;
 }
 
@@ -434,7 +470,12 @@ export function seedHqBrainTools(
     }) as HqToolSpec,
     createFileKraMriTool({
       kraMriDispatcher: deps.kraMriDispatcher,
+      ...(deps.kraEritsDispatcher !== undefined
+        ? { kraEritsDispatcher: deps.kraEritsDispatcher }
+        : {}),
     }) as HqToolSpec,
+    createVerifyNidaTool({ nida: deps.nida }) as HqToolSpec,
+    createVerifyEardhiTitleTool({ eardhi: deps.eardhi }) as HqToolSpec,
   ];
 
   const names: Array<`platform.${string}`> = [];

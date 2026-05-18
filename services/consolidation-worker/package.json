@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
-  "description": "Daily ingestion worker — pulls unconsumed kernel_cot_reservoir rows and writes consolidated semantic facts.",
+  "description": "Daily ingestion worker \u2014 pulls unconsumed kernel_cot_reservoir rows and writes consolidated semantic facts.",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@bossnyumba/database": "workspace:*",
-    "drizzle-orm": "^0.30.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",

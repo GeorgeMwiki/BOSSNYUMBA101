@@ -28,6 +28,24 @@ export type GoalStepStatus =
   | 'failed'
   | 'skipped';
 
+/**
+ * Reference to a thing preventing a step from running.
+ * Phase D / D12.8 — surfaced through the UI so a human can clear it;
+ * consumed by the executor which skips the step until the blocker is
+ * resolved.
+ */
+export interface BlockerRef {
+  readonly kind:
+    | 'approval-pending'
+    | 'document-missing'
+    | 'compliance-hold'
+    | 'tenant-unreachable'
+    | 'external-dependency'
+    | 'other';
+  readonly description: string;
+  readonly ref?: string;
+}
+
 export interface GoalStep {
   readonly id: string;
   readonly seq: number;
@@ -39,6 +57,12 @@ export interface GoalStep {
   readonly endedAt: string | null;
   readonly outcome: string | null;
   readonly errorMessage: string | null;
+  /** Phase D / D12.8 — DAG dependency edges. */
+  readonly dependsOn?: ReadonlyArray<string>;
+  /** Phase D / D12.8 — optional ISO-8601 deadline. */
+  readonly due?: string;
+  /** Phase D / D12.8 — non-empty list keeps step pending. */
+  readonly blockers?: ReadonlyArray<BlockerRef>;
 }
 
 export interface GoalMetrics {
@@ -71,6 +95,9 @@ export interface GoalStepDraft {
   readonly description: string;
   readonly toolName: string | null;
   readonly toolPayload: Record<string, unknown> | null;
+  readonly dependsOn?: ReadonlyArray<string>;
+  readonly due?: string;
+  readonly blockers?: ReadonlyArray<BlockerRef>;
 }
 
 export interface GoalOpenArgs {

@@ -321,3 +321,151 @@ export function injectTraceContext(
   propagation.inject(context.active(), headers);
   return headers;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Langfuse-conventioned span helpers (Phase D D6)
+//
+// Adapter-agnostic helpers so any code path can emit OTel spans that
+// Langfuse will recognise. We never depend on the `langfuse` SDK at
+// build time — the `langfuse-adapter.ts` lazy-imports the SDK when
+// `LANGFUSE_HOST` / `LANGFUSE_BASEURL` is set. These helpers attach the
+// standard Langfuse attribute conventions on the active OTel span;
+// when no Langfuse collector is configured the attributes are
+// harmless noise that downstream OTel collectors ignore.
+// ─────────────────────────────────────────────────────────────────────
+
+/** Recognised Langfuse observation types. */
+export type LangfuseObservationKind =
+  | 'generation'
+  | 'tool-call'
+  | 'retrieval'
+  | 'span';
+
+/** Typed attribute payload for a Langfuse-conventioned span. */
+export interface LangfuseSpanAttributes {
+  readonly traceName?: string;
+  readonly userId?: string;
+  readonly tenantId?: string;
+  readonly sessionId?: string;
+  readonly environment?: string;
+  readonly modelName?: string;
+  readonly usage?: Record<string, unknown>;
+  readonly level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+  readonly metadata?: Record<string, unknown>;
+  readonly raw?: Record<string, string | number | boolean>;
+}
+
+/**
+ * Map a Langfuse-recognised kind to the canonical
+ * `langfuse.observation.type` attribute value. Langfuse only recognises
+ * `'generation'` and `'span'` natively; tool-call / retrieval are
+ * collapsed to `'span'` and the original kind is preserved via the
+ * `langfuse.observation.metadata.bossnyumba_kind` attribute.
+ */
+export function mapLangfuseObservationType(
+  kind: LangfuseObservationKind,
+): 'generation' | 'span' {
+  return kind === 'generation' ? 'generation' : 'span';
+}
+
+/**
+ * Build a Langfuse-attribute key/value record from a typed payload.
+ * Pure function — used to set attributes on a fresh span AND to
+ * round-trip via tests without touching the OTel span machinery.
+ */
+export function buildLangfuseSpanAttributes(
+  kind: LangfuseObservationKind,
+  attrs: LangfuseSpanAttributes,
+): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {
+    'langfuse.observation.type': mapLangfuseObservationType(kind),
+  };
+  // Preserve the original kind for non-span types so Langfuse-side
+  // queries can still distinguish tool-call vs retrieval.
+  if (kind !== 'span') {
+    out['langfuse.observation.metadata.bossnyumba_kind'] = kind;
+  }
+  if (attrs.traceName) out['langfuse.trace.name'] = attrs.traceName;
+  if (attrs.userId) out['langfuse.user.id'] = attrs.userId;
+  if (attrs.tenantId) out['langfuse.tenant.id'] = attrs.tenantId;
+  if (attrs.sessionId) out['langfuse.session.id'] = attrs.sessionId;
+  if (attrs.environment) out['langfuse.environment'] = attrs.environment;
+  if (attrs.modelName) out['langfuse.observation.model.name'] = attrs.modelName;
+  if (attrs.usage) {
+    try {
+      out['langfuse.observation.usage_details'] = JSON.stringify(attrs.usage);
+    } catch {
+      // ignore unserialisable usage
+    }
+  }
+  if (attrs.level) out['langfuse.observation.level'] = attrs.level;
+  if (attrs.metadata) {
+    for (const [k, v] of Object.entries(attrs.metadata)) {
+      if (
+        typeof v === 'string' ||
+        typeof v === 'number' ||
+        typeof v === 'boolean'
+      ) {
+        out[`langfuse.observation.metadata.${k}`] = v;
+      } else {
+        try {
+          out[`langfuse.observation.metadata.${k}`] = JSON.stringify(v);
+        } catch {
+          // ignore unserialisable metadata key
+        }
+      }
+    }
+  }
+  if (attrs.raw) {
+    for (const [k, v] of Object.entries(attrs.raw)) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Emit a span tagged with Langfuse attribute conventions. Wraps
+ * `tracer.startActiveSpan` so callers don't have to manage span
+ * lifecycle. The `fn` receives the live span so callers can
+ * record events / set status / add custom attrs. Span ended
+ * automatically on resolve OR reject (records exception + sets ERROR
+ * status on reject). When `attrs.traceName` is absent we stamp the
+ * span name into `langfuse.trace.name` so Langfuse always has a trace
+ * label.
+ */
+export function emitLangfuseSpan<T>(
+  tracer: Tracer,
+  name: string,
+  kind: LangfuseObservationKind,
+  attrs: LangfuseSpanAttributes,
+  fn: (span: Span) => Promise<T> | T,
+): Promise<T> {
+  const attributes = buildLangfuseSpanAttributes(kind, {
+    traceName: attrs.traceName ?? name,
+    ...attrs,
+  });
+  return tracer.startActiveSpan(name, { attributes }, async (span) => {
+    try {
+      const result = await fn(span);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      try {
+        span.recordException(
+          err instanceof Error ? err : new Error(message),
+        );
+      } catch {
+        // ignore — recordException is best-effort
+      }
+      try {
+        span.setStatus({ code: SpanStatusCode.ERROR, message });
+      } catch {
+        // ignore — setStatus is best-effort
+      }
+      throw err;
+    } finally {
+      span.end();
+    }
+  });
+}

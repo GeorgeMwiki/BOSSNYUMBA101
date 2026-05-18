@@ -249,6 +249,10 @@ import {
   type SovereignLedgerVerifyCronSupervisor,
 } from './sovereign-ledger-verify-cron.js';
 import {
+  createAuditVerifyCronSupervisor,
+  type AuditVerifyCronSupervisor,
+} from './audit-verify-cron.js';
+import {
   createParityCapabilityDashboard,
   type ParityCapabilityDashboardService,
 } from './parity-capability-dashboard.factory.js';
@@ -703,6 +707,16 @@ export interface ServiceRegistry {
    *  on the shared bus. Null in degraded mode. Inert until `start()`. */
   readonly sovereignLedgerVerifyCron: SovereignLedgerVerifyCronSupervisor | null;
 
+  /**
+   * AI audit-chain verify cron (Phase D D2). Periodically calls
+   * `verifyRandomSample(tenantId, p=0.05)` every 15 min and
+   * `verifyLedgerChain(tenantId)` nightly per active tenant. Emits
+   * `ai-audit.tampered` on the shared bus + structured ERROR log on
+   * any failed verdict. Null in degraded mode (no AI-audit verifier
+   * wired). Inert until `.start()`.
+   */
+  readonly auditVerifyCron: AuditVerifyCronSupervisor | null;
+
   /** Parity capability dashboard (Wave-K parity-litfin Gap C). Aggregates
    *  `kernel_provenance` + `kernel_cot_reservoir` rows into the per-
    *  capability tiles the mission-eval UI renders. Null in degraded
@@ -1093,6 +1107,9 @@ function degradedRegistry(eventBus: EventBus): ServiceRegistry {
     // Wave-K Tier-3 — sovereign-ledger verify cron is null in degraded
     // mode (no DB → no chain rows to walk).
     sovereignLedgerVerifyCron: null,
+    // Phase D D2 — AI audit-chain verify cron is null in degraded mode
+    // (no verifier wired). `index.ts` skips `.start()` accordingly.
+    auditVerifyCron: null,
     // Wave-K parity-litfin Gap C — null in degraded mode; the router
     // surfaces a zeroed-but-shaped payload so mission-eval keeps loading.
     parityCapabilityDashboard: null,
@@ -1899,6 +1916,10 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
         warn: (obj, msg) => console.warn('idle-session-emitter:', msg ?? '', obj),
       },
     }),
+    // Phase D D2 — audit-verify cron. Will be constructed lazily by the
+    // composition root once its verifier ports are wired (S3 Wire Fix
+    // Wave). Null in this skeleton — supervisor is inert when null.
+    auditVerifyCron: null,
     // Central Command Phase C C4 — session-replay retention purge.
     // Storage adapter slot is null at the registry level today (the
     // production `SessionReplayStoragePort` has no `delete()` yet — a

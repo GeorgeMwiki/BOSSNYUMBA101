@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 1. chart-vega — Vega-Lite v5 chart renderer.
+ * 1. chart-vega — Vega-Lite v6 chart renderer.
  *
  * Anti-patterns enforced:
  *   - ajv-validate every Vega-Lite spec BEFORE render (R2)
@@ -9,9 +9,17 @@
  *   - never stream chart spec piece-by-piece (R2)
  *
  * Dependencies (declared in package.json, installed at integration):
- *   - react-vega ^7.6.0
- *   - vega-lite ^5.20.0
- *   - vega ^5.30.0
+ *   - react-vega ^8.0.0
+ *   - vega-lite ^6.4.3
+ *   - vega ^6.2.0
+ *   - vega-embed ^7.1.0
+ *
+ * Phase D11 (2026-05-17): bumped from vega 5 → 6 + react-vega 7 → 8 +
+ * vega-embed 6 → 7 + vega-lite 5 → 6 — closes GHSA-7f2v-3qq3-vvjf
+ * (vega XSS via expressions in VEGA_DEBUG env) and GHSA-m9rg-mr6g-75gm
+ * (vega-functions XSS via setdata). The declarative
+ * `data: { values: props.data }` injection pattern below is unchanged
+ * across the major bump.
  *
  * Loading strategy: dynamic + ssr:false. The Vega bundle is ~280KB
  * and adds nothing to first-paint on routes without a chart.

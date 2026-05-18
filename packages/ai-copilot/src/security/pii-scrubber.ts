@@ -30,7 +30,8 @@ export type PiiType =
   | 'passport'
   | 'ssn'
   | 'ip_address'
-  | 'api_key';
+  | 'api_key'
+  | 'date_of_birth';
 
 export interface PiiMatch {
   readonly type: PiiType;
@@ -84,6 +85,12 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     regex: /\b(?:\+?255|0)\s?[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/,
     replacement: '[PHONE]',
   },
+  // Malaysia +60 mobiles — 9 or 10 digits after +60/0 prefix.
+  {
+    type: 'phone_number',
+    regex: /\b(?:\+?60|0)\s?1\d[\s-]?\d{3,4}[\s-]?\d{4}\b/,
+    replacement: '[PHONE]',
+  },
   // International fallback — conservative.
   {
     type: 'phone_number',
@@ -131,6 +138,25 @@ const PII_PATTERNS: readonly PiiPattern[] = [
     type: 'api_key',
     regex: /\b(?:sk|pk|api[_-]?key|token)[-_][A-Za-z0-9]{16,}\b/i,
     replacement: '[API_KEY]',
+  },
+  // D9: Date of birth — multiple formats.
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])\b/,
+    replacement: '[DOB]',
+  },
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:0?[1-9]|[12]\d|3[01])[-/.](?:0?[1-9]|1[0-2])[-/.](?:19|20)\d{2}\b/,
+    replacement: '[DOB]',
+  },
+  {
+    type: 'date_of_birth',
+    regex:
+      /\b(?:0?[1-9]|[12]\d|3[01])\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(?:19|20)\d{2}\b/i,
+    replacement: '[DOB]',
   },
 ];
 
@@ -180,7 +206,7 @@ const MONETARY_PATTERNS: readonly RegExp[] = [
 
 // Placeholders we emit — never re-scrub them.
 const PLACEHOLDER_RX =
-  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY)\]/;
+  /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB)\]/;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -245,10 +271,12 @@ export function scrubPii(message: string): PiiScrubResult {
       if (p.type !== 'email' && p.type !== 'api_key') {
         if (isMonetary(message, start, end)) continue;
       }
-      // Very short digit runs are likely false positives.
+      // Very short digit runs are likely false positives. DOBs are
+      // excluded — they carry structural markers (separators / months).
       if (
         p.type !== 'email' &&
         p.type !== 'api_key' &&
+        p.type !== 'date_of_birth' &&
         m[0].replace(/[\s-]/g, '').length < 6
       ) {
         continue;

@@ -1,5 +1,7 @@
 # Memory + Online-Learning Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md` for the canonical refresh. Of the 6 missing + 11 partial items below, **8 are now SHIPPED**, **2 are in-flight in Phase D**, and **1 (declared-fact endpoint Gap F) remains OPEN — Phase E candidate**. Original gap prose preserved; SHIPPED items carry `> ✅` callouts in the Detailed-gaps section.
+
 P2 of the 10-agent parity sweep. Read-only analysis of the **four-tier memory hierarchy**, the **sleep/consolidation cycle**, and the **online-learning feedback loop**.
 
 - **LITFIN**: per-store files under `src/core/memory/` + sleep-tick at `src/core/heartbeat/sleep-tick.ts` + nightly cron at `src/app/api/cron/learning-consolidation/route.ts` + reaction-feedback at `src/core/litfin-ai/feedback/reaction-feedback.ts`.
@@ -47,6 +49,22 @@ Both projects expose four memory tiers (episodic / semantic / procedural / refle
 - Named-differently: 3 (7 promotion threshold, 11 query-conditioned semantic search, 15 procedural write trigger)
 
 ## Detailed gaps
+
+> ✅ **SHIPPED Phase A** (Gap A — consolidation cron) — `k8s/consolidation-worker-cron.yaml` + `services/consolidation-worker/src/stages/{01-ingest,02-distill,03-promote,04-promote}.ts` runs the 8-stage sleep-cycle on schedule.
+> ✅ **SHIPPED Phase A** (Gap B — feedback UI button) — `apps/customer-app/src/components/FeedbackThumbs.tsx` + tests; mounted in `apps/customer-app/src/app/jarvis/JarvisConsole.tsx` and across owner / manager / admin / platform-hq apps.
+> ✅ **SHIPPED Phase A** (Gap C — query-conditioned semantic search) — migration `0125_kernel_memory_semantic_embedding.sql` adds `embedding vector(1536)` + pgvector; `kernel/embedder.ts` + new `search({query, …})` overload. `loadSemanticFacts` forwards `req.userMessage`.
+> ✅ **SHIPPED Phase B** (Gap D — multi-sink fan-out) — `POST /feedback` handler now writes (a) kernel-action-audit row tagged `feedback-negative`, (b) reflexion lesson for `correction` signals, (c) drift signal emission. Implicit feedback signals table at migration `0135_implicit_feedback_signals.sql`.
+> ✅ **SHIPPED Phase A** (Gap E — procedural promotion floor) — `minInvocations: 3` enforced at kernel read time in `loadProcedural`.
+> 🔴 **OPEN — Phase E candidate** (Gap F — declared-fact endpoint `POST /memory/declare`) — schema supports `source = 'declared'` but no producer is wired. Tracked in `00-STATUS-2026-05-18.md` §4 item 3.
+> ⚠️ **SHIPPING Phase D** (Gap G — emissions table + morning digest) — schema `consolidation_emissions` shipped; morning-digest BFF route is the remaining wiring.
+> ✅ **SHIPPED Phase B** (Gap H — admin feedback dashboard) — `GET /admin/kernel-feedback/rollup` route + `apps/admin-platform-portal/src/app/feedback-health/` page.
+>
+> Additional Wave-K / Phase-B shipments visible in `00-STATUS-2026-05-18.md` §3:
+> - **Mem0-style fact distillation** — `services/consolidation-worker/src/stages/01-ingest.ts → 04-promote.ts`.
+> - **Zep / Graphiti bi-temporal KG** — `packages/database/src/schemas/temporal-entity-graph.schema.ts` + Louvain at `temporal-entity-graph.louvain.ts`.
+> - **Voyager skill registry** — `packages/database/src/schemas/skill-registry.schema.ts` + migration `0133_skill_registry.sql`.
+> - **Per-turn Self-RAG** — `packages/central-intelligence/src/kernel/self-rag/self-rag.ts`.
+> - **Constitutional critic / RLAIF** — `packages/central-intelligence/src/kernel/critics/constitutional-critic.ts`.
 
 ### Gap A — Consolidation cycle has no scheduler (#19)
 - **LITFIN**: `vercel.json` cron entries trigger `/api/cron/learning-consolidation` (0 3 * * *) and `/api/cron/brain-sleep-tick`. Both routes verify `CRON_SECRET`, then call `consolidateSubject(...)` / `runSleepTick(...)` for the discovered active subject set. The sleep-tick orchestrator schedules per-pass min-intervals and emission persistence (`sleep-tick.ts:79-119`).

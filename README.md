@@ -84,6 +84,12 @@ Cross-cutting packages: `@bossnyumba/domain-models` (types), `@bossnyumba/authz-
 Two supported paths for bringing up local Postgres + Redis — Docker
 (one-liner) or Homebrew (lighter, no container overhead). Pick one.
 
+> **First time bringing up production / staging against Supabase?** Read
+> [Docs/SUPABASE_LIVE_TEST.md](./Docs/SUPABASE_LIVE_TEST.md) first — it
+> covers the live-test smoke from a fresh Supabase project end-to-end.
+> Operator runbooks for routine + emergency procedures live in
+> [Docs/RUNBOOKS/](./Docs/RUNBOOKS/README.md).
+
 ### Option A — Docker (recommended for first-time setup)
 
 ```bash

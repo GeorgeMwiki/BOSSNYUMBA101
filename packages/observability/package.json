@@ -38,11 +38,10 @@
     "@sentry/node": "^10.49.0",
     "pino": "^8.17.0",
     "posthog-node": "^5.29.2",
-    "uuid": "^9.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
-    "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
     "@vitest/coverage-v8": "^4.1.6",

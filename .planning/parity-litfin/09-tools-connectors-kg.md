@@ -1,5 +1,16 @@
 # Tools / Connectors / KG / Agent-Platform / MCP Parity — LITFIN vs BOSSNYUMBA101
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 4 missing + 5 partial items below, **6 are now SHIPPED** and **1 is in-flight in Phase D9 (Ed25519 signed tool registry + denylist)**. After Phase A/B/C the BOSSNYUMBA-AHEAD count grew from 7 → 10 on this surface. The 2026-05-15 "BOSSNYUMBA has only 2 adapters" line below is OUTDATED.
+>
+> Headline shipments (all in `00-STATUS-2026-05-18.md` §3):
+> - ✅ **BrainToolSpec registry — 510 LOC + 18 platform tools** — `kernel/tool-spec.ts:510`. **BOSSNYUMBA AHEAD** vs LITFIN's 4 brain-side tools (closes Gap A). See §3 item 3.
+> - ✅ **MCP prompts (5 canonical)** — `packages/mcp-server/src/prompts.ts:347` registers `tenant-onboarding`, `arrears-resolution`, `maintenance-triage`, `lease-renewal-assessment`, `eviction-pre-check` (closes Gap B).
+> - ✅ **Connector orchestration + registry + health-scheduler** — `packages/connectors/src/{registry,orchestrator,health-scheduler}.ts` (closes Gap C).
+> - ✅ **Tenant-scoped Cypher helper** — `packages/graph-sync/src/client/neo4j-client.ts:71-82` `executeReadScoped(tenantId, cypher, params)` asserts `$tenantId` presence at the helper boundary (closes Gap D).
+> - ✅ **Temporal entity graph + Louvain community detection** — `packages/database/src/services/temporal-entity-graph.{service,louvain}.ts` (922 LOC) + migration `0140_temporal_entity_graph.sql`. **BOSSNYUMBA AHEAD** vs LITFIN's KG which has bi-temporal indexes but no Louvain. See §3 item 13.
+> - ⚠️ **Tool-call denylist + Ed25519 signed tool registry** — Phase D9 in flight. Registry will be signed at boot; denylist persists in `kernel-tool-policy` table.
+> - ✅ **Agent platform HMAC + idempotency + correlation-id parity** — already at parity per original doc. No change.
+
 P9 of the 10-agent parity sweep. Read-only analysis of the **tool registry, MCP server, connectors framework, Neo4j knowledge graph, and agent-platform DNA**.
 
 Surfaces compared:

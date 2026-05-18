@@ -1,5 +1,19 @@
 # P6 — Data Protection Parity (LITFIN ↔ BOSSNYUMBA101)
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 11 gaps below, **9 are now SHIPPED** and **1 is in-flight in Phase D9 (cross-tenant denials audit, migration `0153_cross_tenant_denials.sql`)**. **The 2026-05-15 balance is fully INVERTED**: BOSSNYUMBA is now AHEAD of LITFIN on 5 of the 7 axes in this doc. The "P6 counts" table below understates the BOSSNYUMBA-ahead state.
+>
+> Headline shipments (all in `00-STATUS-2026-05-18.md` §3):
+> - ✅ **DP aggregator** (Laplace + Gaussian + crypto-RNG + reserve-before-read invariant) — `packages/graph-privacy/src/aggregators/dp-aggregator.ts:272`. **BOSSNYUMBA AHEAD** — LITFIN lacks Gaussian mechanism.
+> - ✅ **Cohort signal + tier-scaled k-anonymity (5 → 7 → 10 → 15 → 20 → 25)** — `kernel/cohort-signal.ts:75`. **BOSSNYUMBA AHEAD** — LITFIN uses single global k=5. See §3 item 5.
+> - ✅ **Privacy-budget composer (persistent ε,δ ledger)** — `packages/database/src/services/privacy-budget-composer.service.ts:438` + migrations `0116` and `0130`. **BOSSNYUMBA AHEAD** — LITFIN's `computePrivacyBudget` is pure / non-persistent. See §3 item 4.
+> - ✅ **DSAR compiler + RTBF executor** — `packages/ai-copilot/src/gdpr/dsar-compiler.ts:245` + `dsar-rtbf-executor.ts:875`.
+> - ✅ **Data-classification registry** — `packages/database/src/security/data-classification.ts:650`.
+> - ✅ **Sovereign action ledger** — `packages/database/src/services/sovereign-action-ledger.service.ts:399` + migration `0129_sovereign_action_ledger.sql`.
+> - ✅ **Tenant-isolation enforcer with AsyncLocalStorage `runWithTenantContext` + `TenantScoped` generic** — `packages/ai-copilot/src/security/tenant-isolation.ts:41-272`. **BOSSNYUMBA AHEAD** — LITFIN has no type-level scope binding. See §3 item 6.
+> - ✅ **Field-level encryption-at-rest (PII columns + KMS-rotation hook)** — migration `0143_field_encryption_audit.sql` + 11 source files + 48 tests (Phase D1 ✅).
+> - ⚠️ **Cross-tenant denials audit** — migration `0153_cross_tenant_denials.sql` SHIPPED; route wiring is the remaining Phase D9 task.
+> - ✅ **CoT PII scrub + queryCot API + RLS** — migration `0146_cot_reservoir_rls.sql` + sanitiser + `queryCot` (Phase D3 ✅).
+
 Slice: differential-privacy aggregation, cohort signals, k-anonymity,
 tenant isolation, retention/GDPR, data classification.
 

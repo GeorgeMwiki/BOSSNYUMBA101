@@ -303,6 +303,8 @@ export interface BrainKernelDeps {
    * failures collapse to no-op.
    */
   readonly behaviorSignalSource?: import('./kernel-types.js').BehaviorSignalSourcePort;
+  /** D8 — optional regulatory mirror; see `regulatory-mirror.ts`. */
+  readonly regulatoryMirror?: import('./regulatory-mirror.js').RegulatoryMirror;
 }
 
 export interface BrainKernel {
@@ -694,7 +696,16 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       // `shouldDebate(req)` returns true (default: stakes ∈ {high,
       // critical}), we replace the single sensor call with a multi-
       // voice debate and use the synthesis text as the sensor output.
-      const wantsThinking = req.stakes === 'high' || req.stakes === 'critical';
+      // D8 — multi-dim TTC allocator replaces the binary stakes test.
+      const __ttcMod = await import('./ttc-allocator.js');
+      const __ttc = __ttcMod.allocateTtc({
+        stakes: req.stakes,
+        surface: req.surface,
+        ...(typeof req.requireJudge === 'boolean'
+          ? { requireJudge: req.requireJudge }
+          : {}),
+      });
+      const wantsThinking = __ttc.cognitionMode !== 'fast';
       const hasAttachments = (req.attachments?.length ?? 0) > 0;
       const required: Array<'vision' | 'thinking' | 'fast' | 'batch'> = [];
       if (wantsThinking) required.push('thinking');
@@ -812,7 +823,8 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
       //    brain-kernel.ts:1190-1240. K1 owns step 0 (killswitch) and
       //    step 11a (uncertainty); this patch lives strictly at step 9.
       const judgeStart = clock().getTime();
-      const judgeRequested = req.requireJudge === true || req.stakes === 'critical';
+      // Phase D D2 — auto-judge for stakes>='high' (was: critical-only).
+      const judgeRequested = req.requireJudge === true || req.stakes === 'high' || req.stakes === 'critical';
       let judgeOut: {
         readonly score: number;
         readonly reasonText?: string;
@@ -964,13 +976,57 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         }
       }
 
+      // 10b) D8 — regulatory mirror runs BEFORE the policy gate when
+      //      `deps.regulatoryMirror` + `req.regulatoryProbe` are both
+      //      wired. 'refuse' produces a hard refusal; 'flag' appends
+      //      the citation through to the policy-gate input.
+      let regulatoryCiteText = '';
+      const regProbe = (req as { regulatoryProbe?: {
+        jurisdiction: 'TZ' | 'KE' | 'UAE';
+        action: 'collect_deposit' | 'issue_eviction_notice' | 'raise_rent' | 'distrain_goods' | 'enter_premises' | 'evict' | 'recover_arrears';
+        payload: Record<string, unknown>;
+      } }).regulatoryProbe;
+      if (deps.regulatoryMirror && regProbe) {
+        const regStart = clock().getTime();
+        try {
+          const reg = deps.regulatoryMirror.check({
+            jurisdiction: regProbe.jurisdiction,
+            action: regProbe.action,
+            payload: regProbe.payload as never,
+          });
+          traceStep(
+            'policy-gate' as KernelStepName,
+            regStart,
+            `regulatory-mirror verdict=${reg.verdict} matches=${reg.matches.length}`,
+          );
+          if (reg.verdict === 'refuse') {
+            const decision = makeRefusal({
+              thoughtId,
+              req,
+              reason: `regulatory/${reg.matches[0]?.ruleId ?? 'refuse'}`,
+              gate: 'policy',
+              startedAt,
+              clockNow: clock(),
+            });
+            finaliseTrace('refusal', 'policy');
+            return decision;
+          }
+          if (reg.verdict === 'flag') regulatoryCiteText = reg.citeText;
+        } catch (e) {
+          traceStep('policy-gate' as KernelStepName, regStart, 'regulatory-mirror failed', e);
+        }
+      }
+
       // 11) policy gate — supply the K5.2 request context so the new
       //     tenant-isolation / scope-match / cost-ceiling / off-hours
       //     checks can fire when the caller threaded the relevant
       //     fields through `ThoughtRequest`.
       const policyStart = clock().getTime();
+      const policyText = regulatoryCiteText
+        ? `${normalised.text}\n\n[Regulatory note]\n${regulatoryCiteText}`
+        : normalised.text;
       const policy = runPolicyGate({
-        text: normalised.text,
+        text: policyText,
         hasCitations: citations.length > 0,
         request: buildPolicyGateRequestContext(req, clock),
       });

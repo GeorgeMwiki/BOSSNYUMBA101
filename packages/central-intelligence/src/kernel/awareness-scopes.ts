@@ -108,3 +108,85 @@ export function cohortMinK(tier: AwarenessTier): number {
     case 'industry':  return 25;
   }
 }
+
+// ──────────────────────────────────────────────────────────────────
+// D9 / G5 — Role × Tier composition.
+// ──────────────────────────────────────────────────────────────────
+
+export type AwarenessRole =
+  | 'resident'
+  | 'manager'
+  | 'owner'
+  | 'admin'
+  | 'sovereign-admin'
+  | 'platform-operator';
+
+const ROLE_RANK: Readonly<Record<AwarenessRole, number>> = Object.freeze({
+  resident: 0,
+  manager: 1,
+  owner: 2,
+  admin: 3,
+  'sovereign-admin': 4,
+  'platform-operator': 5,
+});
+
+export function roleRank(role: AwarenessRole): number {
+  return ROLE_RANK[role];
+}
+
+const ALLOWED_ROLE_TIER: Readonly<
+  Record<AwarenessRole, ReadonlyArray<AwarenessTier>>
+> = Object.freeze({
+  resident: ['tenant', 'lease'],
+  manager: ['unit', 'block', 'property', 'portfolio'],
+  owner: ['property', 'portfolio'],
+  admin: ['property', 'portfolio', 'org'],
+  'sovereign-admin': ['org'],
+  'platform-operator': ['industry'],
+});
+
+export interface RoleScope {
+  readonly role: AwarenessRole;
+  readonly tier: AwarenessTier;
+  readonly minK: number;
+  readonly requiresPseudonymisation: boolean;
+}
+
+export interface RoleScopeError {
+  readonly ok: false;
+  readonly reason: string;
+}
+
+export function composeScope(
+  role: AwarenessRole,
+  tier: AwarenessTier,
+): RoleScope | RoleScopeError {
+  const allowed = ALLOWED_ROLE_TIER[role];
+  if (!allowed.includes(tier)) {
+    return {
+      ok: false,
+      reason: `role "${role}" cannot operate at tier "${tier}"; allowed tiers: ${allowed.join(', ')}`,
+    };
+  }
+  const baseK = cohortMinK(tier);
+  const roleBoost =
+    role === 'platform-operator'
+      ? 15
+      : role === 'sovereign-admin'
+        ? 10
+        : role === 'admin'
+          ? 5
+          : 0;
+  const minK = Math.max(baseK, baseK + roleBoost);
+  const requiresPseudonymisation =
+    role === 'platform-operator' ||
+    role === 'admin' ||
+    role === 'sovereign-admin' ||
+    tier === 'org' ||
+    tier === 'industry';
+  return { role, tier, minK, requiresPseudonymisation };
+}
+
+export function isRoleScope(value: RoleScope | RoleScopeError): value is RoleScope {
+  return (value as RoleScopeError).ok !== false;
+}

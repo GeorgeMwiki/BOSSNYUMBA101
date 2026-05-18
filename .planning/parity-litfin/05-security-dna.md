@@ -1,9 +1,19 @@
 # P5 — Security DNA Parity (LITFIN vs BOSSNYUMBA101)
 
+> **Status as of 2026-05-18** — see `00-STATUS-2026-05-18.md`. Of the 9 gaps below, **7 are now SHIPPED**, **1 is in-flight in Phase D9 (4 additional policy-gate checks)**, and **1 (bilingual refusal strings) remains a small polish — Wave-M**. The original verdict line below ("LITFIN ships materially more production-grade machinery") is **NO LONGER ACCURATE as of 2026-05-18** — Phase A flipped the security-DNA balance to BOSSNYUMBA-ahead.
+>
+> Headline shipments (all in `00-STATUS-2026-05-18.md` §3):
+> - ✅ **Hash-chain audit HMAC-SHA-256 + key rotation + `timingSafeEqual` + dual-key verify** — `packages/ai-copilot/src/security/audit-hash-chain.ts:651` + migration `0127_audit_chain_append_only.sql`. **BOSSNYUMBA AHEAD** on rotation discipline.
+> - ✅ **Inviolable refusals — two-track gates** — `kernel/inviolable.ts:33-42` (7 authed categories) + `kernel/public-inviolable.ts:44-141` (6 public categories). **BOSSNYUMBA AHEAD** — LITFIN has only a single authed gate.
+> - ✅ **Prompt shield** — `packages/ai-copilot/src/security/pii-scrubber.ts:108,148` + `prompt-shield.ts` (270 LOC, ~38 pattern catalogue). Phase D9 will close the remaining LITFIN-extra patterns (`emergency_override`, `maintenance_mode`, `tool_password`, `arbitrary_exec`).
+> - ✅ **Policy gate** — `kernel/policy-gate.ts:34-92` (6 checks). **⚠️ Phase D9 adds 4 more** for parity with LITFIN's broader catalogue.
+> - ✅ **Four-eye approval (role-groups + recall + re-auth)** — `kernel/four-eye-approval.ts:480` ships role-group gating, recall window, and re-auth. **⚠️ Phase D2** adds `executed` flag (migration `0145_approval_executed_flag.sql`) + plan-artifact emission to brain outbox.
+> - ✅ **PII scrubber** — `packages/ai-copilot/src/security/pii-scrubber.ts` covers KE / TZ / UG ID formats + bank-account + M-Pesa + phone normalisation.
+
 **Scope.** Inviolable refusals · prompt-shield · policy-gate · PII scrubber ·
 hash-chain audit · four-eye approval.
 **Mode.** Read-only, cite file:line.
-**Verdict at a glance.** Skeletons match; depth/coverage/persistence-grade
+**Verdict at a glance** *(2026-05-15 — superseded; see Status block above)*. Skeletons match; depth/coverage/persistence-grade
 diverge sharply. BOSSNYUMBA's kernel-side modules are cleaner and more
 typed, but LITFIN ships materially more production-grade machinery
 (HMAC-secret rotation, dual-secret verify, streaming batch verify, tail
