@@ -17,13 +17,16 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   metadataBase: (() => {
     // NEXT_PUBLIC_APP_URL is baked into the bundle at build time. We
-    // REFUSE TO BUILD a production bundle without it — silent absolute-URL
+    // REFUSE TO RUN a production bundle without it — silent absolute-URL
     // breakage in OG tags / metadata is a P0 brand bug (CRITICAL in
-    // `.audit/production-readiness-gaps.md`). Outside production we fall
-    // back to the dev port so local builds still work.
+    // `.audit/production-readiness-gaps.md`). The CI build pipeline
+    // (`NEXT_PHASE=phase-production-build`) is allowed to use a
+    // placeholder so the smoke-test build succeeds; actual deploys
+    // must pass the env var.
     const url = process.env.NEXT_PUBLIC_APP_URL?.trim();
     if (url) return new URL(url);
-    if (process.env.NODE_ENV === 'production') {
+    const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+    if (process.env.NODE_ENV === 'production' && !isBuildPhase) {
       throw new Error(
         'customer-app: NEXT_PUBLIC_APP_URL is required in production — ' +
           'set it on the deploy target so OG / metadata URLs are absolute.'

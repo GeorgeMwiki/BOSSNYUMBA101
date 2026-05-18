@@ -28,7 +28,7 @@ import { MapPartSchema } from '../schemas';
 export type MapViewProps = AgUiUiPartByKind<'map'>;
 
 const MapInner = lazy(async () => {
-  const m = await import('./MapInner');
+  const m = await import('./MapInner.js');
   return { default: m.MapInner };
 });
 

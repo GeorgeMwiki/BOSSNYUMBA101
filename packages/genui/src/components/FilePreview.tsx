@@ -21,7 +21,7 @@ import { FilePreviewPartSchema } from '../schemas';
 export type FilePreviewProps = AgUiUiPartByKind<'file-preview'>;
 
 const PdfInner = lazy(async () => {
-  const m = await import('./PdfInner');
+  const m = await import('./PdfInner.js');
   return { default: m.PdfInner };
 });
 

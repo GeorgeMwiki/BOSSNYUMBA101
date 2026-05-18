@@ -22,7 +22,7 @@ import { CalendarPartSchema } from '../schemas';
 export type CalendarViewProps = AgUiUiPartByKind<'calendar'>;
 
 const CalendarInner = lazy(async () => {
-  const m = await import('./CalendarInner');
+  const m = await import('./CalendarInner.js');
   return { default: m.CalendarInner };
 });
 

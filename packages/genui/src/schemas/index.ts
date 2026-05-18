@@ -377,6 +377,12 @@ export type TreeNodeShape = {
   onClickAction?: z.infer<typeof TreeActionSchema>;
 };
 
+// Note: Zod 3's recursive `.lazy(...)` schema inference doesn't line up
+// with our declared `TreeNodeShape` under strict module-resolution
+// (nodenext/node16) downstream consumers. We declare the schema with a
+// `z.ZodType<TreeNodeShape>` annotation AND cast the `.lazy()` return so
+// both directions agree. Runtime parsing returns a properly-typed
+// TreeNodeShape because Zod resolves at parse time.
 export const TreeNodeSchema: z.ZodType<TreeNodeShape> = z.lazy(() =>
   z
     .object({
@@ -386,7 +392,7 @@ export const TreeNodeSchema: z.ZodType<TreeNodeShape> = z.lazy(() =>
       children: z.array(TreeNodeSchema).max(500).optional(),
       onClickAction: TreeActionSchema.optional(),
     })
-    .strict(),
+    .strict() as unknown as z.ZodType<TreeNodeShape>,
 );
 
 export const TreePartSchema = z
