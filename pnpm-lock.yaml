@@ -952,8 +952,8 @@ importers:
         specifier: ^8.0.0
         version: 8.6.18(react@18.3.1)(storybook@10.3.6)
       '@storybook/react':
-        specifier: ^8.0.0
-        version: 8.6.18(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)(typescript@6.0.3)
+        specifier: ^10.4.0
+        version: 10.4.0(@types/react-dom@18.3.0)(@types/react@18.3.28)(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)(typescript@6.0.3)
       '@storybook/react-vite':
         specifier: ^8.0.0
         version: 8.6.18(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)(typescript@6.0.3)(vite@6.4.2)
@@ -9016,6 +9016,29 @@ packages:
       storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@18.3.1)(react@18.3.1)
     dev: true
 
+  /@storybook/react-dom-shim@10.4.0(@types/react-dom@18.3.0)(@types/react@18.3.28)(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6):
+    resolution: {integrity: sha512-dcYWzdPaJEHVlyOyyz0/0v3QJXmcnK2sjw4YiFwU9IVJhoJrBlE9lMtmbO3QqIbq4qA0hElYtGkKO7tMLSKDGw==}
+    peerDependencies:
+      '@types/react': 18.3.28
+      '@types/react-dom': 18.3.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      storybook: '>=8.6.17'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+      react:
+        optional: true
+    dependencies:
+      '@types/react': 18.3.28
+      '@types/react-dom': 18.3.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@18.3.1)(react@18.3.1)
+    dev: true
+
   /@storybook/react-dom-shim@8.6.14(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6):
     resolution: {integrity: sha512-0hixr3dOy3f3M+HBofp3jtMQMS+sqzjKNgl7Arfuj3fvjmyXOks/yGjDImySR4imPtEllvPZfhiQNlejheaInw==}
     peerDependencies:
@@ -9078,6 +9101,39 @@ packages:
       - rollup
       - supports-color
       - typescript
+    dev: true
+
+  /@storybook/react@10.4.0(@types/react-dom@18.3.0)(@types/react@18.3.28)(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)(typescript@6.0.3):
+    resolution: {integrity: sha512-M1pFs4WywzKAlrBR38h8H6Q1VOca7V7tgBD3/pJGEY8z+8smRE7+Y8Gq7wZ3K0j8/0rWPxXMBD44V/1ZUV4OdA==}
+    peerDependencies:
+      '@types/react': 18.3.28
+      '@types/react-dom': 18.3.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      storybook: '>=8.6.17'
+      typescript: '>= 4.9.x'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+      react:
+        optional: true
+      typescript:
+        optional: true
+    dependencies:
+      '@storybook/global': 5.0.0
+      '@storybook/react-dom-shim': 10.4.0(@types/react-dom@18.3.0)(@types/react@18.3.28)(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)
+      '@types/react': 18.3.28
+      '@types/react-dom': 18.3.0
+      react: 18.3.1
+      react-docgen: 8.0.3
+      react-docgen-typescript: 2.4.0(typescript@6.0.3)
+      react-dom: 18.3.1(react@18.3.1)
+      storybook: 10.3.6(@testing-library/dom@10.4.1)(react-dom@18.3.1)(react@18.3.1)
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
     dev: true
 
   /@storybook/react@8.6.18(react-dom@18.3.1)(react@18.3.1)(storybook@10.3.6)(typescript@6.0.3):
@@ -16120,6 +16176,24 @@ packages:
   /react-docgen@7.1.1:
     resolution: {integrity: sha512-hlSJDQ2synMPKFZOsKo9Hi8WWZTC7POR8EmWvTSjow+VDgKzkmjQvFm2fk0tmRw+f0vTOIYKlarR0iL4996pdg==}
     engines: {node: '>=16.14.0'}
+    dependencies:
+      '@babel/core': 7.29.0
+      '@babel/traverse': 7.29.0
+      '@babel/types': 7.29.0
+      '@types/babel__core': 7.20.5
+      '@types/babel__traverse': 7.28.0
+      '@types/doctrine': 0.0.9
+      '@types/resolve': 1.20.6
+      doctrine: 3.0.0
+      resolve: 1.22.12
+      strip-indent: 4.1.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /react-docgen@8.0.3:
+    resolution: {integrity: sha512-aEZ9qP+/M+58x2qgfSFEWH1BxLyHe5+qkLNJOZQb5iGS017jpbRnoKhNRrXPeA6RfBrZO5wZrT9DMC1UqE1f1w==}
+    engines: {node: ^20.9.0 || >=22}
     dependencies:
       '@babel/core': 7.29.0
       '@babel/traverse': 7.29.0
