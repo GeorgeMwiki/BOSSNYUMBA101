@@ -45,14 +45,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
-
-      # The scanners are pure ESM — no install needed. Skip pnpm install
-      # to keep this workflow fast (<30s).
+      # The scanners are pure ESM Node scripts — no pnpm setup or install
+      # needed. Keeps this workflow fast (<30s) and avoids version-pin
+      # conflicts between `pnpm/action-setup` and root `packageManager`.
 
       - name: Run ${{ matrix.audit }}-coverage scanner
         id: scan
