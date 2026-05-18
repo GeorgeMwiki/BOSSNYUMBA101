@@ -6,7 +6,9 @@
  */
 import type { Page, Route } from '@playwright/test';
 
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- E2E test fixture phone number for TZ pilot
 export const TZ_PHONE = '+255712345678';
+// eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- E2E test fixture phone number for TZ pilot
 export const TZ_PHONE_ALT = '+255754998877';
 
 export const HIGH_RENT_THRESHOLD_TZS = 500_000;

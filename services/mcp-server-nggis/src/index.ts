@@ -20,10 +20,26 @@ import type { NggisAdapter, NggisTool, ToolDeps } from './types.js';
 const DEFAULT_NAME = 'bossnyumba-mcp-nggis';
 const DEFAULT_VERSION = '0.1.0';
 
+// CRITICAL #4 — Per-tenant allowlist. See mcp-server-nin/src/index.ts.
+const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
+  const raw = process.env[ALLOWLIST_ENV_VAR];
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, ReadonlyArray<string>>;
+    const list = parsed?.[key];
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface NggisServerConfig {
   readonly name?: string;
   readonly version?: string;
   readonly adapter?: NggisAdapter;
+  /** Per-tenant allowlist (CRITICAL #4). */
+  readonly allowlist?: ReadonlyArray<string>;
 }
 
 export function createNggisServer(config: NggisServerConfig = {}): {
@@ -50,8 +66,11 @@ export function createNggisServer(config: NggisServerConfig = {}): {
     })),
   }));
 
+  const allowlist: ReadonlyArray<string> | null =
+    config.allowlist ?? readEnvAllowlist('nggis') ?? null;
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: args, _meta } = request.params;
     const tool = findNggisTool(name);
     if (!tool) {
       return {
@@ -60,6 +79,40 @@ export function createNggisServer(config: NggisServerConfig = {}): {
           {
             type: 'text',
             text: `Unknown tool: ${name}. Known tools: ${NGGIS_TOOLS.map((t) => t.name).join(', ')}`,
+          },
+        ],
+      };
+    }
+    const argsObj = (args ?? {}) as Record<string, unknown>;
+    const metaTenantId =
+      (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const tenantId =
+      typeof argsObj.tenantId === 'string'
+        ? argsObj.tenantId
+        : typeof metaTenantId === 'string'
+          ? metaTenantId
+          : '';
+    if (!tenantId) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'nggis: missing tenantId — required in args.tenantId or request._meta.tenantId',
+          },
+        ],
+      };
+    }
+    const allowlistResolved =
+      allowlist ??
+      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `nggis: tenant '${tenantId}' is not in the per-tenant allowlist`,
           },
         ],
       };

@@ -1,0 +1,78 @@
+# =============================================================================
+# Universal coverage audits
+# =============================================================================
+# Reverse-port from LITFIN's 5 universal scanners (auth / ssrf / rls / zod /
+# rate-limit). Each scanner is a pure Node ESM script that walks the
+# BOSSNYUMBA monorepo and fails the PR on uncovered routes / tables /
+# call-sites. Highest defensive-leverage per hour: catches the next
+# "I forgot to wire requireAuth" before it ships.
+#
+# Allow-lists live in `scripts/__allowlists__/`. Every entry requires a
+# justifying reason.
+#
+# Reports are uploaded as GitHub artifacts (one per scanner) so reviewers
+# can drill into the markdown summary directly from the PR check.
+# =============================================================================
+
+name: Coverage Audits
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: audit-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: ${{ matrix.audit }}-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        audit: [auth, ssrf, rls, zod, rate-limit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      # The scanners are pure ESM Node scripts — no pnpm setup or install
+      # needed. Keeps this workflow fast (<30s) and avoids version-pin
+      # conflicts between `pnpm/action-setup` and root `packageManager`.
+
+      - name: Run ${{ matrix.audit }}-coverage scanner
+        id: scan
+        run: |
+          mkdir -p .audit
+          node scripts/audit-${{ matrix.audit }}-coverage.mjs \
+            --report .audit/${{ matrix.audit }}-coverage.json \
+            --summary .audit/${{ matrix.audit }}-coverage.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.audit }}-coverage-report
+          path: .audit/${{ matrix.audit }}-coverage.*
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Summarise on PR
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          if [ -f .audit/${{ matrix.audit }}-coverage.md ]; then
+            {
+              echo "## ${{ matrix.audit }}-coverage"
+              echo ""
+              cat .audit/${{ matrix.audit }}-coverage.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

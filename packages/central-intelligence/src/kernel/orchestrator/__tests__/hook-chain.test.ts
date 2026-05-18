@@ -745,4 +745,73 @@ describe('HookChain extended stages', () => {
     );
     expect(firedCount).toBe(1);
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // CRITICAL #8 regression — thrown hooks must produce a typed deny
+  // result, NOT unwind the chain with an unhandled rejection.
+  // ─────────────────────────────────────────────────────────────────
+  it('thrown pre-tool-use hook maps to deny code=hook-threw (CRITICAL #8)', async () => {
+    const throwing: PreToolUseHook = {
+      name: 'throwing-pre',
+      stage: 'pre-tool-use',
+      async fn(): Promise<HookResult> {
+        throw new Error('boom-pre');
+      },
+    };
+    const chain = createHookChain([throwing]);
+    const decision: Decision = {
+      kind: 'tool_call',
+      call: { toolName: 'demo.read', input: {}, callId: 'c1' },
+    };
+    const out = await chain.runPreToolUse(decision, tenantCtx);
+    expect(out.outcome.kind).toBe('deny');
+    if (out.outcome.kind === 'deny') {
+      expect(out.outcome.code).toBe('hook-threw');
+      expect(out.outcome.reason).toContain('boom-pre');
+    }
+  });
+
+  it('thrown post-tool-use hook maps to deny code=hook-threw (CRITICAL #8)', async () => {
+    const throwing: PostToolUseHook = {
+      name: 'throwing-post',
+      stage: 'post-tool-use',
+      async fn(): Promise<HookResult> {
+        throw new Error('boom-post');
+      },
+    };
+    const chain = createHookChain([throwing]);
+    const decision: Decision = {
+      kind: 'tool_call',
+      call: { toolName: 'demo.read', input: {}, callId: 'c1' },
+    };
+    const dispatch: DispatchResult = {
+      kind: 'tool_ok',
+      callId: 'c1',
+      output: {},
+      latencyMs: 1,
+      tokensIn: 1,
+      tokensOut: 1,
+      usdCost: 0,
+    };
+    const out = await chain.runPostToolUse(decision, dispatch, tenantCtx);
+    expect(out.kind).toBe('deny');
+    if (out.kind === 'deny') expect(out.code).toBe('hook-threw');
+  });
+
+  it('thrown session-start hook maps to deny code=hook-threw', async () => {
+    const throwing: SessionStartHook = {
+      name: 'seed-bad',
+      stage: 'session-start',
+      async fn(): Promise<HookResult> {
+        throw new Error('boom-start');
+      },
+    };
+    const chain = createHookChain([throwing]);
+    const out = await chain.runSessionStart(
+      { threadId: 'th', tier: 'tenant', resumed: false },
+      tenantCtx,
+    );
+    expect(out.kind).toBe('deny');
+    if (out.kind === 'deny') expect(out.code).toBe('hook-threw');
+  });
 });

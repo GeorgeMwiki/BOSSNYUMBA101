@@ -24,7 +24,7 @@
  *   - `POST /api/control-numbers/{id}/cancel` — cancel CN before settlement.
  *
  * Sandbox vs production env: `GEPG_ENV=sandbox|production` toggles
- * default base URL (`https://gepg-sandbox.tz.go` vs `https://gepg.tz.go`).
+ * default base URL (`https://gepg-sandbox.go.tz` vs `https://gepg.go.tz`).
  *
  * NOTE: This adapter does NOT compute XMLDSig signatures. The caller
  * is expected to pass `signXmlPayload(xml) => Promise<string>` from the
@@ -51,9 +51,13 @@ export type GepgEnv = 'sandbox' | 'production';
  */
 export type GepgFormat = 'xml' | 'json';
 
+// CRITICAL #6 — Tanzania government top-level domain is `.go.tz` (e.g.
+// kra.go.tz, tra.go.tz, gepg.go.tz). The previous `tz.go` was a typo
+// and DNS resolution failed on every call. Official GePG production
+// host: https://gepg.go.tz; sandbox: https://gepg-sandbox.go.tz.
 const BASE_URLS: Readonly<Record<GepgEnv, string>> = Object.freeze({
-  sandbox: 'https://gepg-sandbox.tz.go',
-  production: 'https://gepg.tz.go',
+  sandbox: 'https://gepg-sandbox.go.tz',
+  production: 'https://gepg.go.tz',
 });
 
 // ─────────────────────────────────────────────────────────────────────
