@@ -93,3 +93,25 @@ export type {
   QualityFilterInput,
   QualityVerdict,
 } from './preference-pair-builder/index.js';
+
+// 4. active-learning-queue
+export {
+  enqueueActiveLearningItem,
+  buildDailyDigest,
+  recordDecline,
+  checkActiveLearningTrigger,
+  MAX_ITEMS_PER_LABELLER_PER_DAY,
+  DECLINE_DEPRIORITISE_THRESHOLD,
+  CONFIDENCE_TRIGGER_THRESHOLD,
+  PRM_STEP_TRIGGER_THRESHOLD,
+  CALIBRATION_DRIFT_THRESHOLD,
+} from './active-learning-queue/index.js';
+export type {
+  ActiveLearningPorts,
+  ActiveLearningItemStore,
+  EnqueueInput,
+  EnqueueOutcome,
+  RecordDeclineInput,
+  RecordDeclineOutcome,
+  TriggerCheckInput,
+} from './active-learning-queue/index.js';
