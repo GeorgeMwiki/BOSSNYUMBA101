@@ -29,6 +29,52 @@ import type {
 const logger = createLogger('WhatsAppMetaClient');
 
 // ============================================================================
+// HIGH-8: Meta CDN host allowlist
+// ============================================================================
+//
+// `META_MEDIA_ALLOWED_HOSTS` is a comma-separated list of exact hosts or
+// `*.suffix` wildcards. Defaults cover Meta's documented CDN domains.
+// We refuse to issue an Authorization-bearing media request to any host
+// outside this list.
+
+const DEFAULT_META_MEDIA_HOSTS: ReadonlyArray<string> = Object.freeze([
+  'lookaside.fbsbx.com',
+  '*.fbcdn.net',
+  'graph.facebook.com',
+  'media.fbsbx.com',
+]);
+
+function getAllowedMetaMediaHosts(): ReadonlyArray<string> {
+  const env = process.env.META_MEDIA_ALLOWED_HOSTS?.trim();
+  if (!env) return DEFAULT_META_MEDIA_HOSTS;
+  return env
+    .split(',')
+    .map((h) => h.trim())
+    .filter(Boolean);
+}
+
+export function isAllowedMetaMediaHost(url: string): boolean {
+  let host: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    host = parsed.hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  for (const pattern of getAllowedMetaMediaHosts()) {
+    const normalised = pattern.toLowerCase();
+    if (normalised.startsWith('*.')) {
+      const suffix = normalised.slice(2);
+      if (host.endsWith('.' + suffix) || host === suffix) return true;
+    } else if (host === normalised) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ============================================================================
 // Error Classes
 // ============================================================================
 
@@ -388,10 +434,31 @@ export class MetaWhatsAppClient {
 
   /**
    * Download media file
+   *
+   * HIGH-8 (audit .audit/post-pr90-api-mcp-bug-sweep.md): Meta returns
+   * an arbitrary URL from `getMediaUrl`. If that URL is ever a non-Meta
+   * host (Meta API compromise, redirect chain, future product change),
+   * sending `Authorization: Bearer ${this.config.accessToken}` to it
+   * leaks the Meta access token to the attacker.
+   *
+   * Fix: validate the host against an allowlist of Meta CDN domains
+   * BEFORE issuing the request. If the host is not Meta-controlled,
+   * either (a) drop the Authorization header entirely OR (b) refuse
+   * the download — we choose (b), the strictest option.
+   *
+   * Allowlist sourced from `META_MEDIA_ALLOWED_HOSTS` (comma-separated
+   * exact hosts or `*.suffix` wildcards). Defaults cover Meta's
+   * documented CDN domains.
    */
   async downloadMedia(mediaId: string): Promise<Buffer> {
     const mediaInfo = await this.getMediaUrl(mediaId);
-    
+
+    if (!isAllowedMetaMediaHost(mediaInfo.url)) {
+      throw new Error(
+        `downloadMedia refused: Meta returned a non-allowlisted host`
+      );
+    }
+
     const response = await axios.get(mediaInfo.url, {
       headers: {
         Authorization: `Bearer ${this.config.accessToken}`,

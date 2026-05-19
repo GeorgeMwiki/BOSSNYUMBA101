@@ -107,19 +107,47 @@ export function createNidaRealAdapter(deps: NidaRealAdapterDeps): NidaRealAdapte
 
   const tokenCache: TokenCache = { token: null, expiresAtMs: 0 };
 
+  // HIGH-3 (audit .audit/post-pr90-api-mcp-bug-sweep.md): /oauth/token
+  // used to bypass connector.call() — no rate-limit, no circuit-breaker,
+  // no audit. NIDA's published cap is 60 rpm; a misconfigured OAuth-storm
+  // would burn quota in seconds. Route through a dedicated no-auth
+  // connector with tighter limits than the data plane.
+  const oauthConnector = createBaseConnector({
+    config: {
+      id: 'nida-real-oauth',
+      displayName: `NIDA NIVS oauth (${env})`,
+      baseUrl,
+      rateLimit: { rpm: 6, burst: 2 },
+      circuitBreaker: { errorThreshold: 3, halfOpenAfterMs: 90_000 },
+      retry: { maxAttempts: 1, initialDelayMs: 400 },
+      timeoutMs: 15_000,
+    },
+    fetch: fetchImpl,
+    ...(deps.events ? { events: deps.events } : {}),
+    ...(deps.audit ? { audit: deps.audit } : {}),
+    ...(deps.clock ? { clock: deps.clock } : {}),
+  });
+
   async function fetchOauthToken(consumerKey: string, consumerSecret: string): Promise<string> {
     const basic = Buffer.from(`${consumerKey}:${consumerSecret}`, 'utf8').toString('base64');
-    const res = await fetchImpl(`${baseUrl}/oauth/token`, {
+    // Form-encoded body; the base connector forwards body as-is when
+    // Content-Type isn't JSON. We send the raw form string via a
+    // pass-through serialiser.
+    const outcome = await oauthConnector.call<
+      string,
+      { access_token?: string; expires_in?: number | string }
+    >({
+      path: '/oauth/token',
       method: 'POST',
+      body: 'grant_type=client_credentials' as unknown as string,
       headers: {
         Authorization: `Basic ${basic}`,
         'Content-Type': 'application/x-www-form-urlencoded',
         Accept: 'application/json',
       },
-      body: 'grant_type=client_credentials',
     });
-    if (!res.ok) throw new Error(`nida-real: oauth ${res.status}`);
-    const body = (await res.json()) as { access_token?: string; expires_in?: number | string };
+    if (outcome.kind !== 'ok') throw new Error(`nida-real: oauth ${outcome.kind}`);
+    const body = outcome.data;
     if (!body.access_token) throw new Error('nida-real: oauth response missing access_token');
     tokenCache.token = body.access_token;
     const lifetime = Number(body.expires_in ?? 3599);

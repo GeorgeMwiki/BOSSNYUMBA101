@@ -79,8 +79,10 @@ export function createInMemoryIdempotencyStore(): IdempotencyStore {
 // Key derivation
 // ---------------------------------------------------------------------------
 
-function keyFor(tenantId: string | undefined, idempotencyKey: string): string {
-  return `idem:${tenantId ?? 'anon'}:${idempotencyKey}`;
+function keyFor(tenantId: string, idempotencyKey: string): string {
+  // CRITICAL-7: tenantId must be a verified string at this point. The
+  // middleware caller is responsible for never passing undefined.
+  return `idem:${tenantId}:${idempotencyKey}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,9 +111,20 @@ export function createIdempotencyMiddleware(
       return;
     }
 
-    const tenantId =
-      (c.get('auth') as { tenantId?: string } | undefined)?.tenantId ??
-      c.req.header('x-tenant-id');
+    // CRITICAL-7 (audit .audit/post-pr90-api-mcp-bug-sweep.md):
+    // NEVER trust the `x-tenant-id` header fallback. If the middleware
+    // mounts before authMiddleware (or on a route in the auth-allowlist),
+    // the body-supplied header lets a caller poison another tenant's
+    // idempotency cache. The authoritative tenant id comes from the
+    // verified JWT principal only. When the auth context is missing we
+    // skip caching entirely — better to retry-execute than to leak
+    // responses across tenants.
+    const tenantId = (c.get('auth') as { tenantId?: string } | undefined)
+      ?.tenantId;
+    if (!tenantId) {
+      await next();
+      return;
+    }
     const key = keyFor(tenantId, idempotencyKey);
 
     const cached = await options.store.get(key);

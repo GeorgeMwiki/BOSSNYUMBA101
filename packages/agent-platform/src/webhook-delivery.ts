@@ -126,13 +126,24 @@ export async function deliverToSubscription(
     data: event.data,
   };
   const body = JSON.stringify(bodyObj);
-  const signature = await hmacSha256Hex(subscription.secretHash, body);
+  // HIGH-10 (audit .audit/post-pr90-api-mcp-bug-sweep.md): the previous
+  // signature was `hmac(secret, body)` only — `X-Webhook-Timestamp` was
+  // emitted alongside but NOT in the signed payload. A subscriber that
+  // doesn't separately enforce a max-age on `X-Webhook-Timestamp` would
+  // accept any captured signed body indefinitely. Sign
+  // `${timestamp}.${body}` so the timestamp is bound to the signature;
+  // subscribers MUST still verify both signature + timestamp freshness.
+  const signedPayload = `${timestamp}.${body}`;
+  const signature = await hmacSha256Hex(subscription.secretHash, signedPayload);
 
   const baseHeaders: Record<string, string> = {
     ...correlationHeaders(event.correlationId),
     'Content-Type': 'application/json',
     'X-Webhook-Id': deliveryId,
+    // v2 signature format: timestamp + body, separated by `.`.
+    // Document this for subscribers in OPENAPI / webhook docs.
     'X-Webhook-Signature': `sha256=${signature}`,
+    'X-Webhook-Signature-Version': 'v2',
     'X-Webhook-Timestamp': timestamp,
     'User-Agent': 'BOSSNYUMBA-Webhook/1.0',
   };

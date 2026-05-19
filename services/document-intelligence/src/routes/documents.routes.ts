@@ -237,6 +237,28 @@ export function successResponse<T>(c: Context, data: T, status: 200 | 201 = 200)
   );
 }
 
+/**
+ * CRITICAL-6: Stub handlers must NOT return 200/201 — downstream
+ * consumers may treat echoed-back input as authoritative. Until the
+ * real DocumentCollectionService / OCRExtractionService /
+ * FraudDetectionService implementations land, every stub responds 501
+ * with a clear `not_implemented` marker so callers can detect this.
+ *
+ * The api-gateway proxy will surface this as a 502/503 to end-users.
+ */
+export function notImplementedResponse(c: Context, op: string) {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: 'NOT_IMPLEMENTED',
+        message: `document-intelligence.${op} is not yet implemented`,
+      },
+    },
+    501
+  );
+}
+
 // ============================================================================
 // Validation Error Hook
 // ============================================================================
@@ -262,6 +284,72 @@ export function validationErrorHook(
 }
 
 // ============================================================================
+// Internal Auth Middleware (CRITICAL-6)
+// ============================================================================
+//
+// The document-intelligence routes are documented as "private — only
+// reachable via api-gateway, which applies authMiddleware before
+// proxying." That assumption was brittle: a misconfigured ingress,
+// a forgotten Service of type LoadBalancer, or a stray
+// `kubectl port-forward` exposes every handler with NO auth.
+//
+// This middleware demands an `X-Internal-Service-Auth` header whose
+// value matches `DOCUMENT_INTELLIGENCE_INTERNAL_SECRET`. The api-gateway
+// proxies inject this header at the composition root. Comparison uses
+// `crypto.timingSafeEqual` (project rule).
+//
+// In production the secret MUST be set. In dev/test, when neither
+// `DOCUMENT_INTELLIGENCE_INTERNAL_SECRET` nor
+// `DOCUMENT_INTELLIGENCE_INTERNAL_REQUIRED=true` is set, the middleware
+// allows the request through with a single startup warn.
+import { timingSafeEqual } from 'node:crypto';
+
+function internalAuthMiddleware() {
+  const secret = process.env.DOCUMENT_INTELLIGENCE_INTERNAL_SECRET?.trim();
+  const required =
+    process.env.DOCUMENT_INTELLIGENCE_INTERNAL_REQUIRED === 'true' ||
+    process.env.NODE_ENV === 'production';
+  if (!secret && required) {
+    throw new Error(
+      'DOCUMENT_INTELLIGENCE_INTERNAL_SECRET must be set when NODE_ENV=production or DOCUMENT_INTELLIGENCE_INTERNAL_REQUIRED=true'
+    );
+  }
+  return async (c: Context, next: () => Promise<void>): Promise<Response | void> => {
+    if (!secret) {
+      // Dev/test escape — let through. The api-gateway proxy still
+      // applies its own authMiddleware before forwarding.
+      await next();
+      return;
+    }
+    const provided = c.req.header('x-internal-service-auth')?.trim() ?? '';
+    let valid = false;
+    if (provided.length === secret.length) {
+      try {
+        valid = timingSafeEqual(
+          Buffer.from(provided, 'utf8'),
+          Buffer.from(secret, 'utf8')
+        );
+      } catch {
+        valid = false;
+      }
+    }
+    if (!valid) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INTERNAL_AUTH_REQUIRED',
+            message: 'document-intelligence requires an internal service token',
+          },
+        },
+        401
+      );
+    }
+    await next();
+  };
+}
+
+// ============================================================================
 // Route Factory
 // ============================================================================
 
@@ -272,6 +360,10 @@ export interface DocumentIntelligenceRoutesDeps {
 
 export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRoutesDeps) {
   const app = new Hono();
+  // CRITICAL-6: every route in this app requires the internal-service
+  // token. Removes the "no auth at all" foot-gun if the service is
+  // ever reachable directly (misconfigured ingress, dev port-forward).
+  app.use('*', internalAuthMiddleware());
 
   // ============================================================================
   // Document Upload & Management

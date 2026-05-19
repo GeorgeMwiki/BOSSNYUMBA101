@@ -2,16 +2,39 @@
 /**
  * MFA — TOTP-based second-factor flow.
  *
- *   POST /auth/mfa/challenge    → issues a short-lived challenge ID after
- *                                 the caller's primary-factor login has
- *                                 succeeded but MFA is enabled on the
- *                                 account. Client renders TOTP input.
- *   POST /auth/mfa/verify       → accepts {challengeId, code}; if valid,
- *                                 mints the full-scope access token.
+ *   POST /auth/mfa/challenge    → derives the authed principal from
+ *                                 c.get('auth') and issues a short-lived
+ *                                 challenge ID. The client must already
+ *                                 have a primary-factor token (issued by
+ *                                 POST /auth/login) to call this endpoint.
+ *                                 NEVER trusts client-supplied identity.
+ *   POST /auth/mfa/verify       → accepts {challengeId, code}; resolves
+ *                                 the user's stored TOTP secret server-
+ *                                 side from the users.mfa_secret column
+ *                                 of the principal that owned the
+ *                                 challenge, then mints the full-scope
+ *                                 access token. NEVER accepts a client-
+ *                                 supplied secret.
  *   POST /auth/mfa/enroll       → begin MFA enrollment — returns a QR
  *                                 otpauth:// URL + recovery codes.
  *   POST /auth/mfa/confirm      → finish enrollment after the user scans
- *                                 and enters a valid code.
+ *                                 and enters a valid code. Persists the
+ *                                 (base32) secret to users.mfa_secret and
+ *                                 sets users.mfa_enabled=true.
+ *
+ * SECURITY NOTE (CRITICAL-1 — audit .audit/post-pr90-api-mcp-bug-sweep.md):
+ * The OLD /verify schema required `secret` from the request body and the
+ * OLD /challenge schema required body-supplied userId/tenantId/role. That
+ * allowed any authenticated low-privilege caller to mint a SUPER_ADMIN
+ * token for any tenant by crafting a challenge for the target identity
+ * and verifying it with an attacker-chosen secret + matching TOTP. The
+ * fix:
+ *   - /challenge now strips identity from the schema and reads userId,
+ *     tenantId, role from c.get('auth').
+ *   - /verify never accepts secret. The TOTP secret comes from the
+ *     users.mfa_secret column, looked up by the challenge's stored
+ *     userId/tenantId (which themselves came from the original
+ *     /challenge call's auth context, not from the body).
  *
  * The TOTP math (HMAC-SHA1 of the current 30s window + secret) is
  * implemented inline with Node's built-in crypto so we don't pull
@@ -22,8 +45,11 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { and, eq, isNull } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
 import { generateToken } from '../middleware/auth';
+import { getDatabaseClient } from '../middleware/database';
+import { users } from '@bossnyumba/database';
 import { UserRole } from '../types/user-role';
 
 const app = new Hono();
@@ -121,35 +147,75 @@ function verifyTotp(secretB32: string, code: string): boolean {
   return false;
 }
 
+// Look up the stored TOTP secret for the given user.
+// Returns null if no DB is configured, the user is missing, or the
+// user has not enrolled MFA. NEVER read from the request body.
+async function resolveStoredMfaSecret(
+  userId: string,
+  tenantId: string
+): Promise<string | null> {
+  const db = getDatabaseClient();
+  if (!db) return null;
+  const rows = await db
+    .select({
+      mfaEnabled: users.mfaEnabled,
+      mfaSecret: users.mfaSecret,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, userId),
+        eq(users.tenantId, tenantId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row || !row.mfaEnabled || !row.mfaSecret) return null;
+  return row.mfaSecret;
+}
+
+// Persist a freshly-confirmed TOTP secret to the user record.
+async function persistMfaSecret(
+  userId: string,
+  tenantId: string,
+  secret: string
+): Promise<boolean> {
+  const db = getDatabaseClient();
+  if (!db) return false;
+  await db
+    .update(users)
+    .set({ mfaEnabled: true, mfaSecret: secret })
+    .where(and(eq(users.id, userId), eq(users.tenantId, tenantId)));
+  return true;
+}
+
 // Endpoints --------------------------------------------------------------
 
-const ChallengeSchema = z.object({
-  userId: z.string().min(1),
-  tenantId: z.string().min(1),
-  role: z.string().min(1),
-  permissions: z.array(z.string()).optional(),
-  propertyAccess: z.array(z.string()).optional(),
-});
-
 /**
- * Issued internally by /auth/login when the account has MFA enabled,
- * rather than minting the full access token immediately. The client
- * then POSTs to /verify with the challenge id + 6-digit TOTP.
- *
- * NOTE: In production this endpoint should be service-to-service only;
- * exposing it directly would let any authenticated user forge a
- * challenge. We gate it with authMiddleware so the caller at least
- * needs a valid scoped token.
+ * /challenge issues an MFA challenge for the CALLER. There is no body
+ * payload that identifies the user — the user is the holder of the
+ * primary-factor token. This closes CRITICAL-1: an attacker can no
+ * longer name an arbitrary target identity in the body.
  */
-app.post('/challenge', authMiddleware, zValidator('json', ChallengeSchema), async (c) => {
-  const body = c.req.valid('json');
+app.post('/challenge', authMiddleware, async (c) => {
+  const auth = c.get('auth');
+  if (!auth?.userId || !auth?.tenantId) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
+      },
+      401
+    );
+  }
   const challengeId = randomUUID();
   challenges.set(challengeId, {
-    userId: body.userId,
-    tenantId: body.tenantId,
-    role: body.role as UserRole,
-    permissions: body.permissions ?? [],
-    propertyAccess: body.propertyAccess ?? [],
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    role: auth.role as UserRole,
+    permissions: Array.isArray(auth.permissions) ? auth.permissions : [],
+    propertyAccess: Array.isArray(auth.propertyAccess) ? auth.propertyAccess : [],
     createdAt: Date.now(),
   });
   return c.json({
@@ -161,14 +227,25 @@ app.post('/challenge', authMiddleware, zValidator('json', ChallengeSchema), asyn
   });
 });
 
+// VerifySchema deliberately omits `secret`. The secret is resolved
+// server-side from the users.mfa_secret column.
 const VerifySchema = z.object({
   challengeId: z.string().min(1),
   code: z.string().regex(/^\d{6}$/, '6-digit TOTP code required'),
-  secret: z.string().min(16), // caller supplies the stored user secret
 });
 
-app.post('/verify', zValidator('json', VerifySchema), async (c) => {
-  const { challengeId, code, secret } = c.req.valid('json');
+app.post('/verify', authMiddleware, zValidator('json', VerifySchema), async (c) => {
+  const auth = c.get('auth');
+  if (!auth?.userId || !auth?.tenantId) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
+      },
+      401
+    );
+  }
+  const { challengeId, code } = c.req.valid('json');
   const entry = challenges.get(challengeId);
   if (!entry || entry.consumedAt) {
     return c.json(
@@ -183,7 +260,36 @@ app.post('/verify', zValidator('json', VerifySchema), async (c) => {
       401
     );
   }
-  if (!verifyTotp(secret, code)) {
+  // Defence in depth: even though /challenge writes the principal's
+  // identity into the challenge entry, we still cross-check that the
+  // verifying caller is the same identity. This stops a stolen
+  // challengeId from being used by a different authed session.
+  if (entry.userId !== auth.userId || entry.tenantId !== auth.tenantId) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'CHALLENGE_PRINCIPAL_MISMATCH',
+          message: 'Challenge does not belong to the authenticated session',
+        },
+      },
+      403
+    );
+  }
+  const storedSecret = await resolveStoredMfaSecret(entry.userId, entry.tenantId);
+  if (!storedSecret) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'MFA_NOT_ENROLLED',
+          message: 'MFA is not enrolled for this account',
+        },
+      },
+      400
+    );
+  }
+  if (!verifyTotp(storedSecret, code)) {
     return c.json(
       { success: false, error: { code: 'INVALID_CODE', message: 'Invalid TOTP code' } },
       401
@@ -228,7 +334,7 @@ app.post('/enroll', authMiddleware, zValidator('json', EnrollSchema), async (c) 
       otpauth,
       recoveryCodes,
       notice:
-        'Store the secret server-side (encrypted) and prompt the user to confirm enrollment via POST /auth/mfa/confirm with a valid code before you trust it.',
+        'Confirm enrollment via POST /auth/mfa/confirm with a valid code. The server persists the (encrypted) secret only after successful confirmation.',
       userId: auth.userId,
     },
   });
@@ -240,17 +346,28 @@ const ConfirmSchema = z.object({
 });
 
 app.post('/confirm', authMiddleware, zValidator('json', ConfirmSchema), async (c) => {
+  const auth = c.get('auth');
   const { secret, code } = c.req.valid('json');
+  if (!auth?.userId || !auth?.tenantId) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'AUTH_REQUIRED', message: 'Authenticated session required' },
+      },
+      401
+    );
+  }
   if (!verifyTotp(secret, code)) {
     return c.json(
       { success: false, error: { code: 'INVALID_CODE', message: 'Invalid TOTP code' } },
       401
     );
   }
-  // Caller service is responsible for persisting `mfa_enabled=true` +
-  // the (encrypted) secret on the user record. We just attest that the
-  // code validates against the secret.
-  return c.json({ success: true, data: { verified: true } });
+  // Persist server-side so /verify can resolve it without trusting
+  // the client. Production should encrypt at rest via the
+  // data-classification policy on users.mfa_secret.
+  await persistMfaSecret(auth.userId, auth.tenantId, secret);
+  return c.json({ success: true, data: { verified: true, enrolled: true } });
 });
 
 export const authMfaRouter = app;

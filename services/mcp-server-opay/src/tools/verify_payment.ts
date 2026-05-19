@@ -2,8 +2,14 @@
  * Tool 2/3 — opay.verify_payment
  */
 
+import { z } from 'zod';
 import type { OpayTool, ToolDeps } from '../types.js';
 import { OpayAdapterError } from '../types.js';
+
+const VerifyPaymentInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  transactionId: z.string().min(1).max(256),
+}).strict();
 
 export interface VerifyPaymentInput {
   readonly tenantId: string;
@@ -48,13 +54,14 @@ export const verifyPaymentTool: OpayTool<VerifyPaymentOutput> = Object.freeze({
     rawInput: unknown,
     deps: ToolDeps,
   ): Promise<VerifyPaymentOutput> {
-    const input = rawInput as VerifyPaymentInput;
-    if (!input?.tenantId || !input?.transactionId) {
+    const parsed = VerifyPaymentInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
       throw new OpayAdapterError(
-        'verify_payment requires tenantId and transactionId',
+        `verify_payment input validation failed at '${path}'`,
         'INVALID_INPUT',
       );
     }
-    return deps.opay.verifyPayment(input);
+    return deps.opay.verifyPayment(parsed.data);
   },
 });

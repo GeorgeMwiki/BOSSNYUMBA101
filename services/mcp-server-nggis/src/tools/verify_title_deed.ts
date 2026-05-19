@@ -2,8 +2,16 @@
  * Tool 1/2 — nggis.verify_title_deed
  */
 
+import { z } from 'zod';
 import type { NggisTool, ToolDeps } from '../types.js';
 import { NggisAdapterError } from '../types.js';
+
+const VerifyTitleDeedInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  deedNumber: z.string().min(1).max(128),
+  // 2-letter Nigerian state code (LA, FC, KD, ...).
+  stateCode: z.string().regex(/^[A-Z]{2}$/, 'stateCode must be 2 uppercase letters'),
+}).strict();
 
 export interface VerifyTitleDeedInput {
   readonly tenantId: string;
@@ -54,13 +62,15 @@ export const verifyTitleDeedTool: NggisTool<VerifyTitleDeedOutput> =
       rawInput: unknown,
       deps: ToolDeps,
     ): Promise<VerifyTitleDeedOutput> {
-      const input = rawInput as VerifyTitleDeedInput;
-      if (!input?.tenantId || !input?.deedNumber || !input?.stateCode) {
+      // CRITICAL-4: validate via Zod before reaching the adapter.
+      const parsed = VerifyTitleDeedInputSchema.safeParse(rawInput);
+      if (!parsed.success) {
+        const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
         throw new NggisAdapterError(
-          'verify_title_deed requires tenantId, deedNumber, stateCode',
+          `verify_title_deed input validation failed at '${path}'`,
           'INVALID_INPUT',
         );
       }
-      return deps.nggis.verifyTitleDeed(input);
+      return deps.nggis.verifyTitleDeed(parsed.data);
     },
   });

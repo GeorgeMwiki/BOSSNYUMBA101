@@ -70,14 +70,13 @@ describe('firs.verify_tin', () => {
     expect(result.issuer).toBe('nrs');
   });
 
-  it('rejects a shape mismatch', async () => {
-    const result = await verifyTinTool.execute(
-      { tenantId: 't1', tin: 'A123456789B' },
-      deps,
-    );
-    expect(result.verified).toBe(false);
-    expect(result.issuer).toBe('unknown');
-    expect(result.reason).toBe('invalid_shape');
+  it('rejects a shape mismatch via Zod (CRITICAL-4)', async () => {
+    // Post CRITICAL-4 fix: Zod rejects malformed TIN BEFORE the adapter
+    // runs, so we get an INVALID_INPUT throw rather than an
+    // invalid_shape result. The error path now contains 'tin'.
+    await expect(
+      verifyTinTool.execute({ tenantId: 't1', tin: 'A123456789B' }, deps),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 });
 

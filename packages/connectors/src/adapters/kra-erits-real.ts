@@ -228,17 +228,44 @@ export function createKraEritsRealAdapter(
 
   const session: SessionCache = { token: null, expiresAtMs: 0 };
 
+  // HIGH-2 (audit .audit/post-pr90-api-mcp-bug-sweep.md): The login
+  // endpoint used to bypass connector.call() — no rate-limit, no
+  // circuit-breaker, no audit, no SSRF guard. A bad-auth storm against
+  // KRA opened nothing locally. Route /erits/login through a dedicated
+  // no-auth connector with stricter limits than the data plane so a
+  // credential-stuffing burst is contained.
+  const loginConnector = createBaseConnector({
+    config: {
+      id: 'kra-erits-login',
+      displayName: `KRA eRITS login (${env})`,
+      baseUrl,
+      // No auth on the login endpoint itself (this IS the auth).
+      // KRA caps the login surface much tighter than the data plane.
+      rateLimit: { rpm: 6, burst: 2 },
+      circuitBreaker: { errorThreshold: 3, halfOpenAfterMs: 120_000 },
+      retry: { maxAttempts: 1, initialDelayMs: 500 },
+      timeoutMs: 20_000,
+    },
+    fetch: fetchImpl,
+    ...(deps.events ? { events: deps.events } : {}),
+    ...(deps.audit ? { audit: deps.audit } : {}),
+    ...(deps.clock ? { clock: deps.clock } : {}),
+  });
+
   async function fetchSession(): Promise<string> {
-    const res = await fetchImpl(`${baseUrl}/erits/login`, {
+    const outcome = await loginConnector.call<
+      { username: string; password: string },
+      { token?: string; expires_in?: number }
+    >({
+      path: '/erits/login',
       method: 'POST',
+      body: { username: credentials.username, password: credentials.password },
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        username: credentials.username,
-        password: credentials.password,
-      }),
     });
-    if (!res.ok) throw new Error(`kra-erits: login ${res.status}`);
-    const body = (await res.json()) as { token?: string; expires_in?: number };
+    if (outcome.kind !== 'ok') {
+      throw new Error(`kra-erits: login ${outcome.kind}`);
+    }
+    const body = outcome.data;
     if (!body.token) throw new Error('kra-erits: login response missing token');
     session.token = body.token;
     const ttl = Number(body.expires_in ?? sessionTtlSec);

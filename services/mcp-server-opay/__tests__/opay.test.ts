@@ -34,18 +34,21 @@ describe('opay.initiate_payment', () => {
     expect(result.transactionId).toMatch(/^opay-mock-rent-may-2026/);
   });
 
-  it('rejects a non-Nigerian phone', async () => {
-    const result = await initiatePaymentTool.execute(
-      {
-        tenantId: 't1',
-        payerPhone: '+254712345678',
-        amountKobo: 50_000,
-        reference: 'rent-may-2026',
-      },
-      deps,
-    );
-    expect(result.status).toBe('failed');
-    expect(result.reason).toBe('invalid_payer_phone');
+  it('rejects a non-Nigerian phone via Zod (CRITICAL-4)', async () => {
+    // Post CRITICAL-4 fix: the Zod schema requires Nigerian E.164
+    // (+234XXXXXXXXXX) and rejects everything else BEFORE the adapter
+    // runs, throwing INVALID_INPUT with path='payerPhone'.
+    await expect(
+      initiatePaymentTool.execute(
+        {
+          tenantId: 't1',
+          payerPhone: '+254712345678',
+          amountKobo: 50_000,
+          reference: 'rent-may-2026',
+        },
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 });
 

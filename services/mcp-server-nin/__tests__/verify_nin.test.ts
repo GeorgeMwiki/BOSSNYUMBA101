@@ -32,13 +32,13 @@ describe('nin.verify_nin', () => {
     expect(result.reason).toBe('biometric_mismatch');
   });
 
-  it('returns verified=false with reason=invalid_shape for non-11-digit input', async () => {
-    const result = await verifyNinTool.execute(
-      { tenantId: 't1', nin: 'A12345B' },
-      deps,
-    );
-    expect(result.verified).toBe(false);
-    expect(result.reason).toBe('invalid_shape');
+  it('rejects non-11-digit input via Zod (CRITICAL-4)', async () => {
+    // Post CRITICAL-4 fix: the Zod schema requires exactly 11 digits and
+    // rejects malformed input BEFORE the adapter runs, throwing
+    // INVALID_INPUT.
+    await expect(
+      verifyNinTool.execute({ tenantId: 't1', nin: 'A12345B' }, deps),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 
   it('throws on missing required input fields', async () => {
