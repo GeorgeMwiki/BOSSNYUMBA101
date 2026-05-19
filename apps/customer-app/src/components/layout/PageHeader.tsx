@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 
 interface PageHeaderProps {
   title: string;
+  subtitle?: string;
   showBack?: boolean;
   showSettings?: boolean;
   action?: React.ReactNode;
   onBackClick?: () => void;
 }
 
-export function PageHeader({ title, showBack, showSettings, action, onBackClick }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, showBack, showSettings, action, onBackClick }: PageHeaderProps) {
   const router = useRouter();
 
   return (
@@ -26,7 +27,10 @@ export function PageHeader({ title, showBack, showSettings, action, onBackClick 
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          <h1 className="text-lg font-semibold text-white">{title}</h1>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-semibold text-white">{title}</h1>
+            {subtitle && <p className="text-xs text-white/60">{subtitle}</p>}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {action}

@@ -1,4 +1,3 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
 'use client';
 
 /**
