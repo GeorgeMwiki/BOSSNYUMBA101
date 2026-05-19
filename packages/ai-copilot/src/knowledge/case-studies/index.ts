@@ -17,7 +17,22 @@ import {
   CASE_STUDY_METADATA_KIND,
   CASE_STUDY_PEDAGOGICAL_DEPTH,
   type CaseStudy,
+  type Country,
 } from './case-study-types.js';
+
+// AM-4 hardcoded-jurisdiction purge: previous ingestion-loop used an
+// inline `cs.country === 'TZ' ? 'TZ' : cs.country === 'KE' ? 'KE' :
+// undefined` ternary which the J7 scanner flags. We collapse to a typed
+// dispatch — `BOTH` maps to undefined (not pinned to a single country in
+// the knowledge store), every other Country value passes through
+// unchanged. Adding a third country = one map-entry edit.
+const COUNTRY_TO_KNOWLEDGE_STORE_CODE: Readonly<
+  Record<Country, 'TZ' | 'KE' | undefined>
+> = Object.freeze({
+  TZ: 'TZ',
+  KE: 'KE',
+  BOTH: undefined,
+});
 
 import { CASE_STUDY_01_MUTHAIGA_ACQUISITION } from './01-muthaiga-portfolio-acquisition.js';
 import { CASE_STUDY_02_KINONDONI_SERVICE_CHARGE } from './02-kinondoni-service-charge-dispute.js';
@@ -140,7 +155,7 @@ export async function seedCaseStudies(
           country: cs.country,
           difficulty: cs.difficulty,
         },
-        countryCode: cs.country === 'TZ' ? 'TZ' : cs.country === 'KE' ? 'KE' : undefined,
+        countryCode: COUNTRY_TO_KNOWLEDGE_STORE_CODE[cs.country],
       });
       count += 1;
     } catch (error) {

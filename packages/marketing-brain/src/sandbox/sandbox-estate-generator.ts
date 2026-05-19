@@ -94,6 +94,29 @@ export interface SandboxEstate {
 
 const BASE_RENT_BY_COUNTRY = { KE: 26_000, TZ: 380_000, UG: 850_000 } as const;
 const CURRENCY_BY_COUNTRY = { KE: 'KES', TZ: 'TZS', UG: 'UGX' } as const;
+
+// AM-4 hardcoded-jurisdiction purge: the inline `country === 'TZ' ? …`
+// ternaries below the function body have been collapsed into a single
+// per-country dispatch table, mirroring the existing BASE_RENT /
+// CURRENCY / ESTATE_PREFIX tables. Onboarding a new sandbox jurisdiction
+// is now a single-entry edit.
+const COMPLIANCE_NOTICE_BY_COUNTRY = {
+  TZ: {
+    type: 'tax_filing' as const,
+    title: 'TRA monthly VAT return due',
+    dueInDays: 14,
+  },
+  KE: {
+    type: 'fire_safety' as const,
+    title: 'Annual fire-safety inspection overdue by 9 days',
+    dueInDays: -9,
+  },
+  UG: {
+    type: 'license_renewal' as const,
+    title: 'URSB property-management license renewal window opens',
+    dueInDays: 14,
+  },
+} as const;
 const ESTATE_PREFIX_BY_COUNTRY = {
   KE: 'Karen Estate',
   TZ: 'Mbezi Estate',
@@ -244,18 +267,14 @@ export function generateSandboxEstate(
   }
 
   // ---------------- 1 compliance notice -----------------------------------
+  const complianceCfg = COMPLIANCE_NOTICE_BY_COUNTRY[country];
   const compliance: SandboxComplianceNotice[] = [
     {
       id: `${parsed.sessionId}_c1`,
-      type: country === 'TZ' ? 'tax_filing' : country === 'KE' ? 'fire_safety' : 'license_renewal',
+      type: complianceCfg.type,
       severity: 'warning',
-      title:
-        country === 'TZ'
-          ? 'TRA monthly VAT return due'
-          : country === 'KE'
-            ? 'Annual fire-safety inspection overdue by 9 days'
-            : 'URSB property-management license renewal window opens',
-      dueBy: daysFromNow(now, country === 'KE' ? -9 : 14),
+      title: complianceCfg.title,
+      dueBy: daysFromNow(now, complianceCfg.dueInDays),
     },
   ];
 

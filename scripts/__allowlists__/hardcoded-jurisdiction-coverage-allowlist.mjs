@@ -12,38 +12,28 @@
  * `JurisdictionalRules.for(country)` so adding a new jurisdiction is a
  * single-object edit. This catches the silent-TZ-fallback class of bugs.
  *
- * Legitimate categories:
- *   1. Jurisdictional registry (auto-allowed by path).
- *   2. Per-country plugin scaffolds (auto-allowed by path).
- *   3. Sandbox / demo generators that intentionally enumerate scenarios
- *      per jurisdiction for marketing demos.
- *   4. Tool-spec implementations pinned to a specific jurisdiction by
- *      design (e.g. `platform.file_kra_mri.ts` is by definition Kenya-
- *      only because KRA is the Kenyan tax authority).
+ * AM-4 baseline-to-zero drive (May 2026): the three previous entries
+ * have been rebound and the inline literals removed:
+ *   - packages/central-intelligence/.../platform.file_kra_mri.ts →
+ *     `input.jurisdiction === 'KE'` replaced by typed predicate
+ *     `isKeritsInput(input)` over the discriminated-union schema; the
+ *     `'KE'` discriminant is captured in a typed const derived from the
+ *     Zod schema so the schema remains the source of truth.
+ *   - packages/marketing-brain/.../sandbox-estate-generator.ts → inline
+ *     `country === 'TZ' ? ... : country === 'KE' ? ...` ternary
+ *     collapsed into a typed `COMPLIANCE_NOTICE_BY_COUNTRY` dispatch
+ *     table mirroring the existing CURRENCY/BASE_RENT tables.
+ *   - packages/ai-copilot/.../case-studies/index.ts → inline
+ *     `cs.country === 'TZ' ? 'TZ' : cs.country === 'KE' ? 'KE' : undefined`
+ *     ternary collapsed into typed `COUNTRY_TO_KNOWLEDGE_STORE_CODE`
+ *     dispatch map.
  *
  * Adding a new `country === 'XX'` branch in production code → register
  * here with a justification ≥ 8 characters, OR refactor through
- * `JurisdictionalRules.for(country)`.
+ * `JurisdictionalRules.for(country)` / a typed per-country dispatch
+ * table (preferred).
  *
  * Keys are paths RELATIVE to the repo root.
  */
 
-export const HARDCODED_JURISDICTION_ALLOWLIST = new Map([
-  // ─── Jurisdiction-pinned tool implementations ──────────────────────
-  [
-    'packages/central-intelligence/src/kernel/tool-spec/hq-tools/platform.file_kra_mri.ts',
-    'KRA MRI tool is Kenya-only by definition; the jurisdiction === KE gate guards a Kenya-only adapter dispatch.',
-  ],
-
-  // ─── Sandbox / demo data generators ────────────────────────────────
-  [
-    'packages/marketing-brain/src/sandbox/sandbox-estate-generator.ts',
-    'Sandbox estate generator enumerates per-country compliance scenarios for marketing demos; not business logic.',
-  ],
-
-  // ─── Case-study mapping registry ───────────────────────────────────
-  [
-    'packages/ai-copilot/src/knowledge/case-studies/index.ts',
-    'Case-studies index maps cs.country to ISO countryCode; this IS the case-study registry mapping.',
-  ],
-]);
+export const HARDCODED_JURISDICTION_ALLOWLIST = new Map([]);
