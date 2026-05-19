@@ -1,4 +1,3 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
 'use client';
 
 import { Receipt } from 'lucide-react';
@@ -14,6 +13,18 @@ export default function PaymentHistoryPage() {
     queryKey: ['customer-payments-history'],
     queryFn: () => api.payments.getHistory(1, 50),
   });
+  // API client returns `unknown` until a typed gateway client lands.
+  type PaymentRow = {
+    id: string;
+    description?: string;
+    paymentNumber?: string;
+    status: string;
+    currency: string;
+    amount: number | string;
+    completedAt?: string;
+    createdAt?: string;
+  };
+  const history = (historyQuery.data as PaymentRow[] | undefined) ?? [];
 
   return (
     <>
@@ -35,7 +46,7 @@ export default function PaymentHistoryPage() {
             </AlertDescription>
           </Alert>
         )}
-        {(historyQuery.data ?? []).map((payment: any) => (
+        {history.map((payment) => (
           <div key={payment.id} className="card p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -49,7 +60,7 @@ export default function PaymentHistoryPage() {
             </div>
           </div>
         ))}
-        {!historyQuery.isLoading && !historyQuery.error && (historyQuery.data ?? []).length === 0 && (
+        {!historyQuery.isLoading && !historyQuery.error && history.length === 0 && (
           <EmptyState
             icon={<Receipt className="h-8 w-8" />}
             title={t('emptyTitle')}
