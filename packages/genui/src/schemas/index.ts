@@ -912,6 +912,81 @@ export const DataflowDiagramPartSchema = z
   })
   .strict();
 
+// ═════════════════════════════════════════════════════════════════════
+// Phase K-F — Hebbia-style Matrix + Budget Preview Card
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 36. matrix ────────────────────────────────────────────────────────
+// Hebbia-style spreadsheet-of-AI-answers: rows = entities (properties /
+// tenants / units), columns = questions, cells = LLM answers carrying
+// citations. Surface UX: sortable, filterable, exportable to CSV.
+
+export const MatrixColumnSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    header: z.string().min(1).max(200),
+    format: z.string().max(40).optional(),
+  })
+  .strict();
+
+export const MatrixCellSchema = z
+  .object({
+    columnId: z.string().min(1).max(120),
+    displayValue: z.string().max(2000),
+    confidence: z.enum(['low', 'medium', 'high']),
+    hasCitation: z.boolean(),
+    errored: z.boolean(),
+  })
+  .strict();
+
+export const MatrixRowSchema = z
+  .object({
+    rowId: z.string().min(1).max(120),
+    label: z.string().min(1).max(200),
+    cells: z.array(MatrixCellSchema).min(1).max(100),
+  })
+  .strict();
+
+export const MatrixPartSchema = z
+  .object({
+    kind: z.literal('matrix'),
+    title: z.string().max(200).optional(),
+    columns: z.array(MatrixColumnSchema).min(1).max(50),
+    rows: z.array(MatrixRowSchema).max(5_000),
+    rowCount: z.number().int().nonnegative().max(50_000),
+    columnCount: z.number().int().positive().max(50),
+    totalCostUsd: z.number().nonnegative(),
+    elapsedMs: z.number().int().nonnegative(),
+  })
+  .strict();
+
+// ── 37. budget-preview-card ───────────────────────────────────────────
+// Per-action cost preview shown BEFORE executing a multi-step plan.
+// The user clicks approve/deny; the MD only proceeds on approve.
+
+export const BudgetPreviewBreakdownSchema = z
+  .object({
+    label: z.string().min(1).max(200),
+    costUsd: z.number().nonnegative(),
+    cacheHit: z.boolean(),
+  })
+  .strict();
+
+export const BudgetPreviewCardPartSchema = z
+  .object({
+    kind: z.literal('budget-preview-card'),
+    title: z.string().max(200).optional(),
+    description: z.string().min(1).max(2000),
+    costUsd: z.number().nonnegative(),
+    seconds: z.number().int().nonnegative(),
+    breakdown: z.array(BudgetPreviewBreakdownSchema).min(1).max(20),
+    cacheHitRateUsed: z.number().gte(0).lte(1),
+    monthlyRemainingUsd: z.number(),
+    approveAction: z.string().min(1).max(200),
+    denyAction: z.string().min(1).max(200),
+  })
+  .strict();
+
 export const PART_SCHEMAS = {
   'chart-vega': ChartVegaPartSchema,
   'data-table': DataTablePartSchema,
@@ -951,6 +1026,9 @@ export const PART_SCHEMAS = {
   'decision-trace': DecisionTracePartSchema,
   'code-block': CodeBlockPartSchema,
   'dataflow-diagram': DataflowDiagramPartSchema,
+  // Phase K-F
+  matrix: MatrixPartSchema,
+  'budget-preview-card': BudgetPreviewCardPartSchema,
 } as const;
 
 export type PartKind = keyof typeof PART_SCHEMAS;

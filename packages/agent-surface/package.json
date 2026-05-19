@@ -1,0 +1,53 @@
+{
+  "name": "@bossnyumba/agent-surface",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase K-F — Multi-surface agent (Web/Mobile/WhatsApp/SMS/Email), permission-aware retrieval with per-tenant isolation, Hebbia-style Matrix queries, and Budget + Time Boxes with per-action cost preview.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./matrix": {
+      "types": "./dist/matrix/index.d.ts",
+      "import": "./dist/matrix/index.js",
+      "default": "./dist/matrix/index.js"
+    },
+    "./retrieval": {
+      "types": "./dist/retrieval/index.d.ts",
+      "import": "./dist/retrieval/index.js",
+      "default": "./dist/retrieval/index.js"
+    },
+    "./budget": {
+      "types": "./dist/budget/index.d.ts",
+      "import": "./dist/budget/index.js",
+      "default": "./dist/budget/index.js"
+    },
+    "./surface": {
+      "types": "./dist/surface/index.d.ts",
+      "import": "./dist/surface/index.js",
+      "default": "./dist/surface/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
