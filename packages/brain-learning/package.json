@@ -1,0 +1,50 @@
+{
+  "name": "@bossnyumba/brain-learning",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase N-E — runtime learning + self-improvement substrate. Trace logging, owner-reaction capture, preference-pair builder (DPO/KTO/SimPO), active-learning queue, eval-driven iteration, skill curation, knowledge-graph growth, distilled-student infra, 90-day-cycle tracker. Anthropic does not allow fine-tuning Claude in 2026, so this package ships the runtime layer that works on any model plus the data pipeline feeding self-hosted students.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "learning",
+    "self-improvement",
+    "dpo",
+    "kto",
+    "simpo",
+    "active-learning",
+    "preference-pairs",
+    "distillation",
+    "skill-curation",
+    "knowledge-graph"
+  ],
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
