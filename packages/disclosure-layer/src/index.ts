@@ -26,3 +26,6 @@ export * from './canary-tokens/index.js';
 
 // Spotlighting — DATA marking (per-session delimiters)
 export * from './spotlighting/index.js';
+
+// Hardened system prompt — external + internal variants
+export * from './hardened-system-prompt/index.js';
