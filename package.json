@@ -22,6 +22,7 @@
     "openapi:export": "pnpm -F @bossnyumba/api-gateway openapi:export",
     "audit:fix": "pnpm audit --audit-level=high",
     "audit:jurisdictional": "node scripts/audit-jurisdictional-literals.mjs",
+    "audit:jurisdictional-creep": "node scripts/audit-jurisdictional-creep-coverage.mjs",
     "audit:not-yet-wired": "node scripts/audit-not-yet-wired.mjs",
     "migrate": "pnpm -C packages/database db:migrate",
     "refresh-fx-rates": "pnpm -s exec tsx scripts/refresh-fx-rates.ts"

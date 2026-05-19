@@ -1,0 +1,54 @@
+{
+  "name": "@bossnyumba/domain-risk-safeguards",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "BOSSNYUMBA-specific domain-risk safeguards: disparate-impact audit + skill-promotion HARD gate + Klarna-pattern human-in-loop + jurisdictional-creep scanner + tenant-privacy threat-model enforcement + quarterly compliance report. L3 #9 + L3 #10 + fair-housing + Klarna + tenant-privacy + jurisdictional-creep class.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "disparate-impact",
+    "fair-housing",
+    "hud",
+    "eu-ai-act",
+    "saferent",
+    "skill-promotion",
+    "voyager",
+    "klarna-pattern",
+    "human-in-the-loop",
+    "jurisdictional-creep",
+    "tenant-privacy",
+    "compliance",
+    "quarterly-audit"
+  ],
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
