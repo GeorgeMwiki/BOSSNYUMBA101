@@ -33,23 +33,29 @@ interface DocumentSection {
   content: string;
 }
 
+// M-10: the document body comes from the lease record on the backend.
+// These placeholder texts are only ever shown when the API call has not
+// resolved yet. The previous text hardcoded `KES 40,000` / `KES 80,000`
+// which confused tenants on TZS / USD leases. We now use jurisdiction-
+// agnostic placeholders (`{{monthlyRent}}` style) so the localised body
+// is unmistakably a stub.
 const DOCUMENTS: Document[] = [
   {
     id: 'lease',
     name: 'Lease Agreement',
     type: 'lease',
     summary:
-      'Your 12-month residential lease agreement for Unit A-204 at Sunset Apartments.',
+      'Your residential lease agreement for the unit assigned to you. Final figures will load once the document is fetched.',
     sections: [
       {
         title: 'Term of Lease',
         content:
-          'This lease begins on June 1, 2024 and ends on May 31, 2025. The monthly rent is KES 40,000, due on the 1st of each month.',
+          'This lease begins on the move-in date and ends on the term end date. The monthly rent is {{monthlyRent}}, due on the 1st of each month.',
       },
       {
         title: 'Security Deposit',
         content:
-          'A security deposit of KES 80,000 (equivalent to 2 months rent) has been paid and will be held for the duration of the lease.',
+          'A security deposit of {{securityDeposit}} (typically equivalent to 2 months rent) has been paid and will be held for the duration of the lease.',
       },
       {
         title: 'Maintenance & Repairs',

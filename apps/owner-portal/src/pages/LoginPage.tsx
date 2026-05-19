@@ -272,6 +272,10 @@ export function LoginPage() {
                     id="mfaCode"
                     type="text"
                     inputMode="numeric"
+                    /* L-5: surface a digits-only native constraint. The zod
+                       schema already validates the regex but the pattern
+                       attribute trips browser-level form invalid styling. */
+                    pattern="\d{6}"
                     autoComplete="one-time-code"
                     maxLength={6}
                     aria-invalid={!!verifyState.errors.code}
@@ -354,6 +358,8 @@ export function LoginPage() {
                       id="setupMfaCode"
                       type="text"
                       inputMode="numeric"
+                      /* L-5: digits-only native constraint mirrors zod schema. */
+                      pattern="\d{6}"
                       autoComplete="one-time-code"
                       maxLength={6}
                       aria-invalid={!!setupState.errors.code}

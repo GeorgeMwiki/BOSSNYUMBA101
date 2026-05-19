@@ -206,6 +206,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem(CUSTOMER_TOKEN_KEY);
     localStorage.removeItem(CUSTOMER_USER_KEY);
+    // L-4: clear lingering onboarding progress so a second resident
+    // sharing the device does not pick up the first resident's
+    // half-completed inspection / utility / e-sign state.
+    try {
+      localStorage.removeItem('onboarding_progress');
+    } catch {
+      // localStorage may be unavailable (private mode / SSR sandbox).
+    }
     // Rotate the api-client bearer to undefined so any in-flight
     // request started after logout sends an unauthenticated call,
     // not the just-revoked bearer (closes round-3 C-4).
