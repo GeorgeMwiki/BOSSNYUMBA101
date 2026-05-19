@@ -495,6 +495,119 @@ describe('main-loop think()', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────
+  // H4 regression — a lifecycle-hook deny (user-prompt-submit, session-
+  // start, pre-compact, etc.) MUST fire the stop chain before
+  // surfacing the terminal response so the ledger seal still runs.
+  // ─────────────────────────────────────────────────────────────────
+  it('runs runStop when user-prompt-submit denies a hostile prompt (H4)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([{ kind: 'respond_to_owner', text: 'never' }]);
+    let stopCount = 0;
+    const stopHook: Hook = {
+      name: 'stop-counter',
+      stage: 'stop',
+      async fn() {
+        stopCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const promptDenyHook: Hook = {
+      name: 'hostile-prompt-filter',
+      stage: 'user-prompt-submit',
+      async fn() {
+        return { kind: 'deny', code: 'hostile-prompt', reason: 'blocked' };
+      },
+    };
+    const deps = makeDeps(router, dispatcher, [stopHook, promptDenyHook]);
+    const out = await thinkExtended(makeReq(), deps);
+    expect(out.kind).toBe('stopped');
+    expect(stopCount).toBe(1);
+  });
+
+  it('runs runStop when session-start denies (H4)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([{ kind: 'respond_to_owner', text: 'never' }]);
+    let stopCount = 0;
+    const stopHook: Hook = {
+      name: 'stop-counter',
+      stage: 'stop',
+      async fn() {
+        stopCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const sessionDenyHook: Hook = {
+      name: 'session-filter',
+      stage: 'session-start',
+      async fn() {
+        return { kind: 'deny', code: 'no-session', reason: 'blocked' };
+      },
+    };
+    const deps = makeDeps(router, dispatcher, [stopHook, sessionDenyHook]);
+    const out = await thinkExtended(makeReq(), deps);
+    expect(out.kind).toBe('stopped');
+    expect(stopCount).toBe(1);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // H6 regression — sub-MD risk-tier ceiling is enforced as a hard cap
+  // on any tool_call the child orchestrator emits.
+  // ─────────────────────────────────────────────────────────────────
+  it('denies a mutate tool when subMdRiskTierCeiling=read (H6)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router: LLMRouter = {
+      async call(): Promise<Decision> {
+        return {
+          kind: 'tool_call',
+          call: { toolName: 'arrears.send_reminder', input: {}, callId: 'c' },
+        };
+      },
+    };
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      toolRiskTier: () => 'mutate',
+      maxPermissionDenyRetries: 0,
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      subMdRiskTierCeiling: 'read',
+      budget: { maxTurns: 20 },
+    };
+    const out = await thinkExtended(req, deps);
+    expect(out.kind).toBe('stopped');
+    if (out.kind === 'stopped') {
+      expect(out.reason).toContain('sub-md-tier-ceiling');
+    }
+    expect(dispatcher.calls.find((d) => d.kind === 'tool_call')).toBeUndefined();
+  });
+
+  it('allows a read tool when subMdRiskTierCeiling=read (H6)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([
+      {
+        kind: 'tool_call',
+        call: { toolName: 'arrears.lookup', input: {}, callId: 'c' },
+      },
+      { kind: 'respond_to_owner', text: 'done' },
+    ]);
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      toolRiskTier: () => 'read',
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      subMdRiskTierCeiling: 'read',
+    };
+    const out = await think(req, deps);
+    expect(out.kind).toBe('answer');
+    expect(
+      dispatcher.calls.find(
+        (d) => d.kind === 'tool_call' && d.call.toolName === 'arrears.lookup',
+      ),
+    ).toBeDefined();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
   // C3 regression — main-loop consumes runPostToolUse return + raises
   // an operator-visible audit-pipeline-failure signal.
   // ─────────────────────────────────────────────────────────────────

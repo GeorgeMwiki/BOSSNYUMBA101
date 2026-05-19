@@ -151,3 +151,66 @@ describe('safeMemoryPath', () => {
     expect(() => safeMemoryPath('!evil!', 'plan.md')).toThrow(MemoryPathError);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// H7 — LRU + TTL bounded growth. A long-running thread that uses
+// /memories as scratch must not accumulate unbounded entries.
+// ─────────────────────────────────────────────────────────────────────
+
+describe('createInMemoryMemoryTool — H7 bounded growth', () => {
+  it('evicts oldest entries when maxEntries cap is exceeded (H7)', async () => {
+    let sizeCallbacks = 0;
+    const mt = createInMemoryMemoryTool(undefined, {
+      maxEntries: 3,
+      onSizeChange: () => {
+        sizeCallbacks += 1;
+      },
+    });
+    await mt.write('t_1', 'a.md', '1');
+    await mt.write('t_1', 'b.md', '2');
+    await mt.write('t_1', 'c.md', '3');
+    await mt.write('t_1', 'd.md', '4'); // evicts a.md
+    const listed = await mt.list('t_1');
+    expect(listed.length).toBe(3);
+    expect(listed.some((k) => k.endsWith('a.md'))).toBe(false);
+    expect(listed.some((k) => k.endsWith('d.md'))).toBe(true);
+    expect(sizeCallbacks).toBe(4);
+  });
+
+  it('refreshes LRU position on re-write (H7)', async () => {
+    const mt = createInMemoryMemoryTool(undefined, { maxEntries: 3 });
+    await mt.write('t_1', 'a.md', '1');
+    await mt.write('t_1', 'b.md', '2');
+    await mt.write('t_1', 'c.md', '3');
+    // Re-write a.md — moves it to the tail; b.md is now oldest.
+    await mt.write('t_1', 'a.md', '1-updated');
+    await mt.write('t_1', 'd.md', '4'); // evicts b.md
+    const listed = await mt.list('t_1');
+    expect(listed.some((k) => k.endsWith('a.md'))).toBe(true);
+    expect(listed.some((k) => k.endsWith('b.md'))).toBe(false);
+  });
+
+  it('expires entries past TTL on access (H7)', async () => {
+    let nowMs = 1_000_000;
+    const clock = (): Date => new Date(nowMs);
+    const mt = createInMemoryMemoryTool(clock, {
+      maxEntries: 100,
+      entryTtlMs: 1000,
+    });
+    await mt.write('t_1', 'old.md', 'stale');
+    nowMs += 5000; // 5s later
+    await mt.write('t_1', 'fresh.md', 'recent');
+    // recall triggers a TTL sweep before iterating.
+    const recalled = await mt.recall({
+      scope: {
+        kind: 'tenant',
+        tenantId: 't_1',
+        actorUserId: 'u',
+        roles: ['o'],
+        personaId: 'p',
+      },
+    });
+    expect(recalled.entries.some((e) => e.path.endsWith('fresh.md'))).toBe(true);
+    expect(recalled.entries.some((e) => e.path.endsWith('old.md'))).toBe(false);
+  });
+});

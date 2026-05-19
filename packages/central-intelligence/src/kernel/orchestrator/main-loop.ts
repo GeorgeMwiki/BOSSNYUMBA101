@@ -78,6 +78,19 @@ export interface OrchestratorRequest {
   readonly permissionMode?: PermissionMode;
   /** Optional tenant-scoped permission-mode override. */
   readonly tenantPermissionModeOverride?: PermissionMode;
+  /**
+   * H6 — Sub-MD risk-tier ceiling. When a parent sub-MD spawns a child
+   * orchestrator (`think()` for a sub-MD instance), the parent passes
+   * its own declared `riskTier` here. The main-loop denies any tool
+   * call whose risk tier is STRICTER than this ceiling — so a
+   * `riskTier:'read'` sub-MD cannot run a `mutate` tool even if its
+   * tool-belt happens to list one.
+   *
+   * Tier ordering: `read` < `mutate` < `external-comm` < `destroy` <
+   * `billing`. A ceiling of `read` allows only `read`-tier tools; a
+   * ceiling of `mutate` allows `read` + `mutate`; etc.
+   */
+  readonly subMdRiskTierCeiling?: RiskTier;
 }
 
 /**
@@ -315,6 +328,29 @@ export async function thinkExtended(
     ...(req.grantedScopes ? { grantedScopes: req.grantedScopes } : {}),
   };
 
+  // H4 — Centralised helper. Whenever a lifecycle hook (session-start,
+  // user-prompt-submit, pre/post-compact, subagent-*) returns a non-
+  // allow result that the caller maps to a terminal response, we MUST
+  // run the stop chain first so the ledger-seal hook (and any other
+  // stop-stage hook) can seal the per-thread hash chain. Without this,
+  // a PII-scrub deny or hostile-prompt deny would leave a dangling
+  // unsealed chain — exactly the failure mode the ledger-seal hook was
+  // introduced to close.
+  async function sealAndReturn(
+    terminal: OrchestratorResponseExtended,
+  ): Promise<OrchestratorResponseExtended> {
+    await deps.hookChain.runStop(
+      {
+        threadId: req.threadId,
+        turnCount: budget.snapshot().usage.turns,
+        finalText: lastText,
+        exhaustedAxis: null,
+      },
+      ctx,
+    );
+    return terminal;
+  }
+
   // session-start — fires once. A registered hook can seed system
   // context, set permission mode, etc. Any non-allow outcome short
   // circuits the whole turn.
@@ -327,7 +363,7 @@ export async function thinkExtended(
     ctx,
   );
   const sessionStartTerminal = terminalFromHook(sessionStartResult);
-  if (sessionStartTerminal) return sessionStartTerminal;
+  if (sessionStartTerminal) return sealAndReturn(sessionStartTerminal);
 
   // user-prompt-submit — fired once for the inbound user message. Hooks
   // can scrub PII or reject hostile prompts here.
@@ -336,7 +372,7 @@ export async function thinkExtended(
     ctx,
   );
   const promptTerminal = terminalFromHook(promptResult);
-  if (promptTerminal) return promptTerminal;
+  if (promptTerminal) return sealAndReturn(promptTerminal);
 
   const permissionMode: PermissionMode = req.permissionMode ?? 'default';
 
@@ -406,7 +442,7 @@ export async function thinkExtended(
       ctx,
     );
     const preCompactTerminal = terminalFromHook(preCompact);
-    if (preCompactTerminal) return preCompactTerminal;
+    if (preCompactTerminal) return sealAndReturn(preCompactTerminal);
 
     const compaction = await deps.contextBudget.compactIfOver(
       session.transcript,
@@ -427,7 +463,7 @@ export async function thinkExtended(
         ctx,
       );
       const postCompactTerminal = terminalFromHook(postCompact);
-      if (postCompactTerminal) return postCompactTerminal;
+      if (postCompactTerminal) return sealAndReturn(postCompactTerminal);
     }
 
     // Fold any pending additional-context injections from previous
@@ -451,6 +487,37 @@ export async function thinkExtended(
       const riskTier = (deps.toolRiskTier ?? defaultRiskTier)(
         decision.call.toolName,
       );
+      // H6 — Sub-MD risk-tier ceiling enforcement. When the parent
+      // passed a `subMdRiskTierCeiling`, deny any tool whose tier is
+      // STRICTER than the ceiling. A `read`-tier sub-MD must not be
+      // able to emit a `mutate`-tier tool even if its toolBelt happens
+      // to list one. The audit's H6 requirement: transitivity of the
+      // sub-MD's declared tier into the child orchestrator.
+      if (
+        req.subMdRiskTierCeiling &&
+        exceedsRiskTierCeiling(riskTier, req.subMdRiskTierCeiling)
+      ) {
+        consecutivePermissionDenies += 1;
+        const reason = `sub-md riskTier ceiling '${req.subMdRiskTierCeiling}' exceeded by tool ${decision.call.toolName} (tier '${riskTier}')`;
+        budget = budget.consume({
+          kind: 'tool_error',
+          callId: decision.call.callId,
+          message: reason,
+          latencyMs: 0,
+        });
+        if (consecutivePermissionDenies > denyRetryLimit) {
+          return sealAndReturn({
+            kind: 'stopped',
+            reason: `sub-md-tier-ceiling: ${reason}`,
+            partialText: lastText,
+          });
+        }
+        pendingContextInjections.push({
+          role: 'system',
+          content: `[sub-md-ceiling] ${reason}. Pick a tool whose tier is ${req.subMdRiskTierCeiling} or lower.`,
+        });
+        continue;
+      }
       const pmEval = evaluatePermissionMode(
         {
           currentMode: permissionMode,
@@ -680,7 +747,7 @@ export async function thinkExtended(
         ctx,
       );
       const subStartTerminal = terminalFromHook(subStart);
-      if (subStartTerminal) return subStartTerminal;
+      if (subStartTerminal) return sealAndReturn(subStartTerminal);
 
       // Background spawns fire-and-forget: the parent continues
       // immediately; the stop hook fires when the child completes
@@ -696,7 +763,7 @@ export async function thinkExtended(
         ctx,
       );
       const subStopTerminal = terminalFromHook(subStop);
-      if (subStopTerminal) return subStopTerminal;
+      if (subStopTerminal) return sealAndReturn(subStopTerminal);
     }
 
     // C3 — consume the post-tool-use chain's return value. A deny from
@@ -901,6 +968,35 @@ function defaultRiskTier(_toolName: string): RiskTier {
  * caller almost certainly wants a stop, not silent exhaustion.
  */
 const DEFAULT_PERMISSION_DENY_RETRIES = 2;
+
+/**
+ * H6 — Risk-tier ordering used to enforce a sub-MD's declared `riskTier`
+ * as a ceiling on every tool_call its child orchestrator emits. Tiers
+ * are ordered by destructiveness; a tier exceeds the ceiling when its
+ * ordinal is greater than the ceiling's ordinal.
+ *
+ * The ordering covers every value of `RiskTier`. New tiers added to
+ * `risk-tier.ts` MUST extend this map; the function defensively treats
+ * any unmapped tier as exceeding any ceiling (fail closed).
+ */
+const RISK_TIER_ORDINAL: Readonly<Record<string, number>> = Object.freeze({
+  read: 0,
+  mutate: 1,
+  'external-comm': 2,
+  destroy: 3,
+  billing: 4,
+});
+
+function exceedsRiskTierCeiling(
+  candidate: RiskTier,
+  ceiling: RiskTier,
+): boolean {
+  const candidateOrd = RISK_TIER_ORDINAL[candidate];
+  const ceilingOrd = RISK_TIER_ORDINAL[ceiling];
+  // Fail closed: unknown tiers are treated as exceeding any ceiling.
+  if (candidateOrd === undefined || ceilingOrd === undefined) return true;
+  return candidateOrd > ceilingOrd;
+}
 
 // Re-export the Session type for callers wiring custom dispatchers.
 export type { Session };

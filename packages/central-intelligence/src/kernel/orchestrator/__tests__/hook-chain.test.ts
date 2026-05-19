@@ -332,6 +332,54 @@ describe('built-in hooks', () => {
       await hook.fn(platformCtx, toolCall('x', {}, 1));
       expect(receivedTenant).toBe('_platform');
     });
+
+    // H2 — Asymmetric default fix. A non-read tool with no cost
+    // estimate must NOT silently pass at $0; either deny with
+    // cost-estimate-missing or use the sentinel.
+    it('denies a non-read tool with explicit estimatedCostUsd=0 (H2)', async () => {
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async () => ({ projectedUsd: 0, ceilingUsd: 100 }),
+        },
+        toolRiskTier: () => 'mutate',
+      });
+      const out = await hook.fn(tenantCtx, toolCall('mut.tool', {}, 0));
+      expect(out.kind).toBe('deny');
+      if (out.kind === 'deny') expect(out.code).toBe('cost-estimate-missing');
+    });
+
+    it('uses the sentinel cost for an unknown mutate-tier tool with no estimate (H2)', async () => {
+      let projectedReceived = -1;
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async ({ estimatedCostUsd }) => {
+            projectedReceived = estimatedCostUsd;
+            return { projectedUsd: estimatedCostUsd, ceilingUsd: 100 };
+          },
+        },
+        toolRiskTier: () => 'mutate',
+        unknownToolCostSentinelUsd: 2.5,
+      });
+      const out = await hook.fn(tenantCtx, toolCall('unknown.mut'));
+      expect(out.kind).toBe('allow');
+      expect(projectedReceived).toBe(2.5);
+    });
+
+    it('keeps a read-tier tool at $0 when no estimate is supplied (H2)', async () => {
+      let projectedReceived = -1;
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async ({ estimatedCostUsd }) => {
+            projectedReceived = estimatedCostUsd;
+            return { projectedUsd: estimatedCostUsd, ceilingUsd: 100 };
+          },
+        },
+        toolRiskTier: () => 'read',
+      });
+      const out = await hook.fn(tenantCtx, toolCall('read.tool'));
+      expect(out.kind).toBe('allow');
+      expect(projectedReceived).toBe(0);
+    });
   });
 
   describe('sandbox-divert-hook', () => {
