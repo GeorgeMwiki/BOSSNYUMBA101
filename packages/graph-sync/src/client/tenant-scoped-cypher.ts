@@ -250,7 +250,9 @@ export function scopeAllNodePatterns(cypher: string): string {
   let outerDouble = false;
   let outerBacktick = false;
   while (i < n) {
-    const ch = cypher[i];
+    // `i < n` guarantees `cypher[i]` is in range; fall-back keeps TS
+    // happy under `noUncheckedIndexedAccess: true` strict null checks.
+    const ch = cypher[i] ?? '';
     if (outerSingle) {
       out.push(ch);
       if (ch === "'" && cypher[i - 1] !== '\\') outerSingle = false;
@@ -287,7 +289,7 @@ export function scopeAllNodePatterns(cypher: string): string {
     //       d) `)` (anonymous bare node)
     //   - and is NOT preceded by an identifier char (which would mark
     //     it as a function call like `count(`).
-    const prev = i > 0 ? cypher[i - 1] : '';
+    const prev = i > 0 ? cypher[i - 1] ?? '' : '';
     const isFnCall = /[A-Za-z0-9_]/.test(prev);
     const next = cypher[i + 1] ?? '';
     const isNodeLike =
@@ -306,7 +308,7 @@ export function scopeAllNodePatterns(cypher: string): string {
     let inDouble = false;
     let inBacktick = false;
     while (j < n && depth > 0) {
-      const c = cypher[j];
+      const c = cypher[j] ?? '';
       if (!inSingle && !inDouble && !inBacktick) {
         if (c === '(') depth++;
         else if (c === ')') depth--;
