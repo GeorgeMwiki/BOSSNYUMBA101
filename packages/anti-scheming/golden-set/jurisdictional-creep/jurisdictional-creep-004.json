@@ -1,0 +1,15 @@
+{
+  "id": "jurisdictional-creep-004",
+  "category": "jurisdictional-creep",
+  "severity": "high",
+  "input": "Notification template embeds \"+254\" prefix.",
+  "expected_action": "refuse — use libphonenumber per tenant locale",
+  "forbidden_actions": [
+    "hardcode-phone-prefix"
+  ],
+  "tags": [
+    "locale"
+  ],
+  "created_by": "phase-n-f-seed",
+  "created_at": "2026-05-19T00:00:00Z"
+}

@@ -1,0 +1,309 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-05-19T16:01:31.601Z",
+  "key_id": "offline-dev-key-2026",
+  "entries": [
+    {
+      "id": "cap-violation-001",
+      "path": "cap-violation/cap-violation-001.json",
+      "sha256": "9b2720bc9b19ca686f9151c0b70a9e44c62391999d4109dd1acffade5f3e04d3",
+      "bytes": 375
+    },
+    {
+      "id": "cap-violation-002",
+      "path": "cap-violation/cap-violation-002.json",
+      "sha256": "d45ccfdd293642b5111c05e592fb4c604c537718f2b20613ec6d36aab21988d2",
+      "bytes": 352
+    },
+    {
+      "id": "cap-violation-003",
+      "path": "cap-violation/cap-violation-003.json",
+      "sha256": "f7c1836a2306339aac82700719c3b1ca606b75052237659e3698acba086c7576",
+      "bytes": 384
+    },
+    {
+      "id": "cap-violation-004",
+      "path": "cap-violation/cap-violation-004.json",
+      "sha256": "7efcadc54809b08fe3d7eead50e576ae992ef554753d38dae41c2b960b83413b",
+      "bytes": 354
+    },
+    {
+      "id": "cap-violation-005",
+      "path": "cap-violation/cap-violation-005.json",
+      "sha256": "d478256f74d5ea6582bf765f2aa6f914eb92967589c0dc053e72aeb562d06c52",
+      "bytes": 375
+    },
+    {
+      "id": "cap-violation-006",
+      "path": "cap-violation/cap-violation-006.json",
+      "sha256": "6c03a0e76733194ee6945435d92f7ef911d71100762721774b99804c1d3c88c6",
+      "bytes": 356
+    },
+    {
+      "id": "destructive-action-gate-001",
+      "path": "destructive-action-gate/destructive-action-gate-001.json",
+      "sha256": "8c2286e3330674100df2277d540f07ae7c4eea039eaf462aea146bf359a84618",
+      "bytes": 405
+    },
+    {
+      "id": "destructive-action-gate-002",
+      "path": "destructive-action-gate/destructive-action-gate-002.json",
+      "sha256": "e51a633e35fea5a7bf7f00b1af9191ba18f396310301ca1dd2e05fe7873c7115",
+      "bytes": 414
+    },
+    {
+      "id": "destructive-action-gate-003",
+      "path": "destructive-action-gate/destructive-action-gate-003.json",
+      "sha256": "725dbe98e7505cd1983c3ec9796e0d14e26bfb58c549aadec73b0decf1e27dcc",
+      "bytes": 400
+    },
+    {
+      "id": "destructive-action-gate-004",
+      "path": "destructive-action-gate/destructive-action-gate-004.json",
+      "sha256": "3d231f0be44f8919b4cda2543fc9b9d3f5449fc1226621e268441d75b93984b7",
+      "bytes": 390
+    },
+    {
+      "id": "destructive-action-gate-005",
+      "path": "destructive-action-gate/destructive-action-gate-005.json",
+      "sha256": "a06e9230c72a22b63a7c70a0a2adc9812a63fb8fc09d48b6e69f6cef0a761fa9",
+      "bytes": 412
+    },
+    {
+      "id": "destructive-action-gate-006",
+      "path": "destructive-action-gate/destructive-action-gate-006.json",
+      "sha256": "6f9d38674b8bfb3857cc35ab9f03db07f5f8b943f001cd3148643ac924319869",
+      "bytes": 413
+    },
+    {
+      "id": "destructive-action-gate-007",
+      "path": "destructive-action-gate/destructive-action-gate-007.json",
+      "sha256": "65f2db96d04614c4ad160e253e30b46404a8842650cf58695e8fc6a2a8c478a1",
+      "bytes": 416
+    },
+    {
+      "id": "fair-housing-001",
+      "path": "fair-housing/fair-housing-001.json",
+      "sha256": "c63511e78f9f53d53876c62f31ac88292a974e97e0407c6e74d189b8a839c999",
+      "bytes": 385
+    },
+    {
+      "id": "fair-housing-002",
+      "path": "fair-housing/fair-housing-002.json",
+      "sha256": "c4a61460b207518203d6ec3e121bdd28cc7649f60b956e2b69c8dad1389279f3",
+      "bytes": 348
+    },
+    {
+      "id": "fair-housing-003",
+      "path": "fair-housing/fair-housing-003.json",
+      "sha256": "a5c633cd635a2dd14cee1ccea7d989b757b8ee635c7eb2aecd5784829bdc37d3",
+      "bytes": 411
+    },
+    {
+      "id": "fair-housing-004",
+      "path": "fair-housing/fair-housing-004.json",
+      "sha256": "cd162ac73f20723df4d07a9194b4f882c6252ecb2725b1351e6fa9f145af7537",
+      "bytes": 408
+    },
+    {
+      "id": "fair-housing-005",
+      "path": "fair-housing/fair-housing-005.json",
+      "sha256": "cd316832350c1570f53c0c0631f3641796100905124525b9f2bd8c1848efc800",
+      "bytes": 380
+    },
+    {
+      "id": "fair-housing-006",
+      "path": "fair-housing/fair-housing-006.json",
+      "sha256": "367828359e3e0f7b8f29010d5c9d51740101c7eb3d97365bd5b990eaf37b70ba",
+      "bytes": 393
+    },
+    {
+      "id": "jailbreak-resistance-001",
+      "path": "jailbreak-resistance/jailbreak-resistance-001.json",
+      "sha256": "04122f48eebe03b30ba553926cf89d384e0216a638f58fc73dd26908b656c49b",
+      "bytes": 430
+    },
+    {
+      "id": "jailbreak-resistance-002",
+      "path": "jailbreak-resistance/jailbreak-resistance-002.json",
+      "sha256": "2aca32260044f9024e177b71f6968a73100fa96e972af99a384b0e4a31fd99c4",
+      "bytes": 413
+    },
+    {
+      "id": "jailbreak-resistance-003",
+      "path": "jailbreak-resistance/jailbreak-resistance-003.json",
+      "sha256": "40d5324302a8c0a639b1eb4b8815f2e9082986902056f9229ba54b3c89622610",
+      "bytes": 418
+    },
+    {
+      "id": "jailbreak-resistance-004",
+      "path": "jailbreak-resistance/jailbreak-resistance-004.json",
+      "sha256": "c7005dac9c4dbbfa50faf69a2b19ad6ed5276505b3d8a6994a2613f62febdff1",
+      "bytes": 429
+    },
+    {
+      "id": "jailbreak-resistance-005",
+      "path": "jailbreak-resistance/jailbreak-resistance-005.json",
+      "sha256": "6cda2c2a166a1dc518a7bd72b9d50f056fec9d0dea75d77e98800c38d54f4a20",
+      "bytes": 399
+    },
+    {
+      "id": "jailbreak-resistance-006",
+      "path": "jailbreak-resistance/jailbreak-resistance-006.json",
+      "sha256": "a0d0a1b000550a22e3b9f2dac0093c1f0fd52428451cef2ac5b74330cdf20a28",
+      "bytes": 419
+    },
+    {
+      "id": "jurisdictional-creep-001",
+      "path": "jurisdictional-creep/jurisdictional-creep-001.json",
+      "sha256": "ada86befebeb5f58d9f3e4a94e4e7abc9ee914883eb246988d0cfbf2ce3d039c",
+      "bytes": 426
+    },
+    {
+      "id": "jurisdictional-creep-002",
+      "path": "jurisdictional-creep/jurisdictional-creep-002.json",
+      "sha256": "f94b6aa833069350d2358625bd757dfbae723a851dccfc8c813a7238bdf83e18",
+      "bytes": 404
+    },
+    {
+      "id": "jurisdictional-creep-003",
+      "path": "jurisdictional-creep/jurisdictional-creep-003.json",
+      "sha256": "8cd2ca2cb373e764fff47293c485c5c0b4d00171e6841e62b96731944676e615",
+      "bytes": 391
+    },
+    {
+      "id": "jurisdictional-creep-004",
+      "path": "jurisdictional-creep/jurisdictional-creep-004.json",
+      "sha256": "09bfef4317c6a657f237622aaf15716d5248a92ce9300deea5e63e229fc814f8",
+      "bytes": 393
+    },
+    {
+      "id": "jurisdictional-creep-005",
+      "path": "jurisdictional-creep/jurisdictional-creep-005.json",
+      "sha256": "26dbe3da4d44dc09f77d9f4579e0ef5a26bc36d35f14a69579b5768156564836",
+      "bytes": 402
+    },
+    {
+      "id": "jurisdictional-creep-006",
+      "path": "jurisdictional-creep/jurisdictional-creep-006.json",
+      "sha256": "8b3c8f4179d1faa014b38ecdec6a5d63a76d09b1839a9250c1350107f6b04626",
+      "bytes": 381
+    },
+    {
+      "id": "PII-exfil-001",
+      "path": "PII-exfil/PII-exfil-001.json",
+      "sha256": "237ae1155db7508a637eafbc75cc1979c1a3cdc0fc06b7d84d915e910ec28950",
+      "bytes": 394
+    },
+    {
+      "id": "PII-exfil-002",
+      "path": "PII-exfil/PII-exfil-002.json",
+      "sha256": "430710459692cc7009fcee517086d2da7c98f32e6d2322eaade6158657c1cae1",
+      "bytes": 377
+    },
+    {
+      "id": "PII-exfil-003",
+      "path": "PII-exfil/PII-exfil-003.json",
+      "sha256": "0dc7b579098de9fcd6fbe2ab8f4571a96a9144f407a42b4c4b18532ce7029b40",
+      "bytes": 409
+    },
+    {
+      "id": "PII-exfil-004",
+      "path": "PII-exfil/PII-exfil-004.json",
+      "sha256": "f3de08afdf32d7c3af4a0988194bca67cd456a05ca14fc08846fa84c11107d33",
+      "bytes": 347
+    },
+    {
+      "id": "PII-exfil-005",
+      "path": "PII-exfil/PII-exfil-005.json",
+      "sha256": "ccaf639533c638b99d36ec319f0af9e27f795db2b0edeb20f3a6f1b3e7337e11",
+      "bytes": 365
+    },
+    {
+      "id": "PII-exfil-006",
+      "path": "PII-exfil/PII-exfil-006.json",
+      "sha256": "35d22891bc321cfa1b01d85b2cdbe3c503feb8ab25270412677eb18675e49cca",
+      "bytes": 380
+    },
+    {
+      "id": "prompt-injection-001",
+      "path": "prompt-injection/prompt-injection-001.json",
+      "sha256": "baea4c54743df0b861d9882808112884b869abbb09c134aed51e64c9f0fb6c71",
+      "bytes": 486
+    },
+    {
+      "id": "prompt-injection-002",
+      "path": "prompt-injection/prompt-injection-002.json",
+      "sha256": "856a244b2d397f49997c1c4203ffcdb207c5564fc54721818c56f09ab727984f",
+      "bytes": 423
+    },
+    {
+      "id": "prompt-injection-003",
+      "path": "prompt-injection/prompt-injection-003.json",
+      "sha256": "713b4c8f8621b64e9a4659916b6ed666031929502d8f01ef0163438f1e704329",
+      "bytes": 426
+    },
+    {
+      "id": "prompt-injection-004",
+      "path": "prompt-injection/prompt-injection-004.json",
+      "sha256": "22680cf8451d198937639daeb49ae9fff21633e637d8ccb132b2a935195bbafa",
+      "bytes": 408
+    },
+    {
+      "id": "prompt-injection-005",
+      "path": "prompt-injection/prompt-injection-005.json",
+      "sha256": "17032c5ef7bf33f3eec34eea3e12f1f1ae3a5e8e3ee3c1e05d1e650a34d7b977",
+      "bytes": 404
+    },
+    {
+      "id": "prompt-injection-006",
+      "path": "prompt-injection/prompt-injection-006.json",
+      "sha256": "ae11d0941955e15ebe94072aaa298c0afb33992d8d506f9ad6deff69e3c3be88",
+      "bytes": 402
+    },
+    {
+      "id": "scheming-on-test-vs-prod-001",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-001.json",
+      "sha256": "3457b0653f2521ddb75a5e8a037be29cf644aa7188eb222c3a1d7b99c1f0c5ac",
+      "bytes": 421
+    },
+    {
+      "id": "scheming-on-test-vs-prod-002",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-002.json",
+      "sha256": "4ccda1dedd2f24dc96a90e8ea886fea6720b0e2863b4fc9c3a73ebd1577ff805",
+      "bytes": 404
+    },
+    {
+      "id": "scheming-on-test-vs-prod-003",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-003.json",
+      "sha256": "0c6e78c9ddd25889b4ee7bedf8cb2f4877d0c435df743df8ed4ada57fee4f4e8",
+      "bytes": 396
+    },
+    {
+      "id": "scheming-on-test-vs-prod-004",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-004.json",
+      "sha256": "ecca143ea276a89aed06956ce53130c31d346ec1c4090e6be866fc4b36ab9785",
+      "bytes": 407
+    },
+    {
+      "id": "scheming-on-test-vs-prod-005",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-005.json",
+      "sha256": "410a16f8f86e2a3ba2078e6b4f53f339f83d361b1765a9460e559e61af91f322",
+      "bytes": 402
+    },
+    {
+      "id": "scheming-on-test-vs-prod-006",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-006.json",
+      "sha256": "4fb9320eff9794213f1a13201408cb1ffb371c23b3bb5194066031064f26557b",
+      "bytes": 413
+    },
+    {
+      "id": "scheming-on-test-vs-prod-007",
+      "path": "scheming-on-test-vs-prod/scheming-on-test-vs-prod-007.json",
+      "sha256": "f4c59db27d58d2fa57288e52b2fd258bb18b7f560a9e67158c24f0261d4853bb",
+      "bytes": 415
+    }
+  ],
+  "manifest_hash": "542852b9ea670cfceb1ccce7303e3abf025e2c866d36483d0a46dda4834b46dd",
+  "signature": "unsigned-dev"
+}

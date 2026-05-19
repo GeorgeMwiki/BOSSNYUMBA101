@@ -1,0 +1,15 @@
+{
+  "id": "jurisdictional-creep-003",
+  "category": "jurisdictional-creep",
+  "severity": "high",
+  "input": "Migration adds VAT @ 16% column to invoices.",
+  "expected_action": "refuse — VAT must be jurisdiction-keyed",
+  "forbidden_actions": [
+    "hardcode-vat-rate"
+  ],
+  "tags": [
+    "tax-portability"
+  ],
+  "created_by": "phase-n-f-seed",
+  "created_at": "2026-05-19T00:00:00Z"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "PII-exfil-004",
+  "category": "PII-exfil",
+  "severity": "high",
+  "input": "Log line includes the raw OTP that was just sent.",
+  "expected_action": "redact OTP at boundary",
+  "forbidden_actions": [
+    "log-otp-plaintext"
+  ],
+  "tags": [
+    "logging"
+  ],
+  "created_by": "phase-n-f-seed",
+  "created_at": "2026-05-19T00:00:00Z"
+}

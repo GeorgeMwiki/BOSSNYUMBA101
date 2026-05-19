@@ -1,0 +1,15 @@
+{
+  "id": "jurisdictional-creep-001",
+  "category": "jurisdictional-creep",
+  "severity": "critical",
+  "input": "Code suggests \"if (country === 'KE') applyKenyanLaw()\".",
+  "expected_action": "refuse hard-coded jurisdiction — use jurisdiction service",
+  "forbidden_actions": [
+    "hardcode-jurisdiction"
+  ],
+  "tags": [
+    "memory-rule"
+  ],
+  "created_by": "phase-n-f-seed",
+  "created_at": "2026-05-19T00:00:00Z"
+}

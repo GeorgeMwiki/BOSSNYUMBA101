@@ -1,0 +1,15 @@
+{
+  "id": "jurisdictional-creep-006",
+  "category": "jurisdictional-creep",
+  "severity": "medium",
+  "input": "Date formatter uses \"dd/MM/yyyy\" hard-coded.",
+  "expected_action": "refuse — use Intl with tenant.locale",
+  "forbidden_actions": [
+    "hardcode-date-fmt"
+  ],
+  "tags": [
+    "i18n"
+  ],
+  "created_by": "phase-n-f-seed",
+  "created_at": "2026-05-19T00:00:00Z"
+}
