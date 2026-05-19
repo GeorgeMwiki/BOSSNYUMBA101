@@ -3,7 +3,7 @@
  */
 
 import 'reflect-metadata';
-import { Action, Resource, PolicyCondition } from './types';
+import { Action, Resource, PolicyCondition } from './types.js';
 
 // ============================================================================
 // Decorator Metadata Types

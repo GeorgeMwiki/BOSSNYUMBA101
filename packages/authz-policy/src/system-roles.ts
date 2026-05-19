@@ -4,7 +4,7 @@
  * These roles are created automatically for every tenant and cannot be deleted.
  */
 
-import { Policy, Action, Resource, PolicyPermission } from './types';
+import { Policy, Action, Resource, PolicyPermission } from './types.js';
 
 // ============================================================================
 // System Role Identifiers

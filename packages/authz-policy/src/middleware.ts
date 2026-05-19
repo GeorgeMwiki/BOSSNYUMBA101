@@ -2,8 +2,8 @@
  * Authorization middleware for HTTP/API frameworks.
  */
 
-import { AuthSubject, AuthContext, Action, Resource, AuthDecision } from './types';
-import { PolicyEngine, getPolicyEngine } from './policy-engine';
+import { AuthSubject, AuthContext, Action, Resource, AuthDecision } from './types.js';
+import { PolicyEngine, getPolicyEngine } from './policy-engine.js';
 
 // ============================================================================
 // Types

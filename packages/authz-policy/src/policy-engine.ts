@@ -15,7 +15,7 @@ import {
   defaultPolicyEngineConfig,
   Action,
   Resource,
-} from './types';
+} from './types.js';
 
 // ============================================================================
 // Policy Engine
