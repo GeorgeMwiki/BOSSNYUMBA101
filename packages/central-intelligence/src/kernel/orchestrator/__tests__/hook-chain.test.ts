@@ -332,6 +332,54 @@ describe('built-in hooks', () => {
       await hook.fn(platformCtx, toolCall('x', {}, 1));
       expect(receivedTenant).toBe('_platform');
     });
+
+    // H2 — Asymmetric default fix. A non-read tool with no cost
+    // estimate must NOT silently pass at $0; either deny with
+    // cost-estimate-missing or use the sentinel.
+    it('denies a non-read tool with explicit estimatedCostUsd=0 (H2)', async () => {
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async () => ({ projectedUsd: 0, ceilingUsd: 100 }),
+        },
+        toolRiskTier: () => 'mutate',
+      });
+      const out = await hook.fn(tenantCtx, toolCall('mut.tool', {}, 0));
+      expect(out.kind).toBe('deny');
+      if (out.kind === 'deny') expect(out.code).toBe('cost-estimate-missing');
+    });
+
+    it('uses the sentinel cost for an unknown mutate-tier tool with no estimate (H2)', async () => {
+      let projectedReceived = -1;
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async ({ estimatedCostUsd }) => {
+            projectedReceived = estimatedCostUsd;
+            return { projectedUsd: estimatedCostUsd, ceilingUsd: 100 };
+          },
+        },
+        toolRiskTier: () => 'mutate',
+        unknownToolCostSentinelUsd: 2.5,
+      });
+      const out = await hook.fn(tenantCtx, toolCall('unknown.mut'));
+      expect(out.kind).toBe('allow');
+      expect(projectedReceived).toBe(2.5);
+    });
+
+    it('keeps a read-tier tool at $0 when no estimate is supplied (H2)', async () => {
+      let projectedReceived = -1;
+      const hook = createCostCircuitHook({
+        breaker: {
+          project: async ({ estimatedCostUsd }) => {
+            projectedReceived = estimatedCostUsd;
+            return { projectedUsd: estimatedCostUsd, ceilingUsd: 100 };
+          },
+        },
+        toolRiskTier: () => 'read',
+      });
+      const out = await hook.fn(tenantCtx, toolCall('read.tool'));
+      expect(out.kind).toBe('allow');
+      expect(projectedReceived).toBe(0);
+    });
   });
 
   describe('sandbox-divert-hook', () => {
@@ -796,6 +844,52 @@ describe('HookChain extended stages', () => {
     const out = await chain.runPostToolUse(decision, dispatch, tenantCtx);
     expect(out.kind).toBe('deny');
     if (out.kind === 'deny') expect(out.code).toBe('hook-threw');
+  });
+
+  it('runPostToolUse runs ALL hooks even when an early hook denies (H3)', async () => {
+    const fired: string[] = [];
+    const throwing: PostToolUseHook = {
+      name: 'audit',
+      stage: 'post-tool-use',
+      async fn() {
+        fired.push('audit');
+        throw new Error('audit-sink-down');
+      },
+    };
+    const telemetry: PostToolUseHook = {
+      name: 'telemetry',
+      stage: 'post-tool-use',
+      async fn(): Promise<HookResult> {
+        fired.push('telemetry');
+        return { kind: 'allow' };
+      },
+    };
+    const ledgerSeal: PostToolUseHook = {
+      name: 'ledger-seal',
+      stage: 'post-tool-use',
+      async fn(): Promise<HookResult> {
+        fired.push('ledger-seal');
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([throwing, telemetry, ledgerSeal]);
+    const decision: Decision = {
+      kind: 'tool_call',
+      call: { toolName: 'demo.read', input: {}, callId: 'c1' },
+    };
+    const dispatch: DispatchResult = {
+      kind: 'tool_ok',
+      callId: 'c1',
+      output: {},
+      latencyMs: 1,
+      tokensIn: 1,
+      tokensOut: 1,
+      usdCost: 0,
+    };
+    const out = await chain.runPostToolUse(decision, dispatch, tenantCtx);
+    // Returned the first non-allow but still ran every hook.
+    expect(out.kind).toBe('deny');
+    expect(fired).toEqual(['audit', 'telemetry', 'ledger-seal']);
   });
 
   it('thrown session-start hook maps to deny code=hook-threw', async () => {
