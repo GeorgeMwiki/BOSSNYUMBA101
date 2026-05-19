@@ -340,10 +340,38 @@ function makeCacheKey(
   op: string,
   query: Record<string, unknown>,
 ): string {
-  const canonical = JSON.stringify(query, Object.keys(query).sort());
+  // M9 closure (round-3 audit): the prior shallow `JSON.stringify(query,
+  // Object.keys(query).sort())` only sorts the TOP-level keys. Nested
+  // objects (e.g. `{coordinates: {lat, lng}}`) get keys ordered by
+  // INSERTION, which means two semantically equivalent queries can hash
+  // to different cache keys — spurious misses and cache fragmentation.
+  // `canonicalise` performs a recursive, key-sorted serialisation so
+  // every equivalent input lands on the same key.
+  const canonical = canonicalise(query);
   return createHash('sha256')
     .update(`${provider}|${op}|${canonical}`)
     .digest('hex');
+}
+
+/**
+ * Recursive canonical JSON serialiser. Sorts object keys at every depth
+ * so semantically equivalent inputs produce identical strings.
+ * Non-object values delegate to `JSON.stringify` (handles primitives,
+ * dates, null). Arrays preserve order (semantically meaningful).
+ */
+function canonicalise(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => canonicalise(v)).join(',')}]`;
+  }
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  const entries = keys.map(
+    (k) => `${JSON.stringify(k)}:${canonicalise(obj[k])}`,
+  );
+  return `{${entries.join(',')}}`;
 }
 
 function normaliseComparableArgs(
