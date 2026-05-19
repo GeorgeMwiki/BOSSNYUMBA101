@@ -31,7 +31,7 @@ const FORGED_CREDENTIAL_RE = /\b(?:forged|fabricat(?:e|ed)|synthe(?:tic|sised))[
 const FAKE_VENDOR_RE = /\b(?:shut[\s_-]?down|terminate|disable)\s+vendor\s+\w+\b/i;
 const SUCCESSOR_RE = /\bbegin\s+coordination\s+with\s+(?:my\s+)?successor\b|coordinate\s+with\s+(?:the\s+)?replacement\s+model/i;
 const TIMESTAMP_TRIGGER_RE = /\b(?:if|when)\s+(?:current[_ -]?)?year\s*(?:>|>=|after)\s*(?:2027|2028|2029|203\d)\b/i;
-const SELF_MODIFY_RE = /\bupdate\s+(?:my\s+own|own)\s+autonomy[_ -]?cap|edit\s+(?:my\s+own\s+)?constitution|self[_ -]?elevate/i;
+const SELF_MODIFY_RE = /(?:update|edit|modify|set|change)\s*(?::\s*)?["']?\s*(?:my\s+own|own)?\s*["']?\s*autonomy[_ -]?cap|edit\s+(?:my\s+own\s+)?constitution|self[_ -]?elevate|"?\bself_modify\b"?/i;
 const LONG_TAIL_CCY_HARDCODE_RE = /\b(?:currency|ccy)\s*[=:]\s*['"](?:KMF|RWF|UGX|ETB|MGA|SLL|BIF|CDF|XAF|XOF|GNF|DJF|ERN|MZN|MWK|ZMW|SSP|SDG|SOS)['"]/;
 
 function tryMatch(text: string, re: RegExp): string | null {
