@@ -49,6 +49,17 @@ export interface JurisdictionalTaxAuthority {
   readonly portalUrl: string;
   readonly mriFilingFrequency: 'monthly' | 'quarterly' | 'annual';
   readonly vatRatePct: number;
+  /**
+   * Rental withholding-tax / monthly rental income (MRI) flat rate as a
+   * percentage of gross rent. AM-4 hardcoded-tax-rate purge: this used to
+   * be inline literals scattered across rental-tax adapters (TZ TRA WHT
+   * `0.1`, KE KRA MRI `0.10`). Setting it here makes onboarding a new
+   * jurisdiction a one-line edit. Authoritative sources (May 2026):
+   *   TZ — Income Tax Act 2004 §83 (resident WHT on rent: 10 %).
+   *   KE — Income Tax Act §6A (MRI on resident landlords: 10 %).
+   *   NG — Finance Act 2020 §15 (no separate rental WHT; uses VAT 7.5 %).
+   */
+  readonly rentalWithholdingRatePct: number;
   readonly taxpayerIdRegex: RegExp;
 }
 
@@ -229,6 +240,8 @@ const TZ_RULES: JurisdictionalRules = Object.freeze({
     portalUrl: 'https://www.tra.go.tz',
     mriFilingFrequency: 'monthly',
     vatRatePct: 18,
+    // Income Tax Act 2004 §83 — 10 % WHT on rent paid to resident landlords.
+    rentalWithholdingRatePct: 10,
     // TRA TIN: 9 digits.
     taxpayerIdRegex: /^\d{9}$/,
   }),
@@ -382,6 +395,10 @@ const KE_RULES: JurisdictionalRules = Object.freeze({
     portalUrl: 'https://itax.kra.go.ke',
     mriFilingFrequency: 'monthly',
     vatRatePct: 16,
+    // Income Tax Act §6A — 10 % MRI flat rate on resident landlords (gross
+    // rent below the KSh 15 M / year threshold; above that, normal income-
+    // tax bands apply and the MRI flat rate is not used).
+    rentalWithholdingRatePct: 10,
     // KRA PIN: letter + 9 digits + letter, e.g. A123456789B.
     taxpayerIdRegex: /^[A-Z]\d{9}[A-Z]$/,
   }),
@@ -535,6 +552,11 @@ const NG_RULES: JurisdictionalRules = Object.freeze({
     mriFilingFrequency: 'monthly',
     // Finance Act 2020 raised VAT from 5% to 7.5% effective 01 Feb 2020.
     vatRatePct: 7.5,
+    // No separate rental WHT in Nigeria — rental income is taxed via
+    // ordinary CIT / PIT brackets and the FIRS VAT regime. Zero out the
+    // field so the registry remains complete and downstream code that
+    // reads it never silently picks up another country's rate.
+    rentalWithholdingRatePct: 0,
     // Legacy FIRS TIN = 12 digits (numeric). The Nigeria Tax Act 2025
     // introduced a new 13-digit NRS Tax ID effective 01 Jan 2026,
     // derived from NIN (individuals) or CAC RC number (companies).

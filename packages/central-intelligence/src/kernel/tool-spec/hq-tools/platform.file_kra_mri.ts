@@ -14,6 +14,7 @@
  */
 
 import { z } from 'zod';
+import { getJurisdictionalRules } from '@bossnyumba/domain-models';
 import {
   type HqToolContext,
   type HqToolExecutionResult,
@@ -22,6 +23,15 @@ import {
   callerHasAllScopes,
 } from '../../risk-tier.js';
 import { refusal, withHqTelemetry } from './shared.js';
+
+// AM-4 hardcoded-tax-rate purge: the TZ MRI invariant rate was inline
+// `0.10`. It now flows through the jurisdictional-rules registry so the
+// onboarding of a new jurisdiction is a single registry edit. The TZ
+// branch of this tool is the *default* (no `jurisdiction` field set), so
+// we resolve the TZ rate at module-init time. Authoritative source:
+// Income Tax Act 2004 §83 — 10 % WHT on rent paid to resident landlords.
+const TZ_MRI_RATE =
+  getJurisdictionalRules('TZ').taxAuthority.rentalWithholdingRatePct / 100;
 
 const KraTaxPeriodMonthSchema = z
   .string()
@@ -220,11 +230,11 @@ export function createFileKraMriTool(
               `taxableIncome ${input.returnPayload.taxableIncome} != grossRent(${input.returnPayload.grossRent}) - deductibleExpenses(${input.returnPayload.deductibleExpenses}) = ${expectedTaxable}`,
             );
           }
-          const expectedTax = Math.round(expectedTaxable * 0.10);
+          const expectedTax = Math.round(expectedTaxable * TZ_MRI_RATE);
           if (Math.abs(input.returnPayload.taxDue - expectedTax) > 1) {
             return refusal(
               'INVARIANT_VIOLATION',
-              `taxDue ${input.returnPayload.taxDue} != round(taxableIncome * 0.10) = ${expectedTax}`,
+              `taxDue ${input.returnPayload.taxDue} != round(taxableIncome * TZ_MRI_RATE[${TZ_MRI_RATE}]) = ${expectedTax}`,
             );
           }
           let started: { workflowId: string; runId: string };

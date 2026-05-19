@@ -3,12 +3,21 @@
  * Production adapter (TaxProMax + NRS Tax ID Portal) ships in Phase F.
  *
  * Mock policy:
- *   - file_vat_return: outputVat = grossSales * 7.5 %; net = outputVat -
- *     inputVat (floored at 0); ack id derived from tin+period.
+ *   - file_vat_return: outputVat = grossSales * FIRS VAT rate (sourced
+ *     from the jurisdictional-rules registry, currently 7.5 % per
+ *     Finance Act 2020 §15); net = outputVat - inputVat (floored at 0);
+ *     ack id derived from tin+period.
  *   - verify_tin: 12 digits => legacy FIRS TIN; 13 digits => NRS Tax ID
  *     (issued from 2026-01-01); other shapes => verified=false.
  *   - get_payment_status: even-ack hash => paid; odd-ack hash => unpaid.
+ *
+ * AM-4 hardcoded-tax-rate purge: the inline `VAT_RATE = 0.075` constant
+ * has been replaced with a registry lookup so onboarding a new
+ * jurisdiction is a single registry edit (jurisdictional-rules.ts) and
+ * we never have two sources of truth for the Nigerian VAT rate.
  */
+
+import { getJurisdictionalRules } from '@bossnyumba/domain-models';
 
 import type {
   FirsAdapter,
@@ -20,7 +29,7 @@ import type {
   VerifyTinResult,
 } from './types.js';
 
-const VAT_RATE = 0.075; // Finance Act 2020 §15
+const NG_VAT_RATE = getJurisdictionalRules('NG').taxAuthority.vatRatePct / 100;
 const TIN_LEGACY_FIRS = /^\d{12}$/;
 const TIN_NRS_TAX_ID = /^\d{13}$/;
 
@@ -34,7 +43,7 @@ function hashOdd(s: string): boolean {
 
 export class MockFirsAdapter implements FirsAdapter {
   async fileVatReturn(args: FileVatReturnArgs): Promise<FileVatReturnResult> {
-    const outputVatKobo = Math.round(args.grossSalesKobo * VAT_RATE);
+    const outputVatKobo = Math.round(args.grossSalesKobo * NG_VAT_RATE);
     const netPayableKobo = Math.max(0, outputVatKobo - args.inputVatKobo);
     const acknowledgementId = `firs-mock-${args.tenantId}-${args.tin.slice(-4)}-${args.period}`;
     return Object.freeze({

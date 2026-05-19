@@ -3,9 +3,11 @@
  *
  * Tanzania Revenue Authority — monthly remittance of rental withholding tax.
  *
- *  - Withholding tax (WHT) on rent: 10% of gross rent
- *  - VAT: sourced from getJurisdictionalRules('TZ').taxAuthority.vatRatePct
- *    (currently 18%) on applicable commercial rentals
+ *  - WHT on rent and VAT are BOTH sourced from
+ *    getJurisdictionalRules('TZ').taxAuthority. AM-4 hardcoded-tax-rate
+ *    purge: previously WHT was an inline `0.1` literal; it now lives in
+ *    the registry as `rentalWithholdingRatePct` so onboarding a new
+ *    jurisdiction is a single registry edit.
  *
  * Format: CSV with fixed header columns so the row layout can be validated
  * against the TRA template. Amounts are in Tanzanian Shillings (TZS), no
@@ -49,8 +51,11 @@ export interface TzTraExportRow {
   readonly paymentDate: string;
 }
 
-const WHT_RATE = 0.1;
-const VAT_RATE = getJurisdictionalRules('TZ').taxAuthority.vatRatePct / 100;
+// AM-4: both rates now flow from the jurisdictional-rules registry.
+// Authoritative values (May 2026): TRA WHT on rent = 10 %; TRA VAT = 18 %.
+const TZ_TAX_AUTHORITY = getJurisdictionalRules('TZ').taxAuthority;
+const WHT_RATE = TZ_TAX_AUTHORITY.rentalWithholdingRatePct / 100;
+const VAT_RATE = TZ_TAX_AUTHORITY.vatRatePct / 100;
 
 function toMajor(minor: number): number {
   return Math.round(minor) / 100;
