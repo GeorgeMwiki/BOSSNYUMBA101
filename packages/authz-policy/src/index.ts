@@ -5,7 +5,7 @@ export {
   type TokenPayload,
   type TokenPair,
   type JwtConfig,
-} from './jwt.service';
+} from './jwt.service.js';
 
 // RBAC Engine
 export {
@@ -17,7 +17,7 @@ export {
   type Role,
   type User,
   type RbacConfig,
-} from './rbac.engine';
+} from './rbac.engine.js';
 
 // ABAC Engine
 export {
@@ -29,4 +29,4 @@ export {
   type Policy,
   type EvaluationContext,
   type EvaluationResult,
-} from './abac.engine';
+} from './abac.engine.js';
