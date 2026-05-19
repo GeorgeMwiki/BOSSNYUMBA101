@@ -1,4 +1,3 @@
-// @ts-nocheck — PaginationParams vs legacy {page,pageSize} shape drift across repo/service boundary; domain-models dropped page+pageSize in favor of limit/offset. Tracked.
 /**
  * In-memory Approval Repository
  * For development and testing

@@ -1,4 +1,3 @@
-// @ts-nocheck — pg row callbacks typed as any + PaginationParams drift from domain-models (page/pageSize removed). Tracked.
 /**
  * Postgres-backed Case Repository (Wave 3).
  *

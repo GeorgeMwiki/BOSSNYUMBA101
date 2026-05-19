@@ -180,6 +180,19 @@ export {
   injectTraceContext,
 } from './tracing/tracer.js';
 
+// Cross-service env-driven OTel SDK bootstrap. Long-lived runtimes
+// (payments-ledger, consolidation-worker, reports scheduler, etc.) call
+// `bootstrapOtel('<service-name>')` once at process start. The api-gateway
+// keeps its bespoke bootstrap because the gateway is the only service
+// that needs to integrate with the request-scoped context propagation
+// middleware at boot; library packages reach for this helper.
+export type { OTelBootstrapConfig, OTelHandle } from './tracing/bootstrap.js';
+export {
+  bootstrapOtel,
+  getOtelHandle,
+  __resetOtelForTests,
+} from './tracing/bootstrap.js';
+
 // ============================================================================
 // Metrics
 // ============================================================================

@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
 import { randomHex } from '../common/id-generator.js';
 /**
  * Invoice domain service.
@@ -352,10 +351,12 @@ export class InvoiceService {
     // Mixed-currency outstanding balances fall back to the first invoice's
     // currency — multi-currency aggregation is not supported here; callers
     // must filter by currency upstream if they need it.
+    // (`amountDue` is a scalar `number`; `currency` is a sibling field on
+    // the Invoice interface itself — the previous code read `.currency`
+    // off the amount which was hidden by `@ts-nocheck`.)
     const derivedCurrency =
-      customerOverdue[0]?.amountDue?.currency ??
-      overdueInvoices.items[0]?.amountDue?.currency ??
-      (overdueInvoices.items[0] as unknown as { currency?: string })?.currency ??
+      customerOverdue[0]?.currency ??
+      overdueInvoices.items[0]?.currency ??
       '';
     return {
       customerId, totalOutstanding, overdueAmount,

@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
 import { randomHex } from '../common/id-generator.js';
 /**
  * Maintenance domain service.
@@ -34,12 +33,10 @@ import {
   ok,
   err,
 } from '@bossnyumba/domain-models';
-// Work-order functions are exported under the `WorkOrder` namespace
-// (see domain-models/src/index.ts — work-order.ts re-exports VendorId
-// which would collide with vendor.ts in a flat re-export). Destructure
-// the specific value helpers we need.
-import { WorkOrder as WO } from '@bossnyumba/domain-models';
-const {
+// Work-order functions are flat-exported from @bossnyumba/domain-models
+// post round-3 cascade-3 fix wave (the namespace alias was removed to
+// allow value + interface to share the `WorkOrder` identifier).
+import {
   createWorkOrder,
   triageWorkOrder,
   assignWorkOrder,
@@ -55,7 +52,7 @@ const {
   isResolutionSLABreached,
   DEFAULT_SLA_CONFIG,
   asWorkOrderId,
-} = WO;
+} from '@bossnyumba/domain-models';
 import type { EventBus } from '../common/events.js';
 import { createEventEnvelope, generateEventId } from '../common/events.js';
 

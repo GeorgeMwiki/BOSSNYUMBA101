@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models drift (WorkOrder/Block namespace shape, Money class, TenantStatus enum); tracked
 /**
  * In-memory repository implementations for Scheduling.
  * Use for testing, development, or as a reference for persistence implementations.

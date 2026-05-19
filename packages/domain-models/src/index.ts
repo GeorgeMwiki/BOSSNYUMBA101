@@ -131,15 +131,27 @@ export * as PaymentMethod from './payments/payment-method';
 
 // Financial — each module exports its own mark*/assign*/resolve* helpers
 // with the same names. Namespace them.
-export * as Invoice from './financial/invoice';
+//
+// NOTE: `Invoice` is intentionally NOT namespace-aliased here — flat
+// re-exports below cover both the function helpers AND the type surface
+// so downstream services can `import { Invoice, createInvoice } from
+// '@bossnyumba/domain-models'`. TS forbids a value-namespace + interface
+// double-bind under the same identifier, and the flat surface is the
+// canonical one (post-round3 cascade-3 fix wave).
 export * as Transaction from './financial/transaction';
 export * as Receipt from './financial/receipt';
 export * as ArrearsCase from './financial/arrears-case';
 
 // Flat re-exports of invoice helper functions for consumers that import
 // them by name from the top-level barrel (e.g. domain-services/invoice).
-// The `Invoice` namespace alias above stays for back-compat — the type
-// `Invoice` lives there to avoid colliding with this flat surface.
+// The `Invoice` namespace alias above stays for back-compat — but TS
+// disallows a value+namespace+type triple-bind under the same name, so
+// the interface is re-exported as `Invoice` here (shadowing the namespace
+// for value position; type position still picks up the interface).
+//
+// Both the function helpers AND the type surface are emitted flat so
+// downstream services (`domain-services/invoice`, api-gateway routes)
+// can import them by name without resolving through `Invoice.<member>`.
 export {
   createInvoice,
   sendInvoice,
@@ -148,6 +160,13 @@ export {
   voidInvoice,
   generateInvoiceNumber,
   isOverdue,
+} from './financial/invoice';
+export type {
+  Invoice,
+  InvoiceData,
+  InvoiceStatus,
+  InvoiceType,
+  InvoiceLineItem,
 } from './financial/invoice';
 
 // Payment plans
@@ -161,8 +180,39 @@ export * from './ledger/ledger-entry';
 export * from './statements/statement';
 
 // Maintenance and work orders — work-order.ts re-exports VendorId from
-// vendor.ts; expose both via namespaces.
-export * as WorkOrder from './maintenance/work-order';
+// vendor.ts so a bare `export *` would collide. The pattern below mirrors
+// the Invoice fix: flat-export the type surface (interface + status
+// enums) AND the function helpers under explicit names; skip VendorId
+// here because vendor.ts is the source of truth for it.
+export type {
+  WorkOrder,
+  WorkOrderId,
+  WorkOrderPriority,
+  WorkOrderStatus,
+  WorkOrderCategory,
+  WorkOrderSource,
+  WorkOrderAttachment,
+  WorkOrderTimelineEntry,
+  SLAConfig,
+  SLATracking,
+} from './maintenance/work-order';
+export {
+  asWorkOrderId,
+  DEFAULT_SLA_CONFIG,
+  createWorkOrder,
+  triageWorkOrder,
+  assignWorkOrder,
+  scheduleWorkOrder,
+  startWork,
+  completeWorkOrder,
+  verifyCompletion,
+  escalateWorkOrder,
+  pauseSLA,
+  resumeSLA,
+  isResponseSLABreached,
+  isResolutionSLABreached,
+  generateWorkOrderNumber,
+} from './maintenance/work-order';
 export * from './maintenance/inspection';
 export * from './maintenance/vendor';
 export * from './maintenance/vendor-scorecard';
