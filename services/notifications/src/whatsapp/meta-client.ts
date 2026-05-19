@@ -101,6 +101,20 @@ export class WhatsAppRateLimitError extends WhatsAppAPIError {
   }
 }
 
+/**
+ * Thrown by {@link MetaWhatsAppClient.parseWebhookPayload} when the
+ * incoming body cannot be parsed as a `whatsapp_business_account`
+ * webhook. The router catches this BEFORE sending 200 and returns 400
+ * so Meta retries (round-3 audit C3).
+ */
+export class WebhookPayloadParseError extends Error {
+  readonly code = 'WEBHOOK_PAYLOAD_PARSE_ERROR';
+  constructor(message: string) {
+    super(message);
+    this.name = 'WebhookPayloadParseError';
+  }
+}
+
 // ============================================================================
 // Region dial codes — sourced from region-config conceptually; inlined so
 // the notifications service stays dependency-light. Keep in sync with
@@ -697,76 +711,132 @@ export class MetaWhatsAppClient {
   }
 
   /**
-   * Validate webhook signature (X-Hub-Signature-256)
+   * Validate webhook signature (X-Hub-Signature-256).
+   *
+   * Round-3 audit C1 + C2 fix:
+   * - C1: NEVER returns `true` when `appSecret` is missing. The pre-fix
+   *   behaviour silently accepted unsigned webhooks in any deployment
+   *   that forgot to set `WHATSAPP_APP_SECRET`. Production must fail
+   *   closed; tests can opt-out at the router level via
+   *   `validateSignature: false`.
+   * - C2: `crypto.timingSafeEqual` throws `RangeError` when buffers are
+   *   different lengths (which an attacker controls via the
+   *   `x-hub-signature-256` header). The previous code allowed that
+   *   throw to propagate to the express middleware → unhandledRejection
+   *   sink → handler crash. We now normalise lengths AND wrap the
+   *   compare in try/catch so a malformed signature returns `false`
+   *   instead of crashing.
    */
   validateWebhookSignature(payload: string, signature: string): boolean {
     if (!this.config.appSecret) {
-      logger.warn('App secret not configured, skipping signature validation');
-      return true;
+      logger.error(
+        'WHATSAPP_APP_SECRET missing — webhook rejected. ' +
+          'Set the env var or pass `validateSignature: false` in dev tests.'
+      );
+      return false;
     }
 
-    const expectedSignature = 'sha256=' + 
-      crypto.createHmac('sha256', this.config.appSecret)
+    if (typeof signature !== 'string' || signature.length === 0) {
+      logger.warn('Webhook signature missing or empty');
+      return false;
+    }
+
+    const expectedSignature =
+      'sha256=' +
+      crypto
+        .createHmac('sha256', this.config.appSecret)
         .update(payload)
         .digest('hex');
 
-    const valid = crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+    try {
+      const sigBuf = Buffer.from(signature, 'utf8');
+      const expBuf = Buffer.from(expectedSignature, 'utf8');
 
-    if (!valid) {
-      logger.warn('Webhook signature validation failed');
+      // Length mismatch ⇒ invalid signature. timingSafeEqual would throw
+      // RangeError, which previously killed the handler.
+      if (sigBuf.length !== expBuf.length) {
+        logger.warn('Webhook signature length mismatch', {
+          received: sigBuf.length,
+          expected: expBuf.length,
+        });
+        return false;
+      }
+
+      const valid = crypto.timingSafeEqual(sigBuf, expBuf);
+      if (!valid) {
+        logger.warn('Webhook signature validation failed');
+      }
+      return valid;
+    } catch (error) {
+      logger.warn('Webhook signature comparison threw', { error: String(error) });
+      return false;
     }
-
-    return valid;
   }
 
   /**
-   * Parse incoming webhook payload
+   * Parse incoming webhook payload.
+   *
+   * Round-3 audit C3 fix: the previous implementation wrapped the
+   * traversal in a try/catch that swallowed every error and returned
+   * empty arrays. Combined with the router already having sent 200 to
+   * Meta, malformed-but-signed payloads silently vanished — Meta does
+   * NOT retry on 2xx responses, so a real emergency notification could
+   * be lost.
+   *
+   * The function now throws {@link WebhookPayloadParseError} on
+   * malformed inputs and shapes that don't match
+   * `whatsapp_business_account`. The router catches this BEFORE sending
+   * 200, returns 400, and Meta retries.
    */
   parseWebhookPayload(body: unknown): {
     messages: IncomingMessage[];
     statuses: MessageStatusUpdate[];
     contacts: Array<{ wa_id: string; name: string }>;
   } {
+    if (body === null || typeof body !== 'object') {
+      throw new WebhookPayloadParseError('webhook body is not an object');
+    }
+
+    const data = body as WhatsAppWebhookPayload;
+
+    if (data.object !== 'whatsapp_business_account') {
+      throw new WebhookPayloadParseError(
+        `unsupported webhook object: "${String(data.object)}"`
+      );
+    }
+
     const result = {
       messages: [] as IncomingMessage[],
       statuses: [] as MessageStatusUpdate[],
       contacts: [] as Array<{ wa_id: string; name: string }>,
     };
 
-    try {
-      const data = body as WhatsAppWebhookPayload;
+    const entries = Array.isArray(data.entry) ? data.entry : [];
+    for (const entry of entries) {
+      const changes = Array.isArray(entry?.changes) ? entry.changes : [];
+      for (const change of changes) {
+        const value = change?.value;
+        if (!value || typeof value !== 'object') continue;
 
-      if (data.object !== 'whatsapp_business_account') {
-        return result;
-      }
+        if (Array.isArray(value.messages)) {
+          result.messages.push(...value.messages);
+        }
 
-      for (const entry of data.entry || []) {
-        for (const change of entry.changes || []) {
-          const value = change.value;
-          
-          if (value.messages) {
-            result.messages.push(...value.messages);
-          }
-          
-          if (value.statuses) {
-            result.statuses.push(...value.statuses);
-          }
+        if (Array.isArray(value.statuses)) {
+          result.statuses.push(...value.statuses);
+        }
 
-          if (value.contacts) {
-            result.contacts.push(
-              ...value.contacts.map((c) => ({
+        if (Array.isArray(value.contacts)) {
+          for (const c of value.contacts) {
+            if (c && typeof c === 'object' && typeof c.wa_id === 'string') {
+              result.contacts.push({
                 wa_id: c.wa_id,
-                name: c.profile.name,
-              }))
-            );
+                name: c.profile?.name ?? '',
+              });
+            }
           }
         }
       }
-    } catch (error) {
-      logger.error('Failed to parse webhook payload', { error });
     }
 
     return result;

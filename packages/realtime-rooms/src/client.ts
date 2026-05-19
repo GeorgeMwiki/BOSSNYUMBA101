@@ -153,6 +153,34 @@ export function __resetLiveblocksFactory(): void {
 }
 
 /**
+ * Round-3 audit H17 fix — scrub `displayName` before it's broadcast
+ * via Liveblocks presence. `userInfo.displayName` is gossiped to every
+ * peer in the room; if it carries PII (e.g. `John Doe (+254712345678)`),
+ * the phone number leaks to every concurrent peer.
+ *
+ * Patterns mirror the AI-copilot PII scrubber but kept minimal here —
+ * the realtime package must not depend on the AI package.
+ */
+const PRESENCE_PII_PATTERNS: readonly RegExp[] = [
+  // E.164 international phone (any country)
+  /\+\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}/g,
+  // Kenya local format starting 07XX...
+  /\b0?7\d{8}\b/g,
+  // Email
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+  // Generic 9+ digit run (catches obfuscated phone numbers in tail)
+  /\b\d{9,}\b/g,
+];
+
+export function scrubPresenceDisplayName(value: string): string {
+  let out = value;
+  for (const rx of PRESENCE_PII_PATTERNS) {
+    out = out.replace(rx, '[redacted]');
+  }
+  return out.trim();
+}
+
+/**
  * Construct a Liveblocks room handle. The handle exposes the underlying
  * client (for advanced wiring — useDocumentBinding, BrainPeer, etc.)
  * plus a `disconnect()` that releases the connection cleanly.
@@ -177,14 +205,33 @@ export function createLiveblocksRoom(
     );
   }
 
+  // Round-3 audit 6.3 — defense-in-depth: verify the room's tenant
+  // segment matches the caller's userInfo.tenantId. Liveblocks's
+  // gateway is the real auth gate, but a mismatching pair indicates
+  // a programming error worth surfacing immediately.
+  const parsed = parseRoomId(opts.roomId);
+  if (parsed && parsed.tenantId !== opts.userInfo.tenantId) {
+    throw new Error(
+      `realtime-rooms: room tenantId "${parsed.tenantId}" does not match userInfo.tenantId "${opts.userInfo.tenantId}"`,
+    );
+  }
+
   if (!configuredFactory) {
     throw new Error(
       'realtime-rooms: no Liveblocks factory configured. Call configureLiveblocksFactory({...}) at portal bootstrap.',
     );
   }
 
+  // Round-3 audit H17 fix — scrub PII out of displayName before
+  // broadcasting via presence. The original value is dropped on
+  // entry so it can never leak to other peers.
+  const scrubbedUserInfo = {
+    ...opts.userInfo,
+    displayName: scrubPresenceDisplayName(opts.userInfo.displayName),
+  };
+
   const client = configuredFactory({ authEndpoint: opts.authEndpoint });
-  client.enterRoom(opts.roomId, { userInfo: opts.userInfo });
+  client.enterRoom(opts.roomId, { userInfo: scrubbedUserInfo });
 
   return {
     roomId: opts.roomId,

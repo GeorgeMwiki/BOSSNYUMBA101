@@ -2,16 +2,26 @@
 # Universal coverage audits
 # =============================================================================
 # Reverse-port from LITFIN's 5 universal scanners (auth / ssrf / rls / zod /
-# rate-limit). Each scanner is a pure Node ESM script that walks the
-# BOSSNYUMBA monorepo and fails the PR on uncovered routes / tables /
-# call-sites. Highest defensive-leverage per hour: catches the next
-# "I forgot to wire requireAuth" before it ships.
+# rate-limit) PLUS 6 zero-hardcoded scanners added in Phase J7. Each
+# scanner is a pure Node ESM script that walks the BOSSNYUMBA monorepo and
+# fails the PR on uncovered routes / tables / call-sites OR on a new
+# hardcoded literal (currency, locale, jurisdiction, bank, tax-rate, mock-
+# data) outside the allowed registry / Zod / allowlist surfaces.
+#
+# Highest defensive-leverage per hour: catches the next "I forgot to wire
+# requireAuth" AND the next silent-TZ-fallback before either ships.
 #
 # Allow-lists live in `scripts/__allowlists__/`. Every entry requires a
-# justifying reason.
+# justifying reason ≥ 8 characters.
 #
 # Reports are uploaded as GitHub artifacts (one per scanner) so reviewers
 # can drill into the markdown summary directly from the PR check.
+#
+# Matrix entries
+#   Phase A (LITFIN reverse-port): auth, ssrf, rls, zod, rate-limit.
+#   Phase J7 (zero-hardcoded posture): mock-data, hardcoded-currency,
+#     hardcoded-locale, hardcoded-jurisdiction, hardcoded-bank,
+#     hardcoded-tax-rate.
 # =============================================================================
 
 name: Coverage Audits
@@ -35,7 +45,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        audit: [auth, ssrf, rls, zod, rate-limit]
+        audit:
+          # Phase A — LITFIN reverse-port (5 scanners)
+          - auth
+          - ssrf
+          - rls
+          - zod
+          - rate-limit
+          # Phase J7 — zero-hardcoded posture (6 scanners)
+          - mock-data
+          - hardcoded-currency
+          - hardcoded-locale
+          - hardcoded-jurisdiction
+          - hardcoded-bank
+          - hardcoded-tax-rate
     steps:
       - name: Checkout
         uses: actions/checkout@v6

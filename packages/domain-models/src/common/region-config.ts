@@ -339,7 +339,17 @@ function buildConfigFor(upper: string): RegionConfig {
   if (upper === 'RW') {
     return Object.freeze(buildSyntheticRwanda());
   }
-  const plugin = getCountryPlugin(upper);
+  // Round-3 audit C6 — `getCountryPlugin` now throws
+  // `UnknownJurisdictionError` for unknown codes (no more silent
+  // fallback to TZ). We catch that here and fall back to the
+  // GENERIC_CONFIG with the upper-cased code, preserving the
+  // original `buildConfigFor` contract.
+  let plugin;
+  try {
+    plugin = getCountryPlugin(upper);
+  } catch {
+    return Object.freeze({ ...GENERIC_CONFIG, countryCode: upper });
+  }
   if (plugin.countryCode !== upper) {
     return Object.freeze({ ...GENERIC_CONFIG, countryCode: upper });
   }
@@ -394,7 +404,14 @@ export function normalizePhoneForCountry(
     }
     return cleaned;
   }
-  const plugin = getCountryPlugin(upper);
+  // Round-3 audit C6 — bubble through the GENERIC_CONFIG path for
+  // unknown country codes instead of crashing.
+  let plugin;
+  try {
+    plugin = getCountryPlugin(upper);
+  } catch {
+    return phone.replace(/\D/g, '');
+  }
   const e164 = plugin.normalizePhone(phone);
   return e164.startsWith('+') ? e164.slice(1) : e164;
 }

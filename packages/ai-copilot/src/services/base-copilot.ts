@@ -28,6 +28,8 @@ import {
 import { PromptRegistry } from '../prompts/prompt-registry.js';
 import { AIProvider, AIProviderRegistry, AICompletionResponse } from '../providers/ai-provider.js';
 import { ReviewService, ReviewRequirement } from './review-service.js';
+import { analyzeMessage as analyzePromptShield } from '../security/prompt-shield.js';
+import { scanOutput } from '../security/output-guard.js';
 
 /**
  * Copilot invocation error
@@ -173,6 +175,38 @@ export abstract class BaseCopilot<TInput, TOutput extends CopilotOutputBase> {
       // Transform input to variables
       const variables = this.transformInputToVariables(input);
 
+      // Round-3 audit H9 fix — run the prompt-shield over every
+      // string variable that originated from tenant input BEFORE the
+      // LLM call. The shield catches role-override attempts, DAN
+      // jailbreaks, base64-decode probes, etc. If the shield blocks
+      // the input, we surface a typed error instead of forwarding the
+      // crafted prompt to the model.
+      for (const [k, v] of Object.entries(variables)) {
+        if (typeof v !== 'string' || v.length === 0) continue;
+        const shieldResult = analyzePromptShield(v);
+        if (shieldResult.blocked) {
+          const error: CopilotError = {
+            code: 'VALIDATION_ERROR',
+            message: `Prompt-shield blocked input variable "${k}" — threat=${shieldResult.threat}.`,
+            domain: this.domain,
+            retryable: false,
+            details: {
+              variable: k,
+              threat: shieldResult.threat,
+              patterns: shieldResult.patterns,
+            },
+          };
+          this.eventListeners.forEach(l => l.onRequestFailed?.(requestId, error));
+          return aiErr(error);
+        }
+        // Substitute the sanitised value when the shield produced
+        // one (medium / high threats are NOT blocked but ARE
+        // sanitised — strip delimiters / control chars).
+        if (shieldResult.sanitized !== v && shieldResult.sanitized.length > 0) {
+          variables[k] = shieldResult.sanitized;
+        }
+      }
+
       // Compile prompt
       const compileResult = await this.promptRegistry.compilePrompt(
         promptResult.data.id,
@@ -292,9 +326,15 @@ export abstract class BaseCopilot<TInput, TOutput extends CopilotOutputBase> {
       });
 
     } catch (error) {
+      // Round-3 audit H10 fix — run the raw error message through
+      // the output-guard so DB schema names, file paths, API keys,
+      // and other accidental secret material in stack traces don't
+      // leak verbatim into the caller's error surface.
+      const rawMessage = error instanceof Error ? error.message : 'Unknown error';
+      const scanned = scanOutput(rawMessage);
       const copilotError: CopilotError = {
         code: 'COPILOT_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: scanned.sanitized || 'Copilot failed with an unexpected error.',
         domain: this.domain,
         retryable: true,
       };

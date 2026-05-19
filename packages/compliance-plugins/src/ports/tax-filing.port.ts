@@ -141,3 +141,69 @@ export const DEFAULT_TAX_FILING: TaxFilingPort = {
 };
 
 export { formatPeriodLabel as formatFilingPeriodLabel };
+
+// ---------------------------------------------------------------------------
+// Round-3 audit H21 — per-country format builders.
+//
+// The audit observed that every country plugin was shipping
+// `buildGenericCsvPayload(run)` regardless of what the actual
+// regulator accepted. KRA's iTax MRI return is XML / structured upload,
+// not free-form CSV. Until each plugin wires a real builder we now ship
+// at least a structured-XML option for KRA so dashboards can render
+// the right shape and the submission-service can target the real
+// iTax endpoint.
+// ---------------------------------------------------------------------------
+
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Build a KRA iTax Monthly Rental Income XML payload. The shape
+ * mirrors KRA's published MRI return template — one `<rentalIncome>`
+ * element per line item plus rollup totals.
+ *
+ * NOT a substitute for the bona-fide signed iTax envelope (which
+ * requires KRA's wsdl + a registered certificate); rather, this is
+ * the canonical data shape an integrator can feed into the signer.
+ */
+export function buildKenyaMriXmlPayload(
+  run: FilingRun,
+  tenantProfile: TenantProfileForFiling,
+  period: TaxPeriod
+): string {
+  const lines = run.lineItems
+    .map(
+      (li) => `  <rentalIncome>
+    <leaseId>${xmlEscape(li.leaseId)}</leaseId>
+    <tenantName>${xmlEscape(li.tenantName)}</tenantName>
+    <propertyReference>${xmlEscape(li.propertyReference)}</propertyReference>
+    <grossRentMinorUnits>${li.grossRentMinorUnits}</grossRentMinorUnits>
+    <withholdingMinorUnits>${li.withholdingMinorUnits}</withholdingMinorUnits>
+    <currency>${xmlEscape(li.currency)}</currency>
+    <paymentDate>${xmlEscape(li.paymentDate)}</paymentDate>
+  </rentalIncome>`
+    )
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kraMonthlyRentalIncome>
+  <runId>${xmlEscape(run.runId)}</runId>
+  <period>${xmlEscape(formatPeriodLabel(period))}</period>
+  <landlord>
+    <kraPin>${xmlEscape(tenantProfile.taxpayerId)}</kraPin>
+    <legalName>${xmlEscape(tenantProfile.legalName)}</legalName>
+    <countryCode>${xmlEscape(tenantProfile.countryCode)}</countryCode>
+  </landlord>
+${lines}
+  <totals>
+    <grossMinorUnits>${run.totalGrossMinorUnits}</grossMinorUnits>
+    <withholdingMinorUnits>${run.totalWithholdingMinorUnits}</withholdingMinorUnits>
+    <lineCount>${run.lineItems.length}</lineCount>
+  </totals>
+</kraMonthlyRentalIncome>`;
+}
