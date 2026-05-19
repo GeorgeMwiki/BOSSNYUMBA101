@@ -398,3 +398,11 @@ export * from './mdr-plan.schema.js';
 // Owner skills marketplace (migration 0162, Phase E.7) — owner-installable
 // Skills (cron / event / manual triggered workflows).
 export * from './owner-skills.schema.js';
+
+// Universal entity store (migration 0167 + 0168, Phase J1) — polymorphic
+// substrate where the MD writes any new entity type at runtime
+// (employee, lease, vendor, lead, ticket, kra-filing, internal-staff, ...).
+// Backing tables: entities, entity_attributes, entity_relations, entity_types.
+// Business logic lives in @bossnyumba/entity-store; this barrel re-exports
+// the Drizzle mirror so the typed client can query them.
+export * from './entity-store.schema.js';

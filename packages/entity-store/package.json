@@ -1,0 +1,55 @@
+{
+  "name": "@bossnyumba/entity-store",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Universal polymorphic entity store substrate for BOSSNYUMBA — MD writes new entity types at runtime",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "import": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
+    },
+    "./repository": {
+      "types": "./src/repository/index.ts",
+      "import": "./dist/repository/index.js",
+      "default": "./dist/repository/index.js"
+    },
+    "./service": {
+      "types": "./src/service/index.ts",
+      "import": "./dist/service/index.js",
+      "default": "./dist/service/index.js"
+    },
+    "./registry": {
+      "types": "./src/registry/index.ts",
+      "import": "./dist/registry/index.js",
+      "default": "./dist/registry/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "tsup": "^8.0.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
