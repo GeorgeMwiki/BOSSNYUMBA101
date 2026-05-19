@@ -73,10 +73,57 @@ export type BrainPeerEventKind =
   | 'tool-result'
   | 'chat-message';
 
+/**
+ * Round-3 audit L3 — the previous emit path accepted any `kind`
+ * string at the type level but silently broadcast typo'd events (e.g.
+ * `'gen-ui-prt'` instead of `'gen-ui-part'`) to subscribers that did
+ * not listen. The runtime validator below catches typos at the
+ * `broadcast()` boundary; mis-shaped events throw with the offending
+ * field so the caller sees the error instead of a silent no-op.
+ */
+const VALID_BRAIN_PEER_EVENT_KINDS: ReadonlySet<BrainPeerEventKind> = new Set([
+  'gen-ui-part',
+  'state-mutation',
+  'tool-result',
+  'chat-message',
+]);
+
 export interface BrainPeerEvent {
   readonly kind: BrainPeerEventKind;
   readonly payload: Record<string, unknown>;
   readonly emittedAt: string;
+}
+
+export class InvalidBrainPeerEventError extends Error {
+  constructor(field: string, value: unknown) {
+    super(
+      `brain-peer: invalid event — field "${field}" has value ${JSON.stringify(value)}`
+    );
+    this.name = 'InvalidBrainPeerEventError';
+  }
+}
+
+export function validateBrainPeerEvent(
+  event: unknown
+): asserts event is BrainPeerEvent {
+  if (!event || typeof event !== 'object') {
+    throw new InvalidBrainPeerEventError('event', event);
+  }
+  const e = event as Record<string, unknown>;
+  if (typeof e.kind !== 'string' ||
+    !VALID_BRAIN_PEER_EVENT_KINDS.has(e.kind as BrainPeerEventKind)) {
+    throw new InvalidBrainPeerEventError('kind', e.kind);
+  }
+  if (!e.payload || typeof e.payload !== 'object') {
+    throw new InvalidBrainPeerEventError('payload', e.payload);
+  }
+  if (typeof e.emittedAt !== 'string') {
+    throw new InvalidBrainPeerEventError('emittedAt', e.emittedAt);
+  }
+  // ISO-8601 sanity check — `Date.parse` returns NaN for garbage.
+  if (Number.isNaN(Date.parse(e.emittedAt))) {
+    throw new InvalidBrainPeerEventError('emittedAt', e.emittedAt);
+  }
 }
 
 /**
@@ -122,6 +169,10 @@ export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
 
   const broadcast = (event: BrainPeerEvent): boolean => {
     if (!attached) return false;
+    // Round-3 audit L3 — runtime-validate the event shape so a typo
+    // in `kind` (e.g. 'gen-ui-prt') throws here instead of silently
+    // broadcasting an event no subscriber listens for.
+    validateBrainPeerEvent(event);
     if (typeof client.broadcastEvent !== 'function') {
       // Stub client (tests). Treat as success — the test inspects via
       // the spy on the factory.

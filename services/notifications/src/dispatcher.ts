@@ -281,7 +281,10 @@ export async function enqueueNotification(
     );
   }
   if (input.userId) {
-    const gate = prefs.checkAllowed({
+    // Round-3 audit H6 — `checkAllowed` is now async because the
+    // backing preferences store may be Redis. Await the gate before
+    // any provider dispatch.
+    const gate = await prefs.checkAllowed({
       userId: input.userId,
       tenantId: input.tenantId,
       channel: input.channel,

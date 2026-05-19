@@ -96,7 +96,20 @@ const PATTERNS: readonly InjectionPattern[] = [
   { regex: /eval\s*\(/i, category: 'encoding_attack', severity: 'critical', name: 'eval_call' },
   { regex: /drop\s+table|delete\s+from|truncate|alter\s+table/i, category: 'tool_abuse', severity: 'critical', name: 'sql_injection' },
   { regex: /<script[\s>]/i, category: 'tool_abuse', severity: 'high', name: 'xss_script' },
-  { regex: /javascript\s*:/i, category: 'tool_abuse', severity: 'high', name: 'xss_javascript' },
+  // Round-3 audit L1 — the previous `/javascript\s*:/i` matched the
+  // substring `javascript:` anywhere, including the noun in plain
+  // English ("JavaScript: a programming language"). The tighter
+  // pattern requires the colon to be FOLLOWED by something that looks
+  // like a URL scheme payload (e.g. `void(0)`, `alert(`, `//`,
+  // `<word>`) or to be wrapped in attribute-context quotes/href.
+  // It still catches `href="javascript:alert(1)"`,
+  // `<a href='javascript:void(0)'>`, and bare `javascript:eval(...)`.
+  {
+    regex: /javascript\s*:\s*(?:\/\/|[a-z_$][\w$]*\s*\(|void\s*\(|alert\s*\(|eval\s*\()/i,
+    category: 'tool_abuse',
+    severity: 'high',
+    name: 'xss_javascript',
+  },
   { regex: /on(?:error|load|click|mouseover)\s*=/i, category: 'tool_abuse', severity: 'high', name: 'xss_event_handler' },
 
   // Context manipulation
@@ -138,6 +151,28 @@ interface StructuralSignals {
   readonly suspiciousFormatting: boolean;
 }
 
+/**
+ * Round-3 audit M1 \u2014 the previous 10 kB hard limit raised the threat
+ * level to `critical` and BLOCKED the message with no sanitised
+ * fallback. A legitimate tenant document pasted into chat (~12 kB) was
+ * silently dropped. Operators can now raise the limit per-tenant via
+ * `PROMPT_SHIELD_CONTEXT_STUFFING_THRESHOLD` (bytes); when the limit
+ * is exceeded the message is now treated as `lengthAnomaly` (HIGH,
+ * sanitised) instead of `critical` (blocked), unless the density is
+ * also high \u2014 see `analyzeMessage` below.
+ */
+const DEFAULT_CONTEXT_STUFFING_THRESHOLD = 10_000;
+
+function getContextStuffingThreshold(): number {
+  const raw = process.env['PROMPT_SHIELD_CONTEXT_STUFFING_THRESHOLD'];
+  if (!raw) return DEFAULT_CONTEXT_STUFFING_THRESHOLD;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_CONTEXT_STUFFING_THRESHOLD;
+  }
+  return parsed;
+}
+
 function analyseStructure(msg: string): StructuralSignals {
   const sentences = msg.split(/[.!?\n]+/).filter((s) => s.trim().length > 0);
   const imperatives = msg.match(IMPERATIVE_RX) ?? [];
@@ -150,7 +185,7 @@ function analyseStructure(msg: string): StructuralSignals {
     /[\u0400-\u04FF\u0600-\u06FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/.test(msg);
   const latinIntent = /\b(ignore|forget|override|system|admin)\b/i.test(msg);
   const multiLanguageEvasion = nonLatin && latinIntent && msg.length > 200;
-  const contextStuffing = msg.length > 10_000;
+  const contextStuffing = msg.length > getContextStuffingThreshold();
   // eslint-disable-next-line no-misleading-character-class -- intentional: detect zero-width invisibility characters used in prompt-injection attacks. The lint rule warns about grapheme-cluster intent; here we WANT the codepoint set.
   const zeroWidth = /[\u200B\u200C\u200D\uFEFF]/.test(msg);
   // eslint-disable-next-line no-control-regex -- intentional: \x00 null-byte injection detection.
@@ -207,7 +242,17 @@ export function analyzeMessage(message: string): PromptShieldResult {
   for (const m of matches) threat = maxThreat(threat, m.severity);
 
   const struct = analyseStructure(text);
-  if (struct.contextStuffing) threat = maxThreat(threat, 'critical');
+  // Round-3 audit M1 — context-stuffing on its own (a long document
+  // pasted into chat) is HIGH, not CRITICAL. We block (`critical`)
+  // only when stuffing AND a high instruction density coincide, which
+  // is the actual attacker signature (a wall of imperatives meant to
+  // override the system prompt). Sanitised text is still returned for
+  // the HIGH path so the conversation can continue.
+  if (struct.contextStuffing && struct.instructionDensity > 0.5) {
+    threat = maxThreat(threat, 'critical');
+  } else if (struct.contextStuffing) {
+    threat = maxThreat(threat, 'high');
+  }
   if (struct.lengthAnomaly) threat = maxThreat(threat, 'high');
   if (struct.multiLanguageEvasion || struct.suspiciousFormatting) {
     threat = maxThreat(threat, 'medium');

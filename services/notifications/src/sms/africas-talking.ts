@@ -124,6 +124,18 @@ export class AfricasTalkingSms {
   private formatPhoneNumber(phone: string): string {
     const trimmed = phone.trim();
     const cleaned = trimmed.replace(/\D/g, '');
+    // Round-3 audit L4 — the previous implementation returned `+`
+    // (literally just a plus sign) when the input contained no digits.
+    // Africa's Talking would then reject the entire batch with an
+    // opaque 4xx, surfacing the validation gap as a delivery failure
+    // instead of an input-validation error. Validate length here so
+    // the caller gets a clear boundary error before any HTTP hop.
+    // Valid E.164 numbers are 8–15 digits (ITU E.164).
+    if (cleaned.length < 8 || cleaned.length > 15) {
+      throw new Error(
+        `africas-talking: invalid phone number — got ${cleaned.length} digits, need 8-15 (E.164)`
+      );
+    }
     if (trimmed.startsWith('+')) return `+${cleaned}`;
     // Preserve caller input; no 254 injection.
     return `+${cleaned}`;

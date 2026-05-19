@@ -143,6 +143,9 @@ export { notificationService, notificationProcessor } from './services/notificat
 // ============================================================================
 export {
   inAppNotificationService,
+  createInAppNotificationService,
+  type InAppNotificationService,
+  type InAppNotificationServiceDeps,
   type InAppNotification,
   type CreateInAppNotificationInput,
   type CreateFromTemplateInput,
@@ -172,13 +175,35 @@ export {
 // ============================================================================
 // Preferences Service
 // ============================================================================
-export { preferencesService } from './preferences/service.js';
+export {
+  preferencesService,
+  createPreferencesService,
+  type PreferencesService,
+  type PreferencesServiceDeps,
+} from './preferences/service.js';
 export type {
   NotificationPreferences,
   ChannelPreferences,
   UpdatePreferencesInput,
   TemplatePreferences,
 } from './preferences/types.js';
+
+// ============================================================================
+// Storage adapters (round-3 audit H6 + H7)
+// ============================================================================
+export {
+  createPreferencesStore,
+  createInAppNotificationStore,
+  createConnectionRegistry,
+  InMemoryPreferencesStore,
+  InMemoryInAppNotificationStore,
+  InMemoryConnectionRegistry,
+  RedisPreferencesStore,
+  RedisInAppNotificationStore,
+  type PreferencesStore,
+  type InAppNotificationStore,
+  type ConnectionRegistry,
+} from './storage/index.js';
 
 // ============================================================================
 // Providers

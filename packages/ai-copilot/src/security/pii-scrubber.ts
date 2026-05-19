@@ -76,7 +76,10 @@ interface PiiPattern {
 }
 
 // Note: we intentionally do NOT mark patterns as /g here to avoid lastIndex
-// state bleed across calls — we rebuild a global regex inside scrubPii().
+// state bleed across calls — we precompile the global regex ONCE per
+// pattern below (round-3 audit M3 — the previous implementation
+// recompiled 14+ regexes on every `scrubPii` call, a hot path that
+// runs for every LLM turn).
 const PII_PATTERNS: readonly PiiPattern[] = [
   // Tanzania NIDA — 20 digits often dash-separated.
   {
@@ -255,6 +258,25 @@ const MONETARY_PATTERNS: readonly RegExp[] = SHARED_MONETARY_PATTERNS;
 const PLACEHOLDER_RX =
   /\[(?:NIDA_ID|TIN|PHONE|EMAIL|CARD|ACCOUNT|PASSPORT|SSN|IP|API_KEY|DOB|NIN|MPESA_PIN|BASE64_PII)\]|<kra-pin:redacted>/;
 
+// Round-3 audit M3 — precompile a global-flag regex for every PII
+// pattern at module load. Each `scrubPii` call now reuses the same
+// `RegExp` instance via `exec` (which is safe because we always
+// reset `lastIndex = 0` before the loop). This eliminates 14+
+// `new RegExp(...)` allocations from the hot path.
+interface CompiledPiiPattern extends PiiPattern {
+  readonly globalRegex: RegExp;
+}
+
+const COMPILED_PII_PATTERNS: readonly CompiledPiiPattern[] = PII_PATTERNS.map(
+  (p) => ({
+    ...p,
+    globalRegex: new RegExp(
+      p.regex.source,
+      p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`
+    ),
+  })
+);
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -305,13 +327,13 @@ export function scrubPii(message: string): PiiScrubResult {
 
   const matches: PiiMatch[] = [];
 
-  for (const p of PII_PATTERNS) {
-    const globalRegex = new RegExp(
-      p.regex.source,
-      p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`,
-    );
+  for (const p of COMPILED_PII_PATTERNS) {
+    // Round-3 audit M3 — reuse the precompiled global regex. Reset
+    // lastIndex defensively before each scan to avoid bleed across
+    // calls (we never throw mid-loop, but a future caller might).
+    p.globalRegex.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = globalRegex.exec(message)) !== null) {
+    while ((m = p.globalRegex.exec(message)) !== null) {
       const start = m.index;
       const end = m.index + m[0].length;
       if (overlapsPlaceholder(message, start, end)) continue;
@@ -423,14 +445,13 @@ export function scrubPii(message: string): PiiScrubResult {
 
       // Re-scan decoded text with the surface patterns only (no
       // recursion). If anything matches, flag the ORIGINAL base64
-      // candidate for redaction.
+      // candidate for redaction. Round-3 audit M3 — uses precompiled
+      // regexes, but each must reset lastIndex because a previous
+      // `test()` call may have advanced it on a different string.
       let decodedHasPii = false;
-      for (const p of PII_PATTERNS) {
-        const rx = new RegExp(
-          p.regex.source,
-          p.regex.flags.includes('g') ? p.regex.flags : `${p.regex.flags}g`,
-        );
-        if (rx.test(decoded)) {
+      for (const p of COMPILED_PII_PATTERNS) {
+        p.globalRegex.lastIndex = 0;
+        if (p.globalRegex.test(decoded)) {
           decodedHasPii = true;
           break;
         }
