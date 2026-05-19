@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * Compliance & Document Repository
  * PostgreSQL implementation for Compliance Items, Legal Cases, Notices, and Document persistence
@@ -75,16 +74,16 @@ export class ComplianceRepository {
     ];
 
     if (options?.entityType) {
-      conditions.push(eq(complianceItems.entityType, options.entityType));
+      conditions.push(eq(complianceItems.entityType, options.entityType as (typeof complianceItems.entityType.enumValues)[number]));
     }
     if (options?.entityId) {
       conditions.push(eq(complianceItems.entityId, options.entityId));
     }
     if (options?.type) {
-      conditions.push(eq(complianceItems.type, options.type));
+      conditions.push(eq(complianceItems.type, options.type as (typeof complianceItems.type.enumValues)[number]));
     }
     if (options?.status) {
-      conditions.push(eq(complianceItems.status, options.status));
+      conditions.push(eq(complianceItems.status, options.status as (typeof complianceItems.status.enumValues)[number]));
     }
 
     const rows = await this.db
@@ -223,7 +222,7 @@ export class ComplianceRepository {
     ];
 
     if (options?.status) {
-      conditions.push(eq(legalCases.status, options.status));
+      conditions.push(eq(legalCases.status, options.status as (typeof legalCases.status.enumValues)[number]));
     }
     if (options?.propertyId) {
       conditions.push(eq(legalCases.propertyId, options.propertyId));
@@ -276,7 +275,10 @@ export class ComplianceRepository {
     ];
 
     if (options?.type) {
-      conditions.push(eq(notices.type, options.type));
+      // Schema column is `noticeType` (cases.schema export wins over
+      // compliance.schema's older `type` field due to schemas/index.js
+      // de-duplication order). Real bug surfaced by `@ts-nocheck` removal.
+      conditions.push(eq(notices.noticeType, options.type as (typeof notices.noticeType.enumValues)[number]));
     }
     if (options?.customerId) {
       conditions.push(eq(notices.customerId, options.customerId));
@@ -344,10 +346,10 @@ export class DocumentRepository {
     ];
 
     if (options?.documentType) {
-      conditions.push(eq(documentUploads.documentType, options.documentType as unknown as typeof documentUploads.documentType.$inferType));
+      conditions.push(eq(documentUploads.documentType, options.documentType as (typeof documentUploads.documentType.enumValues)[number]));
     }
     if (options?.status) {
-      conditions.push(eq(documentUploads.status, options.status as unknown as typeof documentUploads.status.$inferType));
+      conditions.push(eq(documentUploads.status, options.status as (typeof documentUploads.status.enumValues)[number]));
     }
     if (options?.entityType) {
       conditions.push(eq(documentUploads.entityType, options.entityType));
