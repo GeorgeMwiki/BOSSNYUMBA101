@@ -77,14 +77,24 @@ RUN addgroup --system --gid 1001 nodejs \
 WORKDIR /app
 
 # Copy built artifacts + install path-resolvable deps.
-# node_modules carries the pnpm symlink farm so workspace deps resolve.
-COPY --from=builder --chown=apigateway:nodejs /app/services/api-gateway/dist ./dist
-COPY --from=builder --chown=apigateway:nodejs /app/services/api-gateway/package.json ./
+#
+# Critical: with `shamefully-hoist=true` pnpm still puts workspace deps
+# (`@bossnyumba/*`) under the consuming package's local `node_modules`,
+# NOT under the root `/app/node_modules`. The symlinks use relative paths
+# like `node_modules/@bossnyumba/database -> ../../../../packages/database`.
+#
+# Therefore: preserve the workspace layout in the runner. WORKDIR is set
+# to the api-gateway directory so that node's module resolution walks the
+# correct node_modules chain (services/api-gateway/node_modules → root).
+COPY --from=builder --chown=apigateway:nodejs /app/services/api-gateway ./services/api-gateway
 COPY --from=builder --chown=apigateway:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=apigateway:nodejs /app/packages ./packages
-COPY --from=builder --chown=apigateway:nodejs /app/services ./services
+COPY --from=builder --chown=apigateway:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=apigateway:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 USER apigateway
+
+WORKDIR /app/services/api-gateway
 
 ENV NODE_ENV=production \
     PORT=4000
