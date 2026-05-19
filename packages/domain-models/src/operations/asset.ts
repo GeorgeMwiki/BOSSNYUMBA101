@@ -102,7 +102,10 @@ export const MaintenanceRecordSchema = z.object({
   vendorId: z.string().optional(),
   workOrderId: z.string().optional(),
   cost: z.number().optional(),
-  currency: z.string().default('USD'),
+  // AM-4: was `default('USD')` — silently stamped USD onto maintenance
+  // records whose currency was omitted. Now optional; callers must
+  // resolve from tenant jurisdiction before persisting.
+  currency: z.string().optional(),
   notes: z.string().optional(),
 });
 export type MaintenanceRecord = z.infer<typeof MaintenanceRecordSchema>;
@@ -154,7 +157,10 @@ export const AssetSchema = z.object({
   // Purchase Information
   purchaseDate: z.string().datetime().nullable(),
   purchasePrice: z.number().nullable(),
-  purchaseCurrency: z.string().default('USD'),
+  // AM-4: was `default('USD')` — silently stamped USD onto assets whose
+  // purchase-currency was omitted. Now optional; callers must resolve
+  // from tenant jurisdiction before persisting.
+  purchaseCurrency: z.string().optional(),
   supplier: z.string().nullable(),
   purchaseOrderNumber: z.string().nullable(),
   receiptUrl: z.string().url().nullable(),
@@ -333,7 +339,12 @@ export function createAsset(
     
     purchaseDate: data.purchaseDate?.toISOString() ?? null,
     purchasePrice: data.purchasePrice ?? null,
-    purchaseCurrency: data.purchaseCurrency ?? 'USD',
+    // AM-4: was `?? 'USD'` — Asset.createAsset is called by routes that
+    // already have tenant context; the route is responsible for setting
+    // purchaseCurrency from tenant jurisdiction. Pass-through `undefined`
+    // when omitted so a missing value surfaces at validate-time instead
+    // of being silently stamped USD.
+    purchaseCurrency: data.purchaseCurrency,
     supplier: data.supplier ?? null,
     purchaseOrderNumber: null,
     receiptUrl: null,

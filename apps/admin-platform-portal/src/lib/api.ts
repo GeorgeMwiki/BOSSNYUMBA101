@@ -103,14 +103,34 @@ export const api = {
     }),
 };
 
+/**
+ * The defence-in-depth display fallback for the admin-platform-portal
+ * UI when no tenant currency has been resolved yet. AM-4 hardcoded-
+ * fallback-purge: kept as an explicit, named exception (UX always
+ * trumps a crash for display concerns).
+ */
+export const EMERGENCY_DISPLAY_FALLBACK_CURRENCY = 'USD';
+
+let _warnedMissingCurrency = false;
+
 export function formatCurrency(
   amount: number,
-  currency = 'USD',
+  currency?: string,
   locale = 'en'
 ): string {
+  const resolved = currency ?? EMERGENCY_DISPLAY_FALLBACK_CURRENCY;
+  if (!currency && !_warnedMissingCurrency && process.env.NODE_ENV !== 'production') {
+    _warnedMissingCurrency = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[admin-platform-portal/api] formatCurrency called without an explicit currency — ' +
+        'callers should thread tenant currency through. Falling back to ' +
+        `${EMERGENCY_DISPLAY_FALLBACK_CURRENCY} this once.`,
+    );
+  }
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency,
+    currency: resolved,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

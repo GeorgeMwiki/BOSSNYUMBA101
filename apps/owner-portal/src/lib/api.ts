@@ -82,14 +82,40 @@ export const api = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 };
 
+/**
+ * The defence-in-depth display fallback for the owner-portal UI when no
+ * tenant currency has been resolved yet. AM-4 hardcoded-fallback-purge:
+ * this constant is kept as an explicit, named exception (UX always
+ * trumps a crash for display concerns), with a one-shot dev-only warning
+ * to nudge callers towards passing real tenant currency.
+ */
+export const EMERGENCY_DISPLAY_FALLBACK_CURRENCY = 'USD';
+
+let _warnedMissingCurrency = false;
+
 // Formatting utilities — locale and currency come from the tenant's
-// region config at render time. Defaults are generic so no country is
-// hardcoded. UI components should call useAuth() or read tenant context
-// to get the actual locale/currency and pass them in.
-export function formatCurrency(amount: number, currency = 'USD', locale = 'en'): string {
+// region config at render time. Callers SHOULD pass the resolved
+// currency from tenant/user context (`useCurrencyPreference` or
+// `useTenant`). The optional default is a defence-in-depth literal
+// only; calling without a currency logs a one-shot dev warning.
+export function formatCurrency(
+  amount: number,
+  currency?: string,
+  locale = 'en',
+): string {
+  const resolved = currency ?? EMERGENCY_DISPLAY_FALLBACK_CURRENCY;
+  if (!currency && !_warnedMissingCurrency && process.env.NODE_ENV !== 'production') {
+    _warnedMissingCurrency = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[owner-portal/api] formatCurrency called without an explicit currency — ' +
+        'callers should thread tenant currency through. Falling back to ' +
+        `${EMERGENCY_DISPLAY_FALLBACK_CURRENCY} this once.`,
+    );
+  }
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency,
+    currency: resolved,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

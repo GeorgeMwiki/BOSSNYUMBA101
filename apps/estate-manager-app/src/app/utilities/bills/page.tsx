@@ -6,6 +6,7 @@ import { FileText, Calendar, DollarSign } from 'lucide-react';
 import { EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { resolveTenantCurrency } from '@/lib/tenant-currency';
 
 type BillStatus = 'paid' | 'pending' | 'overdue';
 
@@ -37,10 +38,9 @@ const utilityLabels: Record<string, string> = {
 };
 
 // Tenant currency/locale come from env (per-deployment). No
-// Kenya hardcode. Fallback is USD/en so the page renders but the
-// unconfigured state is obvious.
-const TENANT_CURRENCY =
-  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+// Kenya hardcode. AM-4: routed through `resolveTenantCurrency` so the
+// emergency-display fallback is observable via a one-shot dev warning.
+const TENANT_CURRENCY = resolveTenantCurrency();
 const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
 
 function formatCurrency(amount: number) {

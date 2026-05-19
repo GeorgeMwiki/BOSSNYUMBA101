@@ -2,17 +2,25 @@
  * Currency-preferences service — resolves the display currency for a
  * given (tenantId, userId) request, with the resolution chain:
  *
- *     user override → tenant default → platform-default ('USD' seed)
+ *     user override → tenant default → platform-default (seeded by 0119)
  *
  * The platform-default row is seeded by migration 0119; an operator
  * may rotate it via `upsert({ scopeKind: 'platform-default',
  * scopeId: '*', currency: 'TZS', source: 'admin-set' })` without a
  * code change. ISO-4217 codes are stored uppercase.
  *
+ * AM-4 hardcoded-fallback-purge note: the `EMERGENCY_DISPLAY_FALLBACK_CURRENCY`
+ * literal exists as a defence-in-depth fallback for the case where the
+ * platform-default seed row is missing AND a DB error prevents reading
+ * it. Both conditions are anomalous. The fallback now ships with a
+ * caller-suppliable `onFallback` observer so the api-gateway can wire a
+ * metric counter + warn log; if you see the counter increment in prod
+ * the seed row is gone or DB is broken — neither is a normal state.
+ *
  * The resolver short-circuits as soon as it finds a row in the chain.
- * On hard DB error the service returns the platform-default literal
- * 'USD' rather than throwing — currency is a display concern, never
- * worth crashing a request over.
+ * On hard DB error the service returns the emergency fallback rather
+ * than throwing — currency is a display concern, never worth crashing
+ * a request over.
  */
 
 import { and, eq, or, type SQL } from 'drizzle-orm';
@@ -53,14 +61,30 @@ export interface CurrencyPreferencesService {
   remove(scopeKind: CurrencyPreferenceScopeKind, scopeId: string): Promise<void>;
 }
 
-/** The hard-coded last-resort fallback when even the seed row is gone. */
-const ULTIMATE_FALLBACK_CURRENCY = 'USD';
+/**
+ * The defence-in-depth fallback when the platform-default seed row is
+ * gone AND a DB error masks reading it. If this fires in production the
+ * `onFallback` hook will surface it to observability — see the doc-
+ * comment at the top of the file.
+ */
+const EMERGENCY_DISPLAY_FALLBACK_CURRENCY = 'USD';
 
 /** The platform-default row's scope_id. */
 const PLATFORM_DEFAULT_KEY = '*';
 
+/**
+ * Observer fired whenever the resolver returns the emergency fallback
+ * instead of a real preference row. Wire to a counter + warn log in the
+ * api-gateway composition root. Optional; if undefined the service stays
+ * silent (unit tests don't need to wire this).
+ */
+export interface CurrencyPreferencesServiceOptions {
+  readonly onFallback?: (reason: 'seed-missing' | 'db-error', detail?: unknown) => void;
+}
+
 export function createCurrencyPreferencesService(
   db: DatabaseClient,
+  options: CurrencyPreferencesServiceOptions = {},
 ): CurrencyPreferencesService {
   return {
     async resolve(args) {
@@ -112,10 +136,13 @@ export function createCurrencyPreferencesService(
             source: 'platform-default',
           };
         }
-        return { currency: ULTIMATE_FALLBACK_CURRENCY, source: 'fallback' };
-      } catch {
-        // Currency is a display concern — don't crash the request.
-        return { currency: ULTIMATE_FALLBACK_CURRENCY, source: 'fallback' };
+        options.onFallback?.('seed-missing');
+        return { currency: EMERGENCY_DISPLAY_FALLBACK_CURRENCY, source: 'fallback' };
+      } catch (err) {
+        // Currency is a display concern — don't crash the request, but
+        // surface the fact via the observer so ops sees this anomaly.
+        options.onFallback?.('db-error', err);
+        return { currency: EMERGENCY_DISPLAY_FALLBACK_CURRENCY, source: 'fallback' };
       }
     },
 

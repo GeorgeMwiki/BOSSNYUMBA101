@@ -29,8 +29,20 @@ import { ApiClientError, hasApiClient, getApiClient } from '@bossnyumba/api-clie
 /** localStorage key — must match the constant used by /settings page. */
 export const CURRENCY_STORAGE_KEY = 'customer_display_currency';
 
-/** Hard-coded fallback when nothing else is known. */
-export const FALLBACK_CURRENCY = 'USD';
+/**
+ * Defence-in-depth display fallback for the SSR-first paint when the
+ * user has not yet picked a currency, no value is in localStorage, and
+ * the server-side resolver has not yet replied. The normal flow always
+ * resolves to a real user/tenant/platform-default row via
+ * `/preferences/currency`; this literal exists ONLY to keep the UI
+ * renderable during the millisecond window before that round-trip
+ * completes. AM-4 hardcoded-fallback-purge keeps this as an explicit,
+ * documented exception (UX always trumps a crash for display
+ * concerns).
+ */
+export const EMERGENCY_DISPLAY_FALLBACK_CURRENCY = 'USD';
+/** @deprecated Use `EMERGENCY_DISPLAY_FALLBACK_CURRENCY`. Same value, clearer name. */
+export const FALLBACK_CURRENCY = EMERGENCY_DISPLAY_FALLBACK_CURRENCY;
 
 export interface UseCurrencyPreferenceResult {
   /** ISO-4217 uppercase code (e.g. 'USD', 'KES', 'TZS'). Always defined. */
@@ -117,8 +129,9 @@ async function resolveFromServer(signal: AbortSignal): Promise<string | null> {
  */
 export function useCurrencyPreference(): UseCurrencyPreferenceResult {
   // Read the stored override eagerly so first paint already has the
-  // user's choice. SSR returns null → falls back to FALLBACK_CURRENCY.
-  const initial = readStoredCurrency() ?? FALLBACK_CURRENCY;
+  // user's choice. SSR returns null → falls back to the emergency
+  // display fallback until the server resolver replies.
+  const initial = readStoredCurrency() ?? EMERGENCY_DISPLAY_FALLBACK_CURRENCY;
   const [code, setCode] = useState<string>(initial);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);

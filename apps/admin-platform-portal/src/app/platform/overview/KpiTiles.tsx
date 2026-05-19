@@ -38,6 +38,11 @@ interface OverviewKpis {
   readonly currency: string;
 }
 
+// AM-4 note: 'USD' is the canonical platform-wide rollup currency for
+// admin overview tiles (multi-jurisdiction aggregate). The /overview
+// endpoint should return its own `currency` field; this value is only
+// the initial-render placeholder and never reaches a real-tenant code
+// path.
 const EMPTY_KPIS: OverviewKpis = {
   activeTenants: null,
   platformUsers: null,
@@ -70,6 +75,8 @@ function parseKpis(payload: OverviewResponse): OverviewKpis {
       ? data.monthlyRevenue
       : null,
     unitsManaged: isFiniteNumber(data.unitsManaged) ? data.unitsManaged : null,
+    // AM-4: 'USD' is the platform-wide rollup currency — see EMPTY_KPIS
+    // comment above. Real per-tenant currency lives in per-tenant tiles.
     currency: typeof data.currency === 'string' ? data.currency : 'USD',
   };
 }

@@ -66,9 +66,12 @@ export const MaterialUsedSchema = z.object({
   unit: z.string(),
   unitCost: z.number().optional(),
   totalCost: z.number().optional(),
-  // Currency resolves from tenant.defaultCurrency at the call site; USD is
-  // a neutral last-resort fallback (see packages/config DEFAULT_FALLBACK_CURRENCY).
-  currency: z.string().default('USD'),
+  // AM-4: was `z.string().default('USD')` — request-bodies that omitted
+  // currency had USD silently stamped onto them. Currency is now
+  // optional; the route handler MUST resolve from the tenant's
+  // jurisdiction (`getJurisdictionalRules(tenant.country).defaultCurrency`)
+  // before persisting.
+  currency: z.string().optional(),
   supplier: z.string().optional(),
   warrantyInfo: z.string().optional(),
 });
@@ -106,9 +109,12 @@ export const CompletionProofSchema = z.object({
   // Materials
   materialsUsed: z.array(MaterialUsedSchema).default([]),
   totalMaterialsCost: z.number().default(0),
-  // Currency resolves from tenant.defaultCurrency at the call site; USD is
-  // a neutral last-resort fallback (see packages/config DEFAULT_FALLBACK_CURRENCY).
-  currency: z.string().default('USD'),
+  // AM-4: was `z.string().default('USD')` — request-bodies that omitted
+  // currency had USD silently stamped onto them. Currency is now
+  // optional; the route handler MUST resolve from the tenant's
+  // jurisdiction (`getJurisdictionalRules(tenant.country).defaultCurrency`)
+  // before persisting.
+  currency: z.string().optional(),
   
   // Technician
   technicianName: z.string(),

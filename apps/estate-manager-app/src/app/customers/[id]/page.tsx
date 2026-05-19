@@ -8,10 +8,12 @@ import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { resolveTenantCurrency } from '@/lib/tenant-currency';
 
 // Tenant region is env-driven per-deployment. No Kenya hardcode.
-const TENANT_CURRENCY =
-  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+// AM-4: route through `resolveTenantCurrency` so the emergency fallback
+// is observable (one-shot dev warning) and the constant lives in one place.
+const TENANT_CURRENCY = resolveTenantCurrency();
 const TENANT_LOCALE = process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
 
 export default function CustomerDetailPage() {

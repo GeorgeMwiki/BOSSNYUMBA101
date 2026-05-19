@@ -7,9 +7,11 @@ import { useTranslations } from 'next-intl';
 import { paymentsService } from '@bossnyumba/api-client';
 import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { resolveTenantCurrency } from '@/lib/tenant-currency';
 
-const TENANT_CURRENCY =
-  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+// AM-4: routed through `resolveTenantCurrency` so the emergency-display
+// fallback is observable via a one-shot dev warning.
+const TENANT_CURRENCY = resolveTenantCurrency();
 const TENANT_LOCALE =
   process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
 

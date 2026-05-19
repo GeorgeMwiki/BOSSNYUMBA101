@@ -37,6 +37,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
+import { resolveTenantCurrency } from '@/lib/tenant-currency';
 
 interface Material {
   id: string;
@@ -193,8 +194,9 @@ export default function WorkOrderDetail() {
               amount: materials.reduce((s, m) => s + m.cost * m.quantity, 0),
               // Currency comes from env (set per-tenant deploy). Previously
               // hardcoded 'KES' which wrongly labelled completions from
-              // non-Kenya tenants.
-              currency: process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD',
+              // non-Kenya tenants. AM-4: now routed through
+              // `resolveTenantCurrency` (see ../../lib/tenant-currency).
+              currency: resolveTenantCurrency(),
             }
           : undefined,
       }),

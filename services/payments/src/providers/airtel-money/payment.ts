@@ -22,7 +22,15 @@ function normalizePhone(phone: string, country: string): string {
     UG: '256',
     KE: '254',
   };
-  const prefix = prefixes[country] ?? '255';
+  // AM-4: fail-closed — Airtel Money currently supports only TZ/UG/KE.
+  // Falling through to '255' was a silent Tanzania-default that produced
+  // unroutable phone numbers for any country not in the registry.
+  const prefix = prefixes[country];
+  if (!prefix) {
+    throw new Error(
+      `airtel-money: unsupported country '${country}' — add the dialing-code prefix to the registry above, or route this payment through a different provider.`,
+    );
+  }
   if (cleaned.startsWith('0')) {
     cleaned = prefix + cleaned.substring(1);
   }
@@ -38,7 +46,19 @@ function getCurrency(country: string): string {
     UG: 'UGX',
     KE: 'KES',
   };
-  return map[country] ?? 'TZS';
+  // AM-4: fail-closed — previously fell through to 'TZS' for unknown
+  // countries which produced wrong-currency charges (e.g. a NG payment
+  // would be stamped TZS and rejected by Airtel). Airtel Money does
+  // not currently operate in markets outside the map above; the
+  // explicit throw forces the caller to either add support here or
+  // route the payment through the country's correct provider.
+  const code = map[country];
+  if (!code) {
+    throw new Error(
+      `airtel-money: unsupported country '${country}' — Airtel Money is wired for TZ/UG/KE only. Route this payment through a country-appropriate provider.`,
+    );
+  }
+  return code;
 }
 
 export interface AirtelPaymentResult {

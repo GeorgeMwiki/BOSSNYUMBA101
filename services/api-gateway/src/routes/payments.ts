@@ -7,6 +7,28 @@ import { databaseMiddleware } from '../middleware/database';
 import { mapPaymentRow, majorToMinor, minorToMajor, paginateArray } from './db-mappers';
 import { parseListPagination, buildListResponse } from './pagination';
 
+/**
+ * Resolve the currency for a payments-route response. Priority:
+ *   1. The currency carried on the invoice row (per-invoice override).
+ *   2. The tenant's configured settings currency (from tenantContextMiddleware).
+ *   3. Throw — never silently default to a hardcoded ISO code, since
+ *      a missing tenant currency means routing/wiring is broken.
+ *
+ * AM-4 hardcoded-fallback-purge: replaces three `… || 'USD'` literals
+ * that quietly mis-stamped USD across non-US tenants when invoice
+ * data was new or partial.
+ */
+function resolvePaymentCurrency(c: any, rowCurrency: string | null | undefined): string {
+  if (rowCurrency && rowCurrency.trim().length > 0) return rowCurrency;
+  const tenant = c.get('tenant') as { settings?: { currency?: string } } | undefined;
+  const tenantCurrency = tenant?.settings?.currency;
+  if (tenantCurrency && tenantCurrency.trim().length > 0) return tenantCurrency;
+  throw new Error(
+    'payments-route: no currency on invoice and no tenant.settings.currency in context — ' +
+      'tenantContextMiddleware must run before the payments router and must populate currency.',
+  );
+}
+
 const MoneySchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3).optional(),
@@ -87,10 +109,10 @@ app.get('/balance', async (c) => {
   return c.json({
     success: true,
     data: {
-      totalDue: { amount: minorToMajor(totalDueMinor), currency: invoices.items[0]?.currency || 'USD' },
+      totalDue: { amount: minorToMajor(totalDueMinor), currency: resolvePaymentCurrency(c, invoices.items[0]?.currency) },
       breakdown: invoices.items.map((invoice: any) => ({
         type: String(invoice.invoiceType || 'rent').toUpperCase(),
-        amount: { amount: minorToMajor(invoice.balanceAmount), currency: invoice.currency || 'USD' },
+        amount: { amount: minorToMajor(invoice.balanceAmount), currency: resolvePaymentCurrency(c, invoice.currency) },
       })),
     },
   });
@@ -108,7 +130,7 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
   const body = c.req.valid('json');
-  const currency = body.amount?.currency || 'USD';
+  const currency = resolvePaymentCurrency(c, body.amount?.currency);
   const amountMinor = majorToMinor(body.amount?.amount);
   const row = await repos.payments.create({
     id: crypto.randomUUID(),
@@ -135,7 +157,12 @@ app.post('/', zValidator('json', PaymentCreateSchema), async (c) => {
 const PaymentPlanCreateSchema = z.object({
   invoiceId: z.string().optional(),
   totalAmount: z.number().positive(),
-  currency: z.string().length(3).default('USD'),
+  // AM-4: currency is optional in the request — the route resolves it
+  // from tenant context (`resolvePaymentCurrency`) when the body omits
+  // it. The previous `default('USD')` quietly stamped USD onto every
+  // payment plan whose body didn't specify a currency, regardless of
+  // tenant jurisdiction.
+  currency: z.string().length(3).optional(),
   instalments: z.number().int().min(1).max(24),
   firstInstalmentDate: z.string().refine(
     (s) => !Number.isNaN(new Date(s).getTime()),
@@ -169,7 +196,7 @@ app.post('/plans', zValidator('json', PaymentPlanCreateSchema), async (c) => {
     customerId: auth.userId,
     invoiceId: body.invoiceId,
     status: 'proposed' as const,
-    totalAmount: { amount: body.totalAmount, currency: body.currency },
+    totalAmount: { amount: body.totalAmount, currency: resolvePaymentCurrency(c, body.currency) },
     instalments: body.instalments,
     firstInstalmentDate: body.firstInstalmentDate,
     schedule,

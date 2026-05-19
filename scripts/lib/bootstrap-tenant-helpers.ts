@@ -74,15 +74,28 @@ export function parseBootstrapArgs(argv: readonly string[]): BootstrapArgs {
  * Country → currency lookup. Intentionally small — the full mapping lives
  * in @bossnyumba/compliance-plugins, but this script runs before the
  * gateway is up and can't reach into workspace packages at the repo root.
- * Falls back to 'USD' for unknown codes; the gateway's plugin layer
- * overrides this during the first authenticated request.
+ *
+ * AM-4 hardcoded-fallback-purge: previously fell through to 'USD' for
+ * unknown codes; now throws so the bootstrap script refuses to spin up
+ * a tenant whose country isn't a known jurisdiction. The operator must
+ * either add the country to the map below OR pass `--currency XXX`
+ * explicitly. Silent-USD bootstrapping mis-stamped 'USD' onto the
+ * default-currency column of countries the script didn't know about.
  */
 export function resolveCountryCurrency(countryCode: string): string {
   const map: Readonly<Record<string, string>> = {
     TZ: 'TZS', KE: 'KES', UG: 'UGX', NG: 'NGN', ZA: 'ZAR',
     US: 'USD', GB: 'GBP', EU: 'EUR', IN: 'INR', RW: 'RWF',
   };
-  return map[countryCode.toUpperCase()] ?? 'USD';
+  const code = map[countryCode.toUpperCase()];
+  if (!code) {
+    throw new Error(
+      `bootstrap-tenant-helpers: unknown country code '${countryCode}'. ` +
+        'Either add it to the lookup table or pass --currency XXX explicitly. ' +
+        'See packages/domain-models/src/common/jurisdictional-rules.ts for the full registry.',
+    );
+  }
+  return code;
 }
 
 /**

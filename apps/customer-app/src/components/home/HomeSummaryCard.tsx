@@ -23,6 +23,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
+import { EMERGENCY_DISPLAY_FALLBACK_CURRENCY } from '../../lib/hooks/useCurrencyPreference';
 
 interface HomeSummary {
   readonly lease: LeaseSnapshot | null;
@@ -114,8 +115,13 @@ export function HomeSummaryCard(): JSX.Element {
                 (pending as { amount?: number }).amount ??
                 (pending as { totalAmount?: number }).totalAmount ??
                 0,
+              // AM-4: was `?? 'TZS'` — quietly stamped TZS onto every
+              // tenant's next-payment when the API response omitted the
+              // currency field. Route through the shared emergency-
+              // display fallback constant instead.
               currency:
-                (pending as { currency?: string }).currency ?? 'TZS',
+                (pending as { currency?: string }).currency ??
+                EMERGENCY_DISPLAY_FALLBACK_CURRENCY,
               dueDate:
                 (pending as { dueDate?: string }).dueDate ?? '',
               daysUntil: daysBetween(

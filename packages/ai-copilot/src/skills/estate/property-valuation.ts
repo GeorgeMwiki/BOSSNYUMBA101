@@ -27,9 +27,12 @@ export const PropertyValuationParamsSchema = z.object({
   ageYears: z.number().int().nonnegative(),
   condition: z.enum(['excellent', 'good', 'fair', 'poor']).default('good'),
   comparables: z.array(ComparableSchema).min(1).max(30),
-  // TODO(KI-005): caller should pass tenant.defaultCurrency resolved
-  //   from the country plugin. Any ISO-4217 code is accepted today; the
-  //   USD fallback is neutral. See Docs/KNOWN_ISSUES.md#ki-005.
+  // AM-4: Production callers MUST pass tenant.defaultCurrency resolved
+  // from the country plugin / `getJurisdictionalRules(country).defaultCurrency`.
+  // The .default('USD') retained ONLY for backwards-compat with existing
+  // skill-tool tests that don't construct a tenant context; the kernel
+  // owner-tools route always supplies the resolved currency before calling
+  // this skill. Tracked in Docs/KNOWN_ISSUES.md#ki-005 for follow-up.
   currency: z.string().length(3).default('USD'),
 });
 export type PropertyValuationParams = z.infer<typeof PropertyValuationParamsSchema>;

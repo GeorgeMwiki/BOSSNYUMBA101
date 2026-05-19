@@ -59,7 +59,13 @@ export const VendorAssignmentSchema = z.object({
 
   agreedRate: z.number().nullable(),
   rateType: z.enum(['hourly', 'fixed', 'per_job', 'monthly']).nullable(),
-  rateCurrency: z.string().default('USD'),
+  // AM-4: was `z.string().default('USD')` — silently stamped USD onto
+  // every vendor assignment whose payload omitted currency, regardless
+  // of tenant jurisdiction. Currency is required when `agreedRate` is
+  // set; nullable otherwise. Callers must resolve from the tenant's
+  // jurisdiction (`getJurisdictionalRules(tenant.country).defaultCurrency`)
+  // before constructing this payload.
+  rateCurrency: z.string().nullable(),
 
   availableDays: z.array(z.number().min(0).max(6)).default([]),
   availableHours: AvailableHoursSchema.nullable(),
@@ -158,7 +164,7 @@ export function createVendorAssignment(
 
     agreedRate: data.agreedRate ?? null,
     rateType: data.rateType ?? null,
-    rateCurrency: data.rateCurrency ?? 'USD',
+    rateCurrency: data.rateCurrency ?? null,
 
     availableDays: data.availableDays ?? [],
     availableHours: data.availableHours ?? null,
