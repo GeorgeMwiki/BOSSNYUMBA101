@@ -38,3 +38,6 @@ export * from './eu-ai-act-art-50/index.js';
 
 // Disclosure audit — every disclosure logged as J1 entity (append-only)
 export * from './disclosure-audit/index.js';
+
+// Runtime defense composer — chain all 9 modules into one pipeline
+export * from './runtime-defense-composer/index.js';
