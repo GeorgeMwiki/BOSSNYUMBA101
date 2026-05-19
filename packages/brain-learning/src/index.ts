@@ -182,3 +182,16 @@ export type {
   StudentResolutionInput,
   NcCostCascadeFallback,
 } from './distilled-student-infra/index.js';
+
+// 9. cycle-tracker (90-day-cycle-tracker)
+export {
+  buildWeeklyDigest,
+  renderCapabilityCardPayload,
+} from './cycle-tracker/index.js';
+export type {
+  CycleTrackerPorts,
+  CycleTrackerSources,
+  CapabilityCardPayload,
+  CapabilityCardMetric,
+  CapabilityCardChart,
+} from './cycle-tracker/index.js';
