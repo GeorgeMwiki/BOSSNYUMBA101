@@ -798,6 +798,52 @@ describe('HookChain extended stages', () => {
     if (out.kind === 'deny') expect(out.code).toBe('hook-threw');
   });
 
+  it('runPostToolUse runs ALL hooks even when an early hook denies (H3)', async () => {
+    const fired: string[] = [];
+    const throwing: PostToolUseHook = {
+      name: 'audit',
+      stage: 'post-tool-use',
+      async fn() {
+        fired.push('audit');
+        throw new Error('audit-sink-down');
+      },
+    };
+    const telemetry: PostToolUseHook = {
+      name: 'telemetry',
+      stage: 'post-tool-use',
+      async fn(): Promise<HookResult> {
+        fired.push('telemetry');
+        return { kind: 'allow' };
+      },
+    };
+    const ledgerSeal: PostToolUseHook = {
+      name: 'ledger-seal',
+      stage: 'post-tool-use',
+      async fn(): Promise<HookResult> {
+        fired.push('ledger-seal');
+        return { kind: 'allow' };
+      },
+    };
+    const chain = createHookChain([throwing, telemetry, ledgerSeal]);
+    const decision: Decision = {
+      kind: 'tool_call',
+      call: { toolName: 'demo.read', input: {}, callId: 'c1' },
+    };
+    const dispatch: DispatchResult = {
+      kind: 'tool_ok',
+      callId: 'c1',
+      output: {},
+      latencyMs: 1,
+      tokensIn: 1,
+      tokensOut: 1,
+      usdCost: 0,
+    };
+    const out = await chain.runPostToolUse(decision, dispatch, tenantCtx);
+    // Returned the first non-allow but still ran every hook.
+    expect(out.kind).toBe('deny');
+    expect(fired).toEqual(['audit', 'telemetry', 'ledger-seal']);
+  });
+
   it('thrown session-start hook maps to deny code=hook-threw', async () => {
     const throwing: SessionStartHook = {
       name: 'seed-bad',

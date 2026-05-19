@@ -167,6 +167,32 @@ export interface Dispatcher {
 // Orchestrator deps
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * C2 — bypass-permissions audit port.
+ *
+ * Whenever `permissionMode` resolves to `bypass-permissions`, the
+ * main-loop emits a structured warning AND writes a sovereign-ledger row
+ * so an external SIEM can alert on `mode=bypass-permissions`. The module
+ * docstring at `permission-mode.ts:23-26` promised both of these; the
+ * port lets the composition root wire the production ledger sink while
+ * tests inject an in-memory recorder.
+ *
+ * The audit row is emitted EXACTLY ONCE per `think()` call (not once per
+ * tool decision) so the noise stays bounded — a `bypass-permissions`
+ * session is a single sovereign event, regardless of how many tools it
+ * invokes.
+ */
+export interface BypassPermissionsAuditPort {
+  recordBypassActive(args: {
+    readonly threadId: string;
+    readonly tenantId: string | null;
+    readonly mode: PermissionMode;
+    readonly tenantOverride: boolean;
+    readonly grantedScopes: ReadonlyArray<string>;
+    readonly startedAtMs: number;
+  }): Promise<void>;
+}
+
 export interface OrchestratorDeps {
   readonly router: LLMRouter;
   readonly toolSearch: ToolSearch;
@@ -183,10 +209,26 @@ export interface OrchestratorDeps {
    * conservative fallback.
    */
   readonly toolRiskTier?: (toolName: string) => RiskTier;
+  /**
+   * C2 — sovereign-ledger sink for `bypass-permissions` audit rows.
+   * When omitted the loop still emits the warning via `logger.warn`,
+   * but the audit row is dropped. Production composition MUST wire
+   * this port.
+   */
+  readonly bypassPermissionsAudit?: BypassPermissionsAuditPort;
+  /**
+   * H1 — cap on the number of consecutive `permission-mode: deny`
+   * retries before the loop surfaces a terminal `stopped` outcome.
+   * Default 2. A value of 0 disables retries entirely (one deny ⇒
+   * stop). A value of `Infinity` restores the legacy spinning
+   * behaviour (NOT recommended).
+   */
+  readonly maxPermissionDenyRetries?: number;
   readonly clock?: () => number;
   readonly logger?: {
     info(msg: string, meta?: Record<string, unknown>): void;
     warn(msg: string, meta?: Record<string, unknown>): void;
+    error?(msg: string, meta?: Record<string, unknown>): void;
   };
 }
 
@@ -298,6 +340,52 @@ export async function thinkExtended(
 
   const permissionMode: PermissionMode = req.permissionMode ?? 'default';
 
+  // C2 — when `bypass-permissions` resolves as the effective mode (either
+  // via tenant override or the request itself), emit a structured warning
+  // AND push a sovereign-ledger row so the post-mortem can see the bypass
+  // was active. Done EXACTLY ONCE per think() call.
+  const effectiveModeForAudit: PermissionMode =
+    req.tenantPermissionModeOverride ?? permissionMode;
+  if (effectiveModeForAudit === 'bypass-permissions') {
+    deps.logger?.warn?.('permission-mode bypass-permissions active', {
+      threadId: req.threadId,
+      tenantId:
+        req.scope.kind === 'platform' ? null : req.scope.tenantId,
+      tenantOverride: req.tenantPermissionModeOverride !== undefined,
+      grantedScopes: req.grantedScopes ?? [],
+    });
+    if (deps.bypassPermissionsAudit) {
+      try {
+        await deps.bypassPermissionsAudit.recordBypassActive({
+          threadId: req.threadId,
+          tenantId:
+            req.scope.kind === 'platform' ? null : req.scope.tenantId,
+          mode: effectiveModeForAudit,
+          tenantOverride: req.tenantPermissionModeOverride !== undefined,
+          grantedScopes: req.grantedScopes ?? [],
+          startedAtMs: clock(),
+        });
+      } catch (err) {
+        // The audit sink itself is degraded — log loudly but continue.
+        // A broken audit sink must NOT silently drop the think() call;
+        // the warning above already provides operator-visible signal.
+        const message =
+          err instanceof Error ? err.message : 'non-Error thrown';
+        deps.logger?.error?.(
+          'bypass-permissions audit-sink failure',
+          { threadId: req.threadId, reason: message },
+        );
+      }
+    }
+  }
+
+  // H1 — counter for consecutive permission-mode `deny` outcomes. After
+  // `maxPermissionDenyRetries` retries the loop emits a terminal
+  // `stopped` outcome rather than burning the entire turn budget.
+  const denyRetryLimit =
+    deps.maxPermissionDenyRetries ?? DEFAULT_PERMISSION_DENY_RETRIES;
+  let consecutivePermissionDenies = 0;
+
   while (budget.remaining() && !plan.isComplete()) {
     const goal = plan.currentGoal();
     const tools = await deps.toolSearch.searchRelevant(
@@ -386,11 +474,38 @@ export async function thinkExtended(
         };
       }
       if (pmEval.decision === 'deny') {
+        // H1 — Cap consecutive deny retries. The router will likely
+        // return the SAME decision next tick because the plan hasn't
+        // advanced; without a cap the loop burns its entire turn
+        // budget on a single permission-deny.
+        consecutivePermissionDenies += 1;
         budget = budget.consume({
           kind: 'tool_error',
           callId: decision.call.callId,
           message: pmEval.reason ?? 'permission-mode deny',
           latencyMs: 0,
+        });
+        if (consecutivePermissionDenies > denyRetryLimit) {
+          await deps.hookChain.runStop(
+            {
+              threadId: req.threadId,
+              turnCount: budget.snapshot().usage.turns,
+              finalText: lastText,
+              exhaustedAxis: null,
+            },
+            ctx,
+          );
+          return {
+            kind: 'stopped',
+            reason: `permission-mode-deny (${pmEval.reason ?? 'permission-mode deny'}); exceeded ${denyRetryLimit} retries`,
+            partialText: lastText,
+          };
+        }
+        // Inject a context message so the next router.call sees the
+        // deny reason and can plan around it.
+        pendingContextInjections.push({
+          role: 'system',
+          content: `[permission-mode] tool ${decision.call.toolName} was denied (${pmEval.reason ?? 'permission-mode deny'}); pick a different approach.`,
         });
         continue;
       }
@@ -439,11 +554,33 @@ export async function thinkExtended(
         };
       }
       if (spawnPmEval.decision === 'deny') {
+        // H1 — same retry cap applies to spawn denies.
+        consecutivePermissionDenies += 1;
         budget = budget.consume({
           kind: 'tool_error',
           callId: `spawn:${decision.spawn.subMdId}`,
           message: spawnPmEval.reason ?? 'permission-mode deny (spawn)',
           latencyMs: 0,
+        });
+        if (consecutivePermissionDenies > denyRetryLimit) {
+          await deps.hookChain.runStop(
+            {
+              threadId: req.threadId,
+              turnCount: budget.snapshot().usage.turns,
+              finalText: lastText,
+              exhaustedAxis: null,
+            },
+            ctx,
+          );
+          return {
+            kind: 'stopped',
+            reason: `permission-mode-deny (${spawnPmEval.reason ?? 'permission-mode deny (spawn)'}); exceeded ${denyRetryLimit} retries`,
+            partialText: lastText,
+          };
+        }
+        pendingContextInjections.push({
+          role: 'system',
+          content: `[permission-mode] spawn ${decision.spawn.subMdId} was denied (${spawnPmEval.reason ?? 'permission-mode deny (spawn)'}); pick a different approach.`,
         });
         continue;
       }
@@ -526,6 +663,10 @@ export async function thinkExtended(
         ? preOutcome.replacement
         : preChain.effectiveDecision ?? decision;
 
+    // H1 — successful dispatch (or a dispatch attempt that reached the
+    // dispatcher) resets the permission-deny retry counter.
+    consecutivePermissionDenies = 0;
+
     const result = await deps.dispatcher.dispatch(toRun, ctx);
 
     // subagent lifecycle hooks for spawn_sub_md decisions.
@@ -558,7 +699,34 @@ export async function thinkExtended(
       if (subStopTerminal) return subStopTerminal;
     }
 
-    await deps.hookChain.runPostToolUse(toRun, result, ctx);
+    // C3 — consume the post-tool-use chain's return value. A deny from
+    // the post-chain means an audit hook (or any other post hook) threw
+    // OR explicitly refused. The dispatch already happened so we can't
+    // un-execute it, but we MUST emit a loud operator-visible signal so
+    // an audit-pipeline outage doesn't go unnoticed.
+    const postChainOutcome = await deps.hookChain.runPostToolUse(
+      toRun,
+      result,
+      ctx,
+    );
+    if (postChainOutcome.kind !== 'allow') {
+      const reason =
+        postChainOutcome.kind === 'deny'
+          ? postChainOutcome.reason
+          : `post-hook returned ${postChainOutcome.kind}`;
+      deps.logger?.error?.('post-tool-use audit-pipeline failure', {
+        threadId: req.threadId,
+        toolName:
+          toRun.kind === 'tool_call' ? toRun.call.toolName : toRun.kind,
+        reason,
+      });
+      deps.logger?.warn?.('post-tool-use audit-pipeline failure', {
+        threadId: req.threadId,
+        toolName:
+          toRun.kind === 'tool_call' ? toRun.call.toolName : toRun.kind,
+        reason,
+      });
+    }
     await deps.sessionStore.checkpoint(
       session,
       toRun,
@@ -724,6 +892,15 @@ function defaultRiskTier(_toolName: string): RiskTier {
   // behaviour for an unknown tool.
   return 'mutate';
 }
+
+/**
+ * H1 — default cap on consecutive permission-mode `deny` retries before
+ * the loop surfaces a terminal `stopped` outcome. Keeps the budget burn
+ * bounded: after 2 retries the model has seen the deny twice and has
+ * had a chance to reroute; if it still emits the same decision the
+ * caller almost certainly wants a stop, not silent exhaustion.
+ */
+const DEFAULT_PERMISSION_DENY_RETRIES = 2;
 
 // Re-export the Session type for callers wiring custom dispatchers.
 export type { Session };

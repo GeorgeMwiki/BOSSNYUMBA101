@@ -376,4 +376,193 @@ describe('main-loop think()', () => {
       expect(out.resumeToken).toBe('monitor:w_arrears');
     }
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // C2 regression — bypass-permissions emits warning + audit row.
+  // ─────────────────────────────────────────────────────────────────
+  it('emits a warning + sovereign-ledger row whenever bypass-permissions is active (C2)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([{ kind: 'respond_to_owner', text: 'ok' }]);
+    const warnings: Array<{ msg: string; meta?: Record<string, unknown> }> = [];
+    const audited: Array<{
+      threadId: string;
+      tenantId: string | null;
+      mode: string;
+    }> = [];
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      logger: {
+        info: () => undefined,
+        warn: (msg, meta) => {
+          warnings.push({ msg, meta });
+        },
+      },
+      bypassPermissionsAudit: {
+        async recordBypassActive(args) {
+          audited.push({
+            threadId: args.threadId,
+            tenantId: args.tenantId,
+            mode: args.mode,
+          });
+        },
+      },
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      permissionMode: 'bypass-permissions',
+    };
+    await thinkExtended(req, deps);
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    expect(warnings[0]?.msg).toContain('bypass-permissions');
+    expect(audited.length).toBe(1);
+    expect(audited[0]?.threadId).toBe('thread_test');
+    expect(audited[0]?.tenantId).toBe('t_1');
+    expect(audited[0]?.mode).toBe('bypass-permissions');
+  });
+
+  it('emits a bypass audit row even when the tenant override flips to bypass (C2)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([{ kind: 'respond_to_owner', text: 'ok' }]);
+    const audited: Array<{ tenantOverride: boolean }> = [];
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      bypassPermissionsAudit: {
+        async recordBypassActive(args) {
+          audited.push({ tenantOverride: args.tenantOverride });
+        },
+      },
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      permissionMode: 'default',
+      tenantPermissionModeOverride: 'bypass-permissions',
+    };
+    await thinkExtended(req, deps);
+    expect(audited.length).toBe(1);
+    expect(audited[0]?.tenantOverride).toBe(true);
+  });
+
+  it('does NOT emit a bypass audit row in non-bypass modes (C2 false-positive guard)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([{ kind: 'respond_to_owner', text: 'ok' }]);
+    const audited: Array<unknown> = [];
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      bypassPermissionsAudit: {
+        async recordBypassActive() {
+          audited.push(1);
+        },
+      },
+    };
+    await think(makeReq(), deps);
+    expect(audited.length).toBe(0);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // H1 regression — permission-mode deny path caps retries instead of
+  // burning the entire turn budget.
+  // ─────────────────────────────────────────────────────────────────
+  it('halts with stopped after maxPermissionDenyRetries consecutive permission-mode denies (H1)', async () => {
+    const dispatcher = recordingDispatcher();
+    // Router always returns the same denied tool — without H1's cap
+    // the loop would spin until budget-exhausted.
+    const router: LLMRouter = {
+      async call(): Promise<Decision> {
+        return {
+          kind: 'tool_call',
+          call: { toolName: 'tenant.evict', input: {}, callId: 'c' },
+        };
+      },
+    };
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher),
+      // Tier is mutate; tenant is in dont-ask mode → deny.
+      toolRiskTier: () => 'mutate',
+      maxPermissionDenyRetries: 1,
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      permissionMode: 'dont-ask',
+      budget: { maxTurns: 20 },
+    };
+    const out = await thinkExtended(req, deps);
+    expect(out.kind).toBe('stopped');
+    if (out.kind === 'stopped') {
+      expect(out.reason).toContain('permission-mode-deny');
+    }
+    // No tool_call must have reached the dispatcher.
+    expect(dispatcher.calls.find((d) => d.kind === 'tool_call')).toBeUndefined();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // C3 regression — main-loop consumes runPostToolUse return + raises
+  // an operator-visible audit-pipeline-failure signal.
+  // ─────────────────────────────────────────────────────────────────
+  it('logs an audit-pipeline-failure when a post-tool-use hook throws (C3)', async () => {
+    const dispatcher = recordingDispatcher();
+    const router = fixedRouter([
+      {
+        kind: 'tool_call',
+        call: { toolName: 'arrears.lookup', input: {}, callId: 'c1' },
+      },
+      { kind: 'respond_to_owner', text: 'ok' },
+    ]);
+    const throwingPost: Hook = {
+      name: 'audit-throw',
+      stage: 'post-tool-use',
+      async fn() {
+        throw new Error('audit-sink-down');
+      },
+    };
+    const failures: Array<{ msg: string; meta?: Record<string, unknown> }> = [];
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher, [throwingPost]),
+      logger: {
+        info: () => undefined,
+        warn: () => undefined,
+        error: (msg, meta) => {
+          failures.push({ msg, meta });
+        },
+      },
+    };
+    const out = await think(makeReq(), deps);
+    expect(out.kind).toBe('answer');
+    // The loop kept going (dispatch DID happen) — but the failure was logged.
+    expect(failures.length).toBeGreaterThanOrEqual(1);
+    expect(failures[0]?.msg).toContain('audit-pipeline failure');
+  });
+
+  it('runs runStop when H1 retry cap is exceeded so audit chain seals', async () => {
+    const dispatcher = recordingDispatcher();
+    const router: LLMRouter = {
+      async call(): Promise<Decision> {
+        return {
+          kind: 'tool_call',
+          call: { toolName: 'tenant.evict', input: {}, callId: 'c' },
+        };
+      },
+    };
+    let stopCount = 0;
+    const stopHook: Hook = {
+      name: 'stop-counter',
+      stage: 'stop',
+      async fn() {
+        stopCount += 1;
+        return { kind: 'allow' };
+      },
+    };
+    const deps: OrchestratorDeps = {
+      ...makeDeps(router, dispatcher, [stopHook]),
+      toolRiskTier: () => 'mutate',
+      maxPermissionDenyRetries: 0,
+    };
+    const req: OrchestratorRequest = {
+      ...makeReq(),
+      permissionMode: 'dont-ask',
+      budget: { maxTurns: 20 },
+    };
+    const out = await thinkExtended(req, deps);
+    expect(out.kind).toBe('stopped');
+    expect(stopCount).toBe(1);
+  });
 });

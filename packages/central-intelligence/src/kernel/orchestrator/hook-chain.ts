@@ -477,6 +477,13 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
     result: DispatchResult,
     ctx: HookContext,
   ): Promise<HookResult> {
+    // H3 — post-tool-use hooks are observational by contract
+    // (audit-emission, ledger-seal, telemetry). Every hook MUST run
+    // regardless of whether an earlier hook denied: an audit pipeline
+    // that records EVERY dispatch is non-negotiable. We collect failures
+    // and return the FIRST non-allow outcome AFTER the full chain has
+    // executed, so the caller still gets a visible signal.
+    let firstNonAllow: HookResult | null = null;
     for (const h of post) {
       if (!matchesScope(h.scope, decision, ctx)) continue;
       let out: HookResult;
@@ -491,9 +498,11 @@ export function createHookChain(hooks: ReadonlyArray<Hook>): HookChain {
           code: 'hook-threw',
         };
       }
-      if (out.kind !== 'allow') return out;
+      if (out.kind !== 'allow' && firstNonAllow === null) {
+        firstNonAllow = out;
+      }
     }
-    return { kind: 'allow' };
+    return firstNonAllow ?? { kind: 'allow' };
   }
 
   async function runPreCompact(
