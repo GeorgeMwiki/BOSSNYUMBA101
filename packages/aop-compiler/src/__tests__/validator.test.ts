@@ -48,6 +48,23 @@ describe('validateSchema', () => {
     expect(validateSchema(bad).ok).toBe(false);
   });
 
+  it('rejects an AOP whose top-level steps array exceeds AOP_MAX_STEPS (H5)', () => {
+    // 201 trivial tool steps — would pass without the cap. We use the same
+    // tool id repeated so the fixture stays tiny and deterministic.
+    const tooMany = Array.from({ length: 201 }, (_, i) => ({
+      kind: 'tool' as const,
+      id: `s-${i}`,
+      tool: 'tenant.send_reminder',
+      args: {},
+    }));
+    const bad = {
+      ...arrearsChase,
+      steps: tooMany,
+      entry: 's-0',
+    };
+    expect(validateSchema(bad).ok).toBe(false);
+  });
+
   it('rejects monitor without a timeout', () => {
     const bad: unknown = {
       ...arrearsChase,
@@ -229,10 +246,82 @@ describe('validatePermissions', () => {
     expect(r.errors[0]!.code).toBe('destructive-tool-unguarded');
   });
 
-  it('skips the destructive check if the registry exposes no tier info', () => {
+  it('fail-closed: when the registry exposes no tier info, every tool step is treated as destructive and must be guarded (C1)', () => {
+    // arrears-chase contains a destructive eviction tool that IS guarded by
+    // ask-owner — but it also contains write-tier tools (send_reminder,
+    // voice_call) which are NOT guarded. With tier() absent, ALL of them
+    // are now treated as destructive, so the AOP must fail.
     const reg = { has: () => true };
     const r = validatePermissions(arrearsChase, reg);
+    expect(r.ok).toBe(false);
+    // Every error must be the destructive-tool-unguarded code, and the
+    // failure reason must explain the fail-closed default so operators
+    // see the contract.
+    expect(r.errors.length).toBeGreaterThan(0);
+    for (const err of r.errors) {
+      expect(err.code).toBe('destructive-tool-unguarded');
+    }
+    expect(r.errors[0]!.message).toMatch(/fail-closed/i);
+  });
+
+  it('inspects step.args recursively for PII keys and rejects without grants (H4)', () => {
+    const reg = buildRegistry({ ...FIXTURE_TOOLS });
+    const bad: AOP = {
+      ...arrearsChase,
+      steps: [
+        {
+          kind: 'tool',
+          id: 'send-reminder-with-pii',
+          tool: 'tenant.send_reminder',
+          args: {
+            template: 'arrears-reminder',
+            metadata: { kra_pin: '{{tenant.kra_pin}}' },
+          },
+        },
+      ],
+      entry: 'send-reminder-with-pii',
+    };
+    const r = validatePermissions(bad, reg);
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => e.code === 'pii-key-not-granted')).toBe(true);
+  });
+
+  it('allows PII keys in step.args when an explicit grant is declared (H4)', () => {
+    const reg = buildRegistry({ ...FIXTURE_TOOLS });
+    const ok: AOP & { grants: ReadonlyArray<string> } = {
+      ...arrearsChase,
+      steps: [
+        {
+          kind: 'tool',
+          id: 'send-reminder-with-pii',
+          tool: 'tenant.send_reminder',
+          args: { template: 'arrears-reminder', kra_pin: 'P123' },
+        },
+      ],
+      entry: 'send-reminder-with-pii',
+      grants: ['kra_pin'],
+    };
+    const r = validatePermissions(ok, reg);
     expect(r.ok).toBe(true);
+  });
+
+  it('detects PII keys nested inside arrays (H4)', () => {
+    const reg = buildRegistry({ ...FIXTURE_TOOLS });
+    const bad: AOP = {
+      ...arrearsChase,
+      steps: [
+        {
+          kind: 'tool',
+          id: 'send-many',
+          tool: 'tenant.send_reminder',
+          args: { recipients: [{ name: 'A', nin: '12345' }] },
+        },
+      ],
+      entry: 'send-many',
+    };
+    const r = validatePermissions(bad, reg);
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => e.code === 'pii-key-not-granted')).toBe(true);
   });
 });
 
