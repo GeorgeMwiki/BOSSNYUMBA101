@@ -29,3 +29,6 @@ export * from './spotlighting/index.js';
 
 // Hardened system prompt — external + internal variants
 export * from './hardened-system-prompt/index.js';
+
+// GDPR Art 22 — counterfactual explainability
+export * from './gdpr-art-22-explainability/index.js';
