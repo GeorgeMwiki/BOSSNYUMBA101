@@ -93,6 +93,20 @@ export type SovereignLedgerVerifyResult =
       readonly reason: 'hash-mismatch' | 'prev-hash-mismatch' | 'db-error';
     };
 
+/**
+ * Row + per-row tamper indicator. Powers the operator dashboard's
+ * critical-path verify-on-read surface (HIGH 1.3 — 2026-05-19 sweep).
+ * `verified === true` means the row's `this_hash` re-derives from the
+ * canonical hash inputs; `false` means a post-hoc mutation broke the
+ * chain at this row. The chain CONNECTION to the predecessor is
+ * verified by `verifyLedgerChain` (full forward walk) — `verified` here
+ * is the per-row self-consistency check that does NOT require
+ * predecessor access.
+ */
+export interface SovereignLedgerVerifiedRow extends SovereignLedgerRow {
+  readonly verified: boolean;
+}
+
 export interface SovereignActionLedgerService {
   appendLedgerEntry(
     args: SovereignLedgerAppendArgs,
@@ -101,6 +115,23 @@ export interface SovereignActionLedgerService {
     tenantId: string,
     limit: number,
   ): Promise<ReadonlyArray<SovereignLedgerRow>>;
+  /**
+   * Variant of `getLedgerTail` that ALSO recomputes each row's
+   * `this_hash` and tags the row with a `verified` boolean. Critical-
+   * path operator surfaces (e.g. the sovereign-ledger dashboard tail)
+   * MUST use this method, not the bare tail — without re-derivation, a
+   * tampered row surfaced on the dashboard appears pristine
+   * (HIGH 1.3 from the 2026-05-19 post-PR-90 data-layer sweep).
+   *
+   * NOTE: only the row's SELF-hash is recomputed here. Verifying the
+   * chain CONNECTION (this.prev_hash == predecessor.this_hash) requires
+   * the full forward walk in `verifyLedgerChain`, because the
+   * predecessor is not available in a tail-only read.
+   */
+  getVerifiedLedgerTail(
+    tenantId: string,
+    limit: number,
+  ): Promise<ReadonlyArray<SovereignLedgerVerifiedRow>>;
   verifyLedgerChain(tenantId: string): Promise<SovereignLedgerVerifyResult>;
   /**
    * Load the optional rollback payload for a previously-recorded
@@ -482,6 +513,49 @@ export function createSovereignActionLedgerService(
         return (rows ?? []).map(rowToLedger);
       } catch (error) {
         console.error('sovereign-action-ledger.getLedgerTail failed:', error);
+        return [];
+      }
+    },
+
+    async getVerifiedLedgerTail(tenantId, limit) {
+      // HIGH 1.3 — verify-on-read for critical-path operator dashboards.
+      // For each returned row we recompute this_hash from the canonical
+      // hash inputs and tag the row with `verified=true|false`. A row
+      // whose stored this_hash diverges from the recomputed value is
+      // flagged so the dashboard can surface tampering instead of
+      // silently displaying the post-hoc forgery.
+      //
+      // This is a SELF-check only — the CONNECTION between rows
+      // (this.prev_hash == predecessor.this_hash) requires the forward
+      // walk in verifyLedgerChain; that should be called separately for
+      // load-bearing audit reads.
+      try {
+        if (!tenantId) return [];
+        const rows = await this.getLedgerTail(tenantId, limit);
+        return rows.map((r) => {
+          let executed: Date;
+          try {
+            executed = new Date(r.executedAt);
+            if (Number.isNaN(executed.getTime())) {
+              return { ...r, verified: false };
+            }
+          } catch {
+            return { ...r, verified: false };
+          }
+          const recomputed = computeRowHash({
+            prevHash: r.prevHash,
+            tenantId: r.tenantId,
+            actionType: r.actionType,
+            payloadHash: r.payloadHash,
+            executedAt: executed,
+          });
+          return { ...r, verified: recomputed === r.thisHash };
+        });
+      } catch (error) {
+        console.error(
+          'sovereign-action-ledger.getVerifiedLedgerTail failed:',
+          error,
+        );
         return [];
       }
     },
