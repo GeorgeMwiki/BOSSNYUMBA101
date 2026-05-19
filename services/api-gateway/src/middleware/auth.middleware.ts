@@ -14,6 +14,7 @@ import type { Context } from 'hono';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
 import { resolveApiKeyLegacyOrRegistry } from './api-key-registry';
+import { readSessionCookie } from './session-cookie';
 
 // ============================================================================
 // Configuration
@@ -91,6 +92,17 @@ export function extractBearerToken(authHeader: string | undefined): string | nul
     return null;
   }
   return authHeader.slice(7).trim();
+}
+
+/**
+ * AM-1 — resolve access token from the request, preferring the httpOnly
+ * `bn_session` cookie and falling back to the Authorization header.
+ * Mirrors `resolveAccessToken` in `hono-auth.ts`.
+ */
+export function resolveAccessTokenFromContext(c: Context): string | null {
+  const cookieToken = readSessionCookie(c);
+  if (cookieToken) return cookieToken;
+  return extractBearerToken(c.req.header('Authorization'));
 }
 
 /**
@@ -245,8 +257,8 @@ function extractTenantId(_c: Context, payload?: JWTPayload): string | null {
  * Validates JWT and extracts auth context
  */
 export const authMiddleware = createMiddleware(async (c, next) => {
-  const authHeader = c.req.header('Authorization');
-  const token = extractBearerToken(authHeader);
+  // AM-1: cookie-first, header fallback. See `resolveAccessTokenFromContext`.
+  const token = resolveAccessTokenFromContext(c);
 
   if (!token) {
     return c.json(
@@ -254,7 +266,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
         success: false,
         error: {
           code: 'UNAUTHORIZED',
-          message: 'Missing or invalid authorization header',
+          message: 'Missing authentication credential (session cookie or bearer header)',
         },
       },
       401
@@ -329,8 +341,8 @@ export const authMiddleware = createMiddleware(async (c, next) => {
  * Sets auth context if token is present, but doesn't require it
  */
 export const optionalAuthMiddleware = createMiddleware(async (c, next) => {
-  const authHeader = c.req.header('Authorization');
-  const token = extractBearerToken(authHeader);
+  // AM-1: cookie-first, header fallback.
+  const token = resolveAccessTokenFromContext(c);
 
   if (token) {
     const validation = validateAccessToken(token);
@@ -455,7 +467,6 @@ export const apiKeyAuthMiddleware = createMiddleware(async (c, next) => {
  * Combined auth middleware that accepts both JWT and API key
  */
 export const flexibleAuthMiddleware = createMiddleware(async (c, next) => {
-  const authHeader = c.req.header('Authorization');
   const apiKey = c.req.header('X-API-Key');
 
   if (apiKey) {
@@ -475,32 +486,30 @@ export const flexibleAuthMiddleware = createMiddleware(async (c, next) => {
     }
   }
 
-  if (authHeader) {
-    const token = extractBearerToken(authHeader);
+  // AM-1: cookie-first, header fallback.
+  const token = resolveAccessTokenFromContext(c);
+  if (token) {
+    const validation = validateAccessToken(token);
 
-    if (token) {
-      const validation = validateAccessToken(token);
+    if (validation.valid && validation.payload) {
+      const payload = validation.payload;
+      const tenantId = extractTenantId(c, payload);
 
-      if (validation.valid && validation.payload) {
-        const payload = validation.payload;
-        const tenantId = extractTenantId(c, payload);
+      if (tenantId) {
+        c.set('auth', {
+          userId: payload.sub || payload.userId || '',
+          tenantId,
+          role: payload.role,
+          permissions: payload.permissions || [],
+          propertyAccess: payload.propertyAccess || [],
+          email: payload.email,
+          sessionId: payload.sessionId,
+          tokenExp: payload.exp,
+          tokenIat: payload.iat,
+        } as AuthContext);
 
-        if (tenantId) {
-          c.set('auth', {
-            userId: payload.sub || payload.userId || '',
-            tenantId,
-            role: payload.role,
-            permissions: payload.permissions || [],
-            propertyAccess: payload.propertyAccess || [],
-            email: payload.email,
-            sessionId: payload.sessionId,
-            tokenExp: payload.exp,
-            tokenIat: payload.iat,
-          } as AuthContext);
-
-          await next();
-          return;
-        }
+        await next();
+        return;
       }
     }
   }

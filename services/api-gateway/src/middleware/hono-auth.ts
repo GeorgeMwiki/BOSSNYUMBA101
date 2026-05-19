@@ -9,8 +9,31 @@ import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
 import { getJwtSecret } from '../config/jwt';
 import { tokenBlocklist } from './token-blocklist';
+import { readSessionCookie } from './session-cookie';
 
 const JWT_SECRET = getJwtSecret();
+
+/**
+ * Extract the access token from the request.
+ *
+ * AM-1 migration: prefer the `bn_session` httpOnly cookie (set by /auth/login).
+ * Fall back to the `Authorization: Bearer` header so:
+ *   - service-to-service callers using API keys + minted tokens still work,
+ *   - WebSocket/EventSource clients that cannot use cookies still work,
+ *   - in-flight bearer-based portal pages during the migration window
+ *     still authenticate (the portals stop SENDING the bearer once their
+ *     PR lands; the gateway stops ACCEPTING it once telemetry confirms
+ *     zero header traffic — staged removal in a later PR).
+ */
+function resolveAccessToken(c: import('hono').Context): string | null {
+  const cookieToken = readSessionCookie(c);
+  if (cookieToken) return cookieToken;
+  const authHeader = c.req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1] ?? null;
+  }
+  return null;
+}
 
 export interface AuthContext {
   userId: string;
@@ -42,22 +65,21 @@ declare module 'hono' {
 }
 
 export const authMiddleware = createMiddleware(async (c, next) => {
-  const authHeader = c.req.header('Authorization');
+  const token = resolveAccessToken(c);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return c.json(
       {
         success: false,
         error: {
           code: 'UNAUTHORIZED',
-          message: 'Missing or invalid authorization header',
+          // AM-1: message no longer assumes header — cookie also accepted.
+          message: 'Missing authentication credential (session cookie or bearer header)',
         },
       },
       401
     );
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     // Pin algorithm to prevent alg=none / RS256-vs-HS256 confusion.

@@ -33,6 +33,8 @@ import { handle } from '@hono/node-server/vercel';
 import { Hono } from 'hono';
 import { authRouter } from './routes/auth';
 import { authMfaRouter } from './routes/auth-mfa';
+// AM-1 — CSRF enforcement for cookie-authed mutation requests.
+import { csrfMiddleware } from './middleware/csrf.middleware';
 import { tenantsRouter } from './routes/tenants.hono';
 import { usersRouter } from './routes/users.hono';
 import { propertiesRouter } from './routes/properties';
@@ -378,6 +380,23 @@ app.use(
         );
       });
       logger.info('rate-limit: using Redis-backed distributed limiter');
+      // AM-1 — same Redis client backs the refresh-token blocklist so the
+      // 7-day "this refresh JWT is dead" signal is cluster-wide. Falling
+      // back to in-memory here (when this try block is reached but the
+      // installRedisRefreshBlocklist call below throws on import) is
+      // safe — the blocklist itself handles the absence and emits a
+      // one-shot warn so operators see the degraded mode.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const refreshMod = require('./middleware/refresh-token-blocklist');
+        refreshMod.installRedisRefreshBlocklist(client);
+        logger.info('refresh-token-blocklist: using Redis-backed store');
+      } catch (e) {
+        logger.warn(
+          { err: e instanceof Error ? e.message : String(e) },
+          'refresh-token-blocklist: failed to install Redis store — using in-memory'
+        );
+      }
       return createRateLimitMiddleware({
         redis: client,
         logger: {
@@ -591,6 +610,12 @@ api.use('*', createServiceContextMiddleware(serviceRegistry));
 // subscribers persist across requests.
 const behaviorObserver = createAmbientBehaviorObserver();
 api.use('*', createAmbientBrainMiddleware(behaviorObserver, logger));
+// AM-1 — CSRF enforcement. Runs BEFORE route handlers so cookie-authed
+// mutation requests must present a valid X-CSRF-Token header. Bearer/API-
+// key requests are exempt (header-auth is immune to CSRF). Safe methods
+// (GET/HEAD/OPTIONS), `/auth/csrf`, `/auth/login`, and `/auth/refresh`
+// are also exempt — see csrf.middleware.ts for the rationale on each.
+api.use('*', csrfMiddleware);
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
