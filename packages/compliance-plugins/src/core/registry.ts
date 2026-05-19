@@ -8,8 +8,57 @@
  * registry's internal object.
  */
 
-import crypto from 'node:crypto';
 import type { CountryPlugin } from './types.js';
+
+/**
+ * Lazy `node:crypto` lookup. We only require it when actually computing a
+ * fingerprint — kept off the module's static import graph so bundlers
+ * targeting the browser (Next.js client, vite) do not choke on the
+ * `node:`-scheme import even though the registry is itself isomorphic
+ * (browser callers never configure an integrity allow-list, so this
+ * code path stays dead in client bundles).
+ *
+ * Returns the synchronous hashing surface we use. The implementation
+ * picks between Node's `node:crypto` (server) and the Web Crypto API
+ * (browser) so the same exported helper works in both runtimes.
+ */
+interface SyncHasher {
+  hashSha256Hex(input: string): string;
+}
+
+let cachedHasher: SyncHasher | null = null;
+function getHasher(): SyncHasher {
+  if (cachedHasher) return cachedHasher;
+  // Detect Node by feature, not by global, so jsdom/vitest fallbacks work.
+  const nodeProcess = (globalThis as { process?: { versions?: { node?: string } } }).process;
+  if (nodeProcess?.versions?.node) {
+    // Use a runtime-assembled module specifier to defeat bundler static
+    // analysis — webpack/turbopack will not pull `node:crypto` into the
+    // browser bundle because the string never literally appears at a
+    // call site reachable from `import` analysis.
+    const moduleName = ['node', 'crypto'].join(':');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- intentional lazy server-only require.
+    const nodeCrypto = (eval('require') as NodeRequire)(moduleName) as typeof import('node:crypto');
+    cachedHasher = {
+      hashSha256Hex: (input) =>
+        nodeCrypto.createHash('sha256').update(input).digest('hex'),
+    };
+    return cachedHasher;
+  }
+  // Browser fallback — Web Crypto's digest API is async, so we have to
+  // throw clearly when callers reach here. In practice no browser caller
+  // configures the integrity allow-list, so this branch stays dead.
+  cachedHasher = {
+    hashSha256Hex: () => {
+      throw new Error(
+        'CountryPluginRegistry: sha256 fingerprint computation requires the Node runtime. ' +
+          'Configure the integrity allow-list on the server (api-gateway / domain-services) ' +
+          'rather than the browser bundle.'
+      );
+    },
+  };
+  return cachedHasher;
+}
 
 /**
  * Round-3 audit C7 fix — thrown by {@link CountryPluginRegistry.register}
@@ -54,7 +103,7 @@ export function computePluginFingerprint(plugin: CountryPlugin): string {
     return result;
   }
   const serialized = JSON.stringify(stable(plugin));
-  return crypto.createHash('sha256').update(serialized).digest('hex');
+  return getHasher().hashSha256Hex(serialized);
 }
 
 /** Walk every property and freeze recursively. Arrays become readonly. */

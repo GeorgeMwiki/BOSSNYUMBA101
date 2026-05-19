@@ -4,6 +4,20 @@
   "description": "Platform observability: audit logging, telemetry, metrics, and tracing for BOSSNYUMBA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sentry": {
+      "types": "./dist/sentry.d.ts",
+      "default": "./dist/sentry.js"
+    },
+    "./analytics": {
+      "types": "./dist/analytics.d.ts",
+      "default": "./dist/analytics.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run --passWithNoTests",
