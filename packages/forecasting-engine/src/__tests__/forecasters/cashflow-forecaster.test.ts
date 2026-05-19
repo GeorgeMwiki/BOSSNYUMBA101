@@ -12,6 +12,7 @@ import {
 import {
   fitArrears,
   forecastArrears,
+  updateArrears,
 } from '../../forecasters/time-series/arrears-forecaster.js';
 import type { TimePoint } from '../../types.js';
 
@@ -102,5 +103,73 @@ describe('ArrearsForecaster (logistic growth)', () => {
     expect(model.params.K).toBeGreaterThan(0);
     const fc = forecastArrears(model, 30);
     expect(fc.length).toBe(30);
+  });
+
+  it('persists t0Anchor on the fitted model (H1)', () => {
+    const dayMs = 86_400_000;
+    const hist: TimePoint[] = [];
+    const startT = 1_700_000_000_000;
+    for (let i = 0; i < 5; i += 1) {
+      hist.push({ t: startT + i * dayMs, v: 100 + i * 50 });
+    }
+    const model = fitArrears(hist);
+    expect(model.params.t0Anchor).toBe(startT);
+  });
+
+  it('forecastArrears does NOT collapse to logistic(0,...) (H1)', () => {
+    // Mid-curve logistic: history covers x in [0..60] days, inflection at
+    // t0=30, growth r=0.1. The forecast for h=30 (i.e. x=90) should sit
+    // near K — not anywhere near logistic(0, K, 0.1, 30) ≈ K/(1+e^3) ≈
+    // 4.7% of K. Pre-fix every forecast value was that low. We verify
+    // p50 grows monotonically AND ends ≥ 90% of K.
+    const dayMs = 86_400_000;
+    const K = 1000;
+    const r = 0.1;
+    const t0 = 30;
+    const hist: TimePoint[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      const y = K / (1 + Math.exp(-r * (i - t0)));
+      hist.push({ t: i * dayMs, v: y });
+    }
+    const model = fitArrears(hist);
+    const fc = forecastArrears(model, 30);
+    // Forecast must grow (not flat near 0) AND saturate near K.
+    expect(fc[fc.length - 1]!.p50).toBeGreaterThan(K * 0.9);
+    expect(fc[0]!.p50).toBeGreaterThan(K * 0.5);
+    // Monotonically non-decreasing — the logistic above the inflection
+    // is strictly increasing.
+    for (let i = 1; i < fc.length; i += 1) {
+      expect(fc[i]!.p50).toBeGreaterThanOrEqual(fc[i - 1]!.p50 - 1e-6);
+    }
+  });
+
+  it('updateArrears computes residual at the correct x (H1)', () => {
+    // Build a clean logistic history. The residual for a point that
+    // exactly lies on the curve must be ~0. Pre-fix, updateArrears
+    // evaluated `logistic(0, K, r, t0)` regardless of the actual t →
+    // residual ≈ actual.v - K/(1+e^(rt0)) which is NOT zero. The fix
+    // computes residual against `logistic(xAct, …)`.
+    const dayMs = 86_400_000;
+    const K = 1000;
+    const r = 0.1;
+    const t0 = 30;
+    const hist: TimePoint[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      const y = K / (1 + Math.exp(-r * (i - t0)));
+      hist.push({ t: i * dayMs, v: y });
+    }
+    const model = fitArrears(hist);
+    // A point that lies exactly on the fitted curve at x = 70 days.
+    const xNew = 70;
+    const yNew = K / (1 + Math.exp(-r * (xNew - t0)));
+    // residualStd before the update — must NOT explode after the
+    // perfectly-on-curve update.
+    const stdBefore = model.residualStd;
+    const updated = updateArrears(model, { t: xNew * dayMs, v: yNew });
+    // The residual at xNew should be small (the model was fit to this
+    // curve), so std grows by at most ~30% rather than exploding via
+    // pre-fix bug (which would treat the point as off-curve by ~K).
+    expect(updated.residualStd).toBeLessThan(stdBefore * 5);
+    expect(updated.params.t0Anchor).toBe(model.params.t0Anchor);
   });
 });

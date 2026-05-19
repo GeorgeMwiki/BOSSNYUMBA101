@@ -75,15 +75,20 @@ describe('client schemas — data-table', () => {
     });
     expect(r.success).toBe(false);
   });
-  it('rejects column with unknown currency', () => {
-    const r = DataTablePartSchema.safeParse({
-      kind: 'data-table',
-      columns: [
-        { id: 'r', header: 'R', accessorKey: 'r', format: 'currency', currency: 'EUR' },
-      ],
-      rows: [],
-    });
-    expect(r.success).toBe(false);
+  it('rejects column with malformed currency (lowercase / wrong length / digits)', () => {
+    // Post-G-H13: currency contract is z.string().length(3).regex(/^[A-Z]{3}$/) —
+    // accepts any ISO-4217 code (KES/TZS/USD/EUR/NGN/UGX/...) but rejects
+    // lowercase, wrong-length, or numeric codes.
+    for (const bad of ['kes', 'TZ', 'TZSS', '123', '']) {
+      const r = DataTablePartSchema.safeParse({
+        kind: 'data-table',
+        columns: [
+          { id: 'r', header: 'R', accessorKey: 'r', format: 'currency', currency: bad },
+        ],
+        rows: [],
+      });
+      expect(r.success, `currency '${bad}' should be rejected`).toBe(false);
+    }
   });
 });
 
@@ -142,13 +147,16 @@ describe('client schemas — kpi-grid', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('client schemas — prefill-form', () => {
-  it('accepts well-formed payload with relative action', () => {
+  it('accepts well-formed payload with allowlisted action', () => {
+    // Post-G-C4: action must match /api/gateway/forms/<form-id>[/<sub-action>]
+    // where <form-id> matches [a-zA-Z0-9_-]+ (relative path or https URL).
+    // Bare /api/tenants is rejected; dots are disallowed in form-id segment.
     const r = PrefillFormPartSchema.safeParse({
       kind: 'prefill-form',
-      formId: 'tenant.create',
+      formId: 'tenant-create',
       schemaJson: { type: 'object', properties: { name: { type: 'string' } } },
       values: { name: 'Otieno' },
-      action: '/api/tenants',
+      action: '/api/gateway/forms/tenant-create',
     });
     expect(r.success).toBe(true);
   });
@@ -157,7 +165,7 @@ describe('client schemas — prefill-form', () => {
       kind: 'prefill-form',
       formId: 'x',
       values: {},
-      action: '/api/x',
+      action: '/api/gateway/forms/x',
     });
     expect(r.success).toBe(false);
   });

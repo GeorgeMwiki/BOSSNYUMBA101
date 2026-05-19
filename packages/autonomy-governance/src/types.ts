@@ -129,6 +129,15 @@ export interface TenantAutonomyCap {
    */
   readonly slowdownAt: number;
   readonly hardStopAt: number;
+  /**
+   * H8 — IANA timezone name (e.g. `Africa/Nairobi`, `Africa/Dar_es_Salaam`,
+   * `Africa/Lagos`) used by the rolling-state adapter to compute the
+   * "today" boundary. Optional only for backwards compatibility; new
+   * tenants SHOULD specify it. UTC-naïve adapters reset counters at 3 AM
+   * local for UTC+3 tenants which breaks the documented cap contract.
+   * See JSDoc on cap-evaluator.ts for the full timezone contract.
+   */
+  readonly timezone?: string | undefined;
   readonly updatedAt: string;
   readonly updatedBy: string;
 }

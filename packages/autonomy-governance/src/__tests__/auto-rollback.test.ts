@@ -206,4 +206,81 @@ describe('executeAutoRollback', () => {
     expect(env.revertCalls).toHaveLength(1);
     expect(env.revertCalls[0]!.reason).toBe('critical drift');
   });
+
+  it('kill-and-rollback restores canary stage if revert throws (H9 saga)', async () => {
+    // Pre-fix: canaryStore.update(...,'shadow') then revertPort.revert()
+    // ran sequentially without a compensation. If revert threw, the
+    // sub-MD was stuck quarantined-by-canary but with the broken code
+    // still nominally deployed — no rollback. Fix: catch and restore.
+    const canaryUpdates: CanaryUpdate[] = [];
+    const canaryStore: CanaryStageStore = {
+      async update(subMd, tenantId, newStage) {
+        canaryUpdates.push({ subMd, tenantId, stage: newStage });
+      },
+    };
+    const revertPort: SubMdRevertPort = {
+      async revert() {
+        throw new Error('downstream revert API unavailable');
+      },
+    };
+    const deps: AutoRollbackDeps = {
+      canaryStore,
+      handoffQueue: { async enqueue() { /* no-op */ } },
+      revertPort,
+      now: () => new Date('2026-05-18T00:00:00Z'),
+      newId: () => 'id-x',
+    };
+    const verdict: SloMonitorVerdict = Object.freeze({
+      subMd: baseSlo.subMd,
+      metric: baseSlo.metric,
+      breached: true,
+      nextStage: 'shadow',
+      action: 'kill-and-rollback',
+      reason: 'critical drift',
+    });
+    await expect(
+      executeAutoRollback({ slo: baseSlo, verdict }, deps),
+    ).rejects.toThrow(/revert/);
+    // The canary stage saw TWO writes: first to 'shadow', then the
+    // compensating restore back to baseSlo.canaryStage ('canary-25pct').
+    expect(canaryUpdates).toHaveLength(2);
+    expect(canaryUpdates[0]!.stage).toBe('shadow');
+    expect(canaryUpdates[1]!.stage).toBe(baseSlo.canaryStage);
+  });
+
+  it('kill-and-rollback surfaces both errors when compensating restore also fails (H9 saga)', async () => {
+    let firstCall = true;
+    const canaryStore: CanaryStageStore = {
+      async update() {
+        if (firstCall) {
+          firstCall = false;
+          return; // first write to 'shadow' succeeds
+        }
+        throw new Error('canary store io error');
+      },
+    };
+    const revertPort: SubMdRevertPort = {
+      async revert() {
+        throw new Error('revert blew up');
+      },
+    };
+    const deps: AutoRollbackDeps = {
+      canaryStore,
+      handoffQueue: { async enqueue() { /* no-op */ } },
+      revertPort,
+      now: () => new Date('2026-05-18T00:00:00Z'),
+      newId: () => 'id-x',
+    };
+    const verdict: SloMonitorVerdict = Object.freeze({
+      subMd: baseSlo.subMd,
+      metric: baseSlo.metric,
+      breached: true,
+      nextStage: 'shadow',
+      action: 'kill-and-rollback',
+      reason: 'critical drift',
+    });
+    await expect(
+      executeAutoRollback({ slo: baseSlo, verdict }, deps),
+    ).rejects.toThrow(/inconsistent state/i);
+  });
 });

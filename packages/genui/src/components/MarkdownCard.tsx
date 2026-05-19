@@ -29,11 +29,39 @@ const SEVERITY_CLASS: Record<string, string> = {
   danger: 'border-l-4 border-l-red-500',
 };
 
+/**
+ * CRITICAL (C3) — escape every character that has special meaning in an
+ * HTML attribute context, not just `& < >`. The link renderer below
+ * injects the LLM-emitted href into `<a ... href="..."> </a>`, which is
+ * an attribute context: a `"` inside the href closes the attribute and
+ * lets an attacker open a fresh `onmouseover=` etc. The single-quote is
+ * included for symmetry — some renderers / future code may use single
+ * quotes around attributes. Maps:
+ *   `&`  → `&amp;`
+ *   `<`  → `&lt;`
+ *   `>`  → `&gt;`
+ *   `"`  → `&quot;`
+ *   `'`  → `&#39;`
+ *
+ * NOTE: we deliberately do NOT escape `/`. The link's prefix-check regex
+ * (`/^(https?:\/\/|\/|#)/`) is applied to the post-escape href; escaping
+ * `/` would break that check for legitimate URLs (`https://...` would
+ * become `https:&#x2F;&#x2F;...` and fail the prefix). Forward-slash is
+ * not an attribute-context escape vector — it only matters in
+ * `</script>` breakouts, which don't apply inside `dangerouslySetInnerHTML`
+ * (the surrounding context is HTML, not JS).
+ *
+ * Regression test in `__tests__/markdown-card.xss.test.tsx` asserts that
+ * a malicious markdown link with `"` in the URL cannot break out of the
+ * href attribute. Keep these two in lock-step.
+ */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function renderInline(line: string, citationIds: ReadonlySet<string>): string {
