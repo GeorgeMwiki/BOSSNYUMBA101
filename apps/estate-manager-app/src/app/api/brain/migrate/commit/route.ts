@@ -1,4 +1,3 @@
-// @ts-nocheck — domain-models / brain migrate type drift; tracked
 /**
  * POST /api/brain/migrate/commit
  *

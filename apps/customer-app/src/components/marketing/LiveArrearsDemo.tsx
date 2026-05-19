@@ -16,12 +16,15 @@ interface Step {
   readonly kind: 'thinking' | 'action' | 'decision';
 }
 
+// Marketing demo — neutral phrasing so the same script reads cleanly
+// in every market. No hardcoded currency code or amount; the assistant
+// works in whatever the operator's tenancy configures.
 const SCRIPT: readonly Step[] = [
-  { t: 0, kind: 'thinking', line: 'Opening case: Tenant in Unit 7 — 45 days late. Outstanding: TZS 740,000.' },
+  { t: 0, kind: 'thinking', line: 'Opening case: Tenant in Unit 7 — 45 days late. Outstanding balance flagged.' },
   { t: 900, kind: 'thinking', line: 'Tenant 5P score history: 11 of the last 12 months on time. Single incident.' },
   { t: 1800, kind: 'decision', line: 'Because 45 days is beyond the reminder-only window, I draft a payment plan proposal.' },
-  { t: 2700, kind: 'action', line: 'Plan: split into 2 payments — TZS 370,000 on the 1st, TZS 370,000 on the 15th.' },
-  { t: 3500, kind: 'thinking', line: 'Drafting WhatsApp message in Swahili — calm, no pressure, one-tap accept link.' },
+  { t: 2700, kind: 'action', line: 'Plan: split into 2 payments — half on the 1st, half on the 15th.' },
+  { t: 3500, kind: 'thinking', line: 'Drafting WhatsApp message in the tenant’s preferred language — calm, no pressure, one-tap accept link.' },
   { t: 4400, kind: 'action', line: 'Ready for your approval. Your edit history tells me you prefer a softer tone on long-term tenants.' },
   { t: 5200, kind: 'decision', line: 'Awaiting your approve button. If you approve, it dispatches immediately.' },
 ];

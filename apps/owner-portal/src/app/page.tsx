@@ -26,7 +26,10 @@ export default function OwnerPortalHome() {
               <CardDescription>{t('monthlyIncomeDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">KES 0</p>
+              {/* Currency code is rendered from tenant settings on the live
+                  dashboard. The landing card is intentionally a neutral
+                  zero placeholder — no hardcoded jurisdiction currency. */}
+              <p className="text-2xl font-bold">—</p>
               <p className="text-sm text-muted-foreground">{t('collected')}</p>
             </CardContent>
           </Card>

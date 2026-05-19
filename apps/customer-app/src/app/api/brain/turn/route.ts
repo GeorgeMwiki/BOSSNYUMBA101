@@ -1,4 +1,3 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
 /**
  * POST /api/brain/turn — customer-app tenant assistant route.
  *
