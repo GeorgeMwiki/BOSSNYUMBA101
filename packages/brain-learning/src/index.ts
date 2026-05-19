@@ -50,3 +50,17 @@ export type {
   MLRedactor,
   CanaryChecker,
 } from './trace-logger/index.js';
+
+// 2. owner-reaction-capture
+export {
+  captureReaction,
+  validateFeedbackPayload,
+  isPositiveReaction,
+  isNegativeReaction,
+} from './owner-reaction-capture/index.js';
+export type {
+  CaptureReactionInput,
+  CaptureReactionOutcome,
+  FeedbackEventStore,
+  OwnerReactionPorts,
+} from './owner-reaction-capture/index.js';
