@@ -15,8 +15,34 @@ import type { AuthContext } from './auth.middleware';
 import {
   getCountryPlugin,
   DEFAULT_COUNTRY_ID,
+  UnknownJurisdictionError,
   type CountryPlugin,
 } from '@bossnyumba/compliance-plugins';
+
+/**
+ * Resolve a country plugin for the request path. Wraps `getCountryPlugin`
+ * with the deliberate request-path safety net: when the tenant row carries
+ * a missing / unknown country code (e.g. a pre-migration row, or a typo
+ * caught upstream), we fall back to DEFAULT_COUNTRY_ID rather than
+ * 500-ing the request. The plugin itself fails closed on typos — this
+ * wrapper only catches the well-known `UnknownJurisdictionError` it
+ * raises so the request continues with the documented TZ default.
+ *
+ * Round-3 C6 introduced the throw; this wrapper preserves the behaviour
+ * documented above the call site (and verified by integration tests).
+ */
+function resolveCountryPluginForRequest(
+  countryCode: string | null | undefined
+): CountryPlugin {
+  try {
+    return getCountryPlugin(countryCode);
+  } catch (error) {
+    if (error instanceof UnknownJurisdictionError) {
+      return getCountryPlugin(DEFAULT_COUNTRY_ID);
+    }
+    throw error;
+  }
+}
 
 // ============================================================================
 // Types
@@ -392,7 +418,7 @@ export const tenantContextMiddleware = createMiddleware(async (c, next) => {
   // has not migrated to countryCode yet — a one-shot warning is logged
   // by the plugin registry so operators can catch the drift.
   const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
-  const countryPlugin = getCountryPlugin(resolvedCountry || null);
+  const countryPlugin = resolveCountryPluginForRequest(resolvedCountry || null);
 
   // Set tenant context
   const tenantContext: TenantContext = {
@@ -428,7 +454,7 @@ export const optionalTenantContextMiddleware = createMiddleware(async (c, next) 
 
     if (config && isTenantActive(config)) {
       const resolvedCountry = (config.countryCode ?? '').trim().toUpperCase();
-      const countryPlugin = getCountryPlugin(resolvedCountry || null);
+      const countryPlugin = resolveCountryPluginForRequest(resolvedCountry || null);
 
       c.set('tenant', {
         id: config.id,
