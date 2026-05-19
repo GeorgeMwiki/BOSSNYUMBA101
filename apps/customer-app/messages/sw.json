@@ -726,7 +726,9 @@
     "needPaymentPlan": "Unahitaji mpango wa malipo?",
     "splitBalance": "Gawanya salio lako kuwa awamu rahisi",
     "continueTo": "Endelea kwa {method}",
-    "selectMethodPrompt": "Chagua njia ya malipo"
+    "selectMethodPrompt": "Chagua njia ya malipo",
+    "missingAmount": "Hakuna kiasi cha malipo kilichotajwa. Tafadhali chagua ankara au mpango kutoka kwenye dashibodi yako ya malipo.",
+    "backToPayments": "Rudi kwenye malipo"
   },
   "profileEdit": {
     "title": "Hariri Wasifu",

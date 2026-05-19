@@ -726,7 +726,9 @@
     "needPaymentPlan": "Need a payment plan?",
     "splitBalance": "Split your balance into manageable installments",
     "continueTo": "Continue to {method}",
-    "selectMethodPrompt": "Select a payment method"
+    "selectMethodPrompt": "Select a payment method",
+    "missingAmount": "No payment amount specified. Please choose an invoice or plan from your payments dashboard.",
+    "backToPayments": "Back to payments"
   },
   "profileEdit": {
     "title": "Edit Profile",

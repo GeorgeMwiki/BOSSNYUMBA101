@@ -8,10 +8,10 @@
  * friendly hint to the operator.
  *
  * The actual upstream HTTP call is left as a TODO. Until a real
- * Zillow endpoint integration lands, callers can supply a custom
- * `fetch` impl that honours the `X-MOCK-MARKET-DATA: zillow` header
- * to deliver a deterministic, typed mock — useful for tests and for
- * local demos that need plausible numbers without API credentials.
+ * Zillow endpoint integration lands, tests inject deterministic
+ * responses via the `fetch` config option — no per-request mock-data
+ * header is honoured by the production adapter (AM-4 removed the
+ * dead `X-MOCK-MARKET-DATA` symbol).
  *
  * Caching:
  *   - `cacheKey` is sha256(provider | normalised query JSON).
@@ -39,7 +39,10 @@ import type {
 
 const PROVIDER = 'zillow';
 const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-const MOCK_HEADER = 'X-MOCK-MARKET-DATA';
+// AM-4: removed `MOCK_HEADER = 'X-MOCK-MARKET-DATA'` — the const and its
+// dead `ZILLOW_MOCK_HEADER` re-export were never read at runtime nor by
+// any test. Tests inject deterministic fetch via the `fetch` config
+// option (see `ZillowMarketDataAdapterConfig.fetch`).
 
 // ─────────────────────────────────────────────────────────────────────
 // Shape we expect from the (TODO) Zillow endpoint. Documented here so
@@ -370,6 +373,5 @@ async function tryCachePut(
   }
 }
 
-// Re-export the mock header for tests that wire it through a custom
-// fetch impl. Keeps the symbol stable across versions.
-export { MOCK_HEADER as ZILLOW_MOCK_HEADER };
+// AM-4: removed `export { MOCK_HEADER as ZILLOW_MOCK_HEADER }` — dead
+// symbol with no callers in test or production code.

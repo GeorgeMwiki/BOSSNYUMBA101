@@ -1,9 +1,10 @@
 import type { Payment } from '@/lib/payment-types';
 
-export const CURRENT_BALANCE = 0;
-export const CARD_PAYMENT_ENABLED = false;
-
-export const MOCK_PAYMENTS: Payment[] = [];
+// AM-4: removed `CURRENT_BALANCE = 0` (silent zero fallback) and
+// `MOCK_PAYMENTS = []` (dead-code mock array). Callers must now obtain
+// the live balance from the payments API or surface an explicit empty
+// state. `CARD_PAYMENT_ENABLED` was a literal `false` constant referenced
+// nowhere — also removed. See AM-4 hardcoded-fallback-purge.
 
 export const DATE_RANGE_OPTIONS = [
   { label: 'All time', value: 'all' },

@@ -14,7 +14,6 @@ import {
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { CURRENT_BALANCE } from '@/lib/payments-data';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
 
 type PaymentMethod = 'mpesa' | 'bank' | 'card';
@@ -68,13 +67,35 @@ function PayPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const amountParam = searchParams.get('amount');
-  const amount = amountParam ? parseInt(amountParam, 10) : CURRENT_BALANCE;
+  // AM-4: previously fell back to a literal `CURRENT_BALANCE = 0`. The
+  // pay page now requires an explicit ?amount=… query — when missing
+  // the customer is bounced back to the payments dashboard where they
+  // can pick a real invoice. Zero-amount payments are never valid.
+  const parsedAmount = amountParam ? parseInt(amountParam, 10) : NaN;
+  const amount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : null;
 
   const { code: currencyCode, format: formatCurrency } = useCurrencyPreference();
 
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [showAmountInput, setShowAmountInput] = useState(false);
+
+  // When the ?amount query is missing or invalid, fail-closed: show an
+  // empty-state nudge back to the dashboard instead of silently
+  // defaulting to 0.
+  if (amount === null) {
+    return (
+      <>
+        <PageHeader title={t('title')} showBack />
+        <div className="px-4 py-6 space-y-4">
+          <p className="text-sm text-gray-600">{t('missingAmount')}</p>
+          <Link href="/payments" className="btn-primary inline-block">
+            {t('backToPayments')}
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   const paymentAmount = customAmount ?? amount;
 

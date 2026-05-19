@@ -29,13 +29,15 @@ export type {
   VacancyTrendArgs,
   MarketDataCacheServiceShape,
 } from './port.js';
+// AM-4: dropped `ZILLOW_MOCK_HEADER` / `AIRBNB_MOCK_HEADER` re-exports —
+// the underlying constants were dead and the re-exports had no callers
+// in any test or production module. Tests inject deterministic fetch via
+// `Z/AirbnbMarketDataAdapterConfig.fetch` instead.
 export {
   createZillowMarketDataAdapter,
-  ZILLOW_MOCK_HEADER,
   type ZillowMarketDataAdapterConfig,
 } from './adapters/zillow.js';
 export {
   createAirbnbMarketDataAdapter,
-  AIRBNB_MOCK_HEADER,
   type AirbnbMarketDataAdapterConfig,
 } from './adapters/airbnb.js';

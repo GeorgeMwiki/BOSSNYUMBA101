@@ -28,7 +28,8 @@ import type {
 
 const PROVIDER = 'airbnb';
 const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-const MOCK_HEADER = 'X-MOCK-MARKET-DATA';
+// AM-4: removed `MOCK_HEADER = 'X-MOCK-MARKET-DATA'` — dead symbol; see
+// zillow.ts for full rationale.
 
 // ─────────────────────────────────────────────────────────────────────
 // Shape we expect from the (TODO) Airbnb partner endpoint. This mirrors
@@ -354,4 +355,5 @@ async function tryCachePut(
   }
 }
 
-export { MOCK_HEADER as AIRBNB_MOCK_HEADER };
+// AM-4: removed `export { MOCK_HEADER as AIRBNB_MOCK_HEADER }` — dead
+// symbol with no callers in test or production code.
