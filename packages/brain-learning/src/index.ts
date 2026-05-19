@@ -147,3 +147,23 @@ export type {
   SkillRecord,
   SkillEvaluationInput,
 } from './skill-curation/index.js';
+
+// 7. knowledge-graph-growth
+export {
+  runKGGrowthCycle,
+  decayConfidence,
+  resolveKGConflict,
+  defaultGrowthConfig,
+  EDGE_HALF_LIFE_DAYS,
+  ORPHAN_NODE_ARCHIVE_DAYS,
+  DEFAULT_PER_TENANT_NODE_CEILING,
+} from './knowledge-graph-growth/index.js';
+export type {
+  KGGrowthPorts,
+  TemporalKGPort,
+  KGObservationCandidate,
+  KGEdgeForDecay,
+  KGNodeForArchive,
+  KGGrowthConfig,
+  KGObservation,
+} from './knowledge-graph-growth/index.js';
