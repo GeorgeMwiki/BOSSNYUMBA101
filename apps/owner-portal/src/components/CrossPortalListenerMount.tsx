@@ -96,14 +96,22 @@ export function CrossPortalListenerMount(): null {
         baseUrl: GATEWAY_BASE_URL,
         onEvent: dispatch,
         onError: (err) => {
+          // L-8: escalate to `console.error` so the global Sentry
+          // BrowserTracing handler picks the entry up — `console.warn`
+          // was being silently de-prioritised.
           // eslint-disable-next-line no-console
-          console.warn('cross-portal-listener (owner) error:', err);
+          console.error('[cross-portal-listener] owner stream error', {
+            err: err instanceof Error ? err.message : String(err),
+          });
         },
       });
       handleRef.current = handle;
     } catch (err) {
+      // L-8: same — `error` level so observability picks it up.
       // eslint-disable-next-line no-console
-      console.warn('cross-portal-listener (owner) failed to start:', err);
+      console.error('[cross-portal-listener] owner failed to start', {
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
     return (): void => {
       try {

@@ -278,8 +278,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         // Network failure: keep the client-side switch (so the UI is
         // still usable in offline / dev) but surface a soft warning.
+        // L-8: the global Sentry handlers installed in
+        // `installGlobalSentryHandlers()` capture unhandled rejections.
+        // We additionally tag this fallback with a known message so
+        // dashboards can alert on a sustained spike (= gateway
+        // outage in the wild). The `console.error` level (not warn)
+        // ensures the message is not silently de-prioritised by the
+        // logger.
         // eslint-disable-next-line no-console
-        console.warn('setActiveOrg: gateway unreachable, falling back to client-side switch', err);
+        console.error('[auth] setActiveOrg: gateway unreachable, falling back to client-side switch', {
+          err: err instanceof Error ? err.message : String(err),
+          orgId,
+        });
       }
 
       const next: CustomerUser = { ...user, activeOrgId: orgId };

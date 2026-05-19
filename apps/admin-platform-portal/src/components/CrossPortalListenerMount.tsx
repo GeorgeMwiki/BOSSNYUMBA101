@@ -144,14 +144,22 @@ export function CrossPortalListenerMount(): null {
         baseUrl: GATEWAY_BASE_URL,
         onEvent: dispatch,
         onError: (err) => {
+          // L-8: escalate to `console.error` so the global Sentry
+          // handler installed in observability boot ingests the
+          // event — `console.warn` was silently swallowed.
           // eslint-disable-next-line no-console
-          console.warn('cross-portal-listener (admin) error:', err);
+          console.error('[cross-portal-listener] admin stream error', {
+            err: err instanceof Error ? err.message : String(err),
+          });
         },
       });
       handleRef.current = handle;
     } catch (err) {
+      // L-8: see note above — error level for observability ingestion.
       // eslint-disable-next-line no-console
-      console.warn('cross-portal-listener (admin) failed to start:', err);
+      console.error('[cross-portal-listener] admin failed to start', {
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
     return (): void => {
       try {
