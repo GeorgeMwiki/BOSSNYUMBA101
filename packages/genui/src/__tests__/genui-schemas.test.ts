@@ -451,8 +451,8 @@ describe('client schemas — file-preview', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('genui PART_SCHEMAS surface', () => {
-  it('covers exactly 35 primitive kinds (10 original + 12 ProdFix-7 + 13 Phase E.7)', () => {
-    expect(Object.keys(PART_SCHEMAS)).toHaveLength(35);
+  it('covers exactly 36 primitive kinds (10 original + 12 ProdFix-7 + 13 Phase E.7 + 1 Phase K-B)', () => {
+    expect(Object.keys(PART_SCHEMAS)).toHaveLength(36);
   });
 
   it('covers every primitive the brain can emit', () => {
@@ -494,6 +494,8 @@ describe('genui PART_SCHEMAS surface', () => {
       'decision-trace',
       'code-block',
       'dataflow-diagram',
+      // Phase K-B
+      'receipt-card',
     ];
     for (const k of expected) {
       expect(PART_SCHEMAS[k as keyof typeof PART_SCHEMAS]).toBeDefined();

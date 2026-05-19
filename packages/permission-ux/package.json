@@ -1,0 +1,46 @@
+{
+  "name": "@bossnyumba/permission-ux",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase K-B — permission UX substrate: auto-mode classifier, AskUserQuestion tool, canUseTool callback + PermissionUpdate persistence, Action Receipts with rollback, Safe-Mode fallback. Closes R1 #3/#5/#6 + R2 #1/#14.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "permission",
+    "auto-mode",
+    "ask-user-question",
+    "action-receipt",
+    "rollback",
+    "safe-mode",
+    "klarna-defense",
+    "claude-code-parity"
+  ],
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

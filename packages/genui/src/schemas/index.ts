@@ -912,6 +912,57 @@ export const DataflowDiagramPartSchema = z
   })
   .strict();
 
+// ═════════════════════════════════════════════════════════════════════
+// Phase K-B — receipt-card kind (R2 #1 Action Receipts with Rollback)
+// ═════════════════════════════════════════════════════════════════════
+
+// ── 36. receipt-card ──────────────────────────────────────────────────
+// Renders the outcome of an AI-initiated mutation tool call. Carries
+// "Undo" affordance + provenance + impact summary. Server-side canonical
+// shape lives in `@bossnyumba/permission-ux` (action-receipts/);
+// duplicated here so the client can validate the wire payload at the
+// render boundary (belt-and-suspenders, matching every other kind).
+
+export const ReceiptCardAffectedEntitySchema = z
+  .object({
+    entityType: z.string().min(1).max(120),
+    entityId: z.string().min(1).max(200),
+    label: z.string().max(200).optional(),
+  })
+  .strict();
+
+export const ReceiptCardArgsSummarySchema = z
+  .object({
+    headline: z.string().min(1).max(200),
+    fields: z
+      .record(z.union([z.string().max(500), z.number(), z.boolean()]))
+      .optional(),
+  })
+  .strict();
+
+export const ReceiptCardPartSchema = z
+  .object({
+    kind: z.literal('receipt-card'),
+    title: z.string().max(200).optional(),
+    receiptId: z.string().min(1).max(200),
+    actionId: z.string().min(1).max(200),
+    toolName: z.string().min(1).max(200),
+    tier: z.enum(['read', 'mutate', 'destroy', 'billing', 'external-comm']),
+    tenantId: z.string().min(1).max(200),
+    executedBy: z.string().min(1).max(200),
+    executedAt: Iso8601Schema,
+    status: z.enum(['applied', 'rolled-back']),
+    argsSummary: ReceiptCardArgsSummarySchema,
+    affectedEntities: z.array(ReceiptCardAffectedEntitySchema).max(500),
+    references: z.array(z.string().min(1).max(2000)).max(50),
+    rollbackEnabled: z.boolean(),
+    rollbackWindowMinutes: z.number().int().min(0).max(60_000),
+    rollbackExpiresAt: Iso8601Schema.optional(),
+    rolledBackAt: Iso8601Schema.optional(),
+    rolledBackBy: z.string().max(200).optional(),
+  })
+  .strict();
+
 export const PART_SCHEMAS = {
   'chart-vega': ChartVegaPartSchema,
   'data-table': DataTablePartSchema,
@@ -951,6 +1002,8 @@ export const PART_SCHEMAS = {
   'decision-trace': DecisionTracePartSchema,
   'code-block': CodeBlockPartSchema,
   'dataflow-diagram': DataflowDiagramPartSchema,
+  // Phase K-B — Action Receipts with Rollback
+  'receipt-card': ReceiptCardPartSchema,
 } as const;
 
 export type PartKind = keyof typeof PART_SCHEMAS;
