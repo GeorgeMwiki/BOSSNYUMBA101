@@ -21,7 +21,7 @@
  * additive and doesn't change the request/response shapes.
  */
 
-// @ts-nocheck — Hono context types are open-ended by design in this project.
+// @ts-nocheck FIXME(am3): — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';

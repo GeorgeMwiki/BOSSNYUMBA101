@@ -1,4 +1,4 @@
-// @ts-nocheck — domain-models has PaymentMethod/WorkOrder exported as namespaces not types + missing Priority/Status type exports. Rewrite pending domain-models namespace→type refactor. Tracked: BOSSNYUMBA-42.
+// @ts-nocheck FIXME(am3): — domain-models has PaymentMethod/WorkOrder exported as namespaces not types + missing Priority/Status type exports. Rewrite pending domain-models namespace→type refactor. Tracked: BOSSNYUMBA-42.
 /**
  * SLA Management Service
  */

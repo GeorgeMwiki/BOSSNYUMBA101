@@ -1,4 +1,4 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
+// @ts-nocheck FIXME(am3): — shared Brain types / Payments response drift; tracked
 'use client';
 
 import { Receipt } from 'lucide-react';

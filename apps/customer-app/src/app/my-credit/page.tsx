@@ -1,4 +1,4 @@
-// @ts-nocheck — shared Brain types / customer-app API drift; tracked.
+// @ts-nocheck FIXME(am3): — shared Brain types / customer-app API drift; tracked.
 /**
  * /my-credit — tenant-facing credit rating self-service.
  *

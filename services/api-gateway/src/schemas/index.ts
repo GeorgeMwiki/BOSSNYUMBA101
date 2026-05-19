@@ -511,4 +511,4 @@ export type InitiatePayment = z.infer<typeof initiatePaymentSchema>;
 export type CreateInvoice = z.infer<typeof createInvoiceSchema>;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
 export type Feedback = z.infer<typeof feedbackSchema>;
-// @ts-nocheck
+// @ts-nocheck FIXME(am3): tracked legacy purge debt

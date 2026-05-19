@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 status-code literal union widens c.json branches.
+// @ts-nocheck FIXME(am3): — Hono v4 status-code literal union widens c.json branches.
 
 /**
  * Jarvis router factory — every BossNyumba user (tenant resident,

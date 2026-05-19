@@ -1,4 +1,4 @@
-// @ts-nocheck — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
+// @ts-nocheck FIXME(am3): — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
 /**
  * Monthly-close orchestrator router — Wave 28 Phase A Agent PhA2.
  *

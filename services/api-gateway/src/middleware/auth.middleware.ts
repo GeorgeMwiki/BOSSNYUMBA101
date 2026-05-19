@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
+// @ts-nocheck FIXME(am3): — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union. Tracked at hono-dev/hono#3891.
 /**
  * JWT Authentication Middleware - BOSSNYUMBA
  *
@@ -528,4 +528,4 @@ declare module 'hono' {
 }
 
 export type { UserRole };
-// @ts-nocheck
+// @ts-nocheck FIXME(am3): orphan trailing directive — redundant with file-header pragma; removable when the header pragma resolves.

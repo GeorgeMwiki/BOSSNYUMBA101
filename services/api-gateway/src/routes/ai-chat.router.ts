@@ -21,7 +21,7 @@
  *   event: turn_end\ndata: {...}\n\n
  */
 
-// @ts-nocheck
+// @ts-nocheck FIXME(am3): tracked legacy purge debt
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';

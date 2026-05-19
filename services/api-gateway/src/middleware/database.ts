@@ -1,4 +1,4 @@
-// @ts-nocheck — Two TypeScript library-interaction issues gated here:
+// @ts-nocheck FIXME(am3): — Two TypeScript library-interaction issues gated here:
 // (1) TS2709 namespace-vs-type for every `{Name}Repository` pulled through
 //     the `@bossnyumba/database` package barrel (`export *` chain widens
 //     the symbol space). Fix would require `InstanceType<typeof X>` on all

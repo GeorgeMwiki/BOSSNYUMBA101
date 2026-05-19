@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union.
+// @ts-nocheck FIXME(am3): — Hono v4 MiddlewareHandler status-code literal union: multiple c.json({...}, status) branches widen return type and TypedResponse overload rejects the union.
 /**
  * Tenant Credit Rating Router.
  *

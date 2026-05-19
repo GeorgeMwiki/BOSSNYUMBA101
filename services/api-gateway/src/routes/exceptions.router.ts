@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 MiddlewareHandler status-code literal widening.
+// @ts-nocheck FIXME(am3): — Hono v4 MiddlewareHandler status-code literal widening.
 /**
  * Exception Inbox Router — Wave-13.
  *

@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 status-code literal union widening; same pattern as
+// @ts-nocheck FIXME(am3): — Hono v4 status-code literal union widening; same pattern as
 // other .hono routers in this directory.
 /**
  * Cases router — live-data implementation for the tenant/maintenance case

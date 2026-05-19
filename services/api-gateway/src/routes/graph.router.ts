@@ -1,4 +1,4 @@
-// @ts-nocheck — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
+// @ts-nocheck FIXME(am3): — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
 /**
  * Graph query + relationship-explorer router — Canonical Property Graph
  * (CPG) HTTP surface. Authenticated, tenant-scoped, read-only.

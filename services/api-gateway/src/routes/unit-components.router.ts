@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 status-code literal-union widening.
+// @ts-nocheck FIXME(am3): — Hono v4 status-code literal-union widening.
 /**
  * Unit Components Router — estate-manager-app dependency.
  *

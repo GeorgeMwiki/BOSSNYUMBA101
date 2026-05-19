@@ -1,4 +1,4 @@
-// @ts-nocheck — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
+// @ts-nocheck FIXME(am3): — hono v4 ContextVariableMap drift; tracked in Docs/TYPE_DEBT.md
 /**
  * Task-Agents router — Phase B Wave 30.
  *

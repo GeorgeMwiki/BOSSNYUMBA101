@@ -1,4 +1,4 @@
-// @ts-nocheck — import-assertion syntax replaced in TS 5.3+; drizzle 0.36 pgEnum narrowing in demo seed. Tracked.
+// @ts-nocheck FIXME(am3): — import-assertion syntax replaced in TS 5.3+; drizzle 0.36 pgEnum narrowing in demo seed. Tracked.
 /**
  * Demo Estate Corporation Seed
  *

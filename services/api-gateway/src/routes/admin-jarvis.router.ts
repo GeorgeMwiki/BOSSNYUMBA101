@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck FIXME(am3): tracked legacy purge debt
 
 /**
  * /api/v1/admin/jarvis — agency CEO/admin's personal Jarvis.

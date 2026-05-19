@@ -21,7 +21,7 @@
  * all other errors are redacted via `safeInternalError`.
  */
 
-// @ts-nocheck — Hono v4 status-code literal union widening; see other routers.
+// @ts-nocheck FIXME(am3): — Hono v4 status-code literal union widening; see other routers.
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';

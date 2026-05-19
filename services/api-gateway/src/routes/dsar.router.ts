@@ -30,7 +30,7 @@
  * picks it up.
  */
 
-// @ts-nocheck — Hono v4 ContextVariableMap drift (same pattern as
+// @ts-nocheck FIXME(am3): — Hono v4 ContextVariableMap drift (same pattern as
 // head-briefing / tenant-branding routers).
 
 import { Hono } from 'hono';

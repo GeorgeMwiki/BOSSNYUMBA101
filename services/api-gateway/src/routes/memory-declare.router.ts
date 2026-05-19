@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 status-code literal union widens c.json branches.
+// @ts-nocheck FIXME(am3): — Hono v4 status-code literal union widens c.json branches.
 
 /**
  * Declared-facts producer — POST /api/v1/memory/declare.

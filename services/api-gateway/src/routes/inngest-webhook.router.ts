@@ -36,7 +36,7 @@
  * only needs to protect against bursts of the same event.
  */
 
-// @ts-nocheck — Hono v4 status-literal-union widens c.json branches;
+// @ts-nocheck FIXME(am3): — Hono v4 status-literal-union widens c.json branches;
 // same convention as the cross-portal-subscribe router.
 
 import { Hono } from 'hono';

@@ -1,4 +1,4 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
+// @ts-nocheck FIXME(am3): — shared Brain types / Payments response drift; tracked
 'use client';
 
 import Link from 'next/link';

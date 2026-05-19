@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 status-literal-union widens c.json() return; matches
+// @ts-nocheck FIXME(am3): — Hono v4 status-literal-union widens c.json() return; matches
 // the convention used by audit-trail.router.ts and admin-jarvis.router.ts.
 
 /**

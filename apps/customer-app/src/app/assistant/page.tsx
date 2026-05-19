@@ -1,4 +1,4 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
+// @ts-nocheck FIXME(am3): @bossnyumba/design-system missing built .d.ts (CI build artifact); PageHeader prop mismatch (showBack not in PageHeaderProps). Resolve by building design-system + extending PageHeaderProps.
 'use client';
 
 /**

@@ -1,4 +1,4 @@
-// @ts-nocheck — Hono v4 streamSSE return type and status-literal-union
+// @ts-nocheck FIXME(am3): — Hono v4 streamSSE return type and status-literal-union
 // widen c.json branches. Same convention as jarvis-router-factory.ts.
 
 /**
