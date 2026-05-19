@@ -118,6 +118,22 @@ export {
 } from './audit-logger.js';
 
 // ============================================================================
+// Audit - Route-level Security Events
+// ============================================================================
+
+export type {
+  AuditableContext,
+  AuditableNext,
+  WithSecurityEventsOptions,
+} from './security/with-security-events.js';
+
+export {
+  withSecurityEvents,
+  securityEventsMiddleware,
+  recordSecurityEvent,
+} from './security/with-security-events.js';
+
+// ============================================================================
 // Event Bus
 // ============================================================================
 

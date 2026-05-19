@@ -2,8 +2,17 @@
  * Tool 2/2 — nggis.search_property
  */
 
+import { z } from 'zod';
 import type { NggisTool, ToolDeps } from '../types.js';
 import { NggisAdapterError } from '../types.js';
+
+const SearchPropertyInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  stateCode: z.string().regex(/^[A-Z]{2}$/, 'stateCode must be 2 uppercase letters'),
+  // Free-text search; cap length to bound payload size.
+  query: z.string().min(1).max(500),
+  limit: z.number().int().min(1).max(100).optional(),
+}).strict();
 
 export interface SearchPropertyInput {
   readonly tenantId: string;
@@ -69,13 +78,15 @@ export const searchPropertyTool: NggisTool<SearchPropertyOutput> = Object.freeze
     required: ['matches'],
   },
   async execute(rawInput: unknown, deps: ToolDeps): Promise<SearchPropertyOutput> {
-    const input = rawInput as SearchPropertyInput;
-    if (!input?.tenantId || !input?.stateCode || !input?.query) {
+    // CRITICAL-4: validate via Zod before reaching the adapter.
+    const parsed = SearchPropertyInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
       throw new NggisAdapterError(
-        'search_property requires tenantId, stateCode, query',
+        `search_property input validation failed at '${path}'`,
         'INVALID_INPUT',
       );
     }
-    return deps.nggis.searchProperty(input);
+    return deps.nggis.searchProperty(parsed.data);
   },
 });

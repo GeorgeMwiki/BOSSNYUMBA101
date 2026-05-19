@@ -298,6 +298,28 @@ export async function detectRecurringGap(
 // proposeNewSubMd
 // ─────────────────────────────────────────────────────────────────────
 
+// C4 — riskTier ordering used to clamp an LLM-drafted spec to the
+// diagnosis tier. The LLM may only request a tier <= the diagnosis tier;
+// any attempt to widen the tier is silently clamped down to the
+// diagnosis tier. Promotion is exclusively an owner decision via
+// `OwnerApprovalDecision.editedSpec`.
+const RISK_TIER_ORDER: Readonly<Record<SubMdSpec['riskTier'], number>> = Object.freeze({
+  read: 0,
+  mutate: 1,
+  'external-comm': 2,
+});
+
+function clampRiskTier(
+  llmRequested: SubMdSpec['riskTier'] | undefined,
+  diagnosisCeiling: SubMdSpec['riskTier'],
+): SubMdSpec['riskTier'] {
+  if (!llmRequested) return diagnosisCeiling;
+  const requested = RISK_TIER_ORDER[llmRequested];
+  const ceiling = RISK_TIER_ORDER[diagnosisCeiling];
+  if (requested === undefined || ceiling === undefined) return diagnosisCeiling;
+  return requested <= ceiling ? llmRequested : diagnosisCeiling;
+}
+
 export async function proposeNewSubMd(
   diagnosis: RecurringGapDiagnosis,
   deps: SelfExtensionDeps,
@@ -322,9 +344,9 @@ export async function proposeNewSubMd(
     diagnosis,
     spec: Object.freeze({
       ...spec,
-      // Always enforce the safe-default tier unless the LLM explicitly
-      // matches the diagnosis tier.
-      riskTier: spec.riskTier ?? diagnosis.riskTier,
+      // C4 — Clamp the LLM-requested riskTier to the diagnosis ceiling.
+      // The LLM cannot widen the tier; only owner edits can promote.
+      riskTier: clampRiskTier(spec.riskTier, diagnosis.riskTier),
       schemaVersion: spec.schemaVersion ?? 1,
     }),
     draftedAtMs: clock(),
@@ -339,10 +361,33 @@ export async function proposeNewSubMd(
 // ─────────────────────────────────────────────────────────────────────
 
 /**
+ * C4 — Allow-list of destructive HQ-tier tools that an LLM-drafted
+ * proposal MUST NOT include unless the owner has explicitly promoted
+ * the spec via `editedSpec`. The registry will throw before deployment
+ * when the LLM's `toolBelt` contains any of these without owner edit.
+ *
+ * Conservative seed list — production composition can extend via the
+ * `destructiveToolBlocklist` option on `compileAndDeploySubMd`.
+ */
+const DEFAULT_DESTRUCTIVE_TOOL_BLOCKLIST: ReadonlyArray<string> = Object.freeze([
+  'platform.evict_tenant',
+  'platform.delete_tenant',
+  'platform.suspend_tenant',
+  'platform.purge_data',
+  'platform.transfer_funds',
+  'platform.disburse_funds',
+]);
+
+/**
  * Registers the approved proposal as a live sub-MD. Writes a sovereign-
  * action-ledger entry so an external audit can reconstruct the moment
  * the MD's catalogue grew. The owner-approval port is expected to have
  * gated this call.
+ *
+ * C4 — When the caller provides the `OwnerApprovalDecision.editedSpec`,
+ * the deployed spec is the owner-edited version, NOT the LLM's draft.
+ * The function also rejects deployment when the spec's `toolBelt`
+ * contains a destructive HQ tool without explicit owner promotion.
  */
 export async function compileAndDeploySubMd(
   approvedProposal: SubMdProposal,
@@ -350,24 +395,72 @@ export async function compileAndDeploySubMd(
   args: {
     readonly approvers: ReadonlyArray<string>;
     readonly proposerActor: string;
+    /**
+     * C4 — Owner-edited spec from `OwnerApprovalDecision.editedSpec`.
+     * When present, this REPLACES the LLM's draft. Risk-tier promotion
+     * (e.g. `read` → `external-comm`) is only possible via this path.
+     */
+    readonly editedSpec?: SubMdSpec;
+    /**
+     * C4 — Override / extend the default destructive tool blocklist.
+     * The caller's list FULLY REPLACES the default; use `[]` to disable
+     * the check (NOT recommended).
+     */
+    readonly destructiveToolBlocklist?: ReadonlyArray<string>;
   } = { approvers: [], proposerActor: 'self-extension-keystone' },
 ): Promise<DeploymentReceipt> {
   const clock = deps.clock ?? Date.now;
+
+  // C4 — Prefer the owner-edited spec when present. Fall back to the
+  // proposal's spec only on an unedited approval.
+  const baseSpec: SubMdSpec = args.editedSpec ?? approvedProposal.spec;
+
+  // C4 — Destructive HQ-tool gate. Even an owner-edited spec must not
+  // smuggle destructive tools through without explicit acknowledgement.
+  // The owner promotes by removing the tool from the spec OR by passing
+  // an empty blocklist. Either path is a deliberate operator action.
+  const blocklist =
+    args.destructiveToolBlocklist ?? DEFAULT_DESTRUCTIVE_TOOL_BLOCKLIST;
+  if (blocklist.length > 0) {
+    const denied = baseSpec.toolBelt.filter((tool) =>
+      blocklist.includes(tool),
+    );
+    if (denied.length > 0) {
+      throw new Error(
+        `compileAndDeploySubMd: spec contains destructive HQ tools that require explicit owner promotion: ${denied.join(', ')}`,
+      );
+    }
+  }
+
+  // C4 — Re-clamp the deployed riskTier so an owner can ONLY promote
+  // via `editedSpec`. If the deployed spec is the LLM's draft, the tier
+  // is clamped to the proposal's already-clamped value (a no-op when
+  // proposeNewSubMd ran first, defensive when the proposal was built
+  // by another path).
+  const deployedSpec: SubMdSpec = Object.freeze({
+    ...baseSpec,
+    riskTier: args.editedSpec
+      ? baseSpec.riskTier
+      : clampRiskTier(baseSpec.riskTier, approvedProposal.diagnosis.riskTier),
+  });
+
   const receipt = await deps.subMdRegistry.register({
-    name: approvedProposal.spec.name,
-    spec: approvedProposal.spec,
+    name: deployedSpec.name,
+    spec: deployedSpec,
   });
 
   let ledgerEntryId: string | null = null;
   if (deps.ledger) {
     const result = (await deps.ledger.appendLedgerEntry({
-      tenantId: approvedProposal.spec.scope.tenantId,
+      tenantId: deployedSpec.scope.tenantId,
       actionType: 'sub-md.deployed.by.self-extension',
       payloadJson: {
         proposalId: approvedProposal.proposalId,
         subMdId: receipt.subMdId,
         registryVersion: receipt.version,
-        spec: approvedProposal.spec,
+        spec: deployedSpec,
+        originalSpec: approvedProposal.spec,
+        ownerEdited: args.editedSpec !== undefined,
         diagnosis: approvedProposal.diagnosis,
         dailyCostCeilingUsdCents: approvedProposal.dailyCostCeilingUsdCents,
       },

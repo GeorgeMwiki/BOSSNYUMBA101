@@ -17,9 +17,35 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 import { PROCESS_INTEL_TOOLS, findProcessIntelTool } from './tools/index.js';
 import { Pm4pyClient, type Pm4pyClientConfig } from './pm4py-client.js';
 import type { ProcessIntelTool, ToolDeps } from './types.js';
+
+// CRITICAL-4 + CRITICAL-5 (audit .audit/post-pr90-api-mcp-bug-sweep.md):
+//   - C4: every tool must Zod-validate its input BEFORE execution. We
+//     enforce a minimal `{tenantId: string}` shape at the dispatcher
+//     level so even tools that don't carry their own schema cannot run
+//     with an unset/non-string tenantId.
+//   - C5: process-intel had NO tenant allowlist guard. Without it, any
+//     stdio caller can query any tenant's event log. We mirror the
+//     allowlist pattern of the other four MCP servers.
+const BaseInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+}).passthrough();
+
+const ALLOWLIST_ENV_VAR = 'MCP_TENANT_ALLOWLIST';
+function readEnvAllowlist(key: string): ReadonlyArray<string> | null {
+  const raw = process.env[ALLOWLIST_ENV_VAR];
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, ReadonlyArray<string>>;
+    const list = parsed?.[key];
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Server config
@@ -31,6 +57,15 @@ export interface ProcessIntelServerConfig {
   readonly pm4py?: Pm4pyClientConfig;
   /** Inject a pre-built client (tests use this to swap in a mock). */
   readonly pm4pyClient?: Pm4pyClient;
+  /**
+   * CRITICAL-5: per-tenant allowlist. When set, only listed tenants
+   * may invoke any tool. When unset, falls back to env
+   * `MCP_TENANT_ALLOWLIST['process_intel']`. When BOTH are unset:
+   *   - non-production (`NODE_ENV !== 'production'`) → bypass (so dev
+   *     and test flows keep working)
+   *   - production → deny all (fail closed)
+   */
+  readonly allowlist?: ReadonlyArray<string>;
 }
 
 const DEFAULT_NAME = 'bossnyumba-mcp-process-intel';
@@ -71,9 +106,12 @@ export function createProcessIntelServer(
     })),
   }));
 
+  const allowlist: ReadonlyArray<string> | null =
+    config.allowlist ?? readEnvAllowlist('process_intel') ?? null;
+
   // tools/call — dispatch to the matching tool, route through pm4py sidecar
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: args, _meta } = request.params;
     const tool = findProcessIntelTool(name);
     if (!tool) {
       return {
@@ -86,6 +124,62 @@ export function createProcessIntelServer(
         ],
       };
     }
+
+    // CRITICAL-4: enforce a minimal Zod shape on every call. Tool
+    // implementations may add stricter per-tool validation, but the
+    // dispatcher refuses anything without a non-empty string tenantId.
+    const parsed = BaseInputSchema.safeParse(args ?? {});
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `process_intel: input validation failed at '${path}'`,
+          },
+        ],
+      };
+    }
+
+    // CRITICAL-5: enforce per-tenant allowlist (mirrors the four other
+    // MCP servers). Resolves tenantId from args first (Zod-validated
+    // above), then from `_meta.tenantId` for transports that inject
+    // verified context out-of-band.
+    const metaTenantId =
+      (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const tenantId =
+      typeof parsed.data.tenantId === 'string' && parsed.data.tenantId
+        ? parsed.data.tenantId
+        : typeof metaTenantId === 'string'
+          ? metaTenantId
+          : '';
+    if (!tenantId) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'process_intel: missing tenantId — required in args.tenantId or request._meta.tenantId',
+          },
+        ],
+      };
+    }
+    const allowlistResolved =
+      allowlist ??
+      (process.env.NODE_ENV === 'production' ? ([] as ReadonlyArray<string>) : null);
+    if (allowlistResolved && !allowlistResolved.includes(tenantId)) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `process_intel: tenant '${tenantId}' is not in the per-tenant allowlist`,
+          },
+        ],
+      };
+    }
+
     try {
       const result = await tool.execute((args ?? {}) as never, deps);
       return {

@@ -22,13 +22,13 @@
  *                                 (base32) secret to users.mfa_secret and
  *                                 sets users.mfa_enabled=true.
  *
- * SECURITY NOTE: The CRITICAL #1 finding (audit
- * .audit/post-pr90-api-mcp-bug-sweep.md) was that the old /verify schema
- * required `secret` from the request body and the old /challenge schema
- * required body-supplied userId/tenantId/role. That allowed any
- * authenticated low-privilege caller to mint a SUPER_ADMIN token for any
- * tenant by crafting a challenge for the target identity and verifying it
- * with an attacker-chosen secret + matching TOTP. The fix:
+ * SECURITY NOTE (CRITICAL-1 — audit .audit/post-pr90-api-mcp-bug-sweep.md):
+ * The OLD /verify schema required `secret` from the request body and the
+ * OLD /challenge schema required body-supplied userId/tenantId/role. That
+ * allowed any authenticated low-privilege caller to mint a SUPER_ADMIN
+ * token for any tenant by crafting a challenge for the target identity
+ * and verifying it with an attacker-chosen secret + matching TOTP. The
+ * fix:
  *   - /challenge now strips identity from the schema and reads userId,
  *     tenantId, role from c.get('auth').
  *   - /verify never accepts secret. The TOTP secret comes from the
@@ -195,7 +195,7 @@ async function persistMfaSecret(
 /**
  * /challenge issues an MFA challenge for the CALLER. There is no body
  * payload that identifies the user — the user is the holder of the
- * primary-factor token. This closes CRITICAL #1: an attacker can no
+ * primary-factor token. This closes CRITICAL-1: an attacker can no
  * longer name an arbitrary target identity in the body.
  */
 app.post('/challenge', authMiddleware, async (c) => {

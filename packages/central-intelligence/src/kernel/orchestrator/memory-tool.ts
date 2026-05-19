@@ -210,18 +210,73 @@ export function safeMemoryPath(threadId: string, raw: string): string {
 // In-memory MemoryTool — test fixture + early composition.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * H7 — Bounds on the in-memory adapter so a long-running thread cannot
+ * accumulate unbounded `/memories` scratch storage. Production adapters
+ * (S3, Postgres-jsonb) MUST enforce a similar cap.
+ */
+export interface InMemoryMemoryToolBounds {
+  /** Maximum total entries across all threads (LRU eviction). Default 1000. */
+  readonly maxEntries?: number;
+  /** Optional TTL in ms; entries older than this are evicted on access. */
+  readonly entryTtlMs?: number;
+  /** Optional counter sink — called with the current store size after every write. */
+  readonly onSizeChange?: (size: number) => void;
+}
+
+const DEFAULT_MAX_ENTRIES = 1000;
+
 export function createInMemoryMemoryTool(
   clock: () => Date = () => new Date(),
+  bounds: InMemoryMemoryToolBounds = {},
 ): MemoryTool {
+  // Map keeps insertion order. We exploit that for an LRU: every write
+  // (re-)inserts the key at the end, and eviction takes the oldest.
   const store = new Map<string, MemoryEntry>();
+  const maxEntries = bounds.maxEntries ?? DEFAULT_MAX_ENTRIES;
+  const ttlMs = bounds.entryTtlMs;
+  const onSizeChange = bounds.onSizeChange;
 
   function threadIdOfScope(scope: ScopeContext): string {
     return scope.kind === 'platform' ? '_platform' : scope.tenantId;
   }
 
+  /**
+   * H7 — Centralised LRU touch. After any write that creates or
+   * updates a key, we delete-then-set so the key moves to the tail of
+   * the insertion order, AND evict from the head if size exceeds the
+   * cap.
+   */
+  function touchAndEnforceLru(key: string, entry: MemoryEntry): void {
+    store.delete(key);
+    store.set(key, entry);
+    while (store.size > maxEntries) {
+      const oldest = store.keys().next();
+      if (oldest.done) break;
+      store.delete(oldest.value);
+    }
+    onSizeChange?.(store.size);
+  }
+
+  /**
+   * H7 — TTL sweep on access. Cheap O(n) but bounded by maxEntries; we
+   * only call this when ttlMs is configured.
+   */
+  function expireIfTtl(): void {
+    if (!ttlMs) return;
+    const nowMs = clock().getTime();
+    for (const [key, entry] of store) {
+      const entryMs = Date.parse(entry.updatedAt);
+      if (Number.isFinite(entryMs) && nowMs - entryMs > ttlMs) {
+        store.delete(key);
+      }
+    }
+  }
+
   async function recall(
     args: MemoryRecallArgs,
   ): Promise<MemoryRecallResult> {
+    expireIfTtl();
     const threadId = threadIdOfScope(args.scope);
     const prefix = safeMemoryPath(threadId, args.prefix ?? '');
     const entries: MemoryEntry[] = [];
@@ -273,7 +328,7 @@ export function createInMemoryMemoryTool(
       content,
       updatedAt: clock().toISOString(),
     };
-    store.set(full, entry);
+    touchAndEnforceLru(full, entry);
     return entry;
   }
 
@@ -316,7 +371,7 @@ export function createInMemoryMemoryTool(
         existing.content.slice(firstIdx + old_str.length),
       updatedAt: clock().toISOString(),
     };
-    store.set(full, updated);
+    touchAndEnforceLru(full, updated);
     return updated;
   }
 
@@ -349,7 +404,7 @@ export function createInMemoryMemoryTool(
       content: next.join('\n'),
       updatedAt: clock().toISOString(),
     };
-    store.set(full, updated);
+    touchAndEnforceLru(full, updated);
     return updated;
   }
 
@@ -400,7 +455,7 @@ export function createInMemoryMemoryTool(
       updatedAt: clock().toISOString(),
     };
     store.delete(src);
-    store.set(dst, next);
+    touchAndEnforceLru(dst, next);
     return next;
   }
 
@@ -425,7 +480,7 @@ export function createInMemoryMemoryTool(
       content,
       updatedAt: clock().toISOString(),
     };
-    store.set(full, entry);
+    touchAndEnforceLru(full, entry);
     return entry;
   }
 

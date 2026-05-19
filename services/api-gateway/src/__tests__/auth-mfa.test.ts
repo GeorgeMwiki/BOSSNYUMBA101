@@ -44,10 +44,9 @@ describe('MFA Zod schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects payloads that include a secret (closes CRITICAL-1)', () => {
-      // The new schema is strict: the secret is never accepted from
-      // the client. We assert by checking the parsed output does not
-      // expose any "secret" field, regardless of what was passed.
+    it('the parsed data never exposes a client-supplied secret', () => {
+      // Even if a client tries to inject `secret`, the parsed shape
+      // does not include it — the handler can only see {challengeId, code}.
       const result = VerifySchema.safeParse({
         challengeId: 'ch_1',
         code: '123456',

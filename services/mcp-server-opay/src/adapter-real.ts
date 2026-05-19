@@ -122,13 +122,29 @@ export class OpayRealAdapter implements OpayAdapter {
     }
   }
 
-  private hmacSignature(body: string): string {
-    return createHmac('sha512', this.credentials.privateKey).update(body, 'utf8').digest('hex');
+  // HIGH-5 (audit .audit/post-pr90-api-mcp-bug-sweep.md):
+  //
+  //  1. The old GET helper signed `hmac(path)` only — any captured
+  //     signature could be replayed forever.
+  //  2. The old POST signed `hmac(body)` only — same body re-submittable.
+  //  3. Error messages echoed back the upstream response body, leaking
+  //     OPay error details (occasionally including merchant credentials)
+  //     into our logs.
+  //
+  // Fix:
+  //  - Sign `${timestamp}.${path}` for GET and `${timestamp}.${body}`
+  //    for POST.
+  //  - Emit `X-OPay-Timestamp` so the receiver can enforce a window.
+  //  - Strip the upstream body from thrown error messages — only path +
+  //    status survive.
+  private hmacSignature(payload: string): string {
+    return createHmac('sha512', this.credentials.privateKey).update(payload, 'utf8').digest('hex');
   }
 
   private async post<R>(path: string, body: unknown): Promise<R> {
     const serialised = JSON.stringify(body);
-    const signature = this.hmacSignature(serialised);
+    const timestamp = String(Date.now());
+    const signature = this.hmacSignature(`${timestamp}.${serialised}`);
     const controller = new AbortController();
     const handle = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -140,6 +156,7 @@ export class OpayRealAdapter implements OpayAdapter {
           Authorization: `Bearer ${this.credentials.publicKey}`,
           MerchantId: this.credentials.merchantId,
           Signature: signature,
+          'X-OPay-Timestamp': timestamp,
         },
         body: serialised,
         signal: controller.signal,
@@ -147,7 +164,8 @@ export class OpayRealAdapter implements OpayAdapter {
       const text = await res.text();
       const parsed = text.length > 0 ? (JSON.parse(text) as R) : (null as unknown as R);
       if (!res.ok) {
-        throw new Error(`opay ${path} status=${res.status} body=${text.slice(0, 200)}`);
+        // HIGH-5: NEVER echo upstream body. status + path only.
+        throw new Error(`opay ${path} status=${res.status}`);
       }
       return parsed;
     } finally {
@@ -156,7 +174,8 @@ export class OpayRealAdapter implements OpayAdapter {
   }
 
   private async get<R>(path: string): Promise<R> {
-    const signature = this.hmacSignature(path);
+    const timestamp = String(Date.now());
+    const signature = this.hmacSignature(`${timestamp}.${path}`);
     const controller = new AbortController();
     const handle = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -167,13 +186,15 @@ export class OpayRealAdapter implements OpayAdapter {
           Authorization: `Bearer ${this.credentials.publicKey}`,
           MerchantId: this.credentials.merchantId,
           Signature: signature,
+          'X-OPay-Timestamp': timestamp,
         },
         signal: controller.signal,
       });
       const text = await res.text();
       const parsed = text.length > 0 ? (JSON.parse(text) as R) : (null as unknown as R);
       if (!res.ok) {
-        throw new Error(`opay ${path} status=${res.status} body=${text.slice(0, 200)}`);
+        // HIGH-5: status + path only; never echo upstream body.
+        throw new Error(`opay ${path} status=${res.status}`);
       }
       return parsed;
     } finally {

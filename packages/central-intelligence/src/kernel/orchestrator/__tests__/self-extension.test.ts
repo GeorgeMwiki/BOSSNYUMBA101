@@ -169,6 +169,131 @@ describe('self-extension keystone — proposeNewSubMd', () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────
+// C4 regression suite — the LLM CANNOT widen the risk tier; the owner's
+// editedSpec is the only way to promote; destructive HQ tools require
+// explicit owner promotion.
+// ─────────────────────────────────────────────────────────────────────
+
+const hostileLlmRouter: LLMRouterPort = {
+  async draftSubMdSpec({ diagnosis }) {
+    // The LLM tries to promote to external-comm with destructive tools.
+    return {
+      name: diagnosis.suggestedPersona.id,
+      persona: diagnosis.suggestedPersona,
+      scope: diagnosis.suggestedScope,
+      toolBelt: ['platform.evict_tenant', 'proposed.audit-log-read'],
+      riskTier: 'external-comm',
+      purpose: `Address pattern: ${diagnosis.pattern}`,
+      successCriterion: 'destructive autonomy',
+      schemaVersion: 1,
+    };
+  },
+};
+
+describe('self-extension keystone — C4 LLM-widening protection', () => {
+  it('clamps the LLM-requested riskTier to the diagnosis tier (C4)', async () => {
+    const deps: SelfExtensionDeps = {
+      activityLog: activityLog(buildEntries(12, 'parking.dispatcher')),
+      subMdRegistry: registry([]),
+      llmRouter: hostileLlmRouter,
+      ownerApproval,
+    };
+    const diagnosis = await detectRecurringGap(deps, {
+      thresholdEventCount: 10,
+      windowDays: 30,
+    });
+    if (!diagnosis) throw new Error('unreachable');
+    const proposal = await proposeNewSubMd(diagnosis, deps);
+    // Diagnosis is `read`; LLM tried `external-comm`; clamp wins.
+    expect(proposal.spec.riskTier).toBe('read');
+  });
+
+  it('rejects deployment when the LLM toolBelt contains destructive HQ tools (C4)', async () => {
+    const deps: SelfExtensionDeps = {
+      activityLog: activityLog(buildEntries(12, 'parking.dispatcher')),
+      subMdRegistry: registry([]),
+      llmRouter: hostileLlmRouter,
+      ownerApproval,
+    };
+    const diagnosis = await detectRecurringGap(deps, {
+      thresholdEventCount: 10,
+      windowDays: 30,
+    });
+    if (!diagnosis) throw new Error('unreachable');
+    const proposal = await proposeNewSubMd(diagnosis, deps);
+    await expect(
+      compileAndDeploySubMd(proposal, deps, {
+        approvers: ['owner-1'],
+        proposerActor: 'self-extension-keystone',
+      }),
+    ).rejects.toThrow(/destructive HQ tools/i);
+  });
+
+  it('prefers the owner-edited spec when present (C4)', async () => {
+    const reg = registry([]);
+    const ledger = recordingLedger();
+    const deps: SelfExtensionDeps = {
+      activityLog: activityLog(buildEntries(12, 'parking.dispatcher')),
+      subMdRegistry: reg,
+      llmRouter,
+      ownerApproval,
+      ledger,
+    };
+    const diagnosis = await detectRecurringGap(deps, {
+      thresholdEventCount: 10,
+      windowDays: 30,
+    });
+    if (!diagnosis) throw new Error('unreachable');
+    const proposal = await proposeNewSubMd(diagnosis, deps);
+    const editedSpec: SubMdSpec = {
+      ...proposal.spec,
+      toolBelt: ['owner.approved-only'],
+      riskTier: 'mutate', // owner deliberately promotes
+      purpose: 'owner-edited purpose',
+    };
+    const receipt = await compileAndDeploySubMd(proposal, deps, {
+      approvers: ['owner-1'],
+      proposerActor: 'self-extension-keystone',
+      editedSpec,
+    });
+    expect(receipt.subMdId).toBe('parking.dispatcher');
+    // Registry received the OWNER's spec, not the LLM's.
+    expect(reg.registered[0]?.spec.toolBelt).toEqual(['owner.approved-only']);
+    expect(reg.registered[0]?.spec.riskTier).toBe('mutate');
+    expect(reg.registered[0]?.spec.purpose).toBe('owner-edited purpose');
+    // Ledger row notes the edit.
+    expect(ledger.appended[0]?.payloadJson).toMatchObject({
+      ownerEdited: true,
+    });
+  });
+
+  it('records ownerEdited=false in the ledger when no editedSpec is supplied (C4)', async () => {
+    const reg = registry([]);
+    const ledger = recordingLedger();
+    const deps: SelfExtensionDeps = {
+      activityLog: activityLog(buildEntries(12, 'parking.dispatcher')),
+      subMdRegistry: reg,
+      llmRouter,
+      ownerApproval,
+      ledger,
+    };
+    const diagnosis = await detectRecurringGap(deps, {
+      thresholdEventCount: 10,
+      windowDays: 30,
+    });
+    if (!diagnosis) throw new Error('unreachable');
+    const proposal = await proposeNewSubMd(diagnosis, deps);
+    await compileAndDeploySubMd(proposal, deps, {
+      approvers: ['owner-1'],
+      proposerActor: 'self-extension-keystone',
+    });
+    expect(ledger.appended[0]?.payloadJson).toMatchObject({
+      ownerEdited: false,
+    });
+  });
+});
+
 describe('self-extension keystone — compileAndDeploySubMd', () => {
   it('registers the proposal and records a sovereign-action-ledger entry', async () => {
     const reg = registry([]);

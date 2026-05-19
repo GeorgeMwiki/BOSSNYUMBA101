@@ -10,8 +10,26 @@
  * trails to the platform's central immutable ledger.
  */
 
+import { z } from 'zod';
 import type { NinTool, ToolDeps } from '../types.js';
 import { NinAdapterError } from '../types.js';
+
+// CRITICAL-4 fix (audit .audit/post-pr90-api-mcp-bug-sweep.md):
+// The MCP JSON-schema fragment is documentation only and is not
+// enforced by the SDK. We .parse() this Zod schema at the top of
+// execute() so malformed input is rejected BEFORE the adapter call.
+// Strict mode (`.strict()`) rejects unknown properties to close the
+// mass-assignment vector. Error messages are scrubbed (raw input never
+// echoed back).
+const VerifyNinInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  // NIMC NINs are exactly 11 digits.
+  nin: z.string().regex(/^\d{11}$/, 'nin must be exactly 11 digits'),
+  biometricHash: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'biometricHash must be a 64-char hex SHA-256')
+    .optional(),
+}).strict();
 
 export interface VerifyNinInput {
   readonly tenantId: string;
@@ -57,13 +75,18 @@ export const verifyNinTool: NinTool<VerifyNinOutput> = Object.freeze({
     required: ['verified', 'referenceId', 'matchScore'],
   },
   async execute(rawInput: unknown, deps: ToolDeps): Promise<VerifyNinOutput> {
-    const input = rawInput as VerifyNinInput;
-    if (!input?.tenantId || !input?.nin) {
+    const parsed = VerifyNinInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      // Bounded error — never echo raw input. The first issue's path is
+      // enough for the caller to fix their request without leaking
+      // anything sensitive into adapter / upstream logs.
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
       throw new NinAdapterError(
-        'verify_nin requires tenantId and nin',
+        `verify_nin input validation failed at '${path}'`,
         'INVALID_INPUT',
       );
     }
+    const input = parsed.data;
     const result = await deps.nin.verifyNin({
       tenantId: input.tenantId,
       nin: input.nin,

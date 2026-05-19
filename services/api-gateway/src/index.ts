@@ -259,6 +259,7 @@ import {
   gepgProbe,
 } from './health/deep-health';
 import { validateEnv } from './config/validate-env';
+import { securityEventsMiddleware } from '@bossnyumba/observability';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -591,6 +592,13 @@ api.use('*', createServiceContextMiddleware(serviceRegistry));
 // subscribers persist across requests.
 const behaviorObserver = createAmbientBehaviorObserver();
 api.use('*', createAmbientBrainMiddleware(behaviorObserver, logger));
+// Flaky-CI-closure — apply `securityEventsMiddleware` globally so every
+// mutating request (POST/PUT/DELETE/PATCH) auto-emits a structured
+// SecurityEvent row (SOC 2 CC7.2, GDPR Art. 30). Idempotent verbs are
+// passed through with zero overhead. The Security Route Coverage gate
+// at `.github/workflows/security-route-coverage.yml` detects this mount
+// and counts every router under `/api/v1/*` as wrapped.
+api.use('*', securityEventsMiddleware);
 api.route('/auth', authRouter);
 api.route('/auth/mfa', authMfaRouter);
 api.route('/tenants', tenantsRouter);
