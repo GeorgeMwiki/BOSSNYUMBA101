@@ -14,6 +14,7 @@ import type { Context } from 'hono';
 import jwt from 'jsonwebtoken';
 import type { UserRole } from '../types/user-role';
 import { resolveApiKeyLegacyOrRegistry } from './api-key-registry';
+import { tokenBlocklist } from './token-blocklist';
 
 // ============================================================================
 // Configuration
@@ -94,14 +95,34 @@ export function extractBearerToken(authHeader: string | undefined): string | nul
 }
 
 /**
- * Validate JWT access token
+ * Validate JWT access token.
+ *
+ * HIGH-11 (audit .audit/post-pr90-api-mcp-bug-sweep.md): the two
+ * gateway auth middlewares had divergent security properties.
+ * `hono-auth.ts` pinned algorithm HS256 and consulted the token
+ * blocklist; this file did neither. Routes mounting THIS flavor were
+ * vulnerable to (a) algorithm-confusion / alg=none attacks and
+ * (b) revoked-token reuse. The blocklist is the only thing that makes
+ * `/auth/logout` actually invalidate a token. Both checks added here.
  */
 export function validateAccessToken(token: string): TokenValidationResult {
   try {
     const payload = jwt.verify(token, JWT_ACCESS_SECRET, {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
-    }) as JWTPayload;
+      // HIGH-11: pin algorithm to prevent alg=none / RS256-vs-HS256.
+      algorithms: ['HS256'],
+    }) as JWTPayload & { jti?: string };
+
+    // HIGH-11: reject tokens that have been explicitly revoked
+    // (e.g. via /auth/logout). The blocklist is keyed by jti.
+    if (payload.jti && tokenBlocklist.isRevoked(payload.jti)) {
+      return {
+        valid: false,
+        expired: false,
+        error: 'Token has been revoked',
+      };
+    }
 
     return {
       valid: true,
