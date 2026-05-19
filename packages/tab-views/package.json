@@ -1,0 +1,71 @@
+{
+  "name": "@bossnyumba/tab-views",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase K-G — Universal in-chat tab rendering. TabView registry + renderTabInChat tool + interactivity protocol + view-preference customization. The bridge between J3 dynamic tabs and J9 chat-as-workspace: chat becomes the universal renderer; tabs are a navigation convenience.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js"
+    },
+    "./registry": {
+      "types": "./src/registry/index.ts",
+      "import": "./dist/registry/index.mjs",
+      "require": "./dist/registry/index.js"
+    },
+    "./render-tool": {
+      "types": "./src/render-tool/index.ts",
+      "import": "./dist/render-tool/index.mjs",
+      "require": "./dist/render-tool/index.js"
+    },
+    "./interactivity": {
+      "types": "./src/interactivity/index.ts",
+      "import": "./dist/interactivity/index.mjs",
+      "require": "./dist/interactivity/index.js"
+    },
+    "./customization": {
+      "types": "./src/customization/index.ts",
+      "import": "./dist/customization/index.mjs",
+      "require": "./dist/customization/index.js"
+    },
+    "./views": {
+      "types": "./src/views/index.ts",
+      "import": "./dist/views/index.mjs",
+      "require": "./dist/views/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
