@@ -10,13 +10,21 @@
  * This file is intentionally thin — the heavy lifting lives in each module.
  */
 
-import { runReflexionRound } from '../multi-agent-reflexion/run-reflexion.js';
-import { createSandbox } from '../worktree-sandbox/create-sandbox.js';
+import {
+  DEFAULT_CRITICS,
+  runReflexionRound,
+} from '../multi-agent-reflexion/run-reflexion.js';
+import { type CriticName } from '../multi-agent-reflexion/types.js';
+import {
+  createSandbox,
+  type CreateSandboxDeps,
+} from '../worktree-sandbox/create-sandbox.js';
 import { runExecutePhase, createWriteContext } from './execute-phase.js';
 import { createReadOnlyContext, runPlanPhase } from './plan-phase.js';
 import {
   type EditableSpec,
   type ExecutionResult,
+  type ReflectionFinding,
   type ReflectionResult,
   type SelfCodegenResult,
   type SelfCodegenTaskRequest,
@@ -36,7 +44,16 @@ export interface SelfCodegenAdapters {
   reviewer: (input: {
     diffSummary: string;
     modifiedFiles: readonly string[];
-  }) => Promise<ReflectionResult>;
+    critic?: CriticName;
+  }) => Promise<{
+    verdict: 'pass' | 'comments' | 'block';
+    findings: readonly {
+      severity: 'info' | 'warning' | 'error' | 'critical';
+      file?: string;
+      line?: number;
+      message: string;
+    }[];
+  }>;
   prOpener: (input: {
     branch: string;
     title: string;
@@ -59,6 +76,7 @@ export interface SelfCodegenAdapters {
 export async function runSelfCodegenTask(
   request: SelfCodegenTaskRequest,
   adapters: SelfCodegenAdapters,
+  sandboxDeps?: CreateSandboxDeps,
 ): Promise<SelfCodegenResult> {
   const budgetCents = request.budgetUsdCents ?? DEFAULT_BUDGET_USD_CENTS;
   const taskId = `task-${Date.now().toString(36)}`;
@@ -89,12 +107,15 @@ export async function runSelfCodegenTask(
   }
 
   // PHASE 2 — EXECUTE inside sandbox (worktree + optional Daytona)
-  const sandbox = await createSandbox({
-    taskId,
-    baseBranch: request.repo.baseBranch,
-    allowedGlobs: request.allowedGlobs,
-    useDaytona: request.useDaytona ?? false,
-  });
+  const sandbox = await createSandbox(
+    {
+      taskId,
+      baseBranch: request.repo.baseBranch,
+      allowedGlobs: request.allowedGlobs,
+      useDaytona: request.useDaytona ?? false,
+    },
+    sandboxDeps,
+  );
 
   try {
     const execCtx = createWriteContext({
@@ -120,14 +141,25 @@ export async function runSelfCodegenTask(
     }
 
     // PHASE 3 — REFLECT (3 critics, parallel)
-    reflection = await runReflexionRound({
+    const round = await runReflexionRound({
       draft: {
         diffSummary: execution.diffSummary,
         modifiedFiles: execution.modifiedFiles,
       },
-      critics: ['factual', 'senior-eng', 'security'],
+      critics: DEFAULT_CRITICS,
       reviewer: adapters.reviewer,
     });
+    const reflectionFindings: ReflectionFinding[] = round.findings.map((f) => ({
+      critic: f.critic,
+      severity: f.severity,
+      ...(f.file !== undefined ? { file: f.file } : {}),
+      ...(f.line !== undefined ? { line: f.line } : {}),
+      message: f.message,
+    }));
+    reflection = {
+      verdict: round.verdict,
+      findings: reflectionFindings,
+    };
 
     if (reflection.verdict === 'block') {
       return {

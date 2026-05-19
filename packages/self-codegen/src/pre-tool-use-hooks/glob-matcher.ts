@@ -9,12 +9,17 @@
 export function globToMatcher(glob: string): (path: string) => boolean {
   // Normalize leading ./ and trailing /
   const normalized = glob.replace(/^\.\//, '').replace(/\/+$/, '');
-  const escaped = normalized
+  // Special-case the `/**/` segment so `a/**/b.ts` matches BOTH `a/b.ts`
+  // AND `a/x/b.ts` — the standard "zero or more directories" semantics.
+  // We first rewrite `/**/` → `(?:/.*)?/` then handle remaining ** as `.*`.
+  let pattern = normalized
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\/\*\*\//g, '__SLASHDOUBLE__')
     .replace(/\*\*/g, '__DOUBLESTAR__')
     .replace(/\*/g, '[^/]*')
-    .replace(/__DOUBLESTAR__/g, '.*');
-  const re = new RegExp(`^${escaped}$`);
+    .replace(/__DOUBLESTAR__/g, '.*')
+    .replace(/__SLASHDOUBLE__/g, '(?:/.*)?/');
+  const re = new RegExp(`^${pattern}$`);
   return (p): boolean => re.test(normalizePath(p));
 }
 
