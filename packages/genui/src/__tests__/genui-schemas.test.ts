@@ -247,6 +247,7 @@ describe('client schemas — prefill-form', () => {
   });
   it('rejects javascript: / data: / file: schemes (C4)', () => {
     for (const action of [
+      // eslint-disable-next-line no-script-url -- intentional: XSS regression test asserts schema REJECTS dangerous schemes
       'javascript:alert(1)',
       'data:text/html,<script>x</script>',
       'file:///etc/passwd',
