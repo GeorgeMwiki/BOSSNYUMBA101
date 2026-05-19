@@ -463,10 +463,38 @@ export class EmergencyProtocolHandler {
       : '✅ Update received. Emergency team has been notified.';
     await this.whatsappClient.sendText({ to: session.phoneNumber, text: ackMsg });
 
-    // Forward update to emergency contacts
-    for (const contactInfo of ctx.escalatedTo || []) {
-      // In production, send to actual contacts
-      logger.info('Forwarding emergency update', { contactInfo, update });
+    // Forward update to emergency contacts via WhatsApp.
+    // Round-3 audit L2 — the previous implementation logged a stub
+    // line and silently no-op'd. That hid a real production gap: every
+    // tenant update during an active emergency was lost. The new
+    // behaviour ACTUALLY sends the update to each escalated contact
+    // via the WhatsApp client; if no contact is wired, an explicit
+    // warning surfaces in observability rather than the previous
+    // silent no-op.
+    const escalated = ctx.escalatedTo ?? [];
+    if (escalated.length === 0) {
+      logger.warn('emergency update — no escalation contacts wired', {
+        sessionId: session.id,
+        update,
+      });
+    } else {
+      for (const contactInfo of escalated) {
+        try {
+          const forwardBody = session.language === 'sw'
+            ? `⚠️ Mwendelezo wa dharura: ${update}`
+            : `⚠️ Emergency update: ${update}`;
+          await this.whatsappClient.sendText({
+            to: contactInfo,
+            text: forwardBody,
+          });
+          logger.info('Emergency update forwarded', { contactInfo });
+        } catch (err) {
+          logger.error('Emergency update forward failed', {
+            contactInfo,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
     }
   }
 

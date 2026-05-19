@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CountryPluginRegistry,
   DEFAULT_COUNTRY_ID,
+  UnknownJurisdictionError,
   __resetDefaultFallbackWarning,
   availableCountries,
   countryPluginRegistry,
@@ -29,31 +30,27 @@ describe('CountryPluginRegistry', () => {
     expect(codes.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('falls back to DEFAULT_COUNTRY_ID with a single warning for unknown codes', () => {
-    __resetDefaultFallbackWarning();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    try {
-      const first = getCountryPlugin('XX');
-      const second = getCountryPlugin('ZZ');
-      expect(first.countryCode).toBe(DEFAULT_COUNTRY_ID);
-      expect(second.countryCode).toBe(DEFAULT_COUNTRY_ID);
-      // Warn emitted at most once per process.
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0]?.[0]).toMatch(/DEFAULT_COUNTRY_ID/);
-    } finally {
-      warn.mockRestore();
-    }
+  it('Round-3 C6 fix: throws UnknownJurisdictionError for unknown codes (no silent TZ fallback)', () => {
+    // Round-3 audit C6 — the previous fallback-to-Tanzania behaviour
+    // turned every typo into a compliance violation. The new contract
+    // is fail-closed: callers that genuinely want a default must use
+    // `resolvePlugin(...)` from `./registry.js`.
+    expect(() => getCountryPlugin('XX')).toThrow(UnknownJurisdictionError);
+    expect(() => getCountryPlugin('ZZ')).toThrow(UnknownJurisdictionError);
   });
 
-  it('falls back to DEFAULT_COUNTRY_ID for null / undefined input', () => {
-    __resetDefaultFallbackWarning();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    try {
-      expect(getCountryPlugin(null).countryCode).toBe(DEFAULT_COUNTRY_ID);
-      expect(getCountryPlugin(undefined).countryCode).toBe(DEFAULT_COUNTRY_ID);
-    } finally {
-      warn.mockRestore();
-    }
+  it('Round-3 C6 fix: throws UnknownJurisdictionError for null / undefined input', () => {
+    expect(() => getCountryPlugin(null)).toThrow(UnknownJurisdictionError);
+    expect(() => getCountryPlugin(undefined)).toThrow(UnknownJurisdictionError);
+    expect(() => getCountryPlugin('')).toThrow(UnknownJurisdictionError);
+  });
+
+  it('DEFAULT_COUNTRY_ID is still exported for callers that explicitly opt into the legacy default', () => {
+    // The constant remains exported for the few sites that genuinely
+    // want the historical TZ default; they now must opt in by
+    // passing it explicitly to `getCountryPlugin(DEFAULT_COUNTRY_ID)`.
+    expect(DEFAULT_COUNTRY_ID).toBe('TZ');
+    expect(getCountryPlugin(DEFAULT_COUNTRY_ID).countryCode).toBe('TZ');
   });
 
   it('rejects a plugin with an invalid country code', () => {

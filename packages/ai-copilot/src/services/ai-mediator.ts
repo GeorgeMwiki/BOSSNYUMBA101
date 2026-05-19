@@ -13,16 +13,99 @@ import {
   ModelTier,
   type AnthropicClient,
 } from '../providers/anthropic-client.js';
+import { analyzeMessage as analyzePromptShield } from '../security/prompt-shield.js';
+import { scanOutput } from '../security/output-guard.js';
+
+/**
+ * Round-3 audit H11 / 8.4 fix — the `ai-mediator` previously had NO
+ * shield, NO canary, NO output-guard for any of its five surfaces
+ * (damage / negotiation / survey / risk / letter). User-supplied
+ * `priorTurns[].text` flowed verbatim into `JSON.stringify(input)`
+ * and on to the LLM with zero defence-in-depth. We now:
+ *
+ *   1. Run the prompt-shield over every tenant-controllable string
+ *      embedded in the input BEFORE generating the prompt.
+ *   2. Run the output-guard over every LLM-emitted string before
+ *      returning it to the caller.
+ *
+ * When the shield BLOCKS, we throw `AIMediatorBlockedError` instead
+ * of silently dropping to the deterministic stub (which would hide
+ * the attack from logs).
+ */
+export class AIMediatorBlockedError extends Error {
+  readonly code = 'AI_MEDIATOR_BLOCKED';
+  readonly variable: string;
+  readonly threat: string;
+  constructor(variable: string, threat: string) {
+    super(
+      `ai-mediator: prompt-shield blocked input "${variable}" — threat=${threat}.`
+    );
+    this.name = 'AIMediatorBlockedError';
+    this.variable = variable;
+    this.threat = threat;
+  }
+}
+
+function shieldString(name: string, value: string): string {
+  const result = analyzePromptShield(value);
+  if (result.blocked) {
+    throw new AIMediatorBlockedError(name, result.threat);
+  }
+  return result.sanitized || value;
+}
+
+function shieldNestedStrings(name: string, value: unknown): unknown {
+  if (typeof value === 'string') return shieldString(name, value);
+  if (Array.isArray(value)) {
+    return value.map((v, i) => shieldNestedStrings(`${name}[${i}]`, v));
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = shieldNestedStrings(`${name}.${k}`, v);
+    }
+    return out;
+  }
+  return value;
+}
+
+function guardOutputStrings<T>(value: T): T {
+  if (typeof value === 'string') {
+    return scanOutput(value).sanitized as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => guardOutputStrings(v)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = guardOutputStrings(v);
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
 
 function getClient(): AnthropicClient | null {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    // Round-3 audit 8.5 — emit an unambiguous log line so a
+    // production deployment running entirely on stubs is visible.
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[ai-mediator] ANTHROPIC_API_KEY not set — falling back to deterministic stubs. ' +
+        'This is operationally valid for dev but production should configure the key.'
+    );
+    return null;
+  }
   try {
     return createAnthropicClient({
       apiKey,
       defaultModel: ModelTier.SONNET,
     });
-  } catch {
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[ai-mediator] Anthropic client construction failed', e);
     return null;
   }
 }
@@ -69,7 +152,8 @@ export async function draftDamageMediatorTurn(
     };
   }
 
-  const prompt = JSON.stringify(input, null, 2);
+  const shielded = shieldNestedStrings('damageMediator.input', input) as DamageMediatorInput;
+  const prompt = JSON.stringify(shielded, null, 2);
   const result = await generateStructured(client, {
     prompt,
     schema: DamageMediatorTurnSchema,
@@ -77,7 +161,7 @@ export async function draftDamageMediatorTurn(
       'You are a neutral Harvard-trained property mediator. Propose a fair deduction based on evidence, prior turns, and the statutory floor/ceiling. Always return JSON matching the schema.',
     advisorGate: input.advisorGate ?? false,
   });
-  return result.data;
+  return guardOutputStrings(result.data);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -120,12 +204,13 @@ export async function draftNegotiationCounter(
     };
   }
 
+  const shielded = shieldNestedStrings('negotiation.input', input) as NegotiationCounterInput;
   const result = await generateStructured(client, {
-    prompt: JSON.stringify(input, null, 2),
+    prompt: JSON.stringify(shielded, null, 2),
     schema: NegotiationCounterSchema,
     systemPrompt: `You are a professional leasing broker with a ${input.toneGuide} tone. Propose a counter-offer strictly at or above ${input.lowerBoundMinor}. Never go below that number. Return JSON.`,
   });
-  return result.data;
+  return guardOutputStrings(result.data);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -175,14 +260,15 @@ export async function composeSurveyNarrative(input: {
     };
   }
 
+  const shielded = shieldNestedStrings('survey.input', input);
   const result = await generateStructured(client, {
-    prompt: JSON.stringify(input, null, 2),
+    prompt: JSON.stringify(shielded, null, 2),
     schema: SurveyNarrativeSchema,
     systemPrompt:
       'You are a Harvard-trained estate manager. Compose a conditional-survey report narrative with prioritized action plans. Compare to prior survey when provided. Return JSON.',
     advisorGate: input.criticalPresent,
   });
-  return result.data;
+  return guardOutputStrings(result.data);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -224,14 +310,15 @@ export async function composeRiskNarrative(input: {
     };
   }
 
+  const shielded = shieldNestedStrings('risk.input', input);
   const result = await generateStructured(client, {
-    prompt: JSON.stringify(input, null, 2),
+    prompt: JSON.stringify(shielded, null, 2),
     schema: RiskNarrativeSchema,
     systemPrompt:
       'You are a Harvard-trained credit analyst specializing in East African real estate. Compose a narrative risk report from the quantitative scores and qualitative summaries. Return JSON.',
     advisorGate: true,
   });
-  return result.data;
+  return guardOutputStrings(result.data);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -261,11 +348,12 @@ export async function draftTenantLetter(input: {
     };
   }
 
+  const shielded = shieldNestedStrings('letter.input', input);
   const result = await generateStructured(client, {
-    prompt: JSON.stringify(input, null, 2),
+    prompt: JSON.stringify(shielded, null, 2),
     schema: LetterDraftSchema,
     systemPrompt:
       'You draft professional real-estate administrative letters. Be formal, concise, factual. Cite lease dates when provided. Return JSON.',
   });
-  return result.data;
+  return guardOutputStrings(result.data);
 }

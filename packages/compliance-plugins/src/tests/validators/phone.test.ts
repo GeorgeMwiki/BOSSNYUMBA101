@@ -43,9 +43,12 @@ describe('validatePhone', () => {
     expect(r.e164).toBe('+493012345678');
   });
 
-  it('accepts unknown calling code as-is', () => {
+  it('Round-3 H20 fix: returns validation-unavailable for unknown calling code', () => {
+    // Pre-fix: returned `valid` with a never-deliverable E.164 string.
+    // Callers downstream burned SMS/WhatsApp provider credits on 400s.
+    // Post-fix: surfaces a typed status so callers retry with a hint.
     const r = validatePhone('+99912345678');
-    expect(r.status).toBe('valid');
-    expect(r.e164).toBe('+99912345678');
+    expect(r.status).toBe('validation-unavailable');
+    expect(r.e164).toBeUndefined();
   });
 });

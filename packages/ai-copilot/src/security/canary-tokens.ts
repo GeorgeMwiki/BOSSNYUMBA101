@@ -102,11 +102,20 @@ export function createCanaryManager(options: CanaryOptions = {}): CanaryManager 
     detectLeak(sessionId, response) {
       const config = cache.get(sessionId);
       if (!config) return { leaked: false, leakedTokens: [] };
-      const lower = response.toLowerCase();
-      const leakedTokens = config.tokens.filter(
-        (token) =>
-          response.includes(token) || lower.includes(token.toLowerCase()),
-      );
+      // Round-3 audit M10 — `String.prototype.toLowerCase()` is
+      // locale-dependent (Turkish 'İ' / 'I' folds inconsistently),
+      // which can cause a leak to be missed when the host process
+      // runs under tr_TR. Normalise to NFC and use `toLocaleLowerCase('en-US')`
+      // for an explicit, deterministic fold.
+      const normalisedResponse = response.normalize('NFC');
+      const folded = normalisedResponse.toLocaleLowerCase('en-US');
+      const leakedTokens = config.tokens.filter((token) => {
+        const normalisedToken = token.normalize('NFC');
+        return (
+          normalisedResponse.includes(normalisedToken) ||
+          folded.includes(normalisedToken.toLocaleLowerCase('en-US'))
+        );
+      });
       return { leaked: leakedTokens.length > 0, leakedTokens };
     },
     reset() {

@@ -163,6 +163,13 @@ export function createCostCircuitBreaker(
     },
 
     recordSuccess(tenantId) {
+      // Round-3 audit M9 — `allow` already rejects empty tenantId, but
+      // `recordSuccess` and `recordFailure` previously accepted any
+      // string (including ''). The empty-tenant row then accumulated
+      // forever as a global bookkeeping bucket. Reject the same way.
+      if (!tenantId) {
+        throw new Error('cost-circuit-breaker: tenantId required');
+      }
       const s = get(tenantId);
       s.consecutiveFailures = 0;
       s.lastSuccessAt = now();
@@ -173,6 +180,10 @@ export function createCostCircuitBreaker(
     },
 
     recordFailure(tenantId, _reason) {
+      // Round-3 audit M9 — see `recordSuccess` above. Same guard.
+      if (!tenantId) {
+        throw new Error('cost-circuit-breaker: tenantId required');
+      }
       const s = get(tenantId);
       s.consecutiveFailures += 1;
       s.lastFailureAt = now();
