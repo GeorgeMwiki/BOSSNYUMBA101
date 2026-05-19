@@ -7,6 +7,12 @@ import { useTranslations } from 'next-intl';
 import { leasesService } from '@bossnyumba/api-client';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { MoneyDisplay } from '@/components/MoneyDisplay';
+
+// M-8: tenant currency comes from env (per-tenant deploy). Previously
+// hardcoded KES which wrongly labelled rent for non-Kenya tenants.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
 
 export function LeasesList() {
   const t = useTranslations('lists');
@@ -57,7 +63,11 @@ export function LeasesList() {
               </div>
               <div className="text-right">
                 <div className="badge-info text-xs">{lease.status}</div>
-                <div className="mt-1 text-sm text-gray-500">KES {Number(lease.rentAmount).toLocaleString()}</div>
+                <MoneyDisplay
+                  amount={Number(lease.rentAmount)}
+                  currency={lease.currency || TENANT_CURRENCY}
+                  className="mt-1 text-sm text-gray-500 block"
+                />
               </div>
             </div>
           </Link>

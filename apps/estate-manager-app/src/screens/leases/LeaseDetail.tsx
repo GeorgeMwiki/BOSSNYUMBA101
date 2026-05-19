@@ -5,6 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { leasesService } from '@bossnyumba/api-client';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { MoneyDisplay } from '@/components/MoneyDisplay';
+
+// M-8: tenant currency from env (per-tenant deploy). Previously hardcoded KES.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
 
 interface LeaseDetailProps {
   leaseId: string;
@@ -38,7 +43,7 @@ export function LeaseDetail({ leaseId }: LeaseDetailProps) {
                 <div><div className="text-sm text-gray-500">{t('customer')}</div><div className="font-medium">{lease.customer?.name || lease.customerId}</div></div>
                 <div><div className="text-sm text-gray-500">{t('unit')}</div><div className="font-medium">{lease.unit?.unitNumber || lease.unitId}</div></div>
                 <div><div className="text-sm text-gray-500">{t('status')}</div><div className="font-medium">{lease.status}</div></div>
-                <div><div className="text-sm text-gray-500">{t('rent')}</div><div className="font-medium">KES {Number(lease.rentAmount).toLocaleString()}</div></div>
+                <div><div className="text-sm text-gray-500">{t('rent')}</div><div className="font-medium"><MoneyDisplay amount={Number(lease.rentAmount)} currency={lease.currency || TENANT_CURRENCY} /></div></div>
                 <div><div className="text-sm text-gray-500">{t('startDate')}</div><div className="font-medium">{new Date(lease.startDate).toLocaleDateString()}</div></div>
                 <div><div className="text-sm text-gray-500">{t('endDate')}</div><div className="font-medium">{new Date(lease.endDate).toLocaleDateString()}</div></div>
               </div>

@@ -22,6 +22,23 @@ interface ConfigSection {
   icon: React.ElementType;
 }
 
+/**
+ * M-9: tenant region config is sourced from `NEXT_PUBLIC_TENANT_*` envs
+ * (set per-deploy from the tenant's stored regionConfig). The previous
+ * code hardcoded `Africa/Nairobi` + `KES` which broke the "built for the
+ * world, starting with TZ" rule. The fallbacks below are UTC + USD —
+ * deliberately NOT Kenya-specific — so a misconfigured deploy is
+ * visibly wrong rather than silently mislabelling.
+ *
+ * The next iteration should read these from `useAuth().tenant.regionConfig`
+ * once that field is plumbed through `/auth/me` — tracked as a follow-up
+ * in the auth-context PR.
+ */
+const TENANT_TIMEZONE_DEFAULT =
+  process.env.NEXT_PUBLIC_TENANT_TIMEZONE?.trim() || 'UTC';
+const TENANT_CURRENCY_DEFAULT =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
+
 function buildConfigSections(t: (key: string) => string): ConfigSection[] {
   return [
     { id: 'general', name: t('sections.general.name'), description: t('sections.general.description'), icon: Globe },
@@ -62,8 +79,7 @@ export function ConfigurationPage() {
                 {t('general.defaultTimezone')}
               </label>
               <select
-                // eslint-disable-next-line bossnyumba/no-jurisdictional-literal -- user-facing timezone dropdown option
-                defaultValue="Africa/Nairobi"
+                defaultValue={TENANT_TIMEZONE_DEFAULT}
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
@@ -80,7 +96,7 @@ export function ConfigurationPage() {
                 {t('general.defaultCurrency')}
               </label>
               <select
-                defaultValue="KES"
+                defaultValue={TENANT_CURRENCY_DEFAULT}
                 onChange={() => setHasChanges(true)}
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >

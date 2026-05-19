@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, CheckCircle, Eye, EyeOff, Shield, Smartphone, Copy } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -70,10 +70,21 @@ export function RegisterPage() {
   const [mfaSetup, setMfaSetup] = useState<MfaSetup | null>(null);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [topLevelError, setTopLevelError] = useState('');
   const [submittedEmail, setSubmittedEmail] = useState('');
   const navigate = useNavigate();
+
+  // M-1: clear copy-feedback timer on unmount to avoid setState on a defunct fiber
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
+    };
+  }, []);
 
   /* --------------------------------------------------------------
      Details form (step 1)
@@ -211,7 +222,11 @@ export function RegisterPage() {
     if (mfaSetup) {
       navigator.clipboard.writeText(mfaSetup.backupCodes.join('\n'));
       setCopiedBackupCodes(true);
-      setTimeout(() => setCopiedBackupCodes(false), 2000);
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => {
+        copiedTimerRef.current = null;
+        setCopiedBackupCodes(false);
+      }, 2000);
     }
   };
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { PLATFORM_SESSION_COOKIE } from './lib/session';
 import { safeRedirectTarget } from './lib/safe-redirect';
+import { verifyPlatformSession } from './lib/session-verifier';
 
 /**
  * Gate every route on a valid platform-staff session cookie.
@@ -13,13 +14,18 @@ import { safeRedirectTarget } from './lib/safe-redirect';
  *     pre-auth so the login form can POST)
  *   - static Next assets (excluded via matcher below)
  *
- * When the cookie is missing on a protected path, users are redirected
- * to `/login` with a `next=` param so we can bounce them back after auth.
+ * When the cookie is missing OR fails server-side verification on a
+ * protected path, users are redirected to `/login` with a `next=` param
+ * so we can bounce them back after auth.
  *
- * Cookie presence alone is not authentication — the identity service
- * still validates the token on every request (see `src/lib/session.ts`).
+ * Round-3 finding M-4: previously this middleware admitted any non-empty
+ * cookie value. It now defers to `verifyPlatformSession()` which calls
+ * the identity service `/sessions/verify` endpoint (with a TTL cache to
+ * amortise the cost). The downstream identity-service re-check on every
+ * API call is still the source of truth — this middleware now matches
+ * that level of rigour BEFORE leaking page chrome / analytics events.
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const isPublicPath =
@@ -33,7 +39,10 @@ export function middleware(request: NextRequest) {
 
   const session = request.cookies.get(PLATFORM_SESSION_COOKIE)?.value;
   if (session && session.length > 0) {
-    return NextResponse.next();
+    const valid = await verifyPlatformSession(session, PLATFORM_SESSION_COOKIE);
+    if (valid) {
+      return NextResponse.next();
+    }
   }
 
   // Validate the `next` target before persisting it in the redirect

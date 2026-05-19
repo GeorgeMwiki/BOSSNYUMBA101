@@ -47,6 +47,7 @@ import {
 } from 'recharts';
 import { Skeleton } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
+import { useAutoDismissNotification } from '../lib/use-auto-dismiss-notification';
 
 interface SystemHealth {
   service: string;
@@ -107,7 +108,7 @@ export function OperationsPage() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [healthMetrics, setHealthMetrics] = useState<any[]>([]);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const { notification, showNotification, clearNotification } = useAutoDismissNotification();
 
   useEffect(() => {
     // Live wiring pending — until admin ops endpoints land we render empty state.
@@ -151,14 +152,12 @@ export function OperationsPage() {
   };
 
   const handleRetryWorkflow = async (workflow: WorkflowItem) => {
-    setNotification({ type: 'success', message: t('retryingWorkflow', { id: workflow.id }) });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification({ type: 'success', message: t('retryingWorkflow', { id: workflow.id }) });
   };
 
   const handleCancelWorkflow = async (workflow: WorkflowItem) => {
     setStuckWorkflows(stuckWorkflows.filter(w => w.id !== workflow.id));
-    setNotification({ type: 'success', message: t('workflowCancelled', { id: workflow.id }) });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification({ type: 'success', message: t('workflowCancelled', { id: workflow.id }) });
   };
 
   const filteredExceptions = exceptions.filter(e => {
@@ -229,7 +228,7 @@ export function OperationsPage() {
               {notification.message}
             </span>
           </div>
-          <button onClick={() => setNotification(null)}>
+          <button onClick={clearNotification}>
             <X className="h-4 w-4 text-gray-400" />
           </button>
         </div>

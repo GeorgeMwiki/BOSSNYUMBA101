@@ -5,6 +5,7 @@ import { Phone, AlertTriangle, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getEmergencyContacts } from '@/lib/constants';
+import { safeTelHref } from '@/lib/safe-contact-link';
 
 export default function EmergenciesPage() {
   const t = useTranslations('emergenciesPage');
@@ -60,29 +61,51 @@ export default function EmergenciesPage() {
             {t('emergencyNumbers')}
           </h3>
           <div className="card divide-y divide-gray-100">
-            {emergencyContacts.map((contact, index) => (
-              <a
-                key={index}
-                href={`tel:${contact.phone.replace(/\s/g, '')}`}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary-50 rounded-lg">
-                    <Phone className="w-5 h-5 text-primary-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium">{contact.name}</div>
-                    <div className="text-sm text-primary-600 font-medium">
-                      {contact.phone}
+            {emergencyContacts.map((contact, index) => {
+              // M-7: validate the dial string before dropping it into a
+              // `tel:` href. Backend-sourced numbers like
+              // `0712,1234;ext=999` would otherwise route to the
+              // extension after the comma. `safeTelHref` returns
+              // undefined for inputs containing `,` `;` `*` `#` and we
+              // fall back to a plain row that is informative but not
+              // dialable.
+              const telHref = safeTelHref(contact.phone);
+              const body = (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary-50 rounded-lg">
+                      <Phone className="w-5 h-5 text-primary-600" />
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {t('availableLabel')}: {contact.available}
+                    <div>
+                      <div className="font-medium">{contact.name}</div>
+                      <div className="text-sm text-primary-600 font-medium">
+                        {contact.phone}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {t('availableLabel')}: {contact.available}
+                      </div>
                     </div>
                   </div>
+                  <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                </>
+              );
+              return telHref ? (
+                <a
+                  key={index}
+                  href={telHref}
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                >
+                  {body}
+                </a>
+              ) : (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4"
+                >
+                  {body}
                 </div>
-                <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
-              </a>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

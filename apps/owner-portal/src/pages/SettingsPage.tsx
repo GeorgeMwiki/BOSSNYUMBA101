@@ -22,6 +22,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../contexts/AuthContext';
 import { api, formatDate } from '../lib/api';
+import { useAutoDismissNotification } from '../lib/use-auto-dismiss-notification';
 
 interface CoOwner {
   id: string;
@@ -80,7 +81,7 @@ export function SettingsPage() {
   });
 
   const [saving, setSaving] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const { notification, showNotification, clearNotification } = useAutoDismissNotification();
 
   const tabs = [
     { id: 'profile', label: t('tabProfile'), icon: User },
@@ -96,8 +97,7 @@ export function SettingsPage() {
     setSaving(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     setSaving(false);
-    setNotification({ type: 'success', message: t('savedSuccess') });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification({ type: 'success', message: t('savedSuccess') });
   };
 
   const handleInviteUser = () => {
@@ -110,19 +110,16 @@ export function SettingsPage() {
     setCoOwners([...coOwners, newUser]);
     setShowInviteModal(false);
     setInviteForm({ email: '', firstName: '', lastName: '', role: 'VIEWER', properties: [] });
-    setNotification({ type: 'success', message: t('invitationSent') });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification({ type: 'success', message: t('invitationSent') });
   };
 
   const handleRemoveUser = (id: string) => {
     setCoOwners(coOwners.filter(u => u.id !== id));
-    setNotification({ type: 'success', message: t('userRemoved') });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification({ type: 'success', message: t('userRemoved') });
   };
 
-  const handleResendInvite = (id: string) => {
-    setNotification({ type: 'success', message: t('invitationResent') });
-    setTimeout(() => setNotification(null), 3000);
+  const handleResendInvite = (_id: string) => {
+    showNotification({ type: 'success', message: t('invitationResent') });
   };
 
   const getRoleColor = (role: string) => {
@@ -165,7 +162,7 @@ export function SettingsPage() {
               {notification.message}
             </span>
           </div>
-          <button onClick={() => setNotification(null)}>
+          <button onClick={clearNotification}>
             <X className="h-4 w-4 text-gray-400" />
           </button>
         </div>

@@ -37,6 +37,15 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PriorityBadge, SLATimer, Timeline, type TimelineEvent } from '@/components/maintenance';
 import { workOrdersService, vendorsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
+import { safeTelHref } from '@/lib/safe-contact-link';
+import { MoneyDisplay } from '@/components/MoneyDisplay';
+
+// M-8: Tenant currency comes from env (set per-tenant deploy). Previously
+// the UI hardcoded 'KES' for material costs and totals which wrongly
+// labelled work-order completions from non-Kenya tenants. The fallback is
+// USD (not KES) so a missing env var is loud rather than silently wrong.
+const TENANT_CURRENCY =
+  process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD';
 
 interface Material {
   id: string;
@@ -194,7 +203,7 @@ export default function WorkOrderDetail() {
               // Currency comes from env (set per-tenant deploy). Previously
               // hardcoded 'KES' which wrongly labelled completions from
               // non-Kenya tenants.
-              currency: process.env.NEXT_PUBLIC_TENANT_CURRENCY?.trim() || 'USD',
+              currency: TENANT_CURRENCY,
             }
           : undefined,
       }),
@@ -476,11 +485,19 @@ export default function WorkOrderDetail() {
               </div>
             </div>
             <div className="flex gap-2">
-              {workOrder.customer.phone && (
-                <a href={`tel:${workOrder.customer.phone}`} className="btn-secondary p-2">
-                  <Phone className="w-4 h-4" />
-                </a>
-              )}
+              {(() => {
+                // M-7: validate the dial string before rendering as a
+                // `tel:` href. If `safeTelHref` returns undefined (e.g.
+                // the value contained `,` or `;`), suppress the call
+                // button entirely so the user is not routed to the
+                // wrong extension.
+                const telHref = safeTelHref(workOrder.customer.phone);
+                return telHref ? (
+                  <a href={telHref} className="btn-secondary p-2">
+                    <Phone className="w-4 h-4" />
+                  </a>
+                ) : null;
+              })()}
               <button className="btn-secondary p-2">
                 <MessageCircle className="w-4 h-4" />
               </button>
@@ -730,7 +747,11 @@ export default function WorkOrderDetail() {
                     <div key={material.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div><span className="font-medium">{material.name}</span><span className="text-sm text-gray-500 ml-2">x{material.quantity}</span></div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">KES {(material.cost * material.quantity).toLocaleString()}</span>
+                        <MoneyDisplay
+                          amount={material.cost * material.quantity}
+                          currency={TENANT_CURRENCY}
+                          className="text-sm font-medium"
+                        />
                         <button
                           type="button"
                           onClick={() => removeMaterial(material.id)}
@@ -752,7 +773,11 @@ export default function WorkOrderDetail() {
                 {materials.length > 0 && (
                   <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
                     <span className="text-sm text-primary-700">{t('totalMaterialsCost')}</span>
-                    <span className="font-semibold text-primary-900">KES {totalMaterialsCost.toLocaleString()}</span>
+                    <MoneyDisplay
+                      amount={totalMaterialsCost}
+                      currency={TENANT_CURRENCY}
+                      className="font-semibold text-primary-900"
+                    />
                   </div>
                 )}
               </div>

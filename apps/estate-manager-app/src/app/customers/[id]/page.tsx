@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
 import { useAuth } from '@/providers/AuthProvider';
 import { tenantKey } from '@/lib/tenant-scoped-key';
+import { safeMailtoHref, safeTelHref } from '@/lib/safe-contact-link';
 
 // Tenant region is env-driven per-deployment. No Kenya hardcode.
 const TENANT_CURRENCY =
@@ -104,16 +105,36 @@ export default function CustomerDetailPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <Mail className="w-4 h-4 text-gray-400" />
-              <a href={`mailto:${customer.email}`} className="text-primary-600">
-                {customer.email}
-              </a>
+              {(() => {
+                // M-6: percent-encode + validate `customer.email` before
+                // letting it into a `mailto:` href so a backend-sourced
+                // value cannot inject `?subject=…&body=…`.
+                const mailHref = safeMailtoHref(customer.email);
+                return mailHref ? (
+                  <a href={mailHref} className="text-primary-600">
+                    {customer.email}
+                  </a>
+                ) : (
+                  <span className="text-gray-600">{customer.email}</span>
+                );
+              })()}
             </div>
             {customer.phone && (
               <div className="flex items-center gap-3">
                 <Phone className="w-4 h-4 text-gray-400" />
-                <a href={`tel:${customer.phone}`} className="text-primary-600">
-                  {customer.phone}
-                </a>
+                {(() => {
+                  // M-7: reject dial-string separators (`,` `;`) so a
+                  // backend phone like `0712,1234;ext=999` cannot route
+                  // to an unintended extension.
+                  const telHref = safeTelHref(customer.phone);
+                  return telHref ? (
+                    <a href={telHref} className="text-primary-600">
+                      {customer.phone}
+                    </a>
+                  ) : (
+                    <span className="text-gray-600">{customer.phone}</span>
+                  );
+                })()}
               </div>
             )}
             <div className="flex items-center gap-2">

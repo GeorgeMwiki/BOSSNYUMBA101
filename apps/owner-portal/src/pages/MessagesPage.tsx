@@ -204,8 +204,43 @@ export function MessagesPage() {
     scrollToBottom();
   }, [messages]);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // M-2: useCallback-stable loader so the polling effect (below) can include
+  // it in its dep array without re-creating the interval every render. Empty
+  // deps because the body only references the api module + stable setters.
+  // Declared BEFORE the polling effect so the dep array is not evaluated in
+  // the TDZ.
+  const loadMessages = useCallback(async (conversationId: string, silent = false) => {
+    if (!silent) setMessagesLoading(true);
+    setError(null);
+    try {
+      const response = await api.get<Message[]>(
+        `/owner/messaging/conversations/${conversationId}/messages`
+      );
+      if (response.success && response.data) {
+        setMessages(response.data);
+      } else if (!silent) {
+        setMessages([]);
+        setError(response.error?.message ?? 'Live messages are unavailable.');
+      }
+    } catch (err) {
+      if (!silent) {
+        setMessages([]);
+        setError(err instanceof Error ? err.message : 'Live messages are unavailable.');
+      }
+    } finally {
+      if (!silent) setMessagesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    // Poll for new messages every 5 seconds
+    // Poll for new messages every 5 seconds.
+    // M-2: `loadMessages` is a useCallback-stable ref so including it here
+    // does not thrash the interval. If it were captured from a stale
+    // closure, the next tick would call a stale function.
     if (activeConversation) {
       pollingRef.current = setInterval(() => {
         loadMessages(activeConversation.id, true);
@@ -214,11 +249,7 @@ export function MessagesPage() {
         if (pollingRef.current) clearInterval(pollingRef.current);
       };
     }
-  }, [activeConversation]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, [activeConversation, loadMessages]);
 
   const loadConversations = async () => {
     setLoading(true);
@@ -257,29 +288,6 @@ export function MessagesPage() {
     }
 
     await loadMessages(conversation.id);
-  };
-
-  const loadMessages = async (conversationId: string, silent = false) => {
-    if (!silent) setMessagesLoading(true);
-    setError(null);
-    try {
-      const response = await api.get<Message[]>(
-        `/owner/messaging/conversations/${conversationId}/messages`
-      );
-      if (response.success && response.data) {
-        setMessages(response.data);
-      } else if (!silent) {
-        setMessages([]);
-        setError(response.error?.message ?? 'Live messages are unavailable.');
-      }
-    } catch (err) {
-      if (!silent) {
-        setMessages([]);
-        setError(err instanceof Error ? err.message : 'Live messages are unavailable.');
-      }
-    } finally {
-      if (!silent) setMessagesLoading(false);
-    }
   };
 
   const handleSendMessage = async () => {

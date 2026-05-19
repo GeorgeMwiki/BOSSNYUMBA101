@@ -193,9 +193,20 @@ export function ESignaturePage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [successDoc, setSuccessDoc] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // M-1: clear success-toast timer on unmount to avoid setState on a defunct fiber
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current !== null) {
+        clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
   }, []);
 
   const loadData = async () => {
@@ -263,7 +274,11 @@ export function ESignaturePage() {
     setSignatureData(null);
     setAgreedToTerms(false);
 
-    setTimeout(() => setSuccessDoc(null), 4000);
+    if (successTimerRef.current !== null) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      successTimerRef.current = null;
+      setSuccessDoc(null);
+    }, 4000);
   };
 
   const formatFileSize = (bytes: number) => {
