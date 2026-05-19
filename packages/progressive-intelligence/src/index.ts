@@ -6,3 +6,4 @@
 
 export * from './observations/index.js';
 export * from './confidence/index.js';
+export * from './history/index.js';
