@@ -32,3 +32,6 @@ export * from './hardened-system-prompt/index.js';
 
 // GDPR Art 22 — counterfactual explainability
 export * from './gdpr-art-22-explainability/index.js';
+
+// EU AI Act Art 50 — first-interaction disclosure (Aug 2 2026 deadline)
+export * from './eu-ai-act-art-50/index.js';
