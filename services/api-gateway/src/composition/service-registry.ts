@@ -1739,7 +1739,8 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       // every `platform.verify_nida` / `platform.evict_tenant` /
       // `platform.payout_owner` / `platform.file_kra_mri` call routes
       // through the real adapter when bound (and through the existing
-      // deterministic NOT_YET_WIRED refusal otherwise).
+      // deterministic placeholder refusal otherwise — see
+      // NOT_YET_WIRED_REASON in @bossnyumba/central-intelligence).
       const hqPortBindings: HqToolPortBindings = createHqToolPortBindings({
         db,
         callerResolver: {
