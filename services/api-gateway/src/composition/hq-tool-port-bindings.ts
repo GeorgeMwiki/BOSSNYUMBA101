@@ -11,8 +11,9 @@
  *   slots — every one of them was unbound in the gateway composition
  *   root, so `platform.verify_nida` / `platform.verify_eardhi_title` /
  *   `platform.evict_tenant` / `platform.payout_owner` /
- *   `platform.file_kra_mri` all surfaced their `NOT_YET_WIRED` stubs
- *   even when the real adapters + workflow dispatchers were available.
+ *   `platform.file_kra_mri` all surfaced their placeholder stubs
+ *   (see {@link NOT_YET_WIRED_REASON}) even when the real adapters +
+ *   workflow dispatchers were available.
  *
  *   This module:
  *     1. Reads `NIDA_GATEWAY_URL` + `EARDHI_GATEWAY_URL` env vars and
@@ -48,7 +49,7 @@ import {
   type NidaEnv,
   type NidaRealAdapter,
 } from '@bossnyumba/connectors';
-import { hqTools } from '@bossnyumba/central-intelligence';
+import { hqTools, NOT_YET_WIRED_REASON } from '@bossnyumba/central-intelligence';
 import {
   createHqToolRegistry,
   type HqToolRegistryWiring,
@@ -110,7 +111,8 @@ export function createHqToolPortBindings(
   const logger = deps.logger;
 
   // 1. NIDA — constructed only when NIDA_GATEWAY_URL is set; otherwise
-  //    the registry falls back to its NOT_YET_WIRED stub.
+  //    the registry falls back to its placeholder stub
+  //    (see NOT_YET_WIRED_REASON.NIDA_PORT).
   const nidaPort = buildNidaPort(env, logger);
   const nidaBound = nidaPort !== null;
 
@@ -220,8 +222,8 @@ function buildNidaPort(
   const baseUrl = env.NIDA_GATEWAY_URL?.trim();
   if (!baseUrl) {
     logger?.warn?.(
-      { reason: 'NIDA env vars not set' },
-      'hq-tool-port-bindings: NIDA not bound — falling back to NOT_YET_WIRED stub',
+      { reason: 'NIDA env vars not set', placeholder: NOT_YET_WIRED_REASON.NIDA_PORT },
+      'hq-tool-port-bindings: NIDA not bound — falling back to placeholder stub',
     );
     return null;
   }
@@ -313,8 +315,8 @@ function buildEardhiPort(
   const baseUrl = env.EARDHI_GATEWAY_URL?.trim();
   if (!baseUrl) {
     logger?.warn?.(
-      { reason: 'EARDHI_GATEWAY_URL not set' },
-      'hq-tool-port-bindings: e-Ardhi not bound — falling back to NOT_YET_WIRED stub',
+      { reason: 'EARDHI_GATEWAY_URL not set', placeholder: NOT_YET_WIRED_REASON.EARDHI_PORT },
+      'hq-tool-port-bindings: e-Ardhi not bound — falling back to placeholder stub',
     );
     return null;
   }
@@ -372,7 +374,7 @@ function formatConnectorFailure(outcome: {
 // Each port method awaits the bundle promise before delegating. When the
 // promise rejects we surface a `temporal-not-ready` error so the HQ
 // tool's executor surfaces a deterministic refusal (caller sees the
-// same shape as the NOT_YET_WIRED stub).
+// same shape as the placeholder stub — see NOT_YET_WIRED_REASON).
 
 function createLazyEvictionDispatcher(
   bundlePromise: Promise<TemporalDispatcherBundle | null>,

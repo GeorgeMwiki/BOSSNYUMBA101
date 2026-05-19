@@ -49,6 +49,11 @@ export {
 } from './awareness-scopes.js';
 export { checkInviolable, type InviolableVerdict } from './inviolable.js';
 export {
+  NOT_YET_WIRED_REASON,
+  NotYetWiredError,
+  type NotYetWiredReason,
+} from './not-yet-wired.js';
+export {
   checkPublicInviolable,
   PUBLIC_INVIOLABLE_LIMITS,
   type PublicInviolableInput,

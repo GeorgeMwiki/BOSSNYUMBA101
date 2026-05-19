@@ -14,9 +14,15 @@
  *   1  fatal failure (filesystem error) OR count > threshold (CI fails)
  *
  * Threshold tuning:
- *   - Set via env var `NOT_YET_WIRED_THRESHOLD` (default: 10)
- *   - Start at 10 during F4 connector wave (some grace expected)
- *   - Tighten to 0 once the wave lands
+ *   - Set via env var `NOT_YET_WIRED_THRESHOLD` (default: 0)
+ *   - Was 10 during F4 connector wave (some grace expected) and 70 during
+ *     the JSDoc-grace period that preceded the constants-module migration.
+ *   - The Phase G follow-up (a) introduced the canonical constants module
+ *     at `packages/central-intelligence/src/kernel/not-yet-wired.ts`,
+ *     (b) taught this script to skip comment lines, and (c) lowered the
+ *     threshold to 0. JSDoc + comment references no longer count;
+ *     executable call sites are caught only when they escape the
+ *     env-guarded composition-fallback pattern.
  *
  * Modeled after `scripts/audit-jurisdictional-literals.mjs` (Phase E.0).
  */
@@ -34,7 +40,7 @@ const ROOT = process.cwd();
 const REPORT_DIR = join(ROOT, '.audit');
 const REPORT_PATH = join(REPORT_DIR, 'not-yet-wired-targets.md');
 
-const DEFAULT_THRESHOLD = 10;
+const DEFAULT_THRESHOLD = 0;
 const THRESHOLD = Number.isFinite(Number(process.env.NOT_YET_WIRED_THRESHOLD))
   ? Number(process.env.NOT_YET_WIRED_THRESHOLD)
   : DEFAULT_THRESHOLD;
@@ -46,19 +52,25 @@ const THRESHOLD = Number.isFinite(Number(process.env.NOT_YET_WIRED_THRESHOLD))
 /**
  * Patterns we flag in production code. Each `class` is a violation bucket
  * surfaced in the summary; `rx` is the matching regex (per line).
+ *
+ * Phase G migration note:
+ *   - The `NOT_YET_WIRED literal` class catches BARE all-caps references
+ *     in production code (the original audit signal). The canonical
+ *     `NOT_YET_WIRED_REASON.<TOKEN>` constants do NOT match this pattern
+ *     because the trailing `_REASON` blocks the right-side `\b`.
+ *   - The previous `notYetWired*() factory call` and `NotYetWiredError
+ *     throw / construction` classes were retired here: every factory and
+ *     the canonical Error class now live in
+ *     `packages/central-intelligence/src/kernel/not-yet-wired.ts` (which
+ *     is allowlisted). Call sites import those names, so an audit on the
+ *     identifier text in the consumer files would no longer be a useful
+ *     signal — every legitimate fallback would surface as "noise". The
+ *     `NOT_YET_WIRED literal` bucket is the only canonical signal now.
  */
 const PATTERNS = Object.freeze([
   {
     class: 'NOT_YET_WIRED literal',
     rx: /\bNOT_YET_WIRED\b/,
-  },
-  {
-    class: 'notYetWired*() factory call',
-    rx: /\bnotYetWired[A-Z][A-Za-z0-9_]*\s*\(/,
-  },
-  {
-    class: 'NotYetWiredError throw / construction',
-    rx: /(?:throw\s+new\s+|new\s+|\bextends\s+)NotYetWiredError\b/,
   },
 ]);
 
@@ -100,7 +112,7 @@ const SKIP_DIRS = new Set([
  *
  * Notably:
  *   - tests / fixtures
- *   - the error class definition itself
+ *   - the canonical constants module (defines the vocabulary)
  *   - documentation
  *   - the audit script (this file)
  *   - composition-root fallbacks behind an explicit env-var-unset guard
@@ -120,7 +132,10 @@ const ALLOWLIST_PATTERNS = [
   /\.md$/,
   // The audit script itself
   /scripts\/audit-not-yet-wired\.mjs$/,
-  // The error class definitions (intended to declare the type)
+  // The canonical constants module (defines NOT_YET_WIRED_REASON +
+  // NotYetWiredError — every other use site references these tokens).
+  /packages\/central-intelligence\/src\/kernel\/not-yet-wired\.ts$/,
+  // Legacy file names retained for back-compat with prior wave audits.
   /not-yet-wired-error\.ts$/,
   /NotYetWiredError\.ts$/,
 ];
@@ -165,37 +180,65 @@ function walk(dir) {
 
 /**
  * Detect violations in a single file. Returns `{ class, line, snippet }`
- * records. Composition-root fallback lines are skipped when the line above
- * has the env-guarded ternary shape:
+ * records.
  *
- *   env.X ? realAdapter() : notYetWiredX()
- *
- * That shape is a legitimate "wire when configured, no-op otherwise" pattern
- * the F4 connector wave uses. Our heuristic accepts it.
+ * Skipping rules:
+ *   1. Pure-comment lines (single-line `//` or block-comment continuation `*`)
+ *      are skipped — JSDoc / inline comments referencing the constants
+ *      module by name are documentation, not unwired code paths. Call
+ *      sites that throw / construct / call should use the constants
+ *      module reference (`NOT_YET_WIRED_REASON.X`) which still triggers
+ *      the pattern on the executable line.
+ *   2. Composition-root fallback lines behind an explicit `env.X ?` ternary
+ *      are accepted — they're the legitimate "wire when configured, no-op
+ *      otherwise" pattern the F4 connector wave uses.
  */
 function detectViolations(text) {
   const findings = [];
   const lines = text.split(/\r?\n/);
 
+  // Track whether the current line is inside a /* ... */ block. Only
+  // toggle when we see the opening / closing delimiters on prior lines —
+  // the line itself is checked with its own per-line trim heuristic.
+  let inBlockComment = false;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line || line.length === 0) continue;
 
-    for (const { class: cls, rx } of PATTERNS) {
-      if (rx.test(line)) {
-        if (isCompositionFallback(lines, i, line)) {
-          // Whitelisted composition-root pattern.
-          continue;
+    const trimmed = line.trim();
+
+    // Update block-comment state based on THIS line's delimiters.
+    // (A line can both open and close a block comment.)
+    const opensBlock = /\/\*/.test(line) && !/\/\*.*\*\//.test(line);
+    const closesBlock = /\*\//.test(line) && !/\/\*.*\*\//.test(line);
+
+    // Determine whether THIS line is a comment-only line.
+    const isLineComment = trimmed.startsWith('//');
+    const isBlockContinuation = inBlockComment || trimmed.startsWith('*');
+    const isCommentOnly = isLineComment || isBlockContinuation;
+
+    if (!isCommentOnly) {
+      for (const { class: cls, rx } of PATTERNS) {
+        if (rx.test(line)) {
+          if (isCompositionFallback(lines, i, line)) {
+            // Whitelisted composition-root pattern.
+            continue;
+          }
+          findings.push({
+            class: cls,
+            line: i + 1,
+            snippet: line.trim().slice(0, 240),
+          });
+          // Don't double-flag the same line with multiple patterns; first match wins.
+          break;
         }
-        findings.push({
-          class: cls,
-          line: i + 1,
-          snippet: line.trim().slice(0, 240),
-        });
-        // Don't double-flag the same line with multiple patterns; first match wins.
-        break;
       }
     }
+
+    // Toggle block-comment state for the NEXT iteration.
+    if (opensBlock && !closesBlock) inBlockComment = true;
+    if (closesBlock && !opensBlock) inBlockComment = false;
   }
   return findings;
 }
