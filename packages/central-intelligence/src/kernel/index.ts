@@ -622,3 +622,24 @@ export * as orchestrator from './orchestrator/index.js';
  * tenant-facing persona exports above.
  */
 export * as vpPersonas from './vp-personas/index.js';
+
+/**
+ * Phase K-A — SessionStore adapter pattern (R1 parity gap #2).
+ *
+ * Whole-session snapshot store with InMemory / Redis / Postgres
+ * adapters. Distinct from the per-decision SessionStore in
+ * `orchestrator/checkpoint.ts` (re-exported above under
+ * `orchestrator.SessionStore`). Operators that want multi-host
+ * resumability wire `sessionStore: createSessionStore({...})` into
+ * the composition root.
+ */
+export * as sessionStore from './session-store/index.js';
+
+/**
+ * Phase K-A — File checkpointing (R1 parity gap #4).
+ *
+ * Per-owner-message UUID-keyed file snapshots + `rewindFiles(uuid)`
+ * restoration. Composes through the SessionStore namespace above so
+ * snapshots persist across worker restarts.
+ */
+export * as fileCheckpoint from './checkpoint/index.js';

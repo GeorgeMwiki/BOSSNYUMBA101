@@ -897,6 +897,8 @@ function terminalFromHook(
   switch (result.kind) {
     case 'allow':
     case 'updated-input':
+    // Phase K-A — post-tool-use mutator: not a terminal outcome.
+    case 'updated-tool-output':
     case 'additional-context':
     case 'transform':
     case 'sandbox':
