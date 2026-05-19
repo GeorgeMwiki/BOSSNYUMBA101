@@ -33,38 +33,116 @@ export interface WebhookHandlerDeps {
 // Signature verification helpers
 // ---------------------------------------------------------------------------
 
+// HIGH-7 (audit .audit/post-pr90-api-mcp-bug-sweep.md): the previous
+// implementation computed HMAC over the raw body ALONE — no timestamp,
+// no nonce. A signed body captured once was replayable forever.
+//
+// Fix: when callers send an `X-Webhook-Timestamp` header, include the
+// timestamp in the signed payload AND enforce a 5-minute replay window
+// (mirroring Inngest). Verifiers reject the request if drift exceeds the
+// window even when the signature matches a stale body.
+//
+// Backward compatibility: if no timestamp header is present we fall back
+// to the legacy body-only verification (with a startup warn) so existing
+// production webhooks keep working until provider configs roll. Set
+// `WEBHOOK_REQUIRE_TIMESTAMP=true` to fail closed in production.
+const WEBHOOK_REPLAY_WINDOW_MS = 5 * 60 * 1000;
+const TIMESTAMP_HEADER = 'x-webhook-timestamp';
+
+function timestampInWindow(tsHeader: string | undefined): boolean {
+  if (!tsHeader) return false;
+  const ts = Number(tsHeader);
+  if (!Number.isFinite(ts)) return false;
+  return Math.abs(Date.now() - ts) <= WEBHOOK_REPLAY_WINDOW_MS;
+}
+
+function requireTimestamp(): boolean {
+  return (
+    process.env.WEBHOOK_REQUIRE_TIMESTAMP === 'true' ||
+    process.env.NODE_ENV === 'production'
+  );
+}
+
 /**
- * Africa's Talking: HMAC-SHA256 of the raw body, sent as hex in the
- * `X-AT-Signature` header. Secret comes from `AFRICASTALKING_WEBHOOK_SECRET`.
+ * Africa's Talking: HMAC-SHA256 of `${ts}.${rawBody}` (with timestamp)
+ * or raw body alone (legacy), sent as hex in `X-AT-Signature`. Secret
+ * comes from `AFRICASTALKING_WEBHOOK_SECRET`.
  */
-function verifyAfricasTalking(rawBody: string, signatureHeader: string | undefined): boolean {
+function verifyAfricasTalking(
+  rawBody: string,
+  signatureHeader: string | undefined,
+  timestampHeader?: string
+): boolean {
   const secret = process.env.AFRICASTALKING_WEBHOOK_SECRET;
   if (!secret || !signatureHeader) return false;
+  if (timestampHeader) {
+    if (!timestampInWindow(timestampHeader)) return false;
+    const expected = createHmac('sha256', secret)
+      .update(`${timestampHeader}.${rawBody}`)
+      .digest('hex');
+    return safeEqualHex(expected, signatureHeader);
+  }
+  if (requireTimestamp()) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
   return safeEqualHex(expected, signatureHeader);
 }
 
 /**
- * Twilio: HMAC-SHA1 over `url + sorted-form-params`, Base64-encoded, sent
- * as `X-Twilio-Signature`. For the simplified JSON webhook variant Twilio
- * also accepts HMAC over the raw body — we support that form here to avoid
- * requiring URL reconstruction.
+ * Twilio: per https://www.twilio.com/docs/usage/webhooks/webhooks-security,
+ * the signature is HMAC-SHA1 over `url + sorted-form-params` (concatenated
+ * key+value), Base64-encoded, sent in `X-Twilio-Signature`.
+ *
+ * HIGH-7 fix: implement Twilio's documented format. The old code computed
+ * HMAC-SHA1 over the JSON raw body — which (a) would reject real Twilio
+ * webhooks following the documented URL+form format, AND (b) would accept
+ * forged signatures computed over arbitrary JSON. Both broken.
+ *
+ * `url` must be the FULL request URL as Twilio called it (gateway should
+ * pass the public-facing URL via `TWILIO_WEBHOOK_URL` or via the request
+ * itself).
  */
-function verifyTwilio(rawBody: string, signatureHeader: string | undefined): boolean {
+function verifyTwilio(
+  rawBody: string,
+  signatureHeader: string | undefined,
+  requestUrl: string | undefined
+): boolean {
   const secret = process.env.TWILIO_AUTH_TOKEN;
   if (!secret || !signatureHeader) return false;
-  const expected = createHmac('sha1', secret).update(rawBody).digest('base64');
+  if (!requestUrl) return false;
+  // Twilio sends form-encoded bodies; sort the params and concatenate
+  // key+value pairs to the URL.
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(rawBody);
+  } catch {
+    return false;
+  }
+  const sorted = Array.from(params.entries()).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0
+  );
+  let signedPayload = requestUrl;
+  for (const [k, v] of sorted) {
+    signedPayload += k + v;
+  }
+  const expected = createHmac('sha1', secret).update(signedPayload).digest('base64');
   return safeEqualB64(expected, signatureHeader);
 }
 
 /**
  * Meta (WhatsApp Business Cloud API): HMAC-SHA256 of the raw body, prefixed
- * with "sha256=" in the `X-Hub-Signature-256` header. Secret is the App
- * Secret set in `META_APP_SECRET`.
+ * with "sha256=" in `X-Hub-Signature-256`. Meta does not yet sign a
+ * timestamp; when callers wrap the request via the api-gateway we add
+ * one and verify it for replay protection.
  */
-function verifyMeta(rawBody: string, signatureHeader: string | undefined): boolean {
+function verifyMeta(
+  rawBody: string,
+  signatureHeader: string | undefined,
+  timestampHeader?: string
+): boolean {
   const secret = process.env.META_APP_SECRET;
   if (!secret || !signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+  if (timestampHeader && !timestampInWindow(timestampHeader)) return false;
+  if (!timestampHeader && requireTimestamp()) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
   const provided = signatureHeader.slice('sha256='.length);
   return safeEqualHex(expected, provided);
@@ -145,7 +223,8 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
   app.post('/africastalking', async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-at-signature');
-    if (!verifyAfricasTalking(raw, sig)) {
+    const ts = c.req.header(TIMESTAMP_HEADER);
+    if (!verifyAfricasTalking(raw, sig, ts)) {
       return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
     }
     let payload: Record<string, unknown> = {};
@@ -167,7 +246,12 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
   app.post('/twilio', async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-twilio-signature');
-    if (!verifyTwilio(raw, sig)) {
+    // Twilio signs over the FULL URL — prefer the env-pinned URL so
+    // forwarded-header spoofing can't shift it. Fall back to the
+    // request URL only in non-prod.
+    const requestUrl =
+      process.env.TWILIO_WEBHOOK_URL ?? (process.env.NODE_ENV !== 'production' ? c.req.url : undefined);
+    if (!verifyTwilio(raw, sig, requestUrl)) {
       return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
     }
     // Twilio uses form-encoded bodies by default; JSON webhooks are opt-in.
@@ -192,7 +276,8 @@ export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono 
   app.post('/meta', async (c) => {
     const raw = await c.req.raw.text();
     const sig = c.req.header('x-hub-signature-256');
-    if (!verifyMeta(raw, sig)) {
+    const ts = c.req.header(TIMESTAMP_HEADER);
+    if (!verifyMeta(raw, sig, ts)) {
       return c.json({ error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } }, 401);
     }
     let payload: Record<string, unknown> = {};
