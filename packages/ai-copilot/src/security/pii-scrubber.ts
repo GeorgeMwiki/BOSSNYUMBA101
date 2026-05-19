@@ -439,6 +439,7 @@ export function scrubPii(message: string): PiiScrubResult {
       }
       // Skip if decoded text is mostly non-printable — likely binary,
       // not a payload an attacker is hoping the LLM reads.
+      // eslint-disable-next-line no-irregular-whitespace -- intentional: NBSP through U+FFFD is the printable-range we want to keep when filtering decoded base64 payloads.
       const printable = decoded.replace(/[^\x20-\x7E -￿\s]/g, '');
       if (printable.length < decoded.length * 0.6) continue;
       if (printable.trim().length < 4) continue;

@@ -717,7 +717,7 @@ export class ConversationOrchestrator {
     // outbound WhatsApp template substitutions.
     const rawName = text
       .replace(phone, '')
-      // eslint-disable-next-line no-control-regex -- intentional: strip control chars from tenant-supplied name before template substitution.
+      // eslint-disable-next-line no-control-regex, no-irregular-whitespace, no-misleading-character-class -- intentional: strip control chars + zero-width chars from tenant-supplied name before WhatsApp template substitution. Each flagged code point is exactly the security target we are scrubbing.
       .replace(/[ -​‌‍﻿]/g, '')
       .replace(/[,\-]/g, '')
       .trim();
