@@ -13,7 +13,11 @@ ARG APP_PATH=apps/owner-portal
 # Stage 1: Dependencies
 # =============================================================================
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# python3 + build-base required by node-gyp when optional native deps
+# (canvas via pdfkit, etc.) fall back to source compilation on musl.
+# Without them, `gyp ERR! find Python` aborts the install and the E2E
+# portal-app containers exit 1 — chronic flake fixed in flaky-CI-closure.
+RUN apk add --no-cache libc6-compat python3 make g++
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app

@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { Context } from 'hono';
+import { securityEventsMiddleware } from '@bossnyumba/observability';
 import {
   DocumentTypeSchema,
   UploadChannelSchema,
@@ -364,6 +365,11 @@ export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRout
   // token. Removes the "no auth at all" foot-gun if the service is
   // ever reachable directly (misconfigured ingress, dev port-forward).
   app.use('*', internalAuthMiddleware());
+
+  // Flaky-CI-closure — emit a SecurityEvent for every mutating request.
+  // SOC 2 CC7.2, GDPR Art. 30. Idempotent verbs pass through with zero
+  // overhead.
+  app.use('*', securityEventsMiddleware);
 
   // ============================================================================
   // Document Upload & Management

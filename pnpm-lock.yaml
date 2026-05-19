@@ -1648,6 +1648,9 @@ importers:
       '@bossnyumba/domain-models':
         specifier: workspace:*
         version: link:../../packages/domain-models
+      '@bossnyumba/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@google-cloud/vision':
         specifier: ^4.3.3
         version: 4.3.3
