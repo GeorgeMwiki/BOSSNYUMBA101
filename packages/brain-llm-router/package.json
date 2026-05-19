@@ -1,0 +1,76 @@
+{
+  "name": "@bossnyumba/brain-llm-router",
+  "version": "0.1.0",
+  "description": "LLM-as-Soul brain router — LiteLLM-style universal client, DSPy compile, provider fallback, cost cascade, hedged requests, eval-drift logger (Phase N-C).",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./universal-client": {
+      "types": "./src/universal-client/index.ts",
+      "default": "./dist/universal-client/index.js"
+    },
+    "./task-ladder": {
+      "types": "./src/task-ladder/index.ts",
+      "default": "./dist/task-ladder/index.js"
+    },
+    "./provider-fallback": {
+      "types": "./src/provider-fallback/index.ts",
+      "default": "./dist/provider-fallback/index.js"
+    },
+    "./cost-cascade": {
+      "types": "./src/cost-cascade/index.ts",
+      "default": "./dist/cost-cascade/index.js"
+    },
+    "./dspy-compile": {
+      "types": "./src/dspy-compile/index.ts",
+      "default": "./dist/dspy-compile/index.js"
+    },
+    "./hedged-requests": {
+      "types": "./src/hedged-requests/index.ts",
+      "default": "./dist/hedged-requests/index.js"
+    },
+    "./prompt-portability": {
+      "types": "./src/prompt-portability/index.ts",
+      "default": "./dist/prompt-portability/index.js"
+    },
+    "./cost-cap": {
+      "types": "./src/cost-cap/index.ts",
+      "default": "./dist/cost-cap/index.js"
+    },
+    "./eval-drift-logger": {
+      "types": "./src/eval-drift-logger/index.ts",
+      "default": "./dist/eval-drift-logger/index.js"
+    },
+    "./brain-call-orchestrator": {
+      "types": "./src/brain-call-orchestrator/index.ts",
+      "default": "./dist/brain-call-orchestrator/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist coverage"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
