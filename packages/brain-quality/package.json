@@ -1,0 +1,52 @@
+{
+  "name": "@bossnyumba/brain-quality",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase K-D — Brain Quality Cluster. Three-tier memory (Context → Core/MemGPT → Temporal-KG/Zep) with Generative-Agents reflection synthesis, Reflexion outer loop, Inspect-style execution-graded eval harness (tau-bench triangle), and Anthropic-style prefix caching.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./memory": {
+      "types": "./src/memory/index.ts",
+      "default": "./dist/memory/index.js"
+    },
+    "./reflexion": {
+      "types": "./src/reflexion/index.ts",
+      "default": "./dist/reflexion/index.js"
+    },
+    "./inspect-harness": {
+      "types": "./src/inspect-harness/index.ts",
+      "default": "./dist/inspect-harness/index.js"
+    },
+    "./prefix-cache": {
+      "types": "./src/prefix-cache/index.ts",
+      "default": "./dist/prefix-cache/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
