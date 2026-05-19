@@ -129,3 +129,21 @@ export type {
   EvalScenarioRun,
   PreferencePairSink,
 } from './eval-driven-iteration/index.js';
+
+// 6. skill-curation
+export {
+  runSkillCuration,
+  evaluateSkill,
+  PROMOTION_MIN_RUNS,
+  PROMOTION_MIN_FEEDBACK_RATIO,
+  QUARANTINE_CATASTROPHIC_FAILURES,
+  QUARANTINE_CONFIDENCE_DROP_PCT,
+} from './skill-curation/index.js';
+export type {
+  SkillCurationPorts,
+  SkillCurationResult,
+  SkillRegistryPort,
+  SkillPromotionGatePort,
+  SkillRecord,
+  SkillEvaluationInput,
+} from './skill-curation/index.js';
