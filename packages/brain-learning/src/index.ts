@@ -115,3 +115,17 @@ export type {
   RecordDeclineOutcome,
   TriggerCheckInput,
 } from './active-learning-queue/index.js';
+
+// 5. eval-driven-iteration
+export {
+  runEvalCycle,
+  checkRegression,
+  failedScenarioToPair,
+  REGRESSION_ALERT_THRESHOLD_PP,
+} from './eval-driven-iteration/index.js';
+export type {
+  EvalCyclePorts,
+  InspectHarnessPort,
+  EvalScenarioRun,
+  PreferencePairSink,
+} from './eval-driven-iteration/index.js';
