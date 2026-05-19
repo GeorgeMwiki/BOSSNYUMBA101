@@ -204,3 +204,42 @@ describe('secrets-derivation / verifyWithEnvRotation', () => {
     ).toBe('current');
   });
 });
+
+/**
+ * L3 closure (round-3 audit): verifyWithRotation must do the SAME
+ * amount of cryptographic work regardless of whether a previous key
+ * is configured. Behaviour-equivalence is asserted directly; the
+ * raw timing claim cannot be unit-tested (jitter dominates), but we
+ * can lock in the contract that:
+ *   (a) the dummy-pad key never resolves to `previous`
+ *   (b) rotating + non-rotating states return the same result for
+ *       the same inputs.
+ */
+describe('verifyWithRotation constant-time padding (L3)', () => {
+  const CURRENT_L3 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const VALUE_L3 = 'msg';
+
+  it('non-rotating state still returns null for an invalid signature', () => {
+    const fakeSig = '0'.repeat(64);
+    expect(verifyWithRotation(CURRENT_L3, null, VALUE_L3, fakeSig)).toBeNull();
+    expect(verifyWithRotation(CURRENT_L3, undefined, VALUE_L3, fakeSig)).toBeNull();
+    expect(verifyWithRotation(CURRENT_L3, '', VALUE_L3, fakeSig)).toBeNull();
+  });
+
+  it('non-rotating state must never accept the dummy-pad key as `previous`', () => {
+    // Compute a signature using the EXACT dummy pad the impl uses.
+    // If a future refactor accidentally exposes the pad as a real
+    // verifier, this test fails: the result would surface as `'previous'`.
+    const dummyKey = `__rotation_pad_${CURRENT_L3.slice(0, 8)}`;
+    const dummySig = sign(dummyKey, VALUE_L3);
+    expect(verifyWithRotation(CURRENT_L3, null, VALUE_L3, dummySig)).toBeNull();
+  });
+
+  it('rotating state still distinguishes current vs previous', () => {
+    const PREV_L3 = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const sigCurrent = sign(CURRENT_L3, VALUE_L3);
+    const sigPrev = sign(PREV_L3, VALUE_L3);
+    expect(verifyWithRotation(CURRENT_L3, PREV_L3, VALUE_L3, sigCurrent)).toBe('current');
+    expect(verifyWithRotation(CURRENT_L3, PREV_L3, VALUE_L3, sigPrev)).toBe('previous');
+  });
+});

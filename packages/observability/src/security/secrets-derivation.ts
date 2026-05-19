@@ -104,11 +104,31 @@ export function verifyWithRotation(
 
   const matchesCurrent = verify(currentSecret, value, signature, algorithm);
 
-  // Always compute the previous check (when a previous key is present)
-  // to keep the operation constant time across rotation states.
+  // L3 closure (round-3 audit, 2026-05-19):
+  //   Previous behaviour skipped the previous-key check entirely when no
+  //   `prevSecret` was configured. That made the wall-clock duration of
+  //   `verifyWithRotation` shorter outside the rotation soak window —
+  //   an attacker timing many requests could distinguish "rotating" from
+  //   "not rotating" and time the next rotation attempt accordingly.
+  //
+  //   Fix: ALWAYS run a HMAC verify against the previous-key slot. When
+  //   no prev key is configured, we use a deterministic dummy key
+  //   derived from the CURRENT secret (so it never matches the real
+  //   signature but consumes the same CPU). The result is silently
+  //   discarded when prev is absent. Total CPU is identical across
+  //   rotation states.
   let matchesPrev = false;
+  const prevKey =
+    prevSecret && prevSecret.length > 0
+      ? prevSecret
+      : // Dummy: derive a non-matching key from `current`. Hashing with
+        // a fixed prefix guarantees the dummy is never equal to the
+        // legitimate `current` (different value space) and never
+        // matches a real signature.
+        `__rotation_pad_${currentSecret.slice(0, 8)}`;
+  const dummyMatch = verify(prevKey, value, signature, algorithm);
   if (prevSecret && prevSecret.length > 0) {
-    matchesPrev = verify(prevSecret, value, signature, algorithm);
+    matchesPrev = dummyMatch;
   }
 
   if (matchesCurrent) return 'current';
