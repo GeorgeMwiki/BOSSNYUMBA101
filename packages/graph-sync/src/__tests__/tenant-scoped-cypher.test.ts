@@ -65,6 +65,44 @@ describe('assertCypherReferencesTenantId', () => {
       assertCypherReferencesTenantId('MATCH (p {tenantId: "abc"}) RETURN p'),
     ).toThrow(TenantScopeViolation);
   });
+
+  /**
+   * H16 closure (round-3 audit): the OLD substring-only check passed
+   * for `RETURN $tenantId AS x` (no filter) and for the LHS
+   * short-circuit pattern `WHERE 1=1 OR a._tenantId = $tenantId`.
+   * The new check requires a BIND (`_tenantId: $tenantId` in a bag
+   * or `<x>._tenantId = $tenantId` in a WHERE) AND rejects the
+   * disjunction-bypass pattern explicitly.
+   */
+  it('rejects a query that only RETURNs $tenantId (no filter)', () => {
+    expect(() =>
+      assertCypherReferencesTenantId('RETURN $tenantId AS x'),
+    ).toThrow(TenantScopeViolation);
+  });
+
+  it('rejects the 1=1 OR disjunction bypass pattern', () => {
+    expect(() =>
+      assertCypherReferencesTenantId(
+        'MATCH (a) WHERE 1=1 OR a._tenantId = $tenantId RETURN a',
+      ),
+    ).toThrow(TenantScopeViolation);
+  });
+
+  it('rejects the true OR disjunction bypass pattern', () => {
+    expect(() =>
+      assertCypherReferencesTenantId(
+        'MATCH (a) WHERE true OR a._tenantId = $tenantId RETURN a',
+      ),
+    ).toThrow(TenantScopeViolation);
+  });
+
+  it('accepts a WHERE-clause bind that uses dotted attribute access', () => {
+    expect(() =>
+      assertCypherReferencesTenantId(
+        'MATCH (a:Property) WHERE a._tenantId = $tenantId RETURN a',
+      ),
+    ).not.toThrow();
+  });
 });
 
 describe('createTenantScopedCypher — readScoped', () => {
