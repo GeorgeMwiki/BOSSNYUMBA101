@@ -23,3 +23,6 @@ export * from './close-pattern/index.js';
 
 // Canary tokens — system-prompt leakage detection
 export * from './canary-tokens/index.js';
+
+// Spotlighting — DATA marking (per-session delimiters)
+export * from './spotlighting/index.js';
