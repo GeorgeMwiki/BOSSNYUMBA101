@@ -163,8 +163,41 @@ function fileHasSsrfGuard(src) {
     /\bsafeFetch\b/.test(src) ||
     /\bvalidateOutboundUrl\s*\(/.test(src) ||
     /\bvalidateOutboundUrlWithDns\s*\(/.test(src) ||
-    /\bisSafeSameOriginPath\s*\(/.test(src)
+    /\bisSafeSameOriginPath\s*\(/.test(src) ||
+    /\bassertUrlSafe\s*\(/.test(src)
   );
+}
+
+/**
+ * Per-call-site SSRF guard check (H8 closure).
+ *
+ * The file-wide signal (above) accepts a file that imports
+ * `safeHttpFetch` even if ONE callsite uses it and three others use
+ * bare `fetch()`. We additionally scan each outbound site's local
+ * window for an explicit guard call within ±15 lines OR a same-line
+ * wrap (`await safeHttpFetch(url)` would already match the
+ * fileHasSsrfGuard pattern at the call site).
+ *
+ * Returns the list of sites that are NOT covered by a near-by guard.
+ */
+function findUnguardedSites(src, sites) {
+  // Use the ORIGINAL source for line-window scanning so guard imports
+  // / pre-call asserts read back correctly. Re-strip comments inside
+  // the window only.
+  const lines = src.split('\n');
+  const unguarded = [];
+  for (const site of sites) {
+    const fromIdx = Math.max(0, site.line - 12);
+    const toIdx = Math.min(lines.length, site.line + 2);
+    const window = stripComments(lines.slice(fromIdx, toIdx).join('\n'));
+    const hasNearbyGuard =
+      /\bsafeHttpFetch\s*\(/.test(window) ||
+      /\bassertUrlSafe\s*\(/.test(window) ||
+      /\bsafeFetch\s*\(/.test(window) ||
+      /\bvalidateOutboundUrl\s*\(/.test(window);
+    if (!hasNearbyGuard) unguarded.push(site);
+  }
+  return unguarded;
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -206,7 +239,11 @@ function main() {
     filesWithOutbound++;
 
     const rel = relative(ROOT, file);
-    if (fileHasSsrfGuard(src)) {
+    // H8 refinement: per-callsite scan. A file that imports
+    // `safeHttpFetch` but has bare `fetch()` calls in OTHER call sites
+    // is NOT covered. The unguarded list surfaces those.
+    const unguarded = findUnguardedSites(src, sites);
+    if (unguarded.length === 0) {
       filesGuarded++;
       continue;
     }
@@ -217,7 +254,8 @@ function main() {
     violations.push({
       file: rel,
       siteCount: sites.length,
-      sites: sites.slice(0, 5),
+      unguardedCount: unguarded.length,
+      sites: unguarded.slice(0, 5),
     });
   }
 

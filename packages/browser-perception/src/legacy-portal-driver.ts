@@ -28,12 +28,167 @@ import {
 } from './axtree-snapshot.js';
 import { diffAxSnapshots, type AxTreeDiff } from './axtree-diff.js';
 
+/**
+ * Consent / DPIA port (H26 closure).
+ *
+ * The driver snapshots a11y trees from third-party portals that
+ * contain PII (full name, NIDA, phone). GDPR Art. 6 + Kenya DPA
+ * Section 25 require a documented lawful basis BEFORE the snapshot is
+ * taken. The driver consults this port before `openPortal` / `act`;
+ * a `null` (consent absent or revoked) MUST refuse the snapshot.
+ *
+ * Production wiring: a tenant-scoped consent registry that returns
+ * the consent record (lawful basis, scope, expiry). Test / no-op
+ * wiring: a stub that always grants for the current tenant.
+ */
+export interface PortalConsentPort {
+  hasConsent(args: {
+    readonly tenantId: string;
+    readonly portalHost: string;
+  }): Promise<boolean>;
+}
+
+export class ConsentMissingError extends Error {
+  readonly code = 'CONSENT_MISSING' as const;
+  constructor(portalHost: string, tenantId: string) {
+    super(
+      `LegacyPortalDriver: refusing to snapshot ${portalHost} for tenant ${tenantId} — consent absent or expired`,
+    );
+    this.name = 'ConsentMissingError';
+  }
+}
+
 export interface LegacyPortalDriverOptions {
   readonly page: DrivablePage;
   /** Max AX nodes per snapshot — defaults to 200 (sensorium cap). */
   readonly maxNodes?: number;
   /** Max AX depth per snapshot — defaults to 12. */
   readonly maxDepth?: number;
+  /**
+   * H26: consent port + tenant scope. When both are provided the
+   * driver gates `openPortal` and `act({verb:'navigate'})` on a
+   * positive consent record. When omitted, the driver runs without
+   * the gate (legacy behaviour preserved for test wiring; production
+   * compositions MUST inject the port).
+   */
+  readonly consent?: PortalConsentPort;
+  readonly tenantId?: string;
+  /**
+   * Per-tenant portal host allowlist (C5 closure).
+   *
+   * Why: the brain's NL emits structured `{verb: 'navigate', url}`
+   * actions. If a malicious third-party page prompt-injects the brain
+   * (the driver reads a11y trees FROM external pages, so an attacker
+   * who controls a portal can in principle steer the next emitted
+   * action), an unguarded `page.goto` could pivot to `169.254.169.254`
+   * (IMDS) or `127.0.0.1` from the browser process.
+   *
+   * The driver MUST be configured with an allowlist of hostnames
+   * (e.g. `['itax.kra.go.ke', '*.gepg.go.tz']`). Navigation to a host
+   * outside the allowlist is refused before `page.goto` runs.
+   *
+   * `file:`, `data:`, and `javascript:` schemes are ALWAYS rejected
+   * regardless of allowlist content. Schemes outside `[http:, https:]`
+   * are rejected by default.
+   *
+   * Wildcard support: a leading `.` matches any subdomain
+   * (`.example.com` matches `foo.example.com` and `example.com`).
+   * A leading `*.` is equivalent.
+   */
+  readonly navigationAllowlist?: ReadonlyArray<string>;
+  /** Allowed schemes — defaults to `['http:', 'https:']`. */
+  readonly allowedSchemes?: ReadonlyArray<string>;
+}
+
+const DEFAULT_ALLOWED_SCHEMES: ReadonlyArray<string> = Object.freeze([
+  'http:',
+  'https:',
+]);
+
+const DENIED_SCHEMES: ReadonlySet<string> = new Set([
+  'file:',
+  'data:',
+  'javascript:',
+  'vbscript:',
+  'about:',
+  'chrome:',
+  'chrome-extension:',
+  'view-source:',
+  'blob:',
+]);
+
+export class NavigationBlockedError extends Error {
+  readonly code: 'scheme-denied' | 'host-not-in-allowlist' | 'invalid-url';
+  constructor(
+    code: 'scheme-denied' | 'host-not-in-allowlist' | 'invalid-url',
+    url: string,
+    detail: string,
+  ) {
+    super(`LegacyPortalDriver[${code}] ${url}: ${detail}`);
+    this.name = 'NavigationBlockedError';
+    this.code = code;
+  }
+}
+
+/**
+ * Assert a URL is safe to navigate to. Pure — never touches the page.
+ *
+ * Returns `void` on success; throws `NavigationBlockedError` on any
+ * rejection. The allowlist semantics match `safeHttpFetch` —
+ * suffix-prefixed entries (`.example.com`) match subdomains; bare
+ * entries require an exact / `*.<entry>` host match.
+ */
+export function assertNavigationAllowed(
+  url: string,
+  options: {
+    readonly allowlist: ReadonlyArray<string>;
+    readonly allowedSchemes?: ReadonlyArray<string>;
+  },
+): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new NavigationBlockedError('invalid-url', url, 'URL parse failed');
+  }
+  if (DENIED_SCHEMES.has(parsed.protocol)) {
+    throw new NavigationBlockedError(
+      'scheme-denied',
+      url,
+      `scheme "${parsed.protocol}" is in the denied-scheme set`,
+    );
+  }
+  const allowedSchemes = options.allowedSchemes ?? DEFAULT_ALLOWED_SCHEMES;
+  if (!allowedSchemes.includes(parsed.protocol)) {
+    throw new NavigationBlockedError(
+      'scheme-denied',
+      url,
+      `scheme "${parsed.protocol}" not in [${allowedSchemes.join(', ')}]`,
+    );
+  }
+  if (options.allowlist.length === 0) {
+    // Empty allowlist = explicit deny-all. Operators must opt in.
+    throw new NavigationBlockedError(
+      'host-not-in-allowlist',
+      url,
+      'navigation allowlist is empty — refuse navigate',
+    );
+  }
+  const lowerHost = parsed.hostname.toLowerCase();
+  const matched = options.allowlist.some((entry) => {
+    const e = entry.toLowerCase().replace(/^\*\./, '.');
+    if (e.startsWith('.')) {
+      return lowerHost.endsWith(e) || lowerHost === e.slice(1);
+    }
+    return lowerHost === e;
+  });
+  if (!matched) {
+    throw new NavigationBlockedError(
+      'host-not-in-allowlist',
+      url,
+      `host "${parsed.hostname}" not in allowlist`,
+    );
+  }
 }
 
 /** Playwright surface the driver needs. */
@@ -88,6 +243,10 @@ export class LegacyPortalDriver {
   private readonly page: DrivablePage;
   private readonly maxNodes: number;
   private readonly maxDepth: number;
+  private readonly navigationAllowlist: ReadonlyArray<string>;
+  private readonly allowedSchemes: ReadonlyArray<string>;
+  private readonly consent?: PortalConsentPort;
+  private readonly tenantId?: string;
   private lastSnapshot: AxTreeSnapshot | null = null;
 
   constructor(opts: LegacyPortalDriverOptions) {
@@ -97,13 +256,43 @@ export class LegacyPortalDriver {
     this.page = opts.page;
     this.maxNodes = opts.maxNodes ?? 200;
     this.maxDepth = opts.maxDepth ?? 12;
+    this.navigationAllowlist = opts.navigationAllowlist ?? [];
+    this.allowedSchemes = opts.allowedSchemes ?? DEFAULT_ALLOWED_SCHEMES;
+    if (opts.consent) this.consent = opts.consent;
+    if (opts.tenantId) this.tenantId = opts.tenantId;
   }
 
-  /** Navigate to the portal entry url and capture the initial snapshot. */
-  async openPortal(
-    url: string,
-    _credentials?: PortalCredentials,
-  ): Promise<AxTreeSnapshot> {
+  /** H26: consult the consent port before any snapshot. */
+  private async assertConsent(url: string): Promise<void> {
+    if (!this.consent || !this.tenantId) return;
+    const host = new URL(url).hostname;
+    const ok = await this.consent.hasConsent({
+      tenantId: this.tenantId,
+      portalHost: host,
+    });
+    if (!ok) {
+      throw new ConsentMissingError(host, this.tenantId);
+    }
+  }
+
+  /**
+   * Navigate to the portal entry url and capture the initial snapshot.
+   *
+   * C5 closure: every navigation passes through `assertNavigationAllowed`.
+   * Without an allowlist configured the call is REFUSED with
+   * `NavigationBlockedError`.
+   *
+   * L4 closure: callers no longer pass `_credentials` here — credentials
+   * MUST be presented through the brain's `act({verb:'fill', …})` flow
+   * so the secret never lands in driver memory. The legacy
+   * `_credentials` parameter was a no-op and has been removed.
+   */
+  async openPortal(url: string): Promise<AxTreeSnapshot> {
+    assertNavigationAllowed(url, {
+      allowlist: this.navigationAllowlist,
+      allowedSchemes: this.allowedSchemes,
+    });
+    await this.assertConsent(url);
     await this.page.goto(url);
     const snap = await this.snapshot();
     this.lastSnapshot = snap;
@@ -134,13 +323,24 @@ export class LegacyPortalDriver {
   ): Promise<AxNode | null> {
     const snap = this.lastSnapshot ?? (await this.snapshot());
     this.lastSnapshot = snap;
-    const re =
-      namePattern instanceof RegExp
-        ? namePattern
-        : new RegExp(namePattern, 'i');
+    // H25 closure: when `namePattern` is a STRING, perform a literal
+    // case-insensitive match — NEVER `new RegExp(namePattern, 'i')`.
+    // The brain's NL output is untrusted; `(a+)+$` is a textbook
+    // catastrophic-backtracking pattern. Callers that genuinely need
+    // regex semantics MUST pass a pre-compiled `RegExp` instance — an
+    // explicit opt-in, not the default.
+    const nodes = flattenAxNodes(snap.root);
+    if (namePattern instanceof RegExp) {
+      return (
+        nodes.find((n) => n.role === role && namePattern.test(n.name ?? '')) ??
+        null
+      );
+    }
+    const needle = namePattern.toLowerCase();
     return (
-      flattenAxNodes(snap.root).find(
-        (n) => n.role === role && re.test(n.name ?? ''),
+      nodes.find(
+        (n) =>
+          n.role === role && (n.name ?? '').toLowerCase().includes(needle),
       ) ?? null
     );
   }
@@ -161,6 +361,14 @@ export class LegacyPortalDriver {
     try {
       switch (action.verb) {
         case 'navigate':
+          // C5 closure: same allowlist + scheme gate as openPortal.
+          // Without this, a brain prompt-injected by a malicious portal
+          // page could emit `navigate http://169.254.169.254/...` and
+          // the browser process would hit IMDS.
+          assertNavigationAllowed(action.url, {
+            allowlist: this.navigationAllowlist,
+            allowedSchemes: this.allowedSchemes,
+          });
           await this.page.goto(action.url);
           break;
 

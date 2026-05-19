@@ -92,10 +92,43 @@ export class TenantScopeViolation extends Error {
 
 const TENANT_ID_PATTERN = /\$tenantId\b/;
 
+// H16 closure: substring `$tenantId` is not enough — the value must
+// appear in a WHERE / property-bag filter or a MERGE/MATCH pattern that
+// constrains a node. Examples the OLD check accepted but the new one
+// rejects:
+//   - `RETURN $tenantId AS x` (no filter)
+//   - `MATCH (a) WHERE 1=1 OR a._tenantId = $tenantId RETURN a`
+//     (the LHS short-circuit lets every row through)
+//
+// The new check looks for one of these BIND patterns:
+//   - `_tenantId: $tenantId` in a property bag
+//   - `<expr> = $tenantId` in a WHERE clause that is NOT preceded by
+//     `1=1 OR` / `true OR` on the same WHERE clause
+const TENANT_BIND_BAG = /_tenantId\s*:\s*\$tenantId\b/;
+const TENANT_BIND_WHERE = /\.\s*_tenantId\s*=\s*\$tenantId\b/;
+// Heuristic for the disjunction-bypass pattern. Matches a WHERE that
+// contains `1=1 OR ` or `true OR ` followed eventually by the tenant
+// constraint — the LHS lets every row through.
+const DISJUNCTION_BYPASS = /\bWHERE\b[\s\S]{0,200}?\b(?:1\s*=\s*1|true)\s+OR\b/i;
+
 export function assertCypherReferencesTenantId(cypher: string): void {
   if (!TENANT_ID_PATTERN.test(cypher)) {
     throw new TenantScopeViolation(
       'TenantScopedCypher: query MUST reference $tenantId; refusing to run a tenant-unscoped Cypher query',
+    );
+  }
+  const hasBindBag = TENANT_BIND_BAG.test(cypher);
+  const hasBindWhere = TENANT_BIND_WHERE.test(cypher);
+  if (!hasBindBag && !hasBindWhere) {
+    throw new TenantScopeViolation(
+      'TenantScopedCypher: query references $tenantId but never BINDS it ' +
+        '(expected `_tenantId: $tenantId` in a property bag or `<x>._tenantId = $tenantId` in WHERE)',
+    );
+  }
+  if (DISJUNCTION_BYPASS.test(cypher)) {
+    throw new TenantScopeViolation(
+      'TenantScopedCypher: query contains a `1=1 OR …` / `true OR …` disjunction ' +
+        'in its WHERE clause — the LHS bypasses the tenant filter',
     );
   }
 }

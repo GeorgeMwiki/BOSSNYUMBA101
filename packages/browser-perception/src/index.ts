@@ -36,7 +36,12 @@ export type {
   AxChangedEntry,
 } from './axtree-diff.js';
 
-export { LegacyPortalDriver } from './legacy-portal-driver.js';
+export {
+  LegacyPortalDriver,
+  NavigationBlockedError,
+  ConsentMissingError,
+  assertNavigationAllowed,
+} from './legacy-portal-driver.js';
 export type {
   LegacyPortalDriverOptions,
   DrivablePage,
@@ -44,4 +49,5 @@ export type {
   LegacyPortalAction,
   ActionResult,
   PortalCredentials,
+  PortalConsentPort,
 } from './legacy-portal-driver.js';

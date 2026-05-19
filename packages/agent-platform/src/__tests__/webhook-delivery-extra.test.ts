@@ -63,6 +63,12 @@ const subscription: WebhookSubscription = Object.freeze({
   createdAt: '2026-01-01T00:00:00Z',
 });
 
+// C4 closure: tests resolve a raw secret via the injected port — the
+// HMAC is signed with the RAW value, not the hash.
+const TEST_WEBHOOK_SECRET = 'test-webhook-raw-secret';
+const resolveSecret = async (subId: string): Promise<string | null> =>
+  subId === subscription.id ? TEST_WEBHOOK_SECRET : null;
+
 const event = Object.freeze({
   eventType: 'case.created',
   eventId: 'evt-1',
@@ -88,7 +94,7 @@ describe('webhook-delivery wire format', () => {
     };
     const { store } = makeStoreSpy();
     await deliverToSubscription(
-      { fetch: fetchLike, store, retryDelaysMs: [] },
+      { fetch: fetchLike, store, retryDelaysMs: [], resolveSecret },
       subscription,
       event,
     );
@@ -113,7 +119,7 @@ describe('webhook-delivery wire format', () => {
     };
     const { store } = makeStoreSpy();
     await deliverToSubscription(
-      { fetch: fetchLike, store, retryDelaysMs: [] },
+      { fetch: fetchLike, store, retryDelaysMs: [], resolveSecret },
       subscription,
       event,
     );
@@ -132,7 +138,7 @@ describe('webhook-delivery retries', () => {
     const fetchLike: FetchLike = async () => ({ status: 200, ok: true });
     const spy = makeStoreSpy();
     const result = await deliverToSubscription(
-      { fetch: fetchLike, store: spy.store, retryDelaysMs: [] },
+      { fetch: fetchLike, store: spy.store, retryDelaysMs: [], resolveSecret },
       subscription,
       event,
     );
@@ -151,7 +157,7 @@ describe('webhook-delivery retries', () => {
     };
     const spy = makeStoreSpy();
     const result = await deliverToSubscription(
-      { fetch: fetchLike, store: spy.store, retryDelaysMs: [1, 1, 1, 1] },
+      { fetch: fetchLike, store: spy.store, retryDelaysMs: [1, 1, 1, 1], resolveSecret },
       subscription,
       event,
     );
@@ -169,7 +175,7 @@ describe('webhook-delivery retries', () => {
     };
     const spy = makeStoreSpy();
     const result = await deliverToSubscription(
-      { fetch: fetchLike, store: spy.store, retryDelaysMs: [1, 1] },
+      { fetch: fetchLike, store: spy.store, retryDelaysMs: [1, 1], resolveSecret },
       subscription,
       event,
     );
@@ -186,6 +192,7 @@ describe('webhook-delivery retries', () => {
         store: spy.store,
         retryDelaysMs: [1],
         maxConsecutiveFailures: 5,
+        resolveSecret,
       },
       { ...subscription, failureCount: 0 },
       event,
@@ -204,6 +211,7 @@ describe('webhook-delivery retries', () => {
         store: spy.store,
         retryDelaysMs: [1],
         maxConsecutiveFailures: 5,
+        resolveSecret,
       },
       { ...subscription, failureCount: 4 }, // already 4, this one makes 5 → pause
       event,
@@ -221,6 +229,7 @@ describe('webhook-delivery retries', () => {
         fetch: fetchLike,
         store: spy.store,
         retryDelaysMs: [1, 1, 1],
+        resolveSecret,
       },
       subscription,
       event,

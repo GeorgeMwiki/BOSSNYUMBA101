@@ -9,6 +9,8 @@
  */
 
 import { z } from 'zod';
+import { timingSafeEqual as nodeTimingSafeEqual } from 'node:crypto';
+import { assertUrlSafe, type AssertUrlSafeOptions } from '../http/safe-http-fetch.js';
 
 /**
  * Webhook Event Categories
@@ -41,7 +43,21 @@ export const DeliveryStatus = {
 export type DeliveryStatus = typeof DeliveryStatus[keyof typeof DeliveryStatus];
 
 /**
- * Webhook Endpoint Configuration
+ * Webhook Endpoint Configuration.
+ *
+ * STORAGE-HYGIENE CONTRACT (H22 closure):
+ * - `secret` MUST be stored in a KMS-backed secret manager. Persisting
+ *   it in plaintext to the relational store is a P0 violation.
+ * - When serialising for logs / debug responses, route through
+ *   {@link redactWebhookEndpoint} to mask the secret before emit.
+ * - NEVER include `secret` in audit-event metadata or telemetry tags.
+ *
+ * Compare with the `@bossnyumba/agent-platform` `WebhookSubscription`
+ * type that uses `secretHash` — both packages now share the same
+ * "never log the raw secret" discipline, but persistence shape differs
+ * because enterprise-hardening's HMAC verifier expects the raw secret
+ * (the agent-platform variant signs with `secretHash` itself which is
+ * incoherent — see C4 closure in agent-auth.ts).
  */
 export interface WebhookEndpoint {
   readonly id: string;
@@ -54,6 +70,17 @@ export interface WebhookEndpoint {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * Return a copy of a {@link WebhookEndpoint} with the `secret` field
+ * replaced by a redaction marker. Use this BEFORE shipping an endpoint
+ * row to logs, telemetry, or any operator-facing surface.
+ */
+export function redactWebhookEndpoint(
+  endpoint: WebhookEndpoint,
+): Omit<WebhookEndpoint, 'secret'> & { readonly secret: '[REDACTED]' } {
+  return { ...endpoint, secret: '[REDACTED]' };
 }
 
 /**
@@ -133,14 +160,90 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 };
 
 /**
+ * Constant-time hex-string compare. Throws on length mismatch by
+ * returning `false` before invoking `timingSafeEqual` — Node's
+ * `timingSafeEqual` requires equal-length buffers. We treat
+ * non-hex-decodable inputs as mismatches too.
+ *
+ * Used by `WebhookManager.verifySignature` (C1 closure).
+ */
+function constantTimeHexCompare(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let bufA: Buffer;
+  let bufB: Buffer;
+  try {
+    bufA = Buffer.from(a, 'hex');
+    bufB = Buffer.from(b, 'hex');
+  } catch {
+    return false;
+  }
+  if (bufA.length === 0 || bufA.length !== bufB.length) return false;
+  return nodeTimingSafeEqual(bufA, bufB);
+}
+
+// ---------------------------------------------------------------------------
+// Webhook URL safety — operator-controlled subscription endpoints MUST
+// route through the SSRF gate so an operator who can register a webhook
+// can NOT pivot to IMDS / RFC1918. C2 closure.
+//
+// Operators wire a custom allowlist via `WebhookManagerOptions.urlPolicy`
+// when stricter than the global denylist (e.g. partner-only deployments).
+// ---------------------------------------------------------------------------
+
+export interface WebhookUrlPolicy {
+  /** Host allowlist for outbound webhook URLs (e.g. ['partner.example.com']). */
+  readonly allowlist?: ReadonlyArray<string>;
+  /** Allowed schemes — defaults to ['https:'] for production webhooks. */
+  readonly allowedSchemes?: ReadonlyArray<string>;
+  /** Allowed ports — defaults to [443]. */
+  readonly allowedPorts?: ReadonlyArray<number>;
+  /** Injectable DNS lookup; defaults to Node's resolver. */
+  readonly dnsLookup?: AssertUrlSafeOptions['dnsLookup'];
+}
+
+export interface WebhookManagerOptions {
+  readonly retryConfig?: RetryConfig;
+  readonly urlPolicy?: WebhookUrlPolicy;
+}
+
+const DEFAULT_WEBHOOK_SCHEMES: ReadonlyArray<string> = Object.freeze([
+  'https:',
+]);
+const DEFAULT_WEBHOOK_PORTS: ReadonlyArray<number> = Object.freeze([443]);
+
+/**
  * Webhook Manager
  */
 export class WebhookManager {
   private endpoints: Map<string, WebhookEndpoint> = new Map();
   private deliveries: Map<string, WebhookDelivery> = new Map();
   private pendingDeliveries: WebhookDelivery[] = [];
+  private readonly retryConfig: RetryConfig;
+  private readonly urlPolicy: WebhookUrlPolicy;
 
-  constructor(private readonly retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG) {}
+  /**
+   * Construct a WebhookManager.
+   *
+   * The legacy single-arg constructor signature accepting a bare
+   * `RetryConfig` is preserved for backwards-compatibility — callers
+   * that need the new SSRF policy switch to the options object.
+   */
+  constructor(arg?: RetryConfig | WebhookManagerOptions) {
+    if (!arg) {
+      this.retryConfig = DEFAULT_RETRY_CONFIG;
+      this.urlPolicy = {};
+      return;
+    }
+    if ('retryConfig' in arg || 'urlPolicy' in arg) {
+      const opts = arg as WebhookManagerOptions;
+      this.retryConfig = opts.retryConfig ?? DEFAULT_RETRY_CONFIG;
+      this.urlPolicy = opts.urlPolicy ?? {};
+    } else {
+      this.retryConfig = arg as RetryConfig;
+      this.urlPolicy = {};
+    }
+  }
 
   /**
    * Register a webhook endpoint
@@ -275,16 +378,35 @@ export class WebhookManager {
     const startTime = Date.now();
 
     try {
+      // C2 closure: enforce SSRF policy on operator-supplied URL BEFORE
+      // any payload is built. An operator who can register a webhook
+      // endpoint must NOT be able to pivot to IMDS / RFC1918 ranges.
+      await assertUrlSafe(endpoint.url, {
+        allowedSchemes: this.urlPolicy.allowedSchemes ?? DEFAULT_WEBHOOK_SCHEMES,
+        allowedPorts: this.urlPolicy.allowedPorts ?? DEFAULT_WEBHOOK_PORTS,
+        ...(this.urlPolicy.allowlist
+          ? { allowlist: this.urlPolicy.allowlist }
+          : {}),
+        ...(this.urlPolicy.dnsLookup
+          ? { dnsLookup: this.urlPolicy.dnsLookup }
+          : {}),
+      });
+
       const payload = this.buildPayload(delivery.event);
-      const signature = await this.signPayload(payload, endpoint.secret);
+      const timestamp = new Date().toISOString();
+      // H21 closure: timestamp is part of the signed payload to prevent
+      // replay attacks. Subscribers verify both signature + freshness.
+      const signedPayload = `${timestamp}.${payload}`;
+      const signature = await this.signPayload(signedPayload, endpoint.secret);
 
       const response = await fetch(endpoint.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Webhook-Id': delivery.id,
-          'X-Webhook-Signature': signature,
-          'X-Webhook-Timestamp': new Date().toISOString(),
+          'X-Webhook-Signature': `sha256=${signature}`,
+          'X-Webhook-Signature-Version': 'v2',
+          'X-Webhook-Timestamp': timestamp,
         },
         body: payload,
         signal: AbortSignal.timeout(30000), // 30 second timeout
@@ -374,11 +496,28 @@ export class WebhookManager {
   }
 
   /**
-   * Verify webhook signature
+   * Verify webhook signature.
+   *
+   * Constant-time comparison via `crypto.timingSafeEqual` — direct
+   * `===` on hex digests is a textbook HMAC-timing-attack target.
+   * Round-3 closure C1.
+   *
+   * The verify path supports both signed-payload formats:
+   *   - v1 (legacy): `hmac(secret, body)`
+   *   - v2 (current): `hmac(secret, `${timestamp}.${body}`)`
+   * When `timestamp` is provided we sign the v2 payload; otherwise we
+   * fall back to v1 for backwards-compatibility with peers that haven't
+   * adopted timestamp-commit yet.
    */
-  async verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
-    const expectedSignature = await this.signPayload(payload, secret);
-    return signature === expectedSignature;
+  async verifySignature(
+    payload: string,
+    signature: string,
+    secret: string,
+    timestamp?: string,
+  ): Promise<boolean> {
+    const signedPayload = timestamp ? `${timestamp}.${payload}` : payload;
+    const expectedSignature = await this.signPayload(signedPayload, secret);
+    return constantTimeHexCompare(signature, expectedSignature);
   }
 
   /**

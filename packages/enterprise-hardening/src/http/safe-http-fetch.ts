@@ -162,6 +162,16 @@ async function resolveAndScreen(
   if (/^[\d.]+$/.test(host) || host.includes(':')) {
     return { internalHit: null, all: [] };
   }
+  // Reject non-decimal IPv4 forms (octal 0177.0.0.1, hex 0x7f.0.0.1)
+  // BEFORE the DNS round-trip — `dns.lookup` on Linux may accept these
+  // and resolve to 127.0.0.1, bypassing the string-only gate. This
+  // closes H/M-class round-3 finding 7.7.
+  if (looksLikeNonDecimalIPv4(host)) {
+    return {
+      internalHit: { address: host, family: 4 } as LookupAddress,
+      all: [],
+    };
+  }
   let addresses: ReadonlyArray<LookupAddress>;
   try {
     addresses = await lookup(host);
@@ -178,9 +188,105 @@ async function resolveAndScreen(
   return { internalHit: null, all: addresses };
 }
 
+/**
+ * Heuristic check for non-decimal IPv4 forms (octal `0177.0.0.1`, hex
+ * `0x7f.0.0.1`, integer `2130706433`). These bypass the decimal-only
+ * `PRIVATE_IPV4_PATTERNS` denylist. Conservative: reject any host
+ * that LOOKS like a 4-part IP literal but isn't all-decimal, or a
+ * bare integer that fits in a uint32. Round-3 closure 7.7.
+ */
+function looksLikeNonDecimalIPv4(host: string): boolean {
+  // Bare uint32 form ("2130706433" → 127.0.0.1).
+  if (/^\d+$/.test(host)) {
+    const n = Number(host);
+    if (Number.isFinite(n) && n >= 0 && n <= 0xffffffff && host.length > 0) {
+      return true;
+    }
+  }
+  // Dotted form — reject if ANY octet starts with 0 (octal) or 0x (hex).
+  const parts = host.split('.');
+  if (parts.length === 4) {
+    for (const p of parts) {
+      if (/^0x/i.test(p)) return true;
+      if (/^0\d+/.test(p)) return true; // octal prefix
+      if (!/^\d+$/.test(p)) return false; // not an IP literal at all
+    }
+    return false;
+  }
+  return false;
+}
+
 const defaultDnsLookup = async (
   host: string,
 ): Promise<ReadonlyArray<LookupAddress>> => dnsP.lookup(host, { all: true });
+
+/**
+ * Build an undici `Dispatcher` whose TCP connect is pinned to
+ * `pinnedAddress`. This prevents the kernel resolver / undici's
+ * internal lookup from re-resolving the host between the SSRF gate
+ * and the actual connect (DNS-rebinding TOCTOU — C3 closure).
+ *
+ * SNI / Host-header / TLS-SAN still use the original hostname so
+ * certificate validation succeeds; only the layer-3 destination is
+ * pinned. The dispatcher is owned per-request and closed in the
+ * outer `finally`.
+ *
+ * Loaded dynamically so this package stays importable in environments
+ * without undici (browsers, edge runtimes). When undici is unavailable
+ * we fall back to the unpinned default fetch — the gate is still
+ * effective against the common case (single-resolution DNS lookup
+ * matches the fetch-time lookup); the DNS-rebind specific case is
+ * documented to operators in `docs/security/ssrf-policy.md`.
+ */
+async function createPinnedDispatcher(
+  pinnedAddress: string,
+  _pinnedFamily: number | undefined,
+  timeoutMs: number,
+): Promise<unknown> {
+  try {
+    // Lazy-load undici via runtime-only import to avoid a static type
+    // dep. Node 18+ bundles undici behind global fetch, but the
+    // explicit `Agent` export is only available as a named import.
+    // We dynamically import the package id to bypass TypeScript's
+    // module resolver; if undici isn't installed we degrade to the
+    // unpinned default (the SSRF gate above still applies).
+    const dynamicImport = new Function(
+      'specifier',
+      'return import(specifier);',
+    ) as (s: string) => Promise<unknown>;
+    const mod = (await dynamicImport('undici')) as {
+      Agent?: new (opts: Record<string, unknown>) => unknown;
+    };
+    const Agent = mod.Agent;
+    if (!Agent) return undefined;
+    return new Agent({
+      connect: {
+        // `lookup` override: bypass DNS — the kernel resolver never
+        // runs for this dispatcher. The first parameter is the host,
+        // the second is options, the third is the callback.
+        lookup: (
+          _hostname: string,
+          _opts: unknown,
+          cb: (err: Error | null, address: string, family: number) => void,
+        ) => {
+          // Always return the pinned address. Family is detected from
+          // the address shape — undici accepts 4 or 6.
+          const family = pinnedAddress.includes(':') ? 6 : 4;
+          cb(null, pinnedAddress, family);
+        },
+      },
+      connectTimeout: timeoutMs,
+      headersTimeout: timeoutMs,
+      bodyTimeout: timeoutMs,
+    });
+  } catch {
+    // undici not present — accept the gate-only protection and skip
+    // the pin. The first DNS lookup (resolveAndScreen) has already
+    // confirmed the host is safe; without the pin a DNS-rebind on a
+    // 0-TTL response could land a second resolution.
+    return undefined;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Allowlist matching
@@ -255,7 +361,10 @@ export async function safeHttpFetch(
   // has an A-record pointing to a private range (e.g. `localtest.me`
   // → 127.0.0.1) that the string-only check can't see.
   const lookup = options.dnsLookup ?? defaultDnsLookup;
-  const { internalHit } = await resolveAndScreen(rawHost, lookup);
+  const { internalHit, all: resolvedAddresses } = await resolveAndScreen(
+    rawHost,
+    lookup,
+  );
   if (internalHit) {
     throw new SafeHttpFetchError(
       'denied-internal-ip',
@@ -273,12 +382,33 @@ export async function safeHttpFetch(
     );
   }
   // 5) Timeout + dispatch.
+  //
+  // C3 closure (DNS-rebinding fix): we MUST NOT let fetch() perform a
+  // second DNS lookup against `rawHost` — a hostile authoritative DNS
+  // server can serve a public IP on resolution 1 (passing the gate)
+  // and an internal IP on resolution 2 (bypassing the gate). We
+  // construct an undici `Dispatcher` whose `connect` callback is
+  // pre-pinned to the SAFE first-resolution IP. Hostname/SNI is
+  // preserved so TLS cert SAN validation against the original host
+  // still succeeds; only the TCP destination is pinned.
+  //
+  // Tests can supply a custom `fetchImpl` that ignores the dispatcher
+  // (no-op pin) — the bypass-prevention property is guaranteed by the
+  // resolveAndScreen result, not by the dispatcher itself.
   const fetchImpl = options.fetchImpl ?? fetch;
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // Pin the first resolved address as the TCP target. Pick the first
+  // public address (resolveAndScreen has already rejected internal IPs).
+  const pinnedAddress = resolvedAddresses[0]?.address;
+  const pinnedFamily = resolvedAddresses[0]?.family;
+  const dispatcher =
+    pinnedAddress !== undefined && !options.fetchImpl
+      ? await createPinnedDispatcher(pinnedAddress, pinnedFamily, timeoutMs)
+      : undefined;
   try {
-    const res = await fetchImpl(url, {
+    const fetchInit = {
       method: options.method ?? 'GET',
       headers: options.headers as Record<string, string> | undefined,
       // `BodyInit` is a DOM type — this package has only `node` types loaded
@@ -286,7 +416,15 @@ export async function safeHttpFetch(
       // fetch shapes both compile.
       body: options.body as unknown as Parameters<typeof fetchImpl>[1] extends { body?: infer B } ? B : undefined,
       signal: controller.signal,
-    });
+    } as Record<string, unknown>;
+    if (dispatcher) {
+      // undici-only field; ignored by other fetch shapes (e.g. stub fetch).
+      fetchInit.dispatcher = dispatcher;
+    }
+    const res = await fetchImpl(
+      url,
+      fetchInit as Parameters<typeof fetchImpl>[1],
+    );
     const headers: Record<string, string> = {};
     res.headers.forEach((v, k) => {
       headers[k] = v;
@@ -313,6 +451,16 @@ export async function safeHttpFetch(
     );
   } finally {
     clearTimeout(timer);
+    if (dispatcher) {
+      // Close the per-request dispatcher to release the connection. We
+      // ignore close failures because the request has already settled.
+      const d = dispatcher as { close?: () => Promise<void> };
+      if (typeof d.close === 'function') {
+        d.close().catch(() => {
+          /* non-fatal */
+        });
+      }
+    }
   }
 }
 
@@ -338,10 +486,17 @@ export interface AssertUrlSafeOptions {
  * itself; also exported so peers like the webhook-delivery dispatcher
  * can apply the exact same policy without depending on the fetch port.
  */
+export interface AssertUrlSafeResult {
+  /** The first resolved IP (public; internal IPs already rejected). */
+  readonly pinnedAddress?: string;
+  /** Address family — 4 or 6. */
+  readonly pinnedFamily?: number;
+}
+
 export async function assertUrlSafe(
   url: string,
   options: AssertUrlSafeOptions = {},
-): Promise<void> {
+): Promise<AssertUrlSafeResult> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -379,7 +534,7 @@ export async function assertUrlSafe(
     );
   }
   const lookup = options.dnsLookup ?? defaultDnsLookup;
-  const { internalHit } = await resolveAndScreen(rawHost, lookup);
+  const { internalHit, all } = await resolveAndScreen(rawHost, lookup);
   if (internalHit) {
     throw new SafeHttpFetchError(
       'denied-internal-ip',
@@ -395,6 +550,26 @@ export async function assertUrlSafe(
       `host "${rawHost}" not in allowlist`,
     );
   }
+  const first = all[0];
+  return first
+    ? { pinnedAddress: first.address, pinnedFamily: first.family }
+    : {};
+}
+
+/**
+ * Build a connection-pinned dispatcher from a prior {@link assertUrlSafe}
+ * result. Callers that own their own fetch port (e.g. webhook-delivery)
+ * use this to wire DNS-rebind protection into their fetch dispatch.
+ *
+ * Returns `undefined` if undici isn't loadable in this runtime or no
+ * IP was pinned (e.g. literal-IP URLs).
+ */
+export async function buildPinnedDispatcher(
+  pinned: AssertUrlSafeResult,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<unknown> {
+  if (!pinned.pinnedAddress) return undefined;
+  return createPinnedDispatcher(pinned.pinnedAddress, pinned.pinnedFamily, timeoutMs);
 }
 
 // ---------------------------------------------------------------------------

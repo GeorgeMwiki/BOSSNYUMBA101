@@ -43,6 +43,33 @@ const TIMESTAMP_HEADER = 'x-agent-timestamp';
 export interface AgentRegistry {
   findById(agentId: string): Promise<RegisteredAgent | null>;
   touchLastSeen(agentId: string, iso: string): Promise<void>;
+  /**
+   * Resolve the RAW shared HMAC secret for the agent.
+   *
+   * C4 closure (round-3 audit): previously `verifyAgentRequest` signed
+   * with `agent.hmacSecretHash` (the SHA-256 of the secret). This is
+   * incoherent — if `hash(secret)` is what's used as the HMAC key,
+   * then `hash(secret)` IS the effective secret, providing zero
+   * security uplift over storing the raw secret. A DB leak still
+   * yields the value the legitimate caller uses to sign.
+   *
+   * Correct production wiring (REQUIRED for non-test deployments):
+   *   - Persist `hmacSecretHash` for revocation / equality checks ONLY.
+   *   - Store the RAW secret in a KMS-backed secret manager (AWS
+   *     Secrets Manager, GCP Secret Manager, HashiCorp Vault).
+   *   - Implement `resolveSecret` to fetch the raw secret on-demand
+   *     and cache for the duration of the auth check.
+   *   - NEVER log the raw secret or include it in audit metadata.
+   *
+   * Test wiring: in-memory implementations may return the raw secret
+   * from a Map. The interface keeps the test surface minimal.
+   *
+   * Implementations that have not yet wired KMS-backed resolution
+   * should return `null` — the verifier will reject the request with
+   * `AUTH_INVALID_KEY` rather than silently fall back to the
+   * (incoherent) hash-as-key signature.
+   */
+  resolveSecret(agentId: string): Promise<string | null>;
 }
 
 // ============================================================================
@@ -143,6 +170,54 @@ export interface AgentAuthDeps {
   readonly registry: AgentRegistry;
   readonly now?: () => number;
   readonly maxClockDriftMs?: number;
+  /**
+   * Replay-prevention ledger (H11 closure). Stores
+   * (signature, timestamp) tuples for the duration of
+   * `maxClockDriftMs`. The verifier consults this AFTER signature
+   * validation and rejects a successful match.
+   *
+   * Without a ledger, a captured signed request can be replayed any
+   * number of times within the 5-minute drift window. For idempotent
+   * bodies this is harmless; for non-idempotent POSTs it isn't.
+   *
+   * Production wiring: Redis `SET <signature> 1 NX EX 300`. Test wiring:
+   * in-memory Set.
+   *
+   * When omitted, replay prevention is disabled and the verifier emits
+   * a warning header `X-Agent-Auth-Note: replay-prevention-disabled`
+   * via the caller's response decoration (caller's responsibility).
+   */
+  readonly replayLedger?: ReplayLedger;
+}
+
+/**
+ * Replay-prevention ledger port. The implementation must guarantee
+ * at-most-once acceptance for a given signature within the TTL window.
+ */
+export interface ReplayLedger {
+  /**
+   * Attempt to claim the signature for one-time use. Returns `true` if
+   * this is the FIRST time the signature has been seen (the request
+   * may proceed); `false` if it's a replay (the request must be
+   * rejected).
+   */
+  claimOnce(signature: string, ttlMs: number): Promise<boolean>;
+}
+
+export function createInMemoryReplayLedger(): ReplayLedger {
+  const seen = new Map<string, number>();
+  return {
+    async claimOnce(signature: string, ttlMs: number): Promise<boolean> {
+      const now = Date.now();
+      // Evict expired entries.
+      for (const [sig, expiresAt] of seen) {
+        if (expiresAt < now) seen.delete(sig);
+      }
+      if (seen.has(signature)) return false;
+      seen.set(signature, now + ttlMs);
+      return true;
+    },
+  };
 }
 
 // ============================================================================
@@ -221,15 +296,26 @@ export async function verifyAgentRequest(
     };
   }
 
-  // The shared secret is stored hashed in the registry; we verify the signature
-  // by re-signing with the stored hash. (Real deployments store the secret in
-  // a KMS-backed secret manager and pass it through the registry.)
+  // C4 closure: sign with the RAW secret resolved on-demand from the
+  // registry (typically backed by KMS). The previous implementation
+  // signed with `agent.hmacSecretHash` — incoherent (see
+  // AgentRegistry.resolveSecret docstring).
+  const rawSecret = await deps.registry.resolveSecret(agent.id);
+  if (rawSecret === null || rawSecret === undefined || rawSecret.length === 0) {
+    return {
+      ok: false,
+      error: 'Agent secret not resolvable (KMS unavailable or unconfigured).',
+      errorCode: 'AUTH_INVALID_KEY',
+      status: 401,
+      correlationId,
+    };
+  }
   const expected = await signRequest(
     request.method,
     request.path,
     timestamp,
     request.body,
-    agent.hmacSecretHash,
+    rawSecret,
   );
 
   if (!timingSafeEqual(signature, expected)) {
@@ -240,6 +326,21 @@ export async function verifyAgentRequest(
       status: 401,
       correlationId,
     };
+  }
+
+  // H11 closure: replay-prevention check. The ledger guarantees
+  // at-most-once acceptance per signature within the drift window.
+  if (deps.replayLedger) {
+    const claimed = await deps.replayLedger.claimOnce(signature, maxDrift);
+    if (!claimed) {
+      return {
+        ok: false,
+        error: 'Request replay detected.',
+        errorCode: 'AUTH_REPLAY_DETECTED',
+        status: 401,
+        correlationId,
+      };
+    }
   }
 
   if (requiredScopes && requiredScopes.length > 0) {

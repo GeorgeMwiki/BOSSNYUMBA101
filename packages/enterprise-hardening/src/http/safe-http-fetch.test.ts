@@ -122,7 +122,8 @@ describe('safeHttpFetch — timeout + dispatch', () => {
     let receivedInit: RequestInit | undefined;
     const captured = async (_url: string, init?: RequestInit) => {
       receivedInit = init;
-      return new Response('', { status: 204 });
+      // Node 22 strictness: status 204 forbids a body. Use 200 here.
+      return new Response('', { status: 200 });
     };
     await safeHttpFetch('https://api.example.com/path', {
       fetchImpl: captured as typeof fetch,

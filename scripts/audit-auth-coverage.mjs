@@ -110,8 +110,14 @@ const AUTH_PATTERNS = [
 // Handler detection — register-call style (Hono / Express).
 // ───────────────────────────────────────────────────────────────────
 
+// M3 closure: broaden the discovery regex to accept fluent chains
+// `new Hono().basePath('/v1').post(...)`. We require the first
+// argument to LOOK LIKE a route path literal (string starting with
+// `/` or quoted `'/...'` / `"/..."` / template literal), which
+// eliminates false positives like `c.get('services')` (auth ctx
+// lookups) and `services.featureFlags.get(tenantId)`.
 const HANDLER_RX =
-  /\b([a-zA-Z_$][\w$]*)\.(get|post|put|delete|patch)\s*\(/g;
+  /(?:\b([a-zA-Z_$][\w$]*)|\))\s*\.(get|post|put|delete|patch)\s*\(\s*(?:["'`]\s*\/|\/)/g;
 
 const MUTATING = new Set(['post', 'put', 'delete', 'patch']);
 
@@ -197,6 +203,61 @@ function hasAnyAuthSignal(src) {
   return false;
 }
 
+/**
+ * Detect a FILE-LEVEL auth middleware (e.g. `app.use('*', auth)` /
+ * `router.use(authMiddleware)`). When present, the file applies the
+ * auth gate to every handler defined in the same router; per-handler
+ * scan is unnecessary.
+ *
+ * H7 closure (round-3 audit): refinement to per-handler signal when
+ * no file-level middleware is present. Without this, a file that
+ * mixes one `requireAuth`-protected handler with three bare-mutation
+ * handlers gets a clean pass for all four — the LITFIN scanner this
+ * was reverse-ported from operates per-handler.
+ */
+const FILE_LEVEL_MIDDLEWARE_RX =
+  /\.\s*use\s*\(\s*(?:['"`]\*['"`]\s*,\s*)?(?:authMiddleware|requireAuth|tenantContextMiddleware|optionalAuthMiddleware|apiKeyAuthMiddleware|flexibleAuthMiddleware|ambientBrainMiddleware|securityEventsMiddleware|protect|withAuth)\b/;
+
+function hasFileLevelAuthMiddleware(src) {
+  return FILE_LEVEL_MIDDLEWARE_RX.test(src);
+}
+
+/**
+ * Per-handler signal scan. Extracts the handler argument span (the
+ * code passed to `.post(...)` etc.) and runs the AUTH_PATTERNS
+ * against ONLY that span plus the file's imports. Returns true when
+ * AT LEAST ONE auth pattern matches in the relevant slice.
+ *
+ * `handlerSpanStart` is the absolute byte offset of the `(` after the
+ * verb. We extract until the matching `)` accounting for nested
+ * parens / template strings (a crude but effective scanner).
+ */
+function handlerSpan(src, handlerLine) {
+  const lines = src.split('\n');
+  const startIdx = Math.max(0, handlerLine - 1);
+  // Capture the handler line + 40 lines after (handler bodies in
+  // route files are typically small). This is a heuristic — large
+  // handlers may need a larger window.
+  const endIdx = Math.min(lines.length, startIdx + 60);
+  return lines.slice(startIdx, endIdx).join('\n');
+}
+
+function fileImportsSlice(src) {
+  // Top of file up to the first non-import / non-comment line.
+  // Conservative: take the first 80 lines (auth helpers are usually
+  // imported at the top).
+  const lines = src.split('\n');
+  return lines.slice(0, 80).join('\n');
+}
+
+function hasPerHandlerAuthSignal(src, handler) {
+  const slice = handlerSpan(src, handler.line) + '\n' + fileImportsSlice(src);
+  for (const pat of AUTH_PATTERNS) {
+    if (pat.test(slice)) return true;
+  }
+  return false;
+}
+
 function extractHonoHandlers(src) {
   const handlers = [];
   let m;
@@ -262,11 +323,29 @@ function main() {
       : extractHonoHandlers(src);
     if (handlers.length === 0) continue;
 
-    const fileAuthed = hasAnyAuthSignal(src);
+    // H7 refinement: a FILE-LEVEL middleware (`router.use(authMiddleware)`)
+    // covers every handler in the same router; everything else is checked
+    // per-handler.
+    const fileMiddleware = hasFileLevelAuthMiddleware(src);
+    const fileAuthed = fileMiddleware || hasAnyAuthSignal(src);
     const allowReason = AUTH_ALLOWLIST.get(rel) ?? null;
 
     const mutating = handlers.filter((h) => MUTATING.has(h.verb));
     const reads = handlers.filter((h) => !MUTATING.has(h.verb));
+
+    // Per-handler signal — only consulted when file-level middleware
+    // isn't present (we already know the file is gated when middleware
+    // is in scope).
+    let perHandlerCovers = true;
+    let uncoveredHandlers = [];
+    if (!fileMiddleware) {
+      for (const h of mutating) {
+        if (!hasPerHandlerAuthSignal(src, h)) {
+          perHandlerCovers = false;
+          uncoveredHandlers.push(`.${h.verb}@L${h.line}`);
+        }
+      }
+    }
 
     audited.push({
       file: rel,
@@ -277,7 +356,8 @@ function main() {
       allowlisted: Boolean(allowReason),
     });
 
-    if (fileAuthed || allowReason) continue;
+    if (fileMiddleware || allowReason) continue;
+    if (fileAuthed && perHandlerCovers) continue;
 
     // No auth signal AND not on allowlist → violation.
     // Severity: HIGH for any mutating handler; MEDIUM for read-only.
@@ -287,6 +367,9 @@ function main() {
       severity,
       mutating: mutating.map((h) => `.${h.verb}@L${h.line}`),
       reads: reads.map((h) => `.${h.verb}@L${h.line}`),
+      ...(uncoveredHandlers.length > 0
+        ? { uncoveredHandlers }
+        : {}),
     });
   }
 

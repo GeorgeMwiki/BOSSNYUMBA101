@@ -234,6 +234,11 @@ export class RateLimiter {
         if (context.tenantId) parts.push(`tenant:${context.tenantId}`);
         if (context.userId) parts.push(`user:${context.userId}`);
         if (context.endpoint) parts.push(`endpoint:${context.endpoint}`);
+        // M12 closure: ALWAYS include the IP discriminator (or
+        // 'unknown'). Without this, anonymous LOGIN attempts (the
+        // PRESET that uses COMPOSITE) share a single process-global
+        // bucket — DoS protection becomes platform-wide DoS.
+        parts.push(`ip:${context.ipAddress ?? 'unknown'}`);
         break;
     }
 
@@ -241,24 +246,36 @@ export class RateLimiter {
   }
 
   /**
-   * Fixed window rate limiting
+   * Fixed window rate limiting.
+   *
+   * H23 closure (round-3 audit): the original `get` → check → `increment`
+   * sequence is a TOCTOU window — N concurrent requests can ALL read
+   * `count = maxRequests - 1`, decide they're allowed, then ALL
+   * increment past the cap. We now use the atomic `increment` (which
+   * the store contract guarantees is atomic with respect to itself)
+   * and check the POST-increment value against the cap. If the
+   * increment pushed us over the limit, we deny — the atomic primitive
+   * ensures at most `maxRequests` requests can be admitted per window.
+   *
+   * Cost: we increment even on denied requests. Stores that support
+   * `incrementIfBelow(key, limit)` should override this method for
+   * the no-overshoot semantics. The default behaviour is conservative
+   * (deny once cap reached) and atomic.
    */
   private async checkFixedWindow(key: string): Promise<RateLimitResult> {
     const now = Date.now();
     const windowStart = Math.floor(now / this.config.windowMs) * this.config.windowMs;
     const windowKey = `${key}:${windowStart}`;
 
-    const state = await this.store.get(windowKey);
-    const count = state?.count ?? 0;
-    const remaining = Math.max(0, this.config.maxRequests - count - 1);
+    // Atomic increment-and-fetch. The store contract requires this be
+    // race-free with respect to other concurrent increment calls.
+    const newCount = await this.store.increment(windowKey, 1, this.config.windowMs);
+    const remaining = Math.max(0, this.config.maxRequests - newCount);
     const resetAt = windowStart + this.config.windowMs;
 
-    if (count >= this.config.maxRequests) {
+    if (newCount > this.config.maxRequests) {
       return this.createDeniedResult(remaining, resetAt);
     }
-
-    // Increment counter
-    await this.store.increment(windowKey, 1, this.config.windowMs);
 
     return this.createAllowedResult(remaining, resetAt);
   }
@@ -419,12 +436,20 @@ export class RateLimiterRegistry {
 
     let denyingLimiter: string | undefined;
 
+    // H24 closure (round-3 audit): short-circuit on FIRST deny. The
+    // previous loop called `check` on every limiter even after a deny
+    // — and `check` is NOT side-effect-free (it increments the
+    // counter). An attacker spraying denied requests at limiter A
+    // would drain limiters B/C/D's quotas for legitimate traffic. We
+    // now stop iterating as soon as one limiter denies; subsequent
+    // limiters are untouched.
     for (const limiter of limitersToCheck) {
       const result = await limiter.check(context);
       results.set(limiter['config'].name, result);
-      
-      if (!result.allowed && !denyingLimiter) {
+
+      if (!result.allowed) {
         denyingLimiter = limiter['config'].name;
+        break;
       }
     }
 

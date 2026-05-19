@@ -166,10 +166,26 @@ function trim(node: RawAxNode, depth: number, max: number, ctx: BuildContext): A
 
   ctx.budget -= 1;
 
+  // M14 closure (round-3 audit): mask captured `value` when the field
+  // name suggests a credential. Playwright's a11y excludes password
+  // inputs, but `type="text"` inputs that contain a password-manager
+  // autofill are captured. Field-name heuristic is conservative.
+  const name = (node.name ?? '').trim();
+  const value = node.value;
+  const looksCredentialish =
+    node.role === 'textbox' &&
+    /\b(password|passwd|pwd|secret|token|api[\s_-]?key|otp|mfa)\b/i.test(name);
+  const safeValue =
+    value === undefined
+      ? undefined
+      : looksCredentialish
+        ? '[REDACTED]'
+        : String(value);
+
   const out: AxNode = {
     role: node.role,
-    name: (node.name ?? '').trim(),
-    ...(node.value !== undefined ? { value: String(node.value) } : {}),
+    name,
+    ...(safeValue !== undefined ? { value: safeValue } : {}),
     ...(node.focused !== undefined ? { focused: node.focused } : {}),
     ...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
     ...(node.checked !== undefined ? { checked: node.checked } : {}),

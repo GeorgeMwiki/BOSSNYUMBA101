@@ -80,7 +80,7 @@ describe('LegacyPortalDriver', () => {
 
   it('openPortal navigates + captures the initial snapshot', async () => {
     const { page, goto } = makePage([snapInitial]);
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     const snap = await driver.openPortal('https://itax.kra.go.ke/');
     expect(goto).toHaveBeenCalledWith('https://itax.kra.go.ke/');
     expect(snap.root?.name).toBe('iTax Login');
@@ -89,7 +89,7 @@ describe('LegacyPortalDriver', () => {
 
   it('findRoleByName locates a control in the current snapshot', async () => {
     const { page } = makePage([snapInitial]);
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const node = await driver.findRoleByName('button', /login/i);
     expect(node?.name).toBe('Login');
@@ -97,7 +97,7 @@ describe('LegacyPortalDriver', () => {
 
   it('act:click invokes getByRole + locator.click and returns the diff', async () => {
     const { page, locator, getByRole } = makePage([snapInitial, snapPostLogin]);
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const res = await driver.act({
       verb: 'click',
@@ -114,7 +114,7 @@ describe('LegacyPortalDriver', () => {
 
   it('act:fill invokes locator.fill with value', async () => {
     const { page, locator } = makePage([snapInitial, snapInitial]);
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const res = await driver.act({
       verb: 'fill',
@@ -130,7 +130,7 @@ describe('LegacyPortalDriver', () => {
 
   it('act:navigate calls page.goto', async () => {
     const { page, goto } = makePage([snapInitial, snapPostLogin]);
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const res = await driver.act({
       verb: 'navigate',
@@ -145,7 +145,7 @@ describe('LegacyPortalDriver', () => {
   it('act recovers gracefully when locator.click throws', async () => {
     const { page, locator } = makePage([snapInitial, snapInitial]);
     locator.click.mockRejectedValueOnce(new Error('timeout 5000ms exceeded'));
-    const driver = new LegacyPortalDriver({ page });
+    const driver = new LegacyPortalDriver({ page, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const res = await driver.act({
       verb: 'click',
@@ -164,7 +164,7 @@ describe('LegacyPortalDriver', () => {
       ...page,
       getByRole: undefined as never,
     };
-    const driver = new LegacyPortalDriver({ page: naked });
+    const driver = new LegacyPortalDriver({ page: naked, navigationAllowlist: ['itax.kra.go.ke'] });
     await driver.openPortal('https://itax.kra.go.ke/');
     const res = await driver.act({
       verb: 'click',
@@ -185,7 +185,7 @@ describe('LegacyPortalDriver', () => {
       })),
     };
     const { page } = makePage([big]);
-    const driver = new LegacyPortalDriver({ page, maxNodes: 50 });
+    const driver = new LegacyPortalDriver({ page, maxNodes: 50, navigationAllowlist: ['x'] });
     const snap = await driver.openPortal('https://x/');
     expect(snap.nodeCount).toBeLessThanOrEqual(50);
     expect(snap.truncated).toBe(true);

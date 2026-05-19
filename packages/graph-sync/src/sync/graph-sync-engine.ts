@@ -244,6 +244,64 @@ export class GraphSyncEngine {
   }
 
   /**
+   * Purge every node and relationship for a tenant (RTBF / GDPR Art. 17).
+   *
+   * H17 closure (round-3 audit): the package previously offered no
+   * tenant-purge path — a GDPR erasure request could not be fulfilled
+   * against the graph projection without an out-of-band DBA-run script.
+   *
+   * Implementation: a single `DETACH DELETE` over every node where
+   * `_tenantId = $tenantId`. Cypher's `DETACH DELETE` removes a node
+   * AND all its incident relationships atomically, so we don't need
+   * to enumerate edge types.
+   *
+   * Returns the number of nodes purged. Throws if `dryRun: true` is
+   * NOT supplied AND `tenantId` is missing / empty (a defence against
+   * accidental purge-all).
+   *
+   * @param tenantId - The tenant whose graph projection is being erased.
+   * @param dryRun - When true, count matches without deleting.
+   */
+  async purgeTenant(
+    tenantId: string,
+    dryRun: boolean = false,
+  ): Promise<{ nodesPurged: number; dryRun: boolean }> {
+    if (typeof tenantId !== 'string' || tenantId.trim().length === 0) {
+      throw new Error(
+        'graph-sync.purgeTenant: tenantId is required and must be non-empty — refusing to purge',
+      );
+    }
+    if (dryRun) {
+      const countCypher = `
+        MATCH (n {_tenantId: $tenantId})
+        RETURN count(n) AS nodes
+      `;
+      const records = await this.client.readQuery<{ nodes: number }>(
+        countCypher,
+        { tenantId },
+      );
+      return {
+        nodesPurged: Number(records[0]?.nodes ?? 0),
+        dryRun: true,
+      };
+    }
+    const cypher = `
+      MATCH (n {_tenantId: $tenantId})
+      WITH n
+      DETACH DELETE n
+      RETURN count(n) AS nodes
+    `;
+    const records = await this.client.writeQuery<{ nodes: number }>(
+      cypher,
+      { tenantId },
+    );
+    return {
+      nodesPurged: Number(records[0]?.nodes ?? 0),
+      dryRun: false,
+    };
+  }
+
+  /**
    * Remove a relationship
    */
   async removeRelationship(
@@ -754,8 +812,15 @@ const EVENT_HANDLERS: Record<string, EventHandler> = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Sanitize properties for Neo4j (remove nulls, handle nested objects)
+ * Sanitize properties for Neo4j (remove nulls, handle nested objects).
+ *
+ * M7 closure (round-3 audit): cap stringified nested objects at 32KB.
+ * Neo4j's per-property limit is 64KB; a 10MB nested object turning
+ * into a 10MB string property throws a server-side error. Cap at 32KB
+ * and replace with a redaction marker so the sync continues.
  */
+const MAX_PROPERTY_STRING_BYTES = 32 * 1024;
+
 function sanitizeProperties(props: Record<string, unknown>): Record<string, unknown> {
   const clean: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(props)) {
@@ -763,9 +828,19 @@ function sanitizeProperties(props: Record<string, unknown>): Record<string, unkn
     if (key.startsWith('_')) continue;
 
     if (typeof value === 'object' && !Array.isArray(value) && value instanceof Date === false) {
-      clean[key] = JSON.stringify(value);
+      const json = JSON.stringify(value);
+      const byteLength = Buffer.byteLength(json, 'utf8');
+      clean[key] = byteLength > MAX_PROPERTY_STRING_BYTES
+        ? `[truncated: ${byteLength}B nested object exceeded ${MAX_PROPERTY_STRING_BYTES}B cap]`
+        : json;
     } else if (value instanceof Date) {
       clean[key] = value.toISOString();
+    } else if (typeof value === 'string') {
+      const byteLength = Buffer.byteLength(value, 'utf8');
+      clean[key] = byteLength > MAX_PROPERTY_STRING_BYTES
+        ? value.slice(0, Math.floor(MAX_PROPERTY_STRING_BYTES / 4)) +
+          `... [truncated at ${MAX_PROPERTY_STRING_BYTES}B cap]`
+        : value;
     } else {
       clean[key] = value;
     }

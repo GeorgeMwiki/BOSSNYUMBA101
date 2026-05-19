@@ -196,9 +196,15 @@ export {
 export {
   safeHttpFetch,
   assertUrlSafe,
+  buildPinnedDispatcher,
   SafeHttpFetchError,
   type SafeHttpFetchOptions,
   type SafeHttpFetchResult,
   type SafeHttpFetchErrorCode,
   type AssertUrlSafeOptions,
+  type AssertUrlSafeResult,
 } from './http';
+
+// Webhook helper exports (C2 / H22 / round-3 closure).
+export { redactWebhookEndpoint } from './enterprise/webhooks';
+export type { WebhookManagerOptions, WebhookUrlPolicy } from './enterprise/webhooks';

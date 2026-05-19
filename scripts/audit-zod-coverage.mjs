@@ -36,12 +36,24 @@ import { ZOD_ALLOWLIST } from './__allowlists__/zod-coverage-allowlist.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..');
 
+// C6/C7 closure (round-3 audit): the previous patterns matched
+// `JSON.parse(` and `z.coerce(` / `z.infer<...>` type helpers, producing
+// massive false-negative coverage. The new patterns require a Zod-shape
+// context — a `<schema>.parse(` where `<schema>` ends in `Schema`,
+// `Validator`, or `Body`, AND a `z.<builder>(...)` invocation that
+// looks like a schema-construction call (object, array, string, ...).
+//
+// Helpers (`zValidator`, `validateBody`, `verifyWebhookSignature`, etc.)
+// keep their broad pattern because their name is unambiguous.
 const VALIDATION_PATTERNS = [
-  /\.\s*safeParse\s*\(/,
-  /\.\s*parse\s*\(/,
-  /\.\s*safeParseAsync\s*\(/,
-  /\.\s*parseAsync\s*\(/,
+  // Named-schema .parse / .safeParse — anchor on Schema/Validator/Body suffix.
+  /\b\w*(?:Schema|Validator|Body)\s*\.\s*safeParse\s*\(/,
+  /\b\w*(?:Schema|Validator|Body)\s*\.\s*parse\s*\(/,
+  /\b\w*(?:Schema|Validator|Body)\s*\.\s*safeParseAsync\s*\(/,
+  /\b\w*(?:Schema|Validator|Body)\s*\.\s*parseAsync\s*\(/,
+  // Hono zod-validator middleware (unambiguous name).
   /\bzValidator\s*\(/,
+  // Project-specific helpers.
   /\bvalidateBody\s*\(/,
   /\bparseRequest\s*\(/,
   /\bparseRequestBody\s*\(/,
@@ -53,8 +65,21 @@ const VALIDATION_PATTERNS = [
   /\bvalidateHmac\s*\(/,
   /\bvalidateMpesaCallback\s*\(/,
   /\bverifyStripeSignature\s*\(/,
-  // Any `z.<x>(` usage in the file is a strong hint a schema is defined.
-  /\bz\.[a-zA-Z_]+\(/,
+  // Zod schema-construction patterns — exclude type-only helpers
+  // (`z.infer<T>`, `z.input<T>`, `z.output<T>`, `z.TypeOf<T>`) which
+  // are pure type-level operations.
+  /\bz\.object\s*\(/,
+  /\bz\.array\s*\(/,
+  /\bz\.union\s*\(/,
+  /\bz\.discriminatedUnion\s*\(/,
+  /\bz\.intersection\s*\(/,
+  /\bz\.tuple\s*\(/,
+  /\bz\.record\s*\(/,
+  /\bz\.map\s*\(/,
+  /\bz\.set\s*\(/,
+  /\bz\.literal\s*\(/,
+  /\bz\.enum\s*\(/,
+  /\bz\.nativeEnum\s*\(/,
 ];
 
 const MUTATING_VERBS = new Set(['post', 'put', 'patch', 'delete']);

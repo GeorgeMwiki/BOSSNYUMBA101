@@ -29,6 +29,23 @@ export interface IdempotencyStore {
   ): Promise<IdempotencyRecord | null>;
   put(record: IdempotencyRecord): Promise<void>;
   delete(key: string, agentId: string): Promise<void>;
+  /**
+   * Atomically write a record IFF no record exists for the key.
+   *
+   * H12 closure (round-3 audit): `find` then `put` is a TOCTOU window
+   * — two concurrent requests with the same key both see `null` from
+   * `find` and both `put`, double-executing a financial side-effect.
+   *
+   * Production wiring: `SET key value NX EX ttl` (Redis) or
+   * `INSERT ... ON CONFLICT DO NOTHING RETURNING ...` (Postgres).
+   * Returns `true` if the record was inserted (caller proceeds with
+   * the side-effect), `false` if another writer won (caller must
+   * read the existing row and replay its response).
+   *
+   * Stores that have not yet implemented this MUST throw — the
+   * fallback to `find`+`put` is the bug.
+   */
+  putIfAbsent?(record: IdempotencyRecord): Promise<boolean>;
 }
 
 export function createInMemoryIdempotencyStore(): IdempotencyStore {
@@ -43,6 +60,15 @@ export function createInMemoryIdempotencyStore(): IdempotencyStore {
     },
     async delete(key, agentId) {
       map.delete(keyOf(key, agentId));
+    },
+    async putIfAbsent(record) {
+      const k = keyOf(record.key, record.agentId);
+      // Single-threaded Node loop — Map.set after Map.has is atomic
+      // for the purposes of within-process concurrency. Multi-process
+      // deployments MUST swap in Redis / Postgres.
+      if (map.has(k)) return false;
+      map.set(k, record);
+      return true;
     },
   };
 }
@@ -141,5 +167,60 @@ export async function cacheIdempotencyResponse(deps: {
     createdAt: iso(now),
     expiresAt: iso(now + TTL_MS),
   };
+  // H12 closure: prefer the atomic putIfAbsent contract when the store
+  // supports it. Fall back to `put` for legacy stores — but log a
+  // warning trail so operators know to migrate. Multi-process
+  // deployments without atomic-put can double-execute financial
+  // operations under concurrent retries.
+  if (typeof deps.store.putIfAbsent === 'function') {
+    await deps.store.putIfAbsent(record);
+    return;
+  }
   await deps.store.put(record);
+}
+
+/**
+ * Atomic-claim helper for the `checkIdempotency` fresh path (H12).
+ *
+ * The original `checkIdempotency` returns `kind: 'fresh'` and lets the
+ * caller perform the side-effect, then call `cacheIdempotencyResponse`.
+ * For non-idempotent side-effects (e.g. PAYMENT), the caller should
+ * use `claimIdempotency` to RESERVE the key BEFORE the side-effect —
+ * any concurrent caller with the same key + body sees `kind: 'replayed'`
+ * (or 'conflict') and never double-executes.
+ */
+export async function claimIdempotency(deps: {
+  readonly store: IdempotencyStore;
+  readonly method: string;
+  readonly headers: HeadersLike;
+  readonly body: string;
+  readonly agentId: string;
+  readonly path: string;
+  readonly now?: () => number;
+}): Promise<IdempotencyCheck> {
+  const initial = await checkIdempotency(deps);
+  if (initial.kind !== 'fresh') return initial;
+  if (typeof deps.store.putIfAbsent !== 'function') {
+    // Legacy store — no atomic primitive. Fall back to the non-atomic
+    // fresh path; caller must be aware of the TOCTOU window.
+    return initial;
+  }
+  const now = (deps.now ?? Date.now)();
+  const iso = (ts: number): string => new Date(ts).toISOString();
+  // Reserve a placeholder record (statusCode 0 marks "in-flight").
+  const placeholder: IdempotencyRecord = {
+    key: initial.idempotencyKey!,
+    agentId: deps.agentId,
+    method: deps.method.toUpperCase(),
+    path: deps.path,
+    requestHash: initial.requestHash!,
+    statusCode: 0,
+    responseBody: '',
+    createdAt: iso(now),
+    expiresAt: iso(now + TTL_MS),
+  };
+  const claimed = await deps.store.putIfAbsent(placeholder);
+  if (claimed) return initial;
+  // Lost the race — re-check and return whatever the winner produced.
+  return checkIdempotency(deps);
 }

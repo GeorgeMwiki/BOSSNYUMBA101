@@ -54,14 +54,17 @@ export {
   hmacSha256Hex,
   sha256Hex,
   timingSafeEqual,
+  createInMemoryReplayLedger,
   type AgentAuthRequest,
   type AgentAuthDeps,
   type AgentRegistry,
+  type ReplayLedger,
 } from './agent-auth.js';
 
 // Idempotency
 export {
   checkIdempotency,
+  claimIdempotency,
   cacheIdempotencyResponse,
   createInMemoryIdempotencyStore,
   type IdempotencyStore,
@@ -75,6 +78,8 @@ export {
   type DeliverEventPayload,
   type FetchLike,
   type WebhookStore,
+  type WebhookDLQ,
+  type WebhookDLQEnvelope,
 } from './webhook-delivery.js';
 
 // Agent card

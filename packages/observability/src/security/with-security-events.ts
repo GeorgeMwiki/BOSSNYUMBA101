@@ -41,7 +41,11 @@
  *   before boot.
  */
 
-import type { AuditOutcome, AuditSeverity } from '../types/audit.types.js';
+import type {
+  AuditOutcome,
+  AuditSeverity,
+  AuditTenantContext,
+} from '../types/audit.types.js';
 import { AuditSeverity as AuditSeverityEnum } from '../types/audit.types.js';
 import { logAuditEvent, type AuditUser, type AuditResource } from '../audit-logger.js';
 
@@ -149,6 +153,32 @@ function extractUser(ctx: AuditableContext): AuditUser {
   };
 }
 
+/**
+ * Derive the tenant-context block from the request (H1 closure).
+ *
+ * The previous implementation never read `auth.tenantId`, so every
+ * audit row emitted via the HOF / middleware was tenant-LESS — and the
+ * Security Route Coverage gate's tenant-binding goal was defeated
+ * silently. We now read `tenantId` (also `orgId` / `organizationId`
+ * as aliases) from the auth context and attach it via the
+ * `AuditTenantContext` block that `logAuditEvent` already supports.
+ */
+function extractTenantContext(ctx: AuditableContext): AuditTenantContext | undefined {
+  const auth = (ctx.get('auth') ?? {}) as Record<string, unknown>;
+  const tenantId =
+    (auth.tenantId as string | undefined) ??
+    (auth.orgId as string | undefined) ??
+    (auth.organizationId as string | undefined);
+  if (!tenantId || typeof tenantId !== 'string') return undefined;
+  const tenantName = auth.tenantName as string | undefined;
+  const environment = auth.environment as string | undefined;
+  return {
+    tenantId,
+    ...(tenantName ? { tenantName } : {}),
+    ...(environment ? { environment } : {}),
+  };
+}
+
 function getPath(ctx: AuditableContext): string {
   if (ctx.req.path) return ctx.req.path;
   if (ctx.req.url) {
@@ -191,23 +221,26 @@ export function withSecurityEvents<TCtx extends AuditableContext, TResult>(
   return async (ctx: TCtx): Promise<TResult> => {
     const method = ctx.req.method.toUpperCase();
     const skip = options.skip?.(ctx) === true;
-    let result: TResult;
-    let thrown: unknown = null;
+    // L1 closure: restructure so the post-emit return type is
+    // statically reachable. The try block resolves to `result`; the
+    // catch re-throws (so we never reach the post-catch path on error).
     try {
-      result = await handler(ctx);
-    } catch (err) {
-      thrown = err;
-      throw err;
-    } finally {
+      const result = await handler(ctx);
       if (!skip && MUTATING_METHODS.has(method)) {
-        const status = thrown ? 500 : getStatus(ctx);
+        const status = getStatus(ctx);
         emit(ctx, status, options).catch((emitErr) => {
           options.onError?.(emitErr);
         });
       }
+      return result;
+    } catch (err) {
+      if (!skip && MUTATING_METHODS.has(method)) {
+        emit(ctx, 500, options).catch((emitErr) => {
+          options.onError?.(emitErr);
+        });
+      }
+      throw err;
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return result!;
   };
 }
 
@@ -227,10 +260,18 @@ export async function securityEventsMiddleware(
     await next();
     return;
   }
+  // H2 closure: if `next()` throws, `ctx.res` is never populated and
+  // `getStatus(ctx)` returns 200 — the audit row records SUCCESS for a
+  // 5xx response. We track the thrown flag explicitly and normalise to
+  // 500 in the same way the per-handler HOF does.
+  let thrown: unknown = null;
   try {
     await next();
+  } catch (err) {
+    thrown = err;
+    throw err;
   } finally {
-    const status = getStatus(ctx);
+    const status = thrown ? 500 : getStatus(ctx);
     // Best-effort, non-blocking.
     emit(ctx, status, {}).catch((err) => {
       // Surface to OTel via the host logger if available; never throw.
@@ -252,6 +293,7 @@ export async function recordSecurityEvent(
   const path = getPath(ctx);
   const resource = deriveResource(path);
   const user = extractUser(ctx);
+  const tenant = extractTenantContext(ctx);
   await logAuditEvent(
     user,
     ctx.req.method.toUpperCase(),
@@ -264,6 +306,7 @@ export async function recordSecurityEvent(
       description: `${ctx.req.method.toUpperCase()} ${path}`,
       reason,
       request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
+      ...(tenant ? { tenant } : {}),
     },
   );
 }
@@ -285,6 +328,11 @@ async function emit(
   };
   const { outcome, severity } = classifyOutcome(status);
   const user = extractUser(ctx);
+  // H1 closure: every audit row carries a tenant block when the auth
+  // context surfaces one. Anonymous / unauthenticated routes still
+  // emit with no tenant block (consumers filter by tenantId for the
+  // tenant-binding goal).
+  const tenant = extractTenantContext(ctx);
   await logAuditEvent(user, ctx.req.method.toUpperCase(), resource, {
     category: 'SYSTEM',
     outcome,
@@ -292,5 +340,6 @@ async function emit(
     description: `${ctx.req.method.toUpperCase()} ${path} → ${status}`,
     request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
     metadata: { statusCode: status },
+    ...(tenant ? { tenant } : {}),
   });
 }

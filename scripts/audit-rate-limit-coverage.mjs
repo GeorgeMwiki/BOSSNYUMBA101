@@ -47,7 +47,9 @@ const RATE_LIMIT_PATTERNS = [
   /\brateLimiter\s*\./,
   /\brateLimiters\./,
   /\bwithRateLimit\s*\(/,
-  /\bwithSecurityEvents\s*\(/, // composes an edge limiter
+  // H9 closure (round-3 audit): `withSecurityEvents` does NOT attach a
+  // rate-limiter — it's an audit HOF. Treating its presence as a
+  // rate-limit signal was a false positive. REMOVED.
 ];
 
 const MUTATING_VERBS = new Set(['post', 'put', 'patch', 'delete']);

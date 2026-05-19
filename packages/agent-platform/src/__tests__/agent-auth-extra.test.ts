@@ -18,6 +18,8 @@ import {
 } from '../agent-auth.js';
 import type { RegisteredAgent } from '../types.js';
 
+const TEST_RAW_SECRET = 'extra-test-raw-secret';
+
 async function freshRegistry(
   overrides: Partial<RegisteredAgent> = {},
 ): Promise<{ registry: AgentRegistry; agent: RegisteredAgent; touched: number }> {
@@ -29,7 +31,7 @@ async function freshRegistry(
     ownerTenantId: 't',
     apiKeyPrefix: 'bnk_',
     apiKeyHash: await hashApiKey('plain-key'),
-    hmacSecretHash: 'sec',
+    hmacSecretHash: await hashApiKey(TEST_RAW_SECRET),
     scopes: ['read:cases', 'write:cases'],
     rateLimitRpm: 60,
     status: 'active',
@@ -43,6 +45,9 @@ async function freshRegistry(
     },
     async touchLastSeen() {
       touched += 1;
+    },
+    async resolveSecret(id) {
+      return id === agent.id ? TEST_RAW_SECRET : null;
     },
   };
   return {
@@ -163,6 +168,9 @@ describe('verifyAgentRequest edge cases', () => {
       async touchLastSeen() {
         /* no-op */
       },
+      async resolveSecret() {
+        return null;
+      },
     };
     const ts = Date.now();
     const sig = await signRequest('POST', '/p', ts, '', 'sec');
@@ -186,7 +194,7 @@ describe('verifyAgentRequest edge cases', () => {
   it('returns AUTH_SUSPENDED_AGENT for suspended agents', async () => {
     const { registry, agent } = await freshRegistry({ status: 'suspended' });
     const ts = Date.now();
-    const sig = await signRequest('POST', '/p', ts, '', agent.hmacSecretHash);
+    const sig = await signRequest('POST', '/p', ts, '', TEST_RAW_SECRET);
     const res = await verifyAgentRequest(
       { registry },
       {
@@ -209,7 +217,7 @@ describe('verifyAgentRequest edge cases', () => {
     // Signed with timestamp 100; allow clock-drift verifier to clock at
     // 200. With injected now=200 and default drift 5 min, this is OK.
     const ts = 100;
-    const sig = await signRequest('POST', '/p', ts, '', agent.hmacSecretHash);
+    const sig = await signRequest('POST', '/p', ts, '', TEST_RAW_SECRET);
     const res = await verifyAgentRequest(
       { registry, now: () => 200 },
       {
@@ -229,7 +237,7 @@ describe('verifyAgentRequest edge cases', () => {
   it('respects custom maxClockDriftMs', async () => {
     const { registry, agent } = await freshRegistry();
     const ts = 1000;
-    const sig = await signRequest('POST', '/p', ts, '', agent.hmacSecretHash);
+    const sig = await signRequest('POST', '/p', ts, '', TEST_RAW_SECRET);
     // Now is 5_000 → drift = 4_000 ms. Default 5 min would pass; we tighten
     // to 1_000 ms so this fails.
     const res = await verifyAgentRequest(

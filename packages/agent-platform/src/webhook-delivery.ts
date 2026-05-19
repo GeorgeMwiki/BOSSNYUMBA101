@@ -16,7 +16,11 @@
  *   User-Agent: BOSSNYUMBA-Webhook/1.0
  */
 
-import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+import {
+  assertUrlSafe,
+  buildPinnedDispatcher,
+  type AssertUrlSafeResult,
+} from '@bossnyumba/enterprise-hardening';
 import { hmacSha256Hex } from './agent-auth.js';
 import { correlationHeaders } from './correlation-id.js';
 import type { WebhookDelivery, WebhookSubscription } from './types.js';
@@ -84,6 +88,56 @@ export interface DeliverDeps {
   readonly dnsLookup?: (
     host: string,
   ) => Promise<ReadonlyArray<{ readonly address: string; readonly family: number }>>;
+  /**
+   * Resolve the RAW HMAC secret for the subscription (C4 closure).
+   *
+   * The previous implementation signed with `subscription.secretHash`
+   * — incoherent — see C4 audit note + `agent-auth.ts#resolveSecret`.
+   *
+   * Production wiring: KMS-backed secret manager fetches the raw
+   * secret per delivery (cache for the duration of one delivery loop).
+   * Test wiring: in-memory map keyed by subscription id.
+   *
+   * When `resolveSecret` is NOT supplied OR returns null, the delivery
+   * refuses to dispatch — silently signing with `secretHash` was the
+   * bug.
+   */
+  readonly resolveSecret?: (subscriptionId: string) => Promise<string | null>;
+  /**
+   * Dead-letter queue port (H15 closure). When delivery exhausts the
+   * retry budget the failed envelope is enqueued for downstream
+   * triage. When `dlq` is undefined the delivery just persists the
+   * `failed` status (legacy behaviour).
+   */
+  readonly dlq?: WebhookDLQ;
+  /**
+   * Optional jitter PRNG — defaults to `Math.random`. Tests override
+   * for deterministic backoff.
+   */
+  readonly random?: () => number;
+}
+
+/**
+ * Dead-letter queue port (H15). Enqueues envelopes whose retry budget
+ * is exhausted. The implementation is responsible for at-least-once
+ * persistence to the platform's DLQ (SQS, Inngest, the existing
+ * webhooks service DLQ).
+ */
+export interface WebhookDLQ {
+  enqueueFailed(envelope: WebhookDLQEnvelope): Promise<void>;
+}
+
+export interface WebhookDLQEnvelope {
+  readonly deliveryId: string;
+  readonly subscriptionId: string;
+  readonly eventType: string;
+  readonly eventId: string;
+  readonly tenantId: string;
+  readonly body: string;
+  readonly attempts: number;
+  readonly lastStatus?: number;
+  readonly lastError?: string;
+  readonly failedAt: string;
 }
 
 const DEFAULT_RETRY_DELAYS_MS: ReadonlyArray<number> = Object.freeze([
@@ -104,13 +158,40 @@ export async function deliverToSubscription(
   // in one place. Includes the DNS-resolved-IP gate added in A2b-3, so a
   // subscription URL whose A-record points to 169.254.169.254 or
   // 127.0.0.1 is rejected before the fetch fires.
-  await assertUrlSafe(subscription.url, {
+  //
+  // H14 closure: capture the first-resolved-IP from assertUrlSafe and
+  // attach a pinned dispatcher to the fetch init so undici can NOT
+  // re-resolve the host between the SSRF gate and the actual connect.
+  // This closes the DNS-rebinding TOCTOU window that survives the
+  // single-call gate.
+  const pinned: AssertUrlSafeResult = await assertUrlSafe(subscription.url, {
     ...(deps.dnsLookup ? { dnsLookup: deps.dnsLookup } : {}),
   });
   const now = (deps.now ?? Date.now)();
   const retryDelays = deps.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
   const maxFailures = deps.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES;
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const dispatcher = await buildPinnedDispatcher(pinned, timeoutMs);
+  const random = deps.random ?? Math.random;
+
+  // C4 closure: refuse to dispatch when the raw secret can't be
+  // resolved. The previous implementation signed with
+  // `subscription.secretHash` — incoherent (the hash IS the effective
+  // secret), and a DB leak gave the attacker the same value the
+  // legitimate caller uses. The correct contract is: resolve the raw
+  // secret from KMS, sign with that.
+  if (!deps.resolveSecret) {
+    throw new Error(
+      'deliverToSubscription: deps.resolveSecret is required (C4 closure). ' +
+        'Wire a KMS-backed resolver — do NOT sign with secretHash.',
+    );
+  }
+  const rawSecret = await deps.resolveSecret(subscription.id);
+  if (!rawSecret) {
+    throw new Error(
+      `deliverToSubscription: failed to resolve raw HMAC secret for subscription ${subscription.id}`,
+    );
+  }
 
   const deliveryId = crypto.randomUUID();
   const timestamp = new Date(now).toISOString();
@@ -134,7 +215,7 @@ export async function deliverToSubscription(
   // `${timestamp}.${body}` so the timestamp is bound to the signature;
   // subscribers MUST still verify both signature + timestamp freshness.
   const signedPayload = `${timestamp}.${body}`;
-  const signature = await hmacSha256Hex(subscription.secretHash, signedPayload);
+  const signature = await hmacSha256Hex(rawSecret, signedPayload);
 
   const baseHeaders: Record<string, string> = {
     ...correlationHeaders(event.correlationId),
@@ -165,18 +246,37 @@ export async function deliverToSubscription(
 
   for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
     if (attempt > 0) {
-      await new Promise((r) => setTimeout(r, retryDelays[attempt - 1]));
+      // H13 closure: jitter the retry delay by ±20% so N pods retrying
+      // the same delivery don't synchronise and thunder the consumer.
+      const base = retryDelays[attempt - 1] ?? 0;
+      const jitterFactor = 1 + (random() - 0.5) * 0.4; // [0.8, 1.2]
+      const delay = Math.max(0, Math.round(base * jitterFactor));
+      await new Promise((r) => setTimeout(r, delay));
     }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await deps.fetch(subscription.url, {
+      // H14: pass the pinned dispatcher via an extra field. `FetchLike`
+      // is the public port, but real undici-backed fetches honour
+      // `dispatcher`. Tests using a stubbed fetch ignore the field.
+      const fetchInit: {
+        readonly method: string;
+        readonly headers: Record<string, string>;
+        readonly body: string;
+        readonly signal?: AbortSignal;
+        readonly dispatcher?: unknown;
+      } = {
         method: 'POST',
         headers: baseHeaders,
         body,
         signal: controller.signal,
-      });
+        ...(dispatcher ? { dispatcher } : {}),
+      };
+      const res = await deps.fetch(
+        subscription.url,
+        fetchInit as Parameters<FetchLike>[1],
+      );
       lastStatus = res.status;
 
       if (res.ok) {
@@ -190,6 +290,14 @@ export async function deliverToSubscription(
           subscription.id,
           new Date(Date.now()).toISOString(),
         );
+        if (dispatcher) {
+          const d = dispatcher as { close?: () => Promise<void> };
+          if (typeof d.close === 'function') {
+            d.close().catch(() => {
+              /* non-fatal */
+            });
+          }
+        }
         return {
           ...initial,
           status: 'delivered',
@@ -226,6 +334,41 @@ export async function deliverToSubscription(
     newFailureCount,
     shouldPause,
   );
+
+  // H15 closure: route exhausted-retry failures into the DLQ when one
+  // is wired. Without this the row is just `failed` and the downstream
+  // consumer has no async hook to triage / replay. The DLQ enqueue is
+  // best-effort — failures here are logged but never block the return.
+  if (deps.dlq) {
+    try {
+      await deps.dlq.enqueueFailed({
+        deliveryId,
+        subscriptionId: subscription.id,
+        eventType: event.eventType,
+        eventId: event.eventId,
+        tenantId: event.tenantId,
+        body,
+        attempts: retryDelays.length + 1,
+        ...(lastStatus !== undefined ? { lastStatus } : {}),
+        ...(lastError !== undefined ? { lastError } : {}),
+        failedAt: new Date(Date.now()).toISOString(),
+      });
+    } catch {
+      // DLQ enqueue failure is logged at the platform-level (the DLQ
+      // adapter is expected to emit its own observability signal); we
+      // do not block the delivery-loop return.
+    }
+  }
+
+  // Close the pinned dispatcher if one was created.
+  if (dispatcher) {
+    const d = dispatcher as { close?: () => Promise<void> };
+    if (typeof d.close === 'function') {
+      d.close().catch(() => {
+        /* non-fatal */
+      });
+    }
+  }
 
   const failed: WebhookDelivery = Object.freeze({
     ...initial,

@@ -52,12 +52,15 @@ const event = Object.freeze({
   data: { caseId: 'c1' },
 });
 
+// C4 closure: tests resolve raw secret via injected port.
+const resolveSecret = async (_id: string): Promise<string | null> => 'test-raw-webhook-secret';
+
 describe('webhook-delivery — central SSRF guard', () => {
   it('rejects a literal loopback URL', async () => {
     const fetchLike: FetchLike = async () => ({ status: 200, ok: true });
     await expect(
       deliverToSubscription(
-        { fetch: fetchLike, store: silentStore(), retryDelaysMs: [] },
+        { fetch: fetchLike, store: silentStore(), retryDelaysMs: [], resolveSecret },
         sub('http://127.0.0.1/hook'),
         event,
       ),
@@ -68,7 +71,7 @@ describe('webhook-delivery — central SSRF guard', () => {
     const fetchLike: FetchLike = async () => ({ status: 200, ok: true });
     await expect(
       deliverToSubscription(
-        { fetch: fetchLike, store: silentStore(), retryDelaysMs: [] },
+        { fetch: fetchLike, store: silentStore(), retryDelaysMs: [], resolveSecret },
         sub('http://169.254.169.254/latest/meta-data/'),
         event,
       ),
@@ -87,6 +90,7 @@ describe('webhook-delivery — central SSRF guard', () => {
           store: silentStore(),
           retryDelaysMs: [],
           dnsLookup: rebindingLookup,
+          resolveSecret,
         },
         sub('https://attacker-controlled.example/hook'),
         event,
@@ -109,6 +113,7 @@ describe('webhook-delivery — central SSRF guard', () => {
         store: silentStore(),
         retryDelaysMs: [],
         dnsLookup: publicLookup,
+        resolveSecret,
       },
       sub('https://hooks.example.com/hook'),
       event,

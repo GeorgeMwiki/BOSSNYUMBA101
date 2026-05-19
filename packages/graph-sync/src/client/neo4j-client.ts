@@ -85,16 +85,35 @@ function assertTenantIdRuntime(params: Record<string, unknown>): void {
 /**
  * Enforces that a remote Neo4j endpoint never relies on the built-in
  * development password. Throws NEO4J_PASSWORD_REQUIRED otherwise.
+ *
+ * M6 closure (round-3 audit): also rejects the dev password in
+ * production environments EVEN on loopback URIs. A staging container
+ * reaching Neo4j over Docker-network loopback used to silently accept
+ * the default — an operator footgun.
  */
 export function assertRemoteNeo4jHasPassword(config: Neo4jConfig): void {
-  if (isLoopbackNeo4jUri(config.uri)) {
-    return;
-  }
   const trimmed = config.password?.trim() ?? '';
-  if (trimmed.length === 0 || trimmed === DEFAULT_DEV_PASSWORD) {
+  const isDev = trimmed.length === 0 || trimmed === DEFAULT_DEV_PASSWORD;
+  if (!isDev) return;
+
+  // Non-loopback URI + dev password is ALWAYS a hard failure.
+  if (!isLoopbackNeo4jUri(config.uri)) {
     const err = new Error(
       'NEO4J_PASSWORD_REQUIRED: Non-loopback Neo4j URI requires an explicit ' +
-        'NEO4J_PASSWORD that is not the default development credential.'
+        'NEO4J_PASSWORD that is not the default development credential.',
+    );
+    (err as Error & { code?: string }).code = 'NEO4J_PASSWORD_REQUIRED';
+    throw err;
+  }
+
+  // M6: in production, even loopback URIs must NOT use the dev
+  // password — staging containers often reach Neo4j over Docker
+  // loopback. The check is gated on NODE_ENV so local dev workflows
+  // continue to work without ceremony.
+  if (process.env.NODE_ENV === 'production') {
+    const err = new Error(
+      'NEO4J_PASSWORD_REQUIRED: Production environment must not use the default ' +
+        'Neo4j dev password even on loopback. Set an explicit NEO4J_PASSWORD.',
     );
     (err as Error & { code?: string }).code = 'NEO4J_PASSWORD_REQUIRED';
     throw err;

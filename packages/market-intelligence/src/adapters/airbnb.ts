@@ -16,6 +16,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
 import type {
   ComparableRent,
   ComparableRentsArgs,
@@ -25,6 +26,15 @@ import type {
   VacancyTrend,
   VacancyTrendArgs,
 } from '../port.js';
+
+// H20 closure: defensive SSRF allowlist for outbound Airbnb URLs.
+// The base URL is currently hardcoded to `api.airbnb.com`, but ANY
+// future "BYO partner URL" feature opens an SSRF instant without
+// `safeHttpFetch` discipline. The allowlist + DNS-resolved-IP gate
+// prevent that.
+const AIRBNB_ALLOWLIST: ReadonlyArray<string> = Object.freeze([
+  'api.airbnb.com',
+]);
 
 const PROVIDER = 'airbnb';
 const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -74,9 +84,13 @@ export function createAirbnbMarketDataAdapter(
 ): MarketDataPort {
   const fetchImpl: typeof fetch =
     config.fetch ?? (typeof fetch !== 'undefined' ? fetch : undefined as unknown as typeof fetch);
+  // M11 closure: cap cacheTtlMs at 7 days. Misconfiguration of
+  // Number.MAX_SAFE_INTEGER previously produced an effectively
+  // never-expiring cache row.
+  const MAX_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   const cacheTtlMs =
     Number.isFinite(config.cacheTtlMs) && (config.cacheTtlMs ?? 0) > 0
-      ? Number(config.cacheTtlMs)
+      ? Math.min(Number(config.cacheTtlMs), MAX_CACHE_TTL_MS)
       : DEFAULT_CACHE_TTL_MS;
 
   return {
@@ -95,6 +109,8 @@ export function createAirbnbMarketDataAdapter(
 
       try {
         const url = buildComparableUrl(args);
+        // H20: defensive SSRF guard — even though the URL is hardcoded.
+        await assertUrlSafe(url, { allowlist: AIRBNB_ALLOWLIST });
         const res = await fetchImpl(url, {
           headers: {
             Authorization: `Bearer ${config.apiKey}`,
@@ -139,6 +155,8 @@ export function createAirbnbMarketDataAdapter(
 
       try {
         const url = buildVacancyUrl(args);
+        // H20: defensive SSRF guard.
+        await assertUrlSafe(url, { allowlist: AIRBNB_ALLOWLIST });
         const res = await fetchImpl(url, {
           headers: {
             Authorization: `Bearer ${config.apiKey}`,
@@ -298,7 +316,10 @@ function makeCacheKey(
 function normaliseComparableArgs(
   args: ComparableRentsArgs,
 ): Record<string, unknown> {
+  // H19 closure: tenantId is part of the canonical key so cross-tenant
+  // cache hits never happen on a shared cache store.
   return {
+    tenantId: args.tenantId ?? null,
     jurisdiction: args.jurisdiction,
     propertyClass: args.propertyClass,
     bedrooms: args.bedrooms ?? null,
@@ -311,6 +332,7 @@ function normaliseVacancyArgs(
   args: VacancyTrendArgs,
 ): Record<string, unknown> {
   return {
+    tenantId: args.tenantId ?? null,
     jurisdiction: args.jurisdiction,
     propertyClass: args.propertyClass,
     windowDays: args.windowDays,

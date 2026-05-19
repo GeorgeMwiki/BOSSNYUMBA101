@@ -38,6 +38,11 @@ const ALL_SCOPES: ReadonlyArray<AgentScope> = [
   'execute:skills',
 ];
 
+// Tests use a stable raw HMAC secret value that the registry resolves
+// when the verifier signs. C4 closure — agent-auth no longer signs
+// with `hmacSecretHash`.
+const TEST_RAW_SECRET = 'test-raw-secret-value';
+
 async function makeRegistry(
   agent: Partial<RegisteredAgent> = {},
 ): Promise<{ registry: AgentRegistry; agent: RegisteredAgent }> {
@@ -48,7 +53,7 @@ async function makeRegistry(
     ownerTenantId: 'tenant-a',
     apiKeyPrefix: 'bnk_',
     apiKeyHash: await hashApiKey('plain'),
-    hmacSecretHash: 'secret-hash-value',
+    hmacSecretHash: await hashApiKey(TEST_RAW_SECRET),
     scopes: ALL_SCOPES,
     rateLimitRpm: 60,
     status: 'active' as const,
@@ -62,6 +67,9 @@ async function makeRegistry(
     },
     async touchLastSeen() {
       /* no-op */
+    },
+    async resolveSecret(id) {
+      return id === full.id ? TEST_RAW_SECRET : null;
     },
   };
   return { registry, agent: full };
@@ -157,7 +165,7 @@ describe('agent auth', () => {
       '/api/v1/cases',
       timestamp,
       '{"x":1}',
-      agent.hmacSecretHash,
+      TEST_RAW_SECRET,
     );
     const res = await verifyAgentRequest(
       { registry },
@@ -208,7 +216,7 @@ describe('agent auth', () => {
       '/api/v1/cases',
       old,
       '{}',
-      agent.hmacSecretHash,
+      TEST_RAW_SECRET,
     );
     const res = await verifyAgentRequest(
       { registry },
@@ -235,7 +243,7 @@ describe('agent auth', () => {
       '/p',
       timestamp,
       '{}',
-      agent.hmacSecretHash,
+      TEST_RAW_SECRET,
     );
     const res = await verifyAgentRequest(
       { registry },
@@ -264,7 +272,7 @@ describe('agent auth', () => {
       '/p',
       timestamp,
       '{}',
-      agent.hmacSecretHash,
+      TEST_RAW_SECRET,
     );
     const res = await verifyAgentRequest(
       { registry },
@@ -478,6 +486,9 @@ describe('webhook delivery', () => {
     createdAt: new Date().toISOString(),
   });
 
+  const webhookResolveSecret = async (_id: string): Promise<string | null> =>
+    'test-raw-webhook-secret';
+
   it('delivers on first-attempt 200', async () => {
     const { store, updates } = makeStore();
     const fetchLike: FetchLike = async () => ({ status: 200, ok: true });
@@ -486,6 +497,7 @@ describe('webhook delivery', () => {
         fetch: fetchLike,
         store,
         retryDelaysMs: [10, 20, 30],
+        resolveSecret: webhookResolveSecret,
       },
       sub,
       {
@@ -510,6 +522,7 @@ describe('webhook delivery', () => {
         store,
         retryDelaysMs: [1, 1, 1],
         maxConsecutiveFailures: 1,
+        resolveSecret: webhookResolveSecret,
       },
       { ...sub, failureCount: 0 },
       {

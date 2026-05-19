@@ -13,6 +13,76 @@
 
 import type { Neo4jClient } from '../client/neo4j-client.js';
 
+// ─── PII redaction (H18 closure) ─────────────────────────────────────────────
+
+/**
+ * Allowlist of node-property keys that are SAFE to surface in evidence
+ * packs / LLM contexts. Customer / Lease / Invoice nodes frequently
+ * carry PII (full name, phone, NIDA, address). Round-3 closure forbids
+ * the `properties(node)` Cypher projection from being passed through
+ * verbatim — that leaks every property including PII.
+ *
+ * Keys NOT in this list are dropped at the application layer before
+ * the projection lands in `evidencePath.nodeProperties`. Operators may
+ * extend the list by jurisdiction / consent (currently conservative
+ * defaults appropriate for both GDPR and Kenya DPA).
+ */
+const SAFE_EVIDENCE_KEYS: ReadonlySet<string> = new Set([
+  '_id',
+  '_tenantId',
+  '_label',
+  'status',
+  'severity',
+  'priority',
+  'type',
+  'category',
+  'caseType',
+  'noticeType',
+  'evidenceType',
+  'createdAt',
+  'updatedAt',
+  'occurredAt',
+  'completedAt',
+  'sentAt',
+  'processedAt',
+  'attemptedAt',
+  'dueDate',
+  'startDate',
+  'endDate',
+  'amount',
+  'currency',
+  'quantity',
+  'count',
+  'unitCode',
+  'caseNumber',
+  'noticeNumber',
+  'invoiceNumber',
+  'sentiment',
+  'channel',
+  'subjectKind',
+  'titleKind',
+  // Note: `title` / `name` / `description` are intentionally EXCLUDED.
+  // They frequently contain customer-supplied free text with PII.
+  // Callers that need a label for UX should use the upstream
+  // tenant-scoped projection in the Cypher itself (where PII filtering
+  // is the caller's responsibility).
+]);
+
+/**
+ * Filter a node-property record down to the evidence-safe allowlist.
+ * Exported for callers that build their own evidence packs (e.g.
+ * `getCaseEvidencePack`) so the redaction stays uniform.
+ */
+export function redactToSafeKeys(
+  properties: Record<string, unknown>,
+): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(properties)) {
+    if (SAFE_EVIDENCE_KEYS.has(k)) safe[k] = v;
+  }
+  return safe;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface GraphEvidencePath {
@@ -746,7 +816,13 @@ export class GraphQueryService {
         timestamp: String(item.timestamp ?? ''),
         title: String(item.title ?? ''),
         type: String(item.type ?? ''),
-        properties: (item.properties as Record<string, unknown>) ?? {},
+        // H18 closure: project only the evidence-safe allowlist of
+        // property keys. `properties(node)` in the Cypher returns
+        // every property including PII (full name, phone, address);
+        // we must NOT pass that verbatim to LLM consumers.
+        properties: redactToSafeKeys(
+          (item.properties as Record<string, unknown>) ?? {},
+        ),
         connectionPath: String(item.relationship ?? ''),
       }))
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp));

@@ -45,12 +45,32 @@ export interface ComparableRentsArgs {
   readonly squareFeet?: number;
   /** Recency filter — only consider observations within the last N days. */
   readonly windowDays: number;
+  /**
+   * Tenant scope for cache key segregation (H19 closure).
+   *
+   * Round-3 audit: the previous cache key combined
+   * `provider | op | query` only. Two tenants with the same
+   * district + class + bedrooms query received identical cache hits
+   * across the SHARED platform-tier cache store. Adding tenantId to
+   * the query envelope produces per-tenant cache segments — same
+   * jurisdiction query from two different tenants now keys to two
+   * distinct cache rows.
+   *
+   * The market data ITSELF is still platform-tier (Airbnb's view of
+   * Nairobi 2BR rents doesn't change per BOSSNYUMBA tenant). The
+   * cache segmentation is a defence against future tenant-personalised
+   * adapter behaviour (e.g. per-tenant API tier / discount applied
+   * to upstream calls).
+   */
+  readonly tenantId?: string;
 }
 
 export interface VacancyTrendArgs {
   readonly jurisdiction: string;
   readonly propertyClass: string;
   readonly windowDays: number;
+  /** Tenant scope for cache key segregation — see ComparableRentsArgs.tenantId. */
+  readonly tenantId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────

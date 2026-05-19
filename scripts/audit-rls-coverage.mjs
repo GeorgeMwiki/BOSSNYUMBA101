@@ -119,24 +119,31 @@ function findTenantTables() {
 // Parse all SQL migrations.
 // ───────────────────────────────────────────────────────────────────
 
-function readAllSql() {
+/**
+ * Read every migration file individually. H10 closure (round-3 audit):
+ * the previous implementation joined every migration with a text
+ * separator and ran regex across the concatenation — a migration that
+ * REMOVES a table from one tenant_tables loop is silently masked by
+ * another migration that ADDS the same table to a different loop.
+ *
+ * Returns a list of `{ path, sql }` pairs so the per-table predicates
+ * can iterate file-by-file.
+ */
+function readAllSqlPerFile() {
   const files = [];
   walkDir(MIGRATIONS_DIR, '.sql', files);
-  const bodies = files.map((f) => readFileSync(f, 'utf8'));
-  return bodies.join('\n\n-- file-boundary --\n\n');
+  return files.map((f) => ({ path: f, sql: readFileSync(f, 'utf8') }));
 }
 
-function tableHasRlsEnabled(sql, table) {
+function tableHasRlsEnabledInFile(sql, table) {
   // Direct: `ALTER TABLE [IF EXISTS] [public.]<table> ENABLE ROW LEVEL SECURITY`
   const direct = new RegExp(
     `ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:public\\.|"public"\\.)?"?${table}"?\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`,
     'i',
   );
   if (direct.test(sql)) return true;
-  // Loop-installed: `tenant_tables[] := ARRAY[ ... '<table>', ... ];`
-  // followed by `EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);`
-  // We scan for the table name appearing inside a tenant_tables array
-  // AND the loop EXECUTE call appearing in the same file.
+  // Loop-installed: tenant_tables[] := ARRAY[ ... '<table>', ... ];
+  // followed by EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
   const inArrayRx = new RegExp(
     `tenant_tables[\\s\\S]{0,4000}?'${table}'`,
     'i',
@@ -146,14 +153,13 @@ function tableHasRlsEnabled(sql, table) {
   return inArrayRx.test(sql) && loopExecuteRx.test(sql);
 }
 
-function tableHasPolicy(sql, table) {
+function tableHasPolicyInFile(sql, table) {
   // Direct CREATE POLICY ... ON <table>.
   const direct = new RegExp(
     `CREATE\\s+POLICY\\s+[^;]+\\s+ON\\s+(?:public\\.|"public"\\.)?"?${table}"?[\\s\\(]`,
     'i',
   );
   if (direct.test(sql)) return true;
-  // Loop-installed via tenant_isolation_*.
   const inArrayRx = new RegExp(
     `tenant_tables[\\s\\S]{0,4000}?'${table}'`,
     'i',
@@ -161,6 +167,20 @@ function tableHasPolicy(sql, table) {
   const loopCreatePolicyRx =
     /CREATE\s+POLICY\s+tenant_isolation/i;
   return inArrayRx.test(sql) && loopCreatePolicyRx.test(sql);
+}
+
+/**
+ * Predicate evaluated per-file: returns true iff AT LEAST ONE
+ * migration file ENABLES RLS for this table (and at least one
+ * enables a POLICY). Per-file evaluation prevents cross-file
+ * substring leakage flagged in H10.
+ */
+function tableHasRlsEnabled(perFile, table) {
+  return perFile.some(({ sql }) => tableHasRlsEnabledInFile(sql, table));
+}
+
+function tableHasPolicy(perFile, table) {
+  return perFile.some(({ sql }) => tableHasPolicyInFile(sql, table));
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -186,14 +206,14 @@ function ensureDir(p) {
 function main() {
   const args = parseArgs(process.argv);
   const tables = findTenantTables();
-  const sql = readAllSql();
+  const perFile = readAllSqlPerFile();
   const violations = [];
   const audited = [];
 
   for (const [name, schemaFile] of tables) {
     const allowReason = RLS_ALLOWLIST.get(name);
-    const rls = tableHasRlsEnabled(sql, name);
-    const policy = tableHasPolicy(sql, name);
+    const rls = tableHasRlsEnabled(perFile, name);
+    const policy = tableHasPolicy(perFile, name);
     audited.push({ table: name, schemaFile, rls, policy, allowlisted: Boolean(allowReason) });
     if (allowReason) continue;
     if (!rls) {
