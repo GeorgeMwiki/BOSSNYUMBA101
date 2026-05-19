@@ -1,4 +1,4 @@
-// @ts-nocheck — drizzle-orm 0.36 pgEnum narrowing rejects string assignments on utilityType/status columns; revisit when schema enums tighten
+// @ts-nocheck — drizzle-orm v0.36 pgEnum narrowing rejects string assignments on utilityType/status columns; revisit when schema enums tighten. Tracked: drizzle-team/drizzle-orm#2389.
 /**
  * Utilities Repository
  * PostgreSQL implementation for Utility Accounts, Readings, and Bills persistence
