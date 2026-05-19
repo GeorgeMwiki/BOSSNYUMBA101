@@ -31,6 +31,10 @@ const DEFAULT_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? 'http://local
 // server-side limit; the console intentionally caps lower so a manager
 // does not staple a presentation deck onto a chat turn.
 const MAX_IMAGES_PER_TURN = 5;
+// M-12: client-side per-file size cap. Mirrors the gateway 10 MiB limit
+// but reports the rejection before pushing the blob into form state on a
+// flaky mobile network.
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME = 'image/png,image/jpeg,image/gif,image/webp';
 
 const MODE_STORAGE_KEY = 'bossnyumba.jarvis.mode';
@@ -50,6 +54,8 @@ export function JarvisConsole(): JSX.Element {
   const [draft, setDraft] = useState('');
   const [threadId] = useState(() => `mgr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [pendingImages, setPendingImages] = useState<ReadonlyArray<File>>([]);
+  // M-12: surface oversize-file errors from the picker.
+  const [pickerError, setPickerError] = useState<string | null>(null);
   // Default to streaming so managers see token deltas the moment the
   // model commits to a direction. Preference is restored from
   // localStorage so the choice survives reloads.
@@ -137,8 +143,24 @@ export function JarvisConsole(): JSX.Element {
   const visiblePersona = isStreaming ? (streamPersona ?? persona) : persona;
 
   function onPickImages(e: React.ChangeEvent<HTMLInputElement>): void {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
+    const allFiles = Array.from(e.target.files ?? []);
+    if (allFiles.length === 0) return;
+    // M-12: reject oversize files BEFORE pushing them into component
+    // state so we never hold a reference to a 30+ MB blob.
+    const tooLarge = allFiles.filter((f) => f.size > MAX_IMAGE_SIZE_BYTES);
+    const files = allFiles.filter((f) => f.size <= MAX_IMAGE_SIZE_BYTES);
+    if (tooLarge.length > 0) {
+      setPickerError(
+        `Image too large (max ${Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))} MB). ` +
+          `Skipped: ${tooLarge.map((f) => f.name).join(', ')}.`,
+      );
+    } else {
+      setPickerError(null);
+    }
+    if (files.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setPendingImages((prev) => {
       const seen = new Set(prev.map((f) => `${f.name}::${f.size}`));
       const merged: File[] = [...prev];
@@ -298,6 +320,15 @@ export function JarvisConsole(): JSX.Element {
           <div className="self-start text-xs text-destructive">error: {error}</div>
         ) : null}
       </div>
+
+      {pickerError ? (
+        <div
+          role="alert"
+          className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        >
+          {pickerError}
+        </div>
+      ) : null}
 
       {pendingImages.length > 0 ? (
         <div className="flex flex-wrap gap-2">

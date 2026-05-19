@@ -55,8 +55,30 @@ async function request<T>(
   });
 
   if (response.status === 401) {
+    // M-13: defer the redirect so any in-flight React Query / SSE listener
+    // has a chance to settle its onError before the page unloads. Without
+    // this, the synchronous `window.location.href = …` raced React Query's
+    // error pipeline, leaving dangling subscriptions in StrictMode dev
+    // and occasional Sentry "unmounted setState" warnings in prod.
+    //
+    // We also broadcast an `auth:unauthorized` event so AuthContext can
+    // clear local state synchronously (without owning the navigation
+    // policy here).
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      } catch {
+        // CustomEvent unsupported (old browsers / SSR sandbox) — ignore.
+      }
+      // Schedule navigation on the next macrotask so the current
+      // request/response chain unwinds cleanly first.
+      setTimeout(() => {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }, 0);
+    }
     throw new Error('Unauthorized');
   }
 
