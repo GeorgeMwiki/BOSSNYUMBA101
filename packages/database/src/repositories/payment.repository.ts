@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * Payment Repository Implementations
  * PostgreSQL implementations for Invoice, Payment, and Transaction persistence
@@ -139,12 +138,13 @@ export class InvoiceRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const statusEnum = status as (typeof invoices.status.enumValues)[number];
     const rows = await this.db
       .select()
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, statusEnum),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
@@ -157,7 +157,7 @@ export class InvoiceRepository {
       .from(invoices)
       .where(
         and(
-          eq(invoices.status, status),
+          eq(invoices.status, statusEnum),
           eq(invoices.tenantId, tenantId),
           isNull(invoices.deletedAt)
         )
@@ -323,17 +323,18 @@ export class PaymentRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const statusEnum = status as (typeof payments.status.enumValues)[number];
     const rows = await this.db
       .select()
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)))
+      .where(and(eq(payments.status, statusEnum), eq(payments.tenantId, tenantId)))
       .orderBy(desc(payments.createdAt))
       .limit(limit)
       .offset(offset);
     const [{ total }] = await this.db
       .select({ total: count() })
       .from(payments)
-      .where(and(eq(payments.status, status), eq(payments.tenantId, tenantId)));
+      .where(and(eq(payments.status, statusEnum), eq(payments.tenantId, tenantId)));
     const decrypted = await this.decryptMany(rows, tenantId);
     return { items: decrypted, total, limit, offset, hasMore: offset + rows.length < total };
   }

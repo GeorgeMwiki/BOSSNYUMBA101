@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * Maintenance Repository Implementations
  * PostgreSQL implementations for WorkOrder and Vendor persistence
@@ -187,12 +186,13 @@ export class WorkOrderRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const statusEnum = status as (typeof workOrders.status.enumValues)[number];
     const rows = await this.db
       .select()
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, statusEnum),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -205,7 +205,7 @@ export class WorkOrderRepository {
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.status, status),
+          eq(workOrders.status, statusEnum),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -214,12 +214,13 @@ export class WorkOrderRepository {
   }
 
   async findByPriority(priority: string, tenantId: TenantId, limit = 50, offset = 0) {
+    const priorityEnum = priority as (typeof workOrders.priority.enumValues)[number];
     const rows = await this.db
       .select()
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, priorityEnum),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -232,7 +233,7 @@ export class WorkOrderRepository {
       .from(workOrders)
       .where(
         and(
-          eq(workOrders.priority, priority),
+          eq(workOrders.priority, priorityEnum),
           eq(workOrders.tenantId, tenantId),
           isNull(workOrders.deletedAt)
         )
@@ -328,7 +329,7 @@ export class VendorRepository {
       isNull(vendors.deletedAt),
     ];
     if (filters.status) {
-      predicates.push(eq(vendors.status, filters.status));
+      predicates.push(eq(vendors.status, filters.status as (typeof vendors.status.enumValues)[number]));
     }
     if (filters.specialization) {
       predicates.push(
