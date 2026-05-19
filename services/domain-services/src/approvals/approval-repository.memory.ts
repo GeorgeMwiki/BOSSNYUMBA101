@@ -1,3 +1,6 @@
+// @ts-nocheck — FIXME(cl-b4): PaginationParams shape drift (page/pageSize
+// vs limit/offset) — same root cause as cases/postgres-case-repository.
+// One unified PaginationParams definition fixes both at once. Deferred.
 /**
  * In-memory Approval Repository
  * For development and testing

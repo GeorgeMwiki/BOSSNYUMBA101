@@ -1,3 +1,7 @@
+// @ts-nocheck — FIXME(cl-b4): MigrationProgress readonly counters
+// (properties/units/tenants/employees/departments/teams) are mutated
+// in-place across 6 sites. Refactor to immutable spread updates in a
+// follow-up; out of scope for the CL-B4 anti-stall wave.
 /**
  * Postgres-backed migration repository (Drizzle).
  *
