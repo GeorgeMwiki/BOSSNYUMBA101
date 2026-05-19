@@ -46,6 +46,31 @@
 -- 1. Engine-level append-only triggers on sovereign_action_ledger.
 -- ---------------------------------------------------------------------------
 
+-- L2 closure (round-3 audit, 2026-05-19):
+--   The RAISE EXCEPTION below references `OLD.id` and `OLD.tenant_id` by
+--   name. If the table's columns ever get renamed via a future migration
+--   without touching this function, the trigger fires but the RAISE
+--   crashes inside plpgsql ("record OLD has no field 'id'"). That throws
+--   a different ERRCODE than the intended `insufficient_privilege` —
+--   silently swapping a clean "append-only" error for an opaque
+--   plpgsql one. Defensive guard: a DO block below verifies the columns
+--   exist at migration time, so a future rename without updating this
+--   function fails the migration loudly.
+DO $col_check$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'sovereign_action_ledger'
+      AND column_name IN ('id', 'tenant_id')
+    GROUP BY table_schema
+    HAVING COUNT(*) = 2
+  ) THEN
+    RAISE EXCEPTION '0164: sovereign_action_ledger must expose both `id` and `tenant_id` columns before this trigger function is installed (rename detected — also update the RAISE EXCEPTION body below)';
+  END IF;
+END;
+$col_check$;
+
 CREATE OR REPLACE FUNCTION public.sovereign_action_ledger_block_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -108,6 +133,21 @@ COMMENT ON TABLE public.sovereign_action_ledger IS
 -- GENESIS_HASH so the verifier silently picks one branch and misses the
 -- other. A unique partial index over (tenant_id) WHERE prev_hash = the
 -- 64-zero genesis string ensures EXACTLY one genesis row per tenant.
+--
+-- M2 closure (round-3 audit, 2026-05-19):
+--   Canonical genesis-hash constant lives at
+--     packages/database/src/schemas/sovereign-action-ledger.schema.ts
+--     → export const GENESIS_HASH = '0000…0000' (64 zero hex digits)
+--   The partial-unique index below DUPLICATES that literal because
+--   SQL can't import TS constants. If the service code EVER swaps
+--   algorithms (SHA-3, BLAKE3) or changes the genesis sentinel, the
+--   following must change in lockstep:
+--     1) schemas/sovereign-action-ledger.schema.ts :: GENESIS_HASH
+--     2) services/sovereign-action-ledger.service.ts (`hashRow` algorithm)
+--     3) THIS migration's WHERE clause (literal below)
+--     4) The 0164 test that asserts the partial-unique constraint
+--   Add a follow-on migration to rewrite the partial index when (1)
+--   changes — `DROP INDEX` + `CREATE UNIQUE INDEX` against the new value.
 -- ---------------------------------------------------------------------------
 
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_sovereign_action_ledger_genesis_per_tenant
@@ -115,7 +155,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_sovereign_action_ledger_genesis_per_tenan
   WHERE prev_hash = '0000000000000000000000000000000000000000000000000000000000000000';
 
 COMMENT ON INDEX public.uniq_sovereign_action_ledger_genesis_per_tenant IS
-  '0164 — partial unique index pinning at most one genesis row per tenant. Prevents fork attacks where a second row carrying prev_hash = GENESIS_HASH would create a parallel chain the verifier could silently miss.';
+  '0164 — partial unique index pinning at most one genesis row per tenant. Prevents fork attacks where a second row carrying prev_hash = GENESIS_HASH would create a parallel chain the verifier could silently miss. The literal in the WHERE clause MUST stay in sync with schemas/sovereign-action-ledger.schema.ts :: GENESIS_HASH (see 0164 head-comment for full rotation procedure).';
 
 -- ---------------------------------------------------------------------------
 -- 3. Replace 0156 `FOR ALL` policy with `FOR SELECT` + `FOR INSERT` on

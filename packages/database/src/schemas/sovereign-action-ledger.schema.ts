@@ -43,6 +43,16 @@ import {
  * Per-tenant chain origin. SHA-256 of 64 zero hex digits, used as the
  * `prev_hash` of the first appended row for every tenant. Keeping it
  * fixed lets `verifyLedgerChain` re-derive the head deterministically.
+ *
+ * M2 closure (round-3 audit, 2026-05-19):
+ *   This SAME literal is duplicated in
+ *   `packages/database/src/migrations/0164_sovereign_append_only_enforcement.sql`
+ *   as the WHERE clause of `uniq_sovereign_action_ledger_genesis_per_tenant`.
+ *   SQL can't import TS constants. If this constant EVER changes
+ *   (algorithm swap to SHA-3 / BLAKE3, or sentinel rewrite), the
+ *   partial-unique index in 0164 MUST be dropped and recreated in
+ *   lockstep — see the migration head-comment for the rotation
+ *   procedure.
  */
 export const GENESIS_HASH =
   '0000000000000000000000000000000000000000000000000000000000000000';
