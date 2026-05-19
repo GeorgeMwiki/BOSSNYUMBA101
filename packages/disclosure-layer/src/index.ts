@@ -20,3 +20,6 @@ export * from './role-gate/index.js';
 
 // CLOSE-pattern refusal grammar (6 pre-built)
 export * from './close-pattern/index.js';
+
+// Canary tokens — system-prompt leakage detection
+export * from './canary-tokens/index.js';
