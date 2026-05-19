@@ -1,0 +1,66 @@
+{
+  "name": "@bossnyumba/governance",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "BOSSNYUMBA constitution + autonomy slider + checkpoint gates + managed-settings. Phase K-E governance cluster — the moral charter and operational guardrails the brain consults before every action.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./constitution": {
+      "types": "./dist/constitution/index.d.ts",
+      "import": "./dist/constitution/index.js",
+      "default": "./dist/constitution/index.js"
+    },
+    "./autonomy-slider": {
+      "types": "./dist/autonomy-slider/index.d.ts",
+      "import": "./dist/autonomy-slider/index.js",
+      "default": "./dist/autonomy-slider/index.js"
+    },
+    "./checkpoint-gates": {
+      "types": "./dist/checkpoint-gates/index.d.ts",
+      "import": "./dist/checkpoint-gates/index.js",
+      "default": "./dist/checkpoint-gates/index.js"
+    },
+    "./managed-settings": {
+      "types": "./dist/managed-settings/index.d.ts",
+      "import": "./dist/managed-settings/index.js",
+      "default": "./dist/managed-settings/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "governance",
+    "constitution",
+    "self-critique",
+    "autonomy",
+    "checkpoint-gates",
+    "managed-settings",
+    "rlaif",
+    "anthropic-cai"
+  ],
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}
