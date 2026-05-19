@@ -17,3 +17,6 @@ export * from './tier-taxonomy/index.js';
 
 // Role gate (auth-injected role → tier)
 export * from './role-gate/index.js';
+
+// CLOSE-pattern refusal grammar (6 pre-built)
+export * from './close-pattern/index.js';
