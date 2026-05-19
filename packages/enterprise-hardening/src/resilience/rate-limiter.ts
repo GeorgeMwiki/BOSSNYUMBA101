@@ -119,10 +119,41 @@ export interface RateLimitState {
 }
 
 /**
- * In-memory rate limit store (for single-instance or testing)
+ * In-memory rate limit store (for single-instance or testing).
+ *
+ * M13 closure (round-3 audit): the store now exposes an optional
+ * `autoCleanupMs` constructor arg that wires `cleanup()` to a
+ * setInterval. The interval is `unref()`-ed so it doesn't keep a
+ * Node process alive on its own (important for test workers and
+ * short-lived CLI scripts). Operators in production should still
+ * prefer a Redis-backed store for cross-pod coordination — see
+ * the constructor doc-comment.
  */
 export class InMemoryRateLimitStore implements RateLimitStore {
   private store: Map<string, { state: RateLimitState; expiresAt: number }> = new Map();
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * @param autoCleanupMs Optional interval (ms) for periodic eviction of
+   *   expired entries. When omitted, callers must invoke `cleanup()`
+   *   themselves (or accept the slow-leak-under-churn risk the
+   *   round-3 audit flagged). Recommended: 60_000 ms for most
+   *   production workloads.
+   *
+   *   IMPORTANT: a single in-memory store has no cross-pod coordination.
+   *   In multi-pod deployments swap this implementation for a
+   *   Redis-backed `RateLimitStore` so quotas hold across replicas.
+   */
+  constructor(autoCleanupMs?: number) {
+    if (autoCleanupMs !== undefined && autoCleanupMs > 0) {
+      this.cleanupTimer = setInterval(() => this.cleanup(), autoCleanupMs);
+      // `unref()` ensures this timer does NOT keep the event loop alive.
+      // Available on Node's Timeout but not on the DOM `setInterval`
+      // type, so we guard the call.
+      const t = this.cleanupTimer as unknown as { unref?: () => void };
+      if (typeof t.unref === 'function') t.unref();
+    }
+  }
 
   async get(key: string): Promise<RateLimitState | null> {
     const entry = this.store.get(key);
@@ -162,7 +193,7 @@ export class InMemoryRateLimitStore implements RateLimitStore {
   }
 
   /**
-   * Clean up expired entries
+   * Clean up expired entries.
    */
   cleanup(): void {
     const now = Date.now();
@@ -170,6 +201,17 @@ export class InMemoryRateLimitStore implements RateLimitStore {
       if (now > entry.expiresAt) {
         this.store.delete(key);
       }
+    }
+  }
+
+  /**
+   * Stop the auto-cleanup timer. Safe to call when no timer was started.
+   * Test suites and short-lived processes should call this on teardown.
+   */
+  stopAutoCleanup(): void {
+    if (this.cleanupTimer !== null) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
     }
   }
 }
