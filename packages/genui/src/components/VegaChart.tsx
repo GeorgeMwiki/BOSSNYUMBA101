@@ -53,9 +53,15 @@ export function VegaChart(props: VegaChartProps): JSX.Element {
     );
   }
 
-  const [ajvOk, setAjvOk] = useState<null | { ok: boolean; errors: ReadonlyArray<string> }>(
-    null,
-  );
+  const [ajvOk, setAjvOk] = useState<
+    | null
+    | {
+        ok: boolean;
+        errors: ReadonlyArray<string>;
+        safeSpec?: Readonly<Record<string, unknown>>;
+        strippedPaths?: ReadonlyArray<string>;
+      }
+  >(null);
 
   useEffect(() => {
     let alive = true;
@@ -85,10 +91,16 @@ export function VegaChart(props: VegaChartProps): JSX.Element {
     );
   }
 
-  // Inject `data` into the spec as inline values so the LLM doesn't
-  // have to know about Vega's data-source URL conventions.
+  // CRITICAL (C2) — hand the EXPRESSION-STRIPPED spec to vega-embed, not
+  // the raw `props.spec`. validateVegaSpec returns `safeSpec` with every
+  // `signal` / `expr` / `calculate` / `update` / `init` / `params` field
+  // pruned recursively, so even if an LLM emits one Vega cannot evaluate
+  // it. Falls back to the raw spec only on the first render before ajv
+  // has resolved (ajvOk === null) — but that path also gates render
+  // behind `ajvOk?.ok` below, so a raw spec never reaches VegaLite.
+  const baseSpec = ajvOk?.safeSpec ?? props.spec;
   const fullSpec = {
-    ...props.spec,
+    ...baseSpec,
     data: { values: props.data },
     width: 'container',
   };
