@@ -16,6 +16,7 @@
  */
 
 import type { LiveblocksRoom } from './client.js';
+import { parseRoomId } from './client.js';
 
 /** Minimal kernel surface — the brain peer never reaches deeper. */
 export interface BrainKernelHandle {
@@ -100,6 +101,19 @@ export function createBrainPeer(opts: CreateBrainPeerOptions): BrainPeer {
   if (persona.role !== 'brain') {
     throw new Error(
       `brain-peer: persona.role must be "brain", got "${persona.role}"`,
+    );
+  }
+
+  // Round-3 audit H18 / 6.3 fix — verify that the room's tenant
+  // segment matches the kernel's tenantId. Defense-in-depth on top
+  // of the gateway's Liveblocks auth router: if the caller passes
+  // a mismatched pair (e.g. brain configured for tenant-A attached
+  // to a room belonging to tenant-B), surface it immediately instead
+  // of relying solely on the gateway to refuse the token.
+  const parsed = parseRoomId(room.roomId);
+  if (parsed && parsed.tenantId !== kernel.tenantId) {
+    throw new Error(
+      `brain-peer: kernel tenantId "${kernel.tenantId}" does not match room tenantId "${parsed.tenantId}" in room "${room.roomId}"`,
     );
   }
 

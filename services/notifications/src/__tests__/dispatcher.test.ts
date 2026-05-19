@@ -74,8 +74,13 @@ describe('enqueueNotification', () => {
     });
     expect(result.accepted).toBe(true);
     expect(result.attempts).toBe(3);
-    // exponential: 1000, 2000
-    expect(sleeps).toEqual([1000, 2000]);
+    // Round-3 audit H4 — exponential backoff WITH ±25% jitter, so
+    // the sleeps fall inside [750, 1250] and [1500, 2500].
+    expect(sleeps).toHaveLength(2);
+    expect(sleeps[0]).toBeGreaterThanOrEqual(750);
+    expect(sleeps[0]).toBeLessThanOrEqual(1250);
+    expect(sleeps[1]).toBeGreaterThanOrEqual(1500);
+    expect(sleeps[1]).toBeLessThanOrEqual(2500);
   });
 
   it('dead-letters after 3 failed attempts and emits event', async () => {

@@ -10,6 +10,7 @@
  * Redacts where reasonable; blocks when the risk is critical.
  */
 
+import crypto from 'node:crypto';
 import { scrubPii } from './pii-scrubber.js';
 
 // ---------------------------------------------------------------------------
@@ -142,11 +143,22 @@ export function scanOutput(
   for (const rx of SECRET_RX) {
     const match = sanitized.match(rx);
     if (match) {
+      // Round-3 audit C12 fix — the previous code emitted a 6-char
+      // prefix (`match[0].slice(0, 6)`) into the audit `sample`
+      // field, which for an OpenAI `sk-proj-` key reveals the
+      // project-id structure. We now emit a SHA-256-truncated digest
+      // so analysts can correlate repeated leaks without exposing
+      // recoverable key material.
+      const digest = crypto
+        .createHash('sha256')
+        .update(match[0])
+        .digest('hex')
+        .slice(0, 12);
       issues.push({
         type: 'api_key_exposure',
         severity: 'critical',
         description: 'Output contains an API key or secret',
-        sample: `${match[0].slice(0, 6)}…`,
+        sample: `sha256:${digest}…`,
       });
       sanitized = sanitized.replace(
         new RegExp(rx.source, rx.flags.includes('g') ? rx.flags : `${rx.flags}g`),
@@ -172,7 +184,10 @@ export function scanOutput(
     }
   }
 
-  // Metadata markers.
+  // Round-3 audit M2 fix — metadata markers stripped BEFORE the URL
+  // allow-list check. A metadata comment that embedded an allow-listed
+  // URL inside an HTML comment previously slipped the allow-list
+  // filter because the comment was still present at URL-check time.
   for (const rx of METADATA_RX) {
     if (rx.test(sanitized)) {
       issues.push({

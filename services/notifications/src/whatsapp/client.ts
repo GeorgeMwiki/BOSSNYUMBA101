@@ -319,6 +319,24 @@ export class WhatsAppClient {
   }
 
   /**
+   * Round-3 audit C14 fix — the legacy WhatsAppClient never had a
+   * signature validation method, so any webhook flow that wired the
+   * singleton at line 357 below was structurally signature-free.
+   *
+   * Rather than back-port the full HMAC dance, we hard-fail here.
+   * Callers MUST migrate to `MetaWhatsAppClient` (`meta-client.ts`),
+   * which carries the full validator pipeline (length-safe
+   * timingSafeEqual + fail-closed on missing secret).
+   */
+  validateWebhookSignature(_payload: string, _signature: string): boolean {
+    throw new Error(
+      'WhatsAppClient.validateWebhookSignature is deprecated. ' +
+        'Use MetaWhatsAppClient from `services/notifications/src/whatsapp/meta-client.ts`. ' +
+        'See audit/round3 finding C14 for the migration path.'
+    );
+  }
+
+  /**
    * Parse incoming webhook payload
    */
   parseWebhookPayload(body: unknown): WebhookMessage[] {

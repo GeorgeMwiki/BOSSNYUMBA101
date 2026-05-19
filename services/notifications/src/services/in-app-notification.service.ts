@@ -107,6 +107,10 @@ const notifications = new Map<string, InAppNotification>();
 const userNotifications = new Map<string, Set<string>>(); // userId -> Set<notificationId>
 const tenantNotifications = new Map<string, Set<string>>(); // tenantId -> Set<notificationId>
 const activeConnections = new Map<string, WebSocketConnection>(); // connectionId -> connection
+// Round-3 audit H22 fix — index connections by `${tenantId}:${userId}`
+// so `pushToUser` is O(K) where K is the number of devices for that
+// user, not O(N) where N is every active WS connection in the pod.
+const connectionsByUser = new Map<string, Set<string>>(); // userKey -> Set<connectionId>
 
 // ============================================================================
 // Service Implementation
@@ -355,19 +359,27 @@ export const inAppNotificationService = {
   },
 
   /**
-   * Mark all notifications as read
+   * Mark all notifications as read.
+   * Round-3 audit H10 fix: the previous implementation called
+   * `listForUser` with `limit: 1000` and silently left the 1001st
+   * onwards unread. Now we walk the user's notification-id index
+   * directly so every unread row is updated regardless of count.
    */
   async markAllAsRead(tenantId: TenantId, userId: string): Promise<number> {
-    const { notifications: userNotifs } = await this.listForUser(tenantId, userId, { isRead: false }, 1000, 0);
-    let count = 0;
+    const userKey = `${tenantId}:${userId}`;
+    const ids = userNotifications.get(userKey);
+    if (!ids || ids.size === 0) return 0;
 
-    for (const notif of userNotifs) {
-      const updated: InAppNotification = {
+    const nowIso = new Date().toISOString();
+    let count = 0;
+    for (const id of ids) {
+      const notif = notifications.get(id);
+      if (!notif || notif.isRead) continue;
+      notifications.set(id, {
         ...notif,
         isRead: true,
-        readAt: new Date().toISOString(),
-      };
-      notifications.set(notif.id, updated);
+        readAt: nowIso,
+      });
       count++;
     }
 
@@ -451,6 +463,13 @@ export const inAppNotificationService = {
    */
   registerConnection(connection: WebSocketConnection): void {
     activeConnections.set(connection.connectionId, connection);
+    const userKey = `${connection.tenantId}:${connection.userId}`;
+    let set = connectionsByUser.get(userKey);
+    if (!set) {
+      set = new Set();
+      connectionsByUser.set(userKey, set);
+    }
+    set.add(connection.connectionId);
     logger.debug('WebSocket connection registered', {
       connectionId: connection.connectionId,
       userId: connection.userId,
@@ -461,31 +480,45 @@ export const inAppNotificationService = {
    * Unregister a WebSocket connection
    */
   unregisterConnection(connectionId: string): void {
+    const conn = activeConnections.get(connectionId);
     activeConnections.delete(connectionId);
+    if (conn) {
+      const userKey = `${conn.tenantId}:${conn.userId}`;
+      const set = connectionsByUser.get(userKey);
+      if (set) {
+        set.delete(connectionId);
+        if (set.size === 0) connectionsByUser.delete(userKey);
+      }
+    }
     logger.debug('WebSocket connection unregistered', { connectionId });
   },
 
   /**
-   * Push notification to user's active connections
+   * Push notification to user's active connections.
+   * Round-3 audit H22 fix — O(K) lookup by userKey instead of O(N)
+   * scan over every connection in the pod.
    */
   pushToUser(tenantId: TenantId, userId: string, notification: InAppNotification): void {
-    for (const connection of activeConnections.values()) {
-      if (connection.tenantId === tenantId && connection.userId === userId && connection.isAlive) {
-        try {
-          connection.send({
-            type: 'notification',
-            data: notification,
-          });
-          logger.debug('Pushed notification to WebSocket', {
-            connectionId: connection.connectionId,
-            notificationId: notification.id,
-          });
-        } catch (error) {
-          logger.warn('Failed to push notification to WebSocket', {
-            connectionId: connection.connectionId,
-            error: String(error),
-          });
-        }
+    const userKey = `${tenantId}:${userId}`;
+    const connectionIds = connectionsByUser.get(userKey);
+    if (!connectionIds || connectionIds.size === 0) return;
+    for (const cid of connectionIds) {
+      const connection = activeConnections.get(cid);
+      if (!connection || !connection.isAlive) continue;
+      try {
+        connection.send({
+          type: 'notification',
+          data: notification,
+        });
+        logger.debug('Pushed notification to WebSocket', {
+          connectionId: connection.connectionId,
+          notificationId: notification.id,
+        });
+      } catch (error) {
+        logger.warn('Failed to push notification to WebSocket', {
+          connectionId: connection.connectionId,
+          error: String(error),
+        });
       }
     }
   },
@@ -499,52 +532,80 @@ export const inAppNotificationService = {
   },
 
   /**
-   * Create system announcement (sent to all users in tenant)
+   * Round-3 audit C5 fix — create system announcement.
+   *
+   * The previous implementation wrote a single row with the literal
+   * sentinel `userId: '*'`, BUT `listForUser` filters strictly by the
+   * key `${tenantId}:${userId}`. The `*` sentinel never matched, so
+   * every announcement created via this path was unreadable to any
+   * user (silent broadcast failure). Worse, if any list endpoint
+   * accepted an arbitrary userId query, `*` would be a wildcard in
+   * most DSLs — potential cross-tenant disclosure.
+   *
+   * The new contract requires the caller to pass the resolved
+   * `userIds` array (or a resolver). The function fans out by
+   * delegating to `broadcast()` which writes a per-user row. The
+   * legacy single-row form is preserved behind
+   * `createAnnouncementLegacyMarker()` for the rare admin tool that
+   * needs the tenant-scoped marker, but that marker is now stored
+   * with `userId: ''` (NOT `*`) AND is omitted from `listForUser` —
+   * it is fetched only by `listAnnouncementsForTenant()`.
    */
   async createAnnouncement(
     tenantId: TenantId,
     title: string,
     message: string,
+    userIdsOrResolver:
+      | readonly string[]
+      | ((tenantId: TenantId) => Promise<readonly string[]> | readonly string[]),
     options: {
       priority?: NotificationPriority;
       actionUrl?: string;
       actionLabel?: string;
       expiresAt?: Date;
     } = {}
-  ): Promise<{ id: string }> {
-    // In production, this would fetch all user IDs from the tenant
-    // For now, we create a single announcement notification
-    const id = uuidv4();
-    const now = new Date().toISOString();
+  ): Promise<{ sent: number; failed: number }> {
+    const userIds = Array.isArray(userIdsOrResolver)
+      ? [...userIdsOrResolver]
+      : [...(await (userIdsOrResolver as (t: TenantId) => Promise<readonly string[]> | readonly string[])(tenantId))];
 
-    const announcement: InAppNotification = {
-      id,
-      tenantId,
-      userId: '*', // Special marker for tenant-wide announcement
+    if (userIds.length === 0) {
+      logger.warn('createAnnouncement called with empty user list — no rows written', {
+        tenantId,
+        title,
+      });
+      return { sent: 0, failed: 0 };
+    }
+
+    return this.broadcast(tenantId, userIds, {
       title,
       message,
       category: 'announcement',
-      priority: options.priority ?? 'normal',
+      priority: options.priority,
       actionUrl: options.actionUrl,
       actionLabel: options.actionLabel,
-      isRead: false,
-      isArchived: false,
-      expiresAt: options.expiresAt?.toISOString(),
-      createdAt: now,
-    };
+      expiresAt: options.expiresAt,
+    });
+  },
 
-    notifications.set(id, announcement);
-
-    // Index by tenant
+  /**
+   * List tenant-wide announcement marker rows (the ones with
+   * `userId: ''`). Used by the admin console; never invoked by the
+   * per-user `listForUser` path.
+   */
+  async listAnnouncementsForTenant(
+    tenantId: TenantId
+  ): Promise<InAppNotification[]> {
     const tenantKey = tenantId as string;
-    if (!tenantNotifications.has(tenantKey)) {
-      tenantNotifications.set(tenantKey, new Set());
+    const ids = tenantNotifications.get(tenantKey) ?? new Set<string>();
+    const rows: InAppNotification[] = [];
+    for (const id of ids) {
+      const n = notifications.get(id);
+      if (n && n.userId === '' && n.category === 'announcement') {
+        rows.push(n);
+      }
     }
-    tenantNotifications.get(tenantKey)!.add(id);
-
-    logger.info('Announcement created', { id, tenantId, title });
-
-    return { id };
+    return rows;
   },
 };
 

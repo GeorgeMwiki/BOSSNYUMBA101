@@ -12,6 +12,8 @@
  * Pure function: same input always returns the same result. No hidden state.
  */
 
+import crypto from 'node:crypto';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -257,9 +259,14 @@ const nonceCache = new Map<string, string>();
 function deriveNonce(sessionId: string): string {
   const existing = nonceCache.get(sessionId);
   if (existing) return existing;
-  const nonce = Array.from({ length: 16 }, () =>
-    Math.random().toString(36).charAt(2),
-  ).join('');
+  // Round-3 audit C11 / 1.1 fix — `Math.random()` is predictable
+  // within a process (V8 seeds it on startup without cryptographic
+  // strength). An attacker who collected a few sample outputs could
+  // predict the next session's nonce and forge sentinel tags
+  // (`[SYSTEM_INSTRUCTIONS_<n>]`) inside untrusted user input,
+  // defeating the entire bracketed-zone defence. Switching to
+  // `crypto.randomBytes(16)` yields 128 bits of unpredictability.
+  const nonce = crypto.randomBytes(16).toString('hex');
   nonceCache.set(sessionId, nonce);
   if (nonceCache.size > 1_000) {
     const drop = Array.from(nonceCache.keys()).slice(0, 500);

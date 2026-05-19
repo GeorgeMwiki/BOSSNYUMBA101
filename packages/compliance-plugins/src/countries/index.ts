@@ -166,11 +166,22 @@ export const GLOBAL_DEFAULT_PROFILE: ExtendedCountryProfile = {
  * Register every extended country plugin with the core registry so the
  * legacy `getCountryPlugin(code)` call path also returns these new
  * jurisdictions.
+ *
+ * Round-3 audit M7 fix — by default we skip codes already registered.
+ * The bundled six (TZ/KE/UG/NG/ZA/US) are hand-tuned implementations
+ * that MUST win over generated scaffolds. Pass `{ overwrite: true }`
+ * only from tests or explicit migration tooling.
  */
 export function registerAllCountryPlugins(
-  registry: CountryPluginRegistry
+  registry: CountryPluginRegistry,
+  options: { overwrite?: boolean } = {}
 ): void {
+  const overwrite = options.overwrite ?? false;
   for (const profile of Object.values(EXTENDED_PROFILES)) {
+    const code = profile.plugin.countryCode;
+    if (!overwrite && code && registry.has(code)) {
+      continue;
+    }
     // Inline the port implementations onto the plugin object so downstream
     // `resolvePlugin(countryCode)` surfaces them via `.taxRegime` etc.
     // Cast to the public CountryPlugin type — the additional fields are

@@ -17,7 +17,16 @@
  *   - Output `e164` is present iff `status === 'valid'`.
  */
 
-export type PhoneValidationStatus = 'valid' | 'invalid' | 'needs-country-hint';
+export type PhoneValidationStatus =
+  | 'valid'
+  | 'invalid'
+  | 'needs-country-hint'
+  // Round-3 audit H20 — surfaced when the input had `+` but the
+  // calling-code prefix was not recognised. Distinct from 'invalid'
+  // (where the input is structurally broken) and 'needs-country-hint'
+  // (where the input has no `+` at all). Callers should retry with an
+  // ISO-3166-1 alpha-2 country code.
+  | 'validation-unavailable';
 
 export interface PhoneValidationResult {
   readonly status: PhoneValidationStatus;
@@ -142,11 +151,17 @@ export function validatePhone(
   if (hadPlus) {
     const detected = detectCallingCode(digits, countryHint);
     if (!detected) {
-      // Unknown calling code but still a valid E.164-shaped string.
+      // Round-3 audit H20 fix — the previous branch returned
+      // `status: 'valid'` for an unrecognised calling code. That
+      // contradicted the docstring (which said unknown calling codes
+      // should trigger 'needs-country-hint') and let downstream
+      // callers ship phones that no SMS/WhatsApp provider could
+      // actually deliver. Surfacing 'validation-unavailable' lets
+      // callers retry with a different hint instead of silently
+      // burning provider credits on a 400.
       return {
-        status: 'valid',
-        e164: `+${digits}`,
-        note: 'Calling-code prefix not recognised; accepted as-is.',
+        status: 'validation-unavailable',
+        note: 'Calling-code prefix not recognised. Provide a country hint or use an ISO-3166-1 alpha-2 code.',
       };
     }
     const resolvedIso =
