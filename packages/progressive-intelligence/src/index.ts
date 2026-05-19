@@ -10,3 +10,4 @@ export * from './history/index.js';
 export * from './auto-fill/index.js';
 export * from './soft-delete/index.js';
 export * from './change-tracking/index.js';
+export * from './evidence-pending/index.js';
