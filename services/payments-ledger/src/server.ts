@@ -378,15 +378,19 @@ app.use('/api/v1/payments/webhook/mpesa', mpesaAllowlist, mpesaSignature);
 // Health Check Endpoint
 // =============================================================================
 
-app.get('/health', (req: Request, res: Response) => {
+// SECURITY (CL-B4): the /health endpoint is unauthenticated (skipped by
+// the auth middleware above), so it must NOT disclose which payment
+// providers are wired. Previously this returned `{ providers: { stripe:
+// !!stripeProvider, mpesa: !!mpesaProvider } }`, which let an
+// unauthenticated attacker fingerprint the payment configuration of
+// every tenant deployment via a single GET. We now return only the
+// liveness status; provider-readiness telemetry lives behind the
+// authenticated /metrics surface.
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'payments-ledger',
     timestamp: new Date().toISOString(),
-    providers: {
-      stripe: !!stripeProvider,
-      mpesa: !!mpesaProvider
-    }
   });
 });
 
