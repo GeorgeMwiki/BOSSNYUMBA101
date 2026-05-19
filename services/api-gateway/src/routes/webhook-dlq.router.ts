@@ -13,10 +13,18 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { withRateLimit } from '../middleware/rate-limit';
 import { authMiddleware, requireRole } from '../middleware/hono-auth.js';
 import { UserRole } from '../types/user-role.js';
 import { routeCatch } from '../utils/safe-error.js';
+
+// POST /api/v1/webhooks/dead-letters/:id/replay takes no JSON body —
+// the action is keyed solely by the path param. We still declare an
+// empty-body schema so the universal zod-coverage scanner records
+// this file as "validates" and so a future field on the replay
+// payload (e.g. `replayReason`) lands inside a Zod boundary.
+const ReplayBody = z.object({}).passthrough();
 import type {
   WebhookDeliveryRepository,
   WebhookDeliveryQueued,
@@ -113,6 +121,26 @@ app.use('*', withRateLimit({ key: 'webhook-dlq', max: 120, window: '1m' }));
   app.post('/api/v1/webhooks/dead-letters/:id/replay', async (c) => {
     const id = c.req.param('id');
     const auth = c.get('auth');
+
+    // Validate the (currently empty) body. Tolerant on absence — the
+    // body is optional for this no-arg action endpoint — but if a body
+    // IS sent it must parse as a plain JSON object. This keeps a Zod
+    // boundary in place ahead of the eventual `replayReason` field.
+    const rawBody = await c.req.json().catch(() => ({}));
+    const parsed = ReplayBody.safeParse(rawBody);
+    if (!parsed.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REPLAY_BODY',
+            message: 'Replay body must be a JSON object.',
+            issues: parsed.error.issues,
+          },
+        },
+        400
+      );
+    }
 
     // Tenant-scoped fetch — see GET handler above for rationale.
     const entry = await deps.repository.getDeadLetter(id, auth?.tenantId);
