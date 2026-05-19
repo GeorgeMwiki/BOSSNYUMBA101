@@ -43,8 +43,13 @@ export const ownerSkills = pgTable(
     triggerKind: text('trigger_kind').notNull(),
     triggerConfig: jsonb('trigger_config').default({}),
     enabled: boolean('enabled').notNull().default(false),
-    installedAt: timestamp('installed_at').notNull().defaultNow(),
-    lastRunAt: timestamp('last_run_at'),
+    // D2 — withTimezone:true required so the Drizzle declarator matches the
+    // timestamptz column installed by migration 0163 (otherwise downstream
+    // consumers cannot tell a TZ-aware column from a naive one — type-safety leak).
+    installedAt: timestamp('installed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastRunAt: timestamp('last_run_at', { withTimezone: true }),
     runCount: integer('run_count').notNull().default(0),
   },
   (t) => ({

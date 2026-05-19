@@ -37,14 +37,21 @@ export const mdrPlanItems = pgTable(
     status: text('status').notNull(),
     /** 'md' | 'owner' */
     proposedBy: text('proposed_by').notNull(),
-    acceptedAt: timestamp('accepted_at'),
+    // D2 — withTimezone:true required so the Drizzle declarator matches the
+    // timestamptz column installed by migration 0163 (otherwise downstream
+    // consumers cannot tell a TZ-aware column from a naive one — type-safety leak).
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     /** ISO date — kept as TEXT for timezone-free planning. */
     startDate: text('start_date'),
     dueDate: text('due_date'),
     ownerEditable: boolean('owner_editable').notNull().default(true),
     metadata: jsonb('metadata').default({}),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     tenantHorizonIdx: index('idx_mdr_plan_tenant_horizon').on(
