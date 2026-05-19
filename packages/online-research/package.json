@@ -1,0 +1,62 @@
+{
+  "name": "@bossnyumba/online-research",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase M-D — online research subagent + durable execution. Anthropic Multi-Agent Research orchestrator-worker pattern (lead Opus + parallel Sonnet workers, ~15x token cost gated by budget), unified search aggregator over Tavily/Exa/Anthropic-web-search, Browser-Use cheap-loop fallback (Haiku-driven Playwright extraction), and Inngest AgentKit durable execution for multi-day flows (lease renewal, eviction, KRA filing, tenant onboarding). Composes with K-A defer hook, K-B action receipts, K-C subagent isolation, K-F budget cap. Closes L1 #10, L2 #6, L2 #8, L2 #12, L2 #13, L2 #14.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./orchestrator-worker": {
+      "types": "./dist/orchestrator-worker/index.d.ts",
+      "import": "./dist/orchestrator-worker/index.js",
+      "default": "./dist/orchestrator-worker/index.js"
+    },
+    "./search-aggregator": {
+      "types": "./dist/search-aggregator/index.d.ts",
+      "import": "./dist/search-aggregator/index.js",
+      "default": "./dist/search-aggregator/index.js"
+    },
+    "./browser-use-fallback": {
+      "types": "./dist/browser-use-fallback/index.d.ts",
+      "import": "./dist/browser-use-fallback/index.js",
+      "default": "./dist/browser-use-fallback/index.js"
+    },
+    "./durable": {
+      "types": "./dist/durable/index.d.ts",
+      "import": "./dist/durable/index.js",
+      "default": "./dist/durable/index.js"
+    },
+    "./receipts": {
+      "types": "./dist/receipts/index.d.ts",
+      "import": "./dist/receipts/index.js",
+      "default": "./dist/receipts/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "import": "./dist/ports/index.js",
+      "default": "./dist/ports/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@types/node": "^25.8.0"
+  }
+}
