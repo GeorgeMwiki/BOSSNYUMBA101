@@ -1,4 +1,3 @@
-// @ts-nocheck — shared Brain types / Payments response drift; tracked
 'use client';
 
 import Link from 'next/link';
@@ -27,9 +26,13 @@ export default function PaymentsPage() {
   });
 
   const error = balanceQuery.error || pendingQuery.error || historyQuery.error;
-  const balance = balanceQuery.data;
-  const pending = pendingQuery.data ?? [];
-  const history = historyQuery.data ?? [];
+  // API client returns `unknown` until a typed gateway client lands.
+  // Local cast keeps the file `@ts-nocheck`-free without leaking `any` outward.
+  const balance = balanceQuery.data as
+    | { totalDue: { currency: string; amount: number | string }; breakdown?: unknown[] }
+    | undefined;
+  const pending = (pendingQuery.data as Array<{ id: string; description?: string; paymentNumber?: string; status: string; currency: string; amount: number | string }> | undefined) ?? [];
+  const history = (historyQuery.data as Array<{ id: string; description?: string; paymentNumber?: string; status: string; currency: string; amount: number | string }> | undefined) ?? [];
 
   return (
     <>
@@ -83,7 +86,7 @@ export default function PaymentsPage() {
             {pending.length === 0 ? (
               <div className="text-sm text-gray-400">{t('noPendingPayments')}</div>
             ) : (
-              pending.map((payment: any) => (
+              pending.map((payment) => (
                 <div key={payment.id} className="flex items-center justify-between rounded-xl border border-white/10 p-3">
                   <div>
                     <div className="font-medium text-white">{payment.description || payment.paymentNumber}</div>
@@ -109,7 +112,7 @@ export default function PaymentsPage() {
             {history.length === 0 ? (
               <div className="text-sm text-gray-400">{t('noPaymentHistory')}</div>
             ) : (
-              history.map((payment: any) => (
+              history.map((payment) => (
                 <Link
                   key={payment.id}
                   href="/payments/history"
