@@ -14,3 +14,6 @@
 
 // Tier taxonomy (3-tier matrix; 30 fields)
 export * from './tier-taxonomy/index.js';
+
+// Role gate (auth-injected role → tier)
+export * from './role-gate/index.js';
