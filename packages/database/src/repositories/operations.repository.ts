@@ -1,4 +1,14 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
+// @ts-nocheck — FIXME(ts-purge): schema/repo drift in operations.repository:
+//   1) `DispatchEventRow` type does not expose `acknowledgedAt | enRouteAt |
+//      onSiteAt | completedAt | cancelledAt` — `Pick<>` constraint fails
+//      at L88 (TS2344). Schema is missing the timestamp columns the repo
+//      claims to write.
+//   2) `completionProofs` schema has no `verifiedBy` or `rejectedReason`
+//      columns — repo writes to nonexistent columns at L161/L180 (TS2353).
+//   3) `vendorAssignments` schema has no `endsAt` column — L275 (TS2353).
+// Resolution requires schema additions or a behaviour change; out of the
+// ts-purge `@ts-nocheck`-removal scope. Tracking issue should be filed
+// alongside drizzle-team/drizzle-orm#2389 for the original pgEnum work.
 /**
  * Operations repositories — DispatchEvent, CompletionProof, VendorAssignment.
  *
