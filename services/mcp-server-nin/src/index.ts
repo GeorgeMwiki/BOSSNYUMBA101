@@ -114,16 +114,39 @@ export function createNinServer(config: NinServerConfig = {}): {
       };
     }
 
-    // CRITICAL #4 — per-tenant allowlist guard.
+    // CRITICAL-5 — prefer the transport-injected, auth-verified
+    // tenantId over caller-supplied args.tenantId. Once the gateway
+    // wraps this server with `_meta.verifiedTenantId` from the auth
+    // context, args.tenantId becomes informational only. Until then,
+    // we accept either source but cross-check them for consistency:
+    // if BOTH are present and differ, refuse (spoof attempt).
     const argsObj = (args ?? {}) as Record<string, unknown>;
+    const metaVerified = (_meta as { verifiedTenantId?: unknown } | undefined)
+      ?.verifiedTenantId;
     const metaTenantId =
       (_meta as { tenantId?: unknown } | undefined)?.tenantId;
+    const argsTenantId =
+      typeof argsObj.tenantId === 'string' ? argsObj.tenantId : '';
+    if (
+      typeof metaVerified === 'string' &&
+      argsTenantId &&
+      metaVerified !== argsTenantId
+    ) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'nin: args.tenantId does not match verified _meta.verifiedTenantId',
+          },
+        ],
+      };
+    }
     const tenantId =
-      typeof argsObj.tenantId === 'string'
-        ? argsObj.tenantId
-        : typeof metaTenantId === 'string'
-          ? metaTenantId
-          : '';
+      typeof metaVerified === 'string' && metaVerified
+        ? metaVerified
+        : argsTenantId ||
+          (typeof metaTenantId === 'string' ? metaTenantId : '');
     if (!tenantId) {
       return {
         isError: true,

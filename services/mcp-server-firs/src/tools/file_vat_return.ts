@@ -8,8 +8,18 @@
  * enum.
  */
 
+import { z } from 'zod';
 import type { FirsTool, ToolDeps } from '../types.js';
 import { FirsAdapterError } from '../types.js';
+
+const FileVatReturnInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  tin: z.string().regex(/^\d{12,13}$/, 'tin must be 12 or 13 digits'),
+  // VAT is monthly in Nigeria; period is YYYY-MM.
+  period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM'),
+  grossSalesKobo: z.number().int().nonnegative().max(10_000_000_000_000),
+  inputVatKobo: z.number().int().nonnegative().max(10_000_000_000_000),
+}).strict();
 
 export interface FileVatReturnInput {
   readonly tenantId: string;
@@ -67,19 +77,15 @@ export const fileVatReturnTool: FirsTool<FileVatReturnOutput> = Object.freeze({
     required: ['acknowledgementId', 'outputVatKobo', 'netPayableKobo', 'filingStatus'],
   },
   async execute(rawInput: unknown, deps: ToolDeps): Promise<FileVatReturnOutput> {
-    const input = rawInput as FileVatReturnInput;
-    if (
-      !input?.tenantId ||
-      !input?.tin ||
-      !input?.period ||
-      typeof input.grossSalesKobo !== 'number' ||
-      typeof input.inputVatKobo !== 'number'
-    ) {
+    // CRITICAL-4: validate via Zod before reaching the adapter.
+    const parsed = FileVatReturnInputSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
       throw new FirsAdapterError(
-        'file_vat_return requires tenantId, tin, period, grossSalesKobo, inputVatKobo',
+        `file_vat_return input validation failed at '${path}'`,
         'INVALID_INPUT',
       );
     }
-    return deps.firs.fileVatReturn(input);
+    return deps.firs.fileVatReturn(parsed.data);
   },
 });

@@ -6,8 +6,14 @@
  * plus the outstanding balance in NGN minor units (kobo).
  */
 
+import { z } from 'zod';
 import type { FirsTool, ToolDeps } from '../types.js';
 import { FirsAdapterError } from '../types.js';
+
+const GetPaymentStatusInputSchema = z.object({
+  tenantId: z.string().min(1).max(128),
+  acknowledgementId: z.string().min(1).max(256),
+}).strict();
 
 export interface GetPaymentStatusInput {
   readonly tenantId: string;
@@ -53,13 +59,15 @@ export const getPaymentStatusTool: FirsTool<GetPaymentStatusOutput> =
       rawInput: unknown,
       deps: ToolDeps,
     ): Promise<GetPaymentStatusOutput> {
-      const input = rawInput as GetPaymentStatusInput;
-      if (!input?.tenantId || !input?.acknowledgementId) {
+      // CRITICAL-4: validate input via Zod before reaching the adapter.
+      const parsed = GetPaymentStatusInputSchema.safeParse(rawInput);
+      if (!parsed.success) {
+        const path = parsed.error.issues[0]?.path?.join('.') ?? 'input';
         throw new FirsAdapterError(
-          'get_payment_status requires tenantId and acknowledgementId',
+          `get_payment_status input validation failed at '${path}'`,
           'INVALID_INPUT',
         );
       }
-      return deps.firs.getPaymentStatus(input);
+      return deps.firs.getPaymentStatus(parsed.data);
     },
   });
