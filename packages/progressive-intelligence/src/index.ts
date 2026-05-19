@@ -5,3 +5,4 @@
 // can `import { ... } from '@bossnyumba/progressive-intelligence'`.
 
 export * from './observations/index.js';
+export * from './confidence/index.js';
