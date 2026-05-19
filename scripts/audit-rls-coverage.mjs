@@ -45,12 +45,24 @@ const SCHEMAS_DIR = join(ROOT, 'packages', 'database', 'src', 'schemas');
 const MIGRATIONS_DIR = join(ROOT, 'packages', 'database', 'src', 'migrations');
 
 // Tenant-scoping column names. Match the Drizzle field declaration.
+//
+// D3 (2026-05-19 sweep) — extended to detect tenant-key ALIASES used by
+// tables that scope by a custom tenant column (e.g. `owner_skills` uses
+// `installed_by_tenant_id`; `org_memberships` uses `platform_tenant_id`).
+// Without these aliases the scanner silently treated those tables as
+// non-tenant tables; the regression gate could not flag them for missing
+// RLS migrations.
 const TENANT_COL_RX = [
   /\btenantId\s*:\s*text\(\s*['"]tenant_id['"]/,
   /\btenantId\s*:\s*uuid\(\s*['"]tenant_id['"]/,
   /\borgId\s*:\s*text\(\s*['"]org_id['"]/,
   /\borganizationId\s*:\s*text\(\s*['"]organization_id['"]/,
   /\btenant_id\s*:/,
+  // Tenant key aliases (D3 — 2026-05-19 sweep).
+  /\b(?:platformTenantId|platform_tenant_id)\s*:/,
+  /\b(?:installedByTenantId|installed_by_tenant_id)\s*:/,
+  /\b(?:authorTenantId|author_tenant_id)\s*:/,
+  /\b(?:tenantIdentityId|tenant_identity_id)\s*:/,
 ];
 
 // pgTable(<name>,...) extractor — captures the SQL table name string.
