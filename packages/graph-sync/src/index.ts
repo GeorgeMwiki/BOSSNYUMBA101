@@ -27,6 +27,7 @@ export {
   assertCypherReferencesTenantId,
   createTenantScopedCypher,
   scopeNodePattern,
+  scopeAllNodePatterns,
   TenantScopeViolation,
   type TenantScopedParams,
   type TenantScopedCypherClient,

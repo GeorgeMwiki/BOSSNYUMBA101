@@ -48,6 +48,12 @@ export const RLS_ALLOWLIST = new Map([
   ['classroom_sessions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['communication_consents', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['complaint_records', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // Surfaced by the M4 tenant-name heuristic (round-3 audit, 2026-05-19).
+  // cross_tenant_denials is a SECURITY-OPS audit table that records detected
+  // cross-tenant breaches; `caller_tenant_id` is the OFFENDING tenant, not an
+  // ownership boundary. By design the platform's SOC team queries this
+  // cross-tenant, so service_role-only access is the correct authz boundary.
+  ['cross_tenant_denials', 'ARCHITECTURAL — security-ops audit; caller_tenant_id is breach evidence not ownership boundary; service_role-only by design.'],
   ['consolidation_emissions', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['core_memory_blocks', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['credit_rating_promises', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
@@ -87,6 +93,12 @@ export const RLS_ALLOWLIST = new Map([
   ['maintenance_problem_categories', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['maintenance_problems', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['market_rate_snapshots', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
+  // Surfaced by the M4 tenant-name heuristic (round-3 audit, 2026-05-19).
+  // marketing_leads is a pre-conversion funnel table — `converted_to_tenant_id`
+  // is NULL until conversion. Service-role-only writes; CRM consumers read
+  // cross-tenant for aggregate funnel analytics. RLS would break the funnel
+  // dashboard. Authz lives at the application layer.
+  ['marketing_leads', 'ARCHITECTURAL — pre-conversion funnel; converted_to_tenant_id is NULL pre-conversion; service-role-only writes; cross-tenant analytics.'],
   ['marketplace_listings', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['mdr_plan_items', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],
   ['message_instances', 'TRACKED GAP — tenant table without RLS migration; pre-Phase-D11 schema.'],

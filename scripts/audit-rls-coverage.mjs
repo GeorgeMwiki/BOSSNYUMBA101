@@ -65,6 +65,30 @@ const TENANT_COL_RX = [
   /\b(?:tenantIdentityId|tenant_identity_id)\s*:/,
 ];
 
+/**
+ * M4 closure (round-3 audit, 2026-05-19).
+ *
+ * Catch-all heuristic for tables that scope by a NOVEL tenant column
+ * name not in `TENANT_COL_RX`. We look for any Drizzle column declared
+ * with a JS identifier or SQL column name that contains the substring
+ * `tenant` (case-insensitive) — matches `subjectTenantId`, `tenant_org`,
+ * etc. without operator intervention.
+ *
+ * Two safeguards keep the false-positive rate low:
+ *
+ *   1. We require the match to be in COLUMN POSITION: a JS identifier
+ *      `<name>: ` followed by either a Drizzle column constructor (text /
+ *      uuid / varchar / ...) OR a snake_case quoted column name on the
+ *      LHS (e.g. `tenant_xxx: ...`). Matching the substring anywhere in
+ *      the table body (e.g. a comment) would over-flag.
+ *
+ *   2. Tables flagged ONLY by the heuristic (and not by the curated
+ *      list) are surfaced separately in the report under
+ *      `heuristicallyDiscovered` so operators can audit / promote.
+ */
+const TENANT_HEURISTIC_RX =
+  /\b([a-zA-Z_][a-zA-Z0-9_]*[Tt]enant[a-zA-Z0-9_]*)\s*:\s*(?:text|uuid|varchar|char|serial|integer)\s*\(\s*['"`]([a-zA-Z_0-9]*tenant[a-zA-Z_0-9]*)['"`]/;
+
 // pgTable(<name>,...) extractor — captures the SQL table name string.
 const PGTABLE_RX =
   /pgTable\s*\(\s*['"`]([a-zA-Z_][a-zA-Z0-9_]*)['"`]\s*,/g;
@@ -107,8 +131,10 @@ function findTenantTables() {
       const d = declarations[i];
       const end = i + 1 < declarations.length ? declarations[i + 1].start : src.length;
       const body = src.slice(d.start, end);
-      if (TENANT_COL_RX.some((rx) => rx.test(body))) {
-        tables.set(d.name, rel);
+      const matchedByCurated = TENANT_COL_RX.some((rx) => rx.test(body));
+      const matchedByHeuristic = !matchedByCurated && TENANT_HEURISTIC_RX.test(body);
+      if (matchedByCurated || matchedByHeuristic) {
+        tables.set(d.name, { schemaFile: rel, heuristic: matchedByHeuristic });
       }
     }
   }
@@ -210,17 +236,27 @@ function main() {
   const violations = [];
   const audited = [];
 
-  for (const [name, schemaFile] of tables) {
+  for (const [name, meta] of tables) {
+    const { schemaFile, heuristic } = meta;
     const allowReason = RLS_ALLOWLIST.get(name);
     const rls = tableHasRlsEnabled(perFile, name);
     const policy = tableHasPolicy(perFile, name);
-    audited.push({ table: name, schemaFile, rls, policy, allowlisted: Boolean(allowReason) });
+    audited.push({
+      table: name,
+      schemaFile,
+      rls,
+      policy,
+      allowlisted: Boolean(allowReason),
+      heuristic,
+    });
     if (allowReason) continue;
     if (!rls) {
       violations.push({
         table: name,
         schemaFile,
-        reason: 'no ENABLE ROW LEVEL SECURITY found',
+        reason: heuristic
+          ? 'no ENABLE ROW LEVEL SECURITY found (table flagged by tenant-name heuristic; promote to TENANT_COL_RX if confirmed tenant-scoped)'
+          : 'no ENABLE ROW LEVEL SECURITY found',
         severity: 'HIGH',
       });
       continue;
@@ -241,6 +277,10 @@ function main() {
     if (!tables.has(t)) staleAllowlist.push(t);
   }
 
+  const heuristicallyDiscovered = audited
+    .filter((a) => a.heuristic)
+    .map((a) => ({ table: a.table, schemaFile: a.schemaFile }));
+
   const report = {
     scanner: 'rls-coverage',
     scannedAt: new Date().toISOString(),
@@ -249,10 +289,12 @@ function main() {
       rlsEnabled: audited.filter((a) => a.rls).length,
       policyDefined: audited.filter((a) => a.policy).length,
       allowlisted: audited.filter((a) => a.allowlisted).length,
+      heuristicallyDiscovered: heuristicallyDiscovered.length,
       violations: violations.length,
     },
     violations,
     staleAllowlist,
+    heuristicallyDiscovered,
   };
 
   if (args.report) {
@@ -292,8 +334,21 @@ function renderMarkdown(report) {
   lines.push(`| RLS enabled | ${report.totals.rlsEnabled} |`);
   lines.push(`| policies defined | ${report.totals.policyDefined} |`);
   lines.push(`| allowlisted | ${report.totals.allowlisted} |`);
+  lines.push(`| heuristically discovered (M4) | ${report.totals.heuristicallyDiscovered ?? 0} |`);
   lines.push(`| violations | ${report.totals.violations} |`);
   lines.push('');
+  if ((report.heuristicallyDiscovered ?? []).length > 0) {
+    lines.push('## Tables flagged by tenant-name heuristic (M4)');
+    lines.push('');
+    lines.push('Promote to `TENANT_COL_RX` if these are confirmed tenant-scoped.');
+    lines.push('');
+    lines.push('| table | schema file |');
+    lines.push('|---|---|');
+    for (const t of report.heuristicallyDiscovered) {
+      lines.push(`| \`${t.table}\` | \`${t.schemaFile}\` |`);
+    }
+    lines.push('');
+  }
   if (report.violations.length > 0) {
     lines.push('## Violations');
     lines.push('');

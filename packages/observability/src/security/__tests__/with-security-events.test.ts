@@ -167,4 +167,47 @@ describe('recordSecurityEvent', () => {
     expect(events.events[0].outcome).toBe('DENIED');
     expect(events.events[0].reason).toBe('webhook signature mismatch');
   });
+
+  /**
+   * M1 closure: recordSecurityEvent must emit the SAME row shape as the
+   * HOF/middleware path — including metadata.statusCode and severity
+   * derived from outcome (not a hard-coded INFO/WARNING split).
+   */
+  it('emits row with statusCode metadata and outcome-derived severity (M1)', async () => {
+    const store = new MemoryAuditStore();
+    initAuditLogger({ store });
+    await recordSecurityEvent(
+      makeCtx({ method: 'POST', path: '/api/v1/admin/x' }),
+      'DENIED',
+      'csrf',
+    );
+    const events = await store.query({ limit: 10 });
+    expect(events.events[0].metadata).toMatchObject({ statusCode: 403 });
+    expect(events.events[0].severity).toBe('WARNING');
+  });
+
+  it('SUCCESS outcome maps to status 200 + INFO severity (M1)', async () => {
+    const store = new MemoryAuditStore();
+    initAuditLogger({ store });
+    await recordSecurityEvent(
+      makeCtx({ method: 'POST', path: '/api/v1/admin/x' }),
+      'SUCCESS',
+    );
+    const events = await store.query({ limit: 10 });
+    expect(events.events[0].metadata).toMatchObject({ statusCode: 200 });
+    expect(events.events[0].severity).toBe('INFO');
+  });
+
+  it('ERROR outcome maps to status 500 + CRITICAL severity (M1)', async () => {
+    const store = new MemoryAuditStore();
+    initAuditLogger({ store });
+    await recordSecurityEvent(
+      makeCtx({ method: 'POST', path: '/api/v1/admin/x' }),
+      'ERROR',
+      'downstream service unreachable',
+    );
+    const events = await store.query({ limit: 10 });
+    expect(events.events[0].metadata).toMatchObject({ statusCode: 500 });
+    expect(events.events[0].severity).toBe('CRITICAL');
+  });
 });

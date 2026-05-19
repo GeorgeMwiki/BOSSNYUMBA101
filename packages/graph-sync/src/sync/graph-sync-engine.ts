@@ -328,8 +328,27 @@ export class GraphSyncEngine {
   /**
    * Process a domain event and sync to graph.
    * This is the primary integration point with the outbox pattern.
+   *
+   * M8 closure (round-3 audit, 2026-05-19):
+   *
+   * The default behaviour swallows handler failures into
+   * `result.errors[]` so a batch loop can continue processing other
+   * events. That is the right policy for an outbox drainer where one
+   * failed row should not block the rest.
+   *
+   * However, callers that need fail-fast semantics — e.g. an
+   * Inngest-step handler that wants the step retry machinery to fire,
+   * or a unit test that wants the throw — were silently degraded to
+   * "check `result.errors.length` after the call". This is easy to
+   * forget. Pass `{ throwOnError: true }` to opt into fail-fast.
+   *
+   * Either way, the `errors[]` field is populated so callers that
+   * inspect it stay correct.
    */
-  async processSyncEvent(event: SyncEvent): Promise<SyncResult> {
+  async processSyncEvent(
+    event: SyncEvent,
+    options: { throwOnError?: boolean } = {},
+  ): Promise<SyncResult> {
     const startTime = Date.now();
     const result: SyncResult = {
       nodesCreated: 0,
@@ -340,6 +359,7 @@ export class GraphSyncEngine {
       durationMs: 0,
     };
 
+    let caughtError: unknown = null;
     try {
       const handler = EVENT_HANDLERS[event.eventType];
       if (handler) {
@@ -348,10 +368,14 @@ export class GraphSyncEngine {
         await this.handleGenericEvent(event, result);
       }
     } catch (err) {
+      caughtError = err;
       result.errors.push(err instanceof Error ? err.message : String(err));
     }
 
     result.durationMs = Date.now() - startTime;
+    if (caughtError && options.throwOnError === true) {
+      throw caughtError;
+    }
     return result;
   }
 

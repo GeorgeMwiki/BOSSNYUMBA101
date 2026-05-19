@@ -13,6 +13,7 @@ import {
   assertCypherReferencesTenantId,
   createTenantScopedCypher,
   scopeNodePattern,
+  scopeAllNodePatterns,
   TenantScopeViolation,
   type Neo4jReadClient,
   type Neo4jWriteClient,
@@ -205,5 +206,72 @@ describe('scopeNodePattern', () => {
 
   it('returns non-node patterns unchanged', () => {
     expect(scopeNodePattern('-->')).toBe('-->');
+  });
+});
+
+/**
+ * M5 closure (round-3 audit): scopeAllNodePatterns must rewrite EVERY
+ * node in a Cypher fragment, not just the first / outermost one. Real
+ * Cypher patterns are usually chains like `(a)-[r]->(b)`; the previous
+ * helper required the caller to apply the rewrite to each side, which
+ * was easy to forget.
+ */
+describe('scopeAllNodePatterns (M5)', () => {
+  it('rewrites both ends of a binary relationship', () => {
+    const out = scopeAllNodePatterns(
+      'MATCH (a:Property)-[r:OWNS]->(b:Owner) RETURN a, b',
+    );
+    expect(out).toBe(
+      'MATCH (a:Property {_tenantId: $tenantId})-[r:OWNS]->(b:Owner {_tenantId: $tenantId}) RETURN a, b',
+    );
+  });
+
+  it('rewrites every hop in a longer chain', () => {
+    const out = scopeAllNodePatterns(
+      'MATCH (a)-[:R1]->(b)-[:R2]->(c) RETURN c',
+    );
+    expect(out).toBe(
+      'MATCH (a {_tenantId: $tenantId})-[:R1]->(b {_tenantId: $tenantId})-[:R2]->(c {_tenantId: $tenantId}) RETURN c',
+    );
+  });
+
+  it('preserves existing property bags', () => {
+    const out = scopeAllNodePatterns(
+      'MATCH (a:Property {status: "active"})-[r:OWNS]->(b:Owner)',
+    );
+    expect(out).toBe(
+      'MATCH (a:Property {_tenantId: $tenantId, status: "active"})-[r:OWNS]->(b:Owner {_tenantId: $tenantId})',
+    );
+  });
+
+  it('leaves already-scoped patterns alone', () => {
+    const input = 'MATCH (a {_tenantId: $tenantId})-[:R]->(b)';
+    const out = scopeAllNodePatterns(input);
+    expect(out).toBe(
+      'MATCH (a {_tenantId: $tenantId})-[:R]->(b {_tenantId: $tenantId})',
+    );
+  });
+
+  it('does NOT confuse function calls with node patterns', () => {
+    // `count(a)` is a function call — must not be rewritten.
+    const out = scopeAllNodePatterns(
+      'MATCH (a:Property) RETURN count(a) AS n',
+    );
+    expect(out).toBe(
+      'MATCH (a:Property {_tenantId: $tenantId}) RETURN count(a) AS n',
+    );
+  });
+
+  it('does NOT corrupt parens inside string literals', () => {
+    const input = 'MATCH (a:Property) WHERE a.name = "(foo)" RETURN a';
+    const out = scopeAllNodePatterns(input);
+    expect(out).toBe(
+      'MATCH (a:Property {_tenantId: $tenantId}) WHERE a.name = "(foo)" RETURN a',
+    );
+  });
+
+  it('returns input unchanged when no node patterns are present', () => {
+    const input = 'RETURN $tenantId AS x';
+    expect(scopeAllNodePatterns(input)).toBe(input);
   });
 });

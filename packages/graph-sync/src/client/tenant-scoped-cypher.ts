@@ -214,3 +214,124 @@ export function scopeNodePattern(pattern: string): string {
   // Prefix it with `_tenantId: $tenantId, ` and re-close the outer paren.
   return `(${before} {_tenantId: $tenantId, ${after})`;
 }
+
+/**
+ * Walk every node pattern in a Cypher fragment and apply
+ * `scopeNodePattern` to each. The single-pattern helper above is
+ * misleadingly named: real Cypher fragments are usually a chain like
+ * `(a)-[r]->(b)`, and the caller has to remember to scope EACH side
+ * separately. This walker does it once.
+ *
+ * M5 closure (round-3 audit, 2026-05-19).
+ *
+ * The walker uses a balanced-paren scanner so nested parens inside a
+ * property bag (e.g. `{name: "(a)"}`) are not mistaken for node
+ * boundaries. Relationship patterns `-[...]-` and arrows `->` are
+ * preserved unchanged. Node patterns that already reference
+ * `$tenantId` are left alone (the single-pattern helper short-circuits
+ * on already-scoped input).
+ *
+ * Note: relationship-property bags `[r {since: 2020}]` are NOT scoped —
+ * tenant binding lives on nodes, not edges. The graph-sync engine
+ * always reaches a node from a relationship via MATCH, so the
+ * end-nodes' scope is what enforces isolation.
+ *
+ * @example
+ *   scopeAllNodePatterns('MATCH (a:Property)-[r:OWNS]->(b:Owner) RETURN a, b')
+ *   // → 'MATCH (a:Property {_tenantId: $tenantId})-[r:OWNS]->(b:Owner {_tenantId: $tenantId}) RETURN a, b'
+ */
+export function scopeAllNodePatterns(cypher: string): string {
+  const out: string[] = [];
+  let i = 0;
+  const n = cypher.length;
+  // Top-level string-state tracker so a `(` inside a string literal
+  // (e.g. `WHERE a.name = "(foo)"`) is not mistaken for a node pattern.
+  let outerSingle = false;
+  let outerDouble = false;
+  let outerBacktick = false;
+  while (i < n) {
+    const ch = cypher[i];
+    if (outerSingle) {
+      out.push(ch);
+      if (ch === "'" && cypher[i - 1] !== '\\') outerSingle = false;
+      i++;
+      continue;
+    }
+    if (outerDouble) {
+      out.push(ch);
+      if (ch === '"' && cypher[i - 1] !== '\\') outerDouble = false;
+      i++;
+      continue;
+    }
+    if (outerBacktick) {
+      out.push(ch);
+      if (ch === '`') outerBacktick = false;
+      i++;
+      continue;
+    }
+    if (ch === "'") { outerSingle = true; out.push(ch); i++; continue; }
+    if (ch === '"') { outerDouble = true; out.push(ch); i++; continue; }
+    if (ch === '`') { outerBacktick = true; out.push(ch); i++; continue; }
+    if (ch !== '(') {
+      out.push(ch);
+      i++;
+      continue;
+    }
+    // Found an opening paren — see if this is a NODE pattern or
+    // something else (function call, parenthesised expr in a WHERE).
+    // We treat it as a node pattern when:
+    //   - the paren is followed by either:
+    //       a) the alias identifier (e.g. `a`, `n1`)
+    //       b) `:Label` (anonymous node)
+    //       c) `{` (anonymous node with property bag)
+    //       d) `)` (anonymous bare node)
+    //   - and is NOT preceded by an identifier char (which would mark
+    //     it as a function call like `count(`).
+    const prev = i > 0 ? cypher[i - 1] : '';
+    const isFnCall = /[A-Za-z0-9_]/.test(prev);
+    const next = cypher[i + 1] ?? '';
+    const isNodeLike =
+      !isFnCall &&
+      (next === ')' || next === ':' || next === '{' || /[A-Za-z_]/.test(next));
+    if (!isNodeLike) {
+      out.push(ch);
+      i++;
+      continue;
+    }
+    // Scan forward for the matching close paren, respecting nested
+    // braces inside the property bag and balanced single/double quotes.
+    let depth = 1;
+    let j = i + 1;
+    let inSingle = false;
+    let inDouble = false;
+    let inBacktick = false;
+    while (j < n && depth > 0) {
+      const c = cypher[j];
+      if (!inSingle && !inDouble && !inBacktick) {
+        if (c === '(') depth++;
+        else if (c === ')') depth--;
+        else if (c === "'") inSingle = true;
+        else if (c === '"') inDouble = true;
+        else if (c === '`') inBacktick = true;
+      } else if (inSingle && c === "'" && cypher[j - 1] !== '\\') {
+        inSingle = false;
+      } else if (inDouble && c === '"' && cypher[j - 1] !== '\\') {
+        inDouble = false;
+      } else if (inBacktick && c === '`') {
+        inBacktick = false;
+      }
+      if (depth === 0) break;
+      j++;
+    }
+    if (depth !== 0) {
+      // Unmatched paren — bail out, emit the rest verbatim. Caller
+      // gets a no-op rather than corrupting their query.
+      out.push(cypher.slice(i));
+      return out.join('');
+    }
+    const pattern = cypher.slice(i, j + 1);
+    out.push(scopeNodePattern(pattern));
+    i = j + 1;
+  }
+  return out.join('');
+}

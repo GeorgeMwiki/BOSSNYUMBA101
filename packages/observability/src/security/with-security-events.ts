@@ -284,62 +284,109 @@ export async function securityEventsMiddleware(
 /**
  * Low-level emit helper. Useful for code paths that already know the
  * outcome (e.g. webhook verifier denying before delegating).
+ *
+ * M1 closure: routes through the same `emitAuditRow` shared helper used
+ * by both `withSecurityEvents` and `securityEventsMiddleware`. The row
+ * shape is now identical across all three emit paths — every consumer
+ * sees `metadata.statusCode`, severity derived from outcome (not a
+ * hard-coded INFO/WARNING split), and the tenant block when surfaced.
+ *
+ * The status defaults to a canonical HTTP code derived from the
+ * outcome: SUCCESS → 200, DENIED → 403, FAILURE → 400, ERROR → 500.
+ * Callers with a more specific code should use `recordSecurityEventWithStatus`.
  */
 export async function recordSecurityEvent(
   ctx: AuditableContext,
   outcome: AuditOutcome,
   reason?: string,
 ): Promise<void> {
-  const path = getPath(ctx);
-  const resource = deriveResource(path);
-  const user = extractUser(ctx);
-  const tenant = extractTenantContext(ctx);
-  await logAuditEvent(
-    user,
-    ctx.req.method.toUpperCase(),
-    { type: resource.type, id: resource.id },
-    {
-      category: 'SYSTEM',
-      outcome,
-      severity:
-        outcome === 'SUCCESS' ? AuditSeverityEnum.INFO : AuditSeverityEnum.WARNING,
-      description: `${ctx.req.method.toUpperCase()} ${path}`,
-      reason,
-      request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
-      ...(tenant ? { tenant } : {}),
-    },
-  );
+  const status = canonicalStatusForOutcome(outcome);
+  await emitAuditRow(ctx, { status, outcome, reason });
+}
+
+/**
+ * Variant that lets the caller commit a specific status code AND
+ * outcome (e.g. signature-verifier denying with 401 vs CSRF denying
+ * with 403). The metadata.statusCode and severity are both derived
+ * consistently with the HOF/middleware paths.
+ */
+export async function recordSecurityEventWithStatus(
+  ctx: AuditableContext,
+  status: number,
+  reason?: string,
+): Promise<void> {
+  await emitAuditRow(ctx, { status, reason });
 }
 
 // ---------------------------------------------------------------------------
-// Internal
+// Internal — single shared emit path (M1 closure).
 // ---------------------------------------------------------------------------
 
-async function emit(
-  ctx: AuditableContext,
-  status: number,
-  options: WithSecurityEventsOptions,
-): Promise<void> {
+function canonicalStatusForOutcome(outcome: AuditOutcome): number {
+  switch (outcome) {
+    case 'SUCCESS':
+      return 200;
+    case 'DENIED':
+      return 403;
+    case 'FAILURE':
+      return 400;
+    case 'ERROR':
+      return 500;
+    default:
+      return 200;
+  }
+}
+
+interface EmitRowArgs {
+  status: number;
+  outcome?: AuditOutcome;
+  reason?: string;
+  options?: WithSecurityEventsOptions;
+}
+
+/**
+ * The single authoritative audit-row emitter. Every other public emit
+ * shape funnels through here so the row schema stays consistent.
+ */
+async function emitAuditRow(ctx: AuditableContext, args: EmitRowArgs): Promise<void> {
+  const { status, outcome: outcomeOverride, reason, options = {} } = args;
   const path = getPath(ctx);
   const fallback = deriveResource(path);
   const resource: AuditResource = {
     type: options.resourceType ?? fallback.type,
     id: options.resourceIdFromPath === false ? 'collection' : fallback.id,
   };
-  const { outcome, severity } = classifyOutcome(status);
+  const classified = classifyOutcome(status);
+  const outcome = outcomeOverride ?? classified.outcome;
+  // Severity tracks the FINAL outcome, even when caller overrides it
+  // (so DENIED with a 200 status still surfaces as WARNING).
+  const severity =
+    outcomeOverride !== undefined
+      ? classifyOutcome(canonicalStatusForOutcome(outcomeOverride)).severity
+      : classified.severity;
   const user = extractUser(ctx);
   // H1 closure: every audit row carries a tenant block when the auth
   // context surfaces one. Anonymous / unauthenticated routes still
   // emit with no tenant block (consumers filter by tenantId for the
   // tenant-binding goal).
   const tenant = extractTenantContext(ctx);
-  await logAuditEvent(user, ctx.req.method.toUpperCase(), resource, {
+  const method = ctx.req.method.toUpperCase();
+  await logAuditEvent(user, method, resource, {
     category: 'SYSTEM',
     outcome,
     severity,
-    description: `${ctx.req.method.toUpperCase()} ${path} → ${status}`,
-    request: { httpMethod: ctx.req.method.toUpperCase(), httpPath: path },
+    description: `${method} ${path} → ${status}`,
+    ...(reason ? { reason } : {}),
+    request: { httpMethod: method, httpPath: path },
     metadata: { statusCode: status },
     ...(tenant ? { tenant } : {}),
   });
+}
+
+async function emit(
+  ctx: AuditableContext,
+  status: number,
+  options: WithSecurityEventsOptions,
+): Promise<void> {
+  await emitAuditRow(ctx, { status, options });
 }

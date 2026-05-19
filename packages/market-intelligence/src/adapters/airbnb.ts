@@ -16,7 +16,12 @@
  */
 
 import { createHash } from 'node:crypto';
-import { assertUrlSafe } from '@bossnyumba/enterprise-hardening';
+import {
+  assertUrlSafe,
+  CircuitBreaker,
+  CircuitBreakerPresets,
+  CircuitOpenError,
+} from '@bossnyumba/enterprise-hardening';
 import type {
   ComparableRent,
   ComparableRentsArgs,
@@ -77,6 +82,13 @@ export interface AirbnbMarketDataAdapterConfig {
   readonly cache?: MarketDataCacheServiceShape;
   readonly cacheTtlMs?: number;
   readonly fetch?: typeof fetch;
+  /**
+   * M10 closure: shared circuit breaker for outbound Airbnb calls. If
+   * omitted, a default per-adapter breaker is constructed from the
+   * `EXTERNAL_API` preset. Inject a shared breaker to coordinate
+   * across multiple adapter instances (e.g. one per worker).
+   */
+  readonly circuitBreaker?: CircuitBreaker;
 }
 
 export function createAirbnbMarketDataAdapter(
@@ -92,6 +104,17 @@ export function createAirbnbMarketDataAdapter(
     Number.isFinite(config.cacheTtlMs) && (config.cacheTtlMs ?? 0) > 0
       ? Math.min(Number(config.cacheTtlMs), MAX_CACHE_TTL_MS)
       : DEFAULT_CACHE_TTL_MS;
+
+  // M10 closure: N tenants querying simultaneously can saturate the
+  // Airbnb partner QPS limit. We wrap every outbound call in a
+  // circuit breaker so a degraded upstream short-circuits to a
+  // graceful `kind: 'error'` instead of cascading retries.
+  const breaker =
+    config.circuitBreaker ??
+    new CircuitBreaker({
+      name: 'market-intelligence.airbnb',
+      ...CircuitBreakerPresets.EXTERNAL_API,
+    });
 
   return {
     provider: PROVIDER,
@@ -111,12 +134,16 @@ export function createAirbnbMarketDataAdapter(
         const url = buildComparableUrl(args);
         // H20: defensive SSRF guard — even though the URL is hardcoded.
         await assertUrlSafe(url, { allowlist: AIRBNB_ALLOWLIST });
-        const res = await fetchImpl(url, {
-          headers: {
-            Authorization: `Bearer ${config.apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        // M10: wrap in circuit breaker so a degraded upstream
+        // short-circuits instead of cascading retries.
+        const res = await breaker.execute(() =>
+          fetchImpl(url, {
+            headers: {
+              Authorization: `Bearer ${config.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          }),
+        );
         if (!res.ok) {
           return errorOutcome(
             PROVIDER,
@@ -138,6 +165,12 @@ export function createAirbnbMarketDataAdapter(
 
         return { kind: 'ok', data, cached: false, fetchedAt };
       } catch (err) {
+        if (err instanceof CircuitOpenError) {
+          return errorOutcome(
+            PROVIDER,
+            `airbnb comparable_rents circuit-open: ${err.message}`,
+          );
+        }
         return errorOutcome(
           PROVIDER,
           `airbnb comparable_rents failed: ${describeErr(err)}`,
