@@ -577,3 +577,25 @@ export {
   type RecordConsolidationEmissionArgs,
   type ListConsolidationEmissionsArgs,
 } from './consolidation-emissions.service.js';
+
+// Session replay chunks (migration 0142, B5 Phase B — Central Command).
+// Drizzle-backed adapter behind POST /api/v1/session-replay/chunks in
+// the api-gateway. Cold-store metadata for rrweb capture chunks; the
+// gzipped JSON payload itself lives in S3-emulated local storage or
+// AWS S3. UNIQUE(session_id, sequence_number) enforces append-only
+// idempotency.
+//
+// The service-level `SessionReplayChunkRow` shape (parsed/normalised
+// for callers) is re-aliased as `SessionReplayChunkServiceRow` so it
+// does not collide with the Drizzle $inferSelect row in the schema
+// barrel (which also re-exports `SessionReplayChunkRow`).
+export {
+  createSessionReplayChunksService,
+  type AppendChunkResult as SessionReplayAppendChunkResult,
+  type ListForSessionArgs as SessionReplayChunkListForSessionArgs,
+  type ListRecentSessionsArgs as SessionReplayChunkListRecentSessionsArgs,
+  type RecentSessionSummary as SessionReplayRecentSessionSummary,
+  type SessionReplayChunkInput,
+  type SessionReplayChunkRow as SessionReplayChunkServiceRow,
+  type SessionReplayChunksService,
+} from './session-replay-chunks.service.js';

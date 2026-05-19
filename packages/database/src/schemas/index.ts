@@ -170,6 +170,14 @@ export * from './progressive-context.schema.js';
 // executive briefings, and every autonomous action's reasoning audit.
 export * from './autonomy.schema.js';
 
+// Tenant autonomy caps (migration 0160) — per-tenant daily AI spend cap
+// + cost-circuit thresholds. Consumed by createDrizzleCostCircuit in
+// the api-gateway orchestrator-bindings composition root. Sister table
+// to autonomy.schema (which carries policies/exception inbox); kept in
+// its own file to isolate the cost-circuit surface from the policy
+// surface.
+export * from './autonomy-caps.schema.js';
+
 // Marketing leads — post-chat handoff profiles for signup pre-fill.
 export * from './marketing-leads.schema.js';
 

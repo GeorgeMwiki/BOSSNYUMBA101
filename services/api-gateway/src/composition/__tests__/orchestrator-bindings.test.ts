@@ -201,6 +201,60 @@ describe('createDrizzleToolDenylistPort', () => {
     });
     expect(await port.isDenied('platform.purge')).toBe(false);
   });
+
+  // B4 C2 regression — values must reach the db as parameterized
+  // arguments via drizzle's `sql` tag, never via string concatenation.
+  // We capture the first `execute` argument and assert it is a
+  // SQLWrapper / SQL chunk object, not a raw string with embedded
+  // single-quotes.
+  it('B4 C2: passes a parameterized SQL object, never a raw string', async () => {
+    let capturedArg: unknown = undefined;
+    const fakeDb = {
+      execute: async (arg: unknown) => {
+        capturedArg = arg;
+        return { rows: [] };
+      },
+    };
+    const port = createDrizzleToolDenylistPort({
+      db: fakeDb,
+      tenantId: "'; DROP TABLE tool_call_denylist; --",
+    });
+    await port.isDenied("' OR 1=1; --");
+    expect(typeof capturedArg).toBe('object');
+    // Drizzle's sql tag returns an object with a queryChunks array.
+    // Critically, it is NOT a string — that's the regression guard.
+    expect(typeof capturedArg === 'string').toBe(false);
+    expect(capturedArg).not.toBeNull();
+  });
+
+  it('B4 C2: SQL-injection payloads in tenantId/toolName do not throw or escape', async () => {
+    let executedCount = 0;
+    const fakeDb = {
+      execute: async () => {
+        executedCount += 1;
+        return { rows: [] };
+      },
+    };
+    const port = createDrizzleToolDenylistPort({
+      db: fakeDb,
+      // every classic SQLi payload variant the catalog cares about
+      tenantId: "tenant'; SELECT pg_sleep(60); --",
+    });
+    const inputs = [
+      "platform.foo'; DROP TABLE users; --",
+      "platform.bar' OR 1=1 --",
+      "platform.baz' /* */ UNION SELECT * FROM users --",
+      "platform.qux\\'; DROP TABLE users; --",
+      "platform.unicode’; DROP TABLE users; --",
+    ];
+    for (const name of inputs) {
+      // The function should return `false` (allow) when no row matches.
+      // It should NEVER throw — the parameterized binding handles every
+      // shape transparently.
+      await expect(port.isDenied(name)).resolves.toBe(false);
+    }
+    expect(executedCount).toBe(inputs.length);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────
@@ -414,9 +468,47 @@ describe('resolveLedgerSealHmacKey', () => {
     );
   });
 
-  it('falls back when the env key is too short', () => {
-    const key = resolveLedgerSealHmacKey({ LEDGER_SEAL_HMAC_KEY: 'short' });
+  it('falls back when the env key is too short in non-production', () => {
+    const key = resolveLedgerSealHmacKey({
+      LEDGER_SEAL_HMAC_KEY: 'short',
+      NODE_ENV: 'development',
+    });
     expect(key).toContain('dev-fallback');
+  });
+
+  // B4 C3 regression — production must fail-closed when the seal key is
+  // unset. The previous behaviour rolled over to a per-boot ephemeral key
+  // that destroyed the sovereign-action-ledger tamper-evident chain
+  // guarantee across restarts.
+  it('B4 C3: throws in production when LEDGER_SEAL_HMAC_KEY is unset', () => {
+    expect(() =>
+      resolveLedgerSealHmacKey({ NODE_ENV: 'production' }),
+    ).toThrowError(/LEDGER_SEAL_HMAC_KEY/);
+  });
+
+  it('B4 C3: throws in production when LEDGER_SEAL_HMAC_KEY is too short', () => {
+    expect(() =>
+      resolveLedgerSealHmacKey({
+        NODE_ENV: 'production',
+        LEDGER_SEAL_HMAC_KEY: 'too-short',
+      }),
+    ).toThrowError(/LEDGER_SEAL_HMAC_KEY/);
+  });
+
+  it('B4 C3: throws in production when LEDGER_SEAL_HMAC_KEY is whitespace-only', () => {
+    expect(() =>
+      resolveLedgerSealHmacKey({
+        NODE_ENV: 'production',
+        LEDGER_SEAL_HMAC_KEY: '                                ',
+      }),
+    ).toThrowError(/LEDGER_SEAL_HMAC_KEY/);
+  });
+
+  it('B4 C3: returns the key in production when properly set', () => {
+    const key = 'a'.repeat(48);
+    expect(
+      resolveLedgerSealHmacKey({ NODE_ENV: 'production', LEDGER_SEAL_HMAC_KEY: key }),
+    ).toBe(key);
   });
 });
 

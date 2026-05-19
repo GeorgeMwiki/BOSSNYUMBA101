@@ -6,18 +6,20 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  // Keep node_modules + workspace packages unbundled. Node resolves them
-  // at runtime via pnpm symlinks. Avoids esbuild choking on subpath
-  // exports and dynamic requires in transitive deps (node-pre-gyp etc).
+  // Bundle workspace packages directly into the api-gateway artifact so
+  // the runtime container does not need to traverse the pnpm symlink
+  // farm to resolve `@bossnyumba/*` imports. This closes the chronic-
+  // flaky E2E (`Cannot find package '@bossnyumba/database'` in the
+  // production runner image) once and for all.
   //
-  // NOTE: a follow-up to migrate api-gateway to ESM (or to bundle
-  // workspace deps via `noExternal: [/^@bossnyumba\//]`) is needed to
-  // unblock the chronic-flaky E2E container failure — the CJS api-gateway
-  // cannot synchronously `require()` ESM workspace packages. Bundling
-  // surfaces ~10 pre-existing export mismatches that need closing first.
+  // node_modules outside the workspace stay external — bundling them
+  // would re-introduce the node-pre-gyp / pg-native / aws-sdk dynamic-
+  // require breakage. The api-gateway still ships as CJS so the
+  // synchronous `require('ioredis')` IIFE at src/index.ts ~ L366 keeps
+  // working; an ESM migration is a separate follow-up.
   skipNodeModulesBundle: true,
+  noExternal: [/^@bossnyumba\//],
   external: [
-    /^@bossnyumba\//,
     '@mapbox/node-pre-gyp',
     'mock-aws-s3',
     'aws-sdk',

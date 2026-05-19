@@ -1417,16 +1417,27 @@ function buildServicesInner(input: BuildServicesInput): ServiceRegistry {
       }
     : null;
 
-  // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes from
-  // env; falls back to JWT_SECRET for operator convenience. In production,
-  // refuse to boot if neither is set (no silent dev-default signing).
+  // Wave 12 — Agent Certification (Postgres-backed). SigningSecret comes
+  // from AGENT_CERT_SIGNING_SECRET only. Outside production we fall back
+  // to JWT_SECRET (operator convenience) then to the dev-default literal
+  // so local dev + tests run without configuring a separate secret.
+  //
+  // B4 C12 (2026-05-19): in production we REFUSE to boot when
+  // AGENT_CERT_SIGNING_SECRET is unset. Sharing a key with JWT_SECRET
+  // violates key-purpose-separation hygiene — rotating one would
+  // silently invalidate the other's signatures. The boot-time
+  // validate-env check already enforces this; the runtime guard here is
+  // defence-in-depth in case the registry is constructed in a code path
+  // that bypasses validate-env.
   const certSigningSecretFromEnv =
     process.env.AGENT_CERT_SIGNING_SECRET?.trim() ||
-    process.env.JWT_SECRET?.trim() ||
-    '';
+    (process.env.NODE_ENV !== 'production'
+      ? process.env.JWT_SECRET?.trim() ?? ''
+      : '');
   if (process.env.NODE_ENV === 'production' && certSigningSecretFromEnv.length < 32) {
     throw new Error(
-      'AGENT_CERT_SIGNING_SECRET (or JWT_SECRET) must be set and >= 32 chars in production',
+      'AGENT_CERT_SIGNING_SECRET must be set and >= 32 chars in production. ' +
+        'Do NOT reuse JWT_SECRET — key-purpose separation hygiene.',
     );
   }
   const certSigningSecret =

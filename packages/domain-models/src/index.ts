@@ -136,6 +136,20 @@ export * as Transaction from './financial/transaction';
 export * as Receipt from './financial/receipt';
 export * as ArrearsCase from './financial/arrears-case';
 
+// Flat re-exports of invoice helper functions for consumers that import
+// them by name from the top-level barrel (e.g. domain-services/invoice).
+// The `Invoice` namespace alias above stays for back-compat — the type
+// `Invoice` lives there to avoid colliding with this flat surface.
+export {
+  createInvoice,
+  sendInvoice,
+  recordPayment,
+  markOverdue,
+  voidInvoice,
+  generateInvoiceNumber,
+  isOverdue,
+} from './financial/invoice';
+
 // Payment plans
 export * from './payment/payment-plan';
 

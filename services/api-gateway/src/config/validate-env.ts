@@ -114,7 +114,10 @@ const OptionalSchema = z.object({
   API_KEYS: z.string().optional(),
   API_KEY_REGISTRY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),
-  AGENT_CERT_SIGNING_SECRET: z.string().optional(),
+  AGENT_CERT_SIGNING_SECRET: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(32, 'AGENT_CERT_SIGNING_SECRET must be at least 32 chars').optional(),
+  ),
   WEBHOOK_DEFAULT_HMAC_SECRET: z.string().optional(),
 
   // Audit-hash-chain HMAC root (packages/ai-copilot/src/security/audit-hash-chain.ts).
@@ -128,6 +131,18 @@ const OptionalSchema = z.object({
   SESSION_HASH_SECRET_PREV: z.preprocess(
     (v) => (v === '' || v === undefined ? undefined : v),
     z.string().min(32, 'SESSION_HASH_SECRET_PREV must be at least 32 chars').optional(),
+  ),
+
+  // Sovereign-action-ledger seal HMAC (B4 C3/C10, 2026-05-19).
+  // The ledger's tamper-evident chain hashes
+  // (prev_hash || tenant_id || action_type || payload_hash || executed_at)
+  // with this key. When unset in production the ledger's seal degrades
+  // to a per-boot ephemeral random key — every restart breaks the chain
+  // of custody and the verifier cron CANNOT detect it because the
+  // seals chain within a boot. REQUIRED in production (≥ 16 chars).
+  LEDGER_SEAL_HMAC_KEY: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(16, 'LEDGER_SEAL_HMAC_KEY must be at least 16 chars').optional(),
   ),
 
   // Inter-service
@@ -200,6 +215,33 @@ export function validateEnv(source: NodeJS.ProcessEnv = process.env): ValidatedE
           '  - SESSION_HASH_SECRET: required in production (≥ 32 chars). ' +
           'Generate with `openssl rand -base64 48`. ' +
           'Without it, the audit hash chain falls back to unsigned SHA-256.\n\n' +
+          'See Docs/SECRETS_ROTATION.md for rotation policy.'
+      );
+    }
+    // Sovereign-action-ledger seal HMAC — REQUIRED in production (B4 C3/C10).
+    if (!env.LEDGER_SEAL_HMAC_KEY) {
+      throw new Error(
+        'Environment validation failed — gateway cannot boot.\n' +
+          '  - LEDGER_SEAL_HMAC_KEY: required in production (≥ 16 chars). ' +
+          'Generate with `openssl rand -base64 32`. ' +
+          'Without it, the sovereign-action ledger seal degrades to a per-boot ' +
+          'ephemeral key and the tamper-evident chain guarantee breaks across restarts.\n\n' +
+          'See Docs/SECRETS_ROTATION.md for rotation policy.'
+      );
+    }
+    // Agent-certification signing secret — REQUIRED in production (B4 C12).
+    // The agent-cert system currently falls back to JWT_SECRET when this is
+    // unset. Sharing one key across signing-purposes violates key-hygiene
+    // and means rotating JWT_SECRET silently invalidates all existing
+    // agent certificates.
+    if (!env.AGENT_CERT_SIGNING_SECRET) {
+      throw new Error(
+        'Environment validation failed — gateway cannot boot.\n' +
+          '  - AGENT_CERT_SIGNING_SECRET: required in production. ' +
+          'Generate with `openssl rand -base64 48`. ' +
+          'Without it the agent-certification system silently falls back ' +
+          'to JWT_SECRET, violating key-reuse hygiene and coupling JWT ' +
+          'rotation to agent-cert rotation.\n\n' +
           'See Docs/SECRETS_ROTATION.md for rotation policy.'
       );
     }

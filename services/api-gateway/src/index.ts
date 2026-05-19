@@ -258,6 +258,8 @@ import {
   elevenLabsProbe,
   gepgProbe,
 } from './health/deep-health';
+import { extractBearerToken, verifyJwt } from './middleware/auth-core';
+import { isPlatformAdmin, isTenantAdmin } from './types/user-role';
 import { validateEnv } from './config/validate-env';
 import { securityEventsMiddleware } from '@bossnyumba/observability';
 
@@ -411,17 +413,14 @@ const healthHandler = async (
     });
     return;
   }
+  // B4 C8/C9: unauthenticated /health intentionally omits `version` and
+  // `upstreams` to avoid leaking CVE-targetable build fingerprints + the
+  // deep-health endpoint's existence to anonymous attackers. The admin-
+  // gated /api/v1/health/deep keeps the rich payload.
   const payload = {
     status: 'ok' as const,
-    version: process.env.APP_VERSION ?? 'dev',
     service: 'api-gateway',
     timestamp: new Date().toISOString(),
-    upstreams: {
-      deep: {
-        status: 'ok' as const,
-        note: 'see GET /api/v1/health/deep for upstream cascade',
-      },
-    },
   };
   res.json(payload);
 };
@@ -514,13 +513,26 @@ try {
 // Deep health cascade — admin-only; probes every upstream with 15s cache.
 // Mounted on the Express app so probes can use the serviceRegistry that
 // was just built above without crossing into Hono's sub-app.
+//
+// Admin gate (B4 C1, hardened 2026-05-19): verifies the bearer JWT and
+// checks the verified `role` claim. The previous implementation read a
+// trivially-spoofable `X-User-Role` header and fell wide-open whenever
+// `NODE_ENV !== 'production'` (which includes most preview/staging
+// envs that forgot to set NODE_ENV). Anonymous attackers could probe
+// the deep-health cascade — leaking which AI providers + payment rails
+// + Redis instance the gateway has wired. Now the gate is JWT-anchored
+// and applies uniformly across environments.
 const deepHealthHandler = createDeepHealthHandler({
   version: process.env.APP_VERSION ?? 'dev',
   cacheMs: Number(process.env.DEEP_HEALTH_CACHE_MS ?? '15000') || 15_000,
   requireAdmin: (req) => {
-    const roleHeader = req.header('x-user-role');
-    if (roleHeader === 'TENANT_ADMIN' || roleHeader === 'PLATFORM_ADMIN') return true;
-    return process.env.NODE_ENV !== 'production';
+    const token = extractBearerToken(
+      req.header('authorization') ?? req.header('Authorization'),
+    );
+    const result = verifyJwt(token);
+    if (!result.ok) return false;
+    const role = result.payload.role;
+    return isPlatformAdmin(role) || isTenantAdmin(role);
   },
   probes: [
     postgresProbe(async () => {

@@ -443,6 +443,15 @@ export * as IntelligenceOrchestrator from './intelligence-orchestrator/index.js'
 export * as ProgressiveIntelligence from './progressive-intelligence/index.js';
 
 // ============================================
+// Audit Trail — hash-chained tamper-evident audit-record stream with
+// export-bundle generation. Namespaced because the underlying barrel
+// re-uses several short names (exportBundle, recorder, verifier) that
+// would collide with existing barrel symbols. Consumed by the
+// api-gateway audit-trail router via `AuditTrail.exportBundle(...)`.
+// ============================================
+export * as AuditTrail from './audit-trail/index.js';
+
+// ============================================
 // Wave 12 — Learning Journeys + Learning Engine + Rent-Credit-Building.
 // Namespaced to avoid collisions.
 // ============================================

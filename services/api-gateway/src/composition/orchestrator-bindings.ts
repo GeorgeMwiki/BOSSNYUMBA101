@@ -47,7 +47,7 @@
  */
 
 import { createHmac, randomUUID } from 'node:crypto';
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 
 import { scrubPii } from '@bossnyumba/ai-copilot';
 import {
@@ -283,13 +283,17 @@ export function createDrizzleToolDenylistPort(deps: {
       try {
         // Raw SQL to avoid the missing Drizzle schema for tool_call_denylist
         // (migration 0157 ships the table but no Drizzle schema file exists
-        // yet). We query the columns the migration creates verbatim.
+        // yet). B4 C2 (2026-05-19): values are interpolated via drizzle's
+        // parameterized `sql` tag — never string-concat. The previous
+        // manual `.replace(/'/g, "''")` was the only escape barrier and
+        // was vulnerable to backslash + unicode-quote variants that drift
+        // across Postgres `standard_conforming_strings` settings.
         const result = (await deps.db.execute(
-          `SELECT tenant_id, tool_name, expires_at
-             FROM tool_call_denylist
-             WHERE tenant_id = '${deps.tenantId.replace(/'/g, "''")}'
-               AND tool_name = '${toolName.replace(/'/g, "''")}'
-             LIMIT 1`,
+          sql`SELECT tenant_id, tool_name, expires_at
+                FROM tool_call_denylist
+                WHERE tenant_id = ${deps.tenantId}
+                  AND tool_name = ${toolName}
+                LIMIT 1`,
         )) as { rows?: ReadonlyArray<Record<string, unknown>> };
         const rows = result.rows ?? [];
         if (rows.length === 0) return false;
@@ -625,18 +629,41 @@ export function createHmacLedgerSealPort(deps: {
 }
 
 /**
- * Resolve the HMAC key for the ledger seal from env. Falls back to a
- * deterministic-per-boot value when no key is set (logged warning so
- * operators see the dev-mode posture).
+ * Resolve the HMAC key for the ledger seal from env. In production we
+ * REFUSE TO BOOT when the key is unset or too short — silently rolling
+ * over to a per-boot ephemeral key destroys the sovereign-action
+ * ledger's tamper-evident chain guarantees (every restart breaks the
+ * cross-restart chain and the verifier cron cannot detect it because
+ * the chain re-seals within each boot).
+ *
+ * Outside production the ephemeral fallback is fine — it lets local
+ * dev + tests run without a real secret while still emitting a warning
+ * so the dev-mode posture is visible.
  */
+export class LedgerSealHmacKeyMissingError extends Error {
+  constructor() {
+    super(
+      'LEDGER_SEAL_HMAC_KEY must be set in production (at least 16 chars). ' +
+        'Without it the sovereign-action ledger seal degrades to a per-boot ' +
+        'ephemeral key and the tamper-evident chain guarantee is broken.',
+    );
+    this.name = 'LedgerSealHmacKeyMissingError';
+  }
+}
+
 export function resolveLedgerSealHmacKey(
   env: Readonly<Record<string, string | undefined>>,
   logger?: BindingsLogger,
 ): string {
   const raw = env.LEDGER_SEAL_HMAC_KEY?.trim();
   if (raw && raw.length >= 16) return raw;
-  // Deterministic-per-boot fallback. NEVER use in production — operators
-  // see the warning in boot logs and rotate to a proper env-set key.
+  // B4 C3 (2026-05-19): fail-closed in production.
+  if (env.NODE_ENV === 'production') {
+    throw new LedgerSealHmacKeyMissingError();
+  }
+  // Deterministic-per-boot fallback. NEVER reached in production — the
+  // throw above prevents it. Outside production we emit a warning so
+  // the dev-mode posture is visible.
   const fallback = `dev-fallback-${randomUUID()}`;
   logger?.warn?.(
     { wiring: 'orchestrator-bindings' },
