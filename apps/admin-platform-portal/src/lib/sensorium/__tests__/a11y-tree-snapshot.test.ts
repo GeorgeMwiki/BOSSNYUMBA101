@@ -7,35 +7,36 @@ import {
   A11Y_NAME_MAX,
   snapshotA11yTree,
 } from '../a11y-tree-snapshot';
+import { clearBody, setBodyFixture } from './dom-fixture';
 
 beforeEach(() => {
-  document.body.innerHTML = '';
+  clearBody();
 });
 
 describe('a11y-tree-snapshot', () => {
   it('produces a stable digest for identical DOM', () => {
-    document.body.innerHTML = `
+    setBodyFixture(`
       <main>
         <h1>Hello</h1>
         <button>Save</button>
-      </main>`;
+      </main>`);
     const s1 = snapshotA11yTree();
     const s2 = snapshotA11yTree();
     expect(s1.digest).toBe(s2.digest);
   });
 
   it('produces a different digest when DOM changes', () => {
-    document.body.innerHTML = `<main><h1>Hello</h1></main>`;
+    setBodyFixture(`<main><h1>Hello</h1></main>`);
     const before = snapshotA11yTree();
-    document.body.innerHTML = `<main><h1>Different</h1></main>`;
+    setBodyFixture(`<main><h1>Different</h1></main>`);
     const after = snapshotA11yTree();
     expect(before.digest).not.toBe(after.digest);
   });
 
   it('infers roles from common tags', () => {
-    document.body.innerHTML = `
+    setBodyFixture(`
       <nav><a href="#">Home</a></nav>
-      <main><button>Save</button></main>`;
+      <main><button>Save</button></main>`);
     const snap = snapshotA11yTree();
     expect(snap.visibleRoles).toContain('navigation');
     expect(snap.visibleRoles).toContain('main');
@@ -44,11 +45,11 @@ describe('a11y-tree-snapshot', () => {
   });
 
   it('skips aria-hidden subtrees', () => {
-    document.body.innerHTML = `
+    setBodyFixture(`
       <main>
         <button>Visible</button>
         <div aria-hidden="true"><button>Hidden</button></div>
-      </main>`;
+      </main>`);
     const snap = snapshotA11yTree();
     const names = collectNames(snap.root);
     expect(names).toContain('Visible');
@@ -61,14 +62,14 @@ describe('a11y-tree-snapshot', () => {
       html += `<div>node-${i}</div>`;
     }
     html += '</main>';
-    document.body.innerHTML = html;
+    setBodyFixture(html);
     const snap = snapshotA11yTree();
     expect(snap.nodeCount).toBeLessThanOrEqual(A11Y_MAX_NODES);
   });
 
   it('truncates long names', () => {
     const longLabel = 'x'.repeat(500);
-    document.body.innerHTML = `<button aria-label="${longLabel}">btn</button>`;
+    setBodyFixture(`<button aria-label="${longLabel}">btn</button>`);
     const snap = snapshotA11yTree();
     const buttonNames = collectNames(snap.root).filter((n) =>
       n.startsWith('x'),
@@ -85,13 +86,13 @@ describe('a11y-tree-snapshot', () => {
       close = `</div>${close}`;
     }
     html += 'leaf' + close;
-    document.body.innerHTML = html;
+    setBodyFixture(html);
     const snap = snapshotA11yTree(undefined, { maxDepth: 5 });
     expect(measureMaxDepth(snap.root)).toBeLessThanOrEqual(5);
   });
 
   it('emits focusedRole when an element has focus', () => {
-    document.body.innerHTML = `<input id="x" />`;
+    setBodyFixture(`<input id="x" />`);
     (document.getElementById('x') as HTMLElement).focus();
     const snap = snapshotA11yTree();
     expect(snap.focusedRole).toBeTruthy();

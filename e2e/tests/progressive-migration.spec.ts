@@ -100,12 +100,22 @@ test.describe('Wave-12 — progressive migration wizard', () => {
     await page.getByTestId('migration-parse').click();
 
     // Simulate front-end rendering the preview after the mocked response.
+    // Build the preview DOM via createElement to avoid innerHTML — even
+    // in a hardcoded test fixture we don't want to propagate the pattern.
     await page.evaluate(() => {
       const target = document.querySelector('[data-testid="migration-preview"]');
       if (target) {
-        target.innerHTML =
-          '<p>Preview prev-uat-001</p>' +
-          '<ul><li>Units: 3</li><li>Customers: 3</li><li>Leases: 3</li></ul>';
+        target.replaceChildren();
+        const p = document.createElement('p');
+        p.textContent = 'Preview prev-uat-001';
+        const ul = document.createElement('ul');
+        for (const text of ['Units: 3', 'Customers: 3', 'Leases: 3']) {
+          const li = document.createElement('li');
+          li.textContent = text;
+          ul.appendChild(li);
+        }
+        target.appendChild(p);
+        target.appendChild(ul);
       }
     });
 
@@ -118,8 +128,11 @@ test.describe('Wave-12 — progressive migration wizard', () => {
     await page.evaluate(() => {
       const target = document.querySelector('[data-testid="migration-result"]');
       if (target) {
-        target.innerHTML =
-          '<p>Migration mig-uat-001 complete — 3 units, 3 customers, 3 leases inserted.</p>';
+        target.replaceChildren();
+        const p = document.createElement('p');
+        p.textContent =
+          'Migration mig-uat-001 complete — 3 units, 3 customers, 3 leases inserted.';
+        target.appendChild(p);
       }
     });
 

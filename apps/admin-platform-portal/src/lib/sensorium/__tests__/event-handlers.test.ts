@@ -32,6 +32,7 @@ import {
   type SensoryHandler,
 } from '../event-handlers';
 import type { EmitFn, HandlerContext } from '../event-handlers/types';
+import { clearBody, setBodyFixture } from './dom-fixture';
 
 function ctxFor(route = '/jarvis'): HandlerContext {
   return {
@@ -41,7 +42,7 @@ function ctxFor(route = '/jarvis'): HandlerContext {
 }
 
 beforeEach(() => {
-  document.body.innerHTML = '';
+  clearBody();
 });
 
 describe('page-view handler', () => {
@@ -77,7 +78,7 @@ describe('page-leave handler', () => {
 describe('element-click handler', () => {
   it('emits element.click with target metadata', () => {
     const events: any[] = [];
-    document.body.innerHTML = `<button id="btn-1">Save</button>`;
+    setBodyFixture(`<button id="btn-1">Save</button>`);
     const teardown = installElementClickHandler(
       (e) => events.push(e),
       ctxFor(),
@@ -92,7 +93,7 @@ describe('element-click handler', () => {
 
   it('does not emit raw text for password inputs', () => {
     const events: any[] = [];
-    document.body.innerHTML = `<input type="password" value="topsecret" />`;
+    setBodyFixture(`<input type="password" value="topsecret" />`);
     const input = document.querySelector('input') as HTMLInputElement;
     const teardown = installElementClickHandler(
       (e) => events.push(e),
@@ -109,7 +110,7 @@ describe('input-change handler — debounce + redact', () => {
   it('debounces emit until 300ms after last input', async () => {
     vi.useFakeTimers();
     try {
-      document.body.innerHTML = `<input name="email" />`;
+      setBodyFixture(`<input name="email" />`);
       const input = document.querySelector('input') as HTMLInputElement;
       const events: any[] = [];
       const teardown = installInputChangeHandler(
@@ -139,12 +140,12 @@ describe('input-change handler — debounce + redact', () => {
 
 describe('form-submit handler', () => {
   it('emits form.submit with fieldCount', () => {
-    document.body.innerHTML = `
+    setBodyFixture(`
       <form name="login">
         <input name="email" />
         <input name="password" />
         <button type="submit">Go</button>
-      </form>`;
+      </form>`);
     const form = document.querySelector('form') as HTMLFormElement;
     const events: any[] = [];
     const teardown = installFormSubmitHandler(
@@ -316,7 +317,7 @@ describe('error-boundary handler', () => {
 
 describe('a11y-tree-diff handler', () => {
   it('emits an initial baseline event', () => {
-    document.body.innerHTML = `<main><button>Save</button></main>`;
+    setBodyFixture(`<main><button>Save</button></main>`);
     const events: any[] = [];
     const teardown = installA11yTreeDiffHandler(
       (e) => events.push(e),
