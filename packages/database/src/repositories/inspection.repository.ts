@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * Inspection Repository
  * PostgreSQL implementation for Inspection persistence
@@ -127,12 +126,16 @@ export class InspectionRepository {
   }
 
   async findByStatus(status: string, tenantId: TenantId, limit = 50, offset = 0) {
+    // drizzle 0.45 pgEnum columns expose a narrow literal-union type on
+    // `eq()`. Repo callers pass plain `string` (validated upstream by zod
+    // or domain types) — cast to the column's enum type at the boundary.
+    const statusEnum = status as (typeof inspections.status.enumValues)[number];
     const rows = await this.db
       .select()
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, statusEnum),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
@@ -145,7 +148,7 @@ export class InspectionRepository {
       .from(inspections)
       .where(
         and(
-          eq(inspections.status, status),
+          eq(inspections.status, statusEnum),
           eq(inspections.tenantId, tenantId),
           isNull(inspections.deletedAt)
         )
