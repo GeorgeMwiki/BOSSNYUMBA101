@@ -151,4 +151,10 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'apps/owner-portal/src/components/SlashCommandPalette.tsx',
     'Owner-portal slash-command palette references mpesa as a quick-action keyword for owner shortcuts.',
   ],
+
+  // ─── CSV header-synonym registry (file-ingest heuristic) ──────────
+  [
+    'packages/file-ingest/src/proposal/heuristic-map.ts',
+    'CSV header-synonym table maps the literal column-name "nida" to the canonical national_id attribute on import; this IS the synonym registry, not a routing decision.',
+  ],
 ]);

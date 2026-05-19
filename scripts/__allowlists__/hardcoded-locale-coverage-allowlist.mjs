@@ -188,4 +188,10 @@ export const HARDCODED_LOCALE_ALLOWLIST = new Map([
     'apps/owner-portal/src/pages/financial/Disbursements.tsx',
     'Owner-portal disbursements page formats dates en-US default; tracked-gap pending tenant-locale resolution.',
   ],
+
+  // ─── Locale-invariant case-folding (security-critical) ─────────────
+  [
+    'packages/ai-copilot/src/security/canary-tokens.ts',
+    'Canary-token leak detector MUST fold case deterministically — toLocaleLowerCase(\'en-US\') is invariant under Turkish I/i collation and other locale-dependent folds; security boundary, not a UI render.',
+  ],
 ]);
