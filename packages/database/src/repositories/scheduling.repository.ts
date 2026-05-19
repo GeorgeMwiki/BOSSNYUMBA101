@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 update-shape narrowing; downstream apps use exactOptionalPropertyTypes
 /**
  * Scheduling Repository
  * PostgreSQL implementation for Scheduled Events and Availability persistence

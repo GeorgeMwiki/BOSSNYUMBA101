@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * CustomerRepository - PostgreSQL implementation for customer data access.
  *
@@ -179,7 +178,7 @@ export class CustomerRepository {
 
     if (filters?.status) {
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      conditions.push(inArray(customers.status, statuses as unknown as typeof customers.status.$inferType[]));
+      conditions.push(inArray(customers.status, statuses as (typeof customers.status.enumValues)[number][]));
     }
 
     if (filters?.search) {
