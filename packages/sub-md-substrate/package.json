@@ -1,0 +1,57 @@
+{
+  "name": "@bossnyumba/sub-md-substrate",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Generic sub-MD substrate: 6 primitives (Triage, Dispatch, Draft, Chase, Compile, Reconcile) + vertical packs that bind primitives to entity types and connectors. Powers ANY org function (HR, sales, marketing, ops, finance) on the same kernel that today runs property-management sub-MDs.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./primitives": {
+      "types": "./dist/primitives/index.d.ts",
+      "import": "./dist/primitives/index.js",
+      "default": "./dist/primitives/index.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js",
+      "default": "./dist/hooks/index.js"
+    },
+    "./vertical-pack": {
+      "types": "./dist/vertical-pack/index.d.ts",
+      "import": "./dist/vertical-pack/index.js",
+      "default": "./dist/vertical-pack/index.js"
+    },
+    "./verticals/property-management": {
+      "types": "./dist/verticals/property-management/index.d.ts",
+      "import": "./dist/verticals/property-management/index.js",
+      "default": "./dist/verticals/property-management/index.js"
+    },
+    "./verticals/bossnyumba-internal": {
+      "types": "./dist/verticals/bossnyumba-internal/index.d.ts",
+      "import": "./dist/verticals/bossnyumba-internal/index.js",
+      "default": "./dist/verticals/bossnyumba-internal/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6",
+    "@types/node": "^25.8.0"
+  }
+}
