@@ -50,8 +50,12 @@ import { DisbursementJob } from './jobs/disbursement.job';
 // Request Validation Schemas
 // =============================================================================
 
+// CRITICAL-2 fix: tenantId is REMOVED from every mutation schema. The
+// authoritative tenant context comes from `getTenantId(req)` which reads
+// `req.principal.tenantId` set by `verifySupabaseAuthMiddleware`. Trusting
+// a body-supplied tenantId here would let any authenticated tenant write
+// into another tenant's ledger by changing one JSON field.
 const CreatePaymentSchema = z.object({
-  tenantId: z.string(),
   customerId: z.string(),
   leaseId: z.string().optional(),
   type: z.enum(['RENT_PAYMENT', 'DEPOSIT_PAYMENT', 'LATE_FEE_PAYMENT', 'MAINTENANCE_PAYMENT', 'UTILITY_PAYMENT', 'CONTRIBUTION', 'OTHER']),
@@ -64,10 +68,9 @@ const CreatePaymentSchema = z.object({
   statementDescriptor: z.string().max(22).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   idempotencyKey: z.string().optional()
-});
+}).strict();
 
 const GenerateStatementSchema = z.object({
-  tenantId: z.string(),
   type: z.enum(['OWNER_STATEMENT', 'CUSTOMER_STATEMENT', 'PROPERTY_STATEMENT', 'RECONCILIATION_REPORT']),
   periodType: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'CUSTOM']),
   periodStart: z.string().transform(s => new Date(s)),
@@ -76,10 +79,9 @@ const GenerateStatementSchema = z.object({
   ownerId: z.string().optional(),
   customerId: z.string().optional(),
   includeDetails: z.boolean().optional()
-});
+}).strict();
 
 const CreateDisbursementSchema = z.object({
-  tenantId: z.string(),
   ownerId: z.string(),
   amount: z.object({
     amount: z.number().int().positive(),
@@ -88,7 +90,7 @@ const CreateDisbursementSchema = z.object({
   destination: z.string(),
   description: z.string().optional(),
   idempotencyKey: z.string().optional()
-});
+}).strict();
 
 // M-PESA STK Callback Schema
 const MpesaStkCallbackSchema = z.object({
@@ -318,12 +320,26 @@ const disbursementJob = new DisbursementJob(
 
 app.use(helmet());
 
+// Augment Request with rawBody for HMAC verification on M-Pesa webhooks.
+// Stripe gets its own express.raw() handler below; M-Pesa needs both the
+// parsed JSON body (for the handler) AND the raw bytes (for the HMAC).
+declare module 'express-serve-static-core' {
+  interface Request {
+    rawBody?: Buffer;
+  }
+}
+
 // Parse JSON for most routes, but keep raw body for webhooks
+const captureRawBodyJson = express.json({
+  verify: (req: Request, _res, buf) => {
+    req.rawBody = Buffer.from(buf);
+  },
+});
 app.use((req, res, next) => {
   if (req.path.startsWith('/webhooks/stripe')) {
     next();
   } else {
-    express.json()(req, res, next);
+    captureRawBodyJson(req, res, next);
   }
 });
 
@@ -332,7 +348,12 @@ app.use(pinoHttp({ logger }));
 // Verify Supabase JWT on every protected request. Health check + webhooks
 // (which carry their own signature verification) are excluded.
 import { verifySupabaseAuthMiddleware } from './middleware/auth.middleware';
-import { mpesaIpAllowlistMiddleware, mpesaDeduplicator } from './middleware/mpesa-webhook.middleware';
+import {
+  mpesaIpAllowlistMiddleware,
+  mpesaSignatureMiddleware,
+  mpesaDeduplicator,
+  CallbackDeduplicator,
+} from './middleware/mpesa-webhook.middleware';
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path.startsWith('/webhooks/')) return next();
   return verifySupabaseAuthMiddleware(req, res, next);
@@ -343,8 +364,15 @@ app.use((req, res, next) => {
 const mpesaAllowlist = mpesaIpAllowlistMiddleware({
   warn: (ctx, msg) => logger.warn(ctx, msg),
 });
-app.use('/webhooks/mpesa', mpesaAllowlist);
-app.use('/api/v1/payments/webhook/mpesa', mpesaAllowlist);
+// CRITICAL-3: HMAC signature verification runs AFTER the IP allowlist and
+// BEFORE any handler side-effects. When MPESA_WEBHOOK_SECRET is set (or
+// NODE_ENV=production / MPESA_WEBHOOK_SECRET_REQUIRED=true) the middleware
+// is mandatory; sandbox/dev defaults to skip with a warn log.
+const mpesaSignature = mpesaSignatureMiddleware({
+  warn: (ctx, msg) => logger.warn(ctx, msg),
+});
+app.use('/webhooks/mpesa', mpesaAllowlist, mpesaSignature);
+app.use('/api/v1/payments/webhook/mpesa', mpesaAllowlist, mpesaSignature);
 
 // =============================================================================
 // Health Check Endpoint
@@ -380,7 +408,8 @@ app.post('/api/v1/payments', async (req: Request, res: Response, next: NextFunct
     }
 
     const data = validation.data;
-    const tenantId = asTenantId(data.tenantId);
+    // CRITICAL-2: tenant is from the verified principal, never the body.
+    const tenantId = getTenantId(req);
     const tenant = getTenantAggregate(tenantId);
 
     const request: CreatePaymentRequest = {
@@ -853,8 +882,10 @@ app.post('/api/v1/statements', async (req: Request, res: Response, next: NextFun
     }
 
     const data = validation.data;
+    // CRITICAL-2: tenant comes from the principal, not from the body.
+    const tenantId = getTenantId(req);
     const request: GenerateStatementRequest = {
-      tenantId: asTenantId(data.tenantId),
+      tenantId,
       type: data.type,
       periodType: data.periodType,
       periodStart: data.periodStart,
@@ -1020,8 +1051,10 @@ app.post('/api/v1/disbursements', async (req: Request, res: Response, next: Next
     }
 
     const data = validation.data;
+    // CRITICAL-2: tenant comes from the principal, not from the body.
+    const tenantId = getTenantId(req);
     const request: DisbursementRequest = {
-      tenantId: asTenantId(data.tenantId),
+      tenantId,
       ownerId: asOwnerId(data.ownerId),
       amount: data.amount ? Money.fromMinorUnits(data.amount.amount, data.amount.currency as CurrencyCode) : undefined,
       destination: data.destination,
@@ -1427,9 +1460,17 @@ app.post('/webhooks/mpesa/c2b/confirm', async (req: Request, res: Response) => {
     }
     const c2b = parsed.data;
 
-    // Dedup key is global (no tenant yet) but the TransID itself is
-    // globally unique in Safaricom's namespace so collision risk is nil.
-    if (mpesaDeduplicator.seenBefore(`c2b:${c2b.TransID}`)) {
+    // CRITICAL-3 hardening: dedup key includes BusinessShortCode so a
+    // forged TransID submission for one tenant's paybill cannot pollute
+    // another tenant's dedup cache. `CallbackDeduplicator.tenantKey` is
+    // intentionally tenantId-aware; we use null here because the tenant
+    // mapping happens downstream from BusinessShortCode.
+    const c2bDedupKey = CallbackDeduplicator.tenantKey(
+      null,
+      'c2b',
+      `${c2b.BusinessShortCode}:${c2b.TransID}`
+    );
+    if (mpesaDeduplicator.seenBefore(c2bDedupKey)) {
       logger.info({ transId: c2b.TransID }, 'duplicate M-PESA C2B confirmation; acking');
       return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
@@ -1610,12 +1651,22 @@ app.post('/api/v1/payments/webhook/mpesa', async (req: Request, res: Response, n
 
 /**
  * GET /api/v1/statements/:tenantId - Get statements for a tenant
- * Note: tenantId in path (alternative to X-Tenant-Id header)
+ *
+ * CRITICAL-2 fix: the URL path-supplied tenantId must match the verified
+ * principal's tenantId. The path slot is retained for client URL
+ * compatibility, but cross-tenant reads are now blocked at the gateway.
+ *
  * Supports query params: ownerId, customerId, type, page, pageSize
  */
 app.get('/api/v1/statements/:tenantId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const tenantId = asTenantId(req.params.tenantId);
+    const principalTenantId = getTenantId(req);
+    if (req.params.tenantId !== principalTenantId) {
+      return res.status(403).json({
+        error: { code: 'TENANT_MISMATCH', message: 'tenant id in path does not match authenticated principal' }
+      });
+    }
+    const tenantId = principalTenantId;
     const ownerId = req.query.ownerId as string | undefined;
     const customerId = req.query.customerId as string | undefined;
     const page = parseInt(req.query.page as string) || 1;
@@ -1695,8 +1746,9 @@ app.post('/api/v1/statements/generate', async (req: Request, res: Response, next
     }
 
     const data = validation.data;
+    // CRITICAL-2: tenant from principal, never the body.
     const request: GenerateStatementRequest = {
-      tenantId: asTenantId(data.tenantId),
+      tenantId: getTenantId(req),
       type: data.type,
       periodType: data.periodType,
       periodStart: data.periodStart,
