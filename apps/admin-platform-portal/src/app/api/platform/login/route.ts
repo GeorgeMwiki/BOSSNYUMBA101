@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getIdentityBase, proxyJson, readJsonBody } from '@/lib/proxy';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 /**
  * Platform-staff login proxy.
@@ -14,7 +15,7 @@ import { getIdentityBase, proxyJson, readJsonBody } from '@/lib/proxy';
  * In production `IDENTITY_URL` must be set; the proxy helper throws if
  * not. In dev it falls back to `http://localhost:4001`.
  */
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   const body = await readJsonBody(req);
   if (body === null) {
     return NextResponse.json(
@@ -29,3 +30,11 @@ export async function POST(req: NextRequest) {
     contentType: 'application/json',
   });
 }
+
+// Auth-sensitive endpoint — stricter cap than the default to discourage
+// credential stuffing.
+export const POST = withRateLimit(postHandler, {
+  key: 'platform-login',
+  max: 10,
+  window: '1m',
+});

@@ -14,6 +14,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -75,6 +76,7 @@ const PricingSchema = z.object({
 });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'public-marketing', max: 120, window: '1m' }));
 
 app.post('/chat', zValidator('json', ChatTurnSchema), async (c) => {
   const body = c.req.valid('json');

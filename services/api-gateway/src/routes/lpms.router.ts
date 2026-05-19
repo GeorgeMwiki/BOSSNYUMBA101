@@ -18,6 +18,7 @@
  * authenticated operator.
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -37,6 +38,7 @@ const ImportSchema = z.object({
 });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'lpms', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 app.post('/import', zValidator('json', ImportSchema), async (c: any) => {

@@ -14,6 +14,7 @@
  * endpoint 503s cleanly — we never crash the gateway.
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -24,6 +25,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'task-agents', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function resolveExecutor(c: any) {

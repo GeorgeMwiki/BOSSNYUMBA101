@@ -23,6 +23,7 @@
 // @ts-nocheck — Hono context typing is open-ended; routers dispatch at runtime.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -31,6 +32,7 @@ import { routeCatch } from '../utils/safe-error';
 import { asApprovalRequestId } from '@bossnyumba/domain-services/approvals';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'approvals', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function notConfigured(c: any) {

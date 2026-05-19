@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { brainForRequest, errorToResponse } from '@/lib/brain-server';
 import { clampVisibility } from '@bossnyumba/ai-copilot';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ interface TurnBody {
   defaultVisibility?: 'private' | 'team' | 'management' | 'public';
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let body: TurnBody;
   try {
     body = (await req.json()) as TurnBody;
@@ -136,3 +137,9 @@ export async function POST(req: Request) {
     return NextResponse.json(payload, { status });
   }
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'estate-manager-brain-turn',
+  max: 60,
+  window: '1m',
+});

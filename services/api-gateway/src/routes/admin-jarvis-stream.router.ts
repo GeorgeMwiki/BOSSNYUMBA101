@@ -28,6 +28,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import {
   createAgUiEmitter,
@@ -163,6 +164,7 @@ function buildOtelRecorder(): AgUiOtelSpanRecorder | null {
 // ─────────────────────────────────────────────────────────────────────
 
 export const adminJarvisStreamRouter = new Hono();
+adminJarvisStreamRouter.use('*', withRateLimit({ key: 'admin-jarvis-stream', max: 120, window: '1m' }));
 adminJarvisStreamRouter.use('*', authMiddleware);
 adminJarvisStreamRouter.use('*', requireRole(UserRole.SUPER_ADMIN, UserRole.ADMIN));
 

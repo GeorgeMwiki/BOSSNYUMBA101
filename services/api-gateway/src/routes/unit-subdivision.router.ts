@@ -22,12 +22,32 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import { and, eq } from 'drizzle-orm';
 import { units } from '@bossnyumba/database';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+const CreateSubdivisionSchema = z
+  .object({
+    children: z
+      .array(
+        z.object({
+          unitCode: z.string().min(1).max(80),
+          sizeSqm: z.number().min(0).max(10_000).optional(),
+          rentAmount: z.number().min(0).max(10_000_000).optional(),
+        }),
+      )
+      .min(2)
+      .max(20),
+    effectiveDate: z.string().datetime().optional(),
+    notes: z.string().max(2_000).optional(),
+  })
+  .strict();
+
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'unit-subdivision', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function dbUnavailable(c) {
@@ -111,7 +131,18 @@ app.get('/', async (c) => {
 // Write path is gated on the four-eye approval workflow (sovereign
 // approvals). Surface returns 501 so callers see "not implemented" and
 // not "service degraded".
-app.post('/', (c) => {
+app.post('/', async (c) => {
+  // Schema gate runs even though the handler returns 501 today — so a
+  // malformed call gets the right 400, and the eventual real write
+  // surface already has a contract callers conform to.
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = CreateSubdivisionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
   return c.json(
     {
       success: false,

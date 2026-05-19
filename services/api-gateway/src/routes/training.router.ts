@@ -17,8 +17,42 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import { authMiddleware } from '../middleware/hono-auth';
 import type { TrainingAdminEndpoints } from '@bossnyumba/ai-copilot/training';
+
+// Coarse schemas for the training API. Domain-level validation happens
+// in the TrainingAdminEndpoints service; this layer rejects obvious
+// shape errors before the service touches them. The pass-through
+// `.passthrough()` lets the service evolve its required fields without
+// breaking the gateway contract.
+const GeneratePathSchema = z
+  .object({
+    goal: z.string().min(1).max(1_000).optional(),
+    concepts: z.array(z.string().max(200)).max(200).optional(),
+    audience: z.string().max(200).optional(),
+  })
+  .passthrough();
+const PersistPathSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    steps: z.array(z.record(z.unknown())).min(1).max(200),
+  })
+  .passthrough();
+const EditPathSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    steps: z.array(z.record(z.unknown())).max(200).optional(),
+  })
+  .passthrough();
+const AssignPathSchema = z
+  .object({
+    assigneeUserIds: z.array(z.string().max(128)).min(1).max(1_000),
+    dueAt: z.string().datetime().optional(),
+    notes: z.string().max(2_000).optional(),
+  })
+  .passthrough();
 
 function getEndpoints(c: any): TrainingAdminEndpoints | null {
   const services = c.get('services') ?? {};
@@ -60,15 +94,20 @@ function mapErr(c: any, err: unknown, fallback = 400) {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'training', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 app.post('/generate', async (c: any) => {
   const auth = c.get('auth');
-  const body = await c.req.json().catch(() => ({}));
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = GeneratePathSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } }, 400);
+  }
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
-    const path = await ep.generate(auth.tenantId, auth.userId, body);
+    const path = await ep.generate(auth.tenantId, auth.userId, parsed.data);
     return c.json({ success: true, data: path }, 200);
   } catch (e: unknown) {
     return mapErr(c, e, 400);
@@ -77,11 +116,15 @@ app.post('/generate', async (c: any) => {
 
 app.post('/paths', async (c: any) => {
   const auth = c.get('auth');
-  const body = await c.req.json().catch(() => ({}));
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = PersistPathSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } }, 400);
+  }
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
-    const path = await ep.persistPath(auth.tenantId, auth.userId, body);
+    const path = await ep.persistPath(auth.tenantId, auth.userId, parsed.data);
     return c.json({ success: true, data: path }, 201);
   } catch (e: unknown) {
     return mapErr(c, e, 400);
@@ -103,11 +146,15 @@ app.get('/paths', async (c: any) => {
 app.patch('/paths/:id', async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = EditPathSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } }, 400);
+  }
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
-    const path = await ep.editPath(auth.tenantId, id, body);
+    const path = await ep.editPath(auth.tenantId, id, parsed.data);
     return c.json({ success: true, data: path });
   } catch (e: unknown) {
     return mapErr(c, e, 400);
@@ -117,11 +164,15 @@ app.patch('/paths/:id', async (c: any) => {
 app.post('/paths/:id/assign', async (c: any) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = AssignPathSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } }, 400);
+  }
   const ep = getEndpoints(c);
   if (!ep) return notImplemented(c);
   try {
-    const data = await ep.assign(auth.tenantId, id, auth.userId, body);
+    const data = await ep.assign(auth.tenantId, id, auth.userId, parsed.data);
     return c.json({ success: true, data }, 201);
   } catch (e: unknown) {
     return mapErr(c, e, 400);

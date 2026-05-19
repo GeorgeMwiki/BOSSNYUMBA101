@@ -12,6 +12,7 @@
  *   POST /api/v1/autonomy/policy/disable
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -36,6 +37,7 @@ const UpdatePolicySchema = z
   .strict();
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'autonomy', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use(
   '*',

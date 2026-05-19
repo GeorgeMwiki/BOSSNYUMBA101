@@ -1,5 +1,6 @@
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
@@ -18,6 +19,7 @@ const LoginSchema = z.object({
 });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'auth', max: 120, window: '1m' }));
 
 function mapRoleName(roleName?: string): UserRole {
   switch ((roleName || '').toLowerCase()) {

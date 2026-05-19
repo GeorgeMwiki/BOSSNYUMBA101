@@ -17,6 +17,7 @@ import {
   brainForRequest,
   errorToResponse,
 } from '@/lib/brain-server';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ function db() {
   return dbCache;
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
@@ -96,3 +97,9 @@ export async function POST(req: Request) {
     return NextResponse.json(payload, { status });
   }
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'brain-migrate-commit',
+  max: 20,
+  window: '5m',
+});

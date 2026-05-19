@@ -14,6 +14,7 @@
  * Docs/KNOWN_ISSUES.md.
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { createMiddleware } from 'hono/factory';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -126,6 +127,7 @@ const signatureMiddleware = createMiddleware(async (c, next) => {
 // ----------------------------------------------------------------------------
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'gepg', max: 120, window: '1m' }));
 
 // --- POST /v1/payments/gepg/control-numbers ---------------------------------
 app.post(

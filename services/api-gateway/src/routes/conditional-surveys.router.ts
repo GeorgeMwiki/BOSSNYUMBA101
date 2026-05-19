@@ -15,12 +15,14 @@
 // @ts-nocheck — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'conditional-surveys', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function notConfigured(c: any) {

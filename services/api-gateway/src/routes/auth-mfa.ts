@@ -19,6 +19,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -27,6 +28,7 @@ import { generateToken } from '../middleware/auth';
 import { UserRole } from '../types/user-role';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'auth-mfa', max: 120, window: '1m' }));
 
 // Process-local challenge store. Replace with Redis for multi-replica.
 interface ChallengeEntry {

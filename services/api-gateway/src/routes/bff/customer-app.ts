@@ -26,6 +26,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
@@ -37,6 +38,7 @@ import { logger } from '../../utils/logger';
 import { mapWorkOrderRow } from '../db-mappers';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'customer-app', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 

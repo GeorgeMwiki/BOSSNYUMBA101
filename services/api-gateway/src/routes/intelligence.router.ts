@@ -39,6 +39,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -86,6 +87,7 @@ const ListThreadsQuerySchema = z
 // ---------------------------------------------------------------------------
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'intelligence', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 // ---------------------------------------------------------------------------

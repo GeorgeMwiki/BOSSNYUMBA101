@@ -33,6 +33,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -132,6 +133,7 @@ const SimulatePolicySchema = z.object({
 // ---------------------------------------------------------------------------
 
 const router = new Hono();
+router.use('*', withRateLimit({ key: 'ai-native', max: 120, window: '1m' }));
 
 router.use('*', authMiddleware);
 

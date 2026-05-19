@@ -39,6 +39,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createSovereignActionLedgerService } from '@bossnyumba/database';
@@ -67,6 +68,7 @@ const VerifyBodySchema = z
   .strict();
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'sovereign-ledger', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 // Platform-tier only — SUPER_ADMIN + ADMIN. Tenant admins do not touch
 // the sovereign-action ledger; their tenancy-scoped audit surface lives

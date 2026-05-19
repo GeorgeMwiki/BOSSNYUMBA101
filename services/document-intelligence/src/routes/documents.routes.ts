@@ -10,6 +10,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../../../api-gateway/src/middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { Context } from 'hono';
@@ -272,6 +273,7 @@ export interface DocumentIntelligenceRoutesDeps {
 
 export function createDocumentIntelligenceRoutes(deps?: DocumentIntelligenceRoutesDeps) {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'documents.routes', max: 120, window: '1m' }));
 
   // ============================================================================
   // Document Upload & Management

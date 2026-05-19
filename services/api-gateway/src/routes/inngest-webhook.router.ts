@@ -40,6 +40,7 @@
 // same convention as the cross-portal-subscribe router.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface InngestRuntime {
@@ -136,6 +137,7 @@ function isReplay(eventId: string | undefined, now: number = Date.now()): boolea
 // ---------------------------------------------------------------------------
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'inngest-webhook', max: 120, window: '1m' }));
 
 app.post('/', async (c) => {
   const rawBody = await c.req.raw.text();

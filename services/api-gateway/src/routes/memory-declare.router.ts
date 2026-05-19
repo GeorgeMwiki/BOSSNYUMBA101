@@ -19,6 +19,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { createSemanticMemoryService } from '@bossnyumba/database';
@@ -59,6 +60,7 @@ const DeleteSchema = z.object({
 });
 
 const router = new Hono();
+router.use('*', withRateLimit({ key: 'memory-declare', max: 120, window: '1m' }));
 router.use('*', authMiddleware);
 // A2b-3 wire #5 — declared-facts is a producer endpoint and a natural
 // target for abuse (memory amplification). Cap per-user churn at 30

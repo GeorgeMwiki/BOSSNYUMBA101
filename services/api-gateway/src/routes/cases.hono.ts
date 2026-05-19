@@ -20,6 +20,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
@@ -93,6 +94,7 @@ function rowToCase(row: Record<string, unknown>) {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'cases', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 

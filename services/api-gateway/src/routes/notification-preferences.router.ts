@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
 
@@ -63,6 +64,7 @@ export type UpdatePreferencesBody = z.infer<typeof UpdatePreferencesSchema>;
 
 export function createNotificationPreferencesRouter(api: PreferencesApi): Hono {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'notification-preferences', max: 120, window: '1m' }));
 
   app.use('*', authMiddleware);
 

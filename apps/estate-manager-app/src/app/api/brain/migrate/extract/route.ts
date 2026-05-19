@@ -12,10 +12,11 @@ import {
   migrationDiff,
 } from '@bossnyumba/ai-copilot';
 import { brainForRequest, errorToResponse } from '@/lib/brain-server';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let ctx;
   try {
     ctx = await brainForRequest(req);
@@ -58,3 +59,9 @@ export async function POST(req: Request) {
     tenantId: ctx.tenant.tenantId,
   });
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'brain-migrate-extract',
+  max: 30,
+  window: '1m',
+});

@@ -18,6 +18,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -44,6 +45,7 @@ const GenerateSchema = z.object({
 const store = Sandbox.createSandboxStore();
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'public-sandbox', max: 120, window: '1m' }));
 
 app.post('/estate', zValidator('json', GenerateSchema), (c) => {
   const body = c.req.valid('json');

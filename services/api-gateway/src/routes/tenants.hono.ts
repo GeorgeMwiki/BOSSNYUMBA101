@@ -1,8 +1,22 @@
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { UserRole } from '../types/user-role';
+
+const UpdateTenantSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    contactEmail: z.string().email().max(254).optional(),
+    contactPhone: z.string().max(64).optional(),
+  })
+  .strict();
+// Tenant settings are an open key/value bag — record() permits arbitrary
+// keys but we still cap the body size so a runaway client cannot blow
+// the heap.
+const UpdateTenantSettingsSchema = z.record(z.unknown());
 
 type TenantRow = {
   id: string;
@@ -44,6 +58,7 @@ function mapTenant(row: TenantRow) {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'tenants', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 
@@ -58,7 +73,15 @@ app.get('/current', async (c) => {
 app.patch('/current', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = UpdateTenantSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  const body = parsed.data;
   const tenant = await repos.tenants.update(
     auth.tenantId,
     {
@@ -83,7 +106,15 @@ app.get('/current/settings', async (c) => {
 app.patch('/current/settings', async (c) => {
   const auth = c.get('auth');
   const repos = c.get('repos');
-  const body = await c.req.json();
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = UpdateTenantSettingsSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  const body = parsed.data;
   const existing = await repos.tenants.findById(auth.tenantId);
   const tenant = await repos.tenants.update(
     auth.tenantId,

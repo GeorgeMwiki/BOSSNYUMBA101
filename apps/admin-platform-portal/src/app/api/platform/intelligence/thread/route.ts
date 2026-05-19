@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getApiGatewayBase, proxyJson, readJsonBody } from '@/lib/proxy';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 /**
  * Proxy: create a new platform-scope intelligence thread.
@@ -9,7 +10,7 @@ import { getApiGatewayBase, proxyJson, readJsonBody } from '@/lib/proxy';
  * persona: 'industry-observer' }` and the staff session cookie /
  * Authorization header so the gateway can enforce role gates.
  */
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   const incoming = await readJsonBody(req);
   if (incoming === null) {
     return NextResponse.json({ error: 'json body required' }, { status: 400 });
@@ -36,3 +37,9 @@ export async function POST(req: NextRequest) {
     contentType: 'application/json',
   });
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'platform-intelligence-thread',
+  max: 30,
+  window: '1m',
+});

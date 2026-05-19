@@ -12,6 +12,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
@@ -97,6 +98,7 @@ const VALID_PROCESS_KINDS = new Set([
 ]);
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'org-awareness', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 app.get('/process-stats/:kind', async (c: AnyCtx) => {

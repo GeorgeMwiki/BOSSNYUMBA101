@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { authMiddleware, requireRole } from '../middleware/hono-auth.js';
 import { UserRole } from '../types/user-role.js';
 import { routeCatch } from '../utils/safe-error.js';
@@ -44,6 +45,7 @@ export function createWebhookDlqRouter(deps: WebhookDlqDeps): Hono {
   const genId = deps.generateId ?? defaultId;
 
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'webhook-dlq', max: 120, window: '1m' }));
 
   app.use('*', authMiddleware);
   // Any admin-class role may inspect + replay the DLQ.

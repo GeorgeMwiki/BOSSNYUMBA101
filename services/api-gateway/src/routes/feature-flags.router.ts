@@ -7,6 +7,7 @@
  *   PUT /feature-flags/:key    — admin-only override (body: { enabled: bool })
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -17,6 +18,7 @@ const SetOverrideSchema = z.object({
 });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'feature-flags', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function svc(c: any) {

@@ -7,10 +7,24 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
+// POST /:customerId/generate is action-keyed by the customerId path
+// param; the body is optional and supports overrides for the report
+// generator. We accept an empty body too.
+const GenerateRiskReportSchema = z
+  .object({
+    note: z.string().max(2_000).optional(),
+    includePartial: z.boolean().optional(),
+  })
+  .strict();
+const CustomerIdParamSchema = z.object({ customerId: z.string().min(1).max(128) });
+
 export const riskReportsRouter = new Hono();
+riskReportsRouter.use('*', withRateLimit({ key: 'risk-reports', max: 120, window: '1m' }));
 
 riskReportsRouter.use('*', authMiddleware);
 
@@ -39,7 +53,26 @@ riskReportsRouter.get('/', async (c) => {
 });
 
 riskReportsRouter.post('/:customerId/generate', async (c) => {
-  const customerId = c.req.param('customerId');
+  const paramParsed = CustomerIdParamSchema.safeParse({
+    customerId: c.req.param('customerId'),
+  });
+  if (!paramParsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: paramParsed.error.message } },
+      400,
+    );
+  }
+  const customerId = paramParsed.data.customerId;
+  // Body is optional — we permit empty `{}` and any shape inside the
+  // strict schema. Anything else is a malformed call.
+  const rawBody = await c.req.json().catch(() => ({}));
+  const bodyParsed = GenerateRiskReportSchema.safeParse(rawBody);
+  if (!bodyParsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: bodyParsed.error.message } },
+      400,
+    );
+  }
   const tenantId = c.get('tenantId');
   const userId = c.get('userId');
   const service = c.get('riskReportService');

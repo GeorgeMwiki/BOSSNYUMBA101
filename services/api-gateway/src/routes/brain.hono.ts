@@ -10,6 +10,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import {
   createBrain,
   BrainRegistry,
@@ -176,6 +177,7 @@ function checkRate(key: string): boolean {
 }
 
 const brainRouter = new Hono();
+brainRouter.use('*', withRateLimit({ key: 'brain', max: 120, window: '1m' }));
 
 // ----- Health -----------------------------------------------------------
 

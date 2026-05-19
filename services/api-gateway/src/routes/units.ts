@@ -1,5 +1,6 @@
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -54,6 +55,7 @@ function hasPropertyAccess(auth: Pick<AuthContext, 'propertyAccess'>, propertyId
 type UnitRowLike = { propertyId: string };
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'units', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 

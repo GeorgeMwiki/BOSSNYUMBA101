@@ -19,12 +19,28 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import type {
   BossnyumbaMcpServer,
   McpAuthContext,
 } from '@bossnyumba/mcp-server';
 import { getPrompt, listPrompts } from '@bossnyumba/mcp-server';
 import { generateAgentCard } from '@bossnyumba/agent-platform';
+
+// JSON-RPC 2.0 envelope schema. The method-specific argument shapes
+// are validated inside `BossnyumbaMcpServer.invokeTool` /
+// `mcp.readStaticResource` — this gate just pins the envelope itself
+// so any non-conformant payload is rejected with -32600 before the
+// dispatcher sees it.
+const JsonRpcRequestSchema = z
+  .object({
+    jsonrpc: z.literal('2.0'),
+    id: z.union([z.number(), z.string(), z.null()]).optional(),
+    method: z.string().min(1).max(200),
+    params: z.record(z.unknown()).optional(),
+  })
+  .strict();
 
 interface JsonRpcRequest {
   readonly jsonrpc: '2.0';
@@ -69,6 +85,7 @@ function rpcOk(id: number | string | null, result: unknown): JsonRpcSuccess {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'mcp', max: 120, window: '1m' }));
 
 function getMcp(c: any): BossnyumbaMcpServer | null {
   const services = c.get('services') ?? {};
@@ -141,18 +158,22 @@ app.post('/', async (c: any) => {
     );
   }
 
-  let body: JsonRpcRequest;
+  let raw: unknown;
   try {
-    body = (await c.req.json()) as JsonRpcRequest;
+    raw = await c.req.json();
   } catch {
     const err = rpcError(null, -32700, 'Parse error');
     return c.json(err, 400);
   }
 
-  if (body.jsonrpc !== '2.0' || typeof body.method !== 'string') {
-    const err = rpcError(body.id ?? null, -32600, 'Invalid Request');
+  const parsed = JsonRpcRequestSchema.safeParse(raw);
+  if (!parsed.success) {
+    const candidateId =
+      (raw as { id?: number | string | null } | undefined)?.id ?? null;
+    const err = rpcError(candidateId, -32600, 'Invalid Request');
     return c.json(err, 400);
   }
+  const body = parsed.data as JsonRpcRequest;
 
   const context = await authenticate(c, mcp);
   if (!context) {

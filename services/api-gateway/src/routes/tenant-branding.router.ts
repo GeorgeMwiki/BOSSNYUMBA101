@@ -14,6 +14,7 @@
 // @ts-nocheck — Hono v4 context typing is open-ended; routers dispatch at runtime.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -30,6 +31,7 @@ const BrandingUpdateSchema = z
   .strict();
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'tenant-branding', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function svc(c: any): any {

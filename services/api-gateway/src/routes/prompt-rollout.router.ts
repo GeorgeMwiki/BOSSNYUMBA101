@@ -20,6 +20,7 @@
 // `as` inside each handler.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -126,6 +127,7 @@ export function createPromptRolloutRouter(
   deps: PromptRolloutRouterDeps,
 ): Hono {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'prompt-rollout', max: 120, window: '1m' }));
   app.use('*', authMiddleware);
   app.use('*', requireRole(...ADMIN_ROLES));
 

@@ -15,6 +15,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -45,6 +46,7 @@ const TerminateSchema = z.object({
 });
 
 export const renewalsRouter = new Hono();
+renewalsRouter.use('*', withRateLimit({ key: 'renewals', max: 120, window: '1m' }));
 
 renewalsRouter.use('*', authMiddleware);
 

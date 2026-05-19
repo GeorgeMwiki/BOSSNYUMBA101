@@ -24,6 +24,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { customRateLimit } from '../middleware/rate-limiter';
@@ -104,6 +105,7 @@ function internalError(c: AnyCtx, err: unknown) {
 }
 
 export const parityCapabilityDashboardRouter = new Hono();
+parityCapabilityDashboardRouter.use('*', withRateLimit({ key: 'parity-capability-dashboard', max: 120, window: '1m' }));
 parityCapabilityDashboardRouter.use('*', authMiddleware);
 parityCapabilityDashboardRouter.use(
   '*',

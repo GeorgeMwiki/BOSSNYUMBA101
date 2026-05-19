@@ -38,6 +38,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type {
@@ -110,6 +111,7 @@ export function createRiskRecomputeRouter(
   deps: RiskRecomputeRouterDeps,
 ): Hono {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'risk-recompute', max: 120, window: '1m' }));
   app.use('*', authMiddleware);
 
   function unavailable(c: any) {

@@ -9,6 +9,7 @@
  *   GET    /mastery/:userId              — per-concept BKT snapshot for a user
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -30,6 +31,7 @@ const QuizAnswerSchema = z.object({
 });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'classroom', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function svc(c: any) {

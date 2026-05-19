@@ -24,6 +24,7 @@
 // @ts-nocheck
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import {
@@ -194,6 +195,7 @@ export async function pipeStreamTurnToSSE(
 // ---------------------------------------------------------------------------
 
 const router = new Hono();
+router.use('*', withRateLimit({ key: 'ai-chat', max: 120, window: '1m' }));
 
 router.post('/chat', async (c) => {
   let body;

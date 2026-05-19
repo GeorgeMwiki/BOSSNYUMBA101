@@ -18,6 +18,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
 import { UserRole } from '../types/user-role';
@@ -77,6 +78,7 @@ function internalError(c: AnyCtx, err: unknown) {
 }
 
 export const propertyGradingRouter = new Hono();
+propertyGradingRouter.use('*', withRateLimit({ key: 'property-grading', max: 120, window: '1m' }));
 propertyGradingRouter.use('*', authMiddleware);
 
 propertyGradingRouter.get('/property/:propertyId', async (c: AnyCtx) => {

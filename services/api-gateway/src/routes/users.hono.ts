@@ -1,10 +1,32 @@
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import bcrypt from 'bcrypt';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/hono-auth';
 import { databaseMiddleware } from '../middleware/database';
 import { roles, userRoles } from '@bossnyumba/database';
+
+const PhoneSchema = z.string().min(6).max(24).regex(/^[+0-9 \-()]+$/, 'invalid phone');
+const CreateUserSchema = z
+  .object({
+    email: z.string().email().max(254),
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+    phone: PhoneSchema.optional(),
+    password: z.string().min(8).max(200).optional(),
+    role: z.string().min(1).max(60).optional(),
+  })
+  .strict();
+const UpdateUserSchema = z
+  .object({
+    firstName: z.string().min(1).max(100).optional(),
+    lastName: z.string().min(1).max(100).optional(),
+    phone: PhoneSchema.optional(),
+    status: z.string().min(1).max(40).optional(),
+  })
+  .strict();
 
 type RoleInfo = { role: string; permissions: string[] };
 
@@ -72,6 +94,7 @@ function mapUser(row: UserRow, roleData?: RoleInfo) {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'users', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);
 
@@ -132,7 +155,15 @@ app.post('/', async (c) => {
     );
   }
 
-  const body = await c.req.json();
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = CreateUserSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  const body = parsed.data;
 
   // A non-super-admin cannot mint a super-admin. This is the role-
   // escalation defense — previously POST /users trusted body.role
@@ -188,7 +219,15 @@ app.put('/:id', async (c) => {
   const repos = c.get('repos');
   const db = c.get('db');
   const id = c.req.param('id');
-  const body = await c.req.json();
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = UpdateUserSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  const body = parsed.data;
   const row = await repos.users.update(id, auth.tenantId, {
     firstName: body.firstName,
     lastName: body.lastName,

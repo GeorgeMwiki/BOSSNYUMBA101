@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import {
   migrationExtract,
   MigrationExtractParamsSchema,
@@ -43,6 +44,7 @@ export function createMigrationRouter(deps: {
   authMiddleware?: (c: any, next: () => Promise<void>) => Promise<Response | void>;
 }) {
   const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+  app.use('*', withRateLimit({ key: 'migration', max: 60, window: '1m' }));
 
   if (deps.authMiddleware) {
     app.use('*', deps.authMiddleware);

@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -52,6 +53,7 @@ const IdParamSchema = z.object({
 });
 
 export const exceptionsRouter = new Hono();
+exceptionsRouter.use('*', withRateLimit({ key: 'exceptions', max: 120, window: '1m' }));
 
 exceptionsRouter.use('*', authMiddleware);
 

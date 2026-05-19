@@ -12,6 +12,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -67,6 +68,7 @@ function gc(now: number): void {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'public-leads', max: 120, window: '1m' }));
 
 app.post('/handoff', zValidator('json', HandoffSchema), (c) => {
   const body = c.req.valid('json');

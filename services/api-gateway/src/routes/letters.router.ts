@@ -20,6 +20,7 @@
 // @ts-nocheck — Hono context types are open-ended by design in this project.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/hono-auth';
@@ -69,6 +70,7 @@ function buildLetterService(): LetterService {
 }
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'letters', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 const LetterTypeSchema = z.enum([

@@ -8,6 +8,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import {
@@ -36,6 +37,7 @@ const store: WorkflowRunStore = new InMemoryWorkflowRunStore();
 const engine = new WorkflowEngine(store);
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'workflows', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 app.get('/', (c) => {

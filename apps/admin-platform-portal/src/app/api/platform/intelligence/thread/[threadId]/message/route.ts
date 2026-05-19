@@ -16,6 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const runtime = 'nodejs';
 // SSE proxies must stay long-lived; the Next 15 default is 10s.
@@ -63,7 +64,7 @@ function forwardHeaders(req: NextRequest): Headers {
   return out;
 }
 
-export async function POST(
+async function postHandler(
   req: NextRequest,
   context: RouteContext,
 ): Promise<Response> {
@@ -149,3 +150,9 @@ export async function POST(
     },
   });
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'platform-intelligence-thread-message',
+  max: 30,
+  window: '1m',
+});

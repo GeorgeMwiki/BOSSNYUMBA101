@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 import { brainForRequest, errorToResponse } from '@/lib/brain-server';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ const ReviewBodySchema = z.object({
   notes: z.string().max(2_000).optional(),
 });
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
@@ -84,3 +85,9 @@ export async function POST(req: Request) {
     reviewedAt: new Date().toISOString(),
   });
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'brain-review',
+  max: 60,
+  window: '1m',
+});

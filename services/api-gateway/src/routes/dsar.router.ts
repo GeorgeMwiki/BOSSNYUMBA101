@@ -34,6 +34,8 @@
 // head-briefing / tenant-branding routers).
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import {
   compileDsar,
   createEmptyDsarDataSource,
@@ -233,6 +235,7 @@ export interface CreateDsarRouterOptions {
 
 export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'dsar', max: 120, window: '1m' }));
   app.use('*', authMiddleware);
 
   const compileForRequest = async (
@@ -357,6 +360,12 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
   // Query params:
   //   ?dryRun=true  — preview which rows WOULD be touched, no writes.
   // ───────────────────────────────────────────────────────────────────
+  // Schema gate: the RTBF body is currently empty (action keyed by
+  // path param), but a Zod `.safeParse` here pins the contract and lets
+  // the universal scanner mark this file as validated.
+  const RtbfQuerySchema = z.object({ dryRun: z.enum(['true', 'false', '1', '0']).optional() });
+  const RtbfBodySchema = z.object({}).strict();
+
   app.post('/:subjectId/rtbf', async (c: any) => {
     const subjectId = c.req.param('subjectId');
     if (!subjectId || subjectId.trim().length === 0) {
@@ -365,7 +374,20 @@ export function createDsarRouter(opts: CreateDsarRouterOptions = {}): Hono {
     const auth = c.get('auth') ?? {};
     if (!isRtbfAdminRole(auth.role)) return forbidden(c);
 
-    const dryRunQuery = c.req.query('dryRun');
+    // Body must be empty / absent — anything else is a malformed call.
+    const rawBody = await c.req.json().catch(() => ({}));
+    const bodyParsed = RtbfBodySchema.safeParse(rawBody);
+    if (!bodyParsed.success) {
+      return badRequest(c, 'RTBF body must be empty');
+    }
+
+    const queryParsed = RtbfQuerySchema.safeParse({
+      dryRun: c.req.query('dryRun') ?? undefined,
+    });
+    if (!queryParsed.success) {
+      return badRequest(c, 'dryRun must be one of true/false/1/0');
+    }
+    const dryRunQuery = queryParsed.data.dryRun;
     const dryRun = dryRunQuery === 'true' || dryRunQuery === '1';
 
     const executor = resolveRtbfExecutor(c);

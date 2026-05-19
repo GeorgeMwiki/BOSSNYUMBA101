@@ -12,6 +12,7 @@
  * safely-redacted envelopes (Wave 19 safe-error contract).
  */
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -42,6 +43,7 @@ const ApproveStepSchema = z
   .strict();
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'monthly-close', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use(
   '*',

@@ -19,6 +19,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/hono-auth';
@@ -37,6 +38,7 @@ const PersonaSchema = z.object({
 const PersonaPatchSchema = PersonaSchema.partial().omit({ id: true });
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'persona-registry', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function reg(c: any) {

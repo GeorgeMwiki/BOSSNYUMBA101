@@ -21,6 +21,7 @@ import {
   createDatabaseClient,
   BrainThreadRepository,
 } from '@bossnyumba/database';
+import { withRateLimit } from '@/lib/with-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ interface TurnBody {
   userText?: string;
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let body: TurnBody;
   try {
     body = (await req.json()) as TurnBody;
@@ -140,3 +141,9 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const POST = withRateLimit(postHandler, {
+  key: 'customer-brain-turn',
+  max: 30,
+  window: '1m',
+});

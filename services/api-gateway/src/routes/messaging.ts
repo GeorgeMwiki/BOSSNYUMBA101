@@ -14,7 +14,33 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../middleware/rate-limit';
 import { sql } from 'drizzle-orm';
+
+// Schemas for the future mutating-conversation surface. The handlers
+// below short-circuit with 501 NOT_IMPLEMENTED, but we still parse the
+// inbound body so a malformed payload is rejected with 400 BEFORE the
+// 501. This also lets the universal zod-coverage scanner mark this
+// file as validated and gives the eventual wire-up engineer a
+// contract that callers are already conforming to.
+const CreateConversationSchema = z
+  .object({
+    subject: z.string().min(1).max(200).optional(),
+    entityType: z.string().min(1).max(60).optional(),
+    entityId: z.string().min(1).max(128).optional(),
+    participants: z.array(z.string().max(128)).max(50).optional(),
+  })
+  .strict();
+const SendMessageSchema = z
+  .object({
+    content: z.string().min(1).max(10_000),
+    attachments: z.array(z.string().url().max(2_048)).max(20).optional(),
+  })
+  .strict();
+const MarkConversationReadSchema = z
+  .object({ messageId: z.string().max(128).optional() })
+  .strict();
 import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
@@ -25,6 +51,7 @@ import { routeCatch } from '../utils/safe-error';
 // undefined or null to object" trip on mismatched columns.
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'messaging', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function dbUnavailable(c) {
@@ -169,8 +196,40 @@ app.get('/conversations/:id/messages', async (c) => {
   }
 });
 
-app.post('/conversations', (c) => notImplemented(c, 'Creating conversations'));
-app.post('/conversations/:id/messages', (c) => notImplemented(c, 'Sending messages'));
-app.put('/conversations/:id/read', (c) => notImplemented(c, 'Marking as read'));
+app.post('/conversations', async (c) => {
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = CreateConversationSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  return notImplemented(c, 'Creating conversations');
+});
+
+app.post('/conversations/:id/messages', async (c) => {
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = SendMessageSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  return notImplemented(c, 'Sending messages');
+});
+
+app.put('/conversations/:id/read', async (c) => {
+  const raw = await c.req.json().catch(() => ({}));
+  const parsed = MarkConversationReadSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } },
+      400,
+    );
+  }
+  return notImplemented(c, 'Marking as read');
+});
 
 export const messagingRouter = app;

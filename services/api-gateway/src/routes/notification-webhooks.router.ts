@@ -15,6 +15,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface WebhookHandlerDeps {
@@ -141,6 +142,7 @@ function normalizeMetaStatus(raw: Record<string, unknown>): {
 
 export function createNotificationWebhookRouter(deps: WebhookHandlerDeps): Hono {
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'notification-webhooks', max: 120, window: '1m' }));
 
   app.post('/africastalking', async (c) => {
     const raw = await c.req.raw.text();

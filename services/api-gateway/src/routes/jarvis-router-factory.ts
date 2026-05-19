@@ -27,6 +27,7 @@
 // `admin-platform-portal`. Do not confuse the two surfaces.
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -277,6 +278,7 @@ export function createJarvisRouter(config: JarvisRouterConfig): Hono {
   });
 
   const app = new Hono();
+app.use('*', withRateLimit({ key: 'jarvis-router-factory', max: 120, window: '1m' }));
   app.use('*', authMiddleware);
 
   app.post('/think', zValidator('json', ThinkSchema), async (c) => {

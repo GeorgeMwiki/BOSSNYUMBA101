@@ -28,6 +28,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -36,6 +37,7 @@ import { authMiddleware } from '../middleware/hono-auth';
 import { routeCatch } from '../utils/safe-error';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'inspections', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 
 function dbUnavailable(c) {

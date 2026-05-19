@@ -18,6 +18,7 @@
  */
 
 import { Hono } from 'hono';
+import { withRateLimit } from '../middleware/rate-limit';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { v4 as uuid } from 'uuid';
@@ -31,6 +32,7 @@ import { and, eq, desc } from 'drizzle-orm';
 import { maintenanceRequests } from '@bossnyumba/database';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'maintenance', max: 120, window: '1m' }));
 
 app.use('*', authMiddleware);
 app.use('*', databaseMiddleware);

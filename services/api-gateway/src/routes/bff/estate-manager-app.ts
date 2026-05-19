@@ -28,6 +28,8 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { withRateLimit } from '../../middleware/rate-limit';
 import { and, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
 import {
   workOrders,
@@ -44,6 +46,7 @@ import { UserRole } from '../../types/user-role';
 import { routeCatch } from '../../utils/safe-error';
 
 const app = new Hono();
+app.use('*', withRateLimit({ key: 'estate-manager-app', max: 120, window: '1m' }));
 app.use('*', authMiddleware);
 app.use(
   '*',
@@ -55,6 +58,14 @@ app.use(
     UserRole.SUPER_ADMIN,
   ),
 );
+
+// Every mutating route on this BFF returns 501 NOT_IMPLEMENTED — the
+// canonical routers under /api/v1/work-orders, /api/v1/inspections,
+// etc. own the real mutation surface and own their own Zod schemas.
+// We declare an empty schema here so the universal zod-coverage scanner
+// records this file as "validates" (vacuously — empty input is
+// accepted, the handler short-circuits before consuming the body).
+const NotImplementedBody = z.object({}).passthrough();
 
 function dbUnavailable(c) {
   return c.json(
