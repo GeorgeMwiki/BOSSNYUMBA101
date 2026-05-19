@@ -167,3 +167,18 @@ export type {
   KGGrowthConfig,
   KGObservation,
 } from './knowledge-graph-growth/index.js';
+
+// 8. distilled-student-infra
+export {
+  OllamaClient,
+  VLLMClient,
+  BedrockHaikuClient,
+  resolveStudentClient,
+} from './distilled-student-infra/index.js';
+export type {
+  IStudentModelClient,
+  StudentInvokeInput,
+  StudentInvokeOutput,
+  StudentResolutionInput,
+  NcCostCascadeFallback,
+} from './distilled-student-infra/index.js';
