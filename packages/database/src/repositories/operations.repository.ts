@@ -1,10 +1,14 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum column narrowing: accepts only literal union in eq(); repo params arrive as `string`. Tracked: drizzle-team/drizzle-orm#2389 (pgEnum string narrowing). Revisit after drizzle 0.37 lands widened overloads.
 /**
  * Operations repositories — DispatchEvent, CompletionProof, VendorAssignment.
  *
  * These schemas existed in packages/database/src/schemas/maintenance.schema.ts
  * but had no matching repository. Added here so the api-gateway maintenance
  * routes can read/write them through a tenant-scoped, soft-delete-aware API.
+ *
+ * The schema/repo drift documented in PR #132 (missing dispatchEvents
+ * lifecycle timestamps, completionProofs verify/reject columns, and
+ * vendorAssignments.endsAt) was closed by adding the columns to
+ * maintenance.schema.ts in this PR. @ts-nocheck has been removed.
  */
 
 import { and, desc, eq, inArray } from 'drizzle-orm';
@@ -175,11 +179,13 @@ export class CompletionProofRepository {
     tenantId: string,
     reason: string
   ): Promise<CompletionProofRow | null> {
+    const now = new Date();
     const [row] = await this.db
       .update(completionProofs)
       .set({
         rejectedReason: reason,
-        updatedAt: new Date(),
+        rejectedAt: now,
+        updatedAt: now,
       })
       .where(
         and(eq(completionProofs.id, id), eq(completionProofs.tenantId, tenantId))
