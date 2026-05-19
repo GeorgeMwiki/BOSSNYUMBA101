@@ -64,3 +64,32 @@ export type {
   FeedbackEventStore,
   OwnerReactionPorts,
 } from './owner-reaction-capture/index.js';
+
+// 3. preference-pair-builder
+export {
+  buildPreferencePairs,
+  pairToJsonlRow,
+  applyQualityFilter,
+  hasMinimumCohort,
+  generateKtoFromThumbs,
+  generateDpoFromRegenerateThenAccept,
+  generateDpoFromOwnerEdit,
+  generateKtoFromStarRating,
+  generatePrmStepDpoFromToolRecovery,
+  MIN_PAIRS_BEFORE_TUNING,
+  MIN_CHOSEN_QUALITY,
+  REJECTED_PERCENTILE_TARGET,
+} from './preference-pair-builder/index.js';
+export type {
+  BuildPreferencePairsInput,
+  BuildPreferencePairsResult,
+  PreferencePairSources,
+  FeedbackEventReader,
+  ToolRecoveryFeed,
+  GeneratorDeps,
+  TurnContentResolver,
+  QualityScorer,
+  ToolFailThenSucceedInput,
+  QualityFilterInput,
+  QualityVerdict,
+} from './preference-pair-builder/index.js';
