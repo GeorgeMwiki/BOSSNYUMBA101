@@ -1,0 +1,73 @@
+{
+  "name": "@bossnyumba/max-tool-use",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Phase M-C — Maximum Tool-Use Capabilities. Programmatic Tool Calling (PTC), Message Batches API, Files+Citations API, Computer Use, composed web research, Memory tool, MCP Connectors, and 1h prompt-cache opt-in. Closes L2 top-10 frontier capabilities.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./programmatic-tool-calling": {
+      "types": "./dist/programmatic-tool-calling/index.d.ts",
+      "import": "./dist/programmatic-tool-calling/index.js"
+    },
+    "./batch-api": {
+      "types": "./dist/batch-api/index.d.ts",
+      "import": "./dist/batch-api/index.js"
+    },
+    "./files-citations": {
+      "types": "./dist/files-citations/index.d.ts",
+      "import": "./dist/files-citations/index.js"
+    },
+    "./computer-use": {
+      "types": "./dist/computer-use/index.d.ts",
+      "import": "./dist/computer-use/index.js"
+    },
+    "./web-research": {
+      "types": "./dist/web-research/index.d.ts",
+      "import": "./dist/web-research/index.js"
+    },
+    "./memory-tool": {
+      "types": "./dist/memory-tool/index.d.ts",
+      "import": "./dist/memory-tool/index.js"
+    },
+    "./mcp-connectors": {
+      "types": "./dist/mcp-connectors/index.d.ts",
+      "import": "./dist/mcp-connectors/index.js"
+    },
+    "./cache-control": {
+      "types": "./dist/cache-control/index.d.ts",
+      "import": "./dist/cache-control/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.30.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
+  }
+}
