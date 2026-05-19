@@ -102,15 +102,33 @@ describe('client schemas — data-table', () => {
     });
     expect(r.success).toBe(false);
   });
-  it('rejects column with unknown currency', () => {
-    const r = DataTablePartSchema.safeParse({
-      kind: 'data-table',
-      columns: [
-        { id: 'r', header: 'R', accessorKey: 'r', format: 'currency', currency: 'EUR' },
-      ],
-      rows: [],
-    });
-    expect(r.success).toBe(false);
+  it('accepts any ISO-4217 currency code (H13 — no jurisdiction hardcoding)', () => {
+    // EUR, NGN, UGX, RWF, ZAR, GHS used to be rejected by the old
+    // `z.enum(['KES','TZS','USD'])`. The platform is built for the world
+    // starting with TZ — currency must not be hardcoded.
+    for (const currency of ['EUR', 'NGN', 'UGX', 'RWF', 'ZAR', 'GHS', 'KES', 'USD']) {
+      const r = DataTablePartSchema.safeParse({
+        kind: 'data-table',
+        columns: [
+          { id: 'r', header: 'R', accessorKey: 'r', format: 'currency', currency },
+        ],
+        rows: [],
+      });
+      expect(r.success).toBe(true);
+    }
+  });
+
+  it('rejects malformed currency codes (lowercase, wrong length, digits)', () => {
+    for (const currency of ['eur', 'EU', 'EURO', 'US1', '123']) {
+      const r = DataTablePartSchema.safeParse({
+        kind: 'data-table',
+        columns: [
+          { id: 'r', header: 'R', accessorKey: 'r', format: 'currency', currency },
+        ],
+        rows: [],
+      });
+      expect(r.success).toBe(false);
+    }
   });
 });
 
@@ -169,13 +187,33 @@ describe('client schemas — kpi-grid', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe('client schemas — prefill-form', () => {
-  it('accepts well-formed payload with relative action', () => {
+  it('accepts well-formed payload with allowed action path', () => {
     const r = PrefillFormPartSchema.safeParse({
       kind: 'prefill-form',
-      formId: 'tenant.create',
+      formId: 'tenant-create',
       schemaJson: { type: 'object', properties: { name: { type: 'string' } } },
       values: { name: 'Otieno' },
-      action: '/api/tenants',
+      action: '/api/gateway/forms/tenant-create',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('accepts a sub-action variant like /draft', () => {
+    const r = PrefillFormPartSchema.safeParse({
+      kind: 'prefill-form',
+      formId: 'tenant-create',
+      schemaJson: {},
+      values: {},
+      action: '/api/gateway/forms/tenant-create/draft',
+    });
+    expect(r.success).toBe(true);
+  });
+  it('accepts an absolute https form action on a same-origin host', () => {
+    const r = PrefillFormPartSchema.safeParse({
+      kind: 'prefill-form',
+      formId: 'tenant-create',
+      schemaJson: {},
+      values: {},
+      action: 'https://app.bossnyumba.com/api/gateway/forms/tenant-create',
     });
     expect(r.success).toBe(true);
   });
@@ -184,7 +222,7 @@ describe('client schemas — prefill-form', () => {
       kind: 'prefill-form',
       formId: 'x',
       values: {},
-      action: '/api/x',
+      action: '/api/gateway/forms/x',
     });
     expect(r.success).toBe(false);
   });
@@ -196,6 +234,48 @@ describe('client schemas — prefill-form', () => {
       values: {},
     });
     expect(r.success).toBe(false);
+  });
+  it('rejects an arbitrary internal admin path (C4 CSRF guard)', () => {
+    const r = PrefillFormPartSchema.safeParse({
+      kind: 'prefill-form',
+      formId: 'x',
+      schemaJson: {},
+      values: {},
+      action: '/api/internal/admin-revoke-grant?u=ALL',
+    });
+    expect(r.success).toBe(false);
+  });
+  it('rejects javascript: / data: / file: schemes (C4)', () => {
+    for (const action of [
+      'javascript:alert(1)',
+      'data:text/html,<script>x</script>',
+      'file:///etc/passwd',
+    ]) {
+      const r = PrefillFormPartSchema.safeParse({
+        kind: 'prefill-form',
+        formId: 'x',
+        schemaJson: {},
+        values: {},
+        action,
+      });
+      expect(r.success).toBe(false);
+    }
+  });
+  it('rejects path-traversal attempts (C4)', () => {
+    for (const action of [
+      '/api/gateway/forms/../internal/admin',
+      '/api/gateway/forms/x?u=ALL',
+      '/api/gateway/forms/x#fragment',
+    ]) {
+      const r = PrefillFormPartSchema.safeParse({
+        kind: 'prefill-form',
+        formId: 'x',
+        schemaJson: {},
+        values: {},
+        action,
+      });
+      expect(r.success).toBe(false);
+    }
   });
 });
 

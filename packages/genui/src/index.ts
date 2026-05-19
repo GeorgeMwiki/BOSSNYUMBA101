@@ -94,6 +94,7 @@ export type {
   DataflowNode,
   DataflowEdge,
   DecisionTraceStep,
+  Iso4217,
 } from './types';
 
 export {
@@ -102,6 +103,7 @@ export {
   TimelinePartSchema,
   KpiGridPartSchema,
   PrefillFormPartSchema,
+  PrefillFormActionSchema,
   ApprovalPartSchema,
   WorkflowPartSchema,
   MapPartSchema,
