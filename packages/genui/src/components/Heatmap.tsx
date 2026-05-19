@@ -12,7 +12,7 @@ import { useMemo } from 'react';
 import type { AgUiUiPartByKind } from '../types';
 import { Frame, GenUiError } from './Frame';
 import { HeatmapPartSchema } from '../schemas';
-import { formatCurrency, formatNumber, formatPercent } from '../format';
+import { formatNumber, formatPercent } from '../format';
 
 export type HeatmapProps = AgUiUiPartByKind<'heatmap'>;
 
@@ -51,14 +51,18 @@ function colorFor(
 function formatCellValue(props: HeatmapProps, v: number): string {
   if (props.format === 'currency' && props.currency) {
     // ISO-4217 — pass through Intl directly so the formatter accepts any code.
+    // AM-4: was hardcoded 'en-US' locale + 'USD' fallback currency. Pass
+    // `undefined` for locale (host default) and fall through to the
+    // unstyled `${currency} ${value}` form on Intl failure rather than
+    // silently re-stamping USD.
     try {
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: props.currency,
         maximumFractionDigits: 0,
       }).format(v);
     } catch {
-      return formatCurrency(v, 'USD');
+      return `${props.currency} ${formatNumber(v)}`;
     }
   }
   if (props.format === 'percent') return formatPercent(v);

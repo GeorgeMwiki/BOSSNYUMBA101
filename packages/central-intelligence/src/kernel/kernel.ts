@@ -2377,7 +2377,9 @@ export function formatGroundingValue(f: GroundingFact): string {
     const code = f.unit.slice('currency-'.length).toUpperCase();
     if (/^[A-Z]{3}$/.test(code)) {
       try {
-        return new Intl.NumberFormat('en-US', {
+        // AM-4: was hardcoded 'en-US' — pass `undefined` so Intl uses
+        // the host runtime locale rather than forcing Western grouping.
+        return new Intl.NumberFormat(undefined, {
           style: 'currency',
           currency: code,
           currencyDisplay: 'code',
@@ -2385,7 +2387,7 @@ export function formatGroundingValue(f: GroundingFact): string {
       } catch {
         // Intl rejects truly unknown codes (e.g. 'AAA'); fall through
         // to the bare code + grouped number so the fact still appears.
-        return `${code} ${f.value.toLocaleString('en-US')}`;
+        return `${code} ${f.value.toLocaleString(undefined)}`;
       }
     }
   }

@@ -19,8 +19,12 @@ export type SliderInputProps = AgUiUiPartByKind<'slider-input'>;
 function fmt(props: SliderInputProps, v: number): string {
   if (props.format === 'percent') return formatPercent(v);
   if (props.format === 'currency' && props.currency) {
+    // AM-4: was hardcoded 'en-US' which forced Western grouping
+    // (commas every three digits) on every locale. Pass `undefined` so
+    // Intl picks the host runtime locale, then route through the shared
+    // formatCurrency helper which has the hint-table fallback.
     try {
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: props.currency,
         maximumFractionDigits: 0,

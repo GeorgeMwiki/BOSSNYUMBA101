@@ -37,8 +37,9 @@ function arcPath(startAngle: number, endAngle: number): string {
 function formatGaugeValue(props: GaugeProps, v: number): string {
   if (props.format === 'percent') return formatPercent(v);
   if (props.format === 'currency' && props.currency) {
+    // AM-4: was 'en-US' — `undefined` lets Intl use the host locale.
     try {
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: props.currency,
         maximumFractionDigits: 0,

@@ -22,8 +22,10 @@ const H = 28;
 function formatMetricValue(props: MetricSparklineProps, v: number): string {
   if (props.format === 'percent') return formatPercent(v);
   if (props.format === 'currency' && props.currency) {
+    // AM-4: was 'en-US' — pass `undefined` so Intl picks the host
+    // runtime locale instead of forcing Western grouping.
     try {
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: props.currency,
         maximumFractionDigits: 0,
