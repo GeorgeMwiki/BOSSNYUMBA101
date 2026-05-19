@@ -1,4 +1,3 @@
-// @ts-nocheck — drizzle-orm v0.36 pgEnum narrowing rejects string assignments on utilityType/status columns; revisit when schema enums tighten. Tracked: drizzle-team/drizzle-orm#2389.
 /**
  * Utilities Repository
  * PostgreSQL implementation for Utility Accounts, Readings, and Bills persistence
@@ -70,7 +69,13 @@ export class UtilitiesRepository {
       conditions.push(eq(utilityAccounts.unitId, options.unitId));
     }
     if (options?.utilityType) {
-      conditions.push(eq(utilityAccounts.utilityType, options.utilityType));
+      // drizzle 0.45 pgEnum eq() expects the literal-union type
+      conditions.push(
+        eq(
+          utilityAccounts.utilityType,
+          options.utilityType as (typeof utilityAccounts.utilityType.enumValues)[number],
+        ),
+      );
     }
 
     const rows = await this.db
@@ -134,7 +139,12 @@ export class UtilitiesRepository {
     const conditions = [eq(utilityBills.accountId, accountId)];
 
     if (options?.status) {
-      conditions.push(eq(utilityBills.status, options.status));
+      conditions.push(
+        eq(
+          utilityBills.status,
+          options.status as (typeof utilityBills.status.enumValues)[number],
+        ),
+      );
     }
 
     return this.db
@@ -152,10 +162,11 @@ export class UtilitiesRepository {
     status: string,
     paidAt?: Date
   ) {
+    const statusEnum = status as (typeof utilityBills.status.enumValues)[number];
     const [row] = await this.db
       .update(utilityBills)
       .set({
-        status,
+        status: statusEnum,
         paidAt: status === 'paid' ? paidAt ?? new Date() : undefined,
         updatedAt: new Date(),
       })
