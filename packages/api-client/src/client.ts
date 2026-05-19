@@ -100,6 +100,10 @@ export class ApiClient {
   private config: ApiClientConfig;
   private accessToken?: string;
   private refreshToken?: string;
+  /** AM-1 — in-memory CSRF token. Echoed as X-CSRF-Token on mutations. */
+  private csrfToken?: string;
+  /** AM-1 — single-flight refresh promise so concurrent 401s share one /refresh. */
+  private cookieRefreshPromise?: Promise<boolean>;
   private refreshPromise?: Promise<TokenPair>;
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
@@ -118,6 +122,49 @@ export class ApiClient {
     }
     if (config.refreshToken) {
       this.refreshToken = config.refreshToken;
+    }
+    if (config.csrfToken) {
+      this.csrfToken = config.csrfToken;
+    }
+  }
+
+  // =========================================================================
+  // AM-1 — Cookie-mode + CSRF helpers
+  // =========================================================================
+
+  /** True when the client is operating in cookie-mode (httpOnly bn_session). */
+  isCookieMode(): boolean {
+    return Boolean(this.config.useCookieAuth);
+  }
+
+  /** Update the in-memory CSRF token (called after /auth/login + /auth/refresh). */
+  setCsrfToken(token: string | undefined): void {
+    this.csrfToken = token;
+  }
+
+  getCsrfToken(): string | undefined {
+    return this.csrfToken;
+  }
+
+  /**
+   * Fetch a CSRF token from the gateway and stash it in memory.
+   * Called at app boot or when a CSRF_TOKEN_* error indicates the
+   * in-memory copy is stale.
+   */
+  async fetchCsrfToken(): Promise<string | undefined> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}/auth/csrf`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) return undefined;
+      const body = (await response.json()) as { data?: { csrfToken?: string } };
+      const token = body?.data?.csrfToken;
+      if (token) this.csrfToken = token;
+      return token;
+    } catch {
+      return undefined;
     }
   }
 
@@ -263,13 +310,18 @@ export class ApiClient {
     // Build URL with params
     const fullUrl = this.buildUrl(url, params);
 
-    // Build headers
-    const headers = this.buildHeaders(skipAuth);
+    // Build headers (cookie-mode CSRF header is keyed off method)
+    const headers = this.buildHeaders(skipAuth, method);
 
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutMs = timeout || this.config.timeout || 30000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    // AM-1: cookie-mode sends credentials so the browser attaches the
+    // httpOnly `bn_session` cookie. Legacy bearer-mode keeps the
+    // pre-existing behaviour (no cookies, header only).
+    const credentials: RequestCredentials | undefined = this.isCookieMode() ? 'include' : undefined;
 
     try {
       let response = await this.executeWithRetry(
@@ -279,6 +331,7 @@ export class ApiClient {
             headers,
             body: body ? JSON.stringify(body) : undefined,
             signal: signal || controller.signal,
+            credentials,
           }),
         options
       );
@@ -290,12 +343,20 @@ export class ApiClient {
         response = await interceptor(response, config);
       }
 
-      // Handle token refresh
-      if (response.status === 401 && !skipAuth && this.refreshToken && this.config.onTokenRefresh) {
-        const refreshed = await this.handleTokenRefresh();
-        if (refreshed) {
-          // Retry the original request with new token
-          return this.request<T>(method, path, { ...options, skipAuth: true });
+      // Handle 401 — refresh and retry, then on second 401 surrender to
+      // the caller-provided auth-error handler. Cookie-mode and legacy
+      // bearer-mode use different refresh codepaths.
+      if (response.status === 401 && !skipAuth) {
+        if (this.isCookieMode()) {
+          const refreshed = await this.handleCookieRefresh();
+          if (refreshed) {
+            return this.request<T>(method, path, { ...options, skipAuth: true });
+          }
+        } else if (this.refreshToken && this.config.onTokenRefresh) {
+          const refreshed = await this.handleTokenRefresh();
+          if (refreshed) {
+            return this.request<T>(method, path, { ...options, skipAuth: true });
+          }
         }
       }
 
@@ -339,7 +400,7 @@ export class ApiClient {
     return url.toString();
   }
 
-  private buildHeaders(skipAuth?: boolean): HeadersInit {
+  private buildHeaders(skipAuth?: boolean, method?: HttpMethod): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -349,7 +410,15 @@ export class ApiClient {
       headers['X-Tenant-ID'] = this.config.tenantId;
     }
 
-    if (!skipAuth && this.accessToken) {
+    if (this.isCookieMode()) {
+      // Cookie-mode: do NOT set Authorization header (cookie is the
+      // authoritative credential). Echo CSRF token on mutations so the
+      // gateway's csrf.middleware.ts accepts the request.
+      if (!skipAuth && method && method !== 'GET' && this.csrfToken) {
+        headers['X-CSRF-Token'] = this.csrfToken;
+      }
+    } else if (!skipAuth && this.accessToken) {
+      // Legacy bearer-mode (pre-AM-1 callers).
       headers['Authorization'] = `Bearer ${this.accessToken}`;
     }
 
@@ -442,6 +511,44 @@ export class ApiClient {
       data: data.data ?? data,
       pagination: data.pagination ?? data.meta,
     };
+  }
+
+  /**
+   * AM-1 — cookie-mode token refresh.
+   *
+   * On a 401 the client calls /api/v1/auth/refresh which rotates the
+   * `bn_session` + `bn_refresh` cookies server-side. We update the
+   * in-memory CSRF token from the response body, then signal the caller
+   * to retry. Single-flight: concurrent 401s share one in-flight refresh.
+   */
+  private async handleCookieRefresh(): Promise<boolean> {
+    if (this.cookieRefreshPromise) {
+      return this.cookieRefreshPromise;
+    }
+    this.cookieRefreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.config.baseUrl}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        if (!response.ok) {
+          // Refresh failed (refresh-cookie expired / revoked / missing).
+          this.config.onAuthError?.();
+          return false;
+        }
+        const body = (await response.json()) as { data?: { csrfToken?: string } };
+        if (body?.data?.csrfToken) this.csrfToken = body.data.csrfToken;
+        return true;
+      } catch {
+        this.config.onAuthError?.();
+        return false;
+      } finally {
+        this.cookieRefreshPromise = undefined;
+      }
+    })();
+    return this.cookieRefreshPromise;
   }
 
   private async handleTokenRefresh(): Promise<boolean> {

@@ -18,6 +18,11 @@ export {
   type ErrorInterceptor,
 } from './client';
 
+// AM-1 — legacy-token scrubber. Each portal's AuthProvider calls this
+// once at boot to evict residual localStorage bearers + post them to
+// the gateway's blocklist endpoint. See legacy-token-scrubber.ts.
+export { scrubLegacyTokens, hasLegacyTokens } from './legacy-token-scrubber';
+
 // Types
 export * from './types';
 

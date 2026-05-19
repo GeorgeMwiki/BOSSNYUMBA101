@@ -85,9 +85,9 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** Tenant ID for multi-tenant requests */
   tenantId?: string;
-  /** Access token for authentication */
+  /** Access token for authentication (LEGACY — prefer cookie-mode) */
   accessToken?: string;
-  /** Refresh token for token refresh */
+  /** Refresh token for token refresh (LEGACY — prefer cookie-mode) */
   refreshToken?: string;
   /** Request timeout in milliseconds */
   timeout?: number;
@@ -101,6 +101,32 @@ export interface ApiClientConfig {
   onTokenRefresh?: RefreshTokenFn;
   /** Auth error callback (e.g., logout) */
   onAuthError?: () => void;
+  /**
+   * AM-1 — cookie-mode authentication.
+   *
+   * When true the client:
+   *   - sends `credentials: 'include'` on every fetch so the browser
+   *     attaches the httpOnly `bn_session` cookie automatically;
+   *   - omits the `Authorization: Bearer` header (cookie is the
+   *     authoritative source);
+   *   - echoes the in-memory CSRF token as `X-CSRF-Token` on every
+   *     mutation (POST/PUT/PATCH/DELETE);
+   *   - on a 401 with `code: 'TOKEN_EXPIRED'`, calls
+   *     `/api/v1/auth/refresh` (which rotates the cookies server-side)
+   *     and replays the original request — no bearer juggling on the
+   *     client.
+   *
+   * Default: false during the migration window. Portals opt in
+   * explicitly via `initializeApiClient({ useCookieAuth: true, ... })`.
+   */
+  useCookieAuth?: boolean;
+  /**
+   * AM-1 — CSRF token held in memory. Required when `useCookieAuth` is
+   * true and the request is a mutation. The portal fetches this from
+   * `/api/v1/auth/csrf` at app boot and refreshes it from the body of
+   * /auth/login and /auth/refresh.
+   */
+  csrfToken?: string;
 }
 
 /** Request configuration */

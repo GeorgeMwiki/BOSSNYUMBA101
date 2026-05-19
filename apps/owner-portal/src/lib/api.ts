@@ -37,25 +37,106 @@ interface ApiResponse<T = unknown> {
   };
 }
 
+// AM-1 — CSRF token held in memory only. The login flow updates it from
+// the response body of /auth/login; the boot flow fetches it via
+// /auth/csrf. NEVER persisted to localStorage (no XSS exfiltration risk
+// because the matching cookie is unreadable from cross-origin scripts —
+// see services/api-gateway/src/middleware/csrf.middleware.ts).
+let csrfToken: string | undefined;
+
+export function setCsrfToken(token: string | undefined): void {
+  csrfToken = token;
+}
+export function getCsrfToken(): string | undefined {
+  return csrfToken;
+}
+
+/**
+ * Fetch the CSRF token from the gateway at app boot. Called once from
+ * AuthContext after the initial /auth/me hydration so we have a valid
+ * token in memory before any mutation runs.
+ */
+export async function bootstrapCsrfToken(): Promise<string | undefined> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as { data?: { csrfToken?: string } };
+    if (body?.data?.csrfToken) csrfToken = body.data.csrfToken;
+    return csrfToken;
+  } catch {
+    return undefined;
+  }
+}
+
+let cookieRefreshPromise: Promise<boolean> | undefined;
+
+/**
+ * Single-flight refresh — concurrent 401s share one in-flight request to
+ * /auth/refresh. The gateway rotates `bn_session` + `bn_refresh` +
+ * `bn_csrf` cookies in the response; we read the new CSRF from the body.
+ */
+async function refreshCookieSession(): Promise<boolean> {
+  if (cookieRefreshPromise) return cookieRefreshPromise;
+  cookieRefreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: '{}',
+      });
+      if (!response.ok) return false;
+      const body = (await response.json()) as { data?: { csrfToken?: string } };
+      if (body?.data?.csrfToken) csrfToken = body.data.csrfToken;
+      return true;
+    } catch {
+      return false;
+    } finally {
+      cookieRefreshPromise = undefined;
+    }
+  })();
+  return cookieRefreshPromise;
+}
+
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retried = false
 ): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('token');
+  // AM-1 — cookie-mode auth. No localStorage read; the browser attaches
+  // the httpOnly `bn_session` cookie automatically when we set
+  // `credentials: 'include'`. CSRF token rides as a header on mutations.
+  const method = String(options.method ?? 'GET').toUpperCase();
+  const isMutation = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(isMutation && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
     ...options.headers,
   };
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
+  if (response.status === 401 && !retried) {
+    // Try refresh once; if it works, replay the original request.
+    const refreshed = await refreshCookieSession();
+    if (refreshed) {
+      return request<T>(endpoint, options, true);
+    }
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+
   if (response.status === 401) {
-    localStorage.removeItem('token');
+    // Second 401 after refresh — surrender.
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }
