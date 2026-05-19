@@ -6,6 +6,51 @@
  * action go in; a `CapVerdict` comes out. All side effects (loading the
  * cap, persisting the verdict to the sovereign-action-ledger) belong to
  * the kernel-side adapter that calls this.
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * H7 — TOCTOU contract for the kernel-side adapter (REQUIRED):
+ * ════════════════════════════════════════════════════════════════════
+ * `evaluateAutonomyCap` is a PURE READ against an `AutonomyRollingState`
+ * snapshot. Two parallel sub-MD spawns can each call this function with
+ * the same snapshot, both receive `allow`, and BOTH increment the
+ * counters — breaching the cap by 1. The substrate cannot prevent this
+ * because it has no clock and no transaction handle.
+ *
+ * **Adapters MUST wrap the read-evaluate-write sequence in a single
+ * serialisable transaction**. For Postgres-backed adapters this means:
+ *
+ *   BEGIN;
+ *     SELECT … FROM autonomy_rolling_state
+ *       WHERE tenant_id = $1
+ *       FOR UPDATE;
+ *     -- call evaluateAutonomyCap(cap, action, state) HERE
+ *     -- if verdict.kind === 'allow', UPDATE … SET counters = … ;
+ *   COMMIT;
+ *
+ * For Redis-backed adapters use a `WATCH ... MULTI ... EXEC` block or a
+ * Lua script. For in-memory test adapters a process-mutex is sufficient.
+ *
+ * Without this discipline the documented "hard cap" can be breached by
+ * the race-window count of parallel evaluators.
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * H8 — Timezone contract for "today" boundaries:
+ * ════════════════════════════════════════════════════════════════════
+ * `AutonomyRollingState.mutationsToday` and `.costUsdCentsToday` are
+ * consumed AS-IS. The substrate does not compute "today" — the adapter
+ * does. The contract is:
+ *
+ *   The adapter MUST roll the counters at midnight in the **tenant's
+ *   local timezone**, not UTC. For tenants in Tanzania (UTC+3) a UTC
+ *   midnight reset happens at 3 AM local — that's mid-business-day and
+ *   wrong. The adapter's rolling-state implementation MUST take the
+ *   tenant's timezone into account (e.g. via the `timezone` column on
+ *   the tenant row). DST and leap-day handling are the adapter's
+ *   responsibility; this evaluator simply treats the snapshot as the
+ *   authoritative "today so far" view.
+ *
+ * `TenantAutonomyCap` will carry an optional `timezone` field in a
+ * future minor — for now adapters store it alongside the rolling state.
  */
 
 import type {
@@ -153,7 +198,12 @@ function applyThreshold(args: ThresholdArgs): CapVerdict | null {
     });
   }
   const ratio = args.after / args.ceiling;
-  if (ratio > args.hardStopAt) {
+  // H6 — inclusive comparison at hardStopAt. Pre-fix the 50th action at
+  // ceiling=50, hardStopAt=1.0 landed at ratio=1.0 which is NOT > 1.0
+  // and fell through to the slowdown branch. The documented "hard cap"
+  // therefore allowed exactly-equal usage and only slowed down. Fix:
+  // use >= so the boundary is enforced strictly.
+  if (ratio >= args.hardStopAt) {
     return Object.freeze({
       kind: 'deny-cap-exceeded' satisfies CapVerdictKind,
       reason: `${args.label} would reach ${args.after}/${args.ceiling} (hardStop ${args.hardStopAt})`,

@@ -17,6 +17,7 @@ export type {
   AdaptiveRendererProps,
   AdaptiveRendererSingleProps,
   AdaptiveRendererListProps,
+  GenUiUnknownKindEventDetail,
 } from './AdaptiveRenderer';
 
 export { GENUI_REGISTRY, GENUI_KINDS } from './registry';
@@ -157,7 +158,23 @@ export {
   type PartKind,
 } from './schemas';
 
-export { validateVegaSpec, quickVegaShapeCheck } from './validate';
+export {
+  validateVegaSpec,
+  quickVegaShapeCheck,
+  stripVegaExpressions,
+  VEGA_EXPRESSION_KEYS,
+} from './validate';
+
+// H12 — host-action dispatcher contract (see genui-host-actions.ts JSDoc).
+export {
+  createGenUiActionDispatcher,
+  GENUI_ACTION_EVENTS,
+} from './genui-host-actions';
+export type {
+  GenUiActionEventName,
+  GenUiActionPayload,
+  GenUiActionDispatcherOptions,
+} from './genui-host-actions';
 export {
   formatCurrency,
   formatPercent,

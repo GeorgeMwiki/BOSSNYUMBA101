@@ -115,6 +115,44 @@ describe('evaluateAutonomyCap', () => {
     expect(verdict.kind).toBe('deny-cap-exceeded');
   });
 
+  it('hard-denies AT the cap boundary, not above (H6 off-by-one)', () => {
+    // Pre-fix: with hardStopAt=1.0 and ceiling=50, an action that landed
+    // at ratio = 50/50 = 1.0 was NOT > 1.0, so the check fell through to
+    // slowdownAt and returned slowdown-ask-owner. Tenants could hit
+    // their documented hard cap exactly and only get a warning. Fix uses
+    // >= so ratio === hardStopAt is denied.
+    const cap = defaultCap(TENANT);
+    const state: AutonomyRollingState = {
+      ...emptyState(TENANT),
+      mutationsToday: 49, // after +1 = 50; ratio = 50/50 = 1.0
+    };
+    const verdict = evaluateAutonomyCap(
+      cap,
+      { subMd: 'arrears-triage', tier: 'mutate', estimatedCostUsdCents: 0 },
+      state,
+    );
+    expect(verdict.kind).toBe('deny-cap-exceeded');
+  });
+
+  it('accepts an optional IANA timezone on the cap (H8)', () => {
+    const cap = parseCapPolicy({
+      tenantId: TENANT,
+      timezone: 'Africa/Nairobi',
+      updatedBy: 'tester',
+    });
+    expect(cap.timezone).toBe('Africa/Nairobi');
+  });
+
+  it('rejects a malformed timezone (H8)', () => {
+    expect(() =>
+      parseCapPolicy({
+        tenantId: TENANT,
+        timezone: 'not-a-zone',
+        updatedBy: 'tester',
+      }),
+    ).toThrow();
+  });
+
   it('hard-denies once tenant cost cap is exceeded', () => {
     const cap = defaultCap(TENANT);
     const state: AutonomyRollingState = {
