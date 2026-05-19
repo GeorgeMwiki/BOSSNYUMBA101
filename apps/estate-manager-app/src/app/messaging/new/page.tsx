@@ -15,6 +15,8 @@ import {
   Skeleton,
 } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 interface RecipientOption {
   readonly id: string;
@@ -27,6 +29,7 @@ export default function NewConversationPage() {
   const tList = useTranslations('messagingList');
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
 
   const [recipientId, setRecipientId] = useState('');
   const [subject, setSubject] = useState('');
@@ -34,10 +37,10 @@ export default function NewConversationPage() {
   const [search, setSearch] = useState('');
 
   const customersQuery = useQuery({
-    queryKey: [
+    queryKey: tenantKey(tenant?.id,
       'messaging-new-customers',
       { search: search.trim() || undefined, pageSize: 50 },
-    ],
+    ),
     queryFn: () =>
       customersService.list({
         page: 1,
@@ -78,7 +81,7 @@ export default function NewConversationPage() {
     },
     onSuccess: (response: { data: { id: string } }) => {
       queryClient.invalidateQueries({
-        queryKey: ['messaging-conversations-live'],
+        queryKey: tenantKey(tenant?.id, 'messaging-conversations-live'),
       });
       router.push(`/messaging/${response.data.id}`);
     },

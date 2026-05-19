@@ -361,10 +361,11 @@ export function RegisterPage() {
                   <input type="checkbox" id="acceptTerms" {...registerDetails('acceptTerms')} className="mt-1" />
                   <label htmlFor="acceptTerms" className="text-sm text-gray-600">
                     {t('iAgreeTo')}{' '}
+                    {/* Closes round-3 H-11: pair `noopener` with `noreferrer`. */}
                     <a
                       href="/legal/terms"
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
                     >
                       {t('termsOfService')}
@@ -373,7 +374,7 @@ export function RegisterPage() {
                     <a
                       href="/legal/privacy"
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
                     >
                       {t('privacyPolicy')}

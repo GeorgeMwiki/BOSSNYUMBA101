@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 /**
  * Phone placeholder map. BOSSNYUMBA is a global app — we never hard-code a
@@ -48,6 +50,7 @@ export default function CustomerFormPage() {
   const t = useTranslations('customerForm');
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
 
   const {
     register,
@@ -75,7 +78,7 @@ export default function CustomerFormPage() {
         phone: data.phone && data.phone.length > 0 ? data.phone : 'N/A',
       }),
     onSuccess: (response: { data: { id: string } }) => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'customers') });
       router.push(`/customers/${response.data.id}`);
     },
   });

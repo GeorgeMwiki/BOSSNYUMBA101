@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 interface InspectionRoom {
   id: string;
@@ -140,9 +141,33 @@ export default function OnboardingInspectionPage() {
       0
     ) / rooms.reduce((acc, room) => acc + room.checkpoints.length, 0);
 
+  /**
+   * Closes round-3 H-10 (HIGH): every `URL.createObjectURL(file)`
+   * pins the underlying blob in memory for the document lifetime
+   * unless we `URL.revokeObjectURL()` it. A multi-room inspection
+   * can hold 10–30 MB of blobs; on mobile Safari that OOMs the tab.
+   *
+   * We track every URL in a ref and revoke them all on unmount.
+   * Per-photo revoke happens when the photo is removed.
+   */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    return () => {
+      for (const url of objectUrlsRef.current) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
   // --- Photo handlers ---
   const handlePhotoCapture = (checkpointId: string, file: File) => {
     const url = URL.createObjectURL(file);
+    objectUrlsRef.current.add(url);
     const photoId = `photo_${Date.now()}`;
     setRooms((prev) =>
       prev.map((room) => ({
@@ -254,10 +279,10 @@ export default function OnboardingInspectionPage() {
       // Continue even if API fails
     }
 
-    // Save progress
-    const savedProgress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
-    savedProgress.inspection = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
+    // Save progress through the safe parser so a malformed
+    // localStorage entry self-heals and never throws (closes round-3
+    // C-6 / L-7).
+    patchOnboardingProgress({ inspection: 'completed' });
     localStorage.setItem('inspection_data', JSON.stringify({ rooms, meterReadings: meterData }));
 
     router.push('/onboarding/e-sign');

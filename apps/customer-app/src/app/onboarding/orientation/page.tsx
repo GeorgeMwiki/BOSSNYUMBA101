@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 interface HouseRule {
   id: string;
@@ -195,11 +196,8 @@ export default function OnboardingOrientationPage() {
       // Continue
     }
 
-    const progress = JSON.parse(
-      localStorage.getItem('onboarding_progress') || '{}'
-    );
-    progress.orientation = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+    // Closes round-3 C-6 / L-7.
+    patchOnboardingProgress({ orientation: 'completed' });
 
     setIsSubmitting(false);
     router.push('/onboarding/inspection');

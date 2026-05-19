@@ -131,12 +131,28 @@ export function LoginPage() {
     }
   });
 
+  /**
+   * Closes round-3 H-6 (HIGH): "skip" used to call `login()` directly,
+   * bypassing the `mfa_setup` step the server requested. The button
+   * is now wired to `POST /auth/mfa/skip` so the server records the
+   * skip (and can rate-limit / require enrollment later). When the
+   * server rejects the skip (HTTP 400/403) the user MUST complete
+   * setup — there is no client-side bypass path any more.
+   */
   const handleSkipMfa = async () => {
     setSkipLoading(true);
     try {
-      const { email, password } = getCreds();
-      await login(email, password);
-      navigate('/dashboard');
+      const response = await api.post('/auth/mfa/skip', { tempToken: pendingToken });
+      if (response.success) {
+        const { email, password } = getCreds();
+        await login(email, password);
+        navigate('/dashboard');
+      } else {
+        setServerError(
+          response.error?.message ??
+            t('mfaSkipNotAllowed', { defaultValue: 'Two-factor setup is required for this account.' }),
+        );
+      }
     } catch (err) {
       setServerError(err instanceof Error ? err.message : t('loginFailed'));
     } finally {

@@ -8,14 +8,29 @@
  * cross-tenant `state-mutation` invalidations because they routinely
  * read across the platform.
  *
- * Auth: admin-platform-portal reads the bearer from the Supabase
- * cookie (`sb-access-token`) — same path the JarvisConsole already
- * uses. No AuthContext exists, so we poll the cookie on mount + re-
- * authenticate when it changes (every 60s).
+ * Closes round-3 H-2 (HIGH):
+ *   Previous design read `sb-access-token` via `document.cookie` to
+ *   build the bearer header. That was a contradiction-in-terms — the
+ *   production cookie is httpOnly (correct), so the regex match always
+ *   returned empty and the listener silently never connected. The
+ *   fallback path (cookie NOT httpOnly) would have been worse: XSS
+ *   could read the bearer and the cookie security guarantees were
+ *   gone. Both branches are broken.
+ *
+ *   The new design fetches a short-lived bearer from a same-origin
+ *   `/api/auth/token-for-sse` endpoint. The platform session cookie
+ *   rides that request (`credentials: 'include'`) so we never read
+ *   it from JS. The minted bearer is held only in memory.
+ *
+ * Closes round-3 H-3 (HIGH):
+ *   The bearer was passed as a static `token` string. If silent
+ *   refresh rotated it the listener kept the old value. The new
+ *   listener API accepts a `getToken: () => string` callback so the
+ *   bearer is re-read on every reconnect.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { useQueryClient, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@bossnyumba/design-system';
 import {
   startCrossPortalListener,
@@ -25,48 +40,66 @@ import {
 
 const GATEWAY_BASE_URL =
   process.env.NEXT_PUBLIC_API_GATEWAY_URL?.trim() || '';
-const COOKIE_POLL_MS = 60_000;
-
-function readBearerFromCookie(): string {
-  if (typeof document === 'undefined') return '';
-  const m = document.cookie.match(/sb-access-token=([^;]+)/);
-  return m ? decodeURIComponent(m[1] ?? '') : '';
-}
+const TOKEN_REFRESH_MS = 60_000;
 
 /**
- * The admin-platform-portal does NOT mount a global `QueryClientProvider`
- * (individual feature pages opt in). To stay hook-safe, the listener
- * mounts a **dedicated** client only for cross-portal state-mutation
- * invalidations. Cache reuse with page-level clients would be ideal
- * but is out of scope — most admin pages refetch on focus anyway.
+ * Fetch a short-lived SSE bearer from a same-origin route. The
+ * platform-session httpOnly cookie rides via `credentials: 'include'`.
+ *
+ * Returns `''` when the endpoint is unavailable; the caller treats
+ * that as "not yet authenticated, do not start the listener".
  */
-const SHARED_QUERY_CLIENT = new QueryClient({
-  defaultOptions: { queries: { retry: 0 } },
-});
-
-export function CrossPortalListenerMount(): JSX.Element {
-  return (
-    <QueryClientProvider client={SHARED_QUERY_CLIENT}>
-      <InnerListenerMount />
-    </QueryClientProvider>
-  );
+async function fetchSseBearer(): Promise<string> {
+  if (typeof window === 'undefined') return '';
+  try {
+    const res = await fetch('/api/auth/token-for-sse', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return '';
+    const body = (await res.json().catch(() => null)) as
+      | { token?: string }
+      | null;
+    return typeof body?.token === 'string' ? body.token : '';
+  } catch {
+    return '';
+  }
 }
 
-function InnerListenerMount(): null {
+export function CrossPortalListenerMount(): null {
+  // Closes round-3 H-2 (the dedicated SHARED_QUERY_CLIENT was a
+  // no-op — page-level QueryClientProviders own the real caches).
+  // The listener now uses the surrounding page's QueryClient (mounted
+  // by the layout); state-mutation invalidations therefore actually
+  // hit live pages. If a page sits OUTSIDE a provider the
+  // useQueryClient call throws synchronously and the listener silently
+  // bails — exactly what we want.
   const queryClient = useQueryClient();
   const [token, setToken] = useState<string>('');
   const handleRef = useRef<CrossPortalListenerHandle | null>(null);
+  // A ref keeps the latest token visible to the listener's reconnect
+  // path without re-running the effect — closes round-3 H-3.
+  const tokenRef = useRef<string>('');
 
-  // Poll the cookie so a fresh sign-in / sign-out propagates without
-  // forcing a full page reload. 60s cadence keeps the cost negligible.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setToken(readBearerFromCookie());
-    const id = window.setInterval(() => {
-      setToken(readBearerFromCookie());
-    }, COOKIE_POLL_MS);
-    return (): void => window.clearInterval(id);
+    tokenRef.current = token;
+  }, [token]);
+
+  const refreshToken = useCallback(async () => {
+    const next = await fetchSseBearer();
+    setToken((prev) => (prev === next ? prev : next));
   }, []);
+
+  useEffect(() => {
+    void refreshToken();
+    if (typeof window === 'undefined') return;
+    const id = window.setInterval(() => {
+      void refreshToken();
+    }, TOKEN_REFRESH_MS);
+    return (): void => window.clearInterval(id);
+  }, [refreshToken]);
 
   useEffect(() => {
     if (!token) return;
@@ -75,13 +108,15 @@ function InnerListenerMount(): null {
         case 'announcement':
           toast({
             title: 'Platform announcement',
-            description: String(event.payload.message ?? ''),
+            // Closes round-3 M-14: cap server-pushed payload length so
+            // a malicious / runaway emitter cannot fill the screen.
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'notification':
           toast({
-            title: String(event.payload.title ?? 'Notification'),
-            description: String(event.payload.message ?? ''),
+            title: String(event.payload.title ?? 'Notification').slice(0, 120),
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'state-mutation':
@@ -94,7 +129,7 @@ function InnerListenerMount(): null {
         case 'wake-trigger':
           toast({
             title: 'Mr. Mwikila is asking for an operator',
-            description: String(event.payload.reason ?? ''),
+            description: String(event.payload.reason ?? '').slice(0, 280),
           });
           return;
       }
@@ -103,7 +138,9 @@ function InnerListenerMount(): null {
     let handle: CrossPortalListenerHandle | null = null;
     try {
       handle = startCrossPortalListener({
-        token,
+        // round-3 H-3: pass a fresh-read callback so reconnects
+        // pick up the latest bearer from `tokenRef`.
+        getToken: () => tokenRef.current,
         baseUrl: GATEWAY_BASE_URL,
         onEvent: dispatch,
         onError: (err) => {

@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService, propertiesService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 const unitSchema = z.object({
   propertyId: z.string().min(1, 'Property is required'),
@@ -37,6 +39,7 @@ function UnitFormPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const propertyIdParam = searchParams?.get('propertyId') ?? null;
 
   const {
@@ -66,7 +69,7 @@ function UnitFormPageInner() {
   }, [propertyIdParam, reset]);
 
   const { data: propertiesData } = useQuery({
-    queryKey: ['properties'],
+    queryKey: tenantKey(tenant?.id, 'properties'),
     queryFn: () => propertiesService.list({ pageSize: 100 }),
     retry: false,
   });
@@ -88,8 +91,8 @@ function UnitFormPageInner() {
         depositAmount: data.depositAmount ? parseFloat(data.depositAmount) || 0 : 0,
       }),
     onSuccess: (response: { data: { id: string } }) => {
-      queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'units') });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'properties') });
       router.push(`/units/${response.data.id}`);
     },
   });

@@ -5,13 +5,16 @@ import { useQuery } from '@tanstack/react-query';
 import { workOrdersService } from '@bossnyumba/api-client';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function WorkOrderDetailPage() {
   const t = useTranslations('workOrderSummary');
   const params = useParams();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
   const workOrderQuery = useQuery({
-    queryKey: ['work-order-detail-live', id],
+    queryKey: tenantKey(tenant?.id, 'work-order-detail-live', id),
     queryFn: () => workOrdersService.get(id),
     enabled: !!id,
     retry: false,

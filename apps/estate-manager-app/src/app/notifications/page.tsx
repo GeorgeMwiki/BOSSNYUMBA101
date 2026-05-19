@@ -13,6 +13,9 @@ import {
   Skeleton,
 } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
+import { isSafeNotificationActionUrl } from '@/lib/notification-action-url';
 
 const TENANT_LOCALE =
   process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
@@ -32,9 +35,10 @@ export default function NotificationsPage() {
   const t = useTranslations('notificationsList');
   const tSimple = useTranslations('simple');
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications-list-live'],
+    queryKey: tenantKey(tenant?.id, 'notifications-list-live'),
     queryFn: () => notificationsService.list(undefined, 1, 50),
     retry: false,
   });
@@ -53,9 +57,9 @@ export default function NotificationsPage() {
   const markAllReadMutation = useMutation({
     mutationFn: () => notificationsService.markAllAsRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications-list-live'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'notifications-list-live') });
       queryClient.invalidateQueries({
-        queryKey: ['notifications-unread-count'],
+        queryKey: tenantKey(tenant?.id, 'notifications-unread-count'),
       });
     },
   });
@@ -169,13 +173,14 @@ function NotificationRow({
   actionUrl,
 }: NotificationRowProps) {
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const markReadMutation = useMutation({
     mutationFn: () =>
       notificationsService.markAsRead(id as Parameters<typeof notificationsService.markAsRead>[0]),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications-list-live'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'notifications-list-live') });
       queryClient.invalidateQueries({
-        queryKey: ['notifications-unread-count'],
+        queryKey: tenantKey(tenant?.id, 'notifications-unread-count'),
       });
     },
   });
@@ -204,7 +209,11 @@ function NotificationRow({
     </div>
   );
 
-  if (actionUrl) {
+  // Closes round-3 H-4: validate `actionUrl` is a same-origin relative
+  // path before rendering it inside a Next `<Link>`. External or
+  // dangerous (`javascript:`, `data:`) URLs are dropped — the row is
+  // still rendered, just not linkable.
+  if (actionUrl && isSafeNotificationActionUrl(actionUrl)) {
     return (
       <Link href={actionUrl} className="block">
         {inner}

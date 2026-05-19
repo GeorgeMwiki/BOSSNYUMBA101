@@ -36,6 +36,13 @@ export function CrossPortalListenerMount(): null {
   const queryClient = useQueryClient();
   const [token, setToken] = useState<string>(() => readBearer());
   const handleRef = useRef<CrossPortalListenerHandle | null>(null);
+  // Ref tracks the live bearer for the listener's `getToken` callback
+  // so reconnects always read the most recent value (closes H-3).
+  const tokenRef = useRef<string>(readBearer());
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   // Polls localStorage; AuthContext doesn't yet emit token change events.
   useEffect(() => {
@@ -54,13 +61,15 @@ export function CrossPortalListenerMount(): null {
         case 'announcement':
           toast({
             title: 'Announcement',
-            description: String(event.payload.message ?? ''),
+            // Closes round-3 M-14: cap server-pushed strings so a
+            // runaway emitter cannot pin a screen-filling toast.
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'notification':
           toast({
-            title: String(event.payload.title ?? 'Notification'),
-            description: String(event.payload.message ?? ''),
+            title: String(event.payload.title ?? 'Notification').slice(0, 120),
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'state-mutation':
@@ -73,7 +82,7 @@ export function CrossPortalListenerMount(): null {
         case 'wake-trigger':
           toast({
             title: 'Mr. Mwikila is asking for you',
-            description: String(event.payload.reason ?? ''),
+            description: String(event.payload.reason ?? '').slice(0, 280),
           });
           return;
       }
@@ -82,7 +91,8 @@ export function CrossPortalListenerMount(): null {
     let handle: CrossPortalListenerHandle | null = null;
     try {
       handle = startCrossPortalListener({
-        token,
+        // round-3 H-3: read the bearer fresh on every reconnect.
+        getToken: () => tokenRef.current,
         baseUrl: GATEWAY_BASE_URL,
         onEvent: dispatch,
         onError: (err) => {

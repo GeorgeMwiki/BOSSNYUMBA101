@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
@@ -105,11 +105,30 @@ export default function OnboardingPage() {
     }
   };
 
+  /**
+   * Closes round-3 H-10 (HIGH): track every blob URL we mint so the
+   * underlying File blobs can be garbage-collected on unmount.
+   */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    return () => {
+      for (const url of objectUrlsRef.current) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
   // File handling
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && uploadType) {
       const url = URL.createObjectURL(file);
+      objectUrlsRef.current.add(url);
       if (uploadType === 'front') setIdFrontImage(url);
       else if (uploadType === 'back') setIdBackImage(url);
       else if (uploadType === 'selfie') setSelfieImage(url);

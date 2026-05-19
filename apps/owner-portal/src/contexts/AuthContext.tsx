@@ -169,34 +169,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Closes round-3 H-7 (HIGH): `initAuth` previously fired on every
+   * `[token, resetSessionTimeout]` change. `resetSessionTimeout` is
+   * recreated whenever `sessionTimeoutMinutes` updates, so this effect
+   * raced with itself and could resolve a stale `/auth/me` over a
+   * newer response.
+   *
+   * The fix scopes the effect strictly to token CHANGES, and tracks
+   * the in-flight request via an abort flag so a stale resolution
+   * cannot clobber a newer state write. `resetSessionTimeout` is now
+   * read via `resetTimeoutRef.current` so it does not need to be in
+   * the dependency array.
+   */
+  const resetTimeoutRef = useRef(resetSessionTimeout);
   useEffect(() => {
+    resetTimeoutRef.current = resetSessionTimeout;
+  }, [resetSessionTimeout]);
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
     const initAuth = async () => {
-      if (token) {
-        try {
-          const response: any = await api.get('/auth/me');
-          if (response.data?.success || response.success) {
-            const data: any = response.data?.data || response.data;
-            if (data) {
-              setUser(data.user);
-              setTenant(data.tenant);
-              setRole(data.role);
-              setPermissions(data.permissions || []);
-              setProperties(data.properties || []);
-              resetSessionTimeout();
-            }
-          } else {
-            logout();
+      try {
+        const response: any = await api.get('/auth/me');
+        if (cancelled) return;
+        if (response.data?.success || response.success) {
+          const data: any = response.data?.data || response.data;
+          if (data) {
+            setUser(data.user);
+            setTenant(data.tenant);
+            setRole(data.role);
+            setPermissions(data.permissions || []);
+            setProperties(data.properties || []);
+            resetTimeoutRef.current();
           }
-        } catch (error) {
-          console.error('Auth check failed:', error);
+        } else {
           logout();
         }
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Auth check failed:', error);
+        logout();
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
-  }, [token, resetSessionTimeout]);
+    return () => {
+      cancelled = true;
+    };
+  }, [token, logout]);
 
   const login = async (email: string, password: string) => {
     try {

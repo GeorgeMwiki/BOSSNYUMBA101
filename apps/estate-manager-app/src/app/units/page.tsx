@@ -7,11 +7,14 @@ import { unitsService } from '@bossnyumba/api-client';
 import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function UnitsPage() {
   const t = useTranslations('unitsPage');
+  const { tenant } = useAuth();
   const unitsQuery = useQuery({
-    queryKey: ['units-list-live'],
+    queryKey: tenantKey(tenant?.id, 'units-list-live'),
     queryFn: () => unitsService.list({ page: 1, pageSize: 100 }),
     retry: false,
   });

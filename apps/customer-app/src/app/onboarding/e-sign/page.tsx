@@ -15,6 +15,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ESignature } from '@/components/ESignature';
 import { api } from '@/lib/api';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 interface Document {
   id: string;
@@ -164,12 +165,8 @@ export default function OnboardingESignPage() {
       // Continue
     }
 
-    // Save progress
-    const savedProgress = JSON.parse(
-      localStorage.getItem('onboarding_progress') || '{}'
-    );
-    savedProgress['e-sign'] = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
+    // Save progress (closes round-3 C-6 / L-7).
+    patchOnboardingProgress({ 'e-sign': 'completed' });
 
     router.push('/onboarding/complete');
   };

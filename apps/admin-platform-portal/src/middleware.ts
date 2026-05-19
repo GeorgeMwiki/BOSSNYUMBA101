@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { PLATFORM_SESSION_COOKIE } from './lib/session';
+import { safeRedirectTarget } from './lib/safe-redirect';
 
 /**
  * Gate every route on a valid platform-staff session cookie.
@@ -35,9 +36,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Validate the `next` target before persisting it in the redirect
+  // URL. Same allow-list LoginForm enforces — closes round-3 C-2.
+  const requestedTarget = pathname + search;
+  const safeNext = safeRedirectTarget(requestedTarget, '/');
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = '/login';
-  loginUrl.search = `?next=${encodeURIComponent(pathname + search)}`;
+  loginUrl.search = `?next=${encodeURIComponent(safeNext)}`;
   return NextResponse.redirect(loginUrl);
 }
 

@@ -7,16 +7,19 @@ import { Skeleton } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function CustomerEditPage() {
   const t = useTranslations('customerForm');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['customer', id],
+    queryKey: tenantKey(tenant?.id, 'customer', id),
     queryFn: () => customersService.get(id),
     retry: false,
   });
@@ -53,8 +56,8 @@ export default function CustomerEditPage() {
         phone: data.phone,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer', id] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'customer', id) });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'customers') });
       router.push(`/customers/${id}`);
     },
   });

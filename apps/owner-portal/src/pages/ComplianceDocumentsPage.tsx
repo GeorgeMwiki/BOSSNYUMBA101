@@ -13,6 +13,7 @@ import {
 import { EmptyState } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { api, formatDate } from '../lib/api';
+import { isSafeDocumentUrl } from '../lib/safe-document-url';
 
 type DocumentVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
@@ -157,14 +158,28 @@ export default function ComplianceDocumentsPage() {
                 </div>
               ) : null}
               <div className="mt-3">
-                <a
-                  href={d.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  Open
-                </a>
+                {/*
+                  Closes round-3 H-5: validate the signed URL is
+                  HTTPS (and on an allowed host if configured) before
+                  rendering, and pair `noopener` with `noreferrer` per
+                  OWASP. When the URL fails validation the link is
+                  rendered disabled so users still see "Open" but
+                  cannot follow a poisoned target.
+                */}
+                {isSafeDocumentUrl(d.url) ? (
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Open
+                  </a>
+                ) : (
+                  <span className="text-sm text-gray-400" aria-disabled="true">
+                    Open (unavailable)
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>

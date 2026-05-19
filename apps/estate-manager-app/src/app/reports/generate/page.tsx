@@ -7,6 +7,8 @@ import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { propertiesService, reportsService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 type ReportType = 'occupancy' | 'revenue' | 'maintenance' | 'inspections';
 
@@ -24,6 +26,7 @@ function GenerateReportPageInner() {
   const t = useTranslations('reportGenerate');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { tenant } = useAuth();
   const typeParam = searchParams?.get('type') as ReportType | null;
 
   const [formData, setFormData] = useState({
@@ -35,7 +38,7 @@ function GenerateReportPageInner() {
   });
 
   const propertiesQuery = useQuery({
-    queryKey: ['reports-generate-properties'],
+    queryKey: tenantKey(tenant?.id, 'reports-generate-properties'),
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
     retry: false,
   });

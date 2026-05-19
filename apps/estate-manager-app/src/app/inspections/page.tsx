@@ -7,6 +7,8 @@ import { inspectionsService } from '@bossnyumba/api-client';
 import { Empty, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 const TENANT_LOCALE =
   process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
@@ -22,8 +24,9 @@ function formatDate(dateStr?: string) {
 
 export default function InspectionsPage() {
   const t = useTranslations('inspectionsList');
+  const { tenant } = useAuth();
   const inspectionsQuery = useQuery({
-    queryKey: ['inspections-list-live'],
+    queryKey: tenantKey(tenant?.id, 'inspections-list-live'),
     queryFn: () => inspectionsService.list(undefined, 1, 50),
     retry: false,
   });

@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import { Logomark, ScrubbableChart } from '@bossnyumba/design-system';
 import { headBriefingService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 /**
  * Briefing types derived via `Awaited<ReturnType<...>>` — sidesteps
@@ -61,10 +63,11 @@ type DecisionState = 'idle' | 'approved' | 'declined';
 
 export default function BriefingPage() {
   const t = useTranslations('briefingPage');
+  const { tenant } = useAuth();
   const [decisions, setDecisions] = useState<Record<string, DecisionState>>({});
 
   const briefingQuery = useQuery({
-    queryKey: ['head-briefing', 'full'],
+    queryKey: tenantKey(tenant?.id, 'head-briefing', 'full'),
     queryFn: () => headBriefingService.getMyBriefing(),
     retry: 1,
     staleTime: 60_000,

@@ -29,6 +29,36 @@ import {
   hasApiClient,
   initializeApiClient,
 } from '@bossnyumba/api-client';
+import { z } from 'zod';
+
+/**
+ * Closes round-3 finding C-6 (CRITICAL): unsafe deserialization.
+ *
+ * `readJson` previously cast the parsed JSON straight to `T` with no
+ * shape validation. Any transient XSS could prime `localStorage` with
+ * an attacker-controlled object (e.g. spoof an `activeOrgId` or a fake
+ * manager identity) and the AuthProvider would mount it into context.
+ *
+ * Each schema below is `strict()` so prototype-pollution keys
+ * (`__proto__`, `constructor`) and unknown fields are rejected.
+ */
+const managerUserSchema = z
+  .object({
+    id: z.string().min(1),
+    email: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    role: z.string().optional(),
+    avatarUrl: z.string().optional(),
+  })
+  .strict();
+
+const managerTenantSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string(),
+  })
+  .strict();
 
 export interface ManagerUser {
   readonly id: string;
@@ -66,11 +96,20 @@ const TENANT_KEY = 'manager_tenant';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readJson<T>(key: string): T | null {
+function readValidatedJson<T>(key: string, schema: z.ZodType<T>): T | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+      // Closes round-3 C-6: silently purge malformed entries so a
+      // single XSS write cannot poison this user forever.
+      window.localStorage.removeItem(key);
+      return null;
+    }
+    return result.data;
   } catch {
     return null;
   }
@@ -89,9 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const storedToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
-    const storedUser = readJson<ManagerUser>(USER_KEY);
+    const storedUser = readValidatedJson<ManagerUser>(USER_KEY, managerUserSchema);
     const storedTenant =
-      readJson<ManagerTenant>(TENANT_KEY) ??
+      readValidatedJson<ManagerTenant>(TENANT_KEY, managerTenantSchema) ??
       (window.localStorage.getItem(TENANT_ID_KEY)
         ? { id: window.localStorage.getItem(TENANT_ID_KEY)!, name: '' }
         : null);
@@ -131,8 +170,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(TENANT_ID_KEY, next.id);
       window.localStorage.setItem(TENANT_KEY, JSON.stringify(next));
     }
+    // Closes round-3 C-3 + H-8: clear the per-tenant React Query
+    // cache BEFORE switching state so no in-flight render can read a
+    // stale entry from the previous tenant. removeQueries is
+    // synchronous; queryClient.clear() would also wipe shared
+    // (no-tenant) keys which we want to preserve.
+    queryClient.removeQueries();
     setTenant(next);
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(() => {
     if (typeof window !== 'undefined') {

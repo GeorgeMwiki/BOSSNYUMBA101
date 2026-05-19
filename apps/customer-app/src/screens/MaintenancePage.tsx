@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
@@ -123,10 +123,31 @@ export default function MaintenancePage() {
   const closedTickets = tickets.filter((ticket) => ticket.status === 'completed');
   const displayedTickets = activeTab === 'open' ? openTickets : closedTickets;
 
+  /**
+   * Closes round-3 H-10 (HIGH): track every blob URL we mint so we can
+   * revoke them on unmount or per-photo removal. Maintenance tickets
+   * can attach several photos; without revoke each one pins its
+   * underlying File for the document lifetime.
+   */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    return () => {
+      for (const url of objectUrlsRef.current) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      objectUrlsRef.current.add(url);
       setPhotos([...photos, url]);
     }
     if (fileInputRef.current) {
@@ -135,6 +156,15 @@ export default function MaintenancePage() {
   };
 
   const removePhoto = (index: number) => {
+    const removed = photos[index];
+    if (removed && objectUrlsRef.current.has(removed)) {
+      try {
+        URL.revokeObjectURL(removed);
+      } catch {
+        // ignore
+      }
+      objectUrlsRef.current.delete(removed);
+    }
     setPhotos(photos.filter((_, i) => i !== index));
   };
 

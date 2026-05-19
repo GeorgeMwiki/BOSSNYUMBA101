@@ -8,15 +8,18 @@ import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function PropertyDetailPage() {
   const t = useTranslations('propertyDetail');
   const params = useParams();
   const router = useRouter();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['property', id],
+    queryKey: tenantKey(tenant?.id, 'property', id),
     queryFn: () => propertiesService.get(id),
     retry: false,
   });

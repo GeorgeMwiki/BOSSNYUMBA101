@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -82,13 +83,11 @@ export default function OnboardingWelcomePage() {
       // Continue even if API fails
     }
 
-    // Save progress locally
-    const progress = JSON.parse(
-      localStorage.getItem('onboarding_progress') || '{}'
-    );
-    progress.welcome = 'completed';
-    progress.preferences = { language, channels: selectedChannels };
-    localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+    // Save progress locally (closes round-3 C-6 / L-7).
+    patchOnboardingProgress({
+      welcome: 'completed',
+      preferences: { language, channels: selectedChannels },
+    });
 
     setIsSubmitting(false);
     router.push('/onboarding/documents');

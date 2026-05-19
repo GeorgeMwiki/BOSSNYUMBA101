@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { Logomark } from '@bossnyumba/design-system';
 import { headBriefingService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 /**
  * Briefing types derived via `Awaited<ReturnType<...>>` — sidesteps
@@ -68,9 +70,10 @@ interface AutonomousAction {
 
 export default function ManagerHomePage() {
   const t = useTranslations('homePage');
+  const { tenant } = useAuth();
 
   const briefingQuery = useQuery({
-    queryKey: ['head-briefing', 'home'],
+    queryKey: tenantKey(tenant?.id, 'head-briefing', 'home'),
     queryFn: () => headBriefingService.getMyBriefing(),
     retry: 1,
     staleTime: 60_000,

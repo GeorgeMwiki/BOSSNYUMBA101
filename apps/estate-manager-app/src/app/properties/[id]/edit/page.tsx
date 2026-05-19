@@ -10,6 +10,8 @@ import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { propertiesService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 const propertySchema = z.object({
   name: z.string().trim().min(1, 'Property name is required'),
@@ -32,10 +34,11 @@ export default function PropertyEditPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['property', id],
+    queryKey: tenantKey(tenant?.id, 'property', id),
     queryFn: () => propertiesService.get(id),
     retry: false,
   });
@@ -95,8 +98,8 @@ export default function PropertyEditPage() {
         totalUnits: values.totalUnits,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['property', id] });
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'property', id) });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'properties') });
       router.push(`/properties/${id}`);
     },
   });

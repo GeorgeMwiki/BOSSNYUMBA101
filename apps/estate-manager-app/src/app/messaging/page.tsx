@@ -13,6 +13,8 @@ import {
   Skeleton,
 } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 const TENANT_LOCALE =
   process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
@@ -48,10 +50,11 @@ function describeParticipants(
 
 export default function MessagingPage() {
   const t = useTranslations('messagingList');
+  const { tenant } = useAuth();
   const [search, setSearch] = useState('');
 
   const conversationsQuery = useQuery({
-    queryKey: ['messaging-conversations-live', { page: 1, pageSize: 50 }],
+    queryKey: tenantKey(tenant?.id, 'messaging-conversations-live', { page: 1, pageSize: 50 }),
     queryFn: () => messagingService.listConversations({ page: 1, pageSize: 50 }),
     retry: false,
   });

@@ -7,11 +7,14 @@ import { useTranslations } from 'next-intl';
 import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { orgKey } from '@/lib/tenant-scoped-key';
 
 export default function PaymentHistoryPage() {
   const t = useTranslations('paymentHistory');
+  const { user } = useAuth();
   const historyQuery = useQuery({
-    queryKey: ['customer-payments-history'],
+    queryKey: orgKey(user?.activeOrgId ?? null, 'customer-payments-history'),
     queryFn: () => api.payments.getHistory(1, 50),
   });
 

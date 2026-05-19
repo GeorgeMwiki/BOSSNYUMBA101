@@ -3,7 +3,41 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizePhoneForCountry } from '@bossnyumba/domain-models';
+import {
+  getApiClient,
+  hasApiClient,
+  initializeApiClient,
+} from '@bossnyumba/api-client';
 import { getApiBaseUrl } from '@/lib/api';
+import { parseStoredCustomerUser } from '@/lib/storage-schemas';
+
+/**
+ * Push a freshly-rotated bearer into the singleton @bossnyumba/api-client.
+ *
+ * Closes round-3 finding C-4 (CRITICAL): `ensureClient()` previously
+ * initialised the client with the bearer ONCE per page load. After
+ * `setActiveOrg`, `verifyOtp`, or `logout`, the bearer in localStorage
+ * would change but the in-memory client kept the old one — so every
+ * subsequent API call went out under the WRONG org's token and the
+ * gateway happily served cross-org data.
+ *
+ * This helper is the single funnel: any code path that mutates the
+ * bearer (login, logout, org switch) MUST call it.
+ */
+function syncApiClientBearer(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (hasApiClient()) {
+    getApiClient().setAccessToken(token ?? undefined);
+    return;
+  }
+  // First-call bootstrap. Stay aligned with `apps/customer-app/src/lib/api.ts`.
+  initializeApiClient({
+    baseUrl: getApiBaseUrl(),
+    accessToken: token ?? undefined,
+    timeout: 15000,
+    retries: 1,
+  });
+}
 
 /**
  * Shape of a single org membership surfaced to the UI. Mirrors (a subset
@@ -103,11 +137,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (storedToken && storedUser) {
       setToken(storedToken);
+      // Hydrate the api-client bearer at mount so calls fired before
+      // `setActiveOrg` go out under the correct token (closes C-4).
+      syncApiClientBearer(storedToken);
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = parseStoredCustomerUser(storedUser);
+        if (parsed) {
+          // The schema's inferred type is structurally compatible
+          // with CustomerUser. Cast explicitly because Zod infers
+          // every field as optional when `strict: false` (customer-app
+          // tsconfig).
+          setUser(parsed as CustomerUser);
+        } else {
+          // Validation failed → nuke the entry (closes round-3 C-6).
+          localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+          localStorage.removeItem(CUSTOMER_USER_KEY);
+          setToken(null);
+          syncApiClientBearer(null);
+        }
       } catch {
         localStorage.removeItem(CUSTOMER_TOKEN_KEY);
         localStorage.removeItem(CUSTOMER_USER_KEY);
+        setToken(null);
+        syncApiClientBearer(null);
       }
     }
     setLoading(false);
@@ -154,6 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem(CUSTOMER_TOKEN_KEY);
     localStorage.removeItem(CUSTOMER_USER_KEY);
+    // Rotate the api-client bearer to undefined so any in-flight
+    // request started after logout sends an unauthenticated call,
+    // not the just-revoked bearer (closes round-3 C-4).
+    syncApiClientBearer(null);
     // Reset per-user cache so another resident on the same device never
     // sees the previous user's scoped data.
     queryClient.clear();
@@ -191,6 +247,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const payload = (await res.json().catch(() => null)) as { token?: string } | null;
           if (payload?.token && typeof payload.token === 'string') {
             setToken(payload.token);
+            // Rotate the api-client bearer in lockstep with the
+            // localStorage write — without this the in-memory client
+            // would keep using the previous-org token even after the
+            // gateway issued a new one (closes round-3 C-4).
+            syncApiClientBearer(payload.token);
             if (typeof window !== 'undefined') {
               localStorage.setItem(CUSTOMER_TOKEN_KEY, payload.token);
             }

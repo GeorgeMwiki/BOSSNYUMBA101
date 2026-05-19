@@ -7,16 +7,19 @@ import { Skeleton, Alert, AlertDescription } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { unitsService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function UnitEditPage() {
   const t = useTranslations('unitForm');
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['unit', id],
+    queryKey: tenantKey(tenant?.id, 'unit', id),
     queryFn: () => unitsService.get(id),
     retry: false,
   });
@@ -65,8 +68,8 @@ export default function UnitEditPage() {
         depositAmount: parseFloat(data.depositAmount) || 0,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unit', id] });
-      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'unit', id) });
+      queryClient.invalidateQueries({ queryKey: tenantKey(tenant?.id, 'units') });
       router.push(`/units/${id}`);
     },
   });

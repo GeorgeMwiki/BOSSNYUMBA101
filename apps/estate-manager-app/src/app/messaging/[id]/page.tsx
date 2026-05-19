@@ -13,6 +13,8 @@ import {
   Skeleton,
 } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 const TENANT_LOCALE =
   process.env.NEXT_PUBLIC_TENANT_LOCALE?.trim() || 'en';
@@ -33,18 +35,19 @@ export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
   const [draft, setDraft] = useState('');
 
   const conversationQuery = useQuery({
-    queryKey: ['messaging-conversation-live', id],
+    queryKey: tenantKey(tenant?.id, 'messaging-conversation-live', id),
     queryFn: () => messagingService.getConversation(id),
     enabled: Boolean(id),
     retry: false,
   });
 
   const messagesQuery = useQuery({
-    queryKey: ['messaging-messages-live', id],
+    queryKey: tenantKey(tenant?.id, 'messaging-messages-live', id),
     queryFn: () => messagingService.listMessages(id, { page: 1, pageSize: 100 }),
     enabled: Boolean(id),
     retry: false,
@@ -64,7 +67,7 @@ export default function ConversationDetailPage() {
       .markAsRead(id)
       .then(() => {
         queryClient.invalidateQueries({
-          queryKey: ['messaging-conversations-live'],
+          queryKey: tenantKey(tenant?.id, 'messaging-conversations-live'),
         });
       })
       .catch(() => {
@@ -78,7 +81,7 @@ export default function ConversationDetailPage() {
     onSuccess: () => {
       setDraft('');
       queryClient.invalidateQueries({
-        queryKey: ['messaging-messages-live', id],
+        queryKey: tenantKey(tenant?.id, 'messaging-messages-live', id),
       });
       queryClient.invalidateQueries({
         queryKey: ['messaging-conversations-live'],

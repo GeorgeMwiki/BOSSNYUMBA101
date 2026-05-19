@@ -64,11 +64,21 @@ export const InteractiveReportViewer: React.FC<InteractiveReportViewerProps> = (
           </button>
         </div>
       </header>
+      {/*
+        Closes round-3 finding C-5 (CRITICAL): granting both
+        `allow-scripts` AND `allow-same-origin` is equivalent to no
+        sandbox at all — scripts inside the frame can reach `parent` to
+        read the host origin's cookies, localStorage and DOM. We keep
+        `allow-scripts` (the report bundle needs JS) but drop the
+        `allow-same-origin` capability. Reports needing to call back
+        into the host should use the `postMessage` RPC surface
+        (already partially wired via `onAcknowledge`).
+      */}
       <iframe
         ref={iframeRef}
         title={t('iframeTitle')}
         src={signedUrl}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts"
         style={{ width: '100%', height: '70vh', border: '1px solid #e2e8f0' }}
       />
       <section className="interactive-report-viewer__action-plans">

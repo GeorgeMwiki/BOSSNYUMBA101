@@ -3,6 +3,7 @@
  */
 
 import { getTranslations } from 'next-intl/server';
+import { renderSafeMarkdown } from '@/lib/safe-markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,16 +29,6 @@ async function loadPost(slug: string): Promise<PostData | null> {
   } catch {
     return null;
   }
-}
-
-function renderMarkdownBasic(md: string): string {
-  // Intentionally lightweight — server components render HTML.
-  return md
-    .replace(/^# (.*)$/gm, '<h1 class="text-3xl font-semibold mt-6">$1</h1>')
-    .replace(/^## (.*)$/gm, '<h2 class="text-2xl font-semibold mt-6">$1</h2>')
-    .replace(/\n\n/g, '</p><p class="my-3">')
-    .replace(/^/, '<p class="my-3">')
-    .replace(/$/, '</p>');
 }
 
 export default async function BlogPostPage({
@@ -69,7 +60,7 @@ export default async function BlogPostPage({
       </nav>
       <article
         className="prose prose-lg"
-        dangerouslySetInnerHTML={{ __html: renderMarkdownBasic(post.bodyMd) }}
+        dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(post.bodyMd) }}
       />
       {post.publishedAt ? (
         <p className="text-xs text-gray-400 mt-6">

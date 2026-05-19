@@ -7,12 +7,15 @@ import { useTranslations } from 'next-intl';
 import { Megaphone } from 'lucide-react';
 import { propertiesService } from '@bossnyumba/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 type Priority = 'normal' | 'important' | 'urgent';
 
 export default function CreateAnnouncementPage() {
   const t = useTranslations('announcementsCreate');
   const router = useRouter();
+  const { tenant } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -24,7 +27,7 @@ export default function CreateAnnouncementPage() {
   });
 
   const propertiesQuery = useQuery({
-    queryKey: ['announcements-create-properties'],
+    queryKey: tenantKey(tenant?.id, 'announcements-create-properties'),
     queryFn: () => propertiesService.list({ page: 1, pageSize: 100 }),
     retry: false,
   });

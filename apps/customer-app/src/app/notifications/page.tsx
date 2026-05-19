@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { Bell, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getApiBaseUrl } from '@/lib/api';
+import { isSafeNotificationActionUrl } from '@/lib/notification-action-url';
 
 interface NotificationItem {
   readonly id: string;
@@ -133,7 +134,11 @@ export default function NotificationsPage() {
             </div>
           );
 
-          return n.actionUrl ? (
+          // Closes round-3 H-4: validate `actionUrl` before rendering it
+          // through Next `<Link>` so a back-end-supplied
+          // `javascript:`, `data:`, or absolute external URL cannot
+          // hijack a click.
+          return n.actionUrl && isSafeNotificationActionUrl(n.actionUrl) ? (
             <Link key={n.id} href={n.actionUrl} className="block">
               {content}
             </Link>

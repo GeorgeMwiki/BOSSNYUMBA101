@@ -8,21 +8,25 @@ import { AlertCircle, ChevronRight, CreditCard, Receipt } from 'lucide-react';
 import { Skeleton, Alert, AlertDescription, Button } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { orgKey } from '@/lib/tenant-scoped-key';
 
 export default function PaymentsPage() {
   const t = useTranslations('paymentsIndex');
+  const { user } = useAuth();
+  const orgId = user?.activeOrgId ?? null;
   const balanceQuery = useQuery({
-    queryKey: ['customer-payments-balance'],
+    queryKey: orgKey(orgId, 'customer-payments-balance'),
     queryFn: () => api.payments.getBalance(),
   });
 
   const pendingQuery = useQuery({
-    queryKey: ['customer-payments-pending'],
+    queryKey: orgKey(orgId, 'customer-payments-pending'),
     queryFn: () => api.payments.getPending(),
   });
 
   const historyQuery = useQuery({
-    queryKey: ['customer-payments-history-preview'],
+    queryKey: orgKey(orgId, 'customer-payments-history-preview'),
     queryFn: () => api.payments.getHistory(1, 5),
   });
 

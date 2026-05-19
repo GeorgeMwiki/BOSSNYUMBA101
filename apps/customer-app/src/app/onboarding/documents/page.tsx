@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -23,6 +23,7 @@ import {
   DocumentQualityChecker,
   type QualityCheck,
 } from '@/components/onboarding/DocumentQualityChecker';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 interface DocumentUpload {
   id: string;
@@ -90,6 +91,25 @@ export default function OnboardingDocumentsPage() {
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [showQualityModal, setShowQualityModal] = useState(false);
 
+  /**
+   * Closes round-3 H-10 (HIGH): track every blob URL we mint so that
+   * on unmount we can revoke them all. Without this each document
+   * upload leaks 1–10 MB into the document lifetime.
+   */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    return () => {
+      for (const url of objectUrlsRef.current) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
   const handleFileSelect = (docId: string, file: File) => {
     const doc = documents.find((d) => d.id === docId);
     if (!doc) return;
@@ -118,10 +138,11 @@ export default function OnboardingDocumentsPage() {
       return;
     }
 
-    // Create preview for images
+    // Create preview for images (tracked for revocation on unmount).
     const preview = file.type.startsWith('image/')
       ? URL.createObjectURL(file)
       : null;
+    if (preview) objectUrlsRef.current.add(preview);
 
     // Start analyzing
     setDocuments((prev) =>
@@ -242,10 +263,8 @@ export default function OnboardingDocumentsPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Save progress
-    const progress = JSON.parse(localStorage.getItem('onboarding_progress') || '{}');
-    progress.documents = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(progress));
+    // Save progress through the safe parser (closes round-3 C-6 / L-7).
+    patchOnboardingProgress({ documents: 'completed' });
 
     router.push('/onboarding/inspection');
   };

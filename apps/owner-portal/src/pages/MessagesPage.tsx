@@ -179,11 +179,24 @@ export function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval>>();
+  /**
+   * Closes round-3 H-10: revoke every blob URL we minted for
+   * attachment previews when the page unmounts.
+   */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadConversations();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      for (const url of objectUrlsRef.current) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      }
+      objectUrlsRef.current.clear();
     };
   }, []);
 
@@ -287,14 +300,20 @@ export function MessagesPage() {
       senderName,
       content: newMessage.trim(),
       status: 'SENDING',
-      attachments: pendingAttachments.map((file, i) => ({
-        id: `pending-att-${i}`,
-        type: file.type.startsWith('image/') ? 'image' : 'document',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        size: file.size,
-        mimeType: file.type,
-      })),
+      attachments: pendingAttachments.map((file, i) => {
+        const url = URL.createObjectURL(file);
+        objectUrlsRef.current.add(url);
+        return {
+          id: `pending-att-${i}`,
+          type: file.type.startsWith('image/')
+            ? ('image' as const)
+            : ('document' as const),
+          name: file.name,
+          url,
+          size: file.size,
+          mimeType: file.type,
+        };
+      }),
       createdAt: new Date().toISOString(),
     };
 

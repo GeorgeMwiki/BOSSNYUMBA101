@@ -8,12 +8,15 @@ import { EmptyState } from '@bossnyumba/design-system';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { useCurrencyPreference } from '@/lib/hooks/useCurrencyPreference';
+import { useAuth } from '@/contexts/AuthContext';
+import { orgKey } from '@/lib/tenant-scoped-key';
 
 export default function LeasePage() {
   const t = useTranslations('leaseIndex');
   const { format: formatCurrency } = useCurrencyPreference();
+  const { user } = useAuth();
   const leaseQuery = useQuery({
-    queryKey: ['customer-current-lease'],
+    queryKey: orgKey(user?.activeOrgId ?? null, 'customer-current-lease'),
     queryFn: () => api.lease.getCurrent(),
   });
 

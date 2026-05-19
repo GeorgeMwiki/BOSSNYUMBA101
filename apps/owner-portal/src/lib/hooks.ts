@@ -5,10 +5,19 @@
  * `useState + useEffect + api.get` patterns. Mirrors the pattern
  * established in admin-portal/src/lib/hooks.ts — keep shapes aligned
  * so a shared package can replace both files later.
+ *
+ * Tenant scoping (round-3 C-3): every queryKey is prefixed via
+ * `tenantKey(tenantId, ...)` so that two tenants' caches can never
+ * collide. The owner-portal does not currently support live tenant
+ * switching mid-session, but the scope is still required because
+ * logout + re-login as a different tenant otherwise served stale
+ * data from the React Query cache until each query refetched.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
+import { useAuth } from '../contexts/AuthContext';
+import { tenantKey } from './tenant-scoped-key';
 
 function unwrap<T>(
   result: { success: boolean; data?: T; error?: { message: string } | string },
@@ -22,6 +31,16 @@ function unwrap<T>(
       ? result.error
       : result.error?.message || `${feature} unavailable`;
   throw new Error(message);
+}
+
+/**
+ * Read the active tenant id for scoping query keys. Returns `null`
+ * when no tenant is loaded yet so the key prefix becomes
+ * `'no-tenant'` (see `tenant-scoped-key.ts`).
+ */
+function useTenantScope(): string | null {
+  const { tenant } = useAuth();
+  return tenant?.id ?? null;
 }
 
 // ─── Properties ────────────────────────────────────────────
@@ -43,15 +62,17 @@ export interface Property {
 }
 
 export function useProperties() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['properties'],
+    queryKey: tenantKey(tenantId, 'properties'),
     queryFn: async () => unwrap(await api.get<Property[]>('/properties'), 'Properties'),
   });
 }
 
 export function useProperty(id: string) {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['properties', id],
+    queryKey: tenantKey(tenantId, 'properties', id),
     queryFn: async () => unwrap(await api.get<Property>(`/properties/${id}`), 'Property'),
     enabled: !!id,
   });
@@ -73,8 +94,9 @@ export interface OwnerTenant {
 }
 
 export function useTenants() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['tenants'],
+    queryKey: tenantKey(tenantId, 'tenants'),
     queryFn: async () => unwrap(await api.get<OwnerTenant[]>('/tenants'), 'Tenants'),
   });
 }
@@ -86,8 +108,9 @@ export interface TenantDetail extends OwnerTenant {
 }
 
 export function useTenant(id: string) {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['tenants', id],
+    queryKey: tenantKey(tenantId, 'tenants', id),
     queryFn: async () => unwrap(await api.get<TenantDetail>(`/tenants/${id}`), 'Tenant'),
     enabled: !!id,
   });
@@ -105,8 +128,9 @@ export interface TenantConversation {
 }
 
 export function useTenantCommunications() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['tenants', 'communications'],
+    queryKey: tenantKey(tenantId, 'tenants', 'communications'),
     queryFn: async () =>
       unwrap(await api.get<TenantConversation[]>('/tenants/communications'), 'Tenant communications'),
   });
@@ -125,8 +149,9 @@ export interface Vendor {
 }
 
 export function useVendors() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['vendors'],
+    queryKey: tenantKey(tenantId, 'vendors'),
     queryFn: async () => unwrap(await api.get<Vendor[]>('/vendors'), 'Vendors'),
   });
 }
@@ -144,8 +169,9 @@ export interface VendorDetail {
 }
 
 export function useVendor(id: string) {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['vendors', id],
+    queryKey: tenantKey(tenantId, 'vendors', id),
     queryFn: async () => unwrap(await api.get<VendorDetail>(`/vendors/${id}`), 'Vendor'),
     enabled: !!id,
   });
@@ -165,8 +191,9 @@ export interface VendorContract {
 }
 
 export function useVendorContracts() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['vendors', 'contracts'],
+    queryKey: tenantKey(tenantId, 'vendors', 'contracts'),
     queryFn: async () =>
       unwrap(await api.get<VendorContract[]>('/vendors/contracts'), 'Vendor contracts'),
   });
@@ -190,14 +217,16 @@ export interface Approval {
 }
 
 export function useApprovals() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['approvals'],
+    queryKey: tenantKey(tenantId, 'approvals'),
     queryFn: async () => unwrap(await api.get<Approval[]>('/approvals'), 'Approvals'),
   });
 }
 
 export function useApproveRequest() {
   const qc = useQueryClient();
+  const tenantId = useTenantScope();
   return useMutation({
     mutationFn: async ({ id, decision }: { id: string; decision?: string }) => {
       return unwrap(
@@ -205,12 +234,13 @@ export function useApproveRequest() {
         'Approve request'
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey(tenantId, 'approvals') }),
   });
 }
 
 export function useRejectRequest() {
   const qc = useQueryClient();
+  const tenantId = useTenantScope();
   return useMutation({
     mutationFn: async ({ id, decision }: { id: string; decision?: string }) => {
       return unwrap(
@@ -218,7 +248,7 @@ export function useRejectRequest() {
         'Reject request'
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey(tenantId, 'approvals') }),
   });
 }
 
@@ -234,8 +264,9 @@ export interface PortfolioSummary {
 }
 
 export function usePortfolioSummary() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['portfolio', 'summary'],
+    queryKey: tenantKey(tenantId, 'portfolio', 'summary'),
     queryFn: async () =>
       unwrap(await api.get<PortfolioSummary>('/portfolio/summary'), 'Portfolio summary'),
   });
@@ -251,8 +282,9 @@ export interface PropertyPerformance {
 }
 
 export function usePortfolioPerformance() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['portfolio', 'performance'],
+    queryKey: tenantKey(tenantId, 'portfolio', 'performance'),
     queryFn: async () =>
       unwrap(await api.get<PropertyPerformance[]>('/portfolio/performance'), 'Portfolio performance'),
   });
@@ -266,8 +298,9 @@ export interface PortfolioGrowth {
 }
 
 export function usePortfolioGrowth() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['portfolio', 'growth'],
+    queryKey: tenantKey(tenantId, 'portfolio', 'growth'),
     queryFn: async () =>
       unwrap(await api.get<PortfolioGrowth[]>('/portfolio/growth'), 'Portfolio growth'),
   });
@@ -283,16 +316,18 @@ export interface AnalyticsSummary {
 }
 
 export function useAnalyticsSummary() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['analytics', 'summary'],
+    queryKey: tenantKey(tenantId, 'analytics', 'summary'),
     queryFn: async () =>
       unwrap(await api.get<AnalyticsSummary>('/analytics/summary'), 'Analytics summary'),
   });
 }
 
 export function useOccupancyAnalytics() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['analytics', 'occupancy'],
+    queryKey: tenantKey(tenantId, 'analytics', 'occupancy'),
     queryFn: async () =>
       unwrap(
         await api.get<Array<{ month: string; rate: number }>>('/analytics/occupancy'),
@@ -302,8 +337,9 @@ export function useOccupancyAnalytics() {
 }
 
 export function useRevenueAnalytics() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['analytics', 'revenue'],
+    queryKey: tenantKey(tenantId, 'analytics', 'revenue'),
     queryFn: async () =>
       unwrap(
         await api.get<Array<{ month: string; rent: number; other: number }>>('/analytics/revenue'),
@@ -313,8 +349,9 @@ export function useRevenueAnalytics() {
 }
 
 export function useExpensesAnalytics() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['analytics', 'expenses'],
+    queryKey: tenantKey(tenantId, 'analytics', 'expenses'),
     queryFn: async () =>
       unwrap(
         await api.get<
@@ -335,8 +372,9 @@ export interface BudgetSummary {
 }
 
 export function useBudgetSummary() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['budgets', 'summary'],
+    queryKey: tenantKey(tenantId, 'budgets', 'summary'),
     queryFn: async () =>
       unwrap(await api.get<BudgetSummary>('/budgets/summary'), 'Budget summary'),
   });
@@ -356,8 +394,9 @@ export interface PropertyBudget {
 }
 
 export function usePropertyBudget(propertyId: string) {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['budgets', propertyId],
+    queryKey: tenantKey(tenantId, 'budgets', propertyId),
     queryFn: async () =>
       unwrap(await api.get<PropertyBudget>(`/budgets/${propertyId}`), 'Property budget'),
     enabled: !!propertyId,
@@ -372,8 +411,9 @@ export interface BudgetForecast {
 }
 
 export function useBudgetForecasts() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['budgets', 'forecasts'],
+    queryKey: tenantKey(tenantId, 'budgets', 'forecasts'),
     queryFn: async () =>
       unwrap(await api.get<BudgetForecast[]>('/budgets/forecasts'), 'Budget forecasts'),
   });
@@ -389,8 +429,9 @@ export interface ComplianceSummary {
 }
 
 export function useComplianceSummary() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['compliance', 'summary'],
+    queryKey: tenantKey(tenantId, 'compliance', 'summary'),
     queryFn: async () =>
       unwrap(await api.get<ComplianceSummary>('/compliance/summary'), 'Compliance summary'),
   });
@@ -409,8 +450,9 @@ export interface License {
 }
 
 export function useLicenses() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['compliance', 'licenses'],
+    queryKey: tenantKey(tenantId, 'compliance', 'licenses'),
     queryFn: async () =>
       unwrap(await api.get<License[]>('/compliance/licenses'), 'Licenses'),
   });
@@ -428,8 +470,9 @@ export interface Inspection {
 }
 
 export function useInspections() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['compliance', 'inspections'],
+    queryKey: tenantKey(tenantId, 'compliance', 'inspections'),
     queryFn: async () =>
       unwrap(await api.get<Inspection[]>('/compliance/inspections'), 'Inspections'),
   });
@@ -450,8 +493,9 @@ export interface InsurancePolicy {
 }
 
 export function useInsurancePolicies() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['compliance', 'insurance'],
+    queryKey: tenantKey(tenantId, 'compliance', 'insurance'),
     queryFn: async () =>
       unwrap(await api.get<InsurancePolicy[]>('/compliance/insurance'), 'Insurance policies'),
   });
@@ -491,8 +535,9 @@ export interface OwnerDocument {
 }
 
 export function useDocuments() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['documents'],
+    queryKey: tenantKey(tenantId, 'documents'),
     queryFn: async () => unwrap(await api.get<OwnerDocument[]>('/documents'), 'Documents'),
   });
 }
@@ -520,8 +565,9 @@ export interface OwnerWorkOrder {
 }
 
 export function useOwnerWorkOrders() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'work-orders'],
+    queryKey: tenantKey(tenantId, 'owner', 'work-orders'),
     queryFn: async () =>
       unwrap(await api.get<OwnerWorkOrder[]>('/owner/work-orders'), 'Work orders'),
   });
@@ -529,6 +575,7 @@ export function useOwnerWorkOrders() {
 
 export function useApproveWorkOrder() {
   const qc = useQueryClient();
+  const tenantId = useTenantScope();
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       return unwrap(
@@ -536,12 +583,13 @@ export function useApproveWorkOrder() {
         'Approve work order'
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'work-orders'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey(tenantId, 'owner', 'work-orders') }),
   });
 }
 
 export function useRejectWorkOrder() {
   const qc = useQueryClient();
+  const tenantId = useTenantScope();
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
       return unwrap(
@@ -549,7 +597,7 @@ export function useRejectWorkOrder() {
         'Reject work order'
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'work-orders'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey(tenantId, 'owner', 'work-orders') }),
   });
 }
 
@@ -591,24 +639,27 @@ export interface FinancialPayment {
 }
 
 export function useFinancialStats() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'financial', 'stats'],
+    queryKey: tenantKey(tenantId, 'owner', 'financial', 'stats'),
     queryFn: async () =>
       unwrap(await api.get<FinancialStats>('/owner/financial/stats'), 'Financial stats'),
   });
 }
 
 export function useOwnerInvoices() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'invoices'],
+    queryKey: tenantKey(tenantId, 'owner', 'invoices'),
     queryFn: async () =>
       unwrap(await api.get<FinancialInvoice[]>('/owner/invoices'), 'Invoices'),
   });
 }
 
 export function useOwnerPayments() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'payments'],
+    queryKey: tenantKey(tenantId, 'owner', 'payments'),
     queryFn: async () =>
       unwrap(await api.get<FinancialPayment[]>('/owner/payments'), 'Payments'),
   });
@@ -673,11 +724,12 @@ export function useOwnerDashboard(params: {
   dateRange: DashboardRange;
 }) {
   const { propertyId, dateRange } = params;
+  const tenantId = useTenantScope();
   const qs = new URLSearchParams();
   if (propertyId && propertyId !== 'all') qs.append('propertyId', propertyId);
   qs.append('dateRange', dateRange);
   return useQuery({
-    queryKey: ['owner', 'dashboard', propertyId ?? 'all', dateRange],
+    queryKey: tenantKey(tenantId, 'owner', 'dashboard', propertyId ?? 'all', dateRange),
     queryFn: async () =>
       unwrap(
         await api.get<OwnerDashboardData>(`/dashboard/owner?${qs.toString()}`),
@@ -725,8 +777,9 @@ export interface MessagingMessage {
 }
 
 export function useOwnerConversations() {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'messaging', 'conversations'],
+    queryKey: tenantKey(tenantId, 'owner', 'messaging', 'conversations'),
     queryFn: async () =>
       unwrap(
         await api.get<MessagingConversation[]>('/owner/messaging/conversations'),
@@ -739,8 +792,9 @@ export function useOwnerConversationMessages(
   conversationId: string | null,
   options: { pollMs?: number } = {}
 ) {
+  const tenantId = useTenantScope();
   return useQuery({
-    queryKey: ['owner', 'messaging', 'conversations', conversationId, 'messages'],
+    queryKey: tenantKey(tenantId, 'owner', 'messaging', 'conversations', conversationId, 'messages'),
     queryFn: async () =>
       unwrap(
         await api.get<MessagingMessage[]>(
@@ -755,6 +809,7 @@ export function useOwnerConversationMessages(
 
 export function useSendOwnerMessage() {
   const qc = useQueryClient();
+  const tenantId = useTenantScope();
   return useMutation({
     mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
       return unwrap(
@@ -764,9 +819,9 @@ export function useSendOwnerMessage() {
     },
     onSuccess: (_, { conversationId }) => {
       qc.invalidateQueries({
-        queryKey: ['owner', 'messaging', 'conversations', conversationId, 'messages'],
+        queryKey: tenantKey(tenantId, 'owner', 'messaging', 'conversations', conversationId, 'messages'),
       });
-      qc.invalidateQueries({ queryKey: ['owner', 'messaging', 'conversations'] });
+      qc.invalidateQueries({ queryKey: tenantKey(tenantId, 'owner', 'messaging', 'conversations') });
     },
   });
 }

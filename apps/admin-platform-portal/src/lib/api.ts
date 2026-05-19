@@ -38,6 +38,36 @@ function getApiBase(): string {
   return '/api/v1';
 }
 
+/**
+ * Closes round-3 H-9 (HIGH): CSRF on platform mutations.
+ *
+ * The HQ portal authenticates via an httpOnly platform session cookie.
+ * Cross-site form submissions cannot send `application/json` without a
+ * preflight, but a cross-site `fetch(..., { mode: 'no-cors',
+ * credentials: 'include', body: '...', headers: {'content-type':
+ * 'text/plain'} })` can reach the gateway with the cookie attached.
+ *
+ * Defence: every mutating request carries an `X-CSRF-Token` header
+ * read from a non-httpOnly companion cookie
+ * (`bossnyumba_platform_csrf`) that the identity service seeds at
+ * login. Cross-site attackers cannot read the cookie value (Same-Site
+ * boundary on document.cookie) so they cannot forge the header.
+ *
+ * The gateway is the enforcement point — it MUST reject mutating
+ * requests whose `X-CSRF-Token` header does not match the value the
+ * platform-session cookie was minted alongside.
+ */
+const CSRF_COOKIE_NAME = 'bossnyumba_platform_csrf';
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function readCsrfCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${CSRF_COOKIE_NAME}=([^;]+)`),
+  );
+  return match ? decodeURIComponent(match[1] ?? '') : null;
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -53,8 +83,12 @@ async function request<T>(
       ? window.sessionStorage.getItem('platform_token')
       : null;
 
+  const method = (options.method ?? 'GET').toUpperCase();
+  const csrf = STATE_CHANGING_METHODS.has(method) ? readCsrfCookie() : null;
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };

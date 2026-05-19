@@ -25,6 +25,8 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { inspectionsService } from '@bossnyumba/api-client';
 import { Spinner } from '@bossnyumba/design-system';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 type InspectionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type InspectionType = 'MOVE_IN' | 'MOVE_OUT' | 'ROUTINE' | 'ANNUAL';
@@ -75,12 +77,13 @@ export default function InspectionDetailPage() {
   const t = useTranslations('inspectionDetail');
   const params = useParams();
   const router = useRouter();
+  const { tenant } = useAuth();
   const id = (params?.id ?? '') as string;
   const [showComparison, setShowComparison] = useState(false);
 
   // Fetch inspection from API
   const { data: inspectionData, isLoading } = useQuery({
-    queryKey: ['inspection', id],
+    queryKey: tenantKey(tenant?.id, 'inspection', id),
     queryFn: () => inspectionsService.get(id as never),
     enabled: !!id,
     retry: false,
@@ -122,7 +125,7 @@ export default function InspectionDetailPage() {
   // For move-out inspections, try to fetch the corresponding move-in inspection for comparison
   const isMoveOut = inspection?.type?.toLowerCase().includes('move_out') || inspection?.type === 'MOVE_OUT';
   const { data: moveInData } = useQuery({
-    queryKey: ['inspections', 'moveIn', inspection?.unitId],
+    queryKey: tenantKey(tenant?.id, 'inspections', 'moveIn', inspection?.unitId),
     queryFn: () => inspectionsService.list(
       { unitId: inspection!.unitId, type: ['MOVE_IN'] as never },
       1,

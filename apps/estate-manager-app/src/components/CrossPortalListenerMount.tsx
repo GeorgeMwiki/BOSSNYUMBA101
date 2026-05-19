@@ -32,6 +32,13 @@ export function CrossPortalListenerMount(): null {
   const { token, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const handleRef = useRef<CrossPortalListenerHandle | null>(null);
+  // Closes round-3 H-3: track the live bearer in a ref so reconnects
+  // pick up rotations without re-running the whole effect.
+  const tokenRef = useRef<string | null>(token);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -41,13 +48,14 @@ export function CrossPortalListenerMount(): null {
         case 'announcement':
           toast({
             title: 'Announcement',
-            description: String(event.payload.message ?? ''),
+            // Closes round-3 M-14: cap server-pushed payload lengths.
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'notification':
           toast({
-            title: String(event.payload.title ?? 'Notification'),
-            description: String(event.payload.message ?? ''),
+            title: String(event.payload.title ?? 'Notification').slice(0, 120),
+            description: String(event.payload.message ?? '').slice(0, 280),
           });
           return;
         case 'state-mutation':
@@ -60,7 +68,7 @@ export function CrossPortalListenerMount(): null {
         case 'wake-trigger':
           toast({
             title: 'Mr. Mwikila needs your attention',
-            description: String(event.payload.reason ?? ''),
+            description: String(event.payload.reason ?? '').slice(0, 280),
           });
           return;
       }
@@ -69,7 +77,8 @@ export function CrossPortalListenerMount(): null {
     let handle: CrossPortalListenerHandle | null = null;
     try {
       handle = startCrossPortalListener({
-        token,
+        // round-3 H-3: read the bearer fresh on every reconnect.
+        getToken: () => tokenRef.current ?? '',
         baseUrl: GATEWAY_BASE_URL,
         onEvent: dispatch,
         onError: (err) => {

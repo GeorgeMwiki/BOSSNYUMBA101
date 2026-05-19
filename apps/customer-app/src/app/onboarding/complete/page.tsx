@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, supportWhatsAppUrl } from '@/lib/constants';
+import { patchOnboardingProgress } from '@/lib/onboarding-progress';
 
 interface MoveInDetail {
   icon: React.ElementType;
@@ -94,11 +95,8 @@ export default function OnboardingCompletePage() {
 
   // Mark onboarding as complete
   useEffect(() => {
-    const savedProgress = JSON.parse(
-      localStorage.getItem('onboarding_progress') || '{}'
-    );
-    savedProgress.complete = 'completed';
-    localStorage.setItem('onboarding_progress', JSON.stringify(savedProgress));
+    // Closes round-3 C-6 / L-7: safe parser handles malformed entries.
+    patchOnboardingProgress({ complete: 'completed' });
     localStorage.setItem('onboarding_completed', 'true');
 
     // Notify API

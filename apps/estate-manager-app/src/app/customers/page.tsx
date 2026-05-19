@@ -8,14 +8,17 @@ import { Skeleton, EmptyState, Alert, AlertDescription, Button } from '@bossnyum
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customersService } from '@bossnyumba/api-client';
+import { useAuth } from '@/providers/AuthProvider';
+import { tenantKey } from '@/lib/tenant-scoped-key';
 
 export default function CustomersListPage() {
   const t = useTranslations('customersListPage');
+  const { tenant } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['customers', { page, pageSize: 20, search: search || undefined }],
+    queryKey: tenantKey(tenant?.id, 'customers', { page, pageSize: 20, search: search || undefined }),
     queryFn: () =>
       customersService.list({
         page,

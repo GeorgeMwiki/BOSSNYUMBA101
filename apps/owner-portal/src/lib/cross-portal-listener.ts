@@ -46,10 +46,14 @@ const ALLOWED_KINDS: ReadonlyArray<CrossPortalEventKind> = [
 
 export interface CrossPortalListenerOptions {
   /**
-   * Bearer JWT for the current authenticated user. The listener
-   * passes this in the `Authorization` header.
+   * Bearer JWT for the current authenticated user.
+   *
+   * Closes round-3 H-3 (HIGH): pass a callback so every reconnect
+   * reads the latest token. Callers may still pass a static string
+   * via `token` — when both are provided `getToken` wins.
    */
-  readonly token: string;
+  readonly token?: string;
+  readonly getToken?: () => string;
   /**
    * Gateway base URL. Defaults to `''` (same origin) so the listener
    * works seamlessly behind a reverse proxy.
@@ -89,7 +93,12 @@ export interface CrossPortalListenerHandle {
 export function startCrossPortalListener(
   options: CrossPortalListenerOptions,
 ): CrossPortalListenerHandle {
-  if (!options.token) {
+  // Closes round-3 H-3: prefer the dynamic getToken callback so
+  // reconnects always read the latest bearer.
+  const readToken: () => string = options.getToken
+    ? options.getToken
+    : () => options.token ?? '';
+  if (!readToken()) {
     throw new Error('cross-portal-listener: token required');
   }
   const baseUrl = options.baseUrl ?? '';
@@ -185,10 +194,18 @@ export function startCrossPortalListener(
     setConnState('connecting');
     abort = new AbortController();
     try {
+      // Read the bearer fresh on every reconnect (closes round-3 H-3).
+      const currentToken = readToken();
+      if (!currentToken) {
+        // The token rotated to empty mid-flight (e.g. logout). Give up
+        // gracefully so the reconnect loop does not spin on stale auth.
+        closed = true;
+        return;
+      }
       const res = await fetch(url, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${options.token}`,
+          Authorization: `Bearer ${currentToken}`,
           Accept: 'text/event-stream',
         },
         signal: abort.signal,

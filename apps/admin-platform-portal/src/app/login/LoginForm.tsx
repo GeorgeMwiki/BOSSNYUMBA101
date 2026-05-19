@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Logomark } from '@bossnyumba/design-system';
+import { safeRedirectTarget } from '@/lib/safe-redirect';
 
 interface LoginState {
   readonly phase: 'idle' | 'submitting' | 'error';
@@ -11,7 +12,10 @@ interface LoginState {
 
 export function LoginForm() {
   const params = useSearchParams();
-  const next = params.get('next') ?? '/';
+  // Validate `?next=` against an allow-list before treating it as a
+  // navigation target. Closes round-3 C-2 (open redirect / credential
+  // phishing). Any value that fails the allow-list falls back to `/`.
+  const next = safeRedirectTarget(params.get('next'), '/');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [state, setState] = useState<LoginState>({ phase: 'idle' });

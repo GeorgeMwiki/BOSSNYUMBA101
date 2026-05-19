@@ -13,6 +13,7 @@ import {
 } from '@bossnyumba/design-system';
 import { useTranslations } from 'next-intl';
 import { api } from '../../lib/api';
+import { isSafeDocumentUrl } from '../../lib/safe-document-url';
 
 export interface DamageDeduction {
   readonly id: string;
@@ -156,9 +157,20 @@ export const DamageDeductionApproval: React.FC = () => {
                     <div className="mb-3">
                       <h4 className="text-sm font-medium">{t('evidence')}</h4>
                       <ul className="text-xs text-blue-600 list-disc pl-5">
+                        {/*
+                          Closes round-3 H-5: validate every evidence URL
+                          before rendering and pair `noopener` with
+                          `noreferrer` per OWASP. Unsafe URLs render as
+                          plain text so the user sees the value but
+                          cannot navigate to a poisoned target.
+                        */}
                         {d.evidenceUrls.map((u) => (
                           <li key={u}>
-                            <a href={u} target="_blank" rel="noreferrer">{u}</a>
+                            {isSafeDocumentUrl(u) ? (
+                              <a href={u} target="_blank" rel="noopener noreferrer">{u}</a>
+                            ) : (
+                              <span className="text-gray-400">{u}</span>
+                            )}
                           </li>
                         ))}
                       </ul>
