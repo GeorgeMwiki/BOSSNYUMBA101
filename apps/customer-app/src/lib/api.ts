@@ -238,4 +238,38 @@ export const api = {
       return requireLiveData(() => ensureClient().post('/inspections', data));
     },
   },
+
+  /**
+   * Generic envelope-shaped GET — returns `{ success, data, error }`.
+   *
+   * Used by /my-credit and any future page that prefers the envelope
+   * pattern over the throw-on-error helpers above. Keeps backwards
+   * compat with the legacy api shape that `@ts-nocheck`'d pages were
+   * silently relying on.
+   */
+  async get<T = unknown>(
+    path: string,
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    try {
+      const response = await ensureClient().get(path);
+      return { success: true, data: response.data as T };
+    } catch (error) {
+      return { success: false, error: normalizeError(error).message };
+    }
+  },
+
+  /**
+   * Generic envelope-shaped POST — returns `{ success, data, error }`.
+   */
+  async post<T = unknown>(
+    path: string,
+    body: unknown,
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    try {
+      const response = await ensureClient().post(path, body);
+      return { success: true, data: response.data as T };
+    } catch (error) {
+      return { success: false, error: normalizeError(error).message };
+    }
+  },
 };
