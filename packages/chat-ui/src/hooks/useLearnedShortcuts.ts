@@ -106,6 +106,15 @@ function pinnedStorageKey(userId: string, route: string): string {
   return `learned-shortcuts:pinned:${userId}:${route}`;
 }
 
+// Hard caps on what we accept from localStorage. Pinning is a UX nicety
+// — a single user has no reason to pin >50 shortcuts on one route, and
+// each id should be a normal slug (< 256 chars). Bounded reads close the
+// Wave-12 LOW finding: a malicious extension / dev-tools edit storing
+// e.g. `JSON.stringify(["a".repeat(1e7), ...])` should NOT be loaded
+// into React state at full size.
+const MAX_PINNED_IDS = 50;
+const MAX_PIN_ID_LENGTH = 256;
+
 function readPinned(
   storage: PinnedStorage,
   userId: string,
@@ -117,7 +126,12 @@ function readPinned(
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((v): v is string => typeof v === 'string');
+    return parsed
+      .filter(
+        (v): v is string =>
+          typeof v === 'string' && v.length > 0 && v.length <= MAX_PIN_ID_LENGTH,
+      )
+      .slice(0, MAX_PINNED_IDS);
   } catch {
     return [];
   }
@@ -130,8 +144,14 @@ function writePinned(
   ids: ReadonlyArray<string>,
 ): void {
   if (!userId || !route) return;
+  // Defensive bound on write side too: if upstream callers ever push
+  // more than MAX_PINNED_IDS we drop the overflow rather than
+  // persisting it (next mount would silently truncate anyway).
+  const bounded = ids
+    .filter((id) => typeof id === 'string' && id.length > 0 && id.length <= MAX_PIN_ID_LENGTH)
+    .slice(0, MAX_PINNED_IDS);
   try {
-    storage.setItem(pinnedStorageKey(userId, route), JSON.stringify(ids));
+    storage.setItem(pinnedStorageKey(userId, route), JSON.stringify(bounded));
   } catch {
     // Swallow quota / serialization errors — pinning is a UX nicety,
     // not safety-critical. The next mount will simply lose the pins.

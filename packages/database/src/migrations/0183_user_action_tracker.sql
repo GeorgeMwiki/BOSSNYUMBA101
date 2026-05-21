@@ -20,10 +20,13 @@
 -- DROP-then-CREATE inside a DO/IF EXISTS guard (no `CREATE POLICY IF
 -- NOT EXISTS` form in Postgres).
 --
--- RLS predicate: `tenant_id::text = current_setting('app.current_tenant_id', true)`.
--- The NULL escape branch is intentional — utility migrations that pre-seed
--- platform-default action catalogues need to write rows before the GUC
--- is bound (mirrors the pattern in memory_blocks, currency_preferences).
+-- RLS predicate: `tenant_id = public.current_app_tenant_id()` (canonical
+-- helper that bridges the new `app.current_tenant_id` GUC and the legacy
+-- `app.tenant_id` GUC — see migration 0172). This is a STRICT predicate:
+-- no `tenant_id IS NULL` escape, because user_action_tracker holds
+-- per-user counter data and a tenant_id-less row could leak across
+-- tenants if the GUC is ever unset. Platform-default action catalogues
+-- (if ever added) go in a separate table.
 -- ─────────────────────────────────────────────────────────────────────
 
 -- ============================================================================
@@ -51,46 +54,76 @@ CREATE TABLE IF NOT EXISTS user_action_tracker (
 CREATE INDEX IF NOT EXISTS idx_user_action_tracker_tenant_last_seen
   ON user_action_tracker (tenant_id, last_seen DESC);
 
--- ============================================================================
--- 3. Row-Level Security
--- ============================================================================
+COMMENT ON TABLE user_action_tracker IS
+  'Per-(tenant, user, action) action-frequency counters powering the chat-ui MasteryGate (UI-3) and LearnedShortcutsPanel (UI-5). Tenant-scoped RLS via current_app_tenant_id() GUC helper. Strict tenant predicate — no NULL escape branch.';
 
-ALTER TABLE user_action_tracker ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_action_tracker FORCE ROW LEVEL SECURITY;
+-- ============================================================================
+-- 3. ENABLE + FORCE RLS, install tenant-isolation policies.
+--    Pattern from 0166_rls_promote_out_wave.sql / 0182_section_layouts.sql.
+-- ============================================================================
 
 DO $$
+DECLARE
+  tbl text;
+  tenant_tables text[] := ARRAY[
+    'user_action_tracker'
+  ];
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'user_action_tracker') THEN
-    DROP POLICY IF EXISTS user_action_tracker_tenant_isolation
-      ON user_action_tracker;
-    CREATE POLICY user_action_tracker_tenant_isolation ON user_action_tracker
-      USING (
-        tenant_id IS NULL
-        OR tenant_id::text = current_setting('app.current_tenant_id', true)
+  FOREACH tbl IN ARRAY tenant_tables LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = tbl
+    ) THEN
+      -- Enable + force RLS (idempotent).
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
+      EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY;', tbl);
+
+      -- Drop pre-existing policies with our canonical names. Also drop
+      -- the prior (insecure) `user_action_tracker_tenant_isolation*`
+      -- policies that allowed `tenant_id IS NULL` rows — superseded by
+      -- the strict `tenant_isolation_select/_modify` pair below.
+      EXECUTE format(
+        'DROP POLICY IF EXISTS tenant_isolation_select ON public.%I;', tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS tenant_isolation_modify ON public.%I;', tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS user_action_tracker_tenant_isolation ON public.%I;', tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS user_action_tracker_tenant_isolation_insert ON public.%I;', tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS user_action_tracker_tenant_isolation_update ON public.%I;', tbl
       );
 
-    DROP POLICY IF EXISTS user_action_tracker_tenant_isolation_insert
-      ON user_action_tracker;
-    CREATE POLICY user_action_tracker_tenant_isolation_insert
-      ON user_action_tracker
-      FOR INSERT
-      WITH CHECK (
-        tenant_id IS NULL
-        OR tenant_id::text = current_setting('app.current_tenant_id', true)
-      );
+      -- Tenant-scoped SELECT (strict).
+      EXECUTE format($pol$
+        CREATE POLICY tenant_isolation_select ON public.%I
+        FOR SELECT
+        TO authenticated
+        USING (tenant_id = public.current_app_tenant_id());
+      $pol$, tbl);
 
-    DROP POLICY IF EXISTS user_action_tracker_tenant_isolation_update
-      ON user_action_tracker;
-    CREATE POLICY user_action_tracker_tenant_isolation_update
-      ON user_action_tracker
-      FOR UPDATE
-      USING (
-        tenant_id IS NULL
-        OR tenant_id::text = current_setting('app.current_tenant_id', true)
-      )
-      WITH CHECK (
-        tenant_id IS NULL
-        OR tenant_id::text = current_setting('app.current_tenant_id', true)
-      );
-  END IF;
-END $$;
+      -- Tenant-scoped INSERT/UPDATE/DELETE (strict). FOR ALL covers
+      -- INSERT + UPDATE + DELETE in one policy — no implicit DELETE
+      -- gap left to the default permissive policy.
+      EXECUTE format($pol$
+        CREATE POLICY tenant_isolation_modify ON public.%I
+        FOR ALL
+        TO authenticated
+        USING (tenant_id = public.current_app_tenant_id())
+        WITH CHECK (tenant_id = public.current_app_tenant_id());
+      $pol$, tbl);
+
+      -- Revoke anon access (defence-in-depth).
+      EXECUTE format('REVOKE ALL ON public.%I FROM anon;', tbl);
+    END IF;
+  END LOOP;
+END
+$$;
+
+-- Operator note: this is an additive migration. No backfill required —
+-- user-action rows are created on first user interaction. Existing
+-- users start at zero mastery and accumulate from their next action.

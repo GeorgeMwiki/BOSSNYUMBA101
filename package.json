@@ -53,6 +53,8 @@
       "protobufjs@<7.5.5": ">=7.5.5",
       "protobufjs@>=8.0.0 <8.2.0": ">=8.2.0",
       "protobufjs@8.0.3": "8.4.0",
+      "@grpc/proto-loader@<0.8.1": ">=0.8.1",
+      "proto3-json-serializer@<3.0.4": ">=3.0.4",
       "ws@>=8.0.0 <8.20.1": ">=8.20.1",
       "tar": ">=7.5.11",
       "nodemailer": ">=7.0.11",

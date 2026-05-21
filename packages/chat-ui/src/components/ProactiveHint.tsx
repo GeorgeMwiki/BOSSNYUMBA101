@@ -57,6 +57,13 @@ export interface HintAction {
    * fires a CustomEvent `proactive-hint:action` whose detail is
    * `{ id, action: emit }`. Mutually compatible with `href` — if both
    * are present the link still navigates but the event fires first.
+   *
+   * SECURITY: `emit` is dev-defined (it comes from a HintCandidate that
+   * the brain emits, not from end-user input) so XSS risk is nil. But
+   * consumers wiring `addEventListener('proactive-hint:action', ...)`
+   * MUST NOT `eval()` or `Function()` the `detail.action` string. Treat
+   * the string as a static identifier you switch/case on; never as code
+   * to interpret.
    */
   readonly emit?: string;
 }

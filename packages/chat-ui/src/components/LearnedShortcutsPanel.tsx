@@ -233,7 +233,7 @@ function ShortcutItem({
         draggable={Boolean(onPin)}
         data-testid={`learned-shortcut-${shortcut.id}`}
         data-shortcut-index={index}
-        data-shortcut-confidence={shortcut.confidence.toFixed(3)}
+        data-shortcut-confidence={Number(shortcut.confidence ?? 0).toFixed(3)}
         onClick={handleClick}
         onKeyDown={handleKey}
         onMouseEnter={() => setHover(true)}

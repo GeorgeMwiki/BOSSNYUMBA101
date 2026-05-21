@@ -127,16 +127,24 @@ export interface OnlineJudge {
 
 const DEFAULT_SAMPLE_RATE = 0.03;
 const DEFAULT_MAX_QUEUE_DEPTH = 1000;
-const MAX_HASH_VALUE = 0xffffffff;
+// Number of hex chars consumed from the SHA-256 digest. 8 hex chars =
+// 32 bits = max value 0xffffffff. Keep HEX_CHARS and MAX_HASH_VALUE in
+// lockstep — if either is changed the other MUST be updated or the
+// sample-rate normaliser silently desyncs and fairness skews.
+const HEX_CHARS = 8;
+const MAX_HASH_VALUE = 16 ** HEX_CHARS - 1;
 
 /**
  * Deterministic [0, 1) value derived from a trace id. We take the
- * first 8 hex chars of a SHA-256 — sufficient for sampling fairness
- * across realistic traceId distributions and trivially testable.
+ * first `HEX_CHARS` hex chars of a SHA-256 — sufficient for sampling
+ * fairness across realistic traceId distributions and trivially testable.
  */
 export function traceIdToSampleValue(traceId: string): number {
   if (!traceId) return 0;
-  const hex = createHash('sha256').update(traceId).digest('hex').slice(0, 8);
+  const hex = createHash('sha256')
+    .update(traceId)
+    .digest('hex')
+    .slice(0, HEX_CHARS);
   const n = parseInt(hex, 16);
   return n / (MAX_HASH_VALUE + 1);
 }
@@ -168,6 +176,14 @@ function clampRate(rate: number | undefined): number {
 /**
  * Create an online judge. Returns a `score()` function that
  * fire-and-forget submits traces for LLM-judge scoring.
+ *
+ * MULTI-TENANT NOTE: each `OnlineJudge` instance owns its own `inflight`
+ * queue and counters. To preserve fair backpressure across tenants in
+ * a multi-tenant process, callers SHOULD construct one judge per tenant
+ * (or per tenant-bucket) — e.g. a `Map<tenantId, OnlineJudge>` cached
+ * at the kernel composition root. Sharing a single instance across
+ * tenants is legal but means a noisy tenant can exhaust the (default
+ * 1000-slot) queue and silently drop another tenant's eval samples.
  */
 export function createOnlineJudge(options: OnlineJudgeOptions): OnlineJudge {
   const sampleRate = clampRate(options.sampleRate);
