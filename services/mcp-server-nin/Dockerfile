@@ -6,7 +6,7 @@
 # library). Two stages: build + slim runtime.
 
 # ---------- Stage 1: Node build (MIT) -------------------------------------
-FROM node:20-bookworm-slim AS node-build
+FROM node:26-bookworm-slim AS node-build
 
 WORKDIR /build
 COPY package.json tsconfig.json ./
@@ -17,7 +17,7 @@ RUN npm install --no-audit --no-fund \
 
 
 # ---------- Stage 2: Runtime ----------------------------------------------
-FROM node:20-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 
 WORKDIR /app
 
