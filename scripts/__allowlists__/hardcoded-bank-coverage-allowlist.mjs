@@ -159,4 +159,8 @@ export const HARDCODED_BANK_ALLOWLIST = new Map([
     'apps/customer-app/src/components/documents/MoveOutNoticeForm.tsx',
     'Move-out notice form distinguishes refund-method preference (mpesa vs bank_transfer); UI dispatch, not provider routing.',
   ],
+  [
+    'packages/dynamic-sections/src/lib/adaptive-layout/policies/intent-policy.ts',
+    'Adaptive-layout intent-policy compliance bucket contains kra/gepg as substring matchers for section IDs (e.g. detect "kra-filings" section); UI section-ID tokens, not provider routing.',
+  ],
 ]);
