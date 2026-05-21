@@ -220,7 +220,7 @@ function probeEnvPresence(
         ? new Date(last).toISOString()
         : null;
 
-    // Cross-check against the NOT_YET_WIRED adapter set. Even when env
+    // Cross-check against the unwired adapter set. Even when env
     // is set, if the composition root reported this slot as stubbed we
     // surface `degraded`.
     const stubbedKey = check.capabilities.find((c) => nyw.has(c));
@@ -229,7 +229,7 @@ function probeEnvPresence(
         name: check.name,
         status: 'degraded',
         lastSuccessAt: lastIso,
-        note: `${check.note} — adapter is a NOT_YET_WIRED stub (${stubbedKey})`,
+        note: `${check.note} — adapter is an unwired stub (${stubbedKey})`,
         affectedCapabilities: check.capabilities,
       };
     }
