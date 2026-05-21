@@ -247,6 +247,40 @@ export {
 } from './security/secrets-derivation.js';
 
 // ============================================================================
+// Eval — online LLM-judge sampling + R-MOAT-6 dimensions
+// ============================================================================
+
+export type {
+  EvalScoreScale,
+  EvalSeverity,
+  EvalDimensionId,
+  EvalDimension,
+} from './eval/dimensions.js';
+
+export {
+  EVAL_DIMENSIONS,
+  EVAL_DIMENSION_COUNT,
+  getEvalDimension,
+} from './eval/dimensions.js';
+
+export type {
+  DimensionScore,
+  JudgeScore,
+  TraceForJudging,
+  JudgeFn,
+  ScoreSink,
+  OnlineJudgeOptions,
+  OnlineJudgeStats,
+  OnlineJudge,
+} from './eval/online-judge.js';
+
+export {
+  createOnlineJudge,
+  isTraceSampled,
+  traceIdToSampleValue,
+} from './eval/online-judge.js';
+
+// ============================================================================
 // Re-exports
 // ============================================================================
 

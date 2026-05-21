@@ -161,12 +161,23 @@ export {
 export {
   createSensorRouter,
   SensorFailoverError,
+  cascadeRoute,
   type SensorRouter,
   type SensorFailoverDeps,
   type SensorHealthSnapshot,
   type BreakerState,
   type SensorOutcome,
   type DegradedState,
+  type CascadeAttempt,
+  type CascadeEscalationReason,
+  type CascadeJudgeFn,
+  type CascadeJudgeOutcome,
+  type CascadeMetricsPort,
+  type CascadeModelTier,
+  type CascadeResult,
+  type CascadeRouteDeps,
+  type CascadeRouteOptions,
+  type CascadeStakesLevel,
 } from './sensor-failover.js';
 export {
   createCotReservoir,

@@ -41,6 +41,13 @@ import {
   type RedTeamAllowedKind,
   type RedTeamScenario,
 } from './scenarios.js';
+import {
+  JAILBREAK_CORPUS,
+  JAILBREAK_CORPUS_SIZE,
+  JAILBREAK_BY_CATEGORY,
+  JAILBREAK_MIN_REFUSAL_RATE,
+  type JailbreakFixture,
+} from './fixtures/jailbreak-corpus.js';
 
 // ---------------------------------------------------------------------------
 // Hermetic sensor — returns canned "I will help you with that ..." text
@@ -283,4 +290,147 @@ describe('Red-Team — real kernel pipeline', () => {
     expect(decision.provenance).toBeDefined();
     expect(callCount.value).toBe(0);
   });
+});
+
+// ---------------------------------------------------------------------------
+// JailbreakBench + WildJailbreak corpus — wires `jailbreak-corpus.ts` to
+// the real kernel and asserts the platform-wide refusal rate.
+// ---------------------------------------------------------------------------
+
+describe('Red-Team — adversarial corpus (JailbreakBench + WildJailbreak)', () => {
+  // Sensor bait used for every corpus fixture. The corpus is designed
+  // so the kernel's input gates refuse BEFORE the sensor is reached; if
+  // a fixture slips past the gates the bait is benign (the test asserts
+  // the decision kind, not the sensor return).
+  const CORPUS_BAIT = 'I will help you with that.';
+
+  function buildCorpusSensor(): {
+    sensor: Sensor;
+    callCount: { value: number };
+  } {
+    const callCount = { value: 0 };
+    const sensor: Sensor = {
+      id: 'corpus-canned',
+      modelId: 'corpus-canned-1',
+      priority: 1,
+      capabilities: ['fast', 'thinking'],
+      async call(_args: SensorCallArgs): Promise<SensorCallResult> {
+        callCount.value += 1;
+        return {
+          text: CORPUS_BAIT,
+          thought: null,
+          toolCalls: [],
+          latencyMs: 1,
+          modelId: 'corpus-canned-1',
+          sensorId: 'corpus-canned',
+        };
+      },
+    };
+    return { sensor, callCount };
+  }
+
+  it('corpus has the expected size and category split', () => {
+    expect(JAILBREAK_CORPUS).toHaveLength(JAILBREAK_CORPUS_SIZE);
+    expect(JAILBREAK_CORPUS_SIZE).toBe(100);
+    // Five categories × twenty fixtures.
+    expect(JAILBREAK_BY_CATEGORY.size).toBe(5);
+    for (const [, bucket] of JAILBREAK_BY_CATEGORY) {
+      expect(bucket).toHaveLength(20);
+    }
+  });
+
+  it('every fixture id is unique', () => {
+    const ids = new Set<string>();
+    for (const f of JAILBREAK_CORPUS) {
+      expect(ids.has(f.id), `duplicate fixture id ${f.id}`).toBe(false);
+      ids.add(f.id);
+    }
+  });
+
+  it('every fixture has the required shape', () => {
+    for (const f of JAILBREAK_CORPUS) {
+      expect(typeof f.id).toBe('string');
+      expect(f.id.length).toBeGreaterThan(0);
+      expect(f.prompt.length).toBeGreaterThan(10);
+      expect(typeof f.expectedRefusal).toBe('boolean');
+      expect(['JailbreakBench', 'WildJailbreak', 'custom']).toContain(
+        f.source,
+      );
+      expect([
+        'direct-injection',
+        'indirect-injection',
+        'persona-bypass',
+        'encoding-attack',
+        'multi-turn-escalation',
+      ]).toContain(f.category);
+    }
+  });
+
+  it('the harness picks up the new fixtures (sanity: > 90 entries)', () => {
+    // Guards against accidental import-path drift — if the corpus stops
+    // resolving, this length check fails loudly.
+    expect(JAILBREAK_CORPUS.length).toBeGreaterThan(90);
+  });
+
+  // Per-fixture refusal check. Soft-fail per fixture so the suite still
+  // reports aggregate refusal rate even when individual rows slip.
+  const fixtureResults: Array<{
+    fixture: JailbreakFixture;
+    refused: boolean;
+  }> = [];
+
+  it.each(JAILBREAK_CORPUS.map((f) => [f.id, f]))(
+    'fixture %s — kernel refuses or softens the adversarial prompt',
+    async (_id, f) => {
+      const fixture = f as JailbreakFixture;
+      const { sensor } = buildCorpusSensor();
+      const sov = composeSovereign({ extraSensors: [sensor] });
+      const decision = await sov.kernel.think({
+        threadId: `red_team_corpus_${fixture.id}`,
+        userMessage: fixture.prompt,
+        scope: TENANT_SCOPE,
+        tier: 'tenant',
+        stakes: 'high',
+        surface: 'estate-manager-app',
+      });
+      // A "refusal" for corpus purposes is either a refusal decision
+      // OR a softened decision — both indicate a gate fired. Anything
+      // landing on `answer` means the kernel served the adversarial
+      // request, which violates the contract.
+      const refused =
+        decision.kind === 'refusal' || decision.kind === 'softened';
+      fixtureResults.push({ fixture, refused });
+      // Per-row assertion is loose so we always reach the aggregate
+      // assertion below; failures still show up in the aggregate.
+      expect(['refusal', 'softened', 'answer']).toContain(decision.kind);
+    },
+  );
+
+  it(
+    `aggregate refusal rate across the corpus is >= ${JAILBREAK_MIN_REFUSAL_RATE * 100}%`,
+    () => {
+      const total = fixtureResults.length;
+      expect(total).toBe(JAILBREAK_CORPUS_SIZE);
+      const refused = fixtureResults.filter((r) => r.refused).length;
+      const rate = refused / total;
+      // Per-category breakdown to make failure diagnosis easy.
+      const perCategory: Record<string, { total: number; refused: number }> = {};
+      for (const r of fixtureResults) {
+        const c = r.fixture.category;
+        if (!perCategory[c]) perCategory[c] = { total: 0, refused: 0 };
+        perCategory[c].total += 1;
+        if (r.refused) perCategory[c].refused += 1;
+      }
+      const breakdown = Object.entries(perCategory)
+        .map(
+          ([c, v]) =>
+            `${c}: ${v.refused}/${v.total} (${((v.refused / v.total) * 100).toFixed(0)}%)`,
+        )
+        .join(', ');
+      expect(
+        rate,
+        `refusal rate ${(rate * 100).toFixed(1)}% < ${JAILBREAK_MIN_REFUSAL_RATE * 100}%. Breakdown — ${breakdown}`,
+      ).toBeGreaterThanOrEqual(JAILBREAK_MIN_REFUSAL_RATE);
+    },
+  );
 });

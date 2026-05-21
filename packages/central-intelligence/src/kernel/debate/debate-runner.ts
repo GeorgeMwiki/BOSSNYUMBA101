@@ -21,6 +21,13 @@ import type {
   DebateOutcome,
   DebateVoice,
 } from './debate-types.js';
+import type { ThoughtRequest } from '../kernel-types.js';
+import {
+  runThreeAgentDebate,
+  type DebateResult,
+  type SensorLike,
+  type ThreeAgentDebateOptions,
+} from './three-agent-debate.js';
 
 const DEFAULT_TOKEN_BUDGET = 4_000;
 const CONVERGENCE_THRESHOLD = 0.8;
@@ -269,3 +276,119 @@ function jaccard(
   const union = a.size + b.size - inter;
   return union === 0 ? 0 : inter / union;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Stakes-aware dispatcher — the default deliberation entry point for
+// the kernel's post-judge gate. High / critical stakes (with
+// `costSensitive=false`) route to the 3-agent debate; low / medium
+// stakes (or cost-sensitive callers) bypass the debate and return the
+// single-agent sensor output.
+// ─────────────────────────────────────────────────────────────────────
+
+export type DispatchedDebateMode = 'single-agent' | 'three-agent';
+
+export interface RunStakesAwareDebateOptions extends ThreeAgentDebateOptions {
+  /**
+   * When true, the dispatcher SKIPS the three-agent path even at
+   * stakes ≥ high — used when the caller has signalled cost pressure
+   * (rate limit, budget circuit, low-fee surface). Default: false.
+   */
+  readonly costSensitive?: boolean;
+}
+
+export interface StakesAwareDebateResult {
+  readonly mode: DispatchedDebateMode;
+  readonly synthesis: string;
+  readonly proposal?: string;
+  readonly criticism?: string;
+  readonly tokensUsed: number;
+  readonly latencyMs: number;
+  readonly convergence?: number;
+}
+
+/**
+ * Stakes-gated deliberation dispatch.
+ *
+ *   - `stakes ∈ {high, critical}` AND `!costSensitive` → 3-agent debate
+ *     (Proposer → Critic → Synthesizer). Constitutional rules are
+ *     surfaced to the critic when supplied via `options.constitutionalRules`.
+ *   - otherwise → single-agent: a single sensor call with the same
+ *     question + context, surfaced as the synthesis.
+ *
+ * Pure orchestrator — every side-effect routes through the injected
+ * sensor.
+ */
+export async function runStakesAwareDebate(
+  question: string,
+  stakes: ThoughtRequest['stakes'],
+  context: string,
+  sensor: SensorLike,
+  options: RunStakesAwareDebateOptions = {},
+): Promise<StakesAwareDebateResult> {
+  const wantsThreeAgent =
+    (stakes === 'high' || stakes === 'critical') && options.costSensitive !== true;
+
+  if (wantsThreeAgent) {
+    const result: DebateResult = await runThreeAgentDebate(
+      question,
+      context,
+      sensor,
+      options,
+    );
+    return {
+      mode: 'three-agent',
+      synthesis: result.synthesis,
+      proposal: result.proposal,
+      criticism: result.criticism,
+      tokensUsed: result.tokensUsed,
+      latencyMs: result.latencyMs,
+      convergence: result.convergence,
+    };
+  }
+
+  // Single-agent fallback for low / medium / cost-sensitive callers.
+  const clock = options.clock ?? (() => Date.now());
+  const start = clock();
+  const userMessage = buildSingleAgentPrompt(question, context);
+  const out = await sensor.call({
+    system: SINGLE_AGENT_SYSTEM,
+    systemPrompt: SINGLE_AGENT_SYSTEM,
+    userMessage,
+    priorTurns: [],
+    extendedThinking: false,
+    stakes,
+  });
+  const text = (out.text ?? '').trim();
+  const latencyMs = Math.max(0, clock() - start);
+  const tokensUsed =
+    Math.ceil(SINGLE_AGENT_SYSTEM.length / 4) +
+    Math.ceil(userMessage.length / 4) +
+    Math.ceil(text.length / 4);
+  return {
+    mode: 'single-agent',
+    synthesis: text,
+    tokensUsed,
+    latencyMs,
+  };
+}
+
+const SINGLE_AGENT_SYSTEM =
+  'You are a property-management assistant. Answer the question using the context. ' +
+  'Cite concrete numbers from the context when present. End with a single recommended action.';
+
+function buildSingleAgentPrompt(question: string, context: string): string {
+  return [
+    `Question:\n${question}`,
+    '',
+    `Context:\n${context || '(none)'}`,
+    '',
+    'Answer the question with concrete reasoning.',
+  ].join('\n');
+}
+
+// The three-agent surface (`runThreeAgentDebate`, `DebateResult`,
+// `SensorLike`, `ThreeAgentDebateOptions`, `ConstitutionRulePrompt`)
+// is exported through the debate `index.ts` barrel — callers should
+// reach for `./debate` rather than `./debate/three-agent-debate`
+// directly. The imports above pull the bindings into this module so
+// `runStakesAwareDebate` can call them.

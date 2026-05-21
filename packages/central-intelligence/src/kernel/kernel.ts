@@ -996,6 +996,55 @@ export function createBrainKernel(deps: BrainKernelDeps): BrainKernel {
         );
       }
 
+      // 9a) Post-judge multi-agent debate gate — DEFAULT for stakes ≥ high
+      // when the caller has not signalled cost-sensitivity. Replaces the
+      // post-judge `normalised.text` with the Proposer→Critic→Synthesizer
+      // synthesis. Constitutional rules pass through to the critic so a
+      // proposal that violates TZ Rental Act / KRA tax filing is flagged
+      // before the synthesizer commits. Failures collapse to the legacy
+      // single-shot path (debate is best-effort; the judge already vetted
+      // the original). Skipped when the step-7 detour debate already ran
+      // — the older detour ALREADY produced a multi-voice synthesis, so
+      // re-running the 3-agent path would double-spend tokens.
+      if (
+        (req.stakes === 'high' || req.stakes === 'critical') &&
+        req.estimatedCostUsd === undefined &&
+        debateRoundsCompleted === undefined
+      ) {
+        const debateGateStart = clock().getTime();
+        try {
+          const { runThreeAgentDebate } = await import('./debate/three-agent-debate.js');
+          const { BOSSNYUMBA_CONSTITUTION } = await import('./critics/constitutional-critic.js');
+          // Adapt the kernel's SensorRouter (3-arg `call`) to the
+          // three-agent debate's narrower `SensorLike` (single-arg `call`).
+          const debateSensor = {
+            call: (args: SensorCallArgs) => router.call(args, required),
+          };
+          const debateOut = await runThreeAgentDebate(
+            req.userMessage,
+            system,
+            debateSensor,
+            {
+              maxTokens: 8000,
+              constitutionalRules: BOSSNYUMBA_CONSTITUTION.map((r) => ({ id: r.id, description: r.description })),
+            },
+          );
+          if (debateOut.synthesis && debateOut.synthesis.trim().length > 0) {
+            sensorResult = { ...sensorResult, text: debateOut.synthesis };
+            normalised = normalize(debateOut.synthesis);
+            debateRoundsCompleted = 3;
+            debateConverged = debateOut.convergence >= 0.8;
+          }
+          traceStep(
+            'debate',
+            debateGateStart,
+            `mode=three-agent tokens=${debateOut.tokensUsed} latency=${debateOut.latencyMs} convergence=${debateOut.convergence.toFixed(2)}`,
+          );
+        } catch (e) {
+          traceStep('debate', debateGateStart, 'three-agent failed; keeping single-shot answer', e);
+        }
+      }
+
       // (Tool / citation extraction is the agent-loop's job; for the
       //  non-streaming path the citations array is empty unless the
       //  sensor produced one explicitly via ui_block.)

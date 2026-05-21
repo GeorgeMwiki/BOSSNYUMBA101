@@ -155,3 +155,60 @@ describe('buildRetrievedContext', (): void => {
     expect(PER_SOURCE_LIMIT).toBe(30);
   });
 });
+
+describe('buildRetrievedContext — MMR integration', (): void => {
+  it('applies MMR rerank by default (withMmr=true)', async (): Promise<void> => {
+    // Three candidates where the vector branch supplies embeddings.
+    // Without MMR, 'a-dup' would rank #2 by RRF. With MMR + λ=0.7,
+    // the second pick should diversify away from 'a'.
+    const vec = [
+      { id: 'a', text: 'alpha-strong', embedding: [1, 0] },
+      { id: 'a-dup', text: 'alpha-near-dup', embedding: [0.99, 0.01] },
+      { id: 'b', text: 'bravo-orthogonal', embedding: [0, 1] },
+    ];
+    const repo = makeFakeRepo([], vec);
+    const out = await buildRetrievedContext('t', 's', 'q', fakeEmbedder, repo, {
+      topN: 2,
+    });
+    expect(out[0]).toBe('alpha-strong');
+    expect(out[1]).toBe('bravo-orthogonal');
+  });
+
+  it('bypasses MMR when withMmr=false', async (): Promise<void> => {
+    const vec = [
+      { id: 'a', text: 'alpha-strong', embedding: [1, 0] },
+      { id: 'a-dup', text: 'alpha-near-dup', embedding: [0.99, 0.01] },
+      { id: 'b', text: 'bravo-orthogonal', embedding: [0, 1] },
+    ];
+    const repo = makeFakeRepo([], vec);
+    const out = await buildRetrievedContext('t', 's', 'q', fakeEmbedder, repo, {
+      topN: 2,
+      withMmr: false,
+    });
+    // RRF preserves the original vector branch order — a, a-dup.
+    expect(out[0]).toBe('alpha-strong');
+    expect(out[1]).toBe('alpha-near-dup');
+  });
+
+  it('invokes the onQueryEmbedding observer with the query embedding', async (): Promise<void> => {
+    const seen: number[][] = [];
+    const repo = makeFakeRepo([], [{ id: 'a', text: 'a', embedding: [1, 0, 0] }]);
+    await buildRetrievedContext('t', 's', 'q', fakeEmbedder, repo, {
+      onQueryEmbedding: (emb): void => {
+        seen.push(Array.from(emb));
+      },
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toEqual([1, 0, 0]);
+  });
+
+  it('swallows observer errors without failing retrieval', async (): Promise<void> => {
+    const repo = makeFakeRepo([], [{ id: 'a', text: 'a', embedding: [1, 0, 0] }]);
+    const out = await buildRetrievedContext('t', 's', 'q', fakeEmbedder, repo, {
+      onQueryEmbedding: (): void => {
+        throw new Error('observer-blew-up');
+      },
+    });
+    expect(out).toContain('a');
+  });
+});
