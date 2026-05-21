@@ -38,6 +38,15 @@ concurrency:
   group: migration-apply-fresh-${{ github.ref }}
   cancel-in-progress: true
 
+# Need `pull-requests: write` so the "Comment on PR" step (github-script
+# posts the markdown report). Default GITHUB_TOKEN permissions on PRs from
+# the same repo are read-only — without this, the step fails with
+# "Resource not accessible by integration" even though the SQL apply
+# succeeded.
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   apply-fresh:
     name: Apply all migrations on a fresh DB
