@@ -406,20 +406,9 @@ export const HARDCODED_CURRENCY_ALLOWLIST = new Map([
     'packages/central-intelligence/src/kernel/tools/render-blocks/currency-codes.ts',
     'render-blocks currency-codes.ts IS the ISO-4217 currency-code registry consumed by kernel UI render-block formatter; this module is the single source of truth for which codes the UI may format.',
   ],
-
-  // ─── TRACKED GAP — payments-ledger row-currency fallbacks ──────────
-  // These two repository files default to 'KES' when reading from rows
-  // that pre-date the multi-currency column migration (rows written
-  // before currency became NOT NULL). The persistent fix is a backfill
-  // migration that populates currency from tenant_id → tenants.currency.
-  // Tracked in Docs/TODO_BACKLOG.md as "payments-ledger row-currency
-  // fallback migration".
-  [
-    'services/payments-ledger/src/repositories/drizzle-ledger-entry.repository.ts',
-    'TRACKED GAP: drizzle-ledger-entry.repository defaults row.currency to KES for rows pre-dating the multi-currency NOT-NULL column; pending tenant-default backfill migration.',
-  ],
-  [
-    'services/payments-ledger/src/repositories/drizzle-payment-intent.repository.ts',
-    'TRACKED GAP: drizzle-payment-intent.repository defaults row.currency to KES for rows pre-dating the multi-currency NOT-NULL column; pending tenant-default backfill migration.',
-  ],
+  // NOTE: drizzle-ledger-entry.repository.ts and drizzle-payment-intent.repository.ts
+  // previously defaulted row.currency to 'KES' as an unreachable fallback (column
+  // is NOT NULL in schema). The fallback was replaced with a fail-loud invariant
+  // check in Wave 12 (no allowlist entry needed — those files now contain no
+  // literal 'KES').
 ]);

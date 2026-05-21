@@ -89,8 +89,11 @@ jobs:
         run: |
           PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
             -c "CREATE EXTENSION IF NOT EXISTS vector"
+          # NOTE: pg_extension has `extversion` (not `installed_version`).
+          # `installed_version` lives in the `pg_available_extensions` view.
+          # Use extversion against the catalog for the actual-installed check.
           PGPASSWORD=bossnyumba psql -h localhost -p 5432 -U bossnyumba -d bossnyumba_apply_test \
-            -c "SELECT installed_version FROM pg_extension WHERE extname='vector'"
+            -c "SELECT extversion FROM pg_extension WHERE extname='vector'"
 
       - name: Apply all migrations and capture errors
         id: apply
